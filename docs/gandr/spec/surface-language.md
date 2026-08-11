@@ -6,20 +6,20 @@ It covers the surface grammar's design (precedence-bounded grammars, the molder/
 The main document mentions and sketches **every** language feature with references, so a reader sees the whole language without descending; the sub-documents carry the exhaustive machinery and the full set of sketched examples, so nothing is lost by the split.
 If the exhaustiveness claim is ever wrong, that is a defect in this document, not a reason to move content down.
 
-* [[surface-language/grammar]] — the grammar machinery: the PBG, precedence DAGs, the molder/melder pipeline, the obligation taxonomy, the build-time gates, the adaptations registry, and the complete parse-and-decline inventory.
-* [[surface-language/declarations]] — the declaration forms in full: the `def` family, `val`/`run`, attributes, `data`/`codata`, `extern`, `import`, `module`, operator declarations, and the elaboration behaviors.
-* [[surface-language/operators]] — the operator and notation architecture: capture and resolution separated, the named precedence graph and why it is not a number line, the cross-language catalog and the feasibility split, the ambiguity policy, lowering and the origin record, tier ownership, and what the parser substitution retired.
-* [[surface-language/attributes]] — the entity-attribute layer in full: the `@[…]` marker and its two positions, the sigil decision and its reversal target, the typed-schema registry and the diagnostics, attribute purity as locality, the hash-neutral side table with its inert and semantic tiers, the report projection, and the consumers the one layer serves.
-* [[surface-language/directed-family]] — the directed identity family's surface: `Flow(A, x, y)` spelled `A ~~> B` at the type level, the diagonal intro `diag`, the shared `walk` under the motive-covariance side condition, the shared `then`, and `ua-dir` with what it buys a program.
-* [[surface-language/signatures]] — the signature unification's ruling of record: `sign` as the canonical block, `data`/`codata` as the polarity-carrying sugar with their desugarings, the sort-indexed description universe with its hazards, the sorting discipline that carries the guardedness/delay licence, the internal-alternation fence, and the interaction ladder.
-* [[surface-language/circuit-cells]] — the design sketch for full circuit-algebra cells: reconvergence, disconnection, and wheels at the surface, port-named interfaces with polarity, the wheel guard, holes as contexts, and the cost of each feature — including the ruled block form's spellings.
-* [[surface-language/higher-cells]] — the dimension-named signature members in full: the ruled `sort`/`data`/`oper`/`rule` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
-* [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
-* [[surface-language/value-semantics]] — the update surface in full: functional record update, the list update operations, update by construction, the state-visibility red line, in-place execution as a runtime licence, and the four foreclosure rules that keep the mode calculus open.
-* [[surface-language/proposed/modules]] — **proposed, only its bottom rung built**: the module system — the core-and-modules unification and its call-by-push-value sorting, the predicativity fence, the module grammar and typing rules, sealing and first-class packages, implicit resolution, located modules and distribution, futures, and the six-rung staging ladder.
-* [[surface-language/proposed/modes-and-references]] — **proposed, nothing built**: the access-mode, reference, and region calculus — the sixteen-decision register, the per-problem comparison against the languages that have made those decisions, the foreign-interface consequences, and the literature the answers would come from.
-* [[surface-language/shell]] — the shell fragment: shell blocks and jobs, the embedded sub-grammar, the host escape, string interpolation, and the REPL split.
-* [[surface-language/roadmap]] — graduation rungs per reserved form, the pending lanes, and the deferred-with-reasons inventory.
+- [[surface-language/grammar]] — the grammar machinery: the PBG, precedence DAGs, the molder/melder pipeline, the obligation taxonomy, the build-time gates, the adaptations registry, and the complete parse-and-decline inventory.
+- [[surface-language/declarations]] — the declaration forms in full: the `def` family, `val`/`run`, attributes, `data`/`codata`, `extern`, `import`, `module`, operator declarations, and the elaboration behaviors.
+- [[surface-language/operators]] — the operator and notation architecture: capture and resolution separated, the named precedence graph and why it is not a number line, the cross-language catalog and the feasibility split, the ambiguity policy, lowering and the origin record, tier ownership, and what the parser substitution retired.
+- [[surface-language/attributes]] — the entity-attribute layer in full: the `@[…]` marker and its two positions, the sigil decision and its reversal target, the typed-schema registry and the diagnostics, attribute purity as locality, the hash-neutral side table with its inert and semantic tiers, the report projection, and the consumers the one layer serves.
+- [[surface-language/directed-family]] — the directed identity family's surface: `Flow(A, x, y)` spelled `A ~~> B` at the type level, the diagonal intro `diag`, the shared `walk` under the motive-covariance side condition, the shared `then`, and `ua-dir` with what it buys a program.
+- [[surface-language/signatures]] — the signature unification's ruling of record: `sign` as the canonical block, `data`/`codata` as the polarity-carrying sugar with their desugarings, the sort-indexed description universe with its hazards, the sorting discipline that carries the guardedness/delay licence, the internal-alternation fence, and the interaction ladder.
+- [[surface-language/circuit-cells]] — the design sketch for full circuit-algebra cells: reconvergence, disconnection, and wheels at the surface, port-named interfaces with polarity, the wheel guard, holes as contexts, and the cost of each feature — including the ruled block form's spellings.
+- [[surface-language/higher-cells]] — the dimension-named signature members in full: the ruled `sort`/`data`/`oper`/`rule` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
+- [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
+- [[surface-language/value-semantics]] — the update surface in full: functional record update, the list update operations, update by construction, the state-visibility red line, in-place execution as a runtime licence, and the four foreclosure rules that keep the mode calculus open.
+- [[surface-language/proposed/modules]] — **proposed, only its bottom rung built**: the module system — the core-and-modules unification and its call-by-push-value sorting, the predicativity fence, the module grammar and typing rules, sealing and first-class packages, implicit resolution, located modules and distribution, futures, and the six-rung staging ladder.
+- [[surface-language/proposed/modes-and-references]] — **proposed, nothing built**: the access-mode, reference, and region calculus — the sixteen-decision register, the per-problem comparison against the languages that have made those decisions, the foreign-interface consequences, and the literature the answers would come from.
+- [[surface-language/shell]] — the shell fragment: shell blocks and jobs, the embedded sub-grammar, the host escape, string interpolation, and the REPL split.
+- [[surface-language/roadmap]] — graduation rungs per reserved form, the pending lanes, and the deferred-with-reasons inventory.
 
 ## The design stance
 
@@ -69,46 +69,46 @@ gandr is a call-by-push-value language, and that one fact shapes everything on t
 
 ## The lexical layer
 
-* **Identifiers**: `[a-z_][A-Za-z0-9_]*` for terms; `[A-Z][A-Za-z0-9_]*` for constructors and type constructors; lowercase for type variables.
-* **Literals**: unit `()`; bare numerics `7`, `1.5` (gradual literal type); suffixed numerics `8080u32`, `2.5f64` (concrete sized atoms); strings `"…"` with backslash escapes and `${ E }` interpolation; characters `'c'`; booleans `true`/`false`.
-* **Comments**: `//` line; nestable `/* … */` block; comment tokens lex below shell words, so inside a shell block `//path` stays a path.
-* **Whitespace**: indentation is never significant; `;` terminates statements; newline inside shell blocks is a list operator.
-* **Keywords**: one table, ~50 live plus six reserved-for-proposals — the full table with the reservation policy is in [[grammar#The keyword and operator tables]].
+- **Identifiers**: `[a-z_][A-Za-z0-9_]*` for terms; `[A-Z][A-Za-z0-9_]*` for constructors and type constructors; lowercase for type variables.
+- **Literals**: unit `()`; bare numerics `7`, `1.5` (gradual literal type); suffixed numerics `8080u32`, `2.5f64` (concrete sized atoms); strings `"…"` with backslash escapes and `${ E }` interpolation; characters `'c'`; booleans `true`/`false`.
+- **Comments**: `//` line; nestable `/* … */` block; comment tokens lex below shell words, so inside a shell block `//path` stays a path.
+- **Whitespace**: indentation is never significant; `;` terminates statements; newline inside shell blocks is a list operator.
+- **Keywords**: one table, ~50 live plus six reserved-for-proposals — the full table with the reservation policy is in [[grammar#The keyword and operator tables]].
 
 ## Items: what a file is
 
 A source file is a flat list of items, each first-token-discriminated:
 
-* `def` — the definition family (signature, value, function, `def rec`) — [[declarations#The def family]];
-* `rec { … }` — a mutual-recursion block (reserved) — [[recursion#Mutual recursion]];
-* `data` / `codata` — datatype declarations with their member forms — [[declarations#data declarations]] / [[declarations#codata declarations]];
-* `extern "abi" from "lib" { … }` — foreign interface blocks — [[declarations#extern blocks]];
-* `import "URI" as name ;` — module imports — [[declarations#import declarations]];
-* `module Name (: #{ … })? { … }` — module declarations — [[declarations#module declarations]];
-* `op <fixity> <level> "spelling" ;` — operator-fixity declarations (reserved) — [[declarations#Operator-fixity declarations]];
-* `@[ … ]` attribute blocks — leading `def` items — [[declarations#Attributes]];
-* an expression statement `e ;` — script/REPL mode.
+- `def` — the definition family (signature, value, function, `def rec`) — [[declarations#The def family]];
+- `rec { … }` — a mutual-recursion block (reserved) — [[recursion#Mutual recursion]];
+- `data` / `codata` — datatype declarations with their member forms — [[declarations#data declarations]] / [[declarations#codata declarations]];
+- `extern "abi" from "lib" { … }` — foreign interface blocks — [[declarations#extern blocks]];
+- `import "URI" as name ;` — module imports — [[declarations#import declarations]];
+- `module Name (: #{ … })? { … }` — module declarations — [[declarations#module declarations]];
+- `op <fixity> <level> "spelling" ;` — operator-fixity declarations (reserved) — [[declarations#Operator-fixity declarations]];
+- `@[ … ]` attribute blocks — leading `def` items — [[declarations#Attributes]];
+- an expression statement `e ;` — script/REPL mode.
 
 ## Statements: what a block is
 
 A block `{ s₁; …; t }` is a flat sibling list of statements ending in an expression — **the block is the bind-chain spine**:
 
-* `run p <- c;` — computation-result bind (the honest rendering of `c >>= p. …`);
-* `run p : F T <- c;` — the answer-type annotation lane (pending);
-* `val p = v;` — value split (irrefutable patterns only);
-* `t;` — sequencing, sugar for `run _ <- t;`;
-* session statements: `send(c, v);`, `recv(c) as x;`, `close(c);`, `select(c, l);`;
-* sharing/world statements: `fork(c : S) { t } as d;`, `acquire(a) as c;`, `release(c) as a;`, `fork!(a : S) { t };`, `leta x = v;`.
+- `run p <- c;` — computation-result bind (the honest rendering of `c >>= p. …`);
+- `run p : F T <- c;` — the answer-type annotation lane (pending);
+- `val p = v;` — value split (irrefutable patterns only);
+- `t;` — sequencing, sugar for `run _ <- t;`;
+- session statements: `send(c, v);`, `recv(c) as x;`, `close(c);`, `select(c, l);`;
+- sharing/world statements: `fork(c : S) { t } as d;`, `acquire(a) as c;`, `release(c) as a;`, `fork!(a : S) { t };`, `leta x = v;`.
 
 The older spelling `let` is **retired**: `val`/`run` are the binder pair; `let` stays unassigned for a future transparent definitional binder ([[declarations#Statement binders: val and run]]).
 
 ## Expressions: every form
 
-* **Variables, constructors, literals** — as in the lexical layer.
-* **Typed holes** — `?` and `?name`: first-class goals; a file with holes still lowers and reports (holes are deliberately typeable, so "has holes" is not "incomplete").
-* **Lambda** — `fn(x: A) { t }`, `fn(x) { t }`; **type abstraction** — `fn[X] { t }`; **type instantiation** — `t[A]`.
+- **Variables, constructors, literals** — as in the lexical layer.
+- **Typed holes** — `?` and `?name`: first-class goals; a file with holes still lowers and reports (holes are deliberately typeable, so "has holes" is not "incomplete").
+- **Lambda** — `fn(x: A) { t }`, `fn(x) { t }`; **type abstraction** — `fn[X] { t }`; **type instantiation** — `t[A]`.
   No juxtaposition application anywhere: calls are `t(v)`, with `t(v, w)` recorded sugar for `t(v)(w)` — see [[recursion#Application syntax, rejected]] for the rejection's full reasoning.
-* **Call-position force sugar** — `g(x)` with `g : U_r B` elaborates to `(force g)(x)`:
+- **Call-position force sugar** — `g(x)` with `g : U_r B` elaborates to `(force g)(x)`:
 
 ```text
 fn(f: U (B -> F C)) {
@@ -121,17 +121,17 @@ fn(f: U (B -> F C)) {
 }
 ```
 
-* **`ret v`** — the returner; binds loosest and right-associative.
-* **`if c { t } else { u }`** — mandatory `else`; `else if` chains allowed.
-* **`case v { K(x) => t, … }`** — sum elimination; arms comma-separated and brace-delimited; **empty case** `case x {}` over an uninhabited type; **with-view** `case xs with f(xs) { … }` (reserved).
-* **Ascription** — `(e : T)`, parenthesized only.
-* **Thunks** — `thunk { t }`, graded `thunk[r] { t }` (grade defaults to `ω`); **`force v`**.
-* **Lazy products** — `co { fst = t, snd = u }` with projection `t.fst`.
-* **Records** — `#{ℓ = v, …}` literals, `#{ℓ : T, …}` types, `r.ℓ` projection, `#{r | ℓ = v, …}` functional update ([[value-semantics#Functional record update]]).
-* **Tuples and lists** — `(v, w)`; `[a, b, …]` (check-only: a bare inferred list needs an expected type).
-* **Sharing primitives** — `dup(v)`, `drop(v)` as ordinary computations.
-* **Worlds** — `hold v` (package at the current world), `leta x = v;` (modal elimination), `migrate[w] { t }`.
-* **Sessions** — `send(c, v);`, `recv(c) as x;`, `close(c);`, `select(c, l);`, `offer(c) { l1 => t1, l2 => t2 }`, `fork(c : S) { t } as d;` (the binder gets `dual(S)`), delegation by `send(c, d);`, `acquire(a) as c;`, `release(c) as a;`, `fork!(a : S) { t };`:
+- **`ret v`** — the returner; binds loosest and right-associative.
+- **`if c { t } else { u }`** — mandatory `else`; `else if` chains allowed.
+- **`case v { K(x) => t, … }`** — sum elimination; arms comma-separated and brace-delimited; **empty case** `case x {}` over an uninhabited type; **with-view** `case xs with f(xs) { … }` (reserved).
+- **Ascription** — `(e : T)`, parenthesized only.
+- **Thunks** — `thunk { t }`, graded `thunk[r] { t }` (grade defaults to `ω`); **`force v`**.
+- **Lazy products** — `co { fst = t, snd = u }` with projection `t.fst`.
+- **Records** — `#{ℓ = v, …}` literals, `#{ℓ : T, …}` types, `r.ℓ` projection, `#{r | ℓ = v, …}` functional update ([[value-semantics#Functional record update]]).
+- **Tuples and lists** — `(v, w)`; `[a, b, …]` (check-only: a bare inferred list needs an expected type).
+- **Sharing primitives** — `dup(v)`, `drop(v)` as ordinary computations.
+- **Worlds** — `hold v` (package at the current world), `leta x = v;` (modal elimination), `migrate[w] { t }`.
+- **Sessions** — `send(c, v);`, `recv(c) as x;`, `close(c);`, `select(c, l);`, `offer(c) { l1 => t1, l2 => t2 }`, `fork(c : S) { t } as d;` (the binder gets `dual(S)`), delegation by `send(c, d);`, `acquire(a) as c;`, `release(c) as a;`, `fork!(a : S) { t };`:
 
 ```text
 def answer_service() -> F Integer {
@@ -146,11 +146,11 @@ def answer_service() -> F Integer {
 }
 ```
 
-* **Loops** — `for x in e { … }`, `while c { … }`, `loop { … }`, `break`, `continue` — sugar over a native fold or `fix`, with `break`/`continue` as effect operations ([[recursion#Loops, and the break/continue discipline]]).
-* **Operators** — the fixed infix table `|| && == != < <= > >= ++ + - *` and unary `-`; resolution is deterministic and type-independent against the active operator table; user-declared operators ride the reserved declaration form ([[declarations#Operator-fixity declarations]]), and the architecture behind both is [[surface-language/operators]].
-* **The instantiation slot** — `e[ι₁, …, ιₙ]` with residents `T` (type argument), `<`/`>` (the recursion direction sigils), `m<` (named measure), `x = e` (explicit instantiation), `size = e`, `cost = e`, `tail` — the full design is [[recursion#The instantiation slot]].
-* **Extern and host calls** — `m.op(a)` member-call form, elaborating to `perform m.op { p1 = a }`; the reserved namespaces `fs`, `env`, `proc` ride the same surface ([[declarations#extern blocks]]).
-* **Shell blocks** — `#!{ … }` and everything in [[surface-language/shell]].
+- **Loops** — `for x in e { … }`, `while c { … }`, `loop { … }`, `break`, `continue` — sugar over a native fold or `fix`, with `break`/`continue` as effect operations ([[recursion#Loops, and the break/continue discipline]]).
+- **Operators** — the fixed infix table `|| && == != < <= > >= ++ + - *` and unary `-`; resolution is deterministic and type-independent against the active operator table; user-declared operators ride the reserved declaration form ([[declarations#Operator-fixity declarations]]), and the architecture behind both is [[surface-language/operators]].
+- **The instantiation slot** — `e[ι₁, …, ιₙ]` with residents `T` (type argument), `<`/`>` (the recursion direction sigils), `m<` (named measure), `x = e` (explicit instantiation), `size = e`, `cost = e`, `tail` — the full design is [[recursion#The instantiation slot]].
+- **Extern and host calls** — `m.op(a)` member-call form, elaborating to `perform m.op { p1 = a }`; the reserved namespaces `fs`, `env`, `proc` ride the same surface ([[declarations#extern blocks]]).
+- **Shell blocks** — `#!{ … }` and everything in [[surface-language/shell]].
 
 ## Patterns: every form
 
@@ -167,8 +167,8 @@ p | q                  or-pattern (same variable set both branches, or none)
 p as x                 as-pattern
 ```
 
-* `let`/`val`-position patterns must be **irrefutable** (variable, wildcard, tuple, record, single-constructor); a refutable pattern requires `case`.
-* Patterns compile through the case-tree machinery to the existing eliminators — exhaustiveness yields a missing-pattern witness diagnostic, and a redundant arm is a warning naming the shadowing arm.
+- `let`/`val`-position patterns must be **irrefutable** (variable, wildcard, tuple, record, single-constructor); a refutable pattern requires `case`.
+- Patterns compile through the case-tree machinery to the existing eliminators — exhaustiveness yields a missing-pattern witness diagnostic, and a redundant arm is a warning naming the shadowing arm.
 
 ## Types: every former
 
@@ -289,18 +289,18 @@ Shell blocks `#!{ … }` (dialect-tagged `#!zsh{ … }`), jobs as thunked values
 
 The identity fragment's surface (rung 1, built):
 
-* `Path(A, x, y)` — the identity type family, with numeric endpoints allowed (`Path(Integer, 2 + 2, 4)` is the honesty example);
-* `here(v)` — the introduction form (`refl` is a constructor);
-* `walk(p, fn(a, b, q) => C, fn(x) => c)` — the full dinatural eliminator with an explicit motive;
-* the **K-rejection witness is a live diagnostic**: a `case` on an identity type is rejected — the reserved here-pattern fragment requires the without-K unification fragment (rung 2), whose solver declines the deletion step itself, so the pathological example reads `//@ expect-diagnostic: without-k`.
+- `Path(A, x, y)` — the identity type family, with numeric endpoints allowed (`Path(Integer, 2 + 2, 4)` is the honesty example);
+- `here(v)` — the introduction form (`refl` is a constructor);
+- `walk(p, fn(a, b, q) => C, fn(x) => c)` — the full dinatural eliminator with an explicit motive;
+- the **K-rejection witness is a live diagnostic**: a `case` on an identity type is rejected — the reserved here-pattern fragment requires the without-K unification fragment (rung 2), whose solver declines the deletion step itself, so the pathological example reads `//@ expect-diagnostic: without-k`.
 
 The directed family stages beside the groupoid one (designed; the identity-layer phase owns the landing):
 
-* `Flow(A, x, y)` — the directed identity family, spelled `A ~~> B` at the type level: `x` transports into `y`, in one direction — a deprecation, a backend migration, a refinement, never an iso;
-* `diag(v)` — the diagonal intro: every point flows to itself;
-* `walk` — the **same eliminator**, under the motive-covariance side condition: a motive placing the moving endpoint in the contravariant slot is refused, and the refused motive shape is exactly the symmetry shape — so inversion is underivable by construction, not merely unimplemented;
-* `then` — composition, the **same spelling**: directed composition is covariant transport, and directedness costs nothing at dimension 1;
-* the **symmetry-derivation witness is the permanent guard**: it must fail elaboration, the directed twin of the K-rejection witness above.
+- `Flow(A, x, y)` — the directed identity family, spelled `A ~~> B` at the type level: `x` transports into `y`, in one direction — a deprecation, a backend migration, a refinement, never an iso;
+- `diag(v)` — the diagonal intro: every point flows to itself;
+- `walk` — the **same eliminator**, under the motive-covariance side condition: a motive placing the moving endpoint in the contravariant slot is refused, and the refused motive shape is exactly the symmetry shape — so inversion is underivable by construction, not merely unimplemented;
+- `then` — composition, the **same spelling**: directed composition is covariant transport, and directedness costs nothing at dimension 1;
+- the **symmetry-derivation witness is the permanent guard**: it must fail elaboration, the directed twin of the K-rejection witness above.
 
 The full treatment — the two families side by side, the worked motives (accepted and refused), `ua-dir` and what it buys a program, and the open items — is [[surface-language/directed-family]].
 
@@ -335,10 +335,10 @@ The pre-reboot manual is the largest coherent statement of the language ever wri
 What remains true: the whole grammar reference (items, statements, patterns, expressions, types, session types, the shell sub-grammar), the precedence tables, the keyword inventory, the CBPV mapping tables, and the worked examples — the manual's surface-syntax chapter is the fullest single rendering, and its four companion programs are carried in this track's examples above.
 What has drifted, marked at the claim:
 
-* the manual's `let` binders are now `val`/`run` (vocabulary decision, landed after the manual's cut);
-* its "normative grammar" framing predates the PBG: the normative parser is now the Rust PBG + melder, with tree-sitter demoted to parity tooling (the manual's own as-built amendment says this; the grammar reference it renders is the parity grammar — the PBG-only forms in this track are absent there);
-* the module, recursion-marker (`[<]`/`[>]`), and fold-in forms (`data`/`codata`/`def rec`/loops) landed after its chapters, so it carries them only as designed-not-built where it carries them at all;
-* its kernel/identity chapters predate the current kernel and the `Path` rename; this track states the current forms.
+- the manual's `let` binders are now `val`/`run` (vocabulary decision, landed after the manual's cut);
+- its "normative grammar" framing predates the PBG: the normative parser is now the Rust PBG + melder, with tree-sitter demoted to parity tooling (the manual's own as-built amendment says this; the grammar reference it renders is the parity grammar — the PBG-only forms in this track are absent there);
+- the module, recursion-marker (`[<]`/`[>]`), and fold-in forms (`data`/`codata`/`def rec`/loops) landed after its chapters, so it carries them only as designed-not-built where it carries them at all;
+- its kernel/identity chapters predate the current kernel and the `Path` rename; this track states the current forms.
 
 ## Source and confidence
 

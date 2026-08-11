@@ -46,12 +46,12 @@ A hypothesis nobody can say how to discharge is a design smell, not a parameter.
 
 Three packages, split by what a thing **is**, not by when it was built.
 
-* **`Gandr.Prelude.*`** — generic type theory: list positions, insertion and concatenation relations and their views, sum and product plumbing, decidability and h-level helpers.
+- **`Gandr.Prelude.*`** — generic type theory: list positions, insertion and concatenation relations and their views, sum and product plumbing, decidability and h-level helpers.
   Nothing that knows about an algebraic structure.
   _Test:_ would this make sense in a library that had never heard of gandr?
-* **`Gandr.Foundations.*`** — the mathematics gandr is built **on**, including everything that exists in the literature prior to gandr: ∞-graphs, setoids, the category-theory tower, monoidal and monadic machinery, the circuit-algebra carrier and its operations, arenas, nerves, Reedy structure.
+- **`Gandr.Foundations.*`** — the mathematics gandr is built **on**, including everything that exists in the literature prior to gandr: ∞-graphs, setoids, the category-theory tower, monoidal and monadic machinery, the circuit-algebra carrier and its operations, arenas, nerves, Reedy structure.
   _Test:_ is this gandr's own contribution, or the ground it stands on?
-* **`Gandr.Metatheory.*`** — gandr's own theory: the machine, the term representation and its interpretation, the CwF instance, the judgement encodings, decidability and normalization results, and the account of how the circuit-algebra machinery combines with the rest of the language.
+- **`Gandr.Metatheory.*`** — gandr's own theory: the machine, the term representation and its interpretation, the CwF instance, the judgement encodings, decidability and normalization results, and the account of how the circuit-algebra machinery combines with the rest of the language.
   _Test:_ would it be wrong to attribute this to anyone but gandr?
 
 **Within a package, split by role rather than by topic**, on the stdlib pattern:
@@ -70,7 +70,7 @@ The headers are the design record; a split that leaves a header behind has lost 
 
 ## Flags and the gate
 
-* Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
+- Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
   The without-K mandate is binding: neither UIP nor definitional proof-irrelevance may enter through any shortcut.
   **`--hidden-argument-puns` changes what a bare `{x}` pattern means, and the tree relies on it.** In a left-hand side `f {Γ} = …` binds the implicit **named** `Γ`, not the first implicit positionally — so `match-comp {Γ}` reaches `Γ` past the colours in front of it, while `match-comp {x = Γ}` would name the colour and fail.
   Expressions are unaffected and stay positional, which is why a hidden argument supplied on the right is written out: `tail {y = w}`.
@@ -79,15 +79,15 @@ The headers are the design record; a split that leaves a header behind has lost 
   **And it makes the naming uniformity load-bearing instead of conventional.** A pattern that selects by name survives reordering an implicit telescope, and neither a reader nor a generator has to model that order to emit or check one — which is worth more, not less, as more of the tree is machine-written.
   A name that is not an implicit of the type is a `WrongHidingInLHS` error, so a wrong pun fails loudly where a wrong position does not.
   Write the pun and let the name do the selecting; read an existing one as named, never as positional.
-* `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
+- `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
   Reasoning is such a need — `Gandr.Setoid` is over the ∞-graph carrier — and a `Set`-level module takes the flag rather than reason in a second vocabulary.
   A module carrying the flag for that reason alone says so at the top of the file.
   Being flag-free is a property of a module that only _defines_; it is never a reason to reshape one.
-* **Strict root / holey leaf.** `Gandr.Everything` is the strict root — everything it imports is `--safe` and green.
+- **Strict root / holey leaf.** `Gandr.Everything` is the strict root — everything it imports is `--safe` and green.
   Mid-proof work lives in a _declared holey leaf_: a module the root does not import, checked on its own gate line with `--expected-code UnsolvedInteractionMetas`.
   Zero silent postulates, ever.
   Add a leaf's gate line in the same change as the leaf; a line ahead of its module is a gate that cannot fail.
-* `mise run agda:check` = the strict root through aifix plus the OPTIONS-policy sweep.
+- `mise run agda:check` = the strict root through aifix plus the OPTIONS-policy sweep.
 
 ## Dependencies
 
@@ -132,10 +132,10 @@ No solver lands before a proof demands it.
 
 The placement policy, stated as three classes:
 
-* **Never opaque — the compute surface.** Definitions whose definitional computation _is_ the design: the carrier layer, `⟦Disc⟧` and its disappearing-boundary behaviour, and any future normal-form function.
+- **Never opaque — the compute surface.** Definitions whose definitional computation _is_ the design: the carrier layer, `⟦Disc⟧` and its disappearing-boundary behaviour, and any future normal-form function.
   `Gandr.Graph`'s definitions exist to be unfolded — every consumer meets them through copattern matching on `ϵ°`/`δ°`, and sealing them would sever the definitional equalities the whole tower is built from.
-* **Opaque by default — derived reasoning and law surfaces off the compute path.** Combinator kits and law witnesses assembled over a primitive eliminator or over other combinators, where a use site should consume the type rather than the reduction behaviour.
-* **Opaque as unfolding control**, where a deep coinductive tower makes normalization a performance concern.
+- **Opaque by default — derived reasoning and law surfaces off the compute path.** Combinator kits and law witnesses assembled over a primitive eliminator or over other combinators, where a use site should consume the type rather than the reduction behaviour.
+- **Opaque as unfolding control**, where a deep coinductive tower makes normalization a performance concern.
 
 **Every `opaque unfolding` block names its computation dependence** — a one-line comment saying _why_ reduction is needed at that site.
 Blanket unfolding, whether whole-module or an unfocused name list, is a defect.
@@ -164,10 +164,10 @@ State residuals honestly in the module header: a theorem that is reduced but not
 
 Two ways a module passes the gate while proving nothing, both of which the author must close rather than the gate:
 
-* **A parameterized module carrying assumptions must be instantiated somewhere.** Agda type-checks a module body whether or not its parameters can ever be supplied, so a module whose hypotheses are jointly unsatisfiable is green and vacuous.
+- **A parameterized module carrying assumptions must be instantiated somewhere.** Agda type-checks a module body whether or not its parameters can ever be supplied, so a module whose hypotheses are jointly unsatisfiable is green and vacuous.
   Discharge the parameters at a concrete witness in the same change, and say in the header that the witness is what makes the assumptions satisfiable.
   `Gandr.Rigid`'s `Multiset` against the natural numbers is the exemplar.
-* **A predicate that nothing refutes may be vacuous.** A structure defined over a predicate proves nothing if no object fails it.
+- **A predicate that nothing refutes may be vacuous.** A structure defined over a predicate proves nothing if no object fails it.
   Exhibit a counterexample alongside the examples — `Gandr.Shape.Graph`'s diamond and wheel are what stop its connectivity and wheel-freeness lemmas from being statements about an empty type.
 
 ## Commits

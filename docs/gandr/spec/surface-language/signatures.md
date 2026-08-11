@@ -29,8 +29,8 @@ The constructor layer and the operation layer now demonstrably carry **one conta
 
 Two hazards are priced into the index, and both are load-bearing rather than stylistic:
 
-* **No self-hosting.** A `sign` form must never be a first-class description quantifying over all descriptions in its own universe — the Girard-collapse variant met in the swept signature calculi [@sterling-2022-existential] — so the index is a genuine universe move, and a sort is never itself a description.
-* **Finite declarations only.** Only finitely presented declarations are importable, never induced endofunctors, or decidable code equality dies [@fiore-hamana-2013-multiversal] — and decidable code equality is what content-addressing interns on.
+- **No self-hosting.** A `sign` form must never be a first-class description quantifying over all descriptions in its own universe — the Girard-collapse variant met in the swept signature calculi [@sterling-2022-existential] — so the index is a genuine universe move, and a sort is never itself a description.
+- **Finite declarations only.** Only finitely presented declarations are importable, never induced endofunctors, or decidable code equality dies [@fiore-hamana-2013-multiversal] — and decidable code equality is what content-addressing interns on.
 
 The answer stratifies by how rich the sorts are: simple sort sets take the index (adopted); sorts that are themselves a theory's algebras make the index dependent — the "grows a level" setting [@fiore-hamana-2013-multiversal], relevant only if gandr's sorts become theory-algebras; and rules-as-signatures is a genuine register level that decodes to categories of models rather than types — a different object, recorded as a live design fork, deliberately not taken here.
 
@@ -49,9 +49,9 @@ The retired rows are kept visible because the declines reference them; the stage
 | ~~`data Zero : Nat` (sign member)~~ (retired)                | ~~an individual constructor member~~ — the item-level member is gone; declare the family with the nested block           |
 | ~~`codata head : Stream --> a` (sign member)~~ (never built) | ~~the stated normal form~~ — superseded by the retirement before its grammar landed                                      |
 
-* The **member keyword carried the polarity** in the retired item-level form; in the nested form the polarity lives on the BLOCK (`data` μ, `codata` ν), which is what the desugaring preserves — the polarity token must survive every desugaring, and here it does so by construction.
-* The operation member respelled from `op` to **`oper`** in the data-block sugar; `op` is the operator-fixity declaration only, and the retired lead parses-and-declines with the respelling hint (the retired-`~>` precedent).
-* Every desugaring is recorded with provenance, so diagnostics and the derivation UI un-sugar on demand — the standing rule of [[declarations#Elaboration behaviors, collected]].
+- The **member keyword carried the polarity** in the retired item-level form; in the nested form the polarity lives on the BLOCK (`data` μ, `codata` ν), which is what the desugaring preserves — the polarity token must survive every desugaring, and here it does so by construction.
+- The operation member respelled from `op` to **`oper`** in the data-block sugar; `op` is the operator-fixity declaration only, and the retired lead parses-and-declines with the respelling hint (the retired-`~>` precedent).
+- Every desugaring is recorded with provenance, so diagnostics and the derivation UI un-sugar on demand — the standing rule of [[declarations#Elaboration behaviors, collected]].
 
 ## The sorting discipline carries the licence
 
@@ -65,8 +65,8 @@ Nothing in this surface may therefore specify productivity as a shape condition 
 
 Ruling 3 hides two different rulings, and this design takes only the first.
 
-* **Cheap (taken):** several polarity-homogeneous sorts in one `sign` block, mutual where needed, sharing an erased measure — well precedented, and what `check_desc`'s homogeneity check currently scopes each declaration to (the per-sort tags in `SignDesc.sorts` are the general carrier as mixed blocks land).
-* **Expensive (fenced):** one sort whose fixpoint alternates internally requires **internal fixpoint codes** — a universe change, not a decoder change.
+- **Cheap (taken):** several polarity-homogeneous sorts in one `sign` block, mutual where needed, sharing an erased measure — well precedented, and what `check_desc`'s homogeneity check currently scopes each declaration to (the per-sort tags in `SignDesc.sorts` are the general carrier as mixed blocks land).
+- **Expensive (fenced):** one sort whose fixpoint alternates internally requires **internal fixpoint codes** — a universe change, not a decoder change.
   The one swept universe carrying internal codes for both fixpoints pays positivity in the sorting judgement and keeps first-order code equality decidable, but its conversion rests on a confluence problem the source itself leaves open [@basold-2018-mixed]; the Morris universe the earlier premise attributed both fixpoints to carries an internal μ only [@morris-2007-universes].
   Taking the expensive reading is its own future decision against that machinery, never a consequence of this one.
 
@@ -86,17 +86,17 @@ The translation carrier moves sort renaming and label matching only; the cross-s
 
 ## As-built rung and witnesses
 
-* The `sign` grammar, arrow grid, and sign-to-description lowering are landed ([[circuit-cells#The block form, ruled]]; `surface-engine`'s circuit lowering), with `sort` members now recorded into the declared sort set and a port at a declared sort read as a genuine recursive occurrence.
-* The sort index, result slots, sorting-discipline checks, and container agreement are landed in `gandr-theory-levitation` with crate tests; the μ decoder reads the single-sort fragment and declines multi-sorted descriptions and foreign-sort recursion by name.
-* The inspection notation emits the sign normal form (ruling 5), witnessed at the desc-mode corpus (`model/desc/desc-inspect.gandr`, `model/circuit/circuit-rule-block.gandr`, and `surface-engine`'s elaboration tests) — sorts, operations, and rules, with no constructor member spelling.
-* The `oper` respell and its retired-`op` decline are witnessed at `surface/data-operation-members.gandr` and the engine's decline test.
-* The nested generator block is landed end to end: the grammar admits it (the retired head and member spellings stay admissible for their declines), the stage-0 elaborator reads it with head uniformity enforced, and the corpus migrated in the same change (`model/data/`, `model/codata/`, the decline goldens under `pathological/`).
+- The `sign` grammar, arrow grid, and sign-to-description lowering are landed ([[circuit-cells#The block form, ruled]]; `surface-engine`'s circuit lowering), with `sort` members now recorded into the declared sort set and a port at a declared sort read as a genuine recursive occurrence.
+- The sort index, result slots, sorting-discipline checks, and container agreement are landed in `gandr-theory-levitation` with crate tests; the μ decoder reads the single-sort fragment and declines multi-sorted descriptions and foreign-sort recursion by name.
+- The inspection notation emits the sign normal form (ruling 5), witnessed at the desc-mode corpus (`model/desc/desc-inspect.gandr`, `model/circuit/circuit-rule-block.gandr`, and `surface-engine`'s elaboration tests) — sorts, operations, and rules, with no constructor member spelling.
+- The `oper` respell and its retired-`op` decline are witnessed at `surface/data-operation-members.gandr` and the engine's decline test.
+- The nested generator block is landed end to end: the grammar admits it (the retired head and member spellings stay admissible for their declines), the stage-0 elaborator reads it with head uniformity enforced, and the corpus migrated in the same change (`model/data/`, `model/codata/`, the decline goldens under `pathological/`).
 
 ## Open questions and residuals
 
-* **The rules fork** — rules pushed _up_ into a register level versus _down_ into transition sorts are incompatible designs, both mapped by the signature sweep; this document deliberately takes neither, and the fork is decided when rules-as-signatures earns a customer.
-* **The multi-sorted decoder** — `decode_desc` reads the single-sort fragment; the genuinely indexed decoder is the indexed-universe lane's, alongside the multi-output generalization ([[../metatheory#Cellular data — descriptions, cells, and computads]]).
-* **The ornament gate** — the ornament requirements ledger is design input for the same sort-index gate, paid once; its owed constructions ride the ornaments proposal (now in the project's research vault — the corpus README's migration banner).
+- **The rules fork** — rules pushed _up_ into a register level versus _down_ into transition sorts are incompatible designs, both mapped by the signature sweep; this document deliberately takes neither, and the fork is decided when rules-as-signatures earns a customer.
+- **The multi-sorted decoder** — `decode_desc` reads the single-sort fragment; the genuinely indexed decoder is the indexed-universe lane's, alongside the multi-output generalization ([[../metatheory#Cellular data — descriptions, cells, and computads]]).
+- **The ornament gate** — the ornament requirements ledger is design input for the same sort-index gate, paid once; its owed constructions ride the ornaments proposal (now in the project's research vault — the corpus README's migration banner).
 
 ## Source and confidence
 

@@ -23,9 +23,9 @@ The construction follows the **functional correspondence between evaluators and 
 
 Defunctionalization is what turns the checker into a state machine in which:
 
-* the **typing stack is a data structure** — a list of frames, one constructor per recursive call site of the checker;
-* the **solver is a separate machine**, with its own state and its own step relation;
-* the **entire state is inspectable, serializable, and resumable**.
+- the **typing stack is a data structure** — a list of frames, one constructor per recursive call site of the checker;
+- the **solver is a separate machine**, with its own state and its own step relation;
+- the **entire state is inspectable, serializable, and resumable**.
 
 **The method is a commitment, not merely a description of how the first version was written.** The machine should be _derived_ from the recursive checker rather than hand-authored, and both implementations kept in the tree with property tests asserting step-for-step agreement.
 
@@ -578,6 +578,6 @@ Written against five sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the frame inventory, the transitions, the solver state, and the error inventory, all transcribed from the design record rather than re-derived.
-* **High** — the built-versus-designed partition, counted against the named module at write time.
-* **Medium** — the three method citations, whose identifiers were transcribed from the contributor's reference register at this pass but whose _claims_ were not re-read from the papers.
+- **High** — the frame inventory, the transitions, the solver state, and the error inventory, all transcribed from the design record rather than re-derived.
+- **High** — the built-versus-designed partition, counted against the named module at write time.
+- **Medium** — the three method citations, whose identifiers were transcribed from the contributor's reference register at this pass but whose _claims_ were not re-read from the papers.

@@ -11,9 +11,9 @@ A `Path(A, x, y)` says `x` and `y` are the same: transport goes both ways, and i
 A `Flow(A, x, y)` says something weaker and more common: **`x` transports into `y`, in this direction** — with no promise of a way back.
 The identifications a working program actually meets are mostly one-way:
 
-* **a deprecation** — the old record flows into the new one; the new one carries information the old never had, so there is no backward map to find;
-* **a backend migration** — terms of the old presentation replay onto the new one, certificate in hand; the new backend's inhabitants need not be reachable from the old;
-* **a refinement** — a specification flows into anything implementing it; an implementation does not flow back into its spec.
+- **a deprecation** — the old record flows into the new one; the new one carries information the old never had, so there is no backward map to find;
+- **a backend migration** — terms of the old presentation replay onto the new one, certificate in hand; the new backend's inhabitants need not be reachable from the old;
+- **a refinement** — a specification flows into anything implementing it; an implementation does not flow back into its spec.
 
 In each, a two-way claim would be _false_, not merely unproven: the round trip does not exist.
 So the language needs a former that says exactly the true thing — and refuses, by construction, the moves that would pretend otherwise.
@@ -66,7 +66,7 @@ It is the diagonal the walk's base checks against: a walk's base supplies a witn
 `walk` eliminates a `Flow(A, x, y)` exactly the way it eliminates a `Path(A, x, y)`: an explicit motive `fn(a, b, q) => C` naming both endpoints and the certificate, and a diagonal base `fn(z) => c` checked at `C[z/x][z/y][diag(z)/q]` — both endpoint binders map to the base binder, as in the as-built `base_diagonal_type` of `crates/core-checker/src/checker.rs`.
 One condition, with no analogue in the groupoid case:
 
-* **the motive may use the moving endpoint only in covariant position.** A motive placing it in a contravariant slot is **refused**.
+- **the motive may use the moving endpoint only in covariant position.** A motive placing it in a contravariant slot is **refused**.
 
 Covariant use — the moving endpoint appears only in positive position; the motive delivers the migration map itself:
 
@@ -95,9 +95,9 @@ walk(p, fn(a, b, q) => (b -> b), fn(z) => fn(v) => v)
 
 This one's diagonal instance `z -> z` is perfectly inhabitable, so the base checks — the refusal is purely the covariance condition: the domain occurrence of `b` is contravariant, and a one-way certificate cannot supply the target in negative position.
 
-* The check is **term-structural and total** at this phase — no variance-sorted contexts (those arrive with the reflected layer; the general dipresheaf variance judgment is metatheory work).
-* Why a program would hit the refusal: the natural spelling of "go backwards" _is_ the symmetry motive, and contravariant uses sneak in through function arguments — a one-way certificate cannot supply a function **from** the target **back to** the source.
-* **The permanent guard**: a symmetry-derivation witness must fail elaboration — the directed twin of the K-derivation witness that guards `Path` (`crates/surface-corpus/examples/pathological/identity/k-derivation.gandr`, which asserts the `without-k` spelling on every diagnostic of its elaboration path).
+- The check is **term-structural and total** at this phase — no variance-sorted contexts (those arrive with the reflected layer; the general dipresheaf variance judgment is metatheory work).
+- Why a program would hit the refusal: the natural spelling of "go backwards" _is_ the symmetry motive, and contravariant uses sneak in through function arguments — a one-way certificate cannot supply a function **from** the target **back to** the source.
+- **The permanent guard**: a symmetry-derivation witness must fail elaboration — the directed twin of the K-derivation witness that guards `Path` (`crates/surface-corpus/examples/pathological/identity/k-derivation.gandr`, which asserts the `without-k` spelling on every diagnostic of its elaboration path).
   Its designed shape:
 
   ```gandr
@@ -148,9 +148,9 @@ ua-dir  : FlowEquiv a b → Terms a ~~> Terms b -- the directed statement (the f
 What that buys a program: a directed identification **becomes usable transport** — replay along the one-way certificate.
 The three cases of [[#Why a one-way identification exists]] are exactly its targets:
 
-* a **deprecation** is a `FlowEquiv` from the old presentation to the new, so `ua-dir` makes old terms replay as new ones;
-* a **backend migration** is the same shape with a different name;
-* a **refinement** is the same shape with the specification at the source.
+- a **deprecation** is a `FlowEquiv` from the old presentation to the new, so `ua-dir` makes old terms replay as new ones;
+- a **backend migration** is the same shape with a different name;
+- a **refinement** is the same shape with the specification at the source.
 
 What the statement costs and why it is true — the four obligations (sound, full, sectioned, core-coincident), the alphabets it quantifies over, the one-way generator classes, and the two permanent degeneracy witnesses that fence it — are the metatheory lane's account at [[../metatheory/directed-univalence]].
 
@@ -171,7 +171,7 @@ What the coercion will say, once earned: every invertible identification is, in 
 
 ## Source and confidence
 
-* Written from the phase-3 design draft (the `Flow`/`~~>` family, the eliminator's discipline, the two univalence statements with their obligations and alphabets) and the landed metatheory lane [[../metatheory/directed-univalence]].
+- Written from the phase-3 design draft (the `Flow`/`~~>` family, the eliminator's discipline, the two univalence statements with their obligations and alphabets) and the landed metatheory lane [[../metatheory/directed-univalence]].
   The draft overlaps the landed document substantially; this document carries what the draft adds for the surface reader and states the shared kernel vocabulary in full rather than deferring to the metatheory account.
-* The vocabulary settlement (shared `walk`, shared `then`, `diag`) is the owner decision of 2026-07-31, recorded where the question lived (the metatheory roadmap's open question 9).
-* Every as-built claim was verified against this tree at write time: `ValueType::Path` with its two value endpoints and `Value::Here` and `Comp::Walk` (`crates/core-checker/src/types.rs`, `crates/core-checker/src/syntax.rs`); `back` derived, exercised as a flipped-motive `walk` in the conformance suite (`crates/core-checker/src/conformance.rs`); no `Flow` and no `diag` former anywhere in `core-checker`; the scanner's `MULTI_PUNCT` table carrying `~>` and neither `~~>` nor `~>>` (`crates/surface-parser/src/label.rs`); `Outcome::Step` as the machine's successor-state outcome (`crates/core-checker/src/machine.rs`); the K-rejection witness at `crates/surface-corpus/examples/pathological/identity/k-derivation.gandr`.
+- The vocabulary settlement (shared `walk`, shared `then`, `diag`) is the owner decision of 2026-07-31, recorded where the question lived (the metatheory roadmap's open question 9).
+- Every as-built claim was verified against this tree at write time: `ValueType::Path` with its two value endpoints and `Value::Here` and `Comp::Walk` (`crates/core-checker/src/types.rs`, `crates/core-checker/src/syntax.rs`); `back` derived, exercised as a flipped-motive `walk` in the conformance suite (`crates/core-checker/src/conformance.rs`); no `Flow` and no `diag` former anywhere in `core-checker`; the scanner's `MULTI_PUNCT` table carrying `~>` and neither `~~>` nor `~>>` (`crates/surface-parser/src/label.rs`); `Outcome::Step` as the machine's successor-state outcome (`crates/core-checker/src/machine.rs`); the K-rejection witness at `crates/surface-corpus/examples/pathological/identity/k-derivation.gandr`.

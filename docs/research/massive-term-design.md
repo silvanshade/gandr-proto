@@ -61,20 +61,20 @@ All four derive `#[derive(Clone, Debug, Eq, Hash, PartialEq)]` and import `use a
 
 Verified against `crates/kernel-core/src/export.rs`, `export/write.rs`, `export/read.rs`.
 
-* **Header.** `MAGIC = *b"GKX1"` (4 bytes, `export.rs:82`) — the trailing `1` is a **v-family** marker, independent of the version field.
+- **Header.** `MAGIC = *b"GKX1"` (4 bytes, `export.rs:82`) — the trailing `1` is a **v-family** marker, independent of the version field.
   Then the format version as a `u16` **big-endian** (`FORMAT_VERSION_V0 = 0`, `export.rs:85`; `write.rs:123` `to_be_bytes`; `read.rs:304–315` `from_be_bytes`).
   Then the R4 reserved minted-atom-table count (uvarint `0`, `write.rs:125`), then the declaration count (uvarint), then the declaration records (`write.rs:119–131`).
-* **Declaration record** (`write.rs:145–183`): admission-mark byte (`ADMISSION_CHECKED=0`/`ADMISSION_UNCHECKED=1`), kind byte (`KIND_DEF=0`/`KIND_AXIOM=1`; the R1 reserved kinds `2..=5` are rejected distinctly, `read.rs:451–461`), R2 structured-name segment count (uvarint `0`), the level signature, then the content — `Def`: value type, value body, four R3 annotation slots (each uvarint `0`); `Axiom`: value type.
-* **Levels are inline** (`write.rs:207–222`): constant part (uvarint), atom count (uvarint), then each atom as `(variable index uvarint, offset uvarint)` in `BTreeMap`-sorted order.
+- **Declaration record** (`write.rs:145–183`): admission-mark byte (`ADMISSION_CHECKED=0`/`ADMISSION_UNCHECKED=1`), kind byte (`KIND_DEF=0`/`KIND_AXIOM=1`; the R1 reserved kinds `2..=5` are rejected distinctly, `read.rs:451–461`), R2 structured-name segment count (uvarint `0`), the level signature, then the content — `Def`: value type, value body, four R3 annotation slots (each uvarint `0`); `Axiom`: value type.
+- **Levels are inline** (`write.rs:207–222`): constant part (uvarint), atom count (uvarint), then each atom as `(variable index uvarint, offset uvarint)` in `BTreeMap`-sorted order.
   The decode-time offset cap `MAX_DECODED_LEVEL_OFFSET = 4096` (`export.rs:98`; `read.rs:560`) bounds `succ`-reconstruction work — the same totality posture as the checker's depth budget.
-* **Type/term streams** are preorder, tag-then-children: `TYPE_* = 0..=8` and `TERM_* = 0..=13` (`export.rs:147–193`).
+- **Type/term streams** are preorder, tag-then-children: `TYPE_* = 0..=8` and `TERM_* = 0..=13` (`export.rs:147–193`).
   **Note the two tag spaces overlap** (both 0-based, in separate streams) — a unified subterm table must resolve this (§4.5).
-* **Varints** are canonical minimal unsigned LEB128 (`write.rs:465–480`), with the reader rejecting overlong/out-of-range encodings (`read.rs:343–371`: `count > 10`, `shift == 63 && low > 1`, and a trailing zero-continuation are each `Malformed{Varint}`).
-* **E4 is enforced by whole-artifact re-encode-compare** (`read.rs:177–181`): `decode` rebuilds the sequence through the domain constructors, re-encodes via the shared `encode_artifact`, and rejects `encode_artifact(decoded) != bytes` as `Malformed{NonCanonical}`.
+- **Varints** are canonical minimal unsigned LEB128 (`write.rs:465–480`), with the reader rejecting overlong/out-of-range encodings (`read.rs:343–371`: `count > 10`, `shift == 63 && low > 1`, and a trailing zero-continuation are each `Malformed{Varint}`).
+- **E4 is enforced by whole-artifact re-encode-compare** (`read.rs:177–181`): `decode` rebuilds the sequence through the domain constructors, re-encodes via the shared `encode_artifact`, and rejects `encode_artifact(decoded) != bytes` as `Malformed{NonCanonical}`.
   Levels, constraints, and literals additionally rebuild through the strata/base smart constructors so a non-canonical value is unrepresentable in memory (`read.rs:8–34`, `537–589`, `996–1058`).
-* **Rejection triple** is a closed `DecodeError` vocabulary — `Truncated`, `UnknownTag{site,tag}`, `Malformed{site}` — plus the named refusals `ReservedDeclarationKind`, `ReservedSlotOccupied`, `UnsupportedVersion` (`export.rs:452–491`).
+- **Rejection triple** is a closed `DecodeError` vocabulary — `Truncated`, `UnknownTag{site,tag}`, `Malformed{site}` — plus the named refusals `ReservedDeclarationKind`, `ReservedSlotOccupied`, `UnsupportedVersion` (`export.rs:452–491`).
   `read()` unions decode-plane and re-admission-plane failures as `ReadError` (`export.rs:534–541`).
-* **Zero external consumers.** B9 is unbuilt, so v0 artifacts have no downstream reader — the fact behind the E5 bump-vs-amend open call (gandr-bvf description).
+- **Zero external consumers.** B9 is unbuilt, so v0 artifacts have no downstream reader — the fact behind the E5 bump-vs-amend open call (gandr-bvf description).
 
 **Declaration shape for segmentation** (`decl.rs:82–186`, verified): `Declaration = LevelSignature + DeclarationContent`, where `DeclarationContent = Def{declared: ValueType, body: Value} | Axiom{declared: ValueType}`.
 So a v1 declaration segment carries its level signature (inline, unchanged) plus **root references** into the subterm table — a declared-type root for both kinds, and a body root for `Def`.
@@ -108,16 +108,16 @@ Carried from the reuse determination as coordinator synthesis, not independently
 
 ### 3.1 The options
 
-* **(A) Box trees (status quo).** Zero change.
+- **(A) Box trees (status quo).** Zero change.
   Costs: O(size) recomputation on repeated subterms; deep `Clone` on the conversion error paths (§2.2); and — decisive — **decode-retains-sharing is impossible**.
   Without a shared in-memory form, the v1 reader would have to expand the DAG into a tree, which is precisely the amplification surface v1 exists to close.
   Reject: it forecloses the format decision it is supposed to be independent of.
-* **(B) `Rc` children (the lighter fallback — not recommended after the re-cut).** Replace `Box` with `alloc::rc::Rc` in the four enums' child positions (§2.1).
+- **(B) `Rc` children (the lighter fallback — not recommended after the re-cut).** Replace `Box` with `alloc::rc::Rc` in the four enums' child positions (§2.1).
   On immutable data, pointer equality implies structural equality, so a `Rc::ptr_eq` short-circuit is a **trivially sound** conversion fast path that admits **no table into the TCB** — the Lean-kernel `is_eqp`-first posture (digest §2.1), exactly ADR-50 B's "ptr-eq first".
   `Clone` becomes O(1) (closes the deep-clone hazard structurally).
   Single-threaded ⇒ `Rc`, not `Arc` (document it).
   Costs: two refcount words per node; constructors take `Rc::new` (the public-field API change); the recursive-ownership hazard family is **managed, not eliminated** — the worklist-`Drop` obligation stands permanently in the TCB (§3.3) and the derived `PartialEq`/`Hash`/`Debug` traversals stay deep; and since the arena remains the acknowledged end-state, (B) buys a **second** representation migration later (`Box`→`Rc`→arena), each churning format/bridge/corpus.
-* **(C) Per-environment append-only arena with typed node ids (recommended; re-cut 2026-07-20).** Terms and types become `u32`-backed ids into an arena owned by the `Environment`; **four typed id families** (`ValueId`, `ComputationId`, `ValueTypeId`, `CompTypeId`) keep the polarity discipline static, as the four enums do today.
+- **(C) Per-environment append-only arena with typed node ids (recommended; re-cut 2026-07-20).** Terms and types become `u32`-backed ids into an arena owned by the `Environment`; **four typed id families** (`ValueId`, `ComputationId`, `ValueTypeId`, `CompTypeId`) keep the polarity discipline static, as the four enums do today.
   Sharing is a DAG of shared ids; the conversion fast path is **id-equality** (same id in the same arena ⇒ same node ⇒ structural equality) — the same trivially sound Lean `is_eqp` posture, with no refcounts and still no table in the TCB (C3 held).
   The recursive-ownership hazard family **closes structurally**: ids are `Copy` (no deep `Clone` exists to make iterative), arena teardown is a flat `Vec` drop (no recursive drop glue, no manual `Drop` worklists to maintain and audit in the TCB, no E0509 friction), and the derived `PartialEq`/`Hash`/`Debug` instances are shallow over ids.
   The v1 format and the representation stop being two designs: a subterm-table entry ≅ an arena id, **decode IS arena construction**, and §4.3's post-order first-completion order is exactly allocation order.
@@ -127,9 +127,9 @@ Carried from the reuse determination as coordinator synthesis, not independently
 
 ### 3.2 Two soundness clarifications the retype must respect
 
-* **The fast path is a new `Rc::ptr_eq` short-circuit, not the derived `PartialEq`.** `Rc<T>`'s derived `Hash`/`Eq`/`PartialEq` deref to the _pointed-to value_ (structural), not to pointer identity.
+- **The fast path is a new `Rc::ptr_eq` short-circuit, not the derived `PartialEq`.** `Rc<T>`'s derived `Hash`/`Eq`/`PartialEq` deref to the _pointed-to value_ (structural), not to pointer identity.
   So the derived instances keep their current structural meaning after the retype — the writer's content-keyed dedup (§4.2) still works unchanged — and the ptr-eq fast path is an _added_ early-out in `converge_types`/`converge_terms` (`Rc::ptr_eq(a,b) ⇒ Convertible`, skip the subtree), sound because immutability makes ptr-eq ⊆ structural-eq.
-* **Sharing is PRESERVED, never CREATED, by the kernel (C3).** No hash-consing/interning table enters the TCB.
+- **Sharing is PRESERVED, never CREATED, by the kernel (C3).** No hash-consing/interning table enters the TCB.
   Any sharing-*creation* pass is elaborator-side; `core-checker`'s `intern.rs` (content keys, reflexive/aliased short-circuits, structural-agreement differentials) is the existing home.
   The kernel only _retains_ the sharing the decoder hands it (§4.4).
 
@@ -186,17 +186,17 @@ All later machinery (the strictly-earlier invariant, the one-pass expanded-work 
 Lean answers with ptr-keyed kernel caches; that is a **C3-priced trusted table we do not take at S1**.
 Instead the v1 reader carries an **expanded-work budget**, enforced _before_ replay:
 
-* `expanded_size(i)` = `1 +` saturating-sum over `i`'s child indices `j` of `expanded_size(j)`, as a **saturating `u64`**, **memoized** per entry.
+- `expanded_size(i)` = `1 +` saturating-sum over `i`'s child indices `j` of `expanded_size(j)`, as a **saturating `u64`**, **memoized** per entry.
   Because indices are post-order (§4.3), a single forward scan over the table computes the whole vector in O(entries).
-* Reject any declaration whose **declared-type root or body root** has `expanded_size` exceeding `MAX_EXPANDED_TERM_WORK`.
+- Reject any declaration whose **declared-type root or body root** has `expanded_size` exceeding `MAX_EXPANDED_TERM_WORK`.
   This bounds checker time without touching the checker (cheap, deterministic, one pass over the table).
-* **[B2.3, gandr-4p3]** Reject any artifact whose **artifact-total** — the saturating sum of `expanded_size` over every declaration root — exceeds `MAX_ARTIFACT_EXPANDED_WORK`.
+- **[B2.3, gandr-4p3]** Reject any artifact whose **artifact-total** — the saturating sum of `expanded_size` over every declaration root — exceeds `MAX_ARTIFACT_EXPANDED_WORK`.
   The per-declaration cap alone leaves a residual: `N` cheap declaration segments (~10 wire bytes each) sharing one near-cap root (cross-declaration sharing) force `N × MAX_EXPANDED_TERM_WORK` checker work, which no per-declaration bound sees.
   This rides the same forward scan as a single extra accumulator + compare; reader acceptance policy only, no wire-format or E4 impact.
-* `MAX_TABLE_ENTRIES` caps the table size (truncation-cheap, enforced as entries accrue).
-* The same forward scan yields the deterministic **`DecodeMetrics`** (table entries, max per-declaration expanded work, artifact-total) that the B2.3 exit gate records as D3 size/work telemetry.
-* Per-entry child count is **implicit in the node tag** (fixed arity).
-* `MAX_DECODED_LEVEL_OFFSET = 4096` carries over unchanged (levels stay inline, §4.7).
+- `MAX_TABLE_ENTRIES` caps the table size (truncation-cheap, enforced as entries accrue).
+- The same forward scan yields the deterministic **`DecodeMetrics`** (table entries, max per-declaration expanded work, artifact-total) that the B2.3 exit gate records as D3 size/work telemetry.
+- Per-entry child count is **implicit in the node tag** (fixed arity).
+- `MAX_DECODED_LEVEL_OFFSET = 4096` carries over unchanged (levels stay inline, §4.7).
 
 Decode **retains** sharing (builds each entry once as `Rc`, references clone the handle) and **never expands**.
 **Synergy with D1 worth stating:** because canonical decode produces the maximally content-shared form, structurally-equal subterms _are_ the same `Rc` after decode, so D1's `Rc::ptr_eq` fast path fires maximally on decoded artifacts.
@@ -312,11 +312,11 @@ Already ratified by direction (gandr-3ln 21:16); listed here for completeness of
 **Recommendation: layered both** (the gandr-bvf 21:31 convergence).
 The container-vs-format fork dissolves because prolly-bao shares at **chunk/declaration** granularity across artifact versions while the subterm table shares at **subterm** granularity _within_ declarations — they are **complementary layers**, not alternatives.
 
-* **Inner layer (E4 plane).** The canonical declaration encoding with the subterm table (§4) — the validating reader's input; the trusted structural-validation wall.
-* **Outer layer (CAS / verified-access / sync plane; untrusted plumbing).** A prolly-style keyed Merkle tree over declaration **records**.
+- **Inner layer (E4 plane).** The canonical declaration encoding with the subterm table (§4) — the validating reader's input; the trusted structural-validation wall.
+- **Outer layer (CAS / verified-access / sync plane; untrusted plumbing).** A prolly-style keyed Merkle tree over declaration **records**.
   The decisive fact: gandr's export artifact **is a sorted, unique, keyed record set by construction** — E2 admission ordering keys declarations by admission index, satisfying the analyst's conditional ("fits only if artifacts are modeled as sorted keyed records").
   Records = `(admission index, fixed-width big-endian key → declaration segment bytes)`; record-safe chunking = declaration-granular chunking, exactly the E2 replay grain and the plane-4 prefix-cache grain.
-* **Artifact identity** = `BLAKE3` of a root manifest binding `{chunker params commitment (the 85-byte pattern, §2.4), record count, root node hash, inner format version}` — the b3sum-provenance successor at B2.3.
+- **Artifact identity** = `BLAKE3` of a root manifest binding `{chunker params commitment (the 85-byte pattern, §2.4), record count, root node hash, inner format version}` — the b3sum-provenance successor at B2.3.
 
 **Hard boundary, restated verbatim.** Integrity never substitutes validity.
 Hash verification is the **outer** wall; K2/E3 replay re-checks **everything** from the canonical inner bytes (`read()` → `add_decl`); hashes are **untrusted plumbing**.
@@ -327,14 +327,14 @@ The two-wall pattern also answers the rkyv spike's zero-copy question (gandr-bvf
 Absorb mach prolly-bao (owner's own unpublished code — direct source absorption with a provenance note, no external-dep ceremony) into a **new `storage-*` tier** (owner-ratified 21:51 — an engineering/storage substrate deliberately separate from the math `theory-*` tier; plausible future sibling `storage-rkyv`).
 Untrusted scaffolding by the kernel-boundary naming rule (only `gandr-kernel-*` is trusted).
 
-* **`storage-chunker`** (name owner-confirmed 22:07): the `no_std`, zero-runtime-dep chunker (§2.4).
+- **`storage-chunker`** (name owner-confirmed 22:07): the `no_std`, zero-runtime-dep chunker (§2.4).
   Its `PARAMETER_COMMITMENT_LEN = 85` fixed-order commitment is the **highest-leverage lift** — exactly the "deterministic chunking parameters pinned in the format spec" primitive E4 canonicality demands, and the template for how v1 should pin _all_ its parameters.
-* **`storage-prolly-trees`** (alloc): `ProllyTree`, the membership/non-membership/range proofs + witness machinery, `BlockStore` + `InMemoryBlockStore` + `PackedSegmentStore`.
+- **`storage-prolly-trees`** (alloc): `ProllyTree`, the membership/non-membership/range proofs + witness machinery, `BlockStore` + `InMemoryBlockStore` + `PackedSegmentStore`.
   Preserve the two-crate split (keep the chunker's no_std zero-dep property visible at the crate boundary); drop the POC CLI (dogfood value lives in the contract suites).
-* **Extensibility (owner directive).** Adapt gandr-first but design for reuse (the wyrd harness may be rebuilt as something gandr _implements_): keep the generic sorted-record interface (the export layer is a **consumer** supplying the declaration record model; **no declaration semantics in the tree crate**); keep the full proof machinery **feature-gated**, not stripped; keep the store trait generic over blob kinds (node-decode as a mode, not a fork); when the multi-level tree lands it goes in the generic crate, never the gandr-specific layer; carry the per-crate doc sets + contract suites through absorption.
-* **Absorption checklist.** Commitlint scope entries for the new crates **before first commit** (B2.1 precedent; mind the wvd.23 half-migrated-constants trap), workflow-gates crate-roster entries, crate-port-map/doc-sync rows.
+- **Extensibility (owner directive).** Adapt gandr-first but design for reuse (the wyrd harness may be rebuilt as something gandr _implements_): keep the generic sorted-record interface (the export layer is a **consumer** supplying the declaration record model; **no declaration semantics in the tree crate**); keep the full proof machinery **feature-gated**, not stripped; keep the store trait generic over blob kinds (node-decode as a mode, not a fork); when the multi-level tree lands it goes in the generic crate, never the gandr-specific layer; carry the per-crate doc sets + contract suites through absorption.
+- **Absorption checklist.** Commitlint scope entries for the new crates **before first commit** (B2.1 precedent; mind the wvd.23 half-migrated-constants trap), workflow-gates crate-roster entries, crate-port-map/doc-sync rows.
   Reconcile the `blake3` pin (mach `1.8.5`; gandr already carries `blake3` + `thiserror` as workspace deps).
-* **Inherited-deferred, carried honestly.** Multi-level tree construction + its proofs (the scale ceiling); the spec-asserted history-independence differential (E4 discipline requires the spec pin + a differential; mach's canonicality is by-construction, not a named theorem); incremental/streaming witness verification (mach's is full-rebuild; depend on `bao 0.13.1` directly for verified streaming); a persistent store backend; anti-boundary-grinding hardening (mach has hard byte/record caps only — acceptable short-term since the writer is ours). (Amended 2026-07-21: the verified-streaming substrate is the iroh-family `bao-tree`, superseding plain `bao` — see the `massive-term-planes-24-design.md` §9 ratification.)
+- **Inherited-deferred, carried honestly.** Multi-level tree construction + its proofs (the scale ceiling); the spec-asserted history-independence differential (E4 discipline requires the spec pin + a differential; mach's canonicality is by-construction, not a named theorem); incremental/streaming witness verification (mach's is full-rebuild; depend on `bao 0.13.1` directly for verified streaming); a persistent store backend; anti-boundary-grinding hardening (mach has hard byte/record caps only — acceptable short-term since the writer is ours). (Amended 2026-07-21: the verified-streaming substrate is the iroh-family `bao-tree`, superseding plain `bao` — see the `massive-term-planes-24-design.md` §9 ratification.)
 
 ---
 
@@ -345,10 +345,10 @@ Inventory verified in `crates/kernel-core/tests/{export,conversion,checker}.rs`.
 
 **Retained, must still pass unchanged in spirit** (v1-adapted where they touch bytes):
 
-* Round-trip: `the_empty_environment_round_trips`, `round_trip_reproduces_the_environment`, `audits_agree_after_the_round_trip`, `a_bypass_admission_survives_the_round_trip`, and the property `round_trip_reproduces_arbitrary_declarations` (`export.rs:221,239,264,303,769`).
-* Determinism: `a_second_write_is_byte_identical` (`export.rs:348`) and the property `write_is_deterministic` (`export.rs:808`).
-* Rejection triple + named refusals: `an_unknown_version_is_refused`, `each_reserved_declaration_kind_is_rejected`, the R2/R3/R4 slot rejections, `a_non_canonical_level_encoding_is_rejected`, `a_non_canonical_literal_encoding_is_rejected`, `a_non_digit_magnitude_is_rejected`, `an_overlong_varint_is_rejected`, `a_corrupted_tag_is_rejected`, `truncation_at_every_prefix_is_rejected`, and the property `arbitrary_bytes_never_panic` (`export.rs:359–573,823`).
-* Conversion properties (`conversion.rs:176–229`) and `prop_the_choke_point_is_total` (`checker.rs:354`) — unchanged; the D1 retype must not perturb them.
+- Round-trip: `the_empty_environment_round_trips`, `round_trip_reproduces_the_environment`, `audits_agree_after_the_round_trip`, `a_bypass_admission_survives_the_round_trip`, and the property `round_trip_reproduces_arbitrary_declarations` (`export.rs:221,239,264,303,769`).
+- Determinism: `a_second_write_is_byte_identical` (`export.rs:348`) and the property `write_is_deterministic` (`export.rs:808`).
+- Rejection triple + named refusals: `an_unknown_version_is_refused`, `each_reserved_declaration_kind_is_rejected`, the R2/R3/R4 slot rejections, `a_non_canonical_level_encoding_is_rejected`, `a_non_canonical_literal_encoding_is_rejected`, `a_non_digit_magnitude_is_rejected`, `an_overlong_varint_is_rejected`, `a_corrupted_tag_is_rejected`, `truncation_at_every_prefix_is_rejected`, and the property `arbitrary_bytes_never_panic` (`export.rs:359–573,823`).
+- Conversion properties (`conversion.rs:176–229`) and `prop_the_choke_point_is_total` (`checker.rs:354`) — unchanged; the D1 retype must not perturb them.
 
 **New for v1 (the delta):**
 
@@ -369,9 +369,9 @@ Inventory verified in `crates/kernel-core/tests/{export,conversion,checker}.rs`.
 
 Per the owner sequencing directive (representation and format changes land while surface area is minimal — B2.3 would bake corpus/exit-gate/bridge against them):
 
-* **gandr-5t3 (this ratification's implementation):** the D1 representation change (per RQ-1); the inner v1 writer/reader with decode-retains-sharing + the budgets; the updated round-trip/rejection/determinism property suites + the sharing-retention and amplification goldens (§7); the gandr-i3i hardening disposition (its deep-drop/clone tests persist either way; under D1(C) its manual `Drop`/`Clone` impls retire with the arena, under D1(B) they become a permanent prerequisite); and the `storage-chunker` + `storage-prolly-trees` absorption **as skeleton only** (contract suites land; no export wiring).
-* **B2.3 and later:** outer-layer wiring, the manifest identity, the D3 size/decode-time telemetry floors per corpus item, and the exit-gate harness.
-* **Parallel (gandr-1hu rkyv spike):** feeds only the tree/store API surface (state-as-view: get-by-hash returning verified blobs); its findings join this ratification package.
+- **gandr-5t3 (this ratification's implementation):** the D1 representation change (per RQ-1); the inner v1 writer/reader with decode-retains-sharing + the budgets; the updated round-trip/rejection/determinism property suites + the sharing-retention and amplification goldens (§7); the gandr-i3i hardening disposition (its deep-drop/clone tests persist either way; under D1(C) its manual `Drop`/`Clone` impls retire with the arena, under D1(B) they become a permanent prerequisite); and the `storage-chunker` + `storage-prolly-trees` absorption **as skeleton only** (contract suites land; no export wiring).
+- **B2.3 and later:** outer-layer wiring, the manifest identity, the D3 size/decode-time telemetry floors per corpus item, and the exit-gate harness.
+- **Parallel (gandr-1hu rkyv spike):** feeds only the tree/store API surface (state-as-view: get-by-hash returning verified blobs); its findings join this ratification package.
 
 The per-outcome staging for each decision is in the ratification queue (§12).
 
@@ -386,16 +386,16 @@ So this file needs no MANIFEST b3sum entry and its cross-references are not gate
 
 ## 10. Verification register — claims confirmed and corrected
 
-* **Confirmed against kernel-core** (§2.2): deep-clone-on-error-paths, iterative conversion/codec, recursive-checker-with-depth-budget, no existing `Rc`/`Drop`, single-threaded ⇒ `Rc`.
+- **Confirmed against kernel-core** (§2.2): deep-clone-on-error-paths, iterative conversion/codec, recursive-checker-with-depth-budget, no existing `Rc`/`Drop`, single-threaded ⇒ `Rc`.
   The full v0 byte layout and E4 re-encode-compare mechanism (§2.3).
-* **Confirmed against mach @ fb78601** (§2.4): the three crates, the chunker's empty `[dependencies]` (zero runtime deps), the 85-byte fixed-order parameter commitment, `RecordBoundaryRule::BETWEEN_RECORDS` + `UnsortedInput`, the `prolly-bao:node:v1` / `BLAKE3(node bytes)` identity, the dep pins, and the Apache-2.0 license.
-* **Corrected / sharpened:**
-  + The proposal's table order is internally inconsistent (preorder vs strictly-earlier-children); resolved to **post-order first-completion** (§4.3, RQ-8).
-  + The v0 `TYPE_*`/`TERM_*` tag spaces **overlap**; a unified table needs a single disjoint enumeration (§4.5).
-  + The re-encode-compare canonical check must be made **sharing-aware** or it is itself an amplification vector (§4.6).
-  + The `Rc` fast path is `Rc::ptr_eq`, distinct from the derived `PartialEq` (which stays structural) (§3.2).
-* **Not independently re-verified this pass** (carried as coordinator/analyst synthesis, flagged where used): the mach `~17.5k LOC` / two-level-tree ceiling / by-construction-canonicality / anti-grinding-unimplemented claims; the `MPBCHK01` literal magic string; the chunker default byte/record thresholds; `DuplicateKeys` and PB-ADR-0009.
-* **Anchor caveat:** the K/E/C/S/R discipline identifiers are cited per house convention as `spec/kernel-boundary.md` (ADR-77/78), a referenced-but-unmaterialized corpus node; each is anchored to its in-tree kernel-core rustdoc use where possible (§2, and `export.rs`/`term.rs`/`types.rs` module docs).
+- **Confirmed against mach @ fb78601** (§2.4): the three crates, the chunker's empty `[dependencies]` (zero runtime deps), the 85-byte fixed-order parameter commitment, `RecordBoundaryRule::BETWEEN_RECORDS` + `UnsortedInput`, the `prolly-bao:node:v1` / `BLAKE3(node bytes)` identity, the dep pins, and the Apache-2.0 license.
+- **Corrected / sharpened:**
+  - The proposal's table order is internally inconsistent (preorder vs strictly-earlier-children); resolved to **post-order first-completion** (§4.3, RQ-8).
+  - The v0 `TYPE_*`/`TERM_*` tag spaces **overlap**; a unified table needs a single disjoint enumeration (§4.5).
+  - The re-encode-compare canonical check must be made **sharing-aware** or it is itself an amplification vector (§4.6).
+  - The `Rc` fast path is `Rc::ptr_eq`, distinct from the derived `PartialEq` (which stays structural) (§3.2).
+- **Not independently re-verified this pass** (carried as coordinator/analyst synthesis, flagged where used): the mach `~17.5k LOC` / two-level-tree ceiling / by-construction-canonicality / anti-grinding-unimplemented claims; the `MPBCHK01` literal magic string; the chunker default byte/record thresholds; `DuplicateKeys` and PB-ADR-0009.
+- **Anchor caveat:** the K/E/C/S/R discipline identifiers are cited per house convention as `spec/kernel-boundary.md` (ADR-77/78), a referenced-but-unmaterialized corpus node; each is anchored to its in-tree kernel-core rustdoc use where possible (§2, and `export.rs`/`term.rs`/`types.rs` module docs).
 
 ---
 

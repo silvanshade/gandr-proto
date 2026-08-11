@@ -13,31 +13,31 @@ No absolute or machine-local paths appear in this file.
 
 ## 1. Executive summary
 
-* **Authority is layered and self-declared, and the layering is coherent.** The corpus itself is authoritative over the rest of the repo (`README.md` line 9).
+- **Authority is layered and self-declared, and the layering is coherent.** The corpus itself is authoritative over the rest of the repo (`README.md` line 9).
   Within the corpus the _implementation-truth_ arbiter for the ported core IR is `spec/core-ir-contract.md` §0; `status.yml` is an explicit _consolidated view, not an arbiter_ (`status.yml` lines 8-17); `MANIFEST.yml` is the complete registry with typed provenance edges and gate-enforced BLAKE3 hashes; `dictionary.yml` (front-door `dictionary.md`) is the one-name-per-construct naming authority.
   Where any consumer disagrees with an arbiter, the arbiter wins.
-* **MANIFEST.yml is current (verified).** BLAKE3 spot-checks of `core-ir-contract.md`, `status.yml`, and `proposal-parser-interaction-core.md` match MANIFEST exactly, so the hash gate is live and MANIFEST (last touched 2026-07-16) reflects the tree.
+- **MANIFEST.yml is current (verified).** BLAKE3 spot-checks of `core-ir-contract.md`, `status.yml`, and `proposal-parser-interaction-core.md` match MANIFEST exactly, so the hash gate is live and MANIFEST (last touched 2026-07-16) reflects the tree.
   Trust MANIFEST's edge graph.
-* **`status.yml` is the single biggest staleness surface.** It was committed 2026-07-13 23:05, _before_ ADR-80/81/82 landed (2026-07-14 03:37–11:14).
+- **`status.yml` is the single biggest staleness surface.** It was committed 2026-07-13 23:05, _before_ ADR-80/81/82 landed (2026-07-14 03:37–11:14).
   Its core rows therefore omit the frozen-core declared-data former (Data/Ctor/DataCase, ADR-80), the levitation stage-1 dependent core (`Type` universe + `Σ` pair, ADR-81), and the ADR-82 split-motive — all of which `core-ir-contract.md` §0 lists as **Live**.
   Arbiter (§0) wins; `status.yml` has drifted.
   See §7.1.
-* **`proposal-diagnostics-architecture.md` has no `status.yml` row at all** — it is absent from the registry despite being an _Accepted implementation synthesis_ (Report v3, a new `gandr-diagnostics` crate) bound into the corpus.
+- **`proposal-diagnostics-architecture.md` has no `status.yml` row at all** — it is absent from the registry despite being an _Accepted implementation synthesis_ (Report v3, a new `gandr-diagnostics` crate) bound into the corpus.
   Coverage gap.
   See §7.3.
-* **Later-doc-wins is mostly moot** because the corpus resolves its own conflicts in-band via supersession banners rather than leaving contradictory prose.
+- **Later-doc-wins is mostly moot** because the corpus resolves its own conflicts in-band via supersession banners rather than leaving contradictory prose.
   The one governing pivot — **ADR-77 (2026-07-12) making the _minimal certified kernel_ the governing focus, superseding ADR-35's shell-usage focus** — is applied consistently across `README.md`, `roadmap.md`, `proposal-shell-usage-surface.md`, and `proposal-self-hosting.md`.
-* **The parser lane authority is split by design:** `proposal-parser-interaction-core.md` (Adopted; P1–P3 as-built) _revises the W2–W4 execution arc of_ `proposal-graph-core.md` §8; and the **PBG + melder push parser is now the normative parser, retiring tree-sitter's authority** (`proposal-surface-syntax.md` as-built amendment; ADR-70/73/75). tree-sitter is retained as parity/editor tooling.
-* **The four `*-addendum-vdc.md` files are additive, not superseding.** All four are VDC-reflection deltas realizing ADR-68/69; they touch _later_ stages (L2, stage-1, the negative surface) and the data-patterns one is explicitly "confirmations…the MVP cut is untouched."
+- **The parser lane authority is split by design:** `proposal-parser-interaction-core.md` (Adopted; P1–P3 as-built) _revises the W2–W4 execution arc of_ `proposal-graph-core.md` §8; and the **PBG + melder push parser is now the normative parser, retiring tree-sitter's authority** (`proposal-surface-syntax.md` as-built amendment; ADR-70/73/75). tree-sitter is retained as parity/editor tooling.
+- **The four `*-addendum-vdc.md` files are additive, not superseding.** All four are VDC-reflection deltas realizing ADR-68/69; they touch _later_ stages (L2, stage-1, the negative surface) and the data-patterns one is explicitly "confirmations…the MVP cut is untouched."
   None changes what is built today.
   See §5.
-* **Implemented-vs-intended is well-instrumented.** `core-ir-contract.md` §0 carries a per-shape Live/frozen-unbuilt table for the core; `status.yml` carries a five-valued stance (built / partial / adopted-unbuilt / design-pass / dormant) per area.
+- **Implemented-vs-intended is well-instrumented.** `core-ir-contract.md` §0 carries a per-shape Live/frozen-unbuilt table for the core; `status.yml` carries a five-valued stance (built / partial / adopted-unbuilt / design-pass / dormant) per area.
   The built surface is a CBPV checker + derived typing machine + A5.1 CK evaluator + PBG parser lane + value-model rungs 1–4 + rung-1 identity + declared-data 1-cell MVP + levitation stage-1 core + sequent L0 + kernel level oracle + corpus.
   Nearly everything theoretical (PROP fabric, polygraph data, erasible evidence, temporal univalence, sessions, worlds, modules, metaprogramming, backend, packages, pretty-printing) is _adopted-unbuilt_ or _design-pass_.
-* **An adjacent structure sits just outside scope:** `wyrd@failed-refactor:docs/manual/` (Typst reference manual) is present and populated; many specs declare their content "absorbed 2026-07-13" into a `docs/manual/chapters/<x>.yml` chapter while asserting "this file remains the authoritative design record."
+- **An adjacent structure sits just outside scope:** `wyrd@failed-refactor:docs/manual/` (Typst reference manual) is present and populated; many specs declare their content "absorbed 2026-07-13" into a `docs/manual/chapters/<x>.yml` chapter while asserting "this file remains the authoritative design record."
   The manual _renders_ `status.yml` directly.
   The worktree name ("failed-refactor") plus this dual spec/manual structure is worth the coordinator's attention (§9).
-* **One explicit tracker/doc drift is self-declared:** `proposal-parser-interaction-core.md` line 304 states "some already-written bead texts carry superseded stances… the tracker and this proposal disagree in places."
+- **One explicit tracker/doc drift is self-declared:** `proposal-parser-interaction-core.md` line 304 states "some already-written bead texts carry superseded stances… the tracker and this proposal disagree in places."
   The beads tracker is out of this survey's scope but the coordinator should treat parser-lane bead text as suspect.
 
 ---
@@ -59,8 +59,8 @@ This is reconstructed from the docs' own statements, not imposed.
 
 Two cross-cutting rules the corpus states about itself:
 
-* **"One source per fact"** (`core-ir-contract.md:26`): where the contract and a home spec (`type-system.md`, `effects-control-shell.md`) state the same shape, the home spec owns the _rule_ and the contract owns the _frozen-data view_; drift between them is a tracked bug.
-* **Frozen ≠ unilateral** (`core-ir-contract.md:20`): a §§1-6 shape change goes through an ADR + bead + dictionary resync, never a one-track edit.
+- **"One source per fact"** (`core-ir-contract.md:26`): where the contract and a home spec (`type-system.md`, `effects-control-shell.md`) state the same shape, the home spec owns the _rule_ and the contract owns the _frozen-data view_; drift between them is a tracked bug.
+- **Frozen ≠ unilateral** (`core-ir-contract.md:20`): a §§1-6 shape change goes through an ADR + bead + dictionary resync, never a one-track edit.
 
 ---
 
@@ -255,15 +255,15 @@ Ordered by impact.
 `status.yml` (committed 2026-07-13 23:05) is older than the ADR-80/81/82 landings (2026-07-14 03:37–11:14).
 Concrete drift vs the §0 arbiter (which is verified current by BLAKE3):
 
-* `core-cbpv` row (`status.yml:55-67`): `adrs: [1, 28, 31, 32, 38, 39]` and `as_built` "The full frozen-v0 fragment is Live (§0 rows 1-3)".
+- `core-cbpv` row (`status.yml:55-67`): `adrs: [1, 28, 31, 32, 38, 39]` and `as_built` "The full frozen-v0 fragment is Live (§0 rows 1-3)".
   But `core-ir-contract.md` §0 now lists **declared-data `D(ā)`/`Ctor`/`DataCase` (ADR-80)**, **`Type` universe + `Σ` pair (ADR-81)**, and the **ADR-82 split-motive** as Live rows (`core-ir-contract.md:49-50`, §2 lines 89-105).
   ADR-80/81/82 are absent from the row's `adrs`.
-* `value-model` row (`:80-91`): `adrs: [38,39,40,42,45]`; `as_built` stops at "closed records… (§0 rows 3-5)".
+- `value-model` row (`:80-91`): `adrs: [38,39,40,42,45]`; `as_built` stops at "closed records… (§0 rows 3-5)".
   Declared-data and the levitation stage-1 formers are the §0 rows it does not mention.
-* `levitation` row (`:338-349`): `as_built` "Stage 0 built… Stages 1+… are open."
+- `levitation` row (`:338-349`): `as_built` "Stage 0 built… Stages 1+… are open."
   But ADR-81 landed the **stage-1 dependent core** (`Type` + `Σ` + `decode`) as Live in the frozen core (`core-ir-contract.md:50`, `dictionary.md:72`, `proposal-levitation.md` §6).
   The row is stale; the `decode` large-elimination lives in `gandr-desc` and the two frozen-core formers in `gandr-core`.
-* `data-patterns` row (`:279-287`): "data declarations and pattern semantics are not built" — this is correct **for the surface** (grammar-only lane), but there is **no `status.yml` area** capturing the ADR-80 _core_ declared-data landing, so a reader scanning `status.yml` alone would conclude no data support exists, contradicting §0.
+- `data-patterns` row (`:279-287`): "data declarations and pattern semantics are not built" — this is correct **for the surface** (grammar-only lane), but there is **no `status.yml` area** capturing the ADR-80 _core_ declared-data landing, so a reader scanning `status.yml` alone would conclude no data support exists, contradicting §0.
 
 **Resolution rule:** `core-ir-contract.md` §0 wins (it is the named arbiter, and its BLAKE3 matches MANIFEST).
 `status.yml` should gain/repair rows for the ADR-80/81/82 formers; MANIFEST re-hashed in the same change.
@@ -314,21 +314,21 @@ This is content-authored vs repo-committed, not a conflict; noted for provenance
 
 **Built and running today** (`README.md:64`, `core-ir-contract.md` §0, spec banners):
 
-* CBPV checker + derived defunctionalized typing machine (property-tested against the recursive checker); trail-based worklist solver.
-* A5.1 sequential CK evaluator (`gandr-core/src/eval.rs`) — the frozen driver and differential oracle; runs the pure spine + algebraic effects (`perform`/deep `handle`)
-  + delimited control (`reset`/`shift`/`resume`).
+- CBPV checker + derived defunctionalized typing machine (property-tested against the recursive checker); trail-based worklist solver.
+- A5.1 sequential CK evaluator (`gandr-core/src/eval.rs`) — the frozen driver and differential oracle; runs the pure spine + algebraic effects (`perform`/deep `handle`)
+  - delimited control (`reset`/`shift`/`resume`).
     **A5.2 process-soup runtime is deferred.**
-* Value-model rungs 1-4: string/int/numeric literals, covariant `List` (check-only literals + eliminator), closed records (width/depth `<:` + projection).
-* Grades: sealed `0/1/ω` carrier with `fin/leq/plus/times` + `dup`/`drop`.
-* Gradual layer: `Unknown` (subtyping reflexive-but-not-transitive once `Unknown` participates), holes.
-* **Declared-data 1-cell MVP (ADR-80)**, **levitation stage-1 dependent core — `Type` universe + `Σ` pair + `decode` (ADR-81)**, **split-motive (ADR-82)** — Live per §0, _missing from `status.yml`_ (§7.1).
-* Rung-1 identity: `Path`/`here`/`walk`, definitional walk-β, **no K, no η** (ADR-76/79), with a without-K negative witness in the test suite.
-* PBG parser lane end-to-end: melder push machine (P1-P3), obligations/expected as first-class queries, merkle origin map; REPL (reedline), TUI, sans-io LSP — all tree-sitter-free.
-* Sequent **L0** command face + static focusing (L1 partial: pure-spine checkpoint merged, zero-disagreement differential vs CK oracle).
-* Levitation **stage 0** descriptions + codata MVP (on the description side).
-* Kernel level oracle `gandr-kernel-levels` slices 1-2 (level algebra + Bezem-Coquand Horn-clause loop-checking).
-* Wave-1 usability MVPs: attributes, FFI (interpreter path), functional record/list update, inspection-protocol wire crate.
-* Executable corpus: 82 cases (model 42 / pathological 24 / surface 16).
+- Value-model rungs 1-4: string/int/numeric literals, covariant `List` (check-only literals + eliminator), closed records (width/depth `<:` + projection).
+- Grades: sealed `0/1/ω` carrier with `fin/leq/plus/times` + `dup`/`drop`.
+- Gradual layer: `Unknown` (subtyping reflexive-but-not-transitive once `Unknown` participates), holes.
+- **Declared-data 1-cell MVP (ADR-80)**, **levitation stage-1 dependent core — `Type` universe + `Σ` pair + `decode` (ADR-81)**, **split-motive (ADR-82)** — Live per §0, _missing from `status.yml`_ (§7.1).
+- Rung-1 identity: `Path`/`here`/`walk`, definitional walk-β, **no K, no η** (ADR-76/79), with a without-K negative witness in the test suite.
+- PBG parser lane end-to-end: melder push machine (P1-P3), obligations/expected as first-class queries, merkle origin map; REPL (reedline), TUI, sans-io LSP — all tree-sitter-free.
+- Sequent **L0** command face + static focusing (L1 partial: pure-spine checkpoint merged, zero-disagreement differential vs CK oracle).
+- Levitation **stage 0** descriptions + codata MVP (on the description side).
+- Kernel level oracle `gandr-kernel-levels` slices 1-2 (level algebra + Bezem-Coquand Horn-clause loop-checking).
+- Wave-1 usability MVPs: attributes, FFI (interpreter path), functional record/list update, inspection-protocol wire crate.
+- Executable corpus: 82 cases (model 42 / pathological 24 / surface 16).
 
 **Adopted-unbuilt (decided design, no code):** type-system extensions (∪/∩, polymorphism, worlds), sessions, modules, metaprogramming, solver interface, `vdc-reflection` F5 layer, `temporal-univalence` (beyond U1), the entire ADR-46 fabric (`prop-nominal-model`, `term-face`, `polygraph-data`, `erasible-evidence`), compilation-backend, packages, pretty-printing, diagnostics Report v3.
 
@@ -343,31 +343,31 @@ The direction (`VISION.md` §8, `roadmap.md` §1.4): all features are facets of 
 
 ## 9. Adjacent discoveries (flagged briefly, not chased)
 
-* **The reference manual (`docs/manual/`) is present and populated** — Typst sources + rendered `main.pdf` + per-area `chapters/*.yml`+`*.typ`.
+- **The reference manual (`docs/manual/`) is present and populated** — Typst sources + rendered `main.pdf` + per-area `chapters/*.yml`+`*.typ`.
   Many specs declare their content "absorbed 2026-07-13" into a manual chapter while asserting the spec "remains the authoritative design record" (e.g. `core-ir-contract.md:10`, `type-system.md:7`, `effects-control-shell.md:7`, `proposal-data-patterns.md:9`).
   The manual **renders `status.yml` directly** (`status.yml:19-22`).
   This dual spec-of-record / manual-of- presentation structure, plus the **worktree name "failed-refactor"**, is worth the coordinator's attention — the manual migration is the most recent large refactor and may be the "failed" one; nothing in the surveyed scope proves it failed, but the two faces (spec `.md` and manual `.yml`) are a drift surface to watch.
   Out of survey scope (docs/gandr/spec + 5 root docs only).
-* **`docs/adr/`** is the decision log (one file per ADR; `0001`…`0082`+), migrated 2026-07-12 from a monolithic `spec/ADR.md` (`README.md:31`).
+- **`docs/adr/`** is the decision log (one file per ADR; `0001`…`0082`+), migrated 2026-07-12 from a monolithic `spec/ADR.md` (`README.md:31`).
   Every proposal's authority ultimately grounds in an ADR; MANIFEST edges encode `realizes`/`grounds` to `../adr/README.md#adr-N`.
   The ADRs themselves were not read (out of scope) but are the root of the `realizes`/`grounds` provenance for every area.
-* **`MANIFEST.yml` provenance graph** is a ready-made dependency map (roles: index / vision / spec / proposal / contract / addendum / dictionary / status-data / plan) with `derives`/`grounds`/`realizes`/`reviews` edges and external refs (`external:internal-univalence`, `external:tylr`, `external:arxiv-2310.01530`, `external:miette-7.6`).
+- **`MANIFEST.yml` provenance graph** is a ready-made dependency map (roles: index / vision / spec / proposal / contract / addendum / dictionary / status-data / plan) with `derives`/`grounds`/`realizes`/`reviews` edges and external refs (`external:internal-univalence`, `external:tylr`, `external:arxiv-2310.01530`, `external:miette-7.6`).
   Useful for the coordinator's plan synthesis; verified current.
-* **`crates/gandr-corpus`** (ADR-52) is the executable ground truth the status registry points at; `examples/` was removed 2026-07-13 and its content moved to the manual's Examples chapter + the corpus crate (`README.md:56`).
-* **Naming collisions** are centralized in `dictionary.md:44-52` / `dictionary.yml` `collisions:` — six glyphs/words (`Σ`, phase, `≤`, step/cost, `package`, bootstrap, corpus) each have an owning entry.
+- **`crates/gandr-corpus`** (ADR-52) is the executable ground truth the status registry points at; `examples/` was removed 2026-07-13 and its content moved to the manual's Examples chapter + the corpus crate (`README.md:56`).
+- **Naming collisions** are centralized in `dictionary.md:44-52` / `dictionary.yml` `collisions:` — six glyphs/words (`Σ`, phase, `≤`, step/cost, `package`, bootstrap, corpus) each have an owning entry.
   Any plan touching these must respect the owner.
-* **`type-system.md` and `effects-control-shell.md` carry no `Status:` staleness** — they are the stable rule-level homes; `effects-control-shell.md:3` explicitly relabels its old "Proposal" framing as an artifact of recovery order (ADR-29), now "Adopted — core design."
+- **`type-system.md` and `effects-control-shell.md` carry no `Status:` staleness** — they are the stable rule-level homes; `effects-control-shell.md:3` explicitly relabels its old "Proposal" framing as an artifact of recovery order (ADR-29), now "Adopted — core design."
 
 ---
 
 ## 10. One-line pointer index (for fast lookup)
 
-* Corpus authority statement → `README.md:9`
-* Core implementation truth → `core-ir-contract.md` §0 (`:29-55`), per-shape table `:37-50`
-* Status registry (consolidated view) → `status.yml` `areas:` (`:53`+), authority note `:8-17`
-* Complete registry + provenance edges + BLAKE3 gate → `MANIFEST.yml`
-* Naming authority + collisions → `dictionary.yml`; front-door `dictionary.md`
-* Active build plan → `roadmap.md` §1 (`:13-107`); superseded reference ordering → Appendix A
-* Where the design is going (one fabric) → `VISION.md` §8 (`:160-194`)
-* Governing focus (kernel) → `README.md:7`; `kernel-boundary.md`; ADR-77
-* VDC deltas → the four `spec/proposal-*-addendum-vdc.md`; shared theory `proposal-vdc-reflection.md`
+- Corpus authority statement → `README.md:9`
+- Core implementation truth → `core-ir-contract.md` §0 (`:29-55`), per-shape table `:37-50`
+- Status registry (consolidated view) → `status.yml` `areas:` (`:53`+), authority note `:8-17`
+- Complete registry + provenance edges + BLAKE3 gate → `MANIFEST.yml`
+- Naming authority + collisions → `dictionary.yml`; front-door `dictionary.md`
+- Active build plan → `roadmap.md` §1 (`:13-107`); superseded reference ordering → Appendix A
+- Where the design is going (one fabric) → `VISION.md` §8 (`:160-194`)
+- Governing focus (kernel) → `README.md:7`; `kernel-boundary.md`; ADR-77
+- VDC deltas → the four `spec/proposal-*-addendum-vdc.md`; shared theory `proposal-vdc-reflection.md`

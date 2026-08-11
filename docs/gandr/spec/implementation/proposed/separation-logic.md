@@ -7,11 +7,11 @@ It exists because the apparatus half and the logic half arrive on different sche
 [[../template-games]] owns what imports now: the template and cobordism apparatus, the tile pairing, the polarized footprint, and the six theorems the adoption owes.
 This document owns what waits, what it waits _on_, and — the reason it is worth writing before anything is built — **what the waiting half requires of the machinery it waits on**, so the memory model is designed against those requirements the first time rather than revisited after it lands.
 
-* Status: **proposed, and deferred on committed machinery.** The deferral is not a decline and not a scope cut; it is an import order.
+- Status: **proposed, and deferred on committed machinery.** The deferral is not a decline and not a scope cut; it is an import order.
   The gating substrate is [[#The gating substrate, and what the deferral is deferred on]], and every requirement it must satisfy is at [[#The requirements ledger]].
-* **The deferral is about the carrier's schedule, never about the mathematics.** Every fit fact the read established stands unchanged and is cited to its own statement number here as it is in the component document; what this document changes is the disposition, from unavailable to owed-later.
-* **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on, and the grades are collected at [[#Source and confidence]].
-* **One fragment in the tree is pointed at, and it is inert by design.** The polarized-footprint prototype sits beside the decided shift guard and is consumed by nothing; it is described, with its verification, at [[#What can be built before the machinery lands]].
+- **The deferral is about the carrier's schedule, never about the mathematics.** Every fit fact the read established stands unchanged and is cited to its own statement number here as it is in the component document; what this document changes is the disposition, from unavailable to owed-later.
+- **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on, and the grades are collected at [[#Source and confidence]].
+- **One fragment in the tree is pointed at, and it is inert by design.** The polarized-footprint prototype sits beside the decided shift guard and is consumed by nothing; it is described, with its verification, at [[#What can be built before the machinery lands]].
 
 ## The gating substrate, and what the deferral is deferred on
 
@@ -20,9 +20,9 @@ This document owns what waits, what it waits _on_, and — the reason it is wort
 **The closest in-tree artifact of that direction is the mode and reference calculus** [[../../surface-language/proposed/modes-and-references]], and it is this document's gating substrate.
 Three of its recorded positions decide whether the separation-logic half can be stated at all.
 
-* **References, mutable cells, borrowing, regions, and access modes are neither designed nor built**, and there is no internal value-representation, layout, or address model.
-* **The central open decision is what a shared borrow mechanically is** ([[../../surface-language/proposed/modes-and-references#mode-decision-05]]), and its recommendation names a freeze-region or fractional-permission discipline — the fractional half of which is the nearest candidate carrier for a permission structure.
-* **Grades are not that carrier and cannot be made into it.** A grade counts uses along a run; a permission divides ownership among simultaneous holders, and the two are not interdefinable.
+- **References, mutable cells, borrowing, regions, and access modes are neither designed nor built**, and there is no internal value-representation, layout, or address model.
+- **The central open decision is what a shared borrow mechanically is** ([[../../surface-language/proposed/modes-and-references#mode-decision-05]]), and its recommendation names a freeze-region or fractional-permission discipline — the fractional half of which is the nearest candidate carrier for a permission structure.
+- **Grades are not that carrier and cannot be made into it.** A grade counts uses along a run; a permission divides ownership among simultaneous holders, and the two are not interdefinable.
   Reusing the sealed grade semiring as the permission monoid answers a different question, which is the mode calculus's own central finding.
 
 **The value-semantics floor defers the same machinery to the same place**, so the two documents agree on where the store comes from: references and cells need a store, a region or lifetime discipline, and aliasing control, and [[../../surface-language/value-semantics]] defers all three to the mode calculus rather than fixing them itself.

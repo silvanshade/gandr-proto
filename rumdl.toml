@@ -26,8 +26,12 @@ exclude = [
 style = "atx"
 
 # MD004
+# `dash` rather than the former `sublist`: one marker at every nesting depth
+# (owner ruling, 2026-08-10). `*` collides with editor auto-pairing and reads
+# ambiguously against emphasis, and `sublist` additionally made a list item's
+# marker depend on its depth, so moving a block between levels rewrote it.
 [ul-style]
-style = "sublist"
+style = "dash"
 
 # MD005
 [list-indent]

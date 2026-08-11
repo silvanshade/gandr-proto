@@ -12,15 +12,15 @@ Reifying "a relation over identifiers" as one queryable artifact is the same mov
 
 **Built, and verified against the tree at write time.**
 
-* **The crate exists and is `gandr-theory-graphs`**, at `crates/theory-graphs`, in eight modules: the algorithm menu, partition refinement, the precedence DAG, the walk index, the private petgraph adapter, adjacency fingerprinting, the dense identifier types, and the crate root that owns the `EdgeSource` boundary.
-* **Two crates consume it today**: `gandr-surface-grammar` and `gandr-theory-computads` — two of the six consumers the dependency rule below permits, with the module and incremental layers and the reflection face not yet among them.
+- **The crate exists and is `gandr-theory-graphs`**, at `crates/theory-graphs`, in eight modules: the algorithm menu, partition refinement, the precedence DAG, the walk index, the private petgraph adapter, adjacency fingerprinting, the dense identifier types, and the crate root that owns the `EdgeSource` boundary.
+- **Two crates consume it today**: `gandr-surface-grammar` and `gandr-theory-computads` — two of the six consumers the dependency rule below permits, with the module and incremental layers and the reflection face not yet among them.
   **The parser crate is deliberately not a third**, and the distinction between a lane and a crate is what makes this checkable: the grammar crate re-exports the precedence-DAG types, so `crates/surface-parser/Cargo.toml` carries no `gandr-theory-graphs` edge and says at the dependency why.
   The parser _lane_ consumes the substrate; the parser _crate_ consumes the grammar crate.
-* **petgraph appears in exactly one manifest.** `crates/theory-graphs/Cargo.toml` is the only crate manifest naming it, and the workspace dependency table records that crate as its sole consumer.
-* **The adapter is crate-private.** The `view` module is `pub(crate)`, so no petgraph type reaches the public API — which is what makes the exit path below real rather than aspirational.
-* **The determinism harness is a binary plus a subprocess test**, not a convention: `gandr-theory-graphs-determinism` prints canonical row bytes for the graph foundation, the precedence DAG, and both partition-refinement results under an allocation perturbation controlled by an environment variable, and the harness compares runs across processes.
-* **The precedence DAG and the walk index are public artifacts** with the shapes specified below.
-* **The certificate-composition acyclicity gate is a call into this crate.** `gandr-theory-computads`'s `compose` module builds the variable-flow edge source and calls the shared cycle witness once.
+- **petgraph appears in exactly one manifest.** `crates/theory-graphs/Cargo.toml` is the only crate manifest naming it, and the workspace dependency table records that crate as its sole consumer.
+- **The adapter is crate-private.** The `view` module is `pub(crate)`, so no petgraph type reaches the public API — which is what makes the exit path below real rather than aspirational.
+- **The determinism harness is a binary plus a subprocess test**, not a convention: `gandr-theory-graphs-determinism` prints canonical row bytes for the graph foundation, the precedence DAG, and both partition-refinement results under an allocation perturbation controlled by an environment variable, and the harness compares runs across processes.
+- **The precedence DAG and the walk index are public artifacts** with the shapes specified below.
+- **The certificate-composition acyclicity gate is a call into this crate.** `gandr-theory-computads`'s `compose` module builds the variable-flow edge source and calls the shared cycle witness once.
 
 **Designed, and not built.** The layout document DAG that the boundary section excludes does not exist yet, so that boundary is a standing constraint rather than an enforced one.
 The module import graph and the incremental pipeline's dependency graph are named here as future clients and neither consumes the crate today.
@@ -112,10 +112,10 @@ Until then the tested implementations are worth more than the closure costs, and
 
 **No hash-iteration order may reach any result.** This began as a parser invariant and is a crate-wide rule, because a shared substrate that leaks iteration order leaks it into every lane at once.
 
-* Internal adjacency is vector-backed and insertion-ordered, and construction order is part of the fingerprint.
-* Results that the engine would return in hash-shaped containers are re-exposed as sorted rows keyed by node identifier.
-* **Every tie in every enumeration is broken by a documented total order** — walk order, component member order, cycle witnesses.
-* The harness runs the public surface across processes under perturbed allocation and asserts identical output.
+- Internal adjacency is vector-backed and insertion-ordered, and construction order is part of the fingerprint.
+- Results that the engine would return in hash-shaped containers are re-exposed as sorted rows keyed by node identifier.
+- **Every tie in every enumeration is broken by a documented total order** — walk order, component member order, cycle witnesses.
+- The harness runs the public surface across processes under perturbed allocation and asserts identical output.
 
 **The harness deliberately owns a tiny adjacency source of its own rather than reaching into crate internals**, so what it certifies is the public projection a consumer actually observes.
 
@@ -283,11 +283,11 @@ Written against four sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the as-built statements, each verified against the named module, manifest, or resolved dependency graph at write time, including the two divergences from the design record.
-* **High** — the claims attributed to the reference **paper**, each checked against the held copy at write time rather than transcribed from the design record.
-* **Carried, and marked at the claim** — the two claims about the reference **implementation's source code**, which is not in this tree and was not read; both are the design record's own source read, and both are flagged where they appear.
-* **Medium** — the recurring-shape table's future rows, which state what a lane would need rather than what it has.
-* **Absent, and marked** — any current walk-index build cost.
+- **High** — the as-built statements, each verified against the named module, manifest, or resolved dependency graph at write time, including the two divergences from the design record.
+- **High** — the claims attributed to the reference **paper**, each checked against the held copy at write time rather than transcribed from the design record.
+- **Carried, and marked at the claim** — the two claims about the reference **implementation's source code**, which is not in this tree and was not read; both are the design record's own source read, and both are flagged where they appear.
+- **Medium** — the recurring-shape table's future rows, which state what a lane would need rather than what it has.
+- **Absent, and marked** — any current walk-index build cost.
 
 **One correction the direct read produced, recorded because a later reader would otherwise inherit it.** The design record presents several of its quotations from the reference work as verbatim, and their **content** is accurate, but the record silently renormalizes the paper's notation — writing the precedence relations with different symbols and different sort-subscript casing than the paper uses.
 This document states the paper's results in the paper's own notation, and a reader comparing the two should expect the symbols to differ.

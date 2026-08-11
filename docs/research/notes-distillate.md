@@ -51,10 +51,10 @@ Three coupled projects, discovered from the notes (primary sources cited per cla
 
 Key structural facts (each a carry-into-notes reference point):
 
-* **gandr = the reboot; wyrd = the prior full build.** This gandr worktree has no `docs/`. wyrd's `docs/adr/` holds 0001..0081+ (85 files verified in `wyrd@failed-refactor:docs/adr/`), and `gandr-sequent`/`gandr-desc` crates are built.
+- **gandr = the reboot; wyrd = the prior full build.** This gandr worktree has no `docs/`. wyrd's `docs/adr/` holds 0001..0081+ (85 files verified in `wyrd@failed-refactor:docs/adr/`), and `gandr-sequent`/`gandr-desc` crates are built.
   The reboot must reconstitute the ADR/spec layer — treat wyrd's as the salvage corpus, not as authority the reboot already owns.
-* **"temporal univalence" is the committed name** for gandr's univalence direction (owner steer, `wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`; iu ADR-12 D3; deliberately avoids the nLab "internal univalence" collision; the "temporal, not spatial" slogan is _banned in the manual_ but "under reconsideration" for provocative use — raise at next doc touch, don't assume).
-* **Bootstrapping reframe** (`wyrd-notes:triage-plan-2026-07-12.md` §"Owner steers", bead `wyrd-tpgh`): the objective is _architecting for a bootstrapping future_ — a minimal certified kernel (Lean-4-shaped: elaborator over a small trusted kernel, **not** Idris) plausibly able to bootstrap gandr-in-gandr — **not** a shell/gate-porting exercise.
+- **"temporal univalence" is the committed name** for gandr's univalence direction (owner steer, `wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`; iu ADR-12 D3; deliberately avoids the nLab "internal univalence" collision; the "temporal, not spatial" slogan is _banned in the manual_ but "under reconsideration" for provocative use — raise at next doc touch, don't assume).
+- **Bootstrapping reframe** (`wyrd-notes:triage-plan-2026-07-12.md` §"Owner steers", bead `wyrd-tpgh`): the objective is _architecting for a bootstrapping future_ — a minimal certified kernel (Lean-4-shaped: elaborator over a small trusted kernel, **not** Idris) plausibly able to bootstrap gandr-in-gandr — **not** a shell/gate-porting exercise.
   Kernel-focus is a design invariant; crates keep being built as usability scaffolding.
 
 ---
@@ -73,45 +73,45 @@ Protocol: iu sessions append dated/anchored items; a wyrd agent works the `PENDI
 
 The strongest and most concrete case, and it runs _engineering → mathematics_:
 
-* gandr's `wyrd@failed-refactor:crates/gandr-desc/src/arity.rs` implements multi-out arities as the **bridge diagram** `A ←s— J —π→ I —t→ B` (`BridgeArity`, `single_output`, destination aggregation requiring a commutative monoid).
+- gandr's `wyrd@failed-refactor:crates/gandr-desc/src/arity.rs` implements multi-out arities as the **bridge diagram** `A ←s— J —π→ I —t→ B` (`BridgeArity`, `single_output`, destination aggregation requiring a commutative monoid).
   _Verified directly_: the module doc opens "Multi-out **arities** — the bridge diagram `A ←s— J —π→ I —t→ B`".
-* When the iu maintainer asked whether to generalize the mathematics on the multi-out and directed axes _now_, the coordinator grounded the answer **in the Rust source**: because gandr's multi-out is _already_ `Σ_t∘Π_π∘Δ_s` and single-out-factored, "the iu mirror is ADDITIVE (a DΣ local-coproducts former + ADR-49-style Σ-zone aggregation discipline), NOT a cell-boundary refactor" (`iu:notes/2026-07-16-session-close-s2-spike-landed.md` §"Multi-out / directed-LLV question").
+- When the iu maintainer asked whether to generalize the mathematics on the multi-out and directed axes _now_, the coordinator grounded the answer **in the Rust source**: because gandr's multi-out is _already_ `Σ_t∘Π_π∘Δ_s` and single-out-factored, "the iu mirror is ADDITIVE (a DΣ local-coproducts former + ADR-49-style Σ-zone aggregation discipline), NOT a cell-boundary refactor" (`iu:notes/2026-07-16-session-close-s2-spike-landed.md` §"Multi-out / directed-LLV question").
   The iu DΣ design was then "verified at source (arity.rs, ADR-49 direct reads)" (`iu:notes/2026-07-17-session-close-overnight-eta.md`, iu-4pq).
-* Recorded outbound as **WYRD-INTAKE W13** (bridge-factorization metatheory face): the Σ-zone commutative-monoid discipline "appears as the SAME gate on both sides of the seam — `arity.rs` gates the combine at a port; the iu statement carries the destination monoid as a premise-form alphabet item at ∼-grade, so no modulo-AC rewriting enters the polygraph on the metatheory side either" (iu-notes:WYRD-INTAKE.md W13).
+- Recorded outbound as **WYRD-INTAKE W13** (bridge-factorization metatheory face): the Σ-zone commutative-monoid discipline "appears as the SAME gate on both sides of the seam — `arity.rs` gates the combine at a port; the iu statement carries the destination monoid as a premise-form alphabet item at ∼-grade, so no modulo-AC rewriting enters the polygraph on the metatheory side either" (iu-notes:WYRD-INTAKE.md W13).
 
 This is the pattern in its purest form: **an implemented Rust data structure fixed a design choice in the Agda metatheory**, saving a refactor and confirming the "wheel firewall" (fan-in needs a commutative monoid) from the engineering side.
 
 ### 3.2 Instance B — VDC reflection: the concrete carrier drives the math, the math certifies the engineering
 
-* iu undertook the doctrinal-carrier determination (`∞VDGraph`/`∞VDC`/`𝔇ω`) **specifically so the wyrd maintainer could revisit gandr's F2 design against a concrete carrier**: "resolving §10's deferred question NOW, before F2, so the maintainer can revisit F2 and improve the overall design against a concrete carrier" (`iu-notes:HANDOFF-doctrinal-carrier.md` §1).
+- iu undertook the doctrinal-carrier determination (`∞VDGraph`/`∞VDC`/`𝔇ω`) **specifically so the wyrd maintainer could revisit gandr's F2 design against a concrete carrier**: "resolving §10's deferred question NOW, before F2, so the maintainer can revisit F2 and improve the overall design against a concrete carrier" (`iu-notes:HANDOFF-doctrinal-carrier.md` §1).
   The math is scouted to feed an engineering redesign.
-* The reverse: iu's `UnitLayer` (`unit`/`reflᵛ`/`⟦Jᵛ⟧`) became "ua-base's certification home" — gandr's `ua-base : CodeIso ≅ (x ⤳ y)` reads as "the D1 fold supplies a `UnitLayer` whose `⟦Jᵛ⟧` is discharged by path normal forms" (WYRD-INTAKE W6; `iu:notes/2026-07-15-next-session-and-gandr-feedback.md` §2.1).
-* The **funext/first-univalence-layer thread was reprioritized to LEAD** with the explicit rationale: "unlocking wyrd/gandr's concrete funext/ua demonstrations is the highest-value near-term outcome; **the engineering artifact feeds back**" (`iu:notes/2026-07-16-session-close-s2-spike-landed.md` §"QUEUE REORDERED").
+- The reverse: iu's `UnitLayer` (`unit`/`reflᵛ`/`⟦Jᵛ⟧`) became "ua-base's certification home" — gandr's `ua-base : CodeIso ≅ (x ⤳ y)` reads as "the D1 fold supplies a `UnitLayer` whose `⟦Jᵛ⟧` is discharged by path normal forms" (WYRD-INTAKE W6; `iu:notes/2026-07-15-next-session-and-gandr-feedback.md` §2.1).
+- The **funext/first-univalence-layer thread was reprioritized to LEAD** with the explicit rationale: "unlocking wyrd/gandr's concrete funext/ua demonstrations is the highest-value near-term outcome; **the engineering artifact feeds back**" (`iu:notes/2026-07-16-session-close-s2-spike-landed.md` §"QUEUE REORDERED").
   The mathematics agenda is steered by what the engineering needs to demonstrate.
 
 ### 3.3 Instance C — tracelet / certificate identity: the math hands the engineering its exact obligation
 
-* The sequent plan's fusion engine emits " **tracelet-shaped 3-cell certificates**" (Behr compositional-rewriting shape), differential-tested against the two-step composite (`wyrd-notes:sequent-machines-plan.md` D3, §3.2).
+- The sequent plan's fusion engine emits " **tracelet-shaped 3-cell certificates**" (Behr compositional-rewriting shape), differential-tested against the two-step composite (`wyrd-notes:sequent-machines-plan.md` D3, §3.2).
   "Tracelets as certificate shape.
   Implement none of the fibrational apparatus" (ibid §1 source map).
-* iu then supplied the _identity_ semantics gandr's tracelet/cell store needs: "rule-composites are the completion's alphabet, so decidable normal-form identity on convergent fragments compares rule-words, not raw derivations" (WYRD-INTAKE W9).
-* And the **faithfulness obligation gandr inherits is now a crisp iu lemma**: `NFC : ⟦u⟧ ≐ σ → u ≈ᶜ perm-het(σ)` — "the crisp statement of 'Coxeter presentation = kernel of realization on reduced words' for the F2/Track-B cell-store schema ... the exact obligation wyrd's instance inherits when it mechanizes DESIGN-ua-base-vocabulary §5 step 4" (WYRD-INTAKE W14; `iu:notes/2026-07-17-session-close-overnight-eta.md` §HANDOFF).
+- iu then supplied the _identity_ semantics gandr's tracelet/cell store needs: "rule-composites are the completion's alphabet, so decidable normal-form identity on convergent fragments compares rule-words, not raw derivations" (WYRD-INTAKE W9).
+- And the **faithfulness obligation gandr inherits is now a crisp iu lemma**: `NFC : ⟦u⟧ ≐ σ → u ≈ᶜ perm-het(σ)` — "the crisp statement of 'Coxeter presentation = kernel of realization on reduced words' for the F2/Track-B cell-store schema ... the exact obligation wyrd's instance inherits when it mechanizes DESIGN-ua-base-vocabulary §5 step 4" (WYRD-INTAKE W14; `iu:notes/2026-07-17-session-close-overnight-eta.md` §HANDOFF).
   Mathematics tells the engineering precisely what its certificate-equality must prove.
 
 ### 3.4 Instance D — the differential machine caught a real bug (engineering rigor loop)
 
-* " **SEQUENT-001 fixed** ... the L1 property differential caught a real machine bug — first-order natives whose results carry argument thunks declined instead of returning" (`wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`).
+- " **SEQUENT-001 fixed** ... the L1 property differential caught a real machine bug — first-order natives whose results carry argument thunks declined instead of returning" (`wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`).
   The `L ≡ run` differential (a second machine face checked against the CEK oracle) surfaced a defect no unit test had.
   This is the engineering-discipline analogue of the math loop and argues for keeping the differential faces as first-class (§10).
 
 ### 3.5 Instance E — the math is being pushed _past published literature_ to serve the engineering
 
-* iu's η/rig-coherence proof (bead `iu-c2h.1`), undertaken to complete gandr's computable ua-base, **exceeds the only existing formalization**: Choudhury–Karwowski–Sabry (POPL 2022) "admitted their" multiplicative 2-cells (`--allow-unsolved-metas`, `eval₂-aux = TODO-`, 118 admit sites); iu's completion "is the only machine-checked multiplicative/rig coherence anywhere ... the claim DECAYS if someone formalizes it first" (`iu-notes:secured/iu-c2h1/RESUME.md` §"Why resume"; WYRD-INTAKE W15).
+- iu's η/rig-coherence proof (bead `iu-c2h.1`), undertaken to complete gandr's computable ua-base, **exceeds the only existing formalization**: Choudhury–Karwowski–Sabry (POPL 2022) "admitted their" multiplicative 2-cells (`--allow-unsolved-metas`, `eval₂-aux = TODO-`, 118 admit sites); iu's completion "is the only machine-checked multiplicative/rig coherence anywhere ... the claim DECAYS if someone formalizes it first" (`iu-notes:secured/iu-c2h1/RESUME.md` §"Why resume"; WYRD-INTAKE W15).
   The engineering demand (certify gandr's negation/permutation univalence) produced a genuine mathematical novelty.
 
 ### 3.6 Instance F — literature evaluation is explicitly steered by "what wyrd must implement"
 
-* The iu maintainer's directive on the polarization/focusing literature sweep: "the PRIORITY evaluation axis at synthesis is whether polarization/focusing SIMPLIFIES THE MACHINERY WYRD MUST IMPLEMENT (certificate composition / VDC reflection seam)" (`iu:notes/2026-07-17-session2-state.md` §"superseded heading").
+- The iu maintainer's directive on the polarization/focusing literature sweep: "the PRIORITY evaluation axis at synthesis is whether polarization/focusing SIMPLIFIES THE MACHINERY WYRD MUST IMPLEMENT (certificate composition / VDC reflection seam)" (`iu:notes/2026-07-17-session2-state.md` §"superseded heading").
   Outcome (WYRD-INTAKE W17/W18): the **produoidal normal form** is recommended as "wyrd's two-mode home" — two interacting composition modes (sequential ◁ + parallel ⊗) with lax interchange, off-the-shelf normalization as a free idempotent monad, and a **polarized collapse** (on pure produced/consumed objects, sequential = parallel — interchange is free).
   Mathematics literature triaged by engineering payoff, then fed back as a design target.
 
@@ -151,16 +151,16 @@ Build order and the 13 advisory follow-up beads are in `wyrd-notes:sequent-machi
 **As-built status (dossier + `wyrd-notes:NEXT-STEPS-2026-07-14-kernel-landing.md`, `wyrd-notes:project-coherence-sweep-2026-07-12-rerun.md`):** L0 is built; **L1 pure spine is merged** (corpus differential green, zero disagreements); effects/control (perform/handle/ shift/reset/resume) landed; the remaining L1 gap was **un-focusing readback** (`wyrd-vcgm`), which then feeds the **L3 promotion ADR** (`wyrd-c1a6`).
 Answer-of-record until L3: **CEK remains primary
 
-* oracle; L is the parity-gated kernel IL.** `gandr-sequent` crate exists (verified).
+- oracle; L is the parity-gated kernel IL.** `gandr-sequent` crate exists (verified).
 
 **Honest limits to carry (dossier §Risks, plan §3.4/§10):**
 
-* **Natives are opaque to fusion.** `prim.rs` reduces in Rust with no producer/consumer seam; cut-elimination / critical-pairs cannot see through it.
+- **Natives are opaque to fusion.** `prim.rs` reduces in Rust with no producer/consumer seam; cut-elimination / critical-pairs cannot see through it.
   Never claim "fusion for the whole language" until hot natives are re-expressed as L cells or the boundary is accepted.
-* **Two step budgets** (`eval.rs:597` mirrored in `gandr-shell/src/driver.rs:42`) desync silently if an L rewrite changes step accounting — keep a single shared constant.
-* **η-law hygiene is a soundness constraint, easy to miss:** codata-η is valid only under CBN, data-η only under CBV; the completion engine must consult cut polarity before any η step (plan §3.2, risk register "η misuse ... high if missed").
+- **Two step budgets** (`eval.rs:597` mirrored in `gandr-shell/src/driver.rs:42`) desync silently if an L rewrite changes step accounting — keep a single shared constant.
+- **η-law hygiene is a soundness constraint, easy to miss:** codata-η is valid only under CBN, data-η only under CBV; the completion engine must consult cut polarity before any η step (plan §3.2, risk register "η misuse ... high if missed").
   Pin with a pathological corpus example.
-* **Frozen-core §0 window contention:** ADR-54's queued nominal-tag touch, any L3 promotion, and the stage-1 dependent-types bill all compete for one narrow post-arena window.
+- **Frozen-core §0 window contention:** ADR-54's queued nominal-tag touch, any L3 promotion, and the stage-1 dependent-types bill all compete for one narrow post-arena window.
 
 ---
 
@@ -169,13 +169,13 @@ Answer-of-record until L3: **CEK remains primary
 `wyrd-notes:digest/sequent-machines-dossier.md` is a file:line inventory of gandr-core as it stood.
 The reboot cannot rely on those line numbers (the tree has since moved and this is a reboot), but the **architecture facts** are durable reference:
 
-* **CEK configuration** `State{focus,env,cont,contenv,gensym,steps,prelude}`; 5 frame kinds (`Arg`/`Bind`/`Prj` structural + reifiable; `Reset`/`Handle` runtime-only); `step`→`meet`/`drive`; `eval_comp` = pure-spine recursive _reference/oracle_ (declines control/effects via `UnsupportedByReference`); `run`/`step` = full iterative CEK; **CBN memo via `MemoCell`/`ThunkMemo` black hole**; step budget 1e6; effects via `Reset`/`Handle` frames + α-renamed `ContEnv`; eliminators reduce in place by env-extend.
-* **ADR-50 status:** arena substrate (`NodeArena`/`FlatArena`, **append-only, no dedup**), first-order `(Env, NodeId)` closures, CEK env machine, CBN memo = **built**.
+- **CEK configuration** `State{focus,env,cont,contenv,gensym,steps,prelude}`; 5 frame kinds (`Arg`/`Bind`/`Prj` structural + reifiable; `Reset`/`Handle` runtime-only); `step`→`meet`/`drive`; `eval_comp` = pure-spine recursive _reference/oracle_ (declines control/effects via `UnsupportedByReference`); `run`/`step` = full iterative CEK; **CBN memo via `MemoCell`/`ThunkMemo` black hole**; step budget 1e6; effects via `Reset`/`Handle` frames + α-renamed `ContEnv`; eliminators reduce in place by env-extend.
+- **ADR-50 status:** arena substrate (`NodeArena`/`FlatArena`, **append-only, no dedup**), first-order `(Env, NodeId)` closures, CEK env machine, CBN memo = **built**.
   Term content-addressing/hashconsing (`wyrd-yg03`), glued NbE values (`wyrd-zg5r`), a dedicated NbE driver, and frozen-core-on-arena = **not built**.
   Interning that exists is confined to the `mark.rs` marking layer, not the hot path.
-* **`mark.rs` is total semantic error _marking_ (Zhao et al. POPL 2024, "marks not aborts"), NOT rewriting** — its "certificates" are error localizations, not Squier 3-cells.
+- **`mark.rs` is total semantic error _marking_ (Zhao et al. POPL 2024, "marks not aborts"), NOT rewriting** — its "certificates" are error localizations, not Squier 3-cells.
   Important correction to carry so no one conflates it with the polygraph layer.
-* **Recommendation (dossier §Adoption):** build L as **option (a) first** — a second machine face beside CEK with an `L ≡ run` differential — reusing `conformance.rs`; do NOT abandon the reified `K` for a pure reducer (named dead-end, ADR-50 C); do L over the Rc-tree first, migrate to arena second (content-addressing, needed for polygraph node identity, is unbuilt).
+- **Recommendation (dossier §Adoption):** build L as **option (a) first** — a second machine face beside CEK with an `L ≡ run` differential — reusing `conformance.rs`; do NOT abandon the reified `K` for a pure reducer (named dead-end, ADR-50 C); do L over the Rc-tree first, migrate to arena second (content-addressing, needed for polygraph node identity, is unbuilt).
 
 Classification: **carry into new-repo notes** as the machine-architecture reference; the _design decisions_ (L-as-second-face, reuse reified K, arena sequencing) are **carry into PLAN**.
 
@@ -185,11 +185,11 @@ Classification: **carry into new-repo notes** as the machine-architecture refere
 
 From `wyrd-notes:sequent-machines-plan.md` Parts II–III (the not-yet-spec detail):
 
-* **The fusion engine** (`gandr-polygraph`, new crate): cell store (oriented command rewrites as inspectable IR, keyed on arena content-addressing `wyrd-yg03`), multi-sum overlap enumerator (Behr Def 2.1 — the cut position makes overlaps _shallow_, which is why L makes this tractable where tree rewriting needs full subterm traversal), Knuth–Bendix/Squier completion loop, and differential correctness (fused ≡ two-step).
+- **The fusion engine** (`gandr-polygraph`, new crate): cell store (oriented command rewrites as inspectable IR, keyed on arena content-addressing `wyrd-yg03`), multi-sum overlap enumerator (Behr Def 2.1 — the cut position makes overlaps _shallow_, which is why L makes this tractable where tree rewriting needs full subterm traversal), Knuth–Bendix/Squier completion loop, and differential correctness (fused ≡ two-step).
   Worked example: the `add`-on-`Nat` rules become command cells with a _definable_ return-side constructor frame `Succ⁻(α) := μ̃x.⟨Succ(x)|α⟩` (the dialogue's ad-hoc `KSucc`, now precise).
-* **Codata MVP (route a, zero core spend):** one lhs-problem elaborator generalizing Maranget (Cockx–Abel §5) — the data fragment degenerates to Maranget, so it _extends_ the patterns lane, not a second engine; one new `Cosplit` case-tree node; codata value → record-of-thunks over the record former; **no codata η** (undecidable + breaks the elaborator scope invariant).
+- **Codata MVP (route a, zero core spend):** one lhs-problem elaborator generalizing Maranget (Cockx–Abel §5) — the data fragment degenerates to Maranget, so it _extends_ the patterns lane, not a second engine; one new `Cosplit` case-tree node; codata value → record-of-thunks over the record former; **no codata η** (undecidable + breaks the elaborator scope invariant).
   Reserved route (b): a CBPV-faithful labeled n-ary negative product — the representation under which cocase/destructor cuts become native fusion seams.
-* **Sessions/async/generators/iterators** unify as three buckets: plain codata (stream/iterator; `for`-over-codata = observation loop), handler→codata (generator/async), genuine session (linear grade-1 typestate codata + a **duality involution** — the one genuinely new type-level structure; channel creation duality-gated).
+- **Sessions/async/generators/iterators** unify as three buckets: plain codata (stream/iterator; `for`-over-codata = observation loop), handler→codata (generator/async), genuine session (linear grade-1 typestate codata + a **duality involution** — the one genuinely new type-level structure; channel creation duality-gated).
   The coinductive relation engine (bisimulation = equivalence, simulation = subtyping, decidable) doubles as the codata-equivalence engine.
 
 Honest limits (plan §3.4): non-linear overlaps produce rule _families_ not single fused rules (only the Σ-zone linear-wire case is unique); completion may not terminate (convergent-slice restriction + budget + decline-with-report).
@@ -222,9 +222,9 @@ This synthesis was **adopted as wyrd ADR-78** (`wyrd-notes:triage-plan-2026-07-1
 
 **The kernel/elaborator split, applied to universes:**
 
-* **Kernel:** levels as _meta-level data_ (judgments, not a type), algebra `{0,+1(⁺),max(∨)}` — a join-semilattice whose word problem is **proven polytime with a sorted normal form** (Bezem–Coquand TCS 2022); strict `U_l : U_m iff l < m`; **no cumulativity** (explicit lifts), **no imax** (no impredicative Prop), **no level constraints in the kernel**; per-declaration prenex level polymorphism.
-* **Elaborator (untrusted):** all inference — Bezem–Coquand loop-checking as the _complete_ solver (never stuck on max=max, eliminating Lean's annotation pain; Sozeau–Bezem Rocq branch is the precedent), prenex generalization at declaration close, McBride displacement as the zero-solving UX default.
-* Hits all three design dimensions: local-and-complete inference per definition, no global constraint graph anywhere (cures Rocq's 25%-compile-time disease), library composition by prenex instantiation against stable interfaces.
+- **Kernel:** levels as _meta-level data_ (judgments, not a type), algebra `{0,+1(⁺),max(∨)}` — a join-semilattice whose word problem is **proven polytime with a sorted normal form** (Bezem–Coquand TCS 2022); strict `U_l : U_m iff l < m`; **no cumulativity** (explicit lifts), **no imax** (no impredicative Prop), **no level constraints in the kernel**; per-declaration prenex level polymorphism.
+- **Elaborator (untrusted):** all inference — Bezem–Coquand loop-checking as the _complete_ solver (never stuck on max=max, eliminating Lean's annotation pain; Sozeau–Bezem Rocq branch is the precedent), prenex generalization at declaration close, McBride displacement as the zero-solving UX default.
+- Hits all three design dimensions: local-and-complete inference per definition, no global constraint graph anywhere (cures Rocq's 25%-compile-time disease), library composition by prenex instantiation against stable interfaces.
 
 **The hybrid verdict (half survives):** DIES — atoms-as-displacement-base and ONS/ordered-atom algorithms (twice-refuted: max-as-composition breaks left-invariance; order-homogeneity is the opposite of named landmarks).
 SURVIVES — **named level landmarks as a declared poset** (e.g. `kernel < surface < tooling`), which the POPL'23 framework supports natively as distinguished level constants; adds no global-analysis fragility because it is _declared interface, not inferred state_.
@@ -264,7 +264,7 @@ Contained (`Prec.re` is 40 lines behind `lt`/`gt`/`eq`), but the metatheory (The
 
 **Two kill-gates, both before `lower.rs` is touched (fallback = option B, hand-written resilient RD over the same arena — a strict subset):** P2 asks whether gandr's grammar _is_ a PBG (Operator Form
 
-* Unique Tiles); P3 is a **perf spike** (largest file < 500 µs, corpus p99 < 1 ms) — tylr's authors
+- Unique Tiles); P3 is a **perf spike** (largest file < 500 µs, corpus p99 < 1 ms) — tylr's authors
 explicitly did not optimize and "make no strong claims," so this is the plan's central risk.
 
 **Single-source-of-truth win:** under E′ the melder/molder are _generic over the PBG_, and `grammar.json` is a _projection_ of the same `Pbg`, so acceptance drift reduces to projection fidelity (one ~200-line function). 15-phase migration plan (Phase 0 = de-tree-sitter `edit.rs`, a free unconditional win) and the P0–P15 bead epic are fully specified in §§10–11 of the note.
@@ -303,12 +303,12 @@ The `eq²` Coh-witnessed-alphabet restatement is "normative when stating higher 
 
 **Recurring harness hazards (carry into notes; mostly drop for PLAN):**
 
-* **1Password can lose signing mid-interactive-session** — retry once, else land unsigned + queue a re-sign pass; the AFK unsigned-fallback pattern is maintainer-approved (`iu-notes:NEXT-STEPS.md`; multiple iu session-closes).
-* **`bd update --notes` REPLACES the notes field** (clobbered `iu-wsg` once) — always re-paste prior content (`iu:notes/2026-07-17-session-close-funext-push.md`).
-* **MANIFEST hash ordering matters**: edit → treefmt → b3sum → MANIFEST (treefmt rewrites markdown; a pre-treefmt hash is stale); no `manifest:update` task exists (`iu:notes/2026-07-16-session-close-s2-spike-landed.md`).
-* **Worktrunk hook bugs** (fixed upstream: max-sixty/worktrunk#3453): WorktreeCreate omitted `--base=@` (worktrees born at MAIN not session HEAD) and died outside a git repo; `wt merge` _rebases_ (drops merge commits) and re-creates commits unsigned (`wyrd-notes:triage-plan-2026-07-12.md` §"Harness bugs", sessions 2/4).
-* **Honest-pipes (H20):** never pipe gate/mutation commands through output filters; a PreToolUse hook denies mutation-pipes; bound output with the blessed `gate.nu` wrapper (`wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`).
-* **iu commit hooks are UNINSTALLED** and the act-CI workflow is broken — apply commit conventions manually, never `--no-verify` (`iu:notes/2026-07-16-next-session-procontext-and-s2.md`).
+- **1Password can lose signing mid-interactive-session** — retry once, else land unsigned + queue a re-sign pass; the AFK unsigned-fallback pattern is maintainer-approved (`iu-notes:NEXT-STEPS.md`; multiple iu session-closes).
+- **`bd update --notes` REPLACES the notes field** (clobbered `iu-wsg` once) — always re-paste prior content (`iu:notes/2026-07-17-session-close-funext-push.md`).
+- **MANIFEST hash ordering matters**: edit → treefmt → b3sum → MANIFEST (treefmt rewrites markdown; a pre-treefmt hash is stale); no `manifest:update` task exists (`iu:notes/2026-07-16-session-close-s2-spike-landed.md`).
+- **Worktrunk hook bugs** (fixed upstream: max-sixty/worktrunk#3453): WorktreeCreate omitted `--base=@` (worktrees born at MAIN not session HEAD) and died outside a git repo; `wt merge` _rebases_ (drops merge commits) and re-creates commits unsigned (`wyrd-notes:triage-plan-2026-07-12.md` §"Harness bugs", sessions 2/4).
+- **Honest-pipes (H20):** never pipe gate/mutation commands through output filters; a PreToolUse hook denies mutation-pipes; bound output with the blessed `gate.nu` wrapper (`wyrd-notes:identity-reflection-arc-handoff-2026-07-12.md`).
+- **iu commit hooks are UNINSTALLED** and the act-CI workflow is broken — apply commit conventions manually, never `--no-verify` (`iu:notes/2026-07-16-next-session-procontext-and-s2.md`).
 
 ---
 

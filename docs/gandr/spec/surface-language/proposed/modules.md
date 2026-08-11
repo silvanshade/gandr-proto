@@ -14,17 +14,17 @@ The gap between the two is wide, and it is the first thing to carry away.
 
 **Built, and verified against the tree at write time.**
 
-* **A module declaration is a checked record.** `gandr-surface-grammar`'s `surface::term` module contributes a `module_declaration` rule — `module M (: #{ field: Type, … })? { … }` with a body of `def` members — and `gandr-surface-engine`'s `lower` module lowers it to **one named item** whose term is a canonical record, or a bind chain returning that record when members must be sequenced.
+- **A module declaration is a checked record.** `gandr-surface-grammar`'s `surface::term` module contributes a `module_declaration` rule — `module M (: #{ field: Type, … })? { … }` with a body of `def` members — and `gandr-surface-engine`'s `lower` module lowers it to **one named item** whose term is a canonical record, or a bind chain returning that record when members must be sequenced.
   Members evaluate **exactly once, in source order**; each non-duplicate definition contributes one field; earlier member binders scope over later member definitions, so a member sees its predecessors and never its successors.
   A duplicate member is a lowering error, and an unmatched member signature is a dangling-signature error in strict mode and a hole carrying a missing-definition note in total mode.
-* **The record ascription is transparent and value-only.** The optional `: #{ … }` is checked against the returned record payload; it does not seal identities, and it does not constrain a member's effect row, so a member that performs a host effect keeps it while the module value still checks against the record shape.
+- **The record ascription is transparent and value-only.** The optional `: #{ … }` is checked against the returned record payload; it does not seal identities, and it does not constrain a member's effect row, so a member that performs a host effect keeps it while the module value still checks against the record shape.
   The runnable example that pins this is `crates/surface-corpus`'s `examples/model/29-modules.gandr`, which mixes a shell-command member into an ascribed module and asserts the module's evaluated result.
-* **Path selection is record projection.** `M.inner.field` is ordinary projection once `M` is in value scope; there is no module-select form in the kernel.
-* **`import "URI" as name ;` parses and is never lowered.** The rule is in the same grammar module; no lowering path consumes it, and no resolver exists.
+- **Path selection is record projection.** `M.inner.field` is ordinary projection once `M` is in value scope; there is no module-select form in the kernel.
+- **`import "URI" as name ;` parses and is never lowered.** The rule is in the same grammar module; no lowering path consumes it, and no resolver exists.
   The URI is a plain string literal so that new schemes cost no grammar change.
-* **Reserved module _namespaces_ exist and are not modules.** `gandr-surface-engine`'s `host` module reserves `fs`, `env`, and `proc` as source-level namespaces whose member calls elaborate to effect operations, and its `ffi` module gives an `extern` block's library namespace the same treatment.
+- **Reserved module _namespaces_ exist and are not modules.** `gandr-surface-engine`'s `host` module reserves `fs`, `env`, and `proc` as source-level namespaces whose member calls elaborate to effect operations, and its `ffi` module gives an `extern` block's library namespace the same treatment.
   Neither is a value, neither is projectable, and a call selecting an unknown member of one is an error rather than a fall-through to record projection.
-* **The typing machine has no module frames.** `gandr-core-checker`'s `machine` module carries thirty-odd frames for the core forms — abstraction, application, pairs, records and projection, thunk and force, bind, the case families, split, annotation, effect operations and handlers, the reified stack, and the identity eliminator — and none of them is module-specific, because a module declaration reaches the machine already lowered to records and binds.
+- **The typing machine has no module frames.** `gandr-core-checker`'s `machine` module carries thirty-odd frames for the core forms — abstraction, application, pairs, records and projection, thunk and force, bind, the case families, split, annotation, effect operations and handlers, the reified stack, and the identity eliminator — and none of them is module-specific, because a module declaration reaches the machine already lowered to records and binds.
 
 **Designed, and not built.** Signatures as a sort of their own, functors, opaque sealing, first-class packages with dynamic signature matching, implicits in any form, located signatures, the ticket protocol, module migration, futures, and transparent-existential lifting.
 Sessions, manifest sharing, and worlds — the three features the distribution story is assembled out of — are themselves designed and unbuilt, as [[modes-and-references#The substrate, and what is actually built]] records.
@@ -389,10 +389,10 @@ Three notes on their behaviour, each of which is a constraint on the implementat
 
 The design records four renderings, and they are requirements on the derivation surface, not decoration.
 
-* **Ascription** — `σ′` against `σ` side by side, with the strengthened components highlighted, so a reader sees what the meet added.
-* **Implicit resolution** — the search tree with the fuel remaining at each node, the committed candidate marked, and an ambiguity failure listing every candidate rather than the first two.
-* **Sealing** — fresh-identity badges on the abstract types.
-* **Distribution** — `offer` and `take` rendered as the underlying acquire, send, and release steps, with world badges.
+- **Ascription** — `σ′` against `σ` side by side, with the strengthened components highlighted, so a reader sees what the meet added.
+- **Implicit resolution** — the search tree with the fuel remaining at each node, the committed candidate marked, and an ambiguity failure listing every candidate rather than the first two.
+- **Sealing** — fresh-identity badges on the abstract types.
+- **Distribution** — `offer` and `take` rendered as the underlying acquire, send, and release steps, with world badges.
 
 ## Worked examples
 

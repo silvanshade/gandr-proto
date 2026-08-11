@@ -15,8 +15,8 @@
 The owner thesis (`gandr-1hu`): if the machine refers to or internally contains prolly-tree structures, rkyv zero-copy (de)serialization of materialized machine states is appropriate **precisely because** content-addressed provenance verifies the materialized bytes.
 The earlier objection — zero-copy access trusts an unvalidated layout — is answered by the **same two-wall discipline** `gandr-bvf` pins for the CAS, applied a second time:
 
-* the **outer, integrity wall** is provenance/hash verification (`NodeHash = BLAKE3(blob)`); it excludes tampering and corruption of the bytes _as written_;
-* the **inner, structural-validity wall** is separate, because bytes written honestly may still be layout-invalid if the writer was buggy or wrote under a different schema/format version.
+- the **outer, integrity wall** is provenance/hash verification (`NodeHash = BLAKE3(blob)`); it excludes tampering and corruption of the bytes _as written_;
+- the **inner, structural-validity wall** is separate, because bytes written honestly may still be layout-invalid if the writer was buggy or wrote under a different schema/format version.
 
 **Verdict: AFFIRMED.** The thesis is sound and the two-wall framing is the correct answer to the historical objection.
 It is conditional on five design commitments, each developed below:
@@ -37,12 +37,12 @@ The kernel never walks this path; it re-derives everything from canonical bytes 
 
 ## 3. Terms and citation conventions
 
-* `NodeHash` — the 32-byte BLAKE3 content address used across the `storage-*` tier; the same identity `storage-prolly-trees` uses for its nodes (`gandr-bvf`).
-* `storage-*` — the engineering storage substrate tier ratified on `gandr-bvf` (2026-07-20): content-addressed trees (`storage-prolly-trees`), chunking (`storage-chunker`), and serialization (this document's `storage-rkyv`).
+- `NodeHash` — the 32-byte BLAKE3 content address used across the `storage-*` tier; the same identity `storage-prolly-trees` uses for its nodes (`gandr-bvf`).
+- `storage-*` — the engineering storage substrate tier ratified on `gandr-bvf` (2026-07-20): content-addressed trees (`storage-prolly-trees`), chunking (`storage-chunker`), and serialization (this document's `storage-rkyv`).
   Untrusted by the kernel-boundary naming rule — only `gandr-kernel-*` is trusted.
-* The **85-byte parameter-commitment pattern** — `storage-chunker`'s `ChunkerParams::commitment_bytes()` (magic `MPBCHK01`, fixed-order big-endian fields, salt verbatim, regression-pinned; the mach `prolly-bao-chunker` lift recorded on `gandr-bvf`).
+- The **85-byte parameter-commitment pattern** — `storage-chunker`'s `ChunkerParams::commitment_bytes()` (magic `MPBCHK01`, fixed-order big-endian fields, salt verbatim, regression-pinned; the mach `prolly-bao-chunker` lift recorded on `gandr-bvf`).
   This spike transplants that pattern from _chunking parameters_ to _serialization schema_.
-* rkyv library facts cite docs.rs / the rkyv book by URL in §7; bead IDs cite the tracker directly, the reboot-correct decision surface.
+- rkyv library facts cite docs.rs / the rkyv book by URL in §7; bead IDs cite the tracker directly, the reboot-correct decision surface.
 
 ## 4. The envelope — schema commitment inside the hashed bytes
 
@@ -78,9 +78,9 @@ Hand-assigned monotone integers are the only stable choice, exactly as the chunk
 The coordinator flagged an open question: does the commitment pin the rkyv **crate version** or a **format version**?
 This is resolved by the verified stability facts (§7 F7–F8):
 
-* rkyv publishes **no independent wire-format version number**.
+- rkyv publishes **no independent wire-format version number**.
   Serialized data is re-accessible only while the schema is unchanged, the format-control features are unchanged, and the reader is a **semver-compatible** rkyv version (F7).
-* the byte layout is additionally parameterized by **format-control features** — endianness, alignment, pointer width (F8).
+- the byte layout is additionally parameterized by **format-control features** — endianness, alignment, pointer width (F8).
 
 Therefore there is nothing upstream to pin _to_.
 The commitment instead pins a **gandr-owned identifier** for the whole rkyv wire configuration: `rkyv_config_id` maps, in a spec-side table, to `{ rkyv semver band, endianness, alignment, pointer width }`.
@@ -106,11 +106,11 @@ A state is a _view_ over the store, never a copy of it.
 
 **Consequences fed to `gandr-bvf` — the tree/store API must provide:**
 
-* **(a) get-by-hash returning verified blobs.** `get(NodeHash) -> Result<VerifiedBlob, _>` where the store performs (or, via the marker, has already performed) the integrity hash-check and surfaces the validity-marker state.
+- **(a) get-by-hash returning verified blobs.** `get(NodeHash) -> Result<VerifiedBlob, _>` where the store performs (or, via the marker, has already performed) the integrity hash-check and surfaces the validity-marker state.
   The state layer must not be able to obtain unverified bytes by this path.
-* **(b) an rkyv-friendly `NodeHash` newtype.** `#[repr(transparent)] NodeHash([u8; 32])` whose archived form is itself: a `[u8; 32]` is `Portable`, endianness-neutral, needs no relative pointers, and is 1-aligned, so a `NodeHash` embedded in an rkyv state is genuinely zero-copy and is _never_ a validation hazard (it has no interior pointers for bytecheck to police).
+- **(b) an rkyv-friendly `NodeHash` newtype.** `#[repr(transparent)] NodeHash([u8; 32])` whose archived form is itself: a `[u8; 32]` is `Portable`, endianness-neutral, needs no relative pointers, and is 1-aligned, so a `NodeHash` embedded in an rkyv state is genuinely zero-copy and is _never_ a validation hazard (it has no interior pointers for bytecheck to police).
   No allocation, no owned handle.
-* **(c) blob-kind discipline, generic over decode modes.** The store trait is generic over blob kind — prolly-tree **nodes** (structured, node-decoded) vs opaque **rkyv state blobs** (hash-verified, then rkyv-accessed) — with node-decode as a _mode, not a fork_.
+- **(c) blob-kind discipline, generic over decode modes.** The store trait is generic over blob kind — prolly-tree **nodes** (structured, node-decoded) vs opaque **rkyv state blobs** (hash-verified, then rkyv-accessed) — with node-decode as a _mode, not a fork_.
   This is exactly the owner refinement already pinned on `gandr-bvf` ("keep the store trait generic over blob kinds").
 
 **Alignment caveat (new finding — see §10 Q3).** rkyv's default `aligned` configuration requires the byte slice handed to `access` to be correctly aligned; a `PackedSegmentStore`-style backend that returns arbitrarily-offset slices out of a packed segment will not satisfy that for free.
@@ -120,14 +120,14 @@ This couples the store's blob-return contract to the rkyv configuration and must
 
 The inner structural-validity wall on the payload. rkyv's checked reader is `access::<T, E>` (runs `CheckBytes`); its unchecked reader is `unsafe access_unchecked::<T>` (§7 F2–F4).
 
-* **(i) always-validate.** Every access runs `access` (full bytecheck traversal).
+- **(i) always-validate.** Every access runs `access` (full bytecheck traversal).
   Simplest and always sound, but pays O(archive size) validation on every read — forfeiting much of zero-copy's point for bulk-resident states read repeatedly.
-* **(ii) validate-once-per-`NodeHash`, with a validity marker — RECOMMENDED.** `bytecheck` runs via `access` at the **first** materialization of a given `NodeHash`; the store records a validity marker keyed by that `NodeHash`.
+- **(ii) validate-once-per-`NodeHash`, with a validity marker — RECOMMENDED.** `bytecheck` runs via `access` at the **first** materialization of a given `NodeHash`; the store records a validity marker keyed by that `NodeHash`.
   Subsequent reads of the same hash skip revalidation and use `access_unchecked`.
   **Sound because the store is content-addressed and append-only**: a hash's validity verdict is an immutable function of its bytes, so the cached verdict can never go stale.
   The marker lives in **store metadata, outside the hashed bytes**.
   Debug builds validate always and assert the checked result against the marker path (a differential that catches marker-logic bugs).
-* **(iii) debug/gate-only.** Fastest; release rehydration trusts writer correctness with no runtime validation.
+- **(iii) debug/gate-only.** Fastest; release rehydration trusts writer correctness with no runtime validation.
   **Rejected while the writer is young** — revisit once by-construction layout guarantees exist and the schema set stabilizes.
 
 **Recommendation: (ii).** It spends exactly one bytecheck traversal per distinct blob and then rides zero-copy, which is the whole point of pairing rkyv with a CAS.
@@ -167,8 +167,8 @@ This is why the whole design can afford zero-copy at all: the worst outcome of a
 **Crate: `storage-rkyv`, generic** (the name is already anticipated in the `storage-*` tier charter, `gandr-bvf`).
 The envelope, commitment, and marker machinery are generic over the schema type; gandr's concrete state schemas live with their **owning crates as consumers**, never in `storage-rkyv`:
 
-* **A2 checkpoints** — the checkpoint format is a consumer schema.
-* **L-machine state** (`gandr-fcw.9`) — the machine's state structs are consumer schemas; note the CEK→L-machine pivot (`fcw.9`) means the state shape is still moving, which argues for landing `storage-rkyv` only when the first consumer's schema stabilizes.
+- **A2 checkpoints** — the checkpoint format is a consumer schema.
+- **L-machine state** (`gandr-fcw.9`) — the machine's state structs are consumer schemas; note the CEK→L-machine pivot (`fcw.9`) means the state shape is still moving, which argues for landing `storage-rkyv` only when the first consumer's schema stabilizes.
 
 `no_std + alloc` is preferred, to match the tier posture, and is confirmed feasible (F6: `default-features = false` + `alloc`, with `api::low` for any no-alloc read path).
 

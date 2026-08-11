@@ -45,12 +45,12 @@ Enumeration of every pin location and its **current** value:
 
 Supporting facts:
 
-* `rust-toolchain.toml` also fixes `components = ["clippy", "llvm-tools-preview", "rustfmt", "rust-src"]`, `profile = "minimal"` (L5-6).
+- `rust-toolchain.toml` also fixes `components = ["clippy", "llvm-tools-preview", "rustfmt", "rust-src"]`, `profile = "minimal"` (L5-6).
   CI instead sets components via `RUSTUP_COMPONENTS`/`RUSTUP_COMPONENTS_NIGHTLY` (ci.yml L19-20: stable `clippy`; nightly `rustfmt,rustc-dev,llvm-tools-preview`).
   These two component sets are **maintained independently** and do not match `rust-toolchain.toml`'s set — a second sync surface to reconcile.
-* mise.toml's own comment (L29-31) asserts "Toolchain pins mirror `.github/workflows/ci.yml env:`" — true for mise↔ci, but neither mirrors `rust-toolchain.toml`, which is the actual point of divergence.
-* Why nightly matters: `rustfmt.toml` uses nightly-only options (`imports_granularity`, `wrap_comments`, `group_imports`, …), so `cargo fmt` is always run under the nightly pin (mise.toml L616-629; treefmt's `rustfmt` formatter runs under `RUSTUP_TOOLCHAIN_NIGHTLY`, mise.toml L793-803).
-* **Recommendation**: make `rust-toolchain.toml` the single source of truth and have mise `[env]`/ci `env` read from it, OR at minimum add a gate that asserts the three nightly values are equal.
+- mise.toml's own comment (L29-31) asserts "Toolchain pins mirror `.github/workflows/ci.yml env:`" — true for mise↔ci, but neither mirrors `rust-toolchain.toml`, which is the actual point of divergence.
+- Why nightly matters: `rustfmt.toml` uses nightly-only options (`imports_granularity`, `wrap_comments`, `group_imports`, …), so `cargo fmt` is always run under the nightly pin (mise.toml L616-629; treefmt's `rustfmt` formatter runs under `RUSTUP_TOOLCHAIN_NIGHTLY`, mise.toml L793-803).
+- **Recommendation**: make `rust-toolchain.toml` the single source of truth and have mise `[env]`/ci `env` read from it, OR at minimum add a gate that asserts the three nightly values are equal.
   There is a `ci-contracts` gate (`wyrd-rust-gates -- ci-contracts`, mise.toml L830-834) that already validates ci.yml routing; extending it to assert pin equality is the natural home.
 
 Adjacent version pins (not "toolchain" but co-located, for completeness): `min_version = "2026.7.5"` (mise.toml L7); tool versions in `[tools]` (mise.toml L894-950) including `github:agda/agda = 2.8.0`, `node = 26.5.0`, `aube = 1.26.0`, `typst = 0.15.0`, `cargo:cargo-dylint = 6.0.1` / `dylint-link = 6.0.1` (the Trail-of-Bits v6.0.1 pin), `cargo:nu = 0.113.1` (pinned `=`, comment L914); CI mirrors of these in `ci.yml env:` L21-23 (`CI_VERSION_AUBE=1.26.0`, `CI_VERSION_MISE=2026.7.5`, `CI_VERSION_NODE=26.5.0`).
@@ -90,24 +90,24 @@ Formatter table (each carries a `includes`/`excludes` scope):
 
 Key details worth the coordinator's attention:
 
-* **rumdl runs through the gate crate**, not the pinned `cargo:rumdl` binary directly (treefmt L97-98, L103-104).
+- **rumdl runs through the gate crate**, not the pinned `cargo:rumdl` binary directly (treefmt L97-98, L103-104).
   The mutating `rumdl-format` is `priority = 0` and the verifier `priority = 1`, so fmt precedes check.
-* **oxfmt `excludes`** (treefmt L61-66) name generated/layout-sensitive JSON: `packages/tree-sitter-gandr/src/grammar.json`, `.../node-types.json`, `.../package-lock.json`, `crates/gandr-grammar-contract-fixtures/fixtures/manifest.json`.
+- **oxfmt `excludes`** (treefmt L61-66) name generated/layout-sensitive JSON: `packages/tree-sitter-gandr/src/grammar.json`, `.../node-types.json`, `.../package-lock.json`, `crates/gandr-grammar-contract-fixtures/fixtures/manifest.json`.
   All already gandr-named — carry, verify the paths still exist in the reboot.
-* **Fidelity excludes** on `sizelint`/`typos` (treefmt L116-124, L140-149): `*.typ`, `*.agda`, `*.agda-lib` — protecting Track-C typst sources and metatheory Agda's Unicode math identifiers (core hazard H8).
+- **Fidelity excludes** on `sizelint`/`typos` (treefmt L116-124, L140-149): `*.typ`, `*.agda`, `*.agda-lib` — protecting Track-C typst sources and metatheory Agda's Unicode math identifiers (core hazard H8).
   Mirrored in `typos.toml extend-exclude`.
   Carry.
-* Referenced configs, each retained:
-  + `.oxfmtrc.json`: `printWidth 120`, `proseWrap preserve` (md override 80/always), `typeAware`/`typeCheck` true, import-sort groups, `sortPackageJson`.
+- Referenced configs, each retained:
+  - `.oxfmtrc.json`: `printWidth 120`, `proseWrap preserve` (md override 80/always), `typeAware`/`typeCheck` true, import-sort groups, `sortPackageJson`.
     Verbatim.
-  + `.oxlintrc.json`: `correctness`/`perf = error`, plugins `[typescript, oxc, import, jsdoc, node, promise]`, rule set (`no-console`, `import/no-cycle` maxDepth 3, `prefer-const`, `curly`, …).
+  - `.oxlintrc.json`: `correctness`/`perf = error`, plugins `[typescript, oxc, import, jsdoc, node, promise]`, rule set (`no-console`, `import/no-cycle` maxDepth 3, `prefer-const`, `curly`, …).
     Verbatim.
-  + `rumdl.toml`: `[global] flavor=standard`, `line-length=0`, exclude list (`.beads`, `.agents/core`, `.claude/worktrees`, `node_modules`, `vendor`, `dist`, `build`), and ~60 per-rule MD00x blocks incl.
+  - `rumdl.toml`: `[global] flavor=standard`, `line-length=0`, exclude list (`.beads`, `.agents/core`, `.claude/worktrees`, `node_modules`, `vendor`, `dist`, `build`), and ~60 per-rule MD00x blocks incl.
     `MD052 shortcut-syntax=false` (keeps editorial `[label]` brackets inert — a documented math-prose hazard).
     Verbatim.
-  + `sizelint.toml`: `max_file_size 2MB` / `warn 1MB`, staged+working-tree, `respect_gitignore`, `fail_on_warn`.
+  - `sizelint.toml`: `max_file_size 2MB` / `warn 1MB`, staged+working-tree, `respect_gitignore`, `fail_on_warn`.
     Verbatim.
-  + `tombi.toml`: `toml-version v1.0.0`, empty `[files] exclude`, `respect-ignore-files`.
+  - `tombi.toml`: `toml-version v1.0.0`, empty `[files] exclude`, `respect-ignore-files`.
     Verbatim.
 
 ---
@@ -139,12 +139,12 @@ So scripting.md's adaptation = drop the shared-core-Nushell-vs-project-Rust fram
 
 **Rule 1 — `#[repr(transparent)]` single-field structs** (rust.md L23-24):
 
-> + **Single-field structs are transparent.** Every named or tuple struct with exactly one field must carry `#[repr(transparent)]`.
+> - **Single-field structs are transparent.** Every named or tuple struct with exactly one field must carry `#[repr(transparent)]`.
 >   An exception requires a concrete layout, ABI, or soundness reason documented in the item's `# Contract`; convenience or omission is not an exception.
 
 **Rule 2 — no bare primitives in crate-defined signatures** + **Rule 3 — nominal wrapper types** (rust.md L25-29, one bullet):
 
-> + **Crate-defined signatures preserve semantic information.** A function or
+> - **Crate-defined signatures preserve semantic information.** A function or
 >   method defined by a workspace crate must not accept or return a bare
 >   primitive value (`bool`, `char`, numeric primitives, or `str`; see the
 >   [Rust primitive overview](https://doc.rust-lang.org/rust-by-example/primitives.html)),
@@ -163,7 +163,7 @@ So scripting.md's adaptation = drop the shared-core-Nushell-vs-project-Rust fram
 
 **Rule 4 — mandatory `# Termination` blocks on recursion** (rust.md L119-132):
 
-> + `# Termination` is mandatory on every directly or mutually recursive function or method.
+> - `# Termination` is mandatory on every directly or mutually recursive function or method.
 >   Use the fixed grammar below; each field needs a concrete explanation, not an assertion that termination is obvious:
 >
 >   ```rust
@@ -216,29 +216,29 @@ The string `wyrd-rust-gates` appears on **41 lines**; of those, **24 are `cargo 
 
 ### 6b. Task families (keep/rename/drop rollup, 96 tasks)
 
-* **dev:enable / dev:disable** (L48-60) — keep; toggle `.miserc.toml`.
-* **setup** (L62-67) — keep; `aube ci` (root + tree-sitter package).
-* **grammar:test** (L69-75) — keep; `aube test/run` on `packages/tree-sitter-gandr`.
-* **cargo:build / clippy / dylint / doc / doc-check** (L77-231) — keep, rename crate refs; `cargo:clippy` and `cargo:dylint` re-export `RUSTUP_TOOLCHAIN_NIGHTLY` (§1).
+- **dev:enable / dev:disable** (L48-60) — keep; toggle `.miserc.toml`.
+- **setup** (L62-67) — keep; `aube ci` (root + tree-sitter package).
+- **grammar:test** (L69-75) — keep; `aube test/run` on `packages/tree-sitter-gandr`.
+- **cargo:build / clippy / dylint / doc / doc-check** (L77-231) — keep, rename crate refs; `cargo:clippy` and `cargo:dylint` re-export `RUSTUP_TOOLCHAIN_NIGHTLY` (§1).
   `cargo:dylint` (L111-210) drives **6 `cargo dylint` invocations** (project `wyrd_dylint` lib → rename `gandr_dylint`; the upstream example-lint battery of 18 `--lib` rules; the isolated `non_local_effect_before_unhandled_error` split for `gandr-core` lib-test per wyrd-2a2f; `crate_wide_allow`; `register_lints_warn`).
   `wyrd-rust-gates` is `--exclude`d everywhere (temporary remediation exemption wyrd-i8hq).
-* **docs:manifest-drift / reference-integrity / balance** (L233-296) — keep.
-* **docs:conflict-markers** (L239-243) — keep; **Nushell** (`.agents/core/scripts`, foreign — stays Nushell).
-* **core:check / core:update / smoke:wt-core-init** (L251-266) — keep; `check-core-pin.nu` + `smoke-wt-core-init.nu` are **Nushell shared-core**.
-* **iu:check** (L268-272) — keep.
-* **docs:manual, docs:manual:watch, docs:highlight(:spike), docs:chapter:\*** (~30 tasks, L274-497) — keep; these invoke **project-local Nushell** (`docs/manual/tools/build-manual.nu`, `highlight-gandr.nu`) — the §5 "becomes Rust then gandr" candidates — plus `typst compile`.
+- **docs:manifest-drift / reference-integrity / balance** (L233-296) — keep.
+- **docs:conflict-markers** (L239-243) — keep; **Nushell** (`.agents/core/scripts`, foreign — stays Nushell).
+- **core:check / core:update / smoke:wt-core-init** (L251-266) — keep; `check-core-pin.nu` + `smoke-wt-core-init.nu` are **Nushell shared-core**.
+- **iu:check** (L268-272) — keep.
+- **docs:manual, docs:manual:watch, docs:highlight(:spike), docs:chapter:\*** (~30 tasks, L274-497) — keep; these invoke **project-local Nushell** (`docs/manual/tools/build-manual.nu`, `highlight-gandr.nu`) — the §5 "becomes Rust then gandr" candidates — plus `typst compile`.
   Also carry `wyrd-*` bead IDs in descriptions.
-* **test:doc-gates / graph-gates / adequacy-witnesses / graph-boundary / soundness-oracles / options-policy / page-balance / tree-sitter-ref / coverage-ratchet / gate-parity / scheduled-campaigns** (L499-554, 805-821) — keep.
+- **test:doc-gates / graph-gates / adequacy-witnesses / graph-boundary / soundness-oracles / options-policy / page-balance / tree-sitter-ref / coverage-ratchet / gate-parity / scheduled-campaigns** (L499-554, 805-821) — keep.
   `test:dep-graph` (L525-529) is **commented out** — resolve.
-* **mutants:\*** (10 tasks, L561-614) — keep; all route through the microVM containment driver; require the self-hosted runner (§10).
-* **cargo:fmt / fmt-check / nextest / careful-nextest / llvm-cov / no-panic / miri** (L619-791) — keep; nightly-gated ones re-export the nightly pin.
-* **coverage:check / check:enforce / ratchet** (L666-685) — keep; note `coverage:check:enforce` is **commented out inside `coverage:check`** (L671) during the failed-refactor remediation.
-* **fuzz:\*** (7 tasks, L689-743) — keep; AFL++ campaigns (5 targets: lower/parse/check/parity/gates) + `fuzz:rust-smoke` + `fuzz:weekly`.
-* **maintenance:weekly / advance / monthly** (L745-771) — keep; scheduled-campaign entrypoints; watermark path `$HOME/.cache/wyrd/weekly-success.json` → rename `wyrd` segment.
-* **treefmt / treefmt:check** (L793-803) — keep; nightly-gated.
-* **ci:contracts / ci:contracts:workflow / wrkflw** (L823-841) — keep.
-* **gate:merge** (L843-853) — keep; the ordered merge-tier composition.
-* **agda:deps / agda:check** (L875-888) — keep; `agda:deps` runs a `.gandr` script (the Rust→gandr endpoint); `agda:check` runs `aifix batch agda` twice (strict root + declared holey leaf) + `options-policy` sweep.
+- **mutants:\*** (10 tasks, L561-614) — keep; all route through the microVM containment driver; require the self-hosted runner (§10).
+- **cargo:fmt / fmt-check / nextest / careful-nextest / llvm-cov / no-panic / miri** (L619-791) — keep; nightly-gated ones re-export the nightly pin.
+- **coverage:check / check:enforce / ratchet** (L666-685) — keep; note `coverage:check:enforce` is **commented out inside `coverage:check`** (L671) during the failed-refactor remediation.
+- **fuzz:\*** (7 tasks, L689-743) — keep; AFL++ campaigns (5 targets: lower/parse/check/parity/gates) + `fuzz:rust-smoke` + `fuzz:weekly`.
+- **maintenance:weekly / advance / monthly** (L745-771) — keep; scheduled-campaign entrypoints; watermark path `$HOME/.cache/wyrd/weekly-success.json` → rename `wyrd` segment.
+- **treefmt / treefmt:check** (L793-803) — keep; nightly-gated.
+- **ci:contracts / ci:contracts:workflow / wrkflw** (L823-841) — keep.
+- **gate:merge** (L843-853) — keep; the ordered merge-tier composition.
+- **agda:deps / agda:check** (L875-888) — keep; `agda:deps` runs a `.gandr` script (the Rust→gandr endpoint); `agda:check` runs `aifix batch agda` twice (strict root + declared holey leaf) + `options-policy` sweep.
 
 **Nushell-dependent tasks (summary).** Two classes: (i) **shared-core, stays Nushell** — `docs:conflict-markers`, `core:check`, `smoke:wt-core-init` (`.agents/core/scripts/*.nu`); (ii) **project-local, rewrite target** — every `docs:manual*` / `docs:highlight*` / `docs:chapter:{core,glance,surface,examples,appendix}` task calling `docs/manual/tools/{build-manual,highlight-gandr}.nu`.
 
@@ -299,12 +299,12 @@ Toolchain env pins → §1.
 
 ### 8b. `.github/workflows/scheduled-campaigns.yml` — the runner hazard
 
-* Two crons: **weekly** `17 3 * * 1` (bounded fuzz + changed-code mutation, `timeout-minutes: 90`) and **monthly** `29 4 1 * *` (full mutation sweep, `timeout-minutes: 540`), plus `repository_dispatch` types `weekly-maintenance` / `monthly-maintenance` (L3-11).
+- Two crons: **weekly** `17 3 * * 1` (bounded fuzz + changed-code mutation, `timeout-minutes: 90`) and **monthly** `29 4 1 * *` (full mutation sweep, `timeout-minutes: 540`), plus `repository_dispatch` types `weekly-maintenance` / `monthly-maintenance` (L3-11).
   No branch-selectable dispatch/push/PR path (by design, ci.md L61).
-* **Both jobs pin `runs-on: [self-hosted, macOS, ARM64, wyrd-maintenance]`** (L29-33, L84-88).
+- **Both jobs pin `runs-on: [self-hosted, macOS, ARM64, wyrd-maintenance]`** (L29-33, L84-88).
   The `wyrd-maintenance` self-hosted Apple-Silicon runner (needed because microsandbox/libkrun requires nested virtualization) **will not exist in the gandr reboot** — an unavailable runner "stays visibly queued" (ci.md L70).
   Weekly resolves its commit range via `wyrd-rust-gates -- maintenance-range` against a runner-local watermark `$HOME/.cache/wyrd/weekly-success.json` (rename).
-* **Decision for the coordinator**: (a) rename label → `gandr-maintenance` AND provision the runner, (b) keep the file but accept the jobs queue until a runner is stood up, or (c) defer/remove the whole workflow until the reboot needs scheduled campaigns.
+- **Decision for the coordinator**: (a) rename label → `gandr-maintenance` AND provision the runner, (b) keep the file but accept the jobs queue until a runner is stood up, or (c) defer/remove the whole workflow until the reboot needs scheduled campaigns.
   The task explicitly flags this as a will-not-exist dependency.
 
 ---
@@ -315,16 +315,16 @@ Goal: one gandr `typos.toml` = `wyrd@failed-refactor:typos.toml` ∪ `iu:typos.t
 
 **Base = `wyrd@failed-refactor:typos.toml`.**
 
-* **`[files] extend-exclude`** (L15-23): `secrets/`, `treefmt.toml`, `zsh/.zcompdump`, `.agents/core/`, `.claude/worktrees/`, `*.agda`, `*.agda-lib`.
-  + Keep: `secrets/`, `.agents/core/`, `.claude/worktrees/`, `*.agda`, `*.agda-lib`.
-  + **Drop `zsh/.zcompdump`** (machine/dotfiles artifact, not a gandr repo path).
-  + Keep `treefmt.toml` exclude (it holds the typos config's own excluded-word examples that would self-trip) — verify still needed.
-  + **Merge in from `iu`**: `*.typ`, `docs/manual/refs.yml`, `vendor/**` (`iu:typos.toml` L16-22). gandr has `*.typ` Track-C sources and a manual refs file, so add both; add `vendor/**` if the reboot vendors Agda stdlib.
-* **`[default] extend-ignore-re`** (L33): `\bwyrd-[0-9a-z]+\b` **→ `\bgandr-[0-9a-z]+\b`** (the tracker-ID regex — this is the explicit rename); **keep** `\b[0-9a-f]{7,40}\b` (git short-hash guard).
-* **`[default.extend-words]`** (L36-63): keep all — they are domain vocabulary, not wyrd-specific: `Ket/ket`, `Solum/solum` (gandr language constructs), `mis`, `Thm`, `unparseable`, `Yau`, `ratatui`, `edtui` (gandr-tui deps), `hom`, `equipments`.
+- **`[files] extend-exclude`** (L15-23): `secrets/`, `treefmt.toml`, `zsh/.zcompdump`, `.agents/core/`, `.claude/worktrees/`, `*.agda`, `*.agda-lib`.
+  - Keep: `secrets/`, `.agents/core/`, `.claude/worktrees/`, `*.agda`, `*.agda-lib`.
+  - **Drop `zsh/.zcompdump`** (machine/dotfiles artifact, not a gandr repo path).
+  - Keep `treefmt.toml` exclude (it holds the typos config's own excluded-word examples that would self-trip) — verify still needed.
+  - **Merge in from `iu`**: `*.typ`, `docs/manual/refs.yml`, `vendor/**` (`iu:typos.toml` L16-22). gandr has `*.typ` Track-C sources and a manual refs file, so add both; add `vendor/**` if the reboot vendors Agda stdlib.
+- **`[default] extend-ignore-re`** (L33): `\bwyrd-[0-9a-z]+\b` **→ `\bgandr-[0-9a-z]+\b`** (the tracker-ID regex — this is the explicit rename); **keep** `\b[0-9a-f]{7,40}\b` (git short-hash guard).
+- **`[default.extend-words]`** (L36-63): keep all — they are domain vocabulary, not wyrd-specific: `Ket/ket`, `Solum/solum` (gandr language constructs), `mis`, `Thm`, `unparseable`, `Yau`, `ratatui`, `edtui` (gandr-tui deps), `hom`, `equipments`.
   **Merge in from `iu`** the additional words: `missable`, `nd`, `thm` (lowercase — iu form, add alongside wyrd's `Thm`), `transfor`, `transfors` (`iu:typos.toml` L30-42).
   `equipments` and `hom` are shared (identical) — dedupe.
-* **`[default.extend-identifiers]`** (L65-69): keep `CertiCoq`, `FoSSaCS`, `serie`, `shortcat`.
+- **`[default.extend-identifiers]`** (L65-69): keep `CertiCoq`, `FoSSaCS`, `serie`, `shortcat`.
   `iu` also has `FoSSaCS` (identical) — dedupe.
 
 **Cross-check / contradiction note**: `wyrd:typos.toml` comment (L61-63) says the `equipments` entry "same entry exists in the sibling internal-univalence repo" — confirmed at `iu:typos.toml` L31-33.
@@ -336,55 +336,55 @@ The two configs agree on `hom`/`equipments`; `iu` additionally documents that ty
 
 **`.cargo/`**
 
-* `config.toml` — **carry**.
+- `config.toml` — **carry**.
   `build-dist`/`check-dist` cargo aliases (need `+nightly`), `[unstable]`, references `.cargo/config.dist.toml`.
-* `config.dist.toml` — **carry**.
+- `config.dist.toml` — **carry**.
   `[profile.dist]` (LTO fat, `panic = immediate-abort`, `build-std` size-optimized, `-Zfmt-debug=none`, …) for size-optimized dist builds.
   No name coupling.
-* `mutants.toml` — **adapt**. cargo-mutants correctness/scope config (`copy_vcs`, `gitignore`, `copy_target=false`, `test_workspace=true`, `test_tool=nextest`, timeout multipliers).
+- `mutants.toml` — **adapt**. cargo-mutants correctness/scope config (`copy_vcs`, `gitignore`, `copy_target=false`, `test_workspace=true`, `test_tool=nextest`, timeout multipliers).
   The `exclude_re` list (L57-80) is **gandr-crate-specific** (gandr-graph survivors from bead wyrd-4gf0) and must be re-derived; comments reference `gandr-shell`/`gandr-graph`.
   Keep mechanism.
 
 **`.config/`**
 
-* `wt.toml` — **carry/adapt**.
+- `wt.toml` — **carry/adapt**.
   Worktrunk hooks: `pre-start` (copy-ignored, beads-chmod, mise-setup, core-init, iu-build-warmup, beads-pull), `pre-merge` (adr-guard, core-pin, `gate-merge = mise run gate:merge`, beads), `post-merge` (beads-pull), `step.copy-ignored` excludes.
   References `.agents/core/scripts/*.nu`, `metatheory/upstream/internal-univalence`, `.beads`.
   No literal `wyrd` outside comments; carry, verify submodule paths.
 
 **`.omp/`** (all symlinks — skill aggregators for the OMP harness; carry all)
 
-* `skills/find-best-rust-crates` → `../../.agents/core/skills/…` — carry.
-* `skills/find-best-typescript-packages` → core skill — carry.
-* `skills/gandr-pro` → `../../crates/gandr-corpus/skills/gandr-pro` — carry (already gandr).
-* `skills/git-cliff-treefmt-changelog` → core skill — carry.
-* `skills/project-coherence-sweep` → `../../.agents/skills/…` — carry.
-* `skills/reference-project-convention-drift` → core skill — carry.
+- `skills/find-best-rust-crates` → `../../.agents/core/skills/…` — carry.
+- `skills/find-best-typescript-packages` → core skill — carry.
+- `skills/gandr-pro` → `../../crates/gandr-corpus/skills/gandr-pro` — carry (already gandr).
+- `skills/git-cliff-treefmt-changelog` → core skill — carry.
+- `skills/project-coherence-sweep` → `../../.agents/skills/…` — carry.
+- `skills/reference-project-convention-drift` → core skill — carry.
 
 **`.claude/`**
 
-* `settings.json` — **carry/adapt**.
+- `settings.json` — **carry/adapt**.
   Hooks `PreCompact`→`bd prime`, `SessionStart`→`bd dolt pull; bd prime; check-core-freshness.nu`; worktrunk marketplace/plugin; `wt list statusline`.
   Verified as SUBSET of core base by `.agents/conventions.toml`.
   No `wyrd` literal.
   Carry.
-* `settings.local.json` — **adapt/local**.
+- `settings.local.json` — **adapt/local**.
   Permission allowlist (tirith url, WebFetch claude.com, nushell evaluate, pctx list_functions).
   Local-scoped; keep or regenerate per environment.
-* `skills/*` — six symlinks, identical set to `.omp/skills` — carry.
-* `worktrees/` — **transient** (empty; in-repo agent worktrees, foreign checkouts per core H13; excluded by treefmt/rumdl/typos).
+- `skills/*` — six symlinks, identical set to `.omp/skills` — carry.
+- `worktrees/` — **transient** (empty; in-repo agent worktrees, foreign checkouts per core H13; excluded by treefmt/rumdl/typos).
   Carry the _exclusion_, not the dir.
 
 **`.agents/`**
 
-* `conventions.toml` — **adapt**.
+- `conventions.toml` — **adapt**.
   `[project] name = "wyrd"` → gandr, `languages = ["rust","agda","nushell"]` (reconsider `nushell` as scripts move to gandr), `[core] path = .agents/core`, surfaces (docs/configs/settings lists — carry with renames), `[tracker] prefix = "wyrd"` → `gandr`.
   Note the `[reference]` section is intentionally omitted ("wyrd is the hub the core was extracted from").
-* `core/` — **carry**.
+- `core/` — **carry**.
   Vendored agentic-dev core submodule (gitlink, read-only, pinned; ADR-2).
   The whole shared-core system (WORKFLOW/HAZARDS/PRINCIPLES, scripts, fragments, base configs).
   Do not format/modify (H13).
-* `skills/project-coherence-sweep/` — **carry**.
+- `skills/project-coherence-sweep/` — **carry**.
   Project-local skill (the one non-symlinked, non-core skill).
 
 ---

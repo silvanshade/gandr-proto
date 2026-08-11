@@ -5,12 +5,12 @@ This document owns gandr's adoption of the template-games programme: which objec
 It exists as its own component because the apparatus is **semantic-foundations technology rather than an importable presentation theorem**.
 Neither adopted-line source contains a statement gandr can cite to discharge an obligation it already carries, so everything on offer is construction, and the constructions are heavy — which means what adoption buys has to be stated with its price attached, at a length the commissioning ruling cannot hold.
 
-* Status: **an adopted direction whose constructions are unbuilt but for one inert prototype; the tile-level gate has reported positive at small-scope-exhaustive grade.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, the polarized-footprint fragment is prototyped in the tree and consumed by nothing ([[#What adoption builds]]), and tile-level transfers are licensed at the gate's own grade by [[#template-games-spike-01]].
+- Status: **an adopted direction whose constructions are unbuilt but for one inert prototype; the tile-level gate has reported positive at small-scope-exhaustive grade.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, the polarized-footprint fragment is prototyped in the tree and consumed by nothing ([[#What adoption builds]]), and tile-level transfers are licensed at the gate's own grade by [[#template-games-spike-01]].
   The separation-logic half of the same line is **deferred on machinery rather than adopted or declined**, and it is carried, with the requirements it places on that machinery, at [[proposed/separation-logic]].
-* **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on; the statements the read took on structure rather than line by line, and the gandr-side facts it inferred rather than proved, are marked where they are used and collected at [[#Source and confidence]].
-* The ruling that commissioned the read is the device decline and its named replacement direction at [[circuit-terms#The design questions]], recorded there as `circuit-terms-question-16`; the interchange-strength decision the corpus already meets this line at is [[../metatheory#Interchange, by layer]].
+- **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on; the statements the read took on structure rather than line by line, and the gandr-side facts it inferred rather than proved, are marked where they are used and collected at [[#Source and confidence]].
+- The ruling that commissioned the read is the device decline and its named replacement direction at [[circuit-terms#The design questions]], recorded there as `circuit-terms-question-16`; the interchange-strength decision the corpus already meets this line at is [[../metatheory#Interchange, by layer]].
   Both are linked rather than restated, and nothing here re-opens either.
-* **Two further sources are read against this line rather than adopted from it, and each is cited at its own statements.** The differential-linear-logic template model [@mellies-2019-template-games-dll] carries a span-composition hazard the cobordism route inherits, together with the localization that fixes it ([[#The span hazard the cobordism route inherits]]); the layered object-based line [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], with the extended technical report that carries its concurrent proofs [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr], is read as a **third carrier** for the disconnection axis and for the quotient ([[#The layered line, read as a third carrier]]).
+- **Two further sources are read against this line rather than adopted from it, and each is cited at its own statements.** The differential-linear-logic template model [@mellies-2019-template-games-dll] carries a span-composition hazard the cobordism route inherits, together with the localization that fixes it ([[#The span hazard the cobordism route inherits]]); the layered object-based line [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], with the extended technical report that carries its concurrent proofs [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr], is read as a **third carrier** for the disconnection axis and for the quotient ([[#The layered line, read as a third carrier]]).
   Neither is adopted; the second is argued against as a wholesale carrier and imitated only as a shape ([[#What stays out of scope]]).
 
 ## The adopted object, and the half that waits on the memory model
@@ -34,15 +34,15 @@ The correction is recorded here rather than applied silently to that entry, beca
 Four constructions, in the order they depend on one another.
 **One of them has a fragment in the tree and the other three have nothing**; none of the four is a re-presentation of something gandr already has.
 
-* **An asynchronous structure on the store transition graph**, whose tiles are the licensed shift commutations.
+- **An asynchronous structure on the store transition graph**, whose tiles are the licensed shift commutations.
   This is the pairing everything else stands on, and it is the one with a checkable debt attached ([[#The tile pairing, and the three axioms everything gates on]]).
-* **Footprints as a polarized, term-derived datum on cell applications** — the triple of cells rewritten, cells and wires matched but preserved, and internal wires freshly bound — with independence defined from that datum rather than declared on the alphabet ([[#Footprints are polarized, and that is what licenses more]]).
+- **Footprints as a polarized, term-derived datum on cell applications** — the triple of cells rewritten, cells and wires matched but preserved, and internal wires freshly bound — with independence defined from that datum rather than declared on the alphabet ([[#Footprints are polarized, and that is what licenses more]]).
   **This is the one construction with any tree presence, and what is there is two of its three components, prototyped and inert.** `gandr-theory-computads`'s `footprint` module carries `MatchFootprint`, splitting the positions a redex covers into `written`, `read`, and `framed` with only the first two entering the footprint; `match_footprint` derives it from one `CellApp` firing in one term and `footprint_independence` decides the two read-against-write conjuncts.
   Nothing in the tree calls into it and `derive_shift_equivalence` stays the only licence for a shift, so the guard fence holds as stated ([[#Footprints are polarized, and that is what licenses more]]).
   The freshness component is absent because the internal-wire binder it would read a per-transition event off does not exist ([[proposed/separation-logic#separation-logic-requirement-06]]), and the prototype addresses **term positions** rather than a store, so the carrier half of the shape is interface only.
-* **A template** $T = (T[0], T[1], η, μ)$ — an internal opcategory in the cospan bicategory of the store ambient, equivalently a monad (a Bénabou polyad in the indexed case) there [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1].
+- **A template** $T = (T[0], T[1], η, μ)$ — an internal opcategory in the cospan bicategory of the store ambient, equivalently a monad (a Bénabou polyad in the indexed case) there [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1].
   This forces the largest new commitment in the whole programme, because the inclusion $T[0] ⊆ T[1]$ is a distinction gandr's certificates do not currently draw ([[#The environment polarity a template forces]]).
-* **Certificates re-presented as cobordisms** over that template — the double category written $"Cob"(T)$ in the source — with composition by pushout followed by relabel along $μ$ [ibid., eqns 18, 22], in a virtual variant, because gandr's composition declines where the source's is total ([[#Certificates as cobordisms, in a virtual variant]]).
+- **Certificates re-presented as cobordisms** over that template — the double category written $"Cob"(T)$ in the source — with composition by pushout followed by relabel along $μ$ [ibid., eqns 18, 22], in a virtual variant, because gandr's composition declines where the source's is total ([[#Certificates as cobordisms, in a virtual variant]]).
 
 ## The tile pairing, and the three axioms everything gates on
 
@@ -64,13 +64,13 @@ So two applications of one cell at two positions in one term are distinct even w
 
 **An asynchronous graph must satisfy three axioms, and gandr has none of them at the level the axioms quantify over** [@mellies-2021-template-games, sec III-A].
 
-* **Symmetry** — a tile between two length-2 paths is a tile in the other direction too.
+- **Symmetry** — a tile between two length-2 paths is a tile in the other direction too.
   **Argued for gandr but not at the axiom's level**: the shift witness takes its overlap conjunct per ordered pair in both orders, which argues the _relation_ is symmetric, whereas the axiom quantifies over **squares**.
   The shared-target half is what the ordered-pair argument does not obviously give, so the claim is **restated at the square level by the spike rather than inherited**.
-* **Determinism** — for length-2 paths sharing both endpoints, a tile from one path to two others forces those two to coincide.
+- **Determinism** — for length-2 paths sharing both endpoints, a tile from one path to two others forces those two to coincide.
   Note the quantifier: **all three paths share both endpoints**, and with symmetry this makes the relation a partial involution, so the residual of a step after an independent step is uniquely determined.
   **Neither claimed nor proved for gandr.**
-* **The cube property** [ibid., sec III-A, eqn 36] — **and it is a biconditional, not a filling condition.** For two length-3 paths sharing both endpoints, the front-to-back sweep of tiles exists **if and only if** the back-to-front sweep does.
+- **The cube property** [ibid., sec III-A, eqn 36] — **and it is a biconditional, not a filling condition.** For two length-3 paths sharing both endpoints, the front-to-back sweep of tiles exists **if and only if** the back-to-front sweep does.
   A decision procedure therefore tests **both** directions, and a witness refuting either direction refutes the axiom.
   **Neither claimed nor proved for gandr.**
 
@@ -93,16 +93,16 @@ The spike has reported, positive at small-scope-exhaustive grade, so rungs may s
 
 The spike's two halves are the two cheapest facts the adoption decision needs.
 
-* **The axioms.** Decide determinism and the cube property for the shift quotient over the landed shift machinery and its position and overlap substrate.
+- **The axioms.** Decide determinism and the cube property for the shift quotient over the landed shift machinery and its position and overlap substrate.
   If both hold, every tile-level transfer from this line is licensed; if either fails, the failure witness is the decision.
-* **The polarized-footprint prototype.** Decide whether the polarized independence test — rewritten versus matched-but-preserved, read off the match image — licenses a strictly larger commuting class than the incomparable-positions conjunct, **without weakening the decided guard**.
+- **The polarized-footprint prototype.** Decide whether the polarized independence test — rewritten versus matched-but-preserved, read off the match image — licenses a strictly larger commuting class than the incomparable-positions conjunct, **without weakening the decided guard**.
   The test is prototyped beside the guard's constructor and never in place of it.
 
 **Three conditions on how the axiom half is run, each of which changes what a verdict means.**
 
-* **Fix the index first.** The source's tile relation is indexed by edges with parallel edges permitted, and gandr's is derived from a peak term and an ordered pair of cell-and-position applications; a verdict states which indexing it is about ([[#template-games-question-06]]).
-* **Test both sweeps of the cube.** The property is a biconditional, so a procedure that checks one direction has not checked the axiom.
-* **Restate symmetry at the square level.** The inherited by-construction argument is about ordered pairs; the axiom is about squares, and the shared-target half is the part the argument does not obviously give.
+- **Fix the index first.** The source's tile relation is indexed by edges with parallel edges permitted, and gandr's is derived from a peak term and an ordered pair of cell-and-position applications; a verdict states which indexing it is about ([[#template-games-question-06]]).
+- **Test both sweeps of the cube.** The property is a biconditional, so a procedure that checks one direction has not checked the axiom.
+- **Restate symmetry at the square level.** The inherited by-construction argument is about ordered pairs; the axiom is about squares, and the shared-target half is the part the argument does not obviously give.
 
 **A determinism refutation is reported with its consequence and not only as a failure**: what is lost is inheritance of tile structure under sub-store restriction, and therefore finite completeness of the ambient, and therefore the availability of the template formalism at all.
 
@@ -120,10 +120,10 @@ The record is on `gandr-ng9.11`; tile-level transfers are licensed **at that gra
 
 **A footprint in the source is attached to a transition — an instruction occurrence — never to a state and never to a syntactic position.** Three variants appear, all explicit.
 
-* The **machine-state footprint** is a quadruple of read set, write set, lock set, and allocation set [@mellies-stefanesco-2020-csl, sec 3.2.1].
-* The **lock footprint** is the pair of lock set and allocation set, with independence componentwise disjointness [ibid., sec 3.2.2].
+- The **machine-state footprint** is a quadruple of read set, write set, lock set, and allocation set [@mellies-stefanesco-2020-csl, sec 3.2.1].
+- The **lock footprint** is the pair of lock set and allocation set, with independence componentwise disjointness [ibid., sec 3.2.2].
   It is deliberately coarser, and the source says so: it is "more liberal … about which footprints commute", because the mismatch between the two footprint notions is exactly what makes a data race detectable.
-* The **separated-state footprint** is stated to be literally the same quadruple as the machine-state one [ibid., sec 7.2].
+- The **separated-state footprint** is stated to be literally the same quadruple as the machine-state one [ibid., sec 7.2].
 
 **Independence is four conditions, and only two of them are plain disjointness** [ibid., sec 3.2.1].
 
@@ -170,9 +170,9 @@ So the frame rule cannot discharge the shift guard.
 
 **The honest comparison is tile-condition against guard, and there the verdict splits.**
 
-* **It strengthens on the guard's first two conjuncts.** Footprint independence is one term-derived test that collapses the incomparable-positions conjunct (term level) and the trivial-cell-pair-overlap conjunct (alphabet level) into a single polarized-disjointness condition — and it licenses strictly more, because read-only overlap is permitted.
+- **It strengthens on the guard's first two conjuncts.** Footprint independence is one term-derived test that collapses the incomparable-positions conjunct (term level) and the trivial-cell-pair-overlap conjunct (alphabet level) into a single polarized-disjointness condition — and it licenses strictly more, because read-only overlap is permitted.
   This is the one concrete place the source lets gandr earn more than it does today.
-* **It is silent on the third conjunct, and structurally so.** The source has no convexity hazard, because its transitions act on a flat partial map where no action can create a directed path that destroys another match's convexity.
+- **It is silent on the third conjunct, and structurally so.** The source has no convexity hazard, because its transitions act on a flat partial map where no action can create a directed path that destroys another match's convexity.
   Its independence relation therefore has no analogue of gandr's convexity conjunct and offers nothing toward discharging it.
   **The conjunct that is gandr's hard one is the conjunct the source never had to state**, which is why it must be added to the tile condition or discharged separately ([[#template-games-rung-03]]).
 
@@ -247,10 +247,10 @@ It is **not** the hypothesis the Gray level needs, and the substrate says so in 
 **At the Gray level the ambient is monoidal and not cartesian, and the replacement hypothesis is named rather than gestured at.** Because the category of small 2-categories under the Gray tensor is monoidal rather than cartesian, the template formalism is upgraded from a category with finite limits to **a monoidal category with coreflexive equalizers, preserved componentwise by the tensor** [@mellies-2021-template-games, sec I].
 The replacement machinery is four statements, and the first of them is proved rather than assumed.
 
-* **The precondition holds for the Gray tensor**: it preserves coreflexive equalizers componentwise [ibid., prop 5, sec IV-B, eqn 41, appendix C].
-* **Horizontal composition becomes a limit rather than a colimit.** The horizontal composite of bicomodules is the **equalizer** of a coreflexive pair [ibid., sec VI-B, def 4], and the componentwise-preservation assumption is what makes that composition associative [ibid., thm 2].
-* **A template becomes a monad in a weak double category of comodules** rather than an internal opcategory in cospans: an internal category in the monoidal ambient is a monad in $"Comod"(S)$ [ibid., def 5, sec VII-A].
-* **The translation out of the asynchronous-graph world does not preserve cartesian products, and does preserve equalizers** [ibid., sec V-B] — which is the load-bearing sentence, because it is what makes the upgrade available at all.
+- **The precondition holds for the Gray tensor**: it preserves coreflexive equalizers componentwise [ibid., prop 5, sec IV-B, eqn 41, appendix C].
+- **Horizontal composition becomes a limit rather than a colimit.** The horizontal composite of bicomodules is the **equalizer** of a coreflexive pair [ibid., sec VI-B, def 4], and the componentwise-preservation assumption is what makes that composition associative [ibid., thm 2].
+- **A template becomes a monad in a weak double category of comodules** rather than an internal opcategory in cospans: an internal category in the monoidal ambient is a monad in $"Comod"(S)$ [ibid., def 5, sec VII-A].
+- **The translation out of the asynchronous-graph world does not preserve cartesian products, and does preserve equalizers** [ibid., sec V-B] — which is the load-bearing sentence, because it is what makes the upgrade available at all.
 
 **So the ambient work is owed twice rather than once, and the two obligations are not substitutes.** Adhesivity and finite completeness buy the cospan-and-pushout formalism [@mellies-stefanesco-2020-csl, rmk 3.2] together with [@mellies-2021-template-games, prop 4]; coreflexive equalizers preserved componentwise buy the Gray one.
 This reshapes [[#template-games-rung-01]], [[#template-games-rung-04]], and [[#template-games-rung-05]], and it is recorded as a **level-dependence** rather than as a replacement: neither hypothesis corrects the other, and a rung that names one without naming its level has named half a precondition.
@@ -414,9 +414,9 @@ So no gandr candidate counts until it is shown to escape that, and there are exa
 
 **The quotient's two conditions cost gandr very differently, and only one of them is expensive.** A concurrent object space is the object space quotiented by a **coherent congruence** — an equivalence contained in the coherence relation and closed under two-sided contexts [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.3, def 6.2].
 
-* **Coherence is cheap, and arguably free.** Related traces are permutations of one another, so their first difference is a swapped pair of **distinct** operations, and two distinct operations are always coherent under the standard coherence relation [ibid., ex 2.2, sec 5.2].
+- **Coherence is cheap, and arguably free.** Related traces are permutations of one another, so their first difference is a swapped pair of **distinct** operations, and two distinct operations are always coherent under the standard coherence relation [ibid., ex 2.2, sec 5.2].
   **This is a reading and not a source claim** — the source never states it — and it depends on gandr's tokens being operation-and-result pairs, which the read did not check against gandr's own encoding.
-* **Congruence is the expensive half, and it lands on a fence the corpus already has.** Two-sided context closure demands that independence be a **context-free** property of the two adjacent tokens [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.1, prop C.2, prop C.3], and gandr's third guard conjunct — each match image still convex in the other's reduct — is store-dependent.
+- **Congruence is the expensive half, and it lands on a fence the corpus already has.** Two-sided context closure demands that independence be a **context-free** property of the two adjacent tokens [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.1, prop C.2, prop C.3], and gandr's third guard conjunct — each match image still convex in the other's reduct — is store-dependent.
   **The verdict is conditional and the condition is already recorded**: on today's alphabet that conjunct is discharged outright on a store certified left-connected over an acyclic target ([[circuit-terms#circuit-terms-question-15]]), so gandr's shift relation is context-free today and would be a congruence, and it stops being one at exactly the moment the alphabet change lifts that fence.
   Same fence and same trigger as that entry, which is corroboration that the fence is load-bearing for more than the guard.
   **That the demand is context-freeness is a reading of the proof's shape**, not a requirement the source states.
@@ -441,10 +441,10 @@ The proofs live in the technical report and were read there [@oliveira-vale-mell
 
 **Its hypotheses are exact, and there are three of them plus nothing.**
 
-* **Disjoint alphabets with unconditional cross-coherence.** The carrier is the "with": tokens are the disjoint sum, and a token of one side is always coherent with a token of the other [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, lem C.5].
-* **Independence between components defined by projection, not derived.** Two traces are related exactly when their projections are, so every swap of adjacent tokens from different components is in the tensored relation automatically — no side condition, no footprint, no test [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.4].
-* **Each component's relation is a coherent congruence on its own component** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.4].
-* **Nothing else** — no finiteness, no well-foundedness, no acyclicity, and no determinism beyond what the carrier already has.
+- **Disjoint alphabets with unconditional cross-coherence.** The carrier is the "with": tokens are the disjoint sum, and a token of one side is always coherent with a token of the other [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, lem C.5].
+- **Independence between components defined by projection, not derived.** Two traces are related exactly when their projections are, so every swap of adjacent tokens from different components is in the tensored relation automatically — no side condition, no footprint, no test [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.4].
+- **Each component's relation is a coherent congruence on its own component** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.4].
+- **Nothing else** — no finiteness, no well-foundedness, no acyclicity, and no determinism beyond what the carrier already has.
   The read checked those proofs for a smuggled hypothesis and found none.
 
 **One of those hypotheses is the single place this source's characteristic weakness is not gandr's.** Where the source **assumes** disjoint token sets with unconditional cross-coherence, gandr **proves** the corresponding fact: the merger's incidence theorem gives both directions, so a merge of two connected shapes has exactly two components and they are the operands — disconnection is what the substrate says rather than what the engine arranges ([[../metatheory#The carrier, as landed]]).
@@ -458,12 +458,12 @@ The product therefore licenses per-component independence only for **decompositi
 
 **What it would license, priced in three.**
 
-* **A stated theorem where the corpus has a design ruling.** For disjoint components the true-concurrency presentation and the interleaving-modulo-swap presentation are the same object, by an isomorphism of coalgebras [ibid., eqn 9] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.7].
+- **A stated theorem where the corpus has a design ruling.** For disjoint components the true-concurrency presentation and the interleaving-modulo-swap presentation are the same object, by an isomorphism of coalgebras [ibid., eqn 9] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.7].
   The corpus already rules that on polarized or disjoint boundaries sequential and parallel composition coincide ([[../metatheory#Interchange, by layer]]); this is that ruling as a theorem, on a third carrier, with its hypothesis named.
-* **The discriminating hypothesis of the interchange stratification is sharing, not strength.** The simultaneous-move presentation is a **theorem** for disjoint components here and a **defect** for interacting ones at the Gray level ([[#What the Gray level costs, and the reason behind a decision the corpus already took]]), and the difference is that disjoint tokens are unconditionally coherent, so nothing is left to deadlock.
+- **The discriminating hypothesis of the interchange stratification is sharing, not strength.** The simultaneous-move presentation is a **theorem** for disjoint components here and a **defect** for interacting ones at the Gray level ([[#What the Gray level costs, and the reason behind a decision the corpus already took]]), and the difference is that disjoint tokens are unconditionally coherent, so nothing is left to deadlock.
   That clause is what makes the corpus's stratification a stratification rather than a menu, and the corpus does not carry it.
   **The comparison is the read's**: neither source compares itself to the other in those terms, and the layered documents never mention deadlock at all ([[#Recorded absences]]).
-* **A compositional certified product with a genuinely local proof obligation.** Certify each component's certificate against its own component in isolation and obtain the composite by the product — the shape the source demonstrates when a purely local sequential refinement condition discharges a concurrent global one [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.5, sec 7.1].
+- **A compositional certified product with a genuinely local proof obligation.** Certify each component's certificate against its own component in isolation and obtain the composite by the product — the shape the source demonstrates when a purely local sequential refinement condition discharges a concurrent global one [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.5, sec 7.1].
   This is what [[circuit-terms#circuit-terms-question-16]] declined the device mapping for lacking, and what [[#Where the fit fails]] records the primary as not supplying.
 
 **Priced honestly, it is a shape to imitate and not a theorem to cite.** The carrier is coherence spaces where gandr's is a labelled directed hypergraph; the product inherits the missing correctness criterion; and it inherits the stability caveat above.
@@ -506,15 +506,15 @@ All three are decidable questions about the landed shift witness and the cheapes
 
 **What it would newly warrant.**
 
-* **Every tile-level transfer from this line**, and nothing transfers without them.
+- **Every tile-level transfer from this line**, and nothing transfers without them.
   This rung is a precondition rather than a prize: it licenses the other five to be attempted.
-* **Finite completeness of the ambient, and with it the existence of the template formalism** [ibid., prop 4, prop 6, appendix A] — which is what makes sub-store restriction inherit tile structure, the operation the disconnection axis and the frame direction both need.
-* **Interchange in the third dimension rather than mere whiskering.** Every asynchronous graph presents a sesquicategory whose 2-cells are permutation sequences [ibid., prop 7, appendix D-A]; it presents a **2-category** once 2-cells are reschedulings modulo the induced bijection on edge indices [ibid., prop 8, appendix D-B], and the cube property's two sweeps are what make that quotient class nonempty from either side.
+- **Finite completeness of the ambient, and with it the existence of the template formalism** [ibid., prop 4, prop 6, appendix A] — which is what makes sub-store restriction inherit tile structure, the operation the disconnection axis and the frame direction both need.
+- **Interchange in the third dimension rather than mere whiskering.** Every asynchronous graph presents a sesquicategory whose 2-cells are permutation sequences [ibid., prop 7, appendix D-A]; it presents a **2-category** once 2-cells are reschedulings modulo the induced bijection on edge indices [ibid., prop 8, appendix D-B], and the cube property's two sweeps are what make that quotient class nonempty from either side.
   **That last step is a reading of appendix D-B and not a statement the source makes**, since the source imposes all three axioms throughout.
-* **A presentation by generators and relations, with exactly two relation families.** The 2-category is freely generated by the graph's vertices and edges in dimensions 0 and 1 and by one 2-cell per permutation tile in dimension 2, modulo two families of equations and no others [ibid., sec V-A, eqns 45, 46]: a tile followed by its symmetric inverse is the identity reshuffling, and two tile sequences realizing the same order reversal on three indices are equal.
+- **A presentation by generators and relations, with exactly two relation families.** The 2-category is freely generated by the graph's vertices and edges in dimensions 0 and 1 and by one 2-cell per permutation tile in dimension 2, modulo two families of equations and no others [ibid., sec V-A, eqns 45, 46]: a tile followed by its symmetric inverse is the identity reshuffling, and two tile sequences realizing the same order reversal on three indices are equal.
   That is the cleanest statement of what gandr's shift-equivalence 2-cells would present if the axioms hold.
   **Which axiom underwrites which family is the same reading and carries the same mark**: symmetry is what makes the inverse tile exist for the first family and the cube property is what makes both sweeps available for the second, and the source states neither implication.
-* **Standing beyond this epic.** The coherent-congruence line concedes that it supplies **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8], and these axioms are exactly the criterion it says it lacks — so a clean positive verdict is evidence for more than gandr's own quotient.
+- **Standing beyond this epic.** The coherent-congruence line concedes that it supplies **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8], and these axioms are exactly the criterion it says it lacks — so a clean positive verdict is evidence for more than gandr's own quotient.
   The verdict landed positive, and the record is [[#template-games-criterion-01]].
 
 **Grade.** **Landed positive at small-scope-exhaustive grade** ([[#template-games-spike-01]]): determinism and the cube property hold for the shift quotient as built, at small-scope-exhaustive-plus-structural-argument grade — evidence, not proof — with symmetry restated at the square level.
@@ -582,10 +582,10 @@ A comparison map from the certified layer to the operational layer that is both 
 
 **What it would newly warrant — and this is the reason the whole direction was pursued.**
 
-* **Parallel replay soundness.** The 2-fibration half says every commutation the operational layer exhibits lifts to the certified layer, which is precisely the licence a parallel-replay scheduler needs in order to reorder. gandr today has the bracket oracle and the per-pair guard; it has **no theorem that a parallel schedule is the same transformation**, and the 2-fibration is that theorem's shape.
-* **A compositional independence story for disconnected components.** The preservation results — the parallel product preserves strictness [ibid., lem E.2] and preserves 1-fibrations [ibid., lem 10.10] — are exactly the shape the disconnection axis needs, and exactly what the declined device line could not give.
+- **Parallel replay soundness.** The 2-fibration half says every commutation the operational layer exhibits lifts to the certified layer, which is precisely the licence a parallel-replay scheduler needs in order to reorder. gandr today has the bracket oracle and the per-pair guard; it has **no theorem that a parallel schedule is the same transformation**, and the 2-fibration is that theorem's shape.
+- **A compositional independence story for disconnected components.** The preservation results — the parallel product preserves strictness [ibid., lem E.2] and preserves 1-fibrations [ibid., lem 10.10] — are exactly the shape the disconnection axis needs, and exactly what the declined device line could not give.
   The caveat travels with them: they are stated for the **synchronizing** product, so the disjoint case is a gandr obligation rather than an import ([[#Where the fit fails]]).
-* **A stated frame property.** "A certificate valid over a sub-store stays valid in a larger store with the enlargement inert" is structurally free in gandr's carrier today; the value of the import is that it becomes a **provable property of a semantic model** rather than an artifact of how matching is implemented — which is what matters at the moment the store grows disconnection and multi-output.
+- **A stated frame property.** "A certificate valid over a sub-store stays valid in a larger store with the enlargement inert" is structurally free in gandr's carrier today; the value of the import is that it becomes a **provable property of a semantic model** rather than an artifact of how matching is implemented — which is what matters at the moment the store grows disconnection and multi-output.
 
 **Neither comparison source contributes to this rung, and the absence was checked rather than assumed** ([[#Recorded absences]]): no fibration, no soundness statement, and no comparison map with either property occurs in the Gray substrate or anywhere in the layered line's two documents.
 The prize lives entirely in the primary, which is what makes this rung a re-derivation against a single source.
@@ -600,22 +600,22 @@ That earlier work has no bibliography key yet and was not chased.
 
 **From the Gray substrate** [@mellies-2021-template-games], read in full.
 
-* **Nothing toward the fibration prize.** No fibration, soundness, or comparison statement occurs anywhere in it; the prize lives entirely in the primary [@mellies-stefanesco-2020-csl, thm 10.1, thm 10.5, thm 10.6], and [[#template-games-rung-06]] gains nothing here.
-* **Nothing direct toward footprints.** Footprints do not occur; the nearest machinery is the polarity-as-comonoid statement [@mellies-2021-template-games, prop 3] and the source and target maps on its four generators [ibid., eqn 22], which are about scheduling polarity.
+- **Nothing toward the fibration prize.** No fibration, soundness, or comparison statement occurs anywhere in it; the prize lives entirely in the primary [@mellies-stefanesco-2020-csl, thm 10.1, thm 10.5, thm 10.6], and [[#template-games-rung-06]] gains nothing here.
+- **Nothing direct toward footprints.** Footprints do not occur; the nearest machinery is the polarity-as-comonoid statement [@mellies-2021-template-games, prop 3] and the source and target maps on its four generators [ibid., eqn 22], which are about scheduling polarity.
   Recorded as "no contribution" rather than left implied ([[#template-games-rung-03]]).
 
 **From the layered line** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] and its technical report, by full-text search of both documents.
 
-* **Fibrations.** The word occurs in neither document; there is no soundness theorem, no lifting property, and no comparison map with one — the full-but-not-faithful functor [ibid., prop 5.4] is not a fibration.
+- **Fibrations.** The word occurs in neither document; there is no soundness theorem, no lifting property, and no comparison map with one — the full-but-not-faithful functor [ibid., prop 5.4] is not a fibration.
   [[#template-games-rung-06]] gains nothing.
-* **Footprints and derived independence.** The word does not occur.
+- **Footprints and derived independence.** The word does not occur.
   Independence first appears as a **generating rule of a congruence** [ibid., sec 6.2] and is never computed from an action's semantics, which is the property [[#template-games-rung-03]] is about.
   That rung gains nothing.
-* **The ambient hypothesis.** "Adhesive" does not occur, and there is no ambient category with limit or colimit hypotheses at all — the carrier is fixed and concrete.
+- **The ambient hypothesis.** "Adhesive" does not occur, and there is no ambient category with limit or colimit hypotheses at all — the carrier is fixed and concrete.
   [[#template-games-rung-01]] gains nothing, and the level-dependence recorded at [[#The ambient hypothesis is level-dependent]] is untouched by it.
-* **The asynchronous-graph axioms.** "Cube property" does not occur and there is no analogue of determinism of tiles; coherence plus context closure is what replaces them there ([[#What the third carrier decides about the quotient]]).
+- **The asynchronous-graph axioms.** "Cube property" does not occur and there is no analogue of determinism of tiles; coherence plus context closure is what replaces them there ([[#What the third carrier decides about the quotient]]).
   [[#template-games-rung-02]] gains nothing.
-* **Deadlock.** The word does not occur, so the reading of why the simultaneous-move identification is safe for disjoint components is the read's own and not that source's comparison ([[#The disjoint parallel product the disconnection axis wanted]]).
+- **Deadlock.** The word does not occur, so the reading of why the simultaneous-move identification is safe for disjoint components is the read's own and not that source's comparison ([[#The disjoint parallel product the disconnection axis wanted]]).
 
 **One absence is a fence rather than a gap, and it is re-affirmed rather than merely restated.** No polarity of any kind occurs in the layered line's object-based material; the only polarity in either of its documents is **game** polarity, in the technical report's game-semantics appendix, and the only polarity in the Gray substrate is the Player-and-Opponent polarity of moves and positions [@mellies-2021-template-games, sec VII].
 Game polarity and footprint polarity share a word and nothing else, and **nothing in this document identifies them**: the footprint polarization's only source is the primary [@mellies-stefanesco-2020-csl, sec 3.2.1].
@@ -629,10 +629,10 @@ This document cites that source only for the span hazard and its localization ([
 
 **Two findings of this read bear on decisions taken elsewhere, and they are recorded here only so they are not lost with the read.** Neither is an obligation of this component, neither is cited by anything above, and both corroborate rulings already landed rather than re-opening them.
 
-* **Where copy and merge are the two adjoint avatars of one structure, the interaction law is bialgebra — forced, free, and pseudo.** In the differential-linear-logic template model the comonoid and the monoid on one carrier are the right and left adjoints of a single monoidal structure, so they carry a **bimonoid** rather than a Frobenius structure, up to invertible 2-cell, and the copy comonoid is symmetric rather than cocommutative [@mellies-2019-template-games-dll, sec I-B, sec I-D, eqn 5].
+- **Where copy and merge are the two adjoint avatars of one structure, the interaction law is bialgebra — forced, free, and pseudo.** In the differential-linear-logic template model the comonoid and the monoid on one carrier are the right and left adjoints of a single monoidal structure, so they carry a **bimonoid** rather than a Frobenius structure, up to invertible 2-cell, and the copy comonoid is symmetric rather than cocommutative [@mellies-2019-template-games-dll, sec I-B, sec I-D, eqn 5].
   **It does not decide anything**, because gandr's carrier has no adjoint pairing to force the law; what it contributes is a published precedent with its **precondition named**, alongside the rewriting-cost argument the owner ruling already rests on ([[circuit-terms#circuit-terms-question-20]]).
   **The transferable rule is the read's**: the source exhibits the mechanism additively and multiplicatively and never states it as a rule.
-* **A Gray comonoid structure on the free 2-category over a set is the same data as a polarity function to a two-element set** [@mellies-2021-template-games, prop 3, eqn 31].
+- **A Gray comonoid structure on the free 2-category over a set is the same data as a polarity function to a two-element set** [@mellies-2021-template-games, prop 3, eqn 31].
   That is a published instance of a comonoid **read off an existing two-valued predicate** rather than posited as a new former — an equivalence of data rather than an analogy, which is the shape of the ruling that a cell-layer copy obligation is read off the grade discipline ([[circuit-terms#circuit-terms-question-18]]).
   Its force and its limit are the same fact: it is stated for the **free** structure on a set.
 
@@ -725,14 +725,14 @@ Explicitly, so that nothing here is later read as a partial adoption of the whol
 
 **The separation-logic half is not in this list, because it is deferred rather than cut, and it is owned elsewhere.** The separating conjunction, permissions, separated states, predicate-indexed colouring, and the Frame rule at the predicate level are carried as a proposal at [[proposed/separation-logic]], held against the heap and reference machinery gandr is committed to; nothing below re-opens that, and nothing below is waiting on machinery.
 
-* **Locks, critical sections, and resource invariants**, together with the change-of-locks development and the lock indexing the separated-state model carries [@mellies-stefanesco-2020-csl, sec 8, sec E.2].
+- **Locks, critical sections, and resource invariants**, together with the change-of-locks development and the lock indexing the separated-state model carries [@mellies-stefanesco-2020-csl, sec 8, sec E.2].
   The frame-rule interpretation stated over that indexing [ibid., sec 9.3] is deferred with the separation-logic half rather than cut, and what it would require is [[proposed/separation-logic#separation-logic-requirement-05]].
-* **Data-race freedom and the stateless model**, because gandr has no race notion and the second half of the soundness theorem therefore has no gandr statement to be about [ibid., thm 10.6].
-* **The error monad** [ibid., sec 6], because gandr's three-valued verdict discipline is a different and already-recorded device: a declined check leaves a certificate stuck rather than refuted.
-* **Multiplicative-additive linear logic and star-autonomy** [@mellies-2021-template-games, thm 1, thm 4], because gandr is not building a linear-logic model.
-* **Higher-order concurrent separation logic and its descendants — Iris and FCSL**, which the sources name as their own future work and which are not a gandr direction.
+- **Data-race freedom and the stateless model**, because gandr has no race notion and the second half of the soundness theorem therefore has no gandr statement to be about [ibid., thm 10.6].
+- **The error monad** [ibid., sec 6], because gandr's three-valued verdict discipline is a different and already-recorded device: a declined check leaves a certificate stuck rather than refuted.
+- **Multiplicative-additive linear logic and star-autonomy** [@mellies-2021-template-games, thm 1, thm 4], because gandr is not building a linear-logic model.
+- **Higher-order concurrent separation logic and its descendants — Iris and FCSL**, which the sources name as their own future work and which are not a gandr direction.
   Neither is cited at a statement here, and neither has a bibliography key.
-* **The layered line's coherence-space carrier, as gandr's certificate carrier.** The functor from layers to regular maps is full but **not faithful**, and the cause is stated in the source: strategies differing only on partial behaviours have the same image [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, prop 5.4, sec 5.3]. gandr's declined-within-budget verdict is exactly such a partial behaviour, so adopting that carrier wholesale would **collapse the third verdict** rather than cost something to keep — a reason against the carrier and not a price of it.
+- **The layered line's coherence-space carrier, as gandr's certificate carrier.** The functor from layers to regular maps is full but **not faithful**, and the cause is stated in the source: strategies differing only on partial behaviours have the same image [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, prop 5.4, sec 5.3]. gandr's declined-within-budget verdict is exactly such a partial behaviour, so adopting that carrier wholesale would **collapse the third verdict** rather than cost something to keep — a reason against the carrier and not a price of it.
   **What is out of scope is the wholesale carrier and not the line**: its disjoint parallel product is imitated as a shape ([[#The disjoint parallel product the disconnection axis wanted]]), its concession about correctness criteria is cited at [[#template-games-criterion-01]], and its object granularity is the material of [[#template-games-question-08]].
 
 **One further exclusion is a decline rather than a scope cut, and it is recorded so it is not re-proposed.** The lock component of the footprint has no gandr counterpart, and that is not a gap: filling it would mean inventing a shared-resource notion in order to import machinery whose payoff is a race theory gandr does not want.
@@ -740,13 +740,13 @@ It is a decline in the strong sense — the arrival of a heap does not revive it
 
 ## Cost, stated honestly
 
-* **The environment polarity is not optional and is not small.** It is what makes the template's two-player split exist, and hence what makes cobordisms nontrivial at all.
-* **Nothing discharges an existing obligation.** The whole programme adds theorems before it removes any, and that is a property of the direction rather than of this scoping.
-* **The prize is a re-derivation, not a citation.** The soundness theorem is proved by induction over a proof system gandr does not have.
-* **Composition partiality forces a virtual variant whose coherence is in neither source**, so the target of the adoption is a construction rather than an import.
-* **The ambient hypothesis is level-dependent, so the ambient work is owed twice.** Adhesivity buys the cospan-and-pushout level and coreflexive equalizers preserved componentwise buy the Gray one, and neither discharges the other ([[#The ambient hypothesis is level-dependent]]).
+- **The environment polarity is not optional and is not small.** It is what makes the template's two-player split exist, and hence what makes cobordisms nontrivial at all.
+- **Nothing discharges an existing obligation.** The whole programme adds theorems before it removes any, and that is a property of the direction rather than of this scoping.
+- **The prize is a re-derivation, not a citation.** The soundness theorem is proved by induction over a proof system gandr does not have.
+- **Composition partiality forces a virtual variant whose coherence is in neither source**, so the target of the adoption is a construction rather than an import.
+- **The ambient hypothesis is level-dependent, so the ambient work is owed twice.** Adhesivity buys the cospan-and-pushout level and coreflexive equalizers preserved componentwise buy the Gray one, and neither discharges the other ([[#The ambient hypothesis is level-dependent]]).
   The same level-dependence splits the double-category rung and the laxator rung, so three of the six obligations are owed per level rather than once.
-* **Against all five, the direction is real.** The tile pairing is exact, the adhesivity precondition is satisfiable at the right layer, and the polarized fragment was the cheap experiment the direction turned on — it ran, and it reported the strictly larger commuting class at the spike's own grade ([[#template-games-spike-01]]).
+- **Against all five, the direction is real.** The tile pairing is exact, the adhesivity precondition is satisfiable at the right layer, and the polarized fragment was the cheap experiment the direction turned on — it ran, and it reported the strictly larger commuting class at the spike's own grade ([[#template-games-spike-01]]).
 
 ## Source and confidence
 
@@ -757,9 +757,9 @@ It is a decline in the strong sense — the arrival of a heap does not revive it
 The primary [@mellies-stefanesco-2020-csl] was read in full — fifty pages, body plus appendices.
 The substrate [@mellies-2021-template-games] was read twice at different depths, and the grades differ by material rather than by statement.
 
-* **The asynchronous-graph axioms and the Gray-tensor content are read in full at theorem grade**, body plus appendices, with the axiom statements, the finite-completeness chain, and the sesquicategory and 2-category presentations taken at their own numbers [@mellies-2021-template-games, sec III-A, eqns 35, 36; prop 4, prop 6, appendix A; prop 7, prop 8, appendices D-A and D-B].
+- **The asynchronous-graph axioms and the Gray-tensor content are read in full at theorem grade**, body plus appendices, with the axiom statements, the finite-completeness chain, and the sesquicategory and 2-category presentations taken at their own numbers [@mellies-2021-template-games, sec III-A, eqns 35, 36; prop 4, prop 6, appendix A; prop 7, prop 8, appendices D-A and D-B].
   No verdict of the earlier pass is contradicted by that read.
-* **Everything else in the substrate was read at substrate grade** for the machinery the primary stands on: sec I and secs III-V, plus the statements of prop 1-8, thm 1-4, and def 1-3, with the proofs of none of them.
+- **Everything else in the substrate was read at substrate grade** for the machinery the primary stands on: sec I and secs III-V, plus the statements of prop 1-8, thm 1-4, and def 1-3, with the proofs of none of them.
   The material that pass did not reach line by line is sec VI (the comodule construction and thm 2), sec VII (the template as a monad in comodules, def 5), and appendices A-E — of which appendices A and D have since been read as arguments at the theorem-grade pass above.
 
 **What was read but not verified line by line, in the primary.**
@@ -777,21 +777,21 @@ The finite-limit argument of appendix A, including the proof that gives the equa
 
 **Imported results were not chased.** Three of them bear on claims above, so they are named rather than gestured at, and each is **locator-pending**: none has a bibliography key yet, and this document cites none of them at a statement.
 
-* **Lack and Sobociński on adhesive categories**, which is where the primary's adhesivity hypotheses come from.
-* **Day and Street on symmetric pseudomonoids in a monoidal bicategory**, at their sec 3, which supplies the complete definition the lax-monoidal statement is asserted from [@mellies-stefanesco-2020-csl, thm 4.4].
-* **The earlier Melliès and Stefanesco asynchronous-soundness paper**, and this one matters most: the soundness theorem [ibid., thm 10.1] is **attributed to that earlier work and re-proved axiomatically** in the source read here, so the source read here is **not** the theorem's original home, and [[#template-games-rung-06]] would be re-deriving a statement whose primary source the corpus does not yet hold.
+- **Lack and Sobociński on adhesive categories**, which is where the primary's adhesivity hypotheses come from.
+- **Day and Street on symmetric pseudomonoids in a monoidal bicategory**, at their sec 3, which supplies the complete definition the lax-monoidal statement is asserted from [@mellies-stefanesco-2020-csl, thm 4.4].
+- **The earlier Melliès and Stefanesco asynchronous-soundness paper**, and this one matters most: the soundness theorem [ibid., thm 10.1] is **attributed to that earlier work and re-proved axiomatically** in the source read here, so the source read here is **not** the theorem's original home, and [[#template-games-rung-06]] would be re-deriving a statement whose primary source the corpus does not yet hold.
 
 Also unchased, and named with the locator the primary gives so each can be resolved inside it: Bénabou for the polyad definition at his def 5.5.1, Garner for lax double functors, Mulry at his lem 2.20 together with Johnstone for the smash-product lifting, Bourke and Gurski for the Gray characterization, and Melliès' own earlier template-games papers.
 
 **gandr-side facts not verified, two of them load-bearing.**
 
-* **Whether the shift witness tile set is deterministic and satisfies the cube property.** Answered positive at small-scope-exhaustive grade ([[#template-games-spike-01]]); what stays open is the grade itself — a property-based pass or a proof would settle it — and every tile-level transfer inherits the verdict's grade meanwhile ([[#template-games-rung-02]]).
-* **Whether the store-transition ambient gandr would need is adhesive.** Satisfiability was **inferred** from the corpus's own record that labelled directed hypergraphs are a presheaf topos; it was not proved that gandr's certificate supports can be presented in that ambient, and the argument fails if they must be computads — [[#template-games-rung-01]].
-* **The three-conjunct guard was read from the shift module's own documentation rather than from its body.** Verified against the tree at write time for this document: `gandr-theory-computads`'s `shift` module exists and documents the three conjuncts and their order, `derive_shift_equivalence` is its constructor, `ShiftObstruction` is the typed refusal, the overlap conjunct is asked of the cell pair through `overlaps_between`, and the convexity conjunct is carried as a `ConvexityDischarge` datum whose two inhabitants are the left-connected-over-acyclic-target discharge and the re-check-required refusal.
+- **Whether the shift witness tile set is deterministic and satisfies the cube property.** Answered positive at small-scope-exhaustive grade ([[#template-games-spike-01]]); what stays open is the grade itself — a property-based pass or a proof would settle it — and every tile-level transfer inherits the verdict's grade meanwhile ([[#template-games-rung-02]]).
+- **Whether the store-transition ambient gandr would need is adhesive.** Satisfiability was **inferred** from the corpus's own record that labelled directed hypergraphs are a presheaf topos; it was not proved that gandr's certificate supports can be presented in that ambient, and the argument fails if they must be computads — [[#template-games-rung-01]].
+- **The three-conjunct guard was read from the shift module's own documentation rather than from its body.** Verified against the tree at write time for this document: `gandr-theory-computads`'s `shift` module exists and documents the three conjuncts and their order, `derive_shift_equivalence` is its constructor, `ShiftObstruction` is the typed refusal, the overlap conjunct is asked of the cell pair through `overlaps_between`, and the convexity conjunct is carried as a `ConvexityDischarge` datum whose two inhabitants are the left-connected-over-acyclic-target discharge and the re-check-required refusal.
   **What is verified is the interface and its documented contract, not that the body decides what the documentation says it decides.**
-* **The polarized-footprint prototype was read the same way, at its module documentation and its symbols rather than at its bodies.** Verified against the tree at write time: the `footprint` module of the same crate exists, `MatchFootprint` carries the `written`, `read`, and `framed` splits over the alphabet's own position type, `match_footprint` reads it off one `CellApp` firing, `footprint_independence` returns a `FootprintIndependence` whose three inhabitants are independence and the two collisions, and the module states that nothing calls into it.
+- **The polarized-footprint prototype was read the same way, at its module documentation and its symbols rather than at its bodies.** Verified against the tree at write time: the `footprint` module of the same crate exists, `MatchFootprint` carries the `written`, `read`, and `framed` splits over the alphabet's own position type, `match_footprint` reads it off one `CellApp` firing, `footprint_independence` returns a `FootprintIndependence` whose three inhabitants are independence and the two collisions, and the module states that nothing calls into it.
   **What is verified is again the interface and what the module says it decides.**
-* **No bibliography key beyond the four cited sources was checked by the read.** All four keys cited in this document were checked against `bibliography.yml` at write time, including the technical report's own key, which is a separate entry because the report is a separate artifact.
+- **No bibliography key beyond the four cited sources was checked by the read.** All four keys cited in this document were checked against `bibliography.yml` at write time, including the technical report's own key, which is a separate entry because the report is a separate artifact.
 
 **The differential-linear-logic template model is cited for two things and read in full, and it carries almost no proofs of its own.** [@mellies-2019-template-games-dll] was read in full — cover, thirteen-page body, and its appendix — with identity checked from page 1.
 This document cites it for the span 2-cell hazard and its localization ([[#The span hazard the cobordism route inherits]]) and once as a cross-line input ([[#Cross-line inputs, and where they belong]]), and for nothing else.

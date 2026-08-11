@@ -6,10 +6,10 @@
 
 ## Summary
 
-* **472 artifacts**: 181 absorb, 98 distill, 78 drop, 115 reference-only; 184 carry external literature citations.
+- **472 artifacts**: 181 absorb, 98 distill, 78 drop, 115 reference-only; 184 carry external literature citations.
   Includes the 2026-07-19 supplemental sweep of the wyrd-notes archive/** and dialogues/** trees missed by the first pass (61 files; the performance/implementation-model digests carry inline content summaries).
-* Disposition key: **absorb** = content gandr's greenfield docs must carry forward substantially; **distill** = extract/summarize (conclusions matter, bulk does not); **reference-only** = citable history, linked not imported; **drop** = no forward value.
-* The W1–W18 round-trip policy PROPOSAL (owner decision pending) is in the iu-notes section.
+- Disposition key: **absorb** = content gandr's greenfield docs must carry forward substantially; **distill** = extract/summarize (conclusions matter, bulk does not); **reference-only** = citable history, linked not imported; **drop** = no forward value.
+- The W1–W18 round-trip policy PROPOSAL (owner decision pending) is in the iu-notes section.
 
 ## wyrd@failed-refactor — docs/gandr (spec, proposals, registries)
 

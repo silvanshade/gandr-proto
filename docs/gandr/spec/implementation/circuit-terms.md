@@ -3,13 +3,13 @@
 This document owns the circuit-term lane end to end: what it means for gandr to _compute_ with terms of the full circuit algebra, what the tree carries today, what must be built, and in what order.
 It exists as its own component because the lane crosses every layer — the sequent IL, the L machine, the cell alphabet, the matching and normalization engines, the description universe, the checker, and the surface — and because the [[../metatheory#The substrate is the full circuit-algebra rung|generality ruling]] makes circuit structure a feature the rest of the language is expected to be designed _around_ rather than one that arrives late.
 
-* Status: **design component; the substrate is audited and nothing is built.** Both ends of the multi-output special case exist and the middle is empty; the other three axes are not representable anywhere above the carrier.
+- Status: **design component; the substrate is audited and nothing is built.** Both ends of the multi-output special case exist and the middle is empty; the other three axes are not representable anywhere above the carrier.
   Every as-built claim below names the crate and symbol it was verified against.
-* The **rewriting question is settled at theorem grade** as of 2026-08-01: the applicable instance is convex double-pushout rewriting with interfaces over monogamous acyclic hypergraphs, its fragment matches three of gandr's four axes exactly, and confluence there is decidable.
+- The **rewriting question is settled at theorem grade** as of 2026-08-01: the applicable instance is convex double-pushout rewriting with interfaces over monogamous acyclic hypergraphs, its fragment matches three of gandr's four axes exactly, and confluence there is decidable.
   What that pass opened is smaller and sharper than what it closed — a convexity hazard on a TCB-adjacent quotient, the wheel axis falling outside every published statement, and the fan-out obligation the retired asymmetry had hidden.
   The first two are now answered in place: the quotient's guard gains a convexity re-check with a left-connected discharge, and the wheel axis is carried by matching the **cut-open** form alone, under the delay's own path extension.
-* The carrier-side facts are landed and machine-checked (the carrier record has migrated — the corpus README's migration banner); the surface half of the same question is the design sketch [[../surface-language/circuit-cells]], whose concrete syntax is deliberately unsettled and lands last.
-* The mathematics of the arity is the metatheory track's [[../metatheory#Cellular data — descriptions, cells, and computads|bridge-diagram account]]; nothing here proposes changing the carrier.
+- The carrier-side facts are landed and machine-checked (the carrier record has migrated — the corpus README's migration banner); the surface half of the same question is the design sketch [[../surface-language/circuit-cells]], whose concrete syntax is deliberately unsettled and lands last.
+- The mathematics of the arity is the metatheory track's [[../metatheory#Cellular data — descriptions, cells, and computads|bridge-diagram account]]; nothing here proposes changing the carrier.
 
 ## The scope, and why multi-out alone is the wrong frame
 
@@ -33,9 +33,9 @@ It is not the destination.
 
 **Three further faces belong to this lane and have no home elsewhere**, because they are what "computing with" means beyond "representing":
 
-* **matching** — what it means for a circuit pattern to match a circuit term once the pattern is not a tree;
-* **normalization** — what a normal form _is_ for these terms, and whether it needs machinery of its own;
-* **the crate boundary** — the proposal that this machinery lives in a new `theory-circuit-algebras` beside the existing theory crates, rather than growing inside `theory-computads`.
+- **matching** — what it means for a circuit pattern to match a circuit term once the pattern is not a tree;
+- **normalization** — what a normal form _is_ for these terms, and whether it needs machinery of its own;
+- **the crate boundary** — the proposal that this machinery lives in a new `theory-circuit-algebras` beside the existing theory crates, rather than growing inside `theory-computads`.
 
 ## Many-out, fan-out, fan-in, supply, and Frobenius, in plain terms
 
@@ -44,9 +44,9 @@ An earlier revision of this section stated a **fan-out/fan-in asymmetry that the
 
 Three things get confused under two words, and the corpus needs all three apart.
 
-* **Many-out** is one cell with several output _ports_, each carrying a different result to one destination.
-* **Fan-out** is one _wire_ going to two places — the same value arriving twice.
-* **Fan-in** is two wires arriving at one place.
+- **Many-out** is one cell with several output _ports_, each carrying a different result to one destination.
+- **Fan-out** is one _wire_ going to two places — the same value arriving twice.
+- **Fan-in** is two wires arriving at one place.
 
 **Many-out is free**, in the exact sense that it needs no structure on the type: a cell's several results are named by the arity's target map, and nothing has to be decided.
 This is the Π-layer of the bridge diagram, and it is what "routing is free" correctly names.
@@ -98,11 +98,11 @@ The recorded reversal conditions exist to make that question cheap; this section
 
 Ambient free fan-in is declined for three reasons, in order of force.
 
-* **It would make structural an invariant that gandr deliberately made refutable.** The governing principle is stated once and binds everywhere: _an invariant can be structural or refutable, never both in one type_.
+- **It would make structural an invariant that gandr deliberately made refutable.** The governing principle is stated once and binds everywhere: _an invariant can be structural or refutable, never both in one type_.
   If every object supplied Frobenius, "this diagram fans in lawfully" would be true by construction and the obligation would stop being checkable — the same failure mode as a wheel guard becoming unfalsifiable when no program can write a wheel.
-* **It is not true of gandr's targets.** A session channel, a linear resource, and an affine capability do not carry a commutative monoid, and supplying one would silently license merging two channels or two capabilities into one.
+- **It is not true of gandr's targets.** A session channel, a linear resource, and an affine capability do not carry a commutative monoid, and supplying one would silently license merging two channels or two capabilities into one.
   The obligation is not bureaucracy; the types genuinely differ in whether they have it.
-* **It sits at the wrong rung.** gandr's carrier is the **nonunital (downward)** circuit-algebra rung: the wiring datum pairs every source with a partner, no constructor pairs two sinks, and consequently the nodeless loop is inexpressible and no scalar has to be assigned to a free loop.
+- **It sits at the wrong rung.** gandr's carrier is the **nonunital (downward)** circuit-algebra rung: the wiring datum pairs every source with a partner, no constructor pairs two sinks, and consequently the nodeless loop is inexpressible and no scalar has to be assigned to a free loop.
   Frobenius structure brings cups with it, and the standing instruction is explicit — if a cup is ever added, three consequences go at once, and **a cup must not be added merely to make an operation total**.
 
 **The reversal condition, stated so it is checkable.** The decline covers _ambient, unconditional_ supply.
@@ -117,9 +117,9 @@ Whenever a decline has that form, the question to ask before treating it as sett
 
 The pattern's ingredients, in the order they have to be established:
 
-* a **carrier of the obligation** — what it means for one type to have the structure, expressible in gandr's own formers rather than as an ambient axiom;
-* a **checked judgement** — the obligation is discharged at the declaration, with a decline and a diagnostic when it is not;
-* a **preserved refuter** — the invariant stays falsifiable, because a program can still write the thing that lacks the structure and be told so.
+- a **carrier of the obligation** — what it means for one type to have the structure, expressible in gandr's own formers rather than as an ambient axiom;
+- a **checked judgement** — the obligation is discharged at the declaration, with a decline and a diagnostic when it is not;
+- a **preserved refuter** — the invariant stays falsifiable, because a program can still write the thing that lacks the structure and be told so.
 
 Four standing declines are candidates for exactly this treatment, and each is recorded here as a candidate rather than as a proposal.
 
@@ -164,9 +164,9 @@ Getting it per type, on the types that genuinely have the structure, is a strict
 **That row now has a construction rather than a hope, and it is the literature's own worked case.** A per-type supply of Frobenius structure, expressed _inside_ a Frobenius-free symmetric monoidal theory, is a pair of generators $\{μ : 2 → 1, δ : 1 → 2\}$ on that type with the Frobenius equations oriented as rules — which is the theory of **Frobenius semi-algebras**, the first case study of the correspondence paper.
 Three facts transfer with it, each cited at its own statement:
 
-* it is **terminating**, by a lexicographic reduction ordering that counts µ-trees and µ→δ paths [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44];
-* **acyclicity is load-bearing in that proof** — the authors state that if the two hyperedges of a Frobenius rule's left-hand side lay on a directed cycle, an infinite rewrite sequence is possible — so the supply and the wheel axis are **not independent**, and admitting wheels costs the termination argument rather than merely the representation;
-* it is **not confluent** — unhedged, the source's own example exhibiting one diagram with two distinct normal forms [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.3] — so the spider form is **not delivered by running these rules**; the decision procedure arrives through canonicalization at the representation ([[#circuit-terms-question-21]]), and the convexity hazard under [[#The correspondence at gandr's own rung, at theorem grade]] is the same example wearing its other hat.
+- it is **terminating**, by a lexicographic reduction ordering that counts µ-trees and µ→δ paths [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44];
+- **acyclicity is load-bearing in that proof** — the authors state that if the two hyperedges of a Frobenius rule's left-hand side lay on a directed cycle, an infinite rewrite sequence is possible — so the supply and the wheel axis are **not independent**, and admitting wheels costs the termination argument rather than merely the representation;
+- it is **not confluent** — unhedged, the source's own example exhibiting one diagram with two distinct normal forms [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.3] — so the spider form is **not delivered by running these rules**; the decision procedure arrives through canonicalization at the representation ([[#circuit-terms-question-21]]), and the convexity hazard under [[#The correspondence at gandr's own rung, at theorem grade]] is the same example wearing its other hat.
 
 > **The fan-in and fan-out rows are not independent, and the table read as four independent rows hides a fork.** A type that supplies **both** a monoid and a comonoid must say how they interact, and there are two canonical answers with opposite rewriting behaviour.
 > **Frobenius** — the spider law — makes connected diagrams **contract** to the standard form.
@@ -224,10 +224,10 @@ That scoping is correct today and **stops being correct at the moment the cell g
 
 The literature has already built the replacement [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting]:
 
-* string-diagram rewriting **modulo Frobenius structure** corresponds exactly to **double-pushout rewriting on hypergraphs**, proved sound and complete, and generalized to rewriting modulo _multiple_ Frobenius structures;
-* labelled directed hypergraphs form a **presheaf topos and are therefore adhesive**, which is what makes DPO well-behaved there;
-* the operative notion is **DPO with interfaces**, where a rewrite is taken relative to an interface that lets the diagram be glued into a larger, possibly unknown context — the interface decides which rewrites are applicable at all;
-* pushout complements are **unique when the rule's left leg is mono**, and effectively enumerable when they are not.
+- string-diagram rewriting **modulo Frobenius structure** corresponds exactly to **double-pushout rewriting on hypergraphs**, proved sound and complete, and generalized to rewriting modulo _multiple_ Frobenius structures;
+- labelled directed hypergraphs form a **presheaf topos and are therefore adhesive**, which is what makes DPO well-behaved there;
+- the operative notion is **DPO with interfaces**, where a rewrite is taken relative to an interface that lets the diagram be glued into a larger, possibly unknown context — the interface decides which rewrites are applicable at all;
+- pushout complements are **unique when the rule's left leg is mono**, and effectively enumerable when they are not.
 
 That last point is the same phenomenon gandr already records from the virtual reading — non-linear overlaps fan out into families rather than a single fused rule — arriving independently from the DPO side, which is corroboration rather than a new constraint.
 It is also **superseded at the Frobenius-free rung** by the boundary-complement result below, which restores uniqueness without the mono hypothesis.
@@ -267,17 +267,17 @@ The mono-left-leg claim the corpus carried is therefore true of the Frobenius ru
 **Confluence is decidable, and the interface is what makes it so.** For DPO-with-interfaces the Knuth–Bendix property holds: joinability of all pre-critical pairs entails local confluence [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, thm 3.1], and for a **computable terminating** such system confluence is decidable [ibid., cor 3.1].
 Two conditions travel with it and both are load-bearing:
 
-* the **ambient hypotheses** are an epi–mono factorisation system, binary coproducts, pushouts and pullbacks, adhesivity, and pushouts stable under pullbacks — which "hold in any presheaf category" and are closed under slice [ibid., asm 3.1];
-* **computable** is defined, not assumed: pullbacks computable, the set of quotients of $L_i + L_j$ finite and computable for every rule pair, and every one-step rewrite of a given $G ← J$ enumerable [ibid., sec. 3].
+- the **ambient hypotheses** are an epi–mono factorisation system, binary coproducts, pushouts and pullbacks, adhesivity, and pushouts stable under pullbacks — which "hold in any presheaf category" and are closed under slice [ibid., asm 3.1];
+- **computable** is defined, not assumed: pullbacks computable, the set of quotients of $L_i + L_j$ finite and computable for every rule pair, and every one-step rewrite of a given $G ← J$ enumerable [ibid., sec. 3].
 
 **The empty interface is the undecidable case, and the analogy is exact.** The authors' own framing: hypergraphs with empty interface are "morally the graphical analogue of ground terms", Plump's undecidability result is about them, and **ground confluence is undecidable for both terms and graphs while confluence is decidable for both** [ibid., secs. 3 and 7].
 This is the single most important sentence in the pass for gandr, because gandr's completion engine works on cell **patterns** and its overlaps carry seam data — which is to say gandr is already on the decidable side, and the honest caveat it ships is about budget rather than about undecidability.
 
 **Without Frobenius there are two routes, and gandr must choose one.**
 
-* **Left-connected systems** — left-linear, ma-rules, and every left-hand side **strongly connected** (a path from every input to every output).
+- **Left-connected systems** — left-linear, ma-rules, and every left-hand side **strongly connected** (a path from every input to every output).
   There the naive notion of critical pair is unchanged, local confluence follows from joinability of ma-pre-critical pairs, and confluence of a terminating system is decidable [ibid., def 5.6, thm 5.3, cor 5.1].
-* **Convex critical-pair analysis via formal path extensions** — for systems that are not left-connected, joinability must be checked not only for the critical pair but for its **path extensions**: the signature is extended with three formal path generators, a critical pair is **path joinable** when it joins under every _maximal path relation_, and path joinability of all ma-pre-critical pairs entails local confluence, with a near-converse over the extended signature [ibid., def 5.7–5.10, thm 5.4, thm 5.5].
+- **Convex critical-pair analysis via formal path extensions** — for systems that are not left-connected, joinability must be checked not only for the critical pair but for its **path extensions**: the signature is extended with three formal path generators, a critical pair is **path joinable** when it joins under every _maximal path relation_, and path joinability of all ma-pre-critical pairs entails local confluence, with a near-converse over the extended signature [ibid., def 5.7–5.10, thm 5.4, thm 5.5].
 
 **gandr's cell left-hand sides are strongly connected as built, so the left-connected route is the one to take.** The verdict is an argument over the pattern grammar rather than a sweep of the fixtures, because the grammar admits nothing else.
 
@@ -291,9 +291,9 @@ The spine argument discharges it for every expressible left-hand side, and the i
 
 **Strong connectedness is one conjunct of left-connectedness, and the other two are owed rather than held — so the verdict selects the route without yet putting gandr on it.** Both definitions ask three things at once: the system is **left-linear**, every rule is an **ma-rule** on both sides, and every left-hand side is **strongly connected**.
 
-* **Strong connectedness** is the conjunct discharged above, unconditionally, for every expressible left-hand side.
-* **Left-linearity** is the [[#circuit-terms-question-17|circuit-terms-question-17]] ruling, whose consequence — `CellMeta::derive`'s `linear` field turning from derived metadata into a check with a diagnostic — is owed and not built, so a repeated hole is still admitted today (`theory-computads/src/sequent.rs`, fixture `a_repeated_metavariable_is_nonlinear`).
-* **The ma-rule condition** fails for the same reason and on both sides: a repeated hole is a copy on a wire, which has out-degree two and is therefore not monogamous.
+- **Strong connectedness** is the conjunct discharged above, unconditionally, for every expressible left-hand side.
+- **Left-linearity** is the [[#circuit-terms-question-17|circuit-terms-question-17]] ruling, whose consequence — `CellMeta::derive`'s `linear` field turning from derived metadata into a check with a diagnostic — is owed and not built, so a repeated hole is still admitted today (`theory-computads/src/sequent.rs`, fixture `a_repeated_metavariable_is_nonlinear`).
+- **The ma-rule condition** fails for the same reason and on both sides: a repeated hole is a copy on a wire, which has out-degree two and is therefore not monogamous.
   On the left its fix is the linearity check; on the right it is the per-type comonoid of [[#circuit-terms-question-18|circuit-terms-question-18]].
 
 **So the two remaining conjuncts have one cause and are build items rather than research questions**, which is the useful shape of the answer: the expensive route was never forced, and what stands between gandr and the cheap one is a diagnostic it has already ruled to emit.
@@ -304,9 +304,9 @@ So this dissolves the convexity question **for the acyclic case only**, and says
 
 **The premise is a fact about gandr's current grammar rather than about the machinery, so the verdict does not survive the alphabet growth this lane exists to carry out.** Two of the four axes break it on their own, and the witness is concrete in each case.
 
-* **Multi-output** is the substrate table's own missing row — `ret` is one continuation _structurally_, not by a check.
+- **Multi-output** is the substrate table's own missing row — `ret` is one continuation _structurally_, not by a check.
   The moment it becomes several, `⟨Succ(m) | divmod(n; add(k; α), β)⟩` is expressible and is **not** strongly connected: `k` feeds the `add` frame and so reaches `α`, and nothing carries it to `β`.
-* **Disconnection** breaks it more bluntly.
+- **Disconnection** breaks it more bluntly.
   A left-hand side with two components and no wire between them has an input in one and an output in the other with no path between them, which is exactly what def 5.6 excludes; a `CmdPat` is one cut today, so no such side is writable.
 
 **Reconvergence adds no boundary node and so cannot by itself create an unreached output, and wheels are excluded one condition earlier by the fragment's acyclicity** — which is what makes the fork below two-way rather than four-way.
@@ -385,12 +385,12 @@ The fixpoint reading is not lost either, and this is the point most easily mista
 > A cyclic diagram does not by itself make the causal order among rewrites cyclic, so the **bracket oracle's critical path is not broken by a trace and that bullet is withdrawn**.
 > What survives is narrower and sound.
 
-* **Deterministic normalization is the load-bearing one, and what sliding takes from it is a representative rather than the order.** Normalization is deterministic by "outermost position, then store insertion order", and _outermost_ presupposes a well-founded order on positions.
+- **Deterministic normalization is the load-bearing one, and what sliding takes from it is a representative rather than the order.** Normalization is deterministic by "outermost position, then store insertion order", and _outermost_ presupposes a well-founded order on positions.
   Sliding moves a cell arbitrarily far around a loop, so no position is well-founded in the **closed** diagram — and a canonical rotation is what would restore one, at which point "outermost" is a decision again.
-* **The canonical schedule pays the same coin at lower strength.** Its "earliest causal position" is causal order among rewrites, which survives a trace; but _position_ is position in the diagram, and under sliding it is defined only **up to rotation**.
+- **The canonical schedule pays the same coin at lower strength.** Its "earliest causal position" is causal order among rewrites, which survives a trace; but _position_ is position in the diagram, and under sliding it is defined only **up to rotation**.
   So the schedule needs a canonical rotation it does not have — one more `canon` obligation, not an undefined notion.
-* **Those two are therefore one fact at two strengths, and the corpus's currency for a quotiented notion is a `canon` obligation.** Sliding quotients the position order rather than destroying it, which is a real price and not an impossibility — and that is what makes the decline a choice rather than a forced move.
-* **Yanking is a distinct cost, though not an independent axiom.** It erases a step, so replay-equivalence would owe closure under an equation that deletes one from a record whose purpose is to have recorded it.
+- **Those two are therefore one fact at two strengths, and the corpus's currency for a quotiented notion is a `canon` obligation.** Sliding quotients the position order rather than destroying it, which is a real price and not an impossibility — and that is what makes the decline a choice rather than a forced move.
+- **Yanking is a distinct cost, though not an independent axiom.** It erases a step, so replay-equivalence would owe closure under an equation that deletes one from a record whose purpose is to have recorded it.
   Because full sliding follows from yanking, this price cannot be declined separately from the one above; taking the trace takes both [@katis-sabadini-walters-2002-feedback, prop 2.7].
 
 Under feedback none of that arises: the delay is the tick boundary, position is well-founded in the cut-open representative, and the schedule needs no rotation.
@@ -426,12 +426,12 @@ The surrogate is well-founded rather than representation-dependent for the rulin
 
 **Three fences, because this decline is easy to over-read and each over-reading would be a real error.**
 
-* **It does not touch the carrier.** `Shape` still represents wheels, wheel-freeness is still a predicate the operations do not preserve, and every refuter stands.
-* **It does not touch the arity layer, and must not be read as declining _its_ trace.** `Arity.sub`'s two-sided closure is an operation on shapes with its circles counted; it is not an equation the engine may use.
+- **It does not touch the carrier.** `Shape` still represents wheels, wheel-freeness is still a predicate the operations do not preserve, and every refuter stands.
+- **It does not touch the arity layer, and must not be read as declining _its_ trace.** `Arity.sub`'s two-sided closure is an operation on shapes with its circles counted; it is not an equation the engine may use.
   The distinction is load-bearing beyond bookkeeping: the Int construction's licence — that a result about the compact-closed ambient reaches gandr **without a cup entering the carrier** — has as its hypothesis that the wiring category be **traced**, and that hypothesis is **answered by the arity ruling's decision, with the build still owed**: the closure is ruled and partly built, and no trace axiom is yet proved in the carrier ([[../metatheory#The rung, identified]]).
   Declining the trace at the cell layer leaves that hypothesis, and therefore that licence, untouched.
   Two different things are called "the trace" one layer apart, and conflating them would silently withdraw an import gandr depends on.
-* **It does not answer the derivation dimension.** The metatheory records that what the wheel axis buys one dimension up is _cyclic derivation_ — the completion loop's fixpoints — and a cycle in the rewrite relation is not a delay-guarded loop in a diagram.
+- **It does not answer the derivation dimension.** The metatheory records that what the wheel axis buys one dimension up is _cyclic derivation_ — the completion loop's fixpoints — and a cycle in the rewrite relation is not a delay-guarded loop in a diagram.
   This ruling is about wheels in the **term** dimension; the derivation dimension is a separate question and nothing here decides it.
   > **Ruled (owner, 2026-08-02): cyclic derivations are declined, with a reversal condition.** Stated in the certificate layer's own vocabulary: a certificate is a replayed path and replay-equivalence replays recorded paths, so a derivation that returns to its own start has no replayable representative — no finite record distinguishes its fixpoint from its unrolling.
   > The interaction with the engine is named rather than implied: the completion budget already declines-and-reports on an exhausted worklist, and the reduction order is plain node count, not substitution-stable — so no well-founded measure exists on which a returning derivation could be admitted as terminating evidence, and a fixpoint the completion loop encounters reports through the budget path instead of becoming a cyclic certificate.
@@ -488,8 +488,8 @@ The thesis is therefore calibration for the engineering and a **counter-model fo
 
 Two further facts it supplies, both actionable:
 
-* its related-work section is a ready-made map of the **interface** literature — hypergraphs with interfaces, cospans of hypergraphs with discrete feet, structured and decorated cospans, and contexts in monoidal categories — with the observation that discrete feet are **not enough to talk about graph embeddings**, which is why its own interface graphs carry edges;
-* it reports that confluence for rewriting systems over hypergraphs-with-interfaces is **decidable**, which if it holds at gandr's rung bears directly on the completion engine's honest limits.
+- its related-work section is a ready-made map of the **interface** literature — hypergraphs with interfaces, cospans of hypergraphs with discrete feet, structured and decorated cospans, and contexts in monoidal categories — with the observation that discrete feet are **not enough to talk about graph embeddings**, which is why its own interface graphs carry edges;
+- it reports that confluence for rewriting systems over hypergraphs-with-interfaces is **decidable**, which if it holds at gandr's rung bears directly on the completion engine's honest limits.
 
 ### Fan-in is a supply, not a per-cell side condition
 
@@ -519,11 +519,11 @@ Inversion commutes with the binder: `inv(α x. A) = α x. inv(A)`.
 
 What transfers:
 
-* **the binder itself** — an internal wire is a scoped name that leaves the interface, which is the construct gandr's circuit bodies lack and the thing that makes a body's interface computable rather than declared;
-* **`rwf` as the shape of gandr's disjointness check** — the circuit-cells sketch says two redexes are disjoint iff they share no port name, and that making disjointness a name check rather than a reader's assertion is the trigger that reopens the horizontal-composition decline.
+- **the binder itself** — an internal wire is a scoped name that leaves the interface, which is the construct gandr's circuit bodies lack and the thing that makes a body's interface computable rather than declared;
+- **`rwf` as the shape of gandr's disjointness check** — the circuit-cells sketch says two redexes are disjoint iff they share no port name, and that making disjointness a name check rather than a reader's assertion is the trigger that reopens the horizontal-composition decline.
   `rwf` is a published, worked instance of that check: a syntax-directed fold whose only failure mode is non-disjointness;
-* **the two-ended obligation** — the bound wire owes a condition at both ends, which is the same shape as the feedback rung's requirement that a fed-back port be delayed;
-* **the honest limit, which transfers as a warning** — the authors state that reversible-well-formedness is necessary but **not sufficient** once ancillae are present, because whether the bound wire really holds the required value at both ends is a **semantic** check the syntactic fold cannot make.
+- **the two-ended obligation** — the bound wire owes a condition at both ends, which is the same shape as the feedback rung's requirement that a fed-back port be delayed;
+- **the honest limit, which transfers as a warning** — the authors state that reversible-well-formedness is necessary but **not sufficient** once ancillae are present, because whether the bound wire really holds the required value at both ends is a **semantic** check the syntactic fold cannot make.
   Read into gandr: the name-level disjointness check will not discharge the delay obligation, and expecting it to would be the error.
 
 What does not transfer: its primitives (identity and not, with Boolean control), its permutation semantics over symmetric groups, and the physical ancilla-reuse motivation.
@@ -543,11 +543,11 @@ The source's own related work names **call-by-push-value** as the closest transl
 
 **Three details make this actionable rather than decorative, and one of them is an argument for representing the spine.**
 
-* **Not representing it costs locality of substitution.** The authors consider the cheap alternative — keep a side table of which morphisms must not interchange — and reject it by a worked failure: knowing $f = g ; h$ no longer licenses substituting $g ; h$ for $f$ inside a larger diagram, because the relative order of $g$, $h$ and a neighbouring effectful $k$ becomes meaningful [ibid., rmk 2.8].
+- **Not representing it costs locality of substitution.** The authors consider the cheap alternative — keep a side table of which morphisms must not interchange — and reject it by a worked failure: knowing $f = g ; h$ no longer licenses substituting $g ; h$ for $f$ inside a larger diagram, because the relative order of $g$, $h$ and a neighbouring effectful $k$ becomes meaningful [ibid., rmk 2.8].
   Read into gandr: **a structural spine is exactly such a side table**, and locality of substitution is precisely the property gandr's matcher needs once a match is a sub-diagram embedding rather than a position.
-* **The runtime is a linear resource in the Drinfeld centre.** It braids past every object, so its position in the interface does not matter (formalised as a _braid clique_), but it is neither copied nor discarded [ibid., def 3.8–3.10].
+- **The runtime is a linear resource in the Drinfeld centre.** It braids past every object, so its position in the interface does not matter (formalised as a _braid clique_), but it is neither copied nor discarded [ibid., def 3.8–3.10].
   A represented gandr spine would inherit both properties, and the second is the one that makes it a resource rather than a label.
-* **One runtime means one sequentialization, and that is in direct tension with the disconnection axis.** The trace-theory development states it plainly: the runtime string appears **only once in each string diagram**, reflecting that premonoidal categories have no tensor product on morphisms, and the resulting endomorphism monoid is the **free** monoid on the generators — every order distinct [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34].
+- **One runtime means one sequentialization, and that is in direct tension with the disconnection axis.** The trace-theory development states it plainly: the runtime string appears **only once in each string diagram**, reflecting that premonoidal categories have no tensor product on morphisms, and the resulting endomorphism monoid is the **free** monoid on the generators — every order distinct [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34].
   A single represented spine would therefore make every cell depend on every other, which is the opposite of what gandr's disconnection axis is for.
 
 **The trace-theory line supplies the identification, and it names gandr's shift equivalence.** Mazurkiewicz trace languages are exactly symmetric monoidal languages over **monoidal distributed alphabets**, where each generator carries a set of locations and independence is disjointness of location sets [ibid., thm 22]; and the serialization square commutes — the free monoid on the generators (the premonoidal, one-runtime reading) quotients onto the trace monoid (the monoidal reading) by erasing the runtime [ibid., thm 35]. gandr's certificate normal form is a primitive multiset plus a canonical schedule, quotiented by "adjacent applications at disjoint positions commute"; **that is the trace monoid of the independence relation "disjoint support"**, and the canonical schedule is its normal form.
@@ -638,19 +638,19 @@ The span-level datum a match yields is the ruled pair of partial bijections, res
 **Convexity is checked once per completed candidate, and a refusal is evidence rather than a filter**: the refused candidate is kept, naming the wire the path escapes on, the generator outside the image it runs through, and the wire it re-enters on.
 Three as-built facts bound the check, and each is a placement decision rather than a detail.
 
-* **The fragment's hypotheses are enforced where a diagram is assembled, never at match time.** Monogamy, mono boundary legs, declared open ports and acyclicity are conditions of the diagram view's own constructor, so every theorem quoted above has its hypothesis as an invariant of the type rather than as a check a caller could route around — and the delay fence of [[#circuit-terms-spike-08|circuit-terms-spike-08]] is realized there as a refusal rather than as a caveat: a re-closed body is refused as cyclic, so no cut-open verdict can travel to it.
-* **The two routes are computed, not accepted.** A strongly connected pattern over an acyclic target takes the discharge; everything else takes a directed sweep from every image output through the **whole complement** of the image.
+- **The fragment's hypotheses are enforced where a diagram is assembled, never at match time.** Monogamy, mono boundary legs, declared open ports and acyclicity are conditions of the diagram view's own constructor, so every theorem quoted above has its hypothesis as an invariant of the type rather than as a check a caller could route around — and the delay fence of [[#circuit-terms-spike-08|circuit-terms-spike-08]] is realized there as a refusal rather than as a caveat: a re-closed body is refused as cyclic, so no cut-open verdict can travel to it.
+- **The two routes are computed, not accepted.** A strongly connected pattern over an acyclic target takes the discharge; everything else takes a directed sweep from every image output through the **whole complement** of the image.
   The discharge is not a datum the matcher takes on a caller's word, and its agreement with the sweep where both apply is a differential against the sweep as external oracle rather than a documented claim.
-* **The re-check the guard's third conjunct names is built here.** [[#circuit-terms-spike-07|circuit-terms-spike-07]] recorded it as not built, which is why `theory-computads`'s discharge datum refuses a shift rather than assuming one; the sweep is that re-check, and it arrives without moving the engine's datum and without the downward dependency the boundary forbids.
+- **The re-check the guard's third conjunct names is built here.** [[#circuit-terms-spike-07|circuit-terms-spike-07]] recorded it as not built, which is why `theory-computads`'s discharge datum refuses a shift rather than assuming one; the sweep is that re-check, and it arrives without moving the engine's datum and without the downward dependency the boundary forbids.
 
 **The reading a matcher needs forces one owed question, and it is declined rather than taken.** Indexing a command pattern as a diagram must decide whether a name worn at both polarities is one interface node or two — the divergence the block quote at [[#The correspondence at gandr's own rung, at theorem grade]] records between the matcher's keying and the derived metadata's.
 The reading refuses that shape with a diagnostic naming the hole instead of choosing, so the answer stays owed at the circuit rung rather than being settled in passing by an index.
 
 **Normalization.** Two normal-form questions must be kept apart, and conflating them is the hazard.
 
-* _Diagram normal form_ — when do two circuit terms denote the same diagram?
+- _Diagram normal form_ — when do two circuit terms denote the same diagram?
   For the connected Frobenius case this is the spider collapse; in general it is a graph-isomorphism-flavoured question, and the corpus's own linear-time acyclicity test is a different and weaker check.
-* _Rewriting normal form_ — the result of running the rewrite system to completion, which is what the certificate algebra already means by normalization.
+- _Rewriting normal form_ — the result of running the rewrite system to completion, which is what the certificate algebra already means by normalization.
 
 The first is a property of the representation and is what content-addressing must intern on; the second is a property of the theory. gandr's `Rigid` device is where the first lands, and `Rigid.canon-sound` at the circuit rung is the standing obligation that owes it.
 **Whether the first needs machinery of its own is the lane's largest unpriced question**, and it is what would justify a crate of its own.
@@ -671,13 +671,13 @@ The selected linearization is produced by a deterministic **traversal**, so ther
 
 Three further as-built facts bound the face.
 
-* **It is not a graph-isomorphism search, and monogamy is why.** The expensive part of graph canonicalization is branching over candidates for the next vertex; here a hyperedge's image is forced by any one of its wires, so a whole component is determined by one seed.
+- **It is not a graph-isomorphism search, and monogamy is why.** The expensive part of graph canonicalization is branching over candidates for the next vertex; here a hyperedge's image is forced by any one of its wires, so a whole component is determined by one seed.
   A component holding a boundary port costs one traversal.
   A component holding none has no anchor, so a seed is chosen inside it by trying every member and keeping the least linearization — `O(k²)` in that component and no search — and such components are then committed in the order of those winning linearizations, so both the seed and the component order are invariants of the diagram rather than of its presentation.
-* **The premises are two of the diagram view's refusals, and acyclicity is _not_ one of them.** Monogamy is what makes the traversal choice-free and what makes the diagram view faithful at all; boundary honesty is what makes the numbering total, since an isolated wire is a port of nothing and is reached only because both legs must declare it.
+- **The premises are two of the diagram view's refusals, and acyclicity is _not_ one of them.** Monogamy is what makes the traversal choice-free and what makes the diagram view faithful at all; boundary honesty is what makes the numbering total, since an isolated wire is a port of nothing and is reached only because both legs must declare it.
   Acyclicity is a premise of the matching face's convexity discharge and is not a premise here, because the traversal terminates on a visited set either way — so when the wheel axis lifts the acyclic hypothesis at rung-09 this face needs no new argument.
   That is recorded rather than verified: no cyclic diagram view is constructible today, so there is no fixture to check it on.
-* **The `Rigid` correspondence is exact, and the metatheory's own instance stays owed.** The diagram view is the setoid, the canonical form is the splitting `Nf`, canonicalization is `nf`, reading a canonical form back as a diagram is `emb`, the returned relabelling is `canon-≈` as a **checkable witness**, and the derived equality on canonical forms is `_≟_`; `canon-sound` is derived in `Rigid` from `canon-≈`, so the decision procedure returns the shared form together with **both** relabellings rather than a bare verdict, and nothing is handed over as an unguarded equality fast path.
+- **The `Rigid` correspondence is exact, and the metatheory's own instance stays owed.** The diagram view is the setoid, the canonical form is the splitting `Nf`, canonicalization is `nf`, reading a canonical form back as a diagram is `emb`, the returned relabelling is `canon-≈` as a **checkable witness**, and the derived equality on canonical forms is `_≟_`; `canon-sound` is derived in `Rigid` from `canon-≈`, so the decision procedure returns the shared form together with **both** relabellings rather than a bare verdict, and nothing is handed over as an unguarded equality fast path.
   What this does **not** discharge is [[../metatheory/roadmap|the metatheory roadmap]]'s `Rigid.canon-sound` at the circuit rung, which is a normal form on the carrier's construction terms over merger and contraction — permutations outermost, ordered tree monomials, unique minimal representative — a different object at the other layer.
   That the two agree is not assumed here, and it is no longer this block's to record.
   It is scheduled as [[../metatheory/roadmap#meta-obligation-01|meta-obligation-01]], which states the claim, what would discharge it, and the counterexample that would refute it.
@@ -768,13 +768,13 @@ If a family of circuit formers covers tupling and casing, keeping eager products
 
 **Carried, and the largest open design question in the lane.** Four sub-questions travel with it and none is answered here.
 
-* _Polarity_ — products and sums are **positive** value formers with a settled call-by-push-value story; a circuit term is an interface with input and output ports, and which side of the value/computation split it lands on is undecided.
+- _Polarity_ — products and sums are **positive** value formers with a settled call-by-push-value story; a circuit term is an interface with input and output ports, and which side of the value/computation split it lands on is undecided.
   Ports carry polarity already, in the carrier's own orientation morphism, so the question is whether the two polarities are one notion at two layers or two notions wearing one word.
-* _Semantics_ — a subsuming family is indexed by its arity, so it is a family of formers rather than a former, and gandr's frozen core has no arity-indexed formers.
+- _Semantics_ — a subsuming family is indexed by its arity, so it is a family of formers rather than a former, and gandr's frozen core has no arity-indexed formers.
   The justification would have to be a levitated description, not a kernel addition — which is a point in favour, since the description layer is where arities already live.
-* _Pattern matching_ — case analysis on a sum is an eliminator with one arm per constructor; matching on a circuit term is embedding, and the two do not obviously unify.
+- _Pattern matching_ — case analysis on a sum is an eliminator with one arm per constructor; matching on a circuit term is embedding, and the two do not obviously unify.
   Whether copatterns are the bridge is the specific version of this to answer first.
-* _Presentation_ — if both are kept, the distinction has to be legible in syntax and in cost, and "these two things look the same and behave differently" is the failure mode the surface's design stance exists to prevent.
+- _Presentation_ — if both are kept, the distinction has to be legible in syntax and in cost, and "these two things look the same and behave differently" is the failure mode the surface's design stance exists to prevent.
 
 ### circuit-terms-question-10
 
@@ -932,9 +932,9 @@ The failure mode to watch is the one the corpus names for the planar quotient ge
 **Does the hypergraph DPO-with-interfaces instance apply to gandr's circuit cells?** Take one circuit cell shape, write it as a hypergraph with interface, and check three claims: that the interface is the coproduct of the cell's input and output ports, that gandr's rules have mono left legs so pushout complements are unique, and that a rewrite respecting the interface is the same relation as a gandr cell application.
 **EXECUTED (2026-08-01), and the numbering is retained rather than reused.** Its three claims resolved as follows, against the sources rather than against a toy encoding.
 
-* **The interface is the coproduct of the cell's input and output ports** — **confirmed as the setting's own definition**: a rule is $L ← i + j → R$ with $i + j$ discrete, and a hypergraph with interface is $G ← n + m$ for the ma-cospan $n → G ← m$ [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, sec. 5.1].
-* **gandr's rules have mono left legs, so pushout complements are unique** — **the wrong question at this rung, and it dissolves.** The Frobenius-free theory does not use plain pushout complements; it uses **boundary complements**, which are unique whenever they exist, explicitly including rules that are not left-linear [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, prop 31]. gandr did **not** have mono left legs in general when this spike ran — non-linear patterns were admitted and their linearity recorded as derived metadata — so the claim as posed would have failed; the uniqueness gandr needs comes from elsewhere and is unconditional, which is why the linearity ruling at [[#circuit-terms-question-17|circuit-terms-question-17]] leaves this finding standing even though it has since removed the admitted non-linear case.
-* **A rewrite respecting the interface is the same relation as a gandr cell application** — **confirmed for the correspondence and not yet for gandr.** The correspondence is an iff for arbitrary rewriting systems over arbitrary (including coloured) symmetric monoidal theories, at [ibid., thm 35 and thm 39], **provided the rewrite is convex**; whether gandr's cell application is convex is not a fact about the literature and is now [[#circuit-terms-question-15|circuit-terms-question-15]].
+- **The interface is the coproduct of the cell's input and output ports** — **confirmed as the setting's own definition**: a rule is $L ← i + j → R$ with $i + j$ discrete, and a hypergraph with interface is $G ← n + m$ for the ma-cospan $n → G ← m$ [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, sec. 5.1].
+- **gandr's rules have mono left legs, so pushout complements are unique** — **the wrong question at this rung, and it dissolves.** The Frobenius-free theory does not use plain pushout complements; it uses **boundary complements**, which are unique whenever they exist, explicitly including rules that are not left-linear [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, prop 31]. gandr did **not** have mono left legs in general when this spike ran — non-linear patterns were admitted and their linearity recorded as derived metadata — so the claim as posed would have failed; the uniqueness gandr needs comes from elsewhere and is unconditional, which is why the linearity ruling at [[#circuit-terms-question-17|circuit-terms-question-17]] leaves this finding standing even though it has since removed the admitted non-linear case.
+- **A rewrite respecting the interface is the same relation as a gandr cell application** — **confirmed for the correspondence and not yet for gandr.** The correspondence is an iff for arbitrary rewriting systems over arbitrary (including coloured) symmetric monoidal theories, at [ibid., thm 35 and thm 39], **provided the rewrite is convex**; whether gandr's cell application is convex is not a fact about the literature and is now [[#circuit-terms-question-15|circuit-terms-question-15]].
 
 **The verdict is that the corpus's scoping is re-scoped, not contradicted**, and the re-scoping is written at [[#The correspondence at gandr's own rung, at theorem grade]].
 
@@ -982,20 +982,20 @@ That is boundary equality plus two replays, which is the decision the normal for
 **What the tree does carry is the two ingredients the test would be assembled from, and their shapes decide the answers below.** A **position** is `Pos(Box<[usize]>)`, a path of child indices into the pattern tree, and an application is a `CellApp { cell, at }` over one (`theory-computads/src/pattern.rs`; `theory-computads/src/rewrite.rs`); an **overlap** is a property of an ordered _cell pair_, computed by `enumerate_overlaps` at the cut seam and at command seams inside the left cell's right-hand side, never at a pair of positions in one term (`theory-computads/src/overlap.rs`).
 So the test the quotient asks for reads, as built, as **two `Pos` paths of which neither is a prefix of the other**, conjoined with a cell-pair overlap lookup — and the two conjuncts live in different indexes, which is what the third answer turns on.
 
-* Does an analogous pair exist over gandr's cell fragment once patterns are circuit-shaped, or does the cut-rooted left-hand-side discipline already exclude it?
+- Does an analogous pair exist over gandr's cell fragment once patterns are circuit-shaped, or does the cut-rooted left-hand-side discipline already exclude it?
   **No witness exists over the as-built alphabet, and the exclusion is over-determined: two independent arguments give it, at different strengths.** The first is the correspondence's own: every expressible left-hand side is strongly connected, so on an acyclic target **every** match is convex, unconditionally [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 38] — and no rewrite can destroy a property that no match is able to fail.
   That is stronger than "these two applications do not interfere": non-convexity is **unreachable** in the fragment, which is why the blocking pair cannot be assembled rather than merely failing to turn up.
   The second is a fact about the representation, and it makes the hazard vacuous before the theorem is invoked at all: a `Pos` addresses a subtree, two incomparable positions address **disjoint subtrees**, and the only route between disjoint subtrees of a term runs up to their common ancestor and back down — which is not a directed path from an output of an image back to an input of it.
   A term tree has no cross edges, and the counterexample is built out of one.
   **The two arguments are not interchangeable, and the difference is the disposition.** The first rests on thm 38 conjoined with a fact about today's grammar; the second rests on the representation alone.
   Both of those premises are premises about **us**, so this is a fence over the current alphabet and never a refutation of the hazard — which is the honest form for it to take, because the alphabet is precisely what this lane changes.
-* If it exists, is the repair a strengthened disjointness predicate (disjoint **and** no new path created between the other match's boundary), or a fence of the shift quotient to left-connected left-hand sides — a fence that costs nothing today and costs exactly those two axes afterwards?
+- If it exists, is the repair a strengthened disjointness predicate (disjoint **and** no new path created between the other match's boundary), or a fence of the shift quotient to left-connected left-hand sides — a fence that costs nothing today and costs exactly those two axes afterwards?
   **The strengthened predicate is selected, and the fence is retained inside it as a discharge rather than declined.** The two are not alternatives at one layer: the fence is a property of the **rule set**, checkable once per cell at insertion, while the predicate is a property of a **pair of applications in one term**, checkable only where that pair is commuted.
   The fence is declined as the primary answer for a reason about the fence rather than about gandr's taste for it: strong connectedness is broken by multi-output and by disconnection, with a witness recorded for each ([[#The correspondence at gandr's own rung, at theorem grade]]), so fencing the quotient to left-connected left-hand sides fences out the two axes this lane exists to add.
   **The predicate's correct statement is not "no new path" but the convexity re-check that phrase is reaching for**, and stating it that way is what makes it warranted rather than invented: two applications may commute when each match image is still **convex in the other's reduct**.
   The two phrasings agree immediately — the images are disjoint, so every path internal to each is untouched, and any new violation is a path that leaves an image and returns through the region the other application rewrote, which is exactly the output-to-input path a convex match forbids [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 22 and def 33].
   **The fence then becomes the predicate's own fast path.** A store certified left-connected makes the re-check provably constant-true by thm 38, so it is skipped rather than run — and that certificate is the natural first inhabitant of the tractability witness the roadmap owes, which is where a TCB-adjacent fast path's soundness evidence was always going to live.
-* Either way, what does the `cells_equal` fast path have to check before it may commute two applications, and does that check stay cheap enough to keep the fast path a fast path?
+- Either way, what does the `cells_equal` fast path have to check before it may commute two applications, and does that check stay cheap enough to keep the fast path a fast path?
   **The guard is four conditions and only the third is new.** The positions are incomparable — neither `Pos` a prefix of the other; the cell pair has trivial overlap; **each match image is convex in the other's reduct**; and that third condition is discharged outright when the store carries a left-connectedness certificate and the target is acyclic.
   **The check is cheap per query, and the cost lands somewhere other than where the question expected it.** Convexity of one match is a directed reachability sweep from the image's outputs, $O(|G|)$ in the target, and it is what raises match enumeration from $O(|L| \cdot |G|)$ to $O(|L| \cdot |G|^{2})$ in the source's own sizes (Remark 36 of the same paper) — while the competitor it has to beat is the as-built decision, whose two replays run `rewrite_at` once per step and are therefore already $Ω(k \cdot |G|)$ for a $k$-step certificate (`theory-computads/src/tracelet.rs`).
   One guarded commutation thus costs what one replay step costs, and the fast path stays ahead by the factor the replay pays over the whole path.
@@ -1009,17 +1009,17 @@ So the test the quotient asks for reads, as built, as **two `Pos` paths of which
 **As built (2026-08-02): the guard has its first consumer, and it is a constructor rather than a fast path.** `gandr-theory-computads`'s `shift::derive_shift_equivalence` decides the three conjuncts in the order stated above and refuses the pair — a typed obstruction, never a panic and never a silent identity — when any fails; the convexity conjunct is carried as a datum naming its warrant, answered per store by the alphabet, instead of being recomputed; and the independence question is asked of the cell pair alone, through an `overlaps_between` extracted from the store-wide enumerator without changing what it reports.
 Two as-built facts arrived with it, and both bound where the guard bites.
 
-* **The quotient's extension over the sequent alphabet is still empty, and now for a stated reason rather than for want of a predicate.** A `CmdPat` is one cut whose children are a producer and a consumer, so a term has exactly one command position and no two applications can ever be incomparable; the guard is a specification the alphabet has not reached, and it becomes live the moment an alphabet nests commands — which is what a circuit-shaped body does.
-* **The overlap enumerator counts a metavariable position as a seam.** Over an alphabet whose every subterm is a command position, a cell whose right-hand side exposes a hole therefore overlaps every cell, so the trivial-overlap conjunct is strictly stricter than the critical-pair notion it is named after, which excludes variable positions.
+- **The quotient's extension over the sequent alphabet is still empty, and now for a stated reason rather than for want of a predicate.** A `CmdPat` is one cut whose children are a producer and a consumer, so a term has exactly one command position and no two applications can ever be incomparable; the guard is a specification the alphabet has not reached, and it becomes live the moment an alphabet nests commands — which is what a circuit-shaped body does.
+- **The overlap enumerator counts a metavariable position as a seam.** Over an alphabet whose every subterm is a command position, a cell whose right-hand side exposes a hole therefore overlaps every cell, so the trivial-overlap conjunct is strictly stricter than the critical-pair notion it is named after, which excludes variable positions.
   That is the enumerator's gap to close and not the guard's to work around, and it is why a two-redex fixture needs ground right-hand sides today.
 
 **As built (2026-08-02): the guard's first _surface_ consumer was attempted and declined, and what blocks it is not the alphabet.** The ruled `cong2` block now lowers, so its two-redex body reaches the boundary-language elaboration and is refused a single whiskered composite, carrying both occurrences at positions `[0]` and `[1]`.
 Consuming `derive_shift_equivalence` there was attempted and is **not sound to wire today**, for three reasons in increasing depth; the third is the one that matters, and it relocates the question rather than deferring it.
 
-* **The guard is keyed by a cell pair, and `cong2`'s redexes are not cells.** `derive_shift_equivalence` resolves both applications through `CellStore::get` and asks `overlaps_between` about the two cells' faces, while `p` and `q` are **rewrite-sorted ports** — parameters of the rule, with no identity in any store and no left-hand side to superpose.
+- **The guard is keyed by a cell pair, and `cong2`'s redexes are not cells.** `derive_shift_equivalence` resolves both applications through `CellStore::get` and asks `overlaps_between` about the two cells' faces, while `p` and `q` are **rewrite-sorted ports** — parameters of the rule, with no identity in any store and no left-hand side to superpose.
   The overlap conjunct is not merely unanswered here; it is unasked, because there is no pair to ask about.
-* **The guard _exercises_ the pair, and `cong2`'s peak is open.** A pair that clears the three conjuncts must additionally fire in both orders (`rewrite_at`, ground matching), and the derived source boundary `add(x, y)` carries the telescope's variables, so nothing fires at it.
-* **`cong2` is a schema, so the question is not well-posed at its declaration.** Its two redexes are universally quantified over the rewrites that instantiate `p` and `q`, and shift-equivalence is a _per-pair_ licence; asking it at the declaration asks whether **every** instantiation commutes, which the per-pair constructor cannot decide.
+- **The guard _exercises_ the pair, and `cong2`'s peak is open.** A pair that clears the three conjuncts must additionally fire in both orders (`rewrite_at`, ground matching), and the derived source boundary `add(x, y)` carries the telescope's variables, so nothing fires at it.
+- **`cong2` is a schema, so the question is not well-posed at its declaration.** Its two redexes are universally quantified over the rewrites that instantiate `p` and `q`, and shift-equivalence is a _per-pair_ licence; asking it at the declaration asks whether **every** instantiation commutes, which the per-pair constructor cannot decide.
   Discharging that would need either a fence on which rewrites may instantiate a port — a change to the guard's own contract — or a schematic overlap notion over rewrite-sorted ports, which does not exist.
   Neither is alphabet growth, which is why "supply an alphabet whose `Cmd`/`Pos` is the circuit composite" (the reading carried out of the elaboration rung) is necessary and **not** sufficient.
 
@@ -1039,7 +1039,7 @@ Check the one gap that would sink it, in three steps.
 **EXECUTED (2026-08-01), for the symmetric delay placement the corpus then assumed**, with the asymmetric placement's differences stated at the one answer that has any; **the placement has since been ruled asymmetric-typed** (owner, 2026-08-02, at [[#Wheels, and which structure the cell layer takes]]), which collapses those notes as marked below.
 **The gap is real and it does not sink the proposal**, because what it costs is a fence on which diagram may be matched, not a repair to the convexity test.
 
-* Take a body with one delayed back-edge and a match convex in the cut-open form; re-close the delay and check whether a path now runs from an output of the match to an input of it.
+- Take a body with one delayed back-edge and a match convex in the cut-open form; re-close the delay and check whether a path now runs from an output of the match to an input of it.
   **It can, and the witness is two cells and one delay.** Let the cut-open body have inputs $x$ and $d^{-}$, outputs $y$ and $d^{+}$, a hyperedge $f$ from $d^{-}$ to an internal node $p$, and a hyperedge $g$ from $x$ and $p$ to $y$ and $d^{+}$.
   Every node has in-degree and out-degree at most one and the two edges are ordered $f$ before $g$, so this is monogamous and acyclic; the match whose image is $f$ together with $g$ is convex there, because there is no third hyperedge for a path between the image's nodes to leave through.
   Re-closing the delay adds the edge from $d^{+}$ to $d^{-}$, and $d^{+}$ is an output of the image while $d^{-}$ is an input of it — so a directed path now runs from an output of the image back to an input of it through a hyperedge the image does not contain, which is exactly the failure a convex match is defined to exclude [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 22 and def 33].
@@ -1048,7 +1048,7 @@ Check the one gap that would sink it, in three steps.
   **The witness also separates two relations to the delay that the corpus had been carrying as one.** A left-hand side **spans** a delayed port when its image contains the delay edge, which the cut-open form makes impossible because that edge is not there; that is the unmatchable seam.
   A left-hand side **straddles** the cut when its image has a cut end among its outputs and a matching cut end among its inputs, which the cut-open form matches perfectly happily — and that is the class re-closure breaks.
   **So the seam does not protect convexity**: the cut makes one class unmatchable and leaves the complementary class matchable, and the second is the one this question is about.
-* If it can, decide whether the repair is a convexity condition stated on the **re-closed** diagram (which the engine would then have to compute at match time) or a restriction on where a delay may sit relative to a redex.
+- If it can, decide whether the repair is a convexity condition stated on the **re-closed** diagram (which the engine would then have to compute at match time) or a restriction on where a delay may sit relative to a redex.
   **Neither, and the reason the first is refused is the decisive one.** Convexity is _statable_ on a cyclic hypergraph — the definition quantifies over paths and asks nothing of acyclicity — but every theorem that makes convexity mean anything carries the monogamous acyclic hypothesis: the sound-and-complete correspondence, boundary-complement uniqueness, and the automatic-convexity theorem alike.
   A convexity condition computed on the re-closed diagram would therefore be a check with **no theorem behind it**, which is the shape of side condition this corpus exists to refuse.
   **What is warranted instead is the same condition computed on the cut-open form under the delay's own path extension, and that is published machinery rather than a gandr device.** The confluence paper extends the signature with three formal path generators precisely to abstract "whether certain paths exist" over the context a critical pair sits in, and a path extension is a mono adding vertices and path-labelled hyperedges that realize a prescribed relation between the boundary's outputs and inputs [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, def 5.7 and def 5.8].
@@ -1058,7 +1058,7 @@ Check the one gap that would sink it, in three steps.
   A body with several independent delayed loops is the ordinary case for a stateful circuit, so the cheap condition loses exactly the matches the wheel axis was added to admit — which selects the path-extension condition on warrant and on completeness both, and leaves the restriction where the left-connectedness fence landed one spike over: **inside the answer, as the discharge that lets the sweep be skipped**.
   **One half of this is the owner's rather than the engine's, and it is flagged rather than taken.** The path-extension condition is invisible to a programmer — an engine check with a diagnostic at worst — while the straddling restriction is a surface-visible rule about where a rule may be written relative to a delay.
   Whether to expose it as such is a surface decision, and nothing here takes it.
-* Either way, state whether the guard — every directed cycle contains a delayed port — stays a linear-time back-edge check, since that cheapness is most of the proposal's appeal.
+- Either way, state whether the guard — every directed cycle contains a delayed port — stays a linear-time back-edge check, since that cheapness is most of the proposal's appeal.
   **It stays linear, and it is cheaper than that: it runs once at the cut and never again during rewriting.** On a body presented closed it is delete-the-delay-edges followed by a depth-first back-edge search, $O(|V| + |E|)$ — the shape of the linear-time acyclicity test the corpus already runs.
   **After the cut it stops being a check and becomes a consequence.** The cut-open form is acyclic, rewriting keeps it inside the monogamous acyclic fragment, and re-closure adds only delay edges — so every directed cycle of the re-closed body contains a delayed port automatically, and the guard is preserved by every step rather than re-established after each one.
   **What does need a rule is a step that changes the delay set**, because the cut is determined by that set and the cut ends are the interface: a rule adding or removing a delay moves the boundary between interface and loop object, which is an application of feedback itself rather than a rewrite with interfaces [@katis-sabadini-walters-2002-feedback, def 2.4 and prop 2.5].
@@ -1201,21 +1201,21 @@ Four of these are owed to the binding-guards inventory independently; this lane 
 
 ## Source and confidence
 
-* **Every as-built row was verified against this tree at the time of writing**, with the crate and symbol named at the claim.
+- **Every as-built row was verified against this tree at the time of writing**, with the crate and symbol named at the claim.
   The load-bearing negative claims — that no construction site emits more than one consumer, that the machine reads only the first, and that the description table's operations were never read — were checked at their sites.
   The last of the three has since been closed: `elaborate_data_desc` now reads `desc.ops`, admits the single-output shape, and declines the rest, which the desc → cells row records.
   The four sequent-layer rows were re-verified symbol by symbol on 2026-08-08 while [[#circuit-terms-rung-06]] landed: the focusing and L-machine rows held exactly as written, and the IL-grammar and typed-IL-checker rows are amended above because that rung changed what they describe, not because they were wrong.
   That re-verification also sharpened the rung's own scope against the tree: of the four node families carrying a `c̄`, only three are headed by a **tag** at all — a `Jump`'s head is a definition name, so its counts belong to a top-level definition table the L0 command carrier does not retain, and no declaration is available to it at this phase.
-* **The independence machinery the two convexity spikes reason about was verified the same way**, and one of those checks is itself a finding: `cells_equal` decides boundary equality conjoined with two replays and carries **no** normal-form fast path, so the quotient the hazard threatens has no implementation yet (`theory-virtual-doctrines/src/vdc.rs`; `theory-computads/src/tracelet.rs`).
+- **The independence machinery the two convexity spikes reason about was verified the same way**, and one of those checks is itself a finding: `cells_equal` decides boundary equality conjoined with two replays and carries **no** normal-form fast path, so the quotient the hazard threatens has no implementation yet (`theory-virtual-doctrines/src/vdc.rs`; `theory-computads/src/tracelet.rs`).
   A position is a child-index path and an overlap is a cell-pair property computed at seams, which is what makes the strengthened guard's two conjuncts land in different indexes (`theory-computads/src/pattern.rs`; `theory-computads/src/rewrite.rs`; `theory-computads/src/overlap.rs`).
-* **Three further numbered statements were read in the original for those spikes** and are cited where they are used: the convex sub-hypergraph and convex match definitions, and the efficiency remark whose reachability sweep and enumeration bounds carry the cheapness argument [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 22, def 33 and Remark 36]; and the path-relation, path-extension, maximal-path-relation and path-joinability definitions that make the delay closure an instance rather than a new device [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, def 5.7–5.10].
-* **The hypergraph-rewriting results are now read at theorem grade** and are cited at their own numbered statements: the monogamous-acyclic characterisation, boundary-complement uniqueness, the sound-and-complete convex correspondence including its coloured form, the left-connectedness definition and its automatic-convexity theorem, the Frobenius-semi-algebra termination proof and the disjoint-but-blocking counterexample [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii]; local confluence for DPO with interfaces, its computability conditions and decidability corollary, the left-connected route, and the path-joinability route with its converse [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii].
+- **Three further numbered statements were read in the original for those spikes** and are cited where they are used: the convex sub-hypergraph and convex match definitions, and the efficiency remark whose reachability sweep and enumeration bounds carry the cheapness argument [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 22, def 33 and Remark 36]; and the path-relation, path-extension, maximal-path-relation and path-joinability definitions that make the delay closure an instance rather than a new device [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, def 5.7–5.10].
+- **The hypergraph-rewriting results are now read at theorem grade** and are cited at their own numbered statements: the monogamous-acyclic characterisation, boundary-complement uniqueness, the sound-and-complete convex correspondence including its coloured form, the left-connectedness definition and its automatic-convexity theorem, the Frobenius-semi-algebra termination proof and the disjoint-but-blocking counterexample [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii]; local confluence for DPO with interfaces, its computability conditions and decidability corollary, the left-connected route, and the path-joinability route with its converse [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii].
   The premonoidal and trace-theory results are likewise cited at their statements.
-* **The feedback-category sources are read in the original rather than through an implementation of them**, and are cited at their own numbered statements: the feedback axioms and the free `Circ` construction with its universal property, the quotient by yanking that yields the free traced category, and fixed-point semantics [@katis-sabadini-walters-2002-feedback]; the guarded feedback axioms, the stateful-morphism construction and its freeness, the trace boundary, and the type theory's delay and feedback rules [@dilavore-defelice-roman-2022-monoidal-streams].
+- **The feedback-category sources are read in the original rather than through an implementation of them**, and are cited at their own numbered statements: the feedback axioms and the free `Circ` construction with its universal property, the quotient by yanking that yields the free traced category, and fixed-point semantics [@katis-sabadini-walters-2002-feedback]; the guarded feedback axioms, the stateful-morphism construction and its freeness, the trace boundary, and the type theory's delay and feedback rules [@dilavore-defelice-roman-2022-monoidal-streams].
   Neither was held in the research library when the ruling was written, which is why it stood on an implementation's reading until now.
-* **The remaining literature findings come from a triage sweep, not from close readings**, and are marked accordingly: abstracts and section maps, with targeted section-level reads for the supply, ancilla-scope, and reversible-term-rewriting results.
+- **The remaining literature findings come from a triage sweep, not from close readings**, and are marked accordingly: abstracts and section maps, with targeted section-level reads for the supply, ancilla-scope, and reversible-term-rewriting results.
   Anything a rung depends on is filed as a spike rather than treated as established.
-* **Two claims of an earlier revision did not survive and are corrected in place rather than dropped**: that fan-out is free while fan-in is not (contradicted by gandr's own monogamous carrier, by `dup`/`drop` on the surface, and by the monogamy condition of the correspondence), and that the mono-left-leg condition is what buys uniqueness at gandr's rung (superseded by boundary complements, which are unique unconditionally).
-* **The readings of the implementations are this pass's own**, taken from source at the checkouts to hand, and are engineering observations rather than claims those projects make: the port-bijection representation and its stated reason [@sobocinski-wilson-zanasi-2019-cartographer], the matcher invariants, the convexity post-check, the language's refusal to name a wire and the Frobenius not-implemented path [@chyp], the spider-label wiring map [@discopy], the predicate-plus-surgery rewrite shape and the per-step semantic differential [@pyzx], and the hash-consed diagram representation with normal-form conditions as well-formedness invariants [@homotopy-rs].
-* **One neighbouring result was already absorbed and carries a standing ruling**: the planar string-diagram normalization work is cited by the metatheory track with the ruling that its quotient must **not** be substituted for the symmetric one [@delpeuch-vicary-2022-normalization].
-* **The hypergraph reading of the closest Agda encoding is this pass's own**, and is a fork-identification rather than a claim that thesis makes about gandr [@altenmuller-2026-string-diagrams].
+- **Two claims of an earlier revision did not survive and are corrected in place rather than dropped**: that fan-out is free while fan-in is not (contradicted by gandr's own monogamous carrier, by `dup`/`drop` on the surface, and by the monogamy condition of the correspondence), and that the mono-left-leg condition is what buys uniqueness at gandr's rung (superseded by boundary complements, which are unique unconditionally).
+- **The readings of the implementations are this pass's own**, taken from source at the checkouts to hand, and are engineering observations rather than claims those projects make: the port-bijection representation and its stated reason [@sobocinski-wilson-zanasi-2019-cartographer], the matcher invariants, the convexity post-check, the language's refusal to name a wire and the Frobenius not-implemented path [@chyp], the spider-label wiring map [@discopy], the predicate-plus-surgery rewrite shape and the per-step semantic differential [@pyzx], and the hash-consed diagram representation with normal-form conditions as well-formedness invariants [@homotopy-rs].
+- **One neighbouring result was already absorbed and carries a standing ruling**: the planar string-diagram normalization work is cited by the metatheory track with the ruling that its quotient must **not** be substituted for the symmetric one [@delpeuch-vicary-2022-normalization].
+- **The hypergraph reading of the closest Agda encoding is this pass's own**, and is a fork-identification rather than a claim that thesis makes about gandr [@altenmuller-2026-string-diagrams].

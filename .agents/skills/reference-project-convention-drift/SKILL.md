@@ -11,12 +11,12 @@ Use when asked to align this project's conventions (workflow, coding, gate confi
 
 1. Read `.agents/conventions.toml` in the current project root.
    It declares:
-   + `[project]` — this project's name and languages;
-   + `[core]` — where the agentic-dev core is vendored (default `.agents/core`);
-   + `[reference]` — the reference project and its sibling-checkout root (may be absent: then the core is the only reference);
-   + `[surfaces]` — the guidance docs, gate configs, and JSON provisioning fragments maintained as copies or deltas;
-   + `[gates]` — the project's documented verification commands;
-   + `[tracker]` — the beads issue prefix.
+   - `[project]` — this project's name and languages;
+   - `[core]` — where the agentic-dev core is vendored (default `.agents/core`);
+   - `[reference]` — the reference project and its sibling-checkout root (may be absent: then the core is the only reference);
+   - `[surfaces]` — the guidance docs, gate configs, and JSON provisioning fragments maintained as copies or deltas;
+   - `[gates]` — the project's documented verification commands;
+   - `[tracker]` — the beads issue prefix.
 2. If the manifest is missing, say so, propose one from `fragments/conventions.example.toml` in the core, and proceed with what the request and repo context give you.
 3. Treat memory as a hint, not current truth: read the reference's _current_ convention sources before comparing.
 
@@ -39,12 +39,12 @@ Use when asked to align this project's conventions (workflow, coding, gate confi
 
 ## Language-specific notes (apply when the project's languages include them)
 
-* **Rust** (design-by-contract convention, where the reference uses it): clauses in order `- requires:`, `- ensures:`, `- provides:`, `- fails:`, `- panics:`; keep `# Errors` for `Result` functions; remove low-value contract blocks on constants, trivial accessors, thin wrappers, and obvious data holders.
+- **Rust** (design-by-contract convention, where the reference uses it): clauses in order `- requires:`, `- ensures:`, `- provides:`, `- fails:`, `- panics:`; keep `# Errors` for `Result` functions; remove low-value contract blocks on constants, trivial accessors, thin wrappers, and obvious data holders.
   For dependencies, use the `find-best-rust-crates` skill; `proptest` conventionally keeps `default-features = true` (test runtime lives behind defaults), dev-only.
-* **TypeScript**: use the `find-best-typescript-packages` skill for dependency decisions; keep dependency scopes narrow.
+- **TypeScript**: use the `find-best-typescript-packages` skill for dependency decisions; keep dependency scopes narrow.
 
 ## Known caveats
 
-* Periodic drift checks are a core principle (`core/PRINCIPLES.md` §"Drift checks are periodic, not incidental"): suggest one after long gaps, before large refactors, or when a convention question has no local answer — do not wait to be asked.
-* Avoid broad reference-project lint-posture imports unless specifically scoped; they can create unrelated churn.
-* An intentional, documented delta is not drift — do not "fix" it; an undocumented delta is drift even when it is better (document it or land it upstream).
+- Periodic drift checks are a core principle (`core/PRINCIPLES.md` §"Drift checks are periodic, not incidental"): suggest one after long gaps, before large refactors, or when a convention question has no local answer — do not wait to be asked.
+- Avoid broad reference-project lint-posture imports unless specifically scoped; they can create unrelated churn.
+- An intentional, documented delta is not drift — do not "fix" it; an undocumented delta is drift even when it is better (document it or land it upstream).

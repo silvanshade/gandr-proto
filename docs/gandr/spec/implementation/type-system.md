@@ -779,11 +779,11 @@ Transitivity holds on `Unknown`-free types, where it is admissible as the specif
 Γ; Δ; Θ; Σ ⊢_w v ⇕ A          Γ; Δ; Θ; Σ ⊢_w t ⇕ B
 ```
 
-* `Γ : x ↦ A @ w` — intuitionistic, world-annotated value hypotheses
-* `Δ : X ↦ κ` — the kinding context
-* `Θ : a ↦ S_S @ w` — shared channels, unrestricted
-* `Σ` — linear: endpoints `c : S @ w` or `c : L @ w`, and capabilities `cap_w`
-* `w` — the current world; `⇑` and `⇓` — the direction
+- `Γ : x ↦ A @ w` — intuitionistic, world-annotated value hypotheses
+- `Δ : X ↦ κ` — the kinding context
+- `Θ : a ↦ S_S @ w` — shared channels, unrestricted
+- `Σ` — linear: endpoints `c : S @ w` or `c : L @ w`, and capabilities `cap_w`
+- `w` — the current world; `⇑` and `⇓` — the direction
 
 Every rule above composes under this judgment, and the solver discharges the constraints they emit.
 
@@ -933,7 +933,7 @@ Written against four sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the rules, which are transcribed from the design record rather than re-derived.
-* **High** — the as-built statements, each verified against the named module at write time.
-* **Medium** — the literature attributions, whose identifiers were transcribed from the contributor's reference register at this pass but whose _claims_ were not re-read from the papers.
-* **Marked at the claim** — the two locator-pending attributions in [[#type-extension-07]] and [[#type-extension-11]].
+- **High** — the rules, which are transcribed from the design record rather than re-derived.
+- **High** — the as-built statements, each verified against the named module at write time.
+- **Medium** — the literature attributions, whose identifiers were transcribed from the contributor's reference register at this pass but whose _claims_ were not re-read from the papers.
+- **Marked at the claim** — the two locator-pending attributions in [[#type-extension-07]] and [[#type-extension-11]].

@@ -23,8 +23,8 @@ If one exists, the failure is specification-level, not proof-level.
 
 `Gandr.Arena.{Code,Value,Offset,Structure,Coherence,Tree}`:
 
-* the code rig with `size` as the cardinality homomorphism, values indexed by `Fin (size c)`, and the offset algebra (`⊗ix b i j = b·i + j`, `⊕ixʳ a j = a + j`; the left injection is a no-op on offsets, which is why it never appears in a coherence obligation);
-* the rigid class:
+- the code rig with `size` as the cardinality homomorphism, values indexed by `Fin (size c)`, and the offset algebra (`⊗ix b i j = b·i + j`, `⊕ixʳ a j = a + j`; the left injection is a no-op on offsets, which is why it never appears in a coherence obligation);
+- the rigid class:
 
   ```agda
   record Rigid (c d : Code) : Set where
@@ -35,10 +35,10 @@ If one exists, the failure is specification-level, not proof-level.
   ```
 
   with closure `rigid-id`, `rigid-∘`, `rigid-⊗`, `rigid-⊕`, and `rigid-inv` free;
-* **`rigid-coherence`**: any two rigid words with a common source agree at value grade — so every diagram whose edges lie in the associativity/unit hierarchy commutes, at every code, with no cell imposed; the pentagon, triangle, and sum-pentagon are stated as instances at their full diagram shapes so the general theorem can be checked against the real diagrams;
-* the content-carrying generators (`⊗comm`, `⊕swap`, the left distributor — the right distributor is offset-identical) with the sum hexagon and distributor naturality proved directly by induction through the β-rules;
-* the exhibited witness `dist-moves` that the distributor genuinely permutes offsets, so the non-rigid classification has teeth;
-* scope note: the empty code `𝟘` is excluded because it would make values uninhabited and the distributor's inverse partial — declined for partiality, with the (larger) rig-with-zero coherence family a second, independent reason to price it if ever wanted.
+- **`rigid-coherence`**: any two rigid words with a common source agree at value grade — so every diagram whose edges lie in the associativity/unit hierarchy commutes, at every code, with no cell imposed; the pentagon, triangle, and sum-pentagon are stated as instances at their full diagram shapes so the general theorem can be checked against the real diagrams;
+- the content-carrying generators (`⊗comm`, `⊕swap`, the left distributor — the right distributor is offset-identical) with the sum hexagon and distributor naturality proved directly by induction through the β-rules;
+- the exhibited witness `dist-moves` that the distributor genuinely permutes offsets, so the non-rigid classification has teeth;
+- scope note: the empty code `𝟘` is excluded because it would make values uninhabited and the distributor's inverse partial — declined for partiality, with the (larger) rig-with-zero coherence family a second, independent reason to price it if ever wanted.
 
 A type-theoretic reading of the rigid/non-rigid split worth keeping beside the computational one: in truncation-based treatments the row-major layout choice is invisible _only because of the propositional truncation_; dropping the truncation — as this development does — makes the choice observable, which is precisely why the associativity/unit generators are rigid while the symmetries and the distributor carry content.
 

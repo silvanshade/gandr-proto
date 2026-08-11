@@ -4,19 +4,19 @@ The dimension-named signature members in full, and the derived signature-former 
 A `sign` block **presents a theory**; `Model(S)` is what any interpretation of that theory must supply — the laws as named 2-cells, the coherences between laws as named 3-cells, carried as typed fields rather than as comments.
 The canonical block form and its member spellings are ruled at [[circuit-cells#The block form, ruled]] and the sugar relationship to `data`/`codata` blocks at [[signatures]]; the members and reserved slots as landed today are [[declarations#data declarations]]; the grammar machinery every form here must clear is [[grammar]]; the carrier-side rulings this surface rests on are the [[../metatheory#Cellular data — descriptions, cells, and computads|metatheory track's cellular-data section]].
 
-* Status: **design pass, imported; nothing of this lane built.** The naming and declaration layers spend zero frozen core; `Model(S)` rides the stage-1 dependent era and is designed, not scoped, until then.
+- Status: **design pass, imported; nothing of this lane built.** The naming and declaration layers spend zero frozen core; `Model(S)` rides the stage-1 dependent era and is designed, not scoped, until then.
   One neighbouring piece is landed and is marked where it appears: the declaration table checks a derived boundary pair against the sphere its declaration fixes ([[#Sphere-typed boundaries]]), for members no surface can yet write.
-* Everything user-facing here is new design surface. 3-cells exist in gandr today **only** as machine-derived confluence certificates — anonymous, replayed, machine-audience.
+- Everything user-facing here is new design surface. 3-cells exist in gandr today **only** as machine-derived confluence certificates — anonymous, replayed, machine-audience.
   [[#As-built impact]] states exactly what the tree does and does not carry, verified against it.
-* Code sketches are surface-shaped pseudocode; the keyword table is a one-table change under the reservation policy of [[grammar#The keyword and operator tables]].
+- Code sketches are surface-shaped pseudocode; the keyword table is a one-table change under the reservation policy of [[grammar#The keyword and operator tables]].
 
 ## Why the machinery exists
 
 The customer, stated first because every section below serves it:
 
-* A **shape** is a `sign` block read as a presentation: sorts, operations, laws, and coherences between laws.
-* A **model** is a module ascribed to `Model(S)`: it supplies a carrier, the operations, a proof-relevant witness per law, and a proof-relevant witness per coherence.
-* The pentagon is therefore written **once**, in the shape, and is thereafter an obligation on every interpretation — and, for the free model of a convergent presentation, one the machine discharges from its own completion certificate.
+- A **shape** is a `sign` block read as a presentation: sorts, operations, laws, and coherences between laws.
+- A **model** is a module ascribed to `Model(S)`: it supplies a carrier, the operations, a proof-relevant witness per law, and a proof-relevant witness per coherence.
+- The pentagon is therefore written **once**, in the shape, and is thereafter an obligation on every interpretation — and, for the free model of a convergent presentation, one the machine discharges from its own completion certificate.
 
 | what a Haskell class gives you      | what `Model(S)` gives you                                                                     |
 | ----------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -34,11 +34,11 @@ In that slice a 3-cell is never something a user states: it is the machine's wit
 
 **What changed** — three things, jointly.
 
-* **Identity landed.** `Path`/`here`/`walk` are as-built and without-K [@cockx-devriese-piessens-2014-without-k], so the tower does not collapse and `Path(Path(A, x, y), p, q)` is a type.
+- **Identity landed.** `Path`/`here`/`walk` are as-built and without-K [@cockx-devriese-piessens-2014-without-k], so the tower does not collapse and `Path(Path(A, x, y), p, q)` is a type.
   Iterated `Path` types are exactly where user-stated 3-cells land.
-* **Carried coherence became the house idiom.** Certificates are proof-relevant because two distinct witnesses are two distinct artifacts.
+- **Carried coherence became the house idiom.** Certificates are proof-relevant because two distinct witnesses are two distinct artifacts.
   One dimension up, the same argument says the pentagon of a weak structure is _data a program may consume_, not a proposition to discharge.
-* **The interface customer appeared.** With first-class modules [@rossberg-2018-1ml] a signature can characterize _structure_ — "a monoid on `M`", "a category".
+- **The interface customer appeared.** With first-class modules [@rossberg-2018-1ml] a signature can characterize _structure_ — "a monoid on `M`", "a category".
   Laws-as-fields at dimension 2 immediately raises the dimension-3 question, what relates the laws, and that is the first place a user-written 3-cell is load-bearing.
 
 **The gap this fills in the sibling library's own encoding.** The internal-univalence library's `Category` record deliberately carries **no** pentagon or triangle field.
@@ -85,14 +85,14 @@ The item-level `data` member is **retired** ([[declarations#data declarations]])
 
 This section's earlier draft proposed its own five-keyword respell (`cons` for constructors, a fresh `meta` member for 3-cells, a fresh `~>>` arrow); the ruled form **supersedes that draft**, and the deltas are worth recording because each dissolves a problem the draft had to argue around:
 
-* **`data` was the constructor member's keyword, and the member is gone.** The draft's motivation — keyword-led members instead of the parser's uppercase-head case trick — was fully served by the ruled judgment style; the retirement then removed the row entirely, because the separated form's three side conditions (head uniformity, one head per block, family-wide positivity) are properties it must check where the nested form cannot express the violation.
+- **`data` was the constructor member's keyword, and the member is gone.** The draft's motivation — keyword-led members instead of the parser's uppercase-head case trick — was fully served by the ruled judgment style; the retirement then removed the row entirely, because the separated form's three side conditions (head uniformity, one head per block, family-wide positivity) are properties it must check where the nested form cannot express the violation.
   The internal description table deliberately does **not** follow the retired spelling (its field stays `ctors`): mirroring `data` inward would reintroduce exactly the block-versus-member ambiguity the surface's context resolves (gandr-ng9.18 ruling 4's one exception).
-* **`oper` replaced `op`** as the 1-cell member — landed, in both the sign block's judgment form and the data-block sugar's applied form, with the retired `op` lead parse-and-declined by respelling hint; `op` is the operator-fixity declaration only, and no shared-keyword caveat is needed anywhere.
-* **`sort` completes dimension 0**, and it behaves differently in the two block positions.
+- **`oper` replaced `op`** as the 1-cell member — landed, in both the sign block's judgment form and the data-block sugar's applied form, with the retired `op` lead parse-and-declined by respelling hint; `op` is the operator-fixity declaration only, and no shared-keyword caveat is needed anywhere.
+- **`sort` completes dimension 0**, and it behaves differently in the two block positions.
   In **shape position** a block may declare several sorts, including indexed ones — `sort Hom(dom: Ob, cod: Ob)` — because a presentation is generally multi-sorted (as landed, `sort` members are recorded into the declared sort set; indexed sorts remain reserved).
   In **generative position** — a `data`/`codata` block used as a type — the block's own name remains the unique implicit sort, exactly the desugaring of [[signatures#The desugarings]] (the nested block plus the polarity token).
-* **There is no `meta` member and no third arrow.** A 3-cell is a `rule` between rule-sorted endpoints, with dimension read off the endpoints rather than off the glyph — see [[#Declared 3-cells are rules one dimension up]] for how this dissolves the draft's arrow question rather than answering it.
-* **`rule` names are mandatory** in the ruled judgment form (`rule <name> : …`), which is the naming rung this lane owes.
+- **There is no `meta` member and no third arrow.** A 3-cell is a `rule` between rule-sorted endpoints, with dimension read off the endpoints rather than off the glyph — see [[#Declared 3-cells are rules one dimension up]] for how this dissolves the draft's arrow question rather than answering it.
+- **`rule` names are mandatory** in the ruled judgment form (`rule <name> : …`), which is the naming rung this lane owes.
 
 **The migration this implies.** The landed data-block `rule` member is still the anonymous `rule lhs ==> rhs`; the ruled judgment form adds the mandatory name.
 The migration is a decline-with-hint on the old form's missing name — "`rule` requires a name; write `rule <name> : …`" — pinned by a pathological corpus example when the naming rung lands, exactly as the `op`-to-`oper` and `~>`-to-`==>` respells were pinned when theirs did.
@@ -108,10 +108,10 @@ The engine's cell faces carry a source span, not a name, and engine cells are id
 
 Names buy four things, in order of force:
 
-* **referability** — a 3-cell rule’s boundary must cite the 2-cells it composes, and cannot cite an anonymous one;
-* **model fields** — `Model(S)` needs a field name per rule, and a signature cannot name a field after a store index;
-* **diagnostics and inspection** — "declined at `assoc`" beats "declined at cell #3";
-* **named loose-arrow generators** on the reflection face, which gives the query surface user vocabulary.
+- **referability** — a 3-cell rule’s boundary must cite the 2-cells it composes, and cannot cite an anonymous one;
+- **model fields** — `Model(S)` needs a field name per rule, and a signature cannot name a field after a store index;
+- **diagnostics and inspection** — "declined at `assoc`" beats "declined at cell #3";
+- **named loose-arrow generators** on the reflection face, which gives the query surface user vocabulary.
 
 **Identity discipline, settled here:**
 
@@ -179,20 +179,20 @@ A face's interpretation is a fold sending the boundary language into exactly the
 
 **One active position per application node.** `f(ρ₁, ρ₂)` — two simultaneous rewrite arguments — is **declined**.
 
-* It denotes **horizontal composition**, whose two sequential readings agree only _up to interchange_, and adjudicating that silently is exactly the coherence smuggling this design refuses.
-* Write the two whiskers in sequence instead; the interchange cell, where one is needed, is itself a declared 3-cell rule.
-* The **principled future semantics already exists and is fenced**: accept exactly on **disjoint positions**, where the two readings are shift-equal, because the certificate algebra's shift-equivalence quotient is earned per pair by a trivial-overlap witness rather than imposed.
+- It denotes **horizontal composition**, whose two sequential readings agree only _up to interchange_, and adjudicating that silently is exactly the coherence smuggling this design refuses.
+- Write the two whiskers in sequence instead; the interchange cell, where one is needed, is itself a declared 3-cell rule.
+- The **principled future semantics already exists and is fenced**: accept exactly on **disjoint positions**, where the two readings are shift-equal, because the certificate algebra's shift-equivalence quotient is earned per pair by a trivial-overlap witness rather than imposed.
   Do not accept it any earlier and do not accept it any wider — the ruling and its reversal condition are [[../metatheory/guards#Horizontal-composition surface sugar]], and the interchange stratification behind it is [[../metatheory#Interchange, by layer]].
-* The trigger that would reopen it is precise: **a construction that makes disjointness structural rather than analytic**, so that "these two redexes are disjoint" is a check the parser performs rather than a proof the reader supplies.
+- The trigger that would reopen it is precise: **a construction that makes disjointness structural rather than analytic**, so that "these two redexes are disjoint" is a check the parser performs rather than a proof the reader supplies.
 
 Nothing new is needed to _represent_ composites — the engine already has rewrite paths, concatenation, and position extension.
 What is new is surface syntax and author-supplied instantiations.
 
 **The grammar budget for all of this is zero new sorts**, which is the fact that makes the boundary language cheap:
 
-* the landed `Sort` set is closed and small — five sorts — and rule faces are **already** `Expression` holes;
-* rule-name application, `then`, and `here(t)` therefore all parse as **ordinary expression forms**, with the _cell namespace_ resolved at elaboration rather than by the grammar;
-* so the boundary language spends no new sort, and its cost falls entirely on the mold checks and size budgets, which are the binding gate.
+- the landed `Sort` set is closed and small — five sorts — and rule faces are **already** `Expression` holes;
+- rule-name application, `then`, and `here(t)` therefore all parse as **ordinary expression forms**, with the _cell namespace_ resolved at elaboration rather than by the grammar;
+- so the boundary language spends no new sort, and its cost falls entirely on the mold checks and size budgets, which are the binding gate.
 
 One collision rides with it, and it is the same kind of finding as the `Step` one below: **`then` is not a reserved keyword today, and it is separately a ratified-but-unlanded identity-family spelling** (composition).
 Using it as an infix inside 3-cell faces puts one name on two jobs.
@@ -212,12 +212,12 @@ A 3-cell rule lives at `(⋆ ▸ s ⇴ t) ▸ ρ ⇴ ρ′`.
 
 Two payoffs and one growth seam:
 
-* **Globularity becomes judgmental.** A 3-cell rule's faces carry their shared endpoints in the type index, so "both composites are parallel" stops being a side condition re-checked downstream.
+- **Globularity becomes judgmental.** A 3-cell rule's faces carry their shared endpoints in the type index, so "both composites are parallel" stops being a side condition re-checked downstream.
   Mis-glued boundaries fail to typecheck at the declaration table — once, at elaboration, with the sphere as the diagnostic.
-* **Model typing becomes one recursion.** Interpret spheres by dimension: `⟦⋆⟧` is the sort's carrier, and `⟦Φ ▸ x ⇴ y⟧ = Path(⟦Φ⟧, ⟦x⟧, ⟦y⟧)`.
+- **Model typing becomes one recursion.** Interpret spheres by dimension: `⟦⋆⟧` is the sort's carrier, and `⟦Φ ▸ x ⇴ y⟧ = Path(⟦Φ⟧, ⟦x⟧, ⟦y⟧)`.
   A model's field for a cell at sphere `Φ` is an element of `⟦Φ⟧`, quantified over the cell's variable context.
   The 3-cell clause of `Model(S)` is then **not a special case at all** — it is literally the `rule` clause one dimension up, which the ruled one-member-kind spelling makes plain.
-* **The recursion is dimension-generic.** The reserved tower therefore extends the declaration table and `Model` with no new clause; only surface syntax and the boundary language would have to grow.
+- **The recursion is dimension-generic.** The reserved tower therefore extends the declaration table and `Model` with no new clause; only surface syntax and the boundary language would have to grow.
 
 **A filler that _computes_ its boundaries is checked against its sphere, never allowed to fill it.** Not every 2-cell member writes its boundary pair: a circuit rule's wiring determines both — the source by replacing every redex with its source, the target by replacing every redex with its target ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
 
@@ -246,14 +246,14 @@ Function fields are computations under thunks because the core is call-by-push-v
 
 Three honest notes on what this costs.
 
-* **In shape mode there is no `cons`/`oper` distinction in `Model`.** Both become operation fields.
+- **In shape mode there is no `cons`/`oper` distinction in `Model`.** Both become operation fields.
   The distinction is meaningful only under the generative reading, where it is the constructor-versus-defined-symbol discipline and carries sufficient completeness.
   Both keywords are kept in shape blocks because one block serves both readings.
-* **Rules interpret as `Path`, not as a directed former, for now.** A `rule` is directed; `Path` is groupoidal.
+- **Rules interpret as `Path`, not as a directed former, for now.** A `rule` is directed; `Path` is groupoidal.
   `Model` therefore currently interprets every rule under the **invertible overlay** — semantically, the invertibility flag of the certificate algebra.
   When the directed family lands ([[../metatheory/directed-univalence]]), an orientation-respecting `Model` variant becomes possible, and it is a genuinely interesting one (lax and directed models).
   It is recorded as growth, not scoped.
-* **The dependent-era gate is real, and shortcutting it is a named dead-end.** Rule fields at both dimensions quantify over their contexts, sort members are type-valued, and 3-cell fields have `Path`-typed endpoints.
+- **The dependent-era gate is real, and shortcutting it is a named dead-end.** Rule fields at both dimensions quantify over their contexts, sort members are type-valued, and 3-cell fields have `Path`-typed endpoints.
   Shipping `Model` early via ad-hoc non-dependent encodings — law fields at closed instances only — would freeze a crippled field shape that instances then depend on.
   The design lands now; the implementation rides the era.
 
@@ -325,12 +325,12 @@ sign CatShape {
 
 The type-class target — program with this like a Haskell class, at Agda-grade accuracy — decomposes over machinery this design does **not** itself build.
 
-* **Instances are modules**: `module natAdd : Model(MonoidShape) { … }`.
+- **Instances are modules**: `module natAdd : Model(MonoidShape) { … }`.
   Modules already lower to record values with signature ascription, so shape signatures extend _what a signature can say_, never what a module _is_.
-* **Explicit dictionary passing needs nothing new**: `def squareAll(M: Model(MonoidShape), xs: List(M.M)) -> …` is a functor in the modules sense — a thunked computation over a module argument.
-* **Implicit retrieval rides the modules design verbatim**: `implicit module natAdd : Model(MonoidShape) = …`, with obligations resolved by world-scoped visibility, fuel-bounded search, and **coherence by canonicity** — at most one candidate per type per world, the modular-implicits discipline.
+- **Explicit dictionary passing needs nothing new**: `def squareAll(M: Model(MonoidShape), xs: List(M.M)) -> …` is a functor in the modules sense — a thunked computation over a module argument.
+- **Implicit retrieval rides the modules design verbatim**: `implicit module natAdd : Model(MonoidShape) = …`, with obligations resolved by world-scoped visibility, fuel-bounded search, and **coherence by canonicity** — at most one candidate per type per world, the modular-implicits discipline.
   This design adds no resolution machinery and takes exactly one position: **shape signatures must be legal implicit types.** As-built honesty: the tree has no metavariables and no type-directed search of any kind today, so the implicits lane is entirely the sequent program's.
-* **Where the accuracy bites**: a Haskell instance carries its laws in comments; a `Model(S)` instance carries laws and coherences as typed fields.
+- **Where the accuracy bites**: a Haskell instance carries its laws in comments; a `Model(S)` instance carries laws and coherences as typed fields.
   Two instances with equal operations but different coherence cells are _different instances_ — proof relevance is operational here exactly as it is for protocol adapters, because the pentagon field **is** the reassociation strategy a consumer may replay.
 
 **Grades and erasure** compose exactly as identity evidence does.
@@ -379,20 +379,20 @@ No claim is made that `PathGlob` is _constructible_ before the stage-1 era: it n
 
 User syntax stops at dimension 3, for reasons of substance rather than budget.
 
-* **Dimension 3 is where user content becomes load-bearing.** A convergent presentation's coherence is generated by its critical-pair 3-cells: dimension 3 is the homotopy-basis dimension.
+- **Dimension 3 is where user content becomes load-bearing.** A convergent presentation's coherence is generated by its critical-pair 3-cells: dimension 3 is the homotopy-basis dimension.
   For the classical weak structures, the named 3-cells _are_ the whole basis — pentagon and triangle generate all higher coherence [@maclane-2010-cwm] — so the finite block is not a truncation apology.
-* **Each dimension needs a boundary language one dimension down.** dimension 3 needed composites of 2-cells.
+- **Each dimension needs a boundary language one dimension down.** dimension 3 needed composites of 2-cells.
   Dimension-4 cells would need composites of 3-cells: whiskering of 3-cells, and interchange among them.
   That is a real language-design bill with no near-term customer.
-* **The tower is reserved, not refused.** A `cell` member production parses and declines with "higher cells reserved", pinned by a pathological corpus example — the same anti-retrofit device already used for `op` and `rule` themselves.
+- **The tower is reserved, not refused.** A `cell` member production parses and declines with "higher cells reserved", pinned by a pathological corpus example — the same anti-retrofit device already used for `op` and `rule` themselves.
   The recorded growth theory is the CaTT line [@finster-mimram-2017-catt]: contexts-as-computads with a single dimension-generic coherence former, whose restriction to dimension ≤ 3 with author-asserted boundaries is exactly the rule ladder at dimensions 2 and 3.
 
 **Two fences the tower must respect, stated here because they bound what a later pass may assume.**
 
-* **The completion story does not lift.** Squier's citation is good at dimension one, where the completion loop lives.
+- **The completion story does not lift.** Squier's citation is good at dimension one, where the completion loop lives.
   **Finite derivation type fails above dimension one** — there is an explicit finite convergent 3-polygraph with finite critical branchings that lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs].
   So [[#Discharge by completion]] below is a dimension-one statement, and no rung above may assume it generalizes.
-* **Computads are not a presheaf category for `n ≥ 3`** [@makkai-zawadowski-2008-computads], which is directly a hazard for "the tower is data".
+- **Computads are not a presheaf category for `n ≥ 3`** [@makkai-zawadowski-2008-computads], which is directly a hazard for "the tower is data".
   The counterexample's mechanism is Eckmann–Hilton, and its hypotheses — strictness, globular shapes, degenerate boundaries — are jointly required and individually unmet by gandr's pattern-to-pattern rules.
   The applicable escape hatch is **source-positivity** [@henry-2019-nonunital-polygraphs]: its Theorem 2.4.8 makes the class of _all_ source-positive polygraphs — those where the **source** of every generator is a non-identity arrow, an arrow being an identity exactly when no generator of its own dimension occurs in it (that source's section 1.2.3) — a good class of polygraphs, one conjunct of which is being an effective presheaf category.
   The elaborator is what puts gandr in that class: it refuses any rule whose left-hand side is not an operation application, so every generator's source carries its operation symbol.
@@ -438,8 +438,8 @@ Landing it is this lane's first implementation obligation, and it is independent
 User coherence rules and machine tracelets are both 3-cells; **provenance separates them**, one dimension up from the existing cell-provenance discipline.
 They interact in one valuable direction:
 
-* for the **generative** reading of a convergent block, completion _derives_ confluence 3-cells;
-* so a declared coherence rule whose boundary the completion certificate already fills is **discharged** — the free model's field is supplied by the machine, and the user wrote the pentagon once, in the shape, for every other model.
+- for the **generative** reading of a convergent block, completion _derives_ confluence 3-cells;
+- so a declared coherence rule whose boundary the completion certificate already fills is **discharged** — the free model's field is supplied by the machine, and the user wrote the pentagon once, in the shape, for every other model.
 
 This is the Squier-degenerate slice showing up exactly where it was promised: for free models of convergent presentations, coherence computes — now with a user-visible field it computes _into_.
 
@@ -481,9 +481,9 @@ The contrast with a legal 3-cell rule is the whole discipline in one line: `rule
 
 Named cells enrich the reflection face without changing its theory.
 
-* Named rules become **named loose-arrow generators**, so the query surface gains user vocabulary.
-* Declared coherence rules enter as proterms beside the certificate-embedded engine derivations already there, with the invertible-certificate surface unchanged.
-* Names carry **no** semantic payload on the face: variance and linearity metadata stay derived, and replay-equivalence stays the identity.
+- Named rules become **named loose-arrow generators**, so the query surface gains user vocabulary.
+- Declared coherence rules enter as proterms beside the certificate-embedded engine derivations already there, with the invertible-certificate surface unchanged.
+- Names carry **no** semantic payload on the face: variance and linearity metadata stay derived, and replay-equivalence stays the identity.
 
 One direction is recorded for the reflected layer, noted rather than scoped.
 A shape block is precisely a presentation of a virtual-double-categorical theory [@nasu-2024-internal-logic], so the carrier-general signature at the reflected code universe is a candidate meeting point with the dependent-FVDblTT trajectory.
@@ -509,10 +509,10 @@ Verified against this tree at the time of writing, symbol by symbol, and **re-ve
 
 Three further as-built facts the design record did not carry:
 
-* **`codata` blocks also parse `rule` members.** The aligned ladder and the 3-cell member must state their behaviour in codata position, or decline there explicitly.
+- **`codata` blocks also parse `rule` members.** The aligned ladder and the 3-cell member must state their behaviour in codata position, or decline there explicitly.
   This document declines to guess and records it as an open question below.
-* **Reserving `cell` is a source break** of exactly the kind `rec` was — an accepted, intended one, but it belongs in the migration story beside the anonymous-`rule` decline, not discovered at landing.
-* **`Step` is taken by the abstract machine.** It is the successor-state outcome of the small-step driver (`machine.rs`).
+- **Reserving `cell` is a source break** of exactly the kind `rec` was — an accepted, intended one, but it belongs in the migration story beside the anonymous-`rule` decline, not discovered at landing.
+- **`Step` is taken by the abstract machine.** It is the successor-state outcome of the small-step driver (`machine.rs`).
   It is _not_ a collision with the identity family's reserved `Step` spelling — there, a directed former named `Step` **is** the reservation being cashed, not a clash with it.
   The collision is one-way, and with the machine.
 
@@ -572,26 +572,26 @@ The design record left eight; verifying it against the tree raised two more.
 
 Five items the design record raised in passing, dispositioned so none vanishes:
 
-* **Matching-modulo is untouched, and `Model` is orthogonal to the oriented runtime story** — **carried** as a scope statement: nothing in the shape reading changes how the generative reading matches.
-* **Shape instances are natural equivalence customers** — a shape isomorphism between two instances is carried certificate data, the algebraic case of the temporal reading.
+- **Matching-modulo is untouched, and `Model` is orthogonal to the oriented runtime story** — **carried** as a scope statement: nothing in the shape reading changes how the generative reading matches.
+- **Shape instances are natural equivalence customers** — a shape isomorphism between two instances is carried certificate data, the algebraic case of the temporal reading.
   **Carried**, unscoped; it is a consequence of proof relevance, not a further obligation.
-* **The unresolved module-surface conflict** (braces versus a `sig … end` form) is **inherited, not adjudicated** here — this design takes no position on the module surface's spelling.
-* **`Glob`/`PathGlob` instantiate the codata design at type-valued fields and add no new codata machinery** — **parked** on the codata/corecursion lane, which owns the former they use.
-* **The boundary language is another small language to maintain**, and its restrictions (one active position, no horizontal sugar) will be felt by anyone writing large pastings.
+- **The unresolved module-surface conflict** (braces versus a `sig … end` form) is **inherited, not adjudicated** here — this design takes no position on the module surface's spelling.
+- **`Glob`/`PathGlob` instantiate the codata design at type-valued fields and add no new codata machinery** — **parked** on the codata/corecursion lane, which owns the former they use.
+- **The boundary language is another small language to maintain**, and its restrictions (one active position, no horizontal sugar) will be felt by anyone writing large pastings.
   The alternative — full pasting diagrams — is a far larger bill deliberately not run up.
   **Carried as a stated cost**, with the reversal condition of open question 6.
 
 ## Source and confidence
 
-* The design record is a single well-curated source — medium confidence by the corpus's scale — explicit that it is a design pass with no decision face, and explicit that its user-facing content is new surface rather than as-built.
-* Its **as-built claims were re-verified against this tree**, symbol by symbol, rather than carried across.
+- The design record is a single well-curated source — medium confidence by the corpus's scale — explicit that it is a design pass with no decision face, and explicit that its user-facing content is new surface rather than as-built.
+- Its **as-built claims were re-verified against this tree**, symbol by symbol, rather than carried across.
   **Every row held.** What verification added is what the record did not carry: that `codata` blocks also parse `rule` members; that reserving `cell` is a source break; that `Step` collides with the machine's successor-state outcome; and that `then` is doubly spoken for and reserved as neither.
-* The flagship examples and every code block are the record's own, verified character by character against it.
+- The flagship examples and every code block are the record's own, verified character by character against it.
   An intermediate summary that gave rules a parameter list and spelled congruence with a `cong` keyword was wrong on both counts, and is not what this document carries.
-* This document was adversarially reviewed against the record on both axes before landing.
+- This document was adversarially reviewed against the record on both axes before landing.
   That pass found three real defects, all fixed here: a lexing claim contradicted by `label.rs` (`~>>` is a maximal-munch scanner entry, exactly as the record said, not an obligation-ordering matter); a dropped grammar-budget analysis; and a dropped as-built bridge (`decode_desc`/`TypedCellFace`) that is the most actionable architecture fact in the record.
   It also caught two "corrections" this document had attributed to the record which the record never claimed — the source of those was an intermediate summary, and the misattribution is withdrawn above.
-* **This document was aligned to the ruled block form under the signature unification** (gandr-ng9.18 ruling 6): the member ladder now cites [[circuit-cells#The block form, ruled]] rather than proposing its own respell, the superseded `cons`/`meta`/`~>>` draft is recorded with its supersession rationale rather than deleted, the 3-cell-arrow argument is re-derived against the arrow grid rather than mechanically respelled, and the as-built table was re-verified against the post-unification tree.
+- **This document was aligned to the ruled block form under the signature unification** (gandr-ng9.18 ruling 6): the member ladder now cites [[circuit-cells#The block form, ruled]] rather than proposing its own respell, the superseded `cons`/`meta`/`~>>` draft is recorded with its supersession rationale rather than deleted, the 3-cell-arrow argument is re-derived against the arrow grid rather than mechanically respelled, and the as-built table was re-verified against the post-unification tree.
   The `Model(S)` clauses, the boundary language, the sphere discipline, the filler ban, and the dimension policy are carried unchanged in substance — the alignment moved spellings and their justifications, never the semantics.
-* The sibling library's filler demonstration, sphere device, and record-tower precedent are absorbed as design shape under the standing no-vendoring gate.
+- The sibling library's filler demonstration, sphere device, and record-tower precedent are absorbed as design shape under the standing no-vendoring gate.
   The division of labour between its generic filler and gandr's named coherence rules is a live conversation, not a settled comparison.

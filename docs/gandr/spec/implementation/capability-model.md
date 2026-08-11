@@ -38,9 +38,9 @@ The v0 vocabulary is exactly the twelve (signature, operation) pairs of the as-b
 
 Two threading points replace the ambient posture:
 
-* **Install is explicit.** `run_program` / `run_program_with_prelude` take a grant set, and `run_with_driver` stores it on `ShellDriver` beside `handler` and `early`.
+- **Install is explicit.** `run_program` / `run_program_with_prelude` take a grant set, and `run_with_driver` stores it on `ShellDriver` beside `handler` and `early`.
   The handler-installation point — today unconditional — becomes the moment authority is fixed.
-* **Exercise is checked at resume.** Every offer through `ShellDriver::handle` is tested against the grant set _before_ `ShellHandler::dispatch` runs: a grant is exercised exactly where the ambient handler would have resumed unconditionally.
+- **Exercise is checked at resume.** Every offer through `ShellDriver::handle` is tested against the grant set _before_ `ShellHandler::dispatch` runs: a grant is exercised exactly where the ambient handler would have resumed unconditionally.
 
 The algebra is **attenuation-only**: a nested scope (a subshell, a source-level handler installation) may hold $G' subset.eq G$, never more.
 Grants are unforgeable because they never cross the seam as `Value`s — the program's payload is data, and authority is not.
@@ -114,15 +114,15 @@ Every decline here is **challenged**, never refuted: each is a representation or
 
 Evidence **for** adopting the design as staged:
 
-* the choke point exists today — every host-intercepted operation funnels through `ShellDriver::handle` before `ShellHandler::dispatch`, with the payload already owned;
-* the denial channel exists today — the `ShellEarly`/`ShellOutcome` pair is precisely the out-of-band adaptation a third outcome needs, and adding a variant touches no seam type;
-* the linear zone has the named hook — the crate docs already list held capabilities as a deferred Σ-obligation source, and the duplication rule that would enforce one-shotness is already written, waiting for a population rule;
-* the shell language is staged but not blocked — every obligation above is a surface feature on top of this model, none a redesign of it.
+- the choke point exists today — every host-intercepted operation funnels through `ShellDriver::handle` before `ShellHandler::dispatch`, with the payload already owned;
+- the denial channel exists today — the `ShellEarly`/`ShellOutcome` pair is precisely the out-of-band adaptation a third outcome needs, and adding a variant touches no seam type;
+- the linear zone has the named hook — the crate docs already list held capabilities as a deferred Σ-obligation source, and the duplication rule that would enforce one-shotness is already written, waiting for a population rule;
+- the shell language is staged but not blocked — every obligation above is a surface feature on top of this model, none a redesign of it.
 
 Evidence **against**:
 
-* the seam offers a name-only signature, so payload-shape constraints (the challenged refinements) must decode inside the check or move post-codec — the check point as staged prices atoms, not predicates;
-* one-shot enforcement is typing-side while grants are runtime-side: the bridge (the install form plus the Σ population rule) must land before the zone is non-vacuous in an actual run, so the model's linearity half is obligation, not mechanism;
-* the reinstall-on-resume behavior lives in the machine (the crate's soundness note), outside the runtime crate's reach — the runtime alone cannot enforce one-shotness; only the typing discipline can.
+- the seam offers a name-only signature, so payload-shape constraints (the challenged refinements) must decode inside the check or move post-codec — the check point as staged prices atoms, not predicates;
+- one-shot enforcement is typing-side while grants are runtime-side: the bridge (the install form plus the Σ population rule) must land before the zone is non-vacuous in an actual run, so the model's linearity half is obligation, not mechanism;
+- the reinstall-on-resume behavior lives in the machine (the crate's soundness note), outside the runtime crate's reach — the runtime alone cannot enforce one-shotness; only the typing discipline can.
 
 **Net: adopt.** The grant model lands entirely behind the existing driver boundary with no seam change and a defined-denial outcome the driver's own pattern predicts; the linear-zone activation is the one cross-crate obligation, and it is priced and placed rather than discovered.

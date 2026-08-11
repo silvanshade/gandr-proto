@@ -13,11 +13,11 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 
 ## Source of truth
 
-* **Code**: local `main` only — no git remote is configured during the reboot bootstrap; once the gandr remote lands, `main` receives **signed** pushes only.
-* **Work**: beads (prefix `gandr-`) in a local Dolt database syncing out-of-band from git to DoltHub — push after every write, pull before reads ([workflow/tracker.md](workflow/tracker.md)).
-* **Design**: `docs/gandr/` is authoritative over every other document in this tree; during the reboot bootstrap decisions live in the approved `PLAN.html` and the `gandr-fcw` wayfinder tracker — the per-file `docs/adr/` log is deferred until a decision log is deliberately re-introduced (owner direction, `gandr-fcw`).
+- **Code**: local `main` only — no git remote is configured during the reboot bootstrap; once the gandr remote lands, `main` receives **signed** pushes only.
+- **Work**: beads (prefix `gandr-`) in a local Dolt database syncing out-of-band from git to DoltHub — push after every write, pull before reads ([workflow/tracker.md](workflow/tracker.md)).
+- **Design**: `docs/gandr/` is authoritative over every other document in this tree; during the reboot bootstrap decisions live in the approved `PLAN.html` and the `gandr-fcw` wayfinder tracker — the per-file `docs/adr/` log is deferred until a decision log is deliberately re-introduced (owner direction, `gandr-fcw`).
   Deep design context also arrives **dispatched** from the maintainer's private research workspace (`AGENTS.md` §"Dispatched work"); what this repository relies on is restated here, and beads may cite that context as `ss-` identifiers.
-* **Contributor notes** (session plans, handoffs, research digests, adversary reports): each contributor's own private workspace, outside this tree (`AGENTS.md` §"Commits and publishable history").
+- **Contributor notes** (session plans, handoffs, research digests, adversary reports): each contributor's own private workspace, outside this tree (`AGENTS.md` §"Commits and publishable history").
 
 ## The sub-workflow files
 
@@ -54,15 +54,15 @@ Adding a doc under `docs/gandr/` registers it in `docs/gandr/MANIFEST.yml` with 
 
 ## Standing principles (the short forms)
 
-* **Modularity-first**: before modifying, evaluate structure — extract on touch, act or schedule, always surface (`AGENTS.md` §"Working posture"; precedents in [workflow/rust.md](workflow/rust.md)).
-* **Formatters and linters are best-effort**: never satisfy a tool at the cost of artifact fidelity ([workflow/docs.md](workflow/docs.md)).
-* **External research artifacts are reference-only**: read and cite published work; never vendor, port, or depend on companion artifacts, regardless of license.
+- **Modularity-first**: before modifying, evaluate structure — extract on touch, act or schedule, always surface (`AGENTS.md` §"Working posture"; precedents in [workflow/rust.md](workflow/rust.md)).
+- **Formatters and linters are best-effort**: never satisfy a tool at the cost of artifact fidelity ([workflow/docs.md](workflow/docs.md)).
+- **External research artifacts are reference-only**: read and cite published work; never vendor, port, or depend on companion artifacts, regardless of license.
   Agda dependencies additionally need maintainer sign-off first ([workflow/agda.md](workflow/agda.md)).
-* **Graduation principle (dogfood the stack)**: when a major component ships, evaluate it as a replacement for the ad-hoc tooling that preceded it and file beads for the graduations it enables — the project's own layers are the intended substrate for the tooling around the project, so interim tooling keeps its formats substrate-agnostic.
-* **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
-* **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; keep surveys and session context out of the tree ([workflow/docs.md](workflow/docs.md)).
+- **Graduation principle (dogfood the stack)**: when a major component ships, evaluate it as a replacement for the ad-hoc tooling that preceded it and file beads for the graduations it enables — the project's own layers are the intended substrate for the tooling around the project, so interim tooling keeps its formats substrate-agnostic.
+- **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
+- **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; keep surveys and session context out of the tree ([workflow/docs.md](workflow/docs.md)).
   Economy governs **which documents exist**, never the fidelity of load-bearing content: spreading out, explaining, and linking is the sanctioned response to density — dropping is not (`gandr-fid.0`).
-* **Documentation authoring gets a mandatory fidelity review**: every `docs/gandr/spec/` / `docs/research/` change is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
+- **Documentation authoring gets a mandatory fidelity review**: every `docs/gandr/spec/` / `docs/research/` change is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
 
 ## Where things are decided
 

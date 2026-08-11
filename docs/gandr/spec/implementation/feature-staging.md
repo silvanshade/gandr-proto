@@ -289,10 +289,10 @@ Eleven areas of a language-user surface push, each stated as a stance rather tha
 
 Four constraints bind on every area above, and each exists because of a specific failure it prevents.
 
-* **A new frozen-core former follows the core contract**: a decision record, a vocabulary resynchronization in the same change, and a proof-assistant face in its own commit.
-* **A grammar change holds the grammar gates** — zero conflicts, no external scanner, and the size and state budgets — with corpus-first fixtures.
-* **Every new elaboration records its provenance**, so that diagnostics can un-sugar what the elaboration produced.
-* **Interpreter-side traversals stay iterative**, never recursive on the host stack.
+- **A new frozen-core former follows the core contract**: a decision record, a vocabulary resynchronization in the same change, and a proof-assistant face in its own commit.
+- **A grammar change holds the grammar gates** — zero conflicts, no external scanner, and the size and state budgets — with corpus-first fixtures.
+- **Every new elaboration records its provenance**, so that diagnostics can un-sugar what the elaboration produced.
+- **Interpreter-side traversals stay iterative**, never recursive on the host stack.
 
 ## Key design decisions
 

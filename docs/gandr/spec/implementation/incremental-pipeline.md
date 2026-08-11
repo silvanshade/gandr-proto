@@ -148,9 +148,9 @@ Conditions two and three are the machine's own, and [[typing-machine#Serializati
 
 ### Strategy
 
-* **Save on frame push and pop boundaries**, indexed by program position, so lookup is a single map hit.
-* **Record the footprint as the check proceeds** — the solver already knows which variables each constraint touched, so the footprint costs bookkeeping rather than analysis.
-* **Invalidate by watermark on backtrack**, which costs one integer comparison per live checkpoint rather than a traversal.
+- **Save on frame push and pop boundaries**, indexed by program position, so lookup is a single map hit.
+- **Record the footprint as the check proceeds** — the solver already knows which variables each constraint touched, so the footprint costs bookkeeping rather than analysis.
+- **Invalidate by watermark on backtrack**, which costs one integer comparison per live checkpoint rather than a traversal.
 
 ### This is not the arena's staging overlay
 
@@ -415,10 +415,10 @@ No bibliography entry is minted for it, because the corpus mints entries only fo
 
 **The adoptable spine, four items:**
 
-* the demand-driven query graph with content-addressed keys, **as an analogy to the validated-checkpoint footprint and not as an adoption** — this tree's globally mutable solver state has no pure-functional early-cutoff equivalent, so what transfers is the commitment to **keep positions out of the checkpoint key**, exactly as `rust-analyzer` keys its queries on position-independent item indices because offsets move after every edit [@rust-analyzer];
-* relative positioning in the syntax overlay, which becomes the resync described at [[#pipeline-question-01]];
-* a thin streaming server, re-targeted from an editor protocol to an agent-facing stream, whose first version's seeds are the goal report and the diagnostic report that already exist;
-* a reactive-first posture with batch behaviour derived from it, rather than the reverse.
+- the demand-driven query graph with content-addressed keys, **as an analogy to the validated-checkpoint footprint and not as an adoption** — this tree's globally mutable solver state has no pure-functional early-cutoff equivalent, so what transfers is the commitment to **keep positions out of the checkpoint key**, exactly as `rust-analyzer` keys its queries on position-independent item indices because offsets move after every edit [@rust-analyzer];
+- relative positioning in the syntax overlay, which becomes the resync described at [[#pipeline-question-01]];
+- a thin streaming server, re-targeted from an editor protocol to an agent-facing stream, whose first version's seeds are the goal report and the diagnostic report that already exist;
+- a reactive-first posture with batch behaviour derived from it, rather than the reverse.
 
 **The provenance correction, which is load-bearing because getting it wrong would credit the wrong layer.** Relative _widths_ on the green half of a red-green syntax tree are standard practice in the lineage of that design [@roslyn; @rowan] and are not that project's contribution; stock red trees in both implementations carry _absolute_ positions.
 The documented divergence is making the **red** overlay relative to the root, so that an edit to leading whitespace does not invalidate the whole suffix.
@@ -477,7 +477,7 @@ Written against four sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the loop's stages, the three validity conditions, the hole rules, the performance targets, and the literature dispositions, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
-* **Medium** — the two-directional divergence table, which is a comparison this document draws rather than one either side states.
-* **Marked at the claim** — the streaming-driver reference of [[#pipeline-decision-07]], whose primary source is access-blocked, and the ancestry of [[#pipeline-decision-08]], whose primary source has not been opened.
-* **Checked at the abstract only** — [[#pipeline-decision-02]]'s source, whose title, authorship, mechanization, speedup figure, and setting were read from its abstract on 2026-08-02, and whose body was not opened; the gate this document draws from that setting is marked in place as this project's inference rather than the paper's.
+- **High** — the loop's stages, the three validity conditions, the hole rules, the performance targets, and the literature dispositions, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
+- **Medium** — the two-directional divergence table, which is a comparison this document draws rather than one either side states.
+- **Marked at the claim** — the streaming-driver reference of [[#pipeline-decision-07]], whose primary source is access-blocked, and the ancestry of [[#pipeline-decision-08]], whose primary source has not been opened.
+- **Checked at the abstract only** — [[#pipeline-decision-02]]'s source, whose title, authorship, mechanization, speedup figure, and setting were read from its abstract on 2026-08-02, and whose body was not opened; the gate this document draws from that setting is marked in place as this project's inference rather than the paper's.

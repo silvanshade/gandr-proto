@@ -9,37 +9,37 @@
 
 ## 0. Executive summary
 
-* **Count correction.** The question says "20 gandr-\* crates plus wyrd-rust-gates and wyrd-dylint."
+- **Count correction.** The question says "20 gandr-\* crates plus wyrd-rust-gates and wyrd-dylint."
   The source tree actually has **24 `gandr-*` crates + 2 `wyrd-*` crates = 26** under `wyrd@failed-refactor:crates/` (`wyrd@failed-refactor:Cargo.toml`).
   This report covers all 26.
-* **Rename is mostly done at the crate-name level, not in the prose.** 24 of 26 crates are already named `gandr-*`; only `wyrd-rust-gates` and `wyrd-dylint` keep the old name.
+- **Rename is mostly done at the crate-name level, not in the prose.** 24 of 26 crates are already named `gandr-*`; only `wyrd-rust-gates` and `wyrd-dylint` keep the old name.
   But **126 distinct `wyrd-*` bead IDs** are cited across crate comments/docs (concentrated in wyrd-rust-gates, gandr-pipeline, gandr-core, gandr-grammar, gandr-parser), plus residual "Wyrd" branding in a few doc-comments and the `dylint_lib = "wyrd_dylint"` test attributes.
   These are stale references to the retired tracker — the port must decide whether to rewrite, remap to `gandr-*` beads, or leave as provenance.
-* **Dependency spine is clean and layered** (§2).
+- **Dependency spine is clean and layered** (§2).
   Leaves: `gandr-nominal`, `gandr-graph`, `gandr-syntax`, `gandr-recursion`, `gandr-order-maintenance`, `gandr-render-proto`.
   `gandr-core` sits on `gandr-nominal` only; `gandr-pipeline` is the hub (8 inbound-ish workspace deps).
   Driver `gandr` sits on top.
-* **Two orphan crates with no inbound workspace edges** (question c): `gandr-data` and `gandr-kernel-levels`.
+- **Two orphan crates with no inbound workspace edges** (question c): `gandr-data` and `gandr-kernel-levels`.
   Both are _intentional_ leaves awaiting a consumer that is not built yet (§7c). (Reboot update, B2: the kernel-levels consumer now exists — see the §7c update note.)
-* **tree-sitter is demoted, not deleted** (question d): `gandr-tree-sitter` is workspace-`exclude`d and reachable only through `gandr-grammar`'s optional `parity` feature; the tree-sitter grammar package (`packages/tree-sitter-gandr/`) still exists as the differential-parity reference.
+- **tree-sitter is demoted, not deleted** (question d): `gandr-tree-sitter` is workspace-`exclude`d and reachable only through `gandr-grammar`'s optional `parity` feature; the tree-sitter grammar package (`packages/tree-sitter-gandr/`) still exists as the differential-parity reference.
   The Rust default graph is tree-sitter-free, enforced by a `wyrd-rust-gates` gate (§7d).
-* **Formatting is designed as three crates that do not exist yet** (question e): `proposal-pretty-printing.md` plans `gandr-doc` (layout VM), `gandr-fmt` (CST formatter), and **`gandr-pretty`** (core presentation printer).
+- **Formatting is designed as three crates that do not exist yet** (question e): `proposal-pretty-printing.md` plans `gandr-doc` (layout VM), `gandr-fmt` (CST formatter), and **`gandr-pretty`** (core presentation printer).
   The premise that "gandr-pretty never existed" is true _as code_ but **contradicted by the spec**, which explicitly names it (§7e).
   Today pretty/render logic is inline and scattered across ≥6 modules.
-* **The proposed scope-prefixed feature scheme (`gandr_core_*` / `gandr_feat_*` / `gandr_tool_*` / `gandr_test_*`) exists nowhere in source or docs** — it is purely a target.
+- **The proposed scope-prefixed feature scheme (`gandr_core_*` / `gandr_feat_*` / `gandr_tool_*` / `gandr_test_*`) exists nowhere in source or docs** — it is purely a target.
   The current posture is ad-hoc `default`/`full` plus a few bespoke feature names, with **four concrete non-conformances** and **two outright bugs/typos** the migration must fix (§5).
-* **L-machine parity gaps in `gandr-sequent`** (question a) are three named, tracked residual seams — the un-focusing readback residual, prelude free-name resolution in force position, and the whole-program ADR-76 identity-former decline — all reporting a _defined_ `UnsupportedByReference`, never a panic (§7a).
+- **L-machine parity gaps in `gandr-sequent`** (question a) are three named, tracked residual seams — the un-focusing readback residual, prelude free-name resolution in force position, and the whole-program ADR-76 identity-former decline — all reporting a _defined_ `UnsupportedByReference`, never a panic (§7a).
   A fourth, adjacent decline (ADR-80 declared-data `DataCase`) rides the same rule.
-* **Biggest port-risk crates** are the ones with heavy external stacks and unsafe seams: `gandr-tui` (8 TUI crates), `gandr` (reedline), `gandr-ffi` (libffi/libloading/cc, unsafe), `gandr-tree-sitter` (C compile), and `wyrd-rust-gates` (37k LOC, deeply wyrd-workflow-coupled incl. an IU submodule pin) (§8).
+- **Biggest port-risk crates** are the ones with heavy external stacks and unsafe seams: `gandr-tui` (8 TUI crates), `gandr` (reedline), `gandr-ffi` (libffi/libloading/cc, unsafe), `gandr-tree-sitter` (C compile), and `wyrd-rust-gates` (37k LOC, deeply wyrd-workflow-coupled incl. an IU submodule pin) (§8).
 
 ---
 
 ## 1. Method & scope
 
-* Source: `wyrd@failed-refactor:crates/` (26 crate dirs) + `wyrd@failed-refactor:docs/` (84 ADRs, spec, proposals) + `wyrd@failed-refactor:mise.toml` (test lanes) + `wyrd@failed-refactor:packages/tree-sitter-gandr/`.
-* Read-only throughout.
+- Source: `wyrd@failed-refactor:crates/` (26 crate dirs) + `wyrd@failed-refactor:docs/` (84 ADRs, spec, proposals) + `wyrd@failed-refactor:mise.toml` (test lanes) + `wyrd@failed-refactor:packages/tree-sitter-gandr/`.
+- Read-only throughout.
   All manifests, `lib.rs` module surfaces, and the substantive modules for questions (a)–(e) were read directly.
-* LOC figures below are `wc -l` over each crate's `src/**.rs` (includes inline `#[cfg(test)]` modules; excludes `tests/`), a rough size signal only.
+- LOC figures below are `wc -l` over each crate's `src/**.rs` (includes inline `#[cfg(test)]` modules; excludes `tests/`), a rough size signal only.
 
 ---
 
@@ -178,11 +178,11 @@ The scheme's rule ("every crate has `default` + `full`; `full` = all features ex
 Beyond the workspace, the crates pull: `no-panic` (gandr-core, cfg-gated), `petgraph`+`fixedbitset` (gandr-graph), `thiserror`/`serde`/`serde_json`/`toml`/ `yaml-rust2` (broadly), `regex` (opt, gandr-core), `criterion`/`proptest`/`insta` (dev).
 The concentrated-risk stacks:
 
-* **gandr-tui**: `ratatui`, `crossterm`, `edtui`, `color-eyre`, `nucleo-matcher` (MPL-2.0, flagged in the workspace manifest), `portable-pty`, `tui-term`, `vt100` — 8 pinned UI crates, each with load-bearing feature choices documented inline in `wyrd@failed-refactor:Cargo.toml` `[workspace.dependencies]`.
-* **gandr** (driver): `reedline` (nushell line editor) + `nu-ansi-term`.
-* **gandr-ffi**: `libffi` + `libloading` + `cc` — native, unsafe, builds a bundled C fixture; entirely behind the `ffi` feature.
-* **gandr-tree-sitter**: `tree-sitter` + `cc` (compiles `parser.c`) — the reason it is `exclude`d from the default graph.
-* **wyrd-dylint**: `clippy_utils` via a **git rev pin** (`9fca3bc9…`) + `rustc_private` — toolchain-coupled, will drift with the compiler.
+- **gandr-tui**: `ratatui`, `crossterm`, `edtui`, `color-eyre`, `nucleo-matcher` (MPL-2.0, flagged in the workspace manifest), `portable-pty`, `tui-term`, `vt100` — 8 pinned UI crates, each with load-bearing feature choices documented inline in `wyrd@failed-refactor:Cargo.toml` `[workspace.dependencies]`.
+- **gandr** (driver): `reedline` (nushell line editor) + `nu-ansi-term`.
+- **gandr-ffi**: `libffi` + `libloading` + `cc` — native, unsafe, builds a bundled C fixture; entirely behind the `ffi` feature.
+- **gandr-tree-sitter**: `tree-sitter` + `cc` (compiles `parser.c`) — the reason it is `exclude`d from the default graph.
+- **wyrd-dylint**: `clippy_utils` via a **git rev pin** (`9fca3bc9…`) + `rustc_private` — toolchain-coupled, will drift with the compiler.
 
 ---
 
@@ -201,12 +201,12 @@ Three named residual seams — each a _defined_ `StuckReason::UnsupportedByRefer
 **A1 — the un-focusing readback residual.** The focused IL discards the source- syntax bodies `𝓕` consumed, so anything that is not a first-order value cannot be structurally read back; the inverse translation ("un-focusing", `𝓕⁻¹`) is unbuilt.
 Concretely:
 
-* Higher-order native combinators — `each`/`where`/`reduce`/`any`/`all`/ `update_where` — need their thunk argument's source body and therefore **decline** (`…/machine.rs:1207` in `dispatch_native`; predicate `native_needs_unfocus` at `…/machine.rs:1822–1834`; module header `…/machine.rs:40–51`).
+- Higher-order native combinators — `each`/`where`/`reduce`/`any`/`all`/ `update_where` — need their thunk argument's source body and therefore **decline** (`…/machine.rs:1207` in `dispatch_native`; predicate `native_needs_unfocus` at `…/machine.rs:1822–1834`; module header `…/machine.rs:40–51`).
   A first-order prim never inspects a thunk body, so it dispatches; thunks cross the host seam as indexed readback markers and are resolved back to the original machine thunk (identity + call-by-need cell survive; comment `…/machine.rs:1196–1206`).
-* The differential compares thunks / bare functions / lazy pairs / reified stacks / partial natives at **KIND granularity**, not structurally — their exact readback "needs _un-focusing_ the IL back to source syntax … a listed residual seam, not a semantic divergence" (`…/differential.rs:23–38`; `CanonOutcome`/`CanonValue` variants `Function`, `LazyPair`, `Thunk(Grade)`, `Stk`, `Native`).
+- The differential compares thunks / bare functions / lazy pairs / reified stacks / partial natives at **KIND granularity**, not structurally — their exact readback "needs _un-focusing_ the IL back to source syntax … a listed residual seam, not a semantic divergence" (`…/differential.rs:23–38`; `CanonOutcome`/`CanonValue` variants `Function`, `LazyPair`, `Thunk(Grade)`, `Stk`, `Native`).
   A thunk's **grade** is compared exactly (carried by `wyrd-5v6i`); only the body is opaque.
-* Terminal readback fills un-focused copattern/cocase arm bodies with holes/ placeholders (`…/machine.rs:1564–1600`).
-* **Closing it:** build the `𝓕⁻¹` un-focusing / readback of IL → source syntax (the `wyrd-4xtv`-era L1 work).
+- Terminal readback fills un-focused copattern/cocase arm bodies with holes/ placeholders (`…/machine.rs:1564–1600`).
+- **Closing it:** build the `𝓕⁻¹` un-focusing / readback of IL → source syntax (the `wyrd-4xtv`-era L1 work).
   Once landed, the six higher-order natives dispatch and the differential upgrades those kinds from opaque to structural comparison.
 
 **A2 — prelude free-name resolution in force position.** A free/neutral producer name forced against the prelude should resolve per ADR-42, but the prelude path is not wired at this checkpoint; a force miss on a non-thunk returns `StuckReason::ForcedNonThunk` (`meet_force`, `…/machine.rs:1318`, `1336–1339`; the neutral `LValue` is documented as "a prelude binding … consulted at a force miss", `…/machine.rs:129–130`; header `…/machine.rs:65–67` — "prelude resolution … still grow[s] in later checkpoints").
@@ -230,25 +230,25 @@ Its **only** consumer is a **dev-dependency** edge from `gandr-pipeline` (`…/g
 
 Feasibility: **mechanically easy, with one real coupling to redesign.**
 
-* Pros: zero production deps, zero production dependents (single dev-edge), tiny.
+- Pros: zero production deps, zero production dependents (single dev-edge), tiny.
   Folding it into `gandr-grammar` as a `fixtures` submodule (or a `gandr_test_*`- scoped feature) is low-risk; `gandr-pipeline`'s dev-dep would then target `gandr-grammar` (feature-gated).
-* The coupling: the crate is a **cross-language contract**.
+- The coupling: the crate is a **cross-language contract**.
   The manifest is JSON "so Node consumers can read the same file by path convention" and the path constants are **repo-relative** strings (`crates/gandr-grammar-contract-fixtures/…`, `…/src/lib.rs:3–6`, `24–31`).
   It pairs with `packages/tree-sitter-gandr/`.
   Folding it in changes those repo-relative paths and forces `gandr-grammar` (a lean grammar core) to carry fixture bytes + a criterion bench.
-* **Recommendation for the coordinator:** feasible either way; if kept separate, rename/rescope it as a test-fixtures crate under the `gandr_test_*` bucket.
+- **Recommendation for the coordinator:** feasible either way; if kept separate, rename/rescope it as a test-fixtures crate under the `gandr_test_*` bucket.
   If folded in, treat the repo-relative path constants and the Rust/Node shared-manifest contract as the migration's real work, not the code move.
 
 ### (c) `gandr-kernel-levels` and `gandr-data` wiring intent (no inbound edges)
 
 Both are **intentional orphans awaiting an unbuilt consumer** — not dead code.
 
-* **gandr-kernel-levels** is the _first_ `gandr-kernel-*` subcrate (kernel-boundary slice 1+2, ADR-78), deliberately holding **levels only** with a hard TCB dependency wall — "no terms, no types, no universe rule (the rule `U_l : U_m` iff `l < m` is one call into `Level::lt`, and belongs to the **kernel-core crate**)" (`wyrd@failed-refactor:crates/gandr-kernel-levels/src/lib.rs:1–24`).
+- **gandr-kernel-levels** is the _first_ `gandr-kernel-*` subcrate (kernel-boundary slice 1+2, ADR-78), deliberately holding **levels only** with a hard TCB dependency wall — "no terms, no types, no universe rule (the rule `U_l : U_m` iff `l < m` is one call into `Level::lt`, and belongs to the **kernel-core crate**)" (`wyrd@failed-refactor:crates/gandr-kernel-levels/src/lib.rs:1–24`).
   The consumer is the future certified **kernel-core** crate, which is not built: the frozen interpreter core (`gandr-core`) carries only the `{0,+1}` _former_, "no first-class `Γ ⊢ A : U_l` type-formation judgment (that judgment is the kernel's S2 job)" (`…/docs/gandr/spec/core-ir-contract.md:102`; ADR-81 reconciliation `…/docs/adr/0081-…:11,19`; `…/docs/gandr/spec/kernel-boundary.md:6–8,45,139–140`).
   So the missing inbound edge is expected: it awaits kernel S2.
   **Reboot update (B2, 2026-07-21):** the awaited consumer now exists — `gandr-kernel-core` (`crates/kernel-core`, landed B2.1) consumes `gandr-kernel-strata`, the reboot home of the kernel-levels content (`Level`/`lt`/`LandmarkPoset`, ADR-78), as its only dependency per the kernel-boundary §2 TCB wall.
   The orphan status is discharged in the reboot tree; the `wyrd@failed-refactor` description above stands as source-material history.
-* **gandr-data** is a pure codec crate (JSON/TOML/YAML ↔ typed gandr `Value` over the **public** value constructors only; ADR-35 D6 renderer/encoder firewall), touching no part of the calculus (`wyrd@failed-refactor:crates/gandr-data/src/lib.rs:1–34`).
+- **gandr-data** is a pure codec crate (JSON/TOML/YAML ↔ typed gandr `Value` over the **public** value constructors only; ADR-35 D6 renderer/encoder firewall), touching no part of the calculus (`wyrd@failed-refactor:crates/gandr-data/src/lib.rs:1–34`).
   Its intended consumer is the **shell / self-hosting bootstrap** lane: porting `scripts/*.nu` to gandr is what exercises the codecs (`…/docs/gandr/spec/proposal-shell-usage-surface.md:30,35,89`; `…/docs/gandr/spec/proposal-self-hosting.md:50,87`).
   That lane's driver does not yet depend on it, so it currently dangles. (Note: `gandr-data` cites **zero** `wyrd-*` bead IDs — clean to port.)
 
@@ -256,23 +256,23 @@ Both are **intentional orphans awaiting an unbuilt consumer** — not dead code.
 
 **Demoted to reference-only, not deleted.**
 
-* `gandr-tree-sitter` is `exclude`d from the workspace (both listed in `members` and `exclude`; the manifest comment explains it must be `exclude`d rather than merely dropped, because `gandr-grammar`'s optional path dep would otherwise make it an implicit member) and is reachable **only** through `gandr-grammar`'s non-default `parity` feature (`wyrd@failed-refactor:Cargo.toml` workspace comment; `…/crates/gandr-grammar/Cargo.toml:29–59`).
-* The **tree-sitter grammar itself still exists**: `packages/tree-sitter-gandr/` (`grammar.js`, `src/node-types.json`, `queries/`, `test/`) is the reference the differential-parity lane checks the PBG labeler/mold highlighter against.
-* **Parity lanes that still reference tree-sitter:**
-  + `gandr-grammar` tests: `tests/token_stream_parity.rs`, `tests/highlight_parity.rs` (E1/E2 differential, `#[cfg(feature="parity")]`), plus `tests/node_types_gate.rs` and `tests/surface.rs`, which gate the committed `node-types.json` against `gandr_grammar::TREE_SITTER_NAMED_KINDS` (`…/tests/node_types_gate.rs:4–81`, `…/tests/surface.rs:35,108–120`).
-  + `fuzz/fuzz_targets/parity.rs` (the AFL parity target).
-* **Residue elsewhere:** `gandr-parser/src/{label.rs,mold.rs}` keep tree-sitter _documentation comments_ (the labeler mirrors gandr's tree-sitter lexemes) but no dependency; `gandr-corpus/src/lib.rs:607` documents the "retired tree-sitter parser" replaced by the melder push-machine.
-* **Enforced default-graph exclusion:** `wyrd-rust-gates/src/project.rs:63–70` hardcodes `FORBIDDEN_DEFAULT_GRAPH_PACKAGES = [tree-sitter, gandr-tree-sitter, regex, regex-automata, regex-syntax, aho-corasick]`, and the retained `check-default-graph-tree-sitter-free.nu` policy (`…/project.rs:147`) fails the build if the default `-e normal,build` graph pulls any of them (bead `wyrd-66jm`).
+- `gandr-tree-sitter` is `exclude`d from the workspace (both listed in `members` and `exclude`; the manifest comment explains it must be `exclude`d rather than merely dropped, because `gandr-grammar`'s optional path dep would otherwise make it an implicit member) and is reachable **only** through `gandr-grammar`'s non-default `parity` feature (`wyrd@failed-refactor:Cargo.toml` workspace comment; `…/crates/gandr-grammar/Cargo.toml:29–59`).
+- The **tree-sitter grammar itself still exists**: `packages/tree-sitter-gandr/` (`grammar.js`, `src/node-types.json`, `queries/`, `test/`) is the reference the differential-parity lane checks the PBG labeler/mold highlighter against.
+- **Parity lanes that still reference tree-sitter:**
+  - `gandr-grammar` tests: `tests/token_stream_parity.rs`, `tests/highlight_parity.rs` (E1/E2 differential, `#[cfg(feature="parity")]`), plus `tests/node_types_gate.rs` and `tests/surface.rs`, which gate the committed `node-types.json` against `gandr_grammar::TREE_SITTER_NAMED_KINDS` (`…/tests/node_types_gate.rs:4–81`, `…/tests/surface.rs:35,108–120`).
+  - `fuzz/fuzz_targets/parity.rs` (the AFL parity target).
+- **Residue elsewhere:** `gandr-parser/src/{label.rs,mold.rs}` keep tree-sitter _documentation comments_ (the labeler mirrors gandr's tree-sitter lexemes) but no dependency; `gandr-corpus/src/lib.rs:607` documents the "retired tree-sitter parser" replaced by the melder push-machine.
+- **Enforced default-graph exclusion:** `wyrd-rust-gates/src/project.rs:63–70` hardcodes `FORBIDDEN_DEFAULT_GRAPH_PACKAGES = [tree-sitter, gandr-tree-sitter, regex, regex-automata, regex-syntax, aho-corasick]`, and the retained `check-default-graph-tree-sitter-free.nu` policy (`…/project.rs:147`) fails the build if the default `-e normal,build` graph pulls any of them (bead `wyrd-66jm`).
 
 ### (e) where formatting should live
 
 **Contradiction with the premise, recorded explicitly:** the question says "a `gandr-fmt` crate was planned; `gandr-pretty` never existed."
 A dedicated proposal — `wyrd@failed-refactor:docs/gandr/spec/proposal-pretty-printing.md` (facet C, ADR-46 D) — plans a **three-crate split**, and it _does_ name `gandr-pretty`:
 
-* `gandr-doc` — shared PrettyExpressive-style layout VM (arXiv:2310.01530) (`…/proposal-pretty-printing.md:5,18–19,100–107`).
-* `gandr-fmt` — canonical **CST/source** formatter; depends on `gandr-doc`/`gandr-parser`/`gandr-grammar`/`gandr-syntax`, and explicitly **not** on `gandr-core`/checker/`gandr-pipeline`/`gandr-tree-sitter`/`gandr-pretty` (`…:100–103,567,700–702`; ADR-35 D6 renderer firewall; ADR-62 bead `wyrd-d71t`).
-* `gandr-pretty` — core **presentation** printer for the REPL/diagnostics (values/types/computations/goals/marks/stacks); depends on `gandr-doc`+`gandr-core`
-  + checked pipeline carriers; neither core nor pipeline depend back
+- `gandr-doc` — shared PrettyExpressive-style layout VM (arXiv:2310.01530) (`…/proposal-pretty-printing.md:5,18–19,100–107`).
+- `gandr-fmt` — canonical **CST/source** formatter; depends on `gandr-doc`/`gandr-parser`/`gandr-grammar`/`gandr-syntax`, and explicitly **not** on `gandr-core`/checker/`gandr-pipeline`/`gandr-tree-sitter`/`gandr-pretty` (`…:100–103,567,700–702`; ADR-35 D6 renderer firewall; ADR-62 bead `wyrd-d71t`).
+- `gandr-pretty` — core **presentation** printer for the REPL/diagnostics (values/types/computations/goals/marks/stacks); depends on `gandr-doc`+`gandr-core`
+  - checked pipeline carriers; neither core nor pipeline depend back
   (`…:19,106–107,127`).
 
 So the accurate statement is: **`gandr-pretty` is a _planned_ crate that has no code yet** — true only at the code level.
@@ -280,8 +280,8 @@ None of `gandr-doc`, `gandr-fmt`, `gandr-pretty` exist in `crates/` today.
 
 **Where pretty/render actually lives now (inline and scattered):**
 
-* `gandr-sequent/src/pretty.rs` — the command-IL pretty-printer (§2.1 notation, depth-bounded).
-* `gandr-pipeline/src/render.rs`, `gandr-render-proto/src/present.rs`, `gandr-tui/src/{present.rs,render.rs}`, `gandr/src/render.rs`, `wyrd-rust-gates/src/coverage/render.rs`.
+- `gandr-sequent/src/pretty.rs` — the command-IL pretty-printer (§2.1 notation, depth-bounded).
+- `gandr-pipeline/src/render.rs`, `gandr-render-proto/src/present.rs`, `gandr-tui/src/{present.rs,render.rs}`, `gandr/src/render.rs`, `wyrd-rust-gates/src/coverage/render.rs`.
 
 **Recommendation for the coordinator:** the target home is the three-crate lane (`gandr-doc`/`gandr-fmt`/`gandr-pretty`); the port should treat the existing `gandr-sequent/src/pretty.rs` and the various `render.rs` modules as **candidates to consolidate** behind `gandr-doc`/`gandr-pretty` (respecting the ADR-35 D6 firewall: formatters/printers parse/lower/type/mark nothing).
 This is a _graduation_ of an inline facet into a component — flag for a scope decision, since no such crate exists to port into.
@@ -293,39 +293,39 @@ This is a _graduation_ of an inline facet into a component — flag for a scope 
 Tiers by dependency depth, external/unsafe surface, and coupling.
 "Verbatim-clean" = zero `wyrd-*` bead IDs cited.
 
-* **Tier 0 — trivial leaves (port first, verbatim).** `gandr-nominal`, `gandr-recursion`, `gandr-kernel-levels` (all verbatim-clean, tiny, `#![no_std]` or near), `gandr-render-proto`, `gandr-order-maintenance`, `gandr-syntax`, `gandr-graph` (petgraph adapter is hidden), `gandr-data` (verbatim-clean, orphan), `gandr-grammar-contract-fixtures` (verbatim-clean; see §7b for the fold-in choice).
-* **Tier 1 — core, moderate.** `gandr-core` (38k LOC but self-contained on `gandr-nominal`; the checker↔machine step-agreement anchor is the porting risk if split), `gandr-desc`, `gandr-grammar` (+ the parity feature wart, H1), `gandr-parser`.
-* **Tier 2 — the hub.** `gandr-pipeline` (27k LOC, 8 workspace deps, 150 bead-ID citations) — the integration center; port after all its deps.
-* **Tier 3 — research lanes (staged).** `gandr-sequent` (three tracked residuals, §7a), `gandr-polygraph` (L2, not started), `gandr-vdc`.
+- **Tier 0 — trivial leaves (port first, verbatim).** `gandr-nominal`, `gandr-recursion`, `gandr-kernel-levels` (all verbatim-clean, tiny, `#![no_std]` or near), `gandr-render-proto`, `gandr-order-maintenance`, `gandr-syntax`, `gandr-graph` (petgraph adapter is hidden), `gandr-data` (verbatim-clean, orphan), `gandr-grammar-contract-fixtures` (verbatim-clean; see §7b for the fold-in choice).
+- **Tier 1 — core, moderate.** `gandr-core` (38k LOC but self-contained on `gandr-nominal`; the checker↔machine step-agreement anchor is the porting risk if split), `gandr-desc`, `gandr-grammar` (+ the parity feature wart, H1), `gandr-parser`.
+- **Tier 2 — the hub.** `gandr-pipeline` (27k LOC, 8 workspace deps, 150 bead-ID citations) — the integration center; port after all its deps.
+- **Tier 3 — research lanes (staged).** `gandr-sequent` (three tracked residuals, §7a), `gandr-polygraph` (L2, not started), `gandr-vdc`.
   Portable as-is but carry known open work.
-* **Tier 4 — surfaces with heavy external stacks.** `gandr-shell`, `gandr-ffi` (unsafe, libffi/cc, feature-isolated), `gandr-lsp` (codecs/full wart), `gandr-tui` (8 UI crates), `gandr` driver (reedline).
-* **Tier 5 — tooling, decouple decision needed.** `wyrd-tree-sitter`/reference lane (C compile, `exclude`d), `wyrd-rust-gates` (37k LOC, encodes wyrd CI policy incl. the IU submodule pin — needs a re-home/rewrite decision), `wyrd-dylint` (rustc_private, git-pinned `clippy_utils`, standalone workspace — most toolchain-fragile).
+- **Tier 4 — surfaces with heavy external stacks.** `gandr-shell`, `gandr-ffi` (unsafe, libffi/cc, feature-isolated), `gandr-lsp` (codecs/full wart), `gandr-tui` (8 UI crates), `gandr` driver (reedline).
+- **Tier 5 — tooling, decouple decision needed.** `wyrd-tree-sitter`/reference lane (C compile, `exclude`d), `wyrd-rust-gates` (37k LOC, encodes wyrd CI policy incl. the IU submodule pin — needs a re-home/rewrite decision), `wyrd-dylint` (rustc_private, git-pinned `clippy_utils`, standalone workspace — most toolchain-fragile).
 
 ---
 
 ## 9. Hazards & surprises for the coordinator
 
-* **H1 (feature-graph contradiction).** `gandr-grammar` `full = []`, but its own comment and the workspace-root manifest comment assert `--features=full` activates the `parity` lane; the main gate runs `cargo nextest run --workspace --all-targets --features=full` (`wyrd@failed-refactor:mise.toml:631–639`).
+- **H1 (feature-graph contradiction).** `gandr-grammar` `full = []`, but its own comment and the workspace-root manifest comment assert `--features=full` activates the `parity` lane; the main gate runs `cargo nextest run --workspace --all-targets --features=full` (`wyrd@failed-refactor:mise.toml:631–639`).
   Since `full` does not include `parity`, the E1/E2 tree-sitter differential-parity tests are `#[cfg(feature="parity")]`-compiled-out under that command and **may never run in the main lane** — the differential could be silently inert.
   I did not execute cargo to confirm feature unification; recorded as a contradiction to verify, not harmonized.
   Fix is either `full = ["parity"]` or correcting the comment + adding an explicit parity lane.
-* **H2 (typo'd feature).** `gandr-sequent` declares a feature literally named `features` (`Cargo.toml:27`), almost certainly a botched `full`.
+- **H2 (typo'd feature).** `gandr-sequent` declares a feature literally named `features` (`Cargo.toml:27`), almost certainly a botched `full`.
   Any `--features full -p gandr-sequent` today errors.
   Trivial fix; flag because the scheme migration will trip over it.
-* **H3 (`gandr-lsp` full is a no-op).** `full=[]` while `codecs` gates the entire server (bin is `required-features=["codecs"]`).
+- **H3 (`gandr-lsp` full is a no-op).** `full=[]` while `codecs` gates the entire server (bin is `required-features=["codecs"]`).
   Building `gandr-lsp --features full` yields an empty library and no server — the scheme's `full` must pull `codecs`.
-* **H4 (count mismatch).** 24 `gandr-*` crates, not 20; total 26 with the two `wyrd-*` crates.
+- **H4 (count mismatch).** 24 `gandr-*` crates, not 20; total 26 with the two `wyrd-*` crates.
   If the epic's plan is sized for 22, it is under-scoped by 4 crates.
-* **H5 (members ∩ exclude).** `gandr-tree-sitter` and `fuzz` appear in **both** `members` and `exclude` in the workspace manifest (intentional per the inline comment, to defeat implicit membership via an optional path dep).
+- **H5 (members ∩ exclude).** `gandr-tree-sitter` and `fuzz` appear in **both** `members` and `exclude` in the workspace manifest (intentional per the inline comment, to defeat implicit membership via an optional path dep).
   This is an unusual Cargo pattern the reboot's workspace file must replicate deliberately or it will re-drag tree-sitter/regex into the default graph and trip the `wyrd-rust-gates` gate.
-* **H6 (`gandr-pretty` premise wrong).** The task states `gandr-pretty` "never existed"; the spec plans it (with `gandr-doc`) — see §7e.
+- **H6 (`gandr-pretty` premise wrong).** The task states `gandr-pretty` "never existed"; the spec plans it (with `gandr-doc`) — see §7e.
   Planning a port should not silently drop the two-of-three unbuilt formatting crates.
-* **H7 (wyrd tracker debt).** 126 `wyrd-*` bead IDs are woven through comments/docs of the crates being ported.
+- **H7 (wyrd tracker debt).** 126 `wyrd-*` bead IDs are woven through comments/docs of the crates being ported.
   Leaving them is stale-reference debt; rewriting them is a large mechanical pass.
   Needs an explicit policy (and note the contributor-concern angle: bead forensics arguably should not enter the reboot's tracked history).
-* **H8 (`wyrd-rust-gates` / `wyrd-dylint` are wyrd-CI-shaped).** The gate crate hardcodes an IU submodule pin and a forbidden-package list; the dylint crate is rustc_private with a git-pinned `clippy_utils`.
+- **H8 (`wyrd-rust-gates` / `wyrd-dylint` are wyrd-CI-shaped).** The gate crate hardcodes an IU submodule pin and a forbidden-package list; the dylint crate is rustc_private with a git-pinned `clippy_utils`.
   Both encode wyrd's exact toolchain/ workflow and are the least "just port it" artifacts — decide re-home vs rewrite vs drop before sequencing them.
-* **H9 (adjacent decline class).** Beyond the three question-(a) gaps, `gandr-sequent` also declines the **ADR-80 declared-data eliminator** (`Comp::DataCase`) whole- program by the same cross-lane rule (§7a).
+- **H9 (adjacent decline class).** Beyond the three question-(a) gaps, `gandr-sequent` also declines the **ADR-80 declared-data eliminator** (`Comp::DataCase`) whole- program by the same cross-lane rule (§7a).
   Any L1 plan that closes A3 should scope declared-data in too, or it stays a second whole-program `UnsupportedByReference` class.
 
 ```text

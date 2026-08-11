@@ -10,14 +10,14 @@ Its distinguishing commitment is that the manager introduces **no semantics of i
 
 **Built, and verified against the tree at write time.**
 
-* **The manifest vocabulary is registered and checked.** `gandr-surface-engine`'s `attributes` module registers `package`, `dependency`, `toolchain`, `name`, `license`, and `authors` as inert attribute schemas in the same registry as `doc` and `deprecated`, typed by the same checker path ([[../../surface-language/attributes#The registry]]).
+- **The manifest vocabulary is registered and checked.** `gandr-surface-engine`'s `attributes` module registers `package`, `dependency`, `toolchain`, `name`, `license`, and `authors` as inert attribute schemas in the same registry as `doc` and `deprecated`, typed by the same checker path ([[../../surface-language/attributes#The registry]]).
   `dependency` is repeatable, one per dependency; the rest are single-valued.
   The runnable example is `crates/surface-corpus`'s `examples/model/attributes/module-metadata.gandr`.
-* **The manifest has no unit root to attach to.** A module declaration takes no leading attribute block, so the schemas validate on a top-level definition as the unit-root stand-in ([[../../surface-language/proposed/modules#module-question-04]]).
-* **A content-addressed store exists, and it serves a different consumer.** `gandr-storage-prolly-trees` is an ordered-record Merkle search tree whose node identity is a BLAKE3 hash of the encoded node, with membership, non-membership, and range proofs and a block-store interface; `gandr-storage-chunker` is a deterministic record-safe boundary detector with an 85-byte parameter commitment; `gandr-storage-artifact` binds the two into an artifact identity.
+- **The manifest has no unit root to attach to.** A module declaration takes no leading attribute block, so the schemas validate on a top-level definition as the unit-root stand-in ([[../../surface-language/proposed/modules#module-question-04]]).
+- **A content-addressed store exists, and it serves a different consumer.** `gandr-storage-prolly-trees` is an ordered-record Merkle search tree whose node identity is a BLAKE3 hash of the encoded node, with membership, non-membership, and range proofs and a block-store interface; `gandr-storage-chunker` is a deterministic record-safe boundary detector with an 85-byte parameter commitment; `gandr-storage-artifact` binds the two into an artifact identity.
   **Their consumer is the kernel's export artifacts, not build units** ([[../../implementation#Storage — content addressing, canonicalize-before-address]]).
-* **There is no persistent backend.** The block store that exists is in-memory, and the absence of a persistent one is a self-declared deficit of the storage tier rather than an oversight.
-* **`import "URI" as name ;` parses and is never lowered.** No resolver consumes it ([[../../surface-language/proposed/modules#What is built, and what this document describes]]).
+- **There is no persistent backend.** The block store that exists is in-memory, and the absence of a persistent one is a self-declared deficit of the storage tier rather than an oversight.
+- **`import "URI" as name ;` parses and is never lowered.** No resolver consumes it ([[../../surface-language/proposed/modules#What is built, and what this document describes]]).
 
 **Designed, and not built.** Everything else in this document: the import lowering, the address function over a unit's canonicalized inputs, the cache and hydration, endpoint distribution, typed ascription of a fetched unit, the build graph, distributed builds, the lock record, and the manifest's identity-bearing fields.
 
@@ -44,10 +44,10 @@ Recording the collision in both places is deliberate: an unqualified use in a qu
 
 A source unit names its dependencies through an **import surface** that lowers to ordinary module values, so imports add no new core construct.
 
-* The import surface is a **declaration form** naming an external build unit and binding it to a local name.
-* Lowering resolves each import to a **first-class module value** and threads it into scope — either as a package the body unpacks, or as a directly bound structure.
-* Resolution is **content-addressed**: an import names a unit by a content address, optionally through a human-facing alias that a lockfile pins to that address.
-* The surface stays **layout-insignificant and grammar-local**, consistent with the rest of the surface ([[../../surface-language#The design stance]]); it adds a surface form and no core-IR construct.
+- The import surface is a **declaration form** naming an external build unit and binding it to a local name.
+- Lowering resolves each import to a **first-class module value** and threads it into scope — either as a package the body unpacks, or as a directly bound structure.
+- Resolution is **content-addressed**: an import names a unit by a content address, optionally through a human-facing alias that a lockfile pins to that address.
+- The surface stays **layout-insignificant and grammar-local**, consistent with the rest of the surface ([[../../surface-language#The design stance]]); it adds a surface form and no core-IR construct.
 
 **The point of lowering to module values is that the package manager introduces no semantics of its own.** Once an import is resolved, the body sees an ordinary gandr module, type-checked by the existing rules.
 Nothing downstream of resolution knows that a module arrived through an import.
@@ -107,9 +107,9 @@ This is a construction obligation, not a built connection, and the capability mo
 
 **A fetched unit is not trusted by name.** It is checked against an expected signature using the module system's ascription machinery.
 
-* An import may carry an **expected signature** `σ`, and the resolved module is ascribed to it by the existing rules — transparent ascription preserving identities, or opaque sealing hiding them ([[../../surface-language/proposed/modules#The typing rules]]).
-* A first-class package fetched at build or load time is **unpacked with a dynamic signature match**, so a version whose actual signature does not satisfy the expected `σ` fails **at the boundary, before its body runs**.
-* Therefore the manager's version-compatibility question is a **typed** question: "does this address satisfy the signature this import expects" is signature matching, not a version-number heuristic.
+- An import may carry an **expected signature** `σ`, and the resolved module is ascribed to it by the existing rules — transparent ascription preserving identities, or opaque sealing hiding them ([[../../surface-language/proposed/modules#The typing rules]]).
+- A first-class package fetched at build or load time is **unpacked with a dynamic signature match**, so a version whose actual signature does not satisfy the expected `σ` fails **at the boundary, before its body runs**.
+- Therefore the manager's version-compatibility question is a **typed** question: "does this address satisfy the signature this import expects" is signature matching, not a version-number heuristic.
 
 Version aliases may still pin addresses in a lockfile, and they are a convenience for humans.
 **The load-bearing check is ascription**, and the alias is not evidence about anything.
@@ -258,14 +258,14 @@ User-declared manifest fields are the growth path and reopen it.
 
 Each of these is a seam this design must not foreclose.
 
-* **Entity attributes** — the host mechanism ([[../../surface-language/attributes]]); the manifest is its module and package consumer, and the refinement above is the one place this design departs from its guidance.
-* **Modules and packaging** — the module layer supplies the root the manifest attaches to and the signatures the exposed-signature field points at ([[../../surface-language/proposed/modules]]).
-* **Build configuration** — build-target configuration is the **sibling** attribute registry on build targets: the same typed-schema mechanism, a different entity and a different registry, so the manifest and build configuration do not collide.
-* **The foreign interface** — the manifest's required-capabilities field is the **aggregate** of the unit's `extern` capability gates, which are themselves semantic attributes; the package-level field is a checkable summary of that surface ([[../foreign-interface]]).
-* **Code generation** — the sibling first semantic consumer of the attribute layer; the manifest's identity-bearing fields join it in exercising the semantic tier once it lands.
-* **Readable errors** — manifest diagnostics (an unknown field, an ill-typed coordinate, a duplicate `@[package(…)]`, a signature mismatch) render through the ordinary diagnostic adapter, localized by the pipeline's provenance machinery.
-* **Self-hosting** — a staged self-hosting toolchain needs a manifest for its gandr-in-gandr packages, and is the capstone consumer of this section.
-* **Value semantics** — the functional record-update stance informs an eventual manifest-editing surface ([[../../surface-language/value-semantics#Functional record update]]); off the near path.
+- **Entity attributes** — the host mechanism ([[../../surface-language/attributes]]); the manifest is its module and package consumer, and the refinement above is the one place this design departs from its guidance.
+- **Modules and packaging** — the module layer supplies the root the manifest attaches to and the signatures the exposed-signature field points at ([[../../surface-language/proposed/modules]]).
+- **Build configuration** — build-target configuration is the **sibling** attribute registry on build targets: the same typed-schema mechanism, a different entity and a different registry, so the manifest and build configuration do not collide.
+- **The foreign interface** — the manifest's required-capabilities field is the **aggregate** of the unit's `extern` capability gates, which are themselves semantic attributes; the package-level field is a checkable summary of that surface ([[../foreign-interface]]).
+- **Code generation** — the sibling first semantic consumer of the attribute layer; the manifest's identity-bearing fields join it in exercising the semantic tier once it lands.
+- **Readable errors** — manifest diagnostics (an unknown field, an ill-typed coordinate, a duplicate `@[package(…)]`, a signature mismatch) render through the ordinary diagnostic adapter, localized by the pipeline's provenance machinery.
+- **Self-hosting** — a staged self-hosting toolchain needs a manifest for its gandr-in-gandr packages, and is the capstone consumer of this section.
+- **Value semantics** — the functional record-update stance informs an eventual manifest-editing surface ([[../../surface-language/value-semantics#Functional record update]]); off the near path.
 
 ### The corpus examples plan
 
@@ -273,18 +273,18 @@ Once implemented, the feature lands executable examples under `crates/surface-co
 
 **Model examples**, none of which exists:
 
-* a **module manifest** — a unit root with an inert `@[package(…)]`, the canonical first read, paired with a projection fixture showing that the renderer reads and never re-resolves;
-* **dependency coordinates** — a manifest declaring coordinates and version aliases, with an expected **lock-record** fixture showing the coordinate-to-address flow;
-* a **hash-neutral doc field** — two units identical modulo an inert `doc` field, asserted to have the **same** content address: the default made executable;
-* an **exposed signature** — a manifest naming a signature that a consumer's expected `σ` ascribes against; growth-tier, activated by the module signature rung and the semantic tier together.
+- a **module manifest** — a unit root with an inert `@[package(…)]`, the canonical first read, paired with a projection fixture showing that the renderer reads and never re-resolves;
+- **dependency coordinates** — a manifest declaring coordinates and version aliases, with an expected **lock-record** fixture showing the coordinate-to-address flow;
+- a **hash-neutral doc field** — two units identical modulo an inert `doc` field, asserted to have the **same** content address: the default made executable;
+- an **exposed signature** — a manifest naming a signature that a consumer's expected `σ` ascribes against; growth-tier, activated by the module signature rung and the semantic tier together.
 
 **Pathological examples**, none of which exists:
 
-* an **ill-typed coordinate** — a payload violating the schema, pinning the localized ordinary type error;
-* an **unknown manifest field** — pinning the did-you-mean over the manifest registry;
-* a **duplicate `@[package(…)]`** — pinning the single-valued duplicate diagnostic;
-* a **resolved-address hash** — two units identical in source and inert metadata but pinning **different** resolved dependency addresses, asserted to hash distinct: the participates-via-resolution leg, growth-tier;
-* a **signature mismatch** — an importer expecting `σ` against a unit whose exposed signature does not satisfy it, pinning the failure **at the boundary, before the body runs**; growth-tier.
+- an **ill-typed coordinate** — a payload violating the schema, pinning the localized ordinary type error;
+- an **unknown manifest field** — pinning the did-you-mean over the manifest registry;
+- a **duplicate `@[package(…)]`** — pinning the single-valued duplicate diagnostic;
+- a **resolved-address hash** — two units identical in source and inert metadata but pinning **different** resolved dependency addresses, asserted to hash distinct: the participates-via-resolution leg, growth-tier;
+- a **signature mismatch** — an importer expecting `σ` against a unit whose exposed signature does not satisfy it, pinning the failure **at the boundary, before the body runs**; growth-tier.
 
 **Three of these are writable against the built schemas today** — the ill-typed coordinate, the unknown field, and the duplicate — because they exercise the attribute registry rather than the resolver, and the existing manifest example already proves the shape.
 The rest wait on the lock record, the module root, or the semantic tier.

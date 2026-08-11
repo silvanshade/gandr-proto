@@ -4,9 +4,9 @@ The project map: domains, repository layout, package layering, and the load-bear
 Read this before any structural change.
 It routes into the authoritative docs instead of restating them; where two docs disagree, the linked authority wins.
 
-* How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
-* What the design is: the specification corpus [docs/gandr/spec/](docs/gandr/spec/README.md), the authority within the `docs/gandr/` design corpus.
-* Why it was decided: the approved [PLAN.html](PLAN.html) and the beads tracker (the per-file `docs/adr/` log is deferred, [docs/workflow/docs.md](docs/workflow/docs.md)).
+- How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
+- What the design is: the specification corpus [docs/gandr/spec/](docs/gandr/spec/README.md), the authority within the `docs/gandr/` design corpus.
+- Why it was decided: the approved [PLAN.html](PLAN.html) and the beads tracker (the per-file `docs/adr/` log is deferred, [docs/workflow/docs.md](docs/workflow/docs.md)).
 
 ## The system in one paragraph
 

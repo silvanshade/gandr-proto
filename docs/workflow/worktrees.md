@@ -6,20 +6,20 @@
 
 ## Layout and trust
 
-* **Worktree location.** Worktrees live under one per-repo sibling directory (`../gandr-worktrees/<branch>`) via the `worktree-path` template in your **user** worktrunk config — never nested inside the repo (a nested worktree pulls the main `mise.toml` in as a duplicate parent layer and shows up as untracked content in main's tree).
-* **Trust.** Require mise v2026.7.5+; trust the main checkout once and let linked worktrees inherit it.
+- **Worktree location.** Worktrees live under one per-repo sibling directory (`../gandr-worktrees/<branch>`) via the `worktree-path` template in your **user** worktrunk config — never nested inside the repo (a nested worktree pulls the main `mise.toml` in as a duplicate parent layer and shows up as untracked content in main's tree).
+- **Trust.** Require mise v2026.7.5+; trust the main checkout once and let linked worktrees inherit it.
   Never bootstrap trust from Worktrunk or agent preflight hooks.
   Snapshot harnesses keep native CoW/reflink isolation and trust their stable root once in global mise config (OMP: `{{ env.HOME }}/.omp/wt`).
-* **Fresh worktree setup.** Run `mise run setup` before the first commit — it installs the node dependencies the treefmt pre-commit and commitlint push-range hooks need, plus the pinned Rust toolchains (the old `--no-verify` bypass is obsolete and agent briefs must never instruct it).
+- **Fresh worktree setup.** Run `mise run setup` before the first commit — it installs the node dependencies the treefmt pre-commit and commitlint push-range hooks need, plus the pinned Rust toolchains (the old `--no-verify` bypass is obsolete and agent briefs must never instruct it).
 
 ## Hooks (`.config/wt.toml`)
 
-* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — along with `fuzz/artifacts/`, `coverage/`, and `.rumdl_cache/`, while `target/` and `node_modules/` are copied on purpose for the warm cache) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
+- `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — along with `fuzz/artifacts/`, `coverage/`, and `.rumdl_cache/`, while `target/` and `node_modules/` are copied on purpose for the warm cache) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
   Each excluded directory is listed in **both** the `<dir>/` and `<dir>/**` forms, because the two match disjoint halves of git's ignored-entry enumeration and a single form silently stops matching when unrelated `.gitignore` structure changes; the derivation and the measurements are in the comment above `[step.copy-ignored]` in `.config/wt.toml`.
   The template's `mise setup` and submodule init/warmup pre-start steps are parked while the reboot bootstraps — they reference state this repo does not have yet and re-grow with the pieces they serve.
-* **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable on DoltHub once gates are green; pull-then-push self-heals the race with other pushers).
+- **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable on DoltHub once gates are green; pull-then-push self-heals the race with other pushers).
   Parked pending its prerequisite: `adr-guard` (ADRs land on `main` only — returns when `docs/adr/` exists).
-* `[post-merge]`: `beads-pull` in the primary — with the shared per-machine database this is cross-machine freshness only; the merged branch's beads were already visible locally the moment they were written.
+- `[post-merge]`: `beads-pull` in the primary — with the shared per-machine database this is cross-machine freshness only; the merged branch's beads were already visible locally the moment they were written.
 
 Contributor notes live outside this tree in each contributor's private workspace (`AGENTS.md` §"Commits and publishable history"), so worktree lifecycle operations cannot strand them — the historical sibling notes repositories and the in-repo gitignored `notes/` with its `notes-guard` gate are all retired.
 

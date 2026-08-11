@@ -23,10 +23,10 @@ The long-run destination is that this scripting layer is written in gandr itself
 
 The legacy helpers, each reached through its named `mise` task or `prek` hook, never inlined:
 
-* `scripts/check-conflict-markers.nu` — the `docs:conflict-markers` gate and its pre-commit hook;
-* `scripts/check-machine-local-paths.nu` — the `no-machine-local-paths` pre-commit hook (publishable-history backstop);
-* `scripts/commitlint-range.nu` and `scripts/check-signed-commits.nu` — the pre-push range checks;
-* `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers.
+- `scripts/check-conflict-markers.nu` — the `docs:conflict-markers` gate and its pre-commit hook;
+- `scripts/check-machine-local-paths.nu` — the `no-machine-local-paths` pre-commit hook (publishable-history backstop);
+- `scripts/commitlint-range.nu` and `scripts/check-signed-commits.nu` — the pre-push range checks;
+- `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers.
 
 The retired shared-core delegation (`core:check`, `core-init`, the Worktrunk ADR guard) is gone with the core itself; the checks that once delegated there run as the legacy helpers above.
 Do not revive retired project gate scripts, and do not fold a typed helper into the Rust crate ad hoc — graduate one into `gandr-workflow-gates` only when it becomes gate policy.
@@ -39,10 +39,10 @@ This keeps every operation callable through one binary without concentrating dom
 
 Prefer the narrow stable task that proves the change:
 
-* `mise run docs:manifest-drift` and `mise run docs:reference-integrity` for corpus documentation;
-* `mise run test:options-policy`, `mise run test:soundness-oracles`, and `mise run test:graph-gates` for policy surfaces;
-* `mise run coverage:check` and `mise run coverage:ratchet` for per-file coverage policy;
-* the fixed landing tiers — `mise run gate:merge` for the merge wall, and the `cargo run --quiet -p gandr-workflow-gates -- workflow push` plan (parked during the reboot, [ci.md](ci.md)) — plus the `mise run mutants:*` family for mutation modes.
+- `mise run docs:manifest-drift` and `mise run docs:reference-integrity` for corpus documentation;
+- `mise run test:options-policy`, `mise run test:soundness-oracles`, and `mise run test:graph-gates` for policy surfaces;
+- `mise run coverage:check` and `mise run coverage:ratchet` for per-file coverage policy;
+- the fixed landing tiers — `mise run gate:merge` for the merge wall, and the `cargo run --quiet -p gandr-workflow-gates -- workflow push` plan (parked during the reboot, [ci.md](ci.md)) — plus the `mise run mutants:*` family for mutation modes.
 
 Semantic violations are stable Rust `Finding` values; malformed input, I/O, subprocess, and containment failures are typed errors.
 Both paths fail closed at the CLI boundary.
@@ -51,9 +51,9 @@ Both paths fail closed at the CLI boundary.
 
 The crate's regression surface is Rust:
 
-* `cargo nextest run -p gandr-workflow-gates` runs its composed integration suite; the stable `mise run test:*` tasks add live fixtures where the policy requires them.
-* `cargo bench -p gandr-workflow-gates --bench commands` measures representative command surfaces without turning performance numbers into gate semantics.
-* The feature-gated parser facade feeds the independent AFL++ `gates` target.
+- `cargo nextest run -p gandr-workflow-gates` runs its composed integration suite; the stable `mise run test:*` tasks add live fixtures where the policy requires them.
+- `cargo bench -p gandr-workflow-gates --bench commands` measures representative command surfaces without turning performance numbers into gate semantics.
+- The feature-gated parser facade feeds the independent AFL++ `gates` target.
   `mise run fuzz:gates` runs that campaign, while `mise run fuzz:rust-smoke` deterministically replays every committed seed across all five Rust targets.
 
 Keep pure parsing/planning separate from side effects so tests, the benchmark, and the fuzz target exercise the same decisions as the CLI.

@@ -6,25 +6,25 @@
 
 ## Executive summary
 
-* **381 rows across 22 sections** (A–V): 217 v1 rows unchanged, 57 rows from exploding 26 multi-work v1 bundles into per-work entries, 9 v1 rows amended by owner decision, and **98 added works** — 19 recovered by history archaeology (fcw.2 extraction misses still cited in current text), 69 accepted from holdings triage, 9 owner promotions, 1 owner round-1 addition (B-8).
+- **381 rows across 22 sections** (A–V): 217 v1 rows unchanged, 57 rows from exploding 26 multi-work v1 bundles into per-work entries, 9 v1 rows amended by owner decision, and **98 added works** — 19 recovered by history archaeology (fcw.2 extraction misses still cited in current text), 69 accepted from holdings triage, 9 owner promotions, 1 owner round-1 addition (B-8).
   **Zero prunes**: the register remains a superset by policy; the owner declined 11 candidate works (Appendix 2), which were candidates, not v1 rows.
-* **Citation discipline (epic decision, 2026-07-19).** Every row carries a resolvable locator (DOI / arXiv id / stable URL) verified against an authority (Crossref, DataCite, arXiv, publisher, HAL, institutional repository) across three verification workflows, or an explicit statement that no stable locator exists (with the local holding as the locator of record).
+- **Citation discipline (epic decision, 2026-07-19).** Every row carries a resolvable locator (DOI / arXiv id / stable URL) verified against an authority (Crossref, DataCite, arXiv, publisher, HAL, institutional repository) across three verification workflows, or an explicit statement that no stable locator exists (with the local holding as the locator of record).
   Six rows carry a `VERIFY-FINAL` flag where a locator was supplied from well-known sources but not re-fetched this round.
-* **Two new sections.** §U _Ludics & Geometry of Interaction_ (owner round-2 cluster decision; GoI primaries are explicit hydration debt) and §V _Stone duality & ASD_ (owner promotions, grounded in the iu ASD-contact analysis and its ua_topo statement-family table).
-* **Bundle explosion policy (owner, round 1).** Multi-work rows hide constituent works (the Sullivan and Moon incidents); v1 bundle rows are exploded into per-work entries with ids `X-Na`, `X-Nb`, ….
+- **Two new sections.** §U _Ludics & Geometry of Interaction_ (owner round-2 cluster decision; GoI primaries are explicit hydration debt) and §V _Stone duality & ASD_ (owner promotions, grounded in the iu ASD-contact analysis and its ua_topo statement-family table).
+- **Bundle explosion policy (owner, round 1).** Multi-work rows hide constituent works (the Sullivan and Moon incidents); v1 bundle rows are exploded into per-work entries with ids `X-Na`, `X-Nb`, ….
   Cross-reference placeholders are kept (J-22, J-25d) so v1 row ids remain auditable against the grilling record.
-* **Naming scheme.** Register ids (A-1a … V-9) are the stable keys for the id-as-name corpus migration (gandr-7vj): local holdings are renamed to canonical-id filenames and linked via `migration-map.json` / `migration.bib` at the corpus root.
-* **The two authoritative-but-divergent registers remain distinct**: §Q/§R keep the gandr spec bibliography and the iu manual bibliography (`refs.yml`, "minimal by policy") as separate clusters. §R rows now render full citations and locators (v1 carried keys only).
-* **§S verdicts are provenance**: the iu-c2h1 distillate cluster records evaluated-and-ruled-out literature; dropping it would lose unrecoverable "we considered X" evidence.
+- **Naming scheme.** Register ids (A-1a … V-9) are the stable keys for the id-as-name corpus migration (gandr-7vj): local holdings are renamed to canonical-id filenames and linked via `migration-map.json` / `migration.bib` at the corpus root.
+- **The two authoritative-but-divergent registers remain distinct**: §Q/§R keep the gandr spec bibliography and the iu manual bibliography (`refs.yml`, "minimal by policy") as separate clusters. §R rows now render full citations and locators (v1 carried keys only).
+- **§S verdicts are provenance**: the iu-c2h1 distillate cluster records evaluated-and-ruled-out literature; dropping it would lose unrecoverable "we considered X" evidence.
 
 ## Reading key
 
-* **Sites** use `alias:relative/path` (never machine-local).
+- **Sites** use `alias:relative/path` (never machine-local).
   Shorthands: `RM§4` = `wyrd@failed-refactor:docs/gandr/spec/roadmap.md` §4; `ch/<name>.yml` = `wyrd@failed-refactor:docs/manual/chapters/<name>.yml`; `ADR-NN` = `wyrd@failed-refactor:docs/adr/00NN-*.md`; `refs.yml` = `iu:docs/manual/refs.yml`; `digest/<f>` = `wyrd-notes:digest/<f>.md`; `dist/<f>` = `iu-notes:secured/iu-c2h1/iu-c2h1-lit-<f>-distillate.md`; `research:<path>` = local holding in the gandr-research corpus (paths as of this revision; the gandr-7vj rename maps them to id-as-name); `managed:<name>.pdf` = the owner's Zotero-managed corpus (filename is the locator of record until the id-as-name migration absorbs it; added v2.1); `gandr@<branch>:<path>` = file on a not-yet-merged gandr research branch; `iu:<path>` = internal-univalence repo.
-* **Locator** column: a verified resolvable id (`doi:`, `arXiv:`, or URL); parenthesized secondary ids are alternates (preprint/HAL/TR editions).
+- **Locator** column: a verified resolvable id (`doi:`, `arXiv:`, or URL); parenthesized secondary ids are alternates (preprint/HAL/TR editions).
   Rows with no stable locator say so explicitly.
-* **Prov** column: `v1` = unchanged v1 row; `v1×` = constituent of an exploded v1 bundle; `v1✎` = v1 row amended by owner decision; `+arch` = history-archaeology recovery; `+hold` = holdings-triage include; `+own` = owner promotion; `+r1` = owner round-1 addition.
-* Section ids and row numbering continue v1: kept rows keep their v1 ids; exploded constituents suffix letters; additions extend each section's numbering.
+- **Prov** column: `v1` = unchanged v1 row; `v1×` = constituent of an exploded v1 bundle; `v1✎` = v1 row amended by owner decision; `+arch` = history-archaeology recovery; `+hold` = holdings-triage include; `+own` = owner promotion; `+r1` = owner round-1 addition.
+- Section ids and row numbering continue v1: kept rows keep their v1 ids; exploded constituents suffix letters; additions extend each section's numbering.
 
 ---
 
@@ -589,16 +589,16 @@ Exclusions below are **candidate** works the owner declined to add (archaeology 
 
 ## Appendix 3 — Hazards & adjacent observations (updated round 3)
 
-* **Prucker nominal papers remain textually un-wired** (K-5/K-6: PDFs held, no in-corpus text citation).
+- **Prucker nominal papers remain textually un-wired** (K-5/K-6: PDFs held, no in-corpus text citation).
   The archaeology pass wired their _context_ — the K-7..K-13 nominal-automata cluster from the never-merged `research/nominal-automata` branch grounds the decided-adopt NDA/RNTA phase — but the coordinator still owes a text citation site.
-* **Mach-era citation-loss pattern is real and recurring**: B-8 (owner recalls it among the earliest references), A-42 ("was referenced originally"), and the A-35 removed-JSON arXiv id were all recovered only by history archaeology.
+- **Mach-era citation-loss pattern is real and recurring**: B-8 (owner recalls it among the earliest references), A-42 ("was referenced originally"), and the A-35 removed-JSON arXiv id were all recovered only by history archaeology.
   The citation-discipline decision on the epic (2026-07-19) is the systemic fix; the fcw.8 XML hayagriva architecture enforces it structurally.
-* **Mechanical holdings-attachment false positives corrected in v2**: DOI-prefix matching had attached `papers/3610612.3610613.pdf` (van Bakel–Tye–Wu, A-38) to A-22 and `papers/3354166.3354168.pdf` (Abel–Sattler, A-37) to A-23.
+- **Mechanical holdings-attachment false positives corrected in v2**: DOI-prefix matching had attached `papers/3610612.3610613.pdf` (van Bakel–Tye–Wu, A-38) to A-22 and `papers/3354166.3354168.pdf` (Abel–Sattler, A-37) to A-23.
   Zotero migration relies on `migration-map.json`, which carries the corrected per-work links.
-* **iu `docs/spec/` deeper citation seam**: fcw.2 scoped out the ANALYSIS-*/DESIGN-* files; this round mined `ANALYSIS-abstract-stone-duality-contact.md` (section V) — the exhaustive sweep is gandr-fcw.15's charter; expect further citation-bearing material there.
-* **Hydration debt (explicit)**: GoI primaries (§U note); V-5 Bauer–Taylor MSCS 2009 (cited by read sources, unread, unheld); Q-6a/Q-6b owner directive "obtain both" (Q-6b PDF held as power-festschrift.pdf; verify edition); Taylor _Sober Spaces and Continuations_ §4 and Hyland's _First Steps in Synthetic Domain Theory_ (iu ANALYSIS residual-obligation list) are cited-via-LAMCRA only and not yet registered.
-* **J-42-adjacent named gaps (no locators yet; decidability-frontier study §7)**: Johnstone's FP source (J-42's [26]); the Dawson–Paré–Pronk free-adjoint/Π₂ line (their [15–16]); the transformation-monoid / finite-set-category presentations row already demanded by the directed design §10 Q8 (J-42's [52], [54–55] are candidate payers).
-* **refs.yml corrections to send upstream (iu)**: grubmuller-2026 says "Stockholm MSc" — the verified record is a KTH Mathematics degree project titled _The Category of Iterative Sets in Cubical Agda_ (R-57); dybjer-2012's owner-proposed DOI belonged to R-5 (see R-4 note).
+- **iu `docs/spec/` deeper citation seam**: fcw.2 scoped out the ANALYSIS-*/DESIGN-* files; this round mined `ANALYSIS-abstract-stone-duality-contact.md` (section V) — the exhaustive sweep is gandr-fcw.15's charter; expect further citation-bearing material there.
+- **Hydration debt (explicit)**: GoI primaries (§U note); V-5 Bauer–Taylor MSCS 2009 (cited by read sources, unread, unheld); Q-6a/Q-6b owner directive "obtain both" (Q-6b PDF held as power-festschrift.pdf; verify edition); Taylor _Sober Spaces and Continuations_ §4 and Hyland's _First Steps in Synthetic Domain Theory_ (iu ANALYSIS residual-obligation list) are cited-via-LAMCRA only and not yet registered.
+- **J-42-adjacent named gaps (no locators yet; decidability-frontier study §7)**: Johnstone's FP source (J-42's [26]); the Dawson–Paré–Pronk free-adjoint/Π₂ line (their [15–16]); the transformation-monoid / finite-set-category presentations row already demanded by the directed design §10 Q8 (J-42's [52], [54–55] are candidate payers).
+- **refs.yml corrections to send upstream (iu)**: grubmuller-2026 says "Stockholm MSc" — the verified record is a KTH Mathematics degree project titled _The Category of Iterative Sets in Cubical Agda_ (R-57); dybjer-2012's owner-proposed DOI belonged to R-5 (see R-4 note).
 
 ## Appendix 4 — Coverage ledger (what was read, v1 + grilling rounds)
 
@@ -620,9 +620,9 @@ Exclusions below are **candidate** works the owner declined to add (archaeology 
 
 ## Change log
 
-* **v1** (gandr-fcw.2, 2026-07-19): initial consolidated register, ~252 entries, sections A–T.
-* **v2** (gandr-fcw.10 rounds 1–3, 2026-07-19): zero prunes; owner amends applied (A-2, Q-1/Q-2 citation policy, Q-6 both papers, Q-9 reversal + Q-13 split, R-4 resolution, R-24 locator, T-2 thesis-primary); multi-work bundles exploded into per-work rows; ~100 works added from history archaeology, holdings triage, and owner promotions; new sections U (Ludics & GoI) and V (Stone duality & ASD); locators completed for every row (explicit no-stable-locator notes where none exists); id-as-name migration keyed to this register (gandr-7vj).
-* **v2.1** (gandr-5lf.1, 2026-07-24): the tracelet-algebra bibliography for epic gandr-5lf — 11 rows (9 papers + 2 talks): §J gains the compositional-rewriting/tracelet line (J-44..J-46), the decomposition-space frame (J-49), the rough-path signature works (J-47/J-48), and two colloquium talks (J-50/J-51); §Q gains the exponentiable-VDC host (Q-23) and the cartesian double-doctrine pair (Q-24/Q-25).
+- **v1** (gandr-fcw.2, 2026-07-19): initial consolidated register, ~252 entries, sections A–T.
+- **v2** (gandr-fcw.10 rounds 1–3, 2026-07-19): zero prunes; owner amends applied (A-2, Q-1/Q-2 citation policy, Q-6 both papers, Q-9 reversal + Q-13 split, R-4 resolution, R-24 locator, T-2 thesis-primary); multi-work bundles exploded into per-work rows; ~100 works added from history archaeology, holdings triage, and owner promotions; new sections U (Ludics & GoI) and V (Stone duality & ASD); locators completed for every row (explicit no-stable-locator notes where none exists); id-as-name migration keyed to this register (gandr-7vj).
+- **v2.1** (gandr-5lf.1, 2026-07-24): the tracelet-algebra bibliography for epic gandr-5lf — 11 rows (9 papers + 2 talks): §J gains the compositional-rewriting/tracelet line (J-44..J-46), the decomposition-space frame (J-49), the rough-path signature works (J-47/J-48), and two colloquium talks (J-50/J-51); §Q gains the exponentiable-VDC host (Q-23) and the cartesian double-doctrine pair (Q-24/Q-25).
   Locators verified against arXiv, EPTCS, TAC, and publisher records (J-46 against the held PDF); the `managed:` site shorthand enters the reading key.
-* **v2.2** (gandr-iysp, 2026-08-08): the first-class-environments and merge-operator cluster — 4 rows, all in §C: the two Tan–Oliveira calculi (C-9, C-10) and the apartness/guarded-subtyping relaxation of C-4's disjointness (C-11), plus the partial type-difference operation C-11 makes total (C-12).
+- **v2.2** (gandr-iysp, 2026-08-08): the first-class-environments and merge-operator cluster — 4 rows, all in §C: the two Tan–Oliveira calculi (C-9, C-10) and the apartness/guarded-subtyping relaxation of C-4's disjointness (C-11), plus the partial type-difference operation C-11 makes total (C-12).
   Locators for C-9 through C-11 were read off the held PDFs themselves — DOI, venue, volume, article number, and page range from each artifact's own front matter and data-availability statement — and each work was read in full for the evaluation; C-12's locator is taken from C-11's reference list and the work is neither held nor read, which its row says at the row.

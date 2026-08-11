@@ -81,11 +81,11 @@ Read every "CEK" below as the L machine; the dynamics driver is `machine.rs`, an
 
 The L-machine landing (core-sequent port) supplies the concrete substrate the normalizer plugs into:
 
-* **`il.rs`** — three node families over the ADR-50 arena; the focused intermediate language, effect surface already present.
-* **`focus.rs`** — the `𝓕` translation (source `Comp`/`Value` → focused IL).
-* **`machine.rs`** — the L machine proper (the reduction engine).
-* **`store.rs`** — the L1 heap-everything store (the arena's runtime heap).
-* **`differential.rs`** — the agree/canonical comparison against the CEK oracle (`eval.rs`, ported for the differential, deleted last).
+- **`il.rs`** — three node families over the ADR-50 arena; the focused intermediate language, effect surface already present.
+- **`focus.rs`** — the `𝓕` translation (source `Comp`/`Value` → focused IL).
+- **`machine.rs`** — the L machine proper (the reduction engine).
+- **`store.rs`** — the L1 heap-everything store (the arena's runtime heap).
+- **`differential.rs`** — the agree/canonical comparison against the CEK oracle (`eval.rs`, ported for the differential, deleted last).
 
 The load-bearing L-machine fact for readback: **exact higher-order comparison needs inverting `𝓕`.** The focused IL "no longer retains the thunk's source body," so `dispatch_native` declines higher-order combinators (`native_needs_unfocus`) and the differential compares returned thunks/functions/lazy-pairs at **KIND granularity only** — because exact structural readback needs `𝓕⁻¹` (L-machine landing SEAM 1, the largest seam).
 This is precisely where the term-face glue (§4.1) earns its keep.
@@ -94,11 +94,11 @@ This is precisely where the term-face glue (§4.1) earns its keep.
 
 At S1 the kernel's conversion is **type-only** and vacuously C5-quarantined (B2.1 stage record; C5 = the kernel-boundary "conversion never evaluates effectful computations" quarantine, B2 staging call):
 
-* No S1 value-type or computation-type former is indexed by a value term (product is non-dependent; the arrow codomain cannot mention its argument; universe/lift embed only a `Level`).
-* So conversion **coincides exactly with structural equality**, with canonical-`Level` equality at `Universe`/`Lift` nodes (the strata `Level`'s derived `Eq` is the ADR-78 oracle).
-* **No beta law fires and no computation is evaluated** — the C5 quarantine holds vacuously because conversion never descends into a term.
-* The value/computation term alpha-equality (`convertible_values`/`convertible_computations`) is **implemented, quarantined, and not invoked** — "the seed the term-indexed extensions (El/description codes, S2+) will grow beta onto."
-* **Every conversion face is iterative over a heap worklist** — it computes the same relation as the derived `PartialEq` but the derived version recurses on depth and would overflow; the worklist keeps it total at any depth.
+- No S1 value-type or computation-type former is indexed by a value term (product is non-dependent; the arrow codomain cannot mention its argument; universe/lift embed only a `Level`).
+- So conversion **coincides exactly with structural equality**, with canonical-`Level` equality at `Universe`/`Lift` nodes (the strata `Level`'s derived `Eq` is the ADR-78 oracle).
+- **No beta law fires and no computation is evaluated** — the C5 quarantine holds vacuously because conversion never descends into a term.
+- The value/computation term alpha-equality (`convertible_values`/`convertible_computations`) is **implemented, quarantined, and not invoked** — "the seed the term-indexed extensions (El/description codes, S2+) will grow beta onto."
+- **Every conversion face is iterative over a heap worklist** — it computes the same relation as the derived `PartialEq` but the derived version recurses on depth and would overflow; the worklist keeps it total at any depth.
 
 **The B4 charter, restated against the seed:** B4 grows the quarantined alpha-equality into a **conversion-with-β** by adding the whnf/definitional-unfolding steps (§4.5) — but the iterative-worklist mandate is non-negotiable: the recursion lint in `cargo:dylint:local` gates merges, and the recursive-reference checker (H-A in the B2.1 record) is a depth-budgeted stopgap owing a defunctionalized successor.
 Every normalizer/conversion face B4 adds is iterative from birth.
@@ -108,9 +108,9 @@ Every normalizer/conversion face B4 adds is iterative from birth.
 D1(C) (massive-term §3.1, owner-veto RQ-1) is the representation the normalizer's values live in: a per-environment append-only arena, four typed id families (`ValueId`/`ComputationId`/`ValueTypeId`/`CompTypeId`) preserving the polarity discipline statically, and an **id-equality fast path** (same id in the same arena ⇒ same node ⇒ structural equality — the trivially-sound Lean `is_eqp`-first posture, no table in the TCB).
 Two facts drive the normalizer design:
 
-* **Id-equality is ADR-50 Decision B's "ptr-eq first" made concrete** — it is the first def-eq test (§4.5), and it is free.
-* **A `NodeId` is the term-face pointer** — so term-face gluing (§4.1) degenerates to caching the origin id on each value, and the arena's structural sharing IS the "hash-consing" the title names, preserved by decode rather than created under β (§4.3).
-* The admission-watermark discipline (D1(C)) gives the normalizer its scratch story: machine-local intermediates (including the unfolding-face's built-up unfolded forms) allocate past the watermark and are truncated after the verdict, so the persistent arena holds only admitted content.
+- **Id-equality is ADR-50 Decision B's "ptr-eq first" made concrete** — it is the first def-eq test (§4.5), and it is free.
+- **A `NodeId` is the term-face pointer** — so term-face gluing (§4.1) degenerates to caching the origin id on each value, and the arena's structural sharing IS the "hash-consing" the title names, preserved by decode rather than created under β (§4.3).
+- The admission-watermark discipline (D1(C)) gives the normalizer its scratch story: machine-local intermediates (including the unfolding-face's built-up unfolded forms) allocate past the watermark and are truncated after the verdict, so the persistent arena holds only admitted content.
 
 ---
 
@@ -128,14 +128,14 @@ Two facts drive the normalizer design:
 
 ### 3.2 Lineage the design builds on
 
-* **impl-models §5.2** — the glued-representation split correction (the load-bearing consumer input for `gandr-wvd.4`, flagged LOAD-BEARING in the bead's STANDING note): term-face vs unfolding-face; the half-built-glue failure mode.
-* **impl-models §2.1-2.4** — the Lean engine recipes: cached-word guards, `ptrEq` first, `ShareCommon` as a boundary pass, lazy-δ with heights, the 11-rule elaborator policy, transparency lattice, smart unfolding.
-* **impl-models §4 (smalltt)** — the force/quote/`ConvState` blueprint: two small force enums, `QuoteOption`, the Rigid/Flex/Full three-state conversion with glued retry.
-* **impl-models §3.1 (Agda `Reduce.Fast`)** — the fully first-order machine precedent; values-carry-their-blocker; compact per-run def views; two-tier fallback.
-* **impl-models §1 (Idris 2)** — the whole-system model and its negative precedents (un-memoized closures; crude unfolding control).
-* **ADR-50 D/E** — the two-driver-one-domain architecture and the two-layer unfolding control; the theory layer cites [L-6].
-* **b3 §7** (N1-N6), **§6.2/§6.3** (kernel posture; R1-R4 reservations), **§8** (the B6 telescope door) — the module forms and the kernel handshake this study duals into holes.
-* **Literature:** Levy [A-1a], [A-2] for the CBPV polarity substrate; Abel & Sattler [A-37] for NbE over CBPV / the polarized calculus (the normalizer's metatheory reference); Gratzer–Sterling–Angiuli–Coquand–Birkedal [L-6] for the reserved controlled-unfolding theory layer.
+- **impl-models §5.2** — the glued-representation split correction (the load-bearing consumer input for `gandr-wvd.4`, flagged LOAD-BEARING in the bead's STANDING note): term-face vs unfolding-face; the half-built-glue failure mode.
+- **impl-models §2.1-2.4** — the Lean engine recipes: cached-word guards, `ptrEq` first, `ShareCommon` as a boundary pass, lazy-δ with heights, the 11-rule elaborator policy, transparency lattice, smart unfolding.
+- **impl-models §4 (smalltt)** — the force/quote/`ConvState` blueprint: two small force enums, `QuoteOption`, the Rigid/Flex/Full three-state conversion with glued retry.
+- **impl-models §3.1 (Agda `Reduce.Fast`)** — the fully first-order machine precedent; values-carry-their-blocker; compact per-run def views; two-tier fallback.
+- **impl-models §1 (Idris 2)** — the whole-system model and its negative precedents (un-memoized closures; crude unfolding control).
+- **ADR-50 D/E** — the two-driver-one-domain architecture and the two-layer unfolding control; the theory layer cites [L-6].
+- **b3 §7** (N1-N6), **§6.2/§6.3** (kernel posture; R1-R4 reservations), **§8** (the B6 telescope door) — the module forms and the kernel handshake this study duals into holes.
+- **Literature:** Levy [A-1a], [A-2] for the CBPV polarity substrate; Abel & Sattler [A-37] for NbE over CBPV / the polarized calculus (the normalizer's metatheory reference); Gratzer–Sterling–Angiuli–Coquand–Birkedal [L-6] for the reserved controlled-unfolding theory layer.
 
 ---
 
@@ -159,40 +159,40 @@ Face (a) is trivial and lands first; face (b) is designed together with the engi
 
 ### 4.2 Environments vs closures on the L machine
 
-* **Closures are first-order `(Env, NodeId)` pairs** (ADR-50 Decision C) — never host-language closures.
+- **Closures are first-order `(Env, NodeId)` pairs** (ADR-50 Decision C) — never host-language closures.
   The binder-body-under-NbE is `(Env, NodeId)` re-entry; the machine stays serializable, checkpointable, and inspectable (ADR-9's reified-machine thesis). smalltt and Agda `Reduce.Fast` are the fully-first-order precedents; Idris 2 is only half first-order (its `NBind` body is a host function) and gandr's discipline is deliberately **stricter than its own stated model** (impl-models §1.1).
-* **Thunk cells must be explicitly memoized** (impl-models §5.3, §5.6 #10; §4.4 "no memoization on `Closure` forcing" is the Idris 2 negative precedent). smalltt's call-by-need rides GHC laziness (`~Val`), unavailable in Rust; Agda's `Pure`-vs-`Pointer` split is the explicit design — decide, per closure, which need sharing at all.
+- **Thunk cells must be explicitly memoized** (impl-models §5.3, §5.6 #10; §4.4 "no memoization on `Closure` forcing" is the Idris 2 negative precedent). smalltt's call-by-need rides GHC laziness (`~Val`), unavailable in Rust; Agda's `Pure`-vs-`Pointer` split is the explicit design — decide, per closure, which need sharing at all.
   On the L machine the heap is `store.rs`; the normalizer needs update-able thunk cells (or the arena equivalent) from day one, not Idris 2's re-`eval`-each-time.
-* **Normalization = drive to (weak-head) focused form, then un-focus.** The NbE normalize half uses the L machine's reduction to reach whnf over the shared value domain; the quote half is the un-focusing readback (`𝓕⁻¹`, §2.2).
+- **Normalization = drive to (weak-head) focused form, then un-focus.** The NbE normalize half uses the L machine's reduction to reach whnf over the shared value domain; the quote half is the un-focusing readback (`𝓕⁻¹`, §2.2).
   Quote is **iterative** — Agda's `ArgK`/spine-zipper readback is the worked continuation-driven (ADR-47-compliant) example (impl-models §5.2 "Quote"), and Idris 2's `sizeLimit` fuel + `clearDefs`-style zero-unfold readback become explicit `QuoteOpts` knobs.
-* **Stuckness as data (B4-RC7).** Agda's `IsValue = Value Blocked_` records **why** a WHNF value cannot reduce (which meta/var it is stuck on); the L machine already has a `StuckReason` vocabulary (`UnsupportedByReference`, `ForcedNonThunk`, `PerformNoHandler`).
+- **Stuckness as data (B4-RC7).** Agda's `IsValue = Value Blocked_` records **why** a WHNF value cannot reduce (which meta/var it is stuck on); the L machine already has a `StuckReason` vocabulary (`UnsupportedByReference`, `ForcedNonThunk`, `PerformNoHandler`).
   Values should carry blocker identity so the future conversion checker/solver's worklist has exact wake-up conditions (impl-models §5.1 #4, §5.6 #3), matching the existing frame discipline.
 
 ### 4.3 The hash-consing boundary — sharing preserved, not created
 
 The title's "hash-consing" must be read through ADR-50 Decision B: **no global hash-consing under β.** The reconciliation is a boundary, not a table in the evaluator:
 
-* **Under β, sharing is PRESERVED, never CREATED** (massive-term §3.2, the C3 discipline).
+- **Under β, sharing is PRESERVED, never CREATED** (massive-term §3.2, the C3 discipline).
   The normalizer/kernel only _retains_ the sharing the decoder hands it; any sharing-*creation* pass is elaborator-side (`core-checker`'s `intern.rs`), never the normalizer.
-* **Interning is for static, β-free data, per-face** (ADR-50 Decision B; impl-models §5.1 #1, confirmed three ways — Idris 2 has none and it hurts; Agda deleted `--sharing` for a per-reduction local heap; Lean interns only at import/serialization boundaries and per-subsystem).
+- **Interning is for static, β-free data, per-face** (ADR-50 Decision B; impl-models §5.1 #1, confirmed three ways — Idris 2 has none and it hurts; Agda deleted `--sharing` for a per-reduction local heap; Lean interns only at import/serialization boundaries and per-subsystem).
   The differential faces (checker vs machine) never share a canonicalizing table; cross-face comparison stays structural, cached-hash-accelerated (per-face oracle tables, ADR-50 Decisions B/F).
-* **The unfolding-face's built-up unfolded values are machine-local scratch.** When `VUnfold` grows its unfolded face under β (§4.1(b)), those new nodes allocate **past the D1(C) admission watermark** and are truncated after the verdict — they are never interned into the persistent arena, because interning them would be exactly the canonicalization-under-β that Decision B forbids.
-* **Id-equality is the sound fast path with no table in the TCB** (massive-term §3.1/§3.2): same id in the same arena ⇒ structural equality, by immutability; it is an _added_ early-out, not the derived `PartialEq` (which stays structural).
+- **The unfolding-face's built-up unfolded values are machine-local scratch.** When `VUnfold` grows its unfolded face under β (§4.1(b)), those new nodes allocate **past the D1(C) admission watermark** and are truncated after the verdict — they are never interned into the persistent arena, because interning them would be exactly the canonicalization-under-β that Decision B forbids.
+- **Id-equality is the sound fast path with no table in the TCB** (massive-term §3.1/§3.2): same id in the same arena ⇒ structural equality, by immutability; it is an _added_ early-out, not the derived `PartialEq` (which stays structural).
   This is the B4 realization of "ptr-eq first."
-* **Identities that conversion produces must survive interning** (ADR-50 Decision F; the `wyrd-h8og` seam): marks and any future certificates reference identities that outlive the intern boundary — relevant once sealing mints atoms (§5, `HOLE-SEAL`) that the export re-mints deterministically (b3 §6.3 R4).
+- **Identities that conversion produces must survive interning** (ADR-50 Decision F; the `wyrd-h8og` seam): marks and any future certificates reference identities that outlive the intern boundary — relevant once sealing mints atoms (§5, `HOLE-SEAL`) that the export re-mints deterministically (b3 §6.3 R4).
 
 ### 4.4 The unfolding discipline — whnf, spine-local, per-scope δ
 
-* **whnf is spine-local** (b3 §7 N1; [A-37] for NbE over the polarized core).
+- **whnf is spine-local** (b3 §7 N1; [A-37] for NbE over the polarized core).
   A projection or application drives its **head** to a value form and no further — never the siblings.
   The glued representation's laziness is load-bearing here: the unfolded face is built only along the spine actually forced.
-* **Force/quote are two small enums** (impl-models §4.2; smalltt): three force modes (force solved-meta heads only / chase meta-unfoldings / eliminate all unfoldings from the head) and a `QuoteOption` (UnfoldAll / UnfoldMetas / UnfoldNone).
+- **Force/quote are two small enums** (impl-models §4.2; smalltt): three force modes (force solved-meta heads only / chase meta-unfoldings / eliminate all unfoldings from the head) and a `QuoteOption` (UnfoldAll / UnfoldMetas / UnfoldNone).
   Values never lose the neutral face; forcing chooses which face to _look at_.
   This is the concrete mechanism behind "the quote-face policy and the def-eq-unfold policy are the same table" (§4.1).
-* **The engine unfolding layer is Lean-style** (ADR-50 Decision E engine layer; impl-models §2.2-2.4): reducibility hints `Opaque | Abbreviation | Regular(height)` with height = definitional depth; a **transparency lattice** exposed as a `canUnfold` hook on the driver's `evalRef` analogue; whnf/infer memo caches keyed by identity; arithmetic/literal fast paths _inside_ the conversion loop. gandr has no annotation culture yet (impl-models Outlook, AGAINST): height-from-definition-DAG-depth is mechanical, but the **default transparency policy needs an owner decision** (B4-RC8).
-* **The δ-environment is per-scope** (b3 §7 N4, `HOLE-VIEW`).
+- **The engine unfolding layer is Lean-style** (ADR-50 Decision E engine layer; impl-models §2.2-2.4): reducibility hints `Opaque | Abbreviation | Regular(height)` with height = definitional depth; a **transparency lattice** exposed as a `canUnfold` hook on the driver's `evalRef` analogue; whnf/infer memo caches keyed by identity; arithmetic/literal fast paths _inside_ the conversion loop. gandr has no annotation culture yet (impl-models Outlook, AGAINST): height-from-definition-DAG-depth is mechanical, but the **default transparency policy needs an owner decision** (B4-RC8).
+- **The δ-environment is per-scope** (b3 §7 N4, `HOLE-VIEW`).
   Transparent ascription contributes definitional equations (δ-rules); the same atom may be **manifest** in one scope (inside the sealed module) and **opaque** outside, so the definitional environment must be per-scope, not a single global table.
-* **The theory layer is reserved** (ADR-50 Decision E surface/theory layer; [L-6]).
+- **The theory layer is reserved** (ADR-50 Decision E surface/theory layer; [L-6]).
   Declared, scoped unfolding (GSACB, cooltt, Agda `opaque`/`unfolding`) elaborating to extension types with a normalization theorem is reserved for the era when conversion becomes proof-relevant — the B6+ dependent core.
   The wyrd-era name for that territory, the "evidence layer" (a phase-separated erasible-evidence sublanguage erasing to the non-dependent runnable core), is superseded by the reboot backbone (B6 dependent core, B7 kernel identity); whether B6 keeps the phase-separated erasure shape is an open B6-design fork recorded on its bead, and no backbone commitment to scoped unfolding exists.
   B3's sealing (total opacity) is designed not to preempt it (b3 §7 N3).
@@ -239,8 +239,8 @@ The two headline holes — the stated reason B3 precedes B4 (`bd show gandr-wvd`
 Generative functor application is **not a confluent pure rewrite** (b3 §7 N2; b3 §4.5): `(force F)(M) ▷ body[M/X]` **plus atom minting** for the sealed result, and two applications of the same functor to the same argument are **not convertible**.
 The normalizer must therefore:
 
-* treat instantiation as a **stateful** step keyed by the minted atoms, and
-* **never memoize or hash-cons across instantiations** — the content-addressed sharing of ADR-50 Decision B must **include the minted atoms in identity**, or two distinct instantiations would silently alias.
+- treat instantiation as a **stateful** step keyed by the minted atoms, and
+- **never memoize or hash-cons across instantiations** — the content-addressed sharing of ADR-50 Decision B must **include the minted atoms in identity**, or two distinct instantiations would silently alias.
 
 This study coins that failure mode the **generative-aliasing hazard**.
 It is the single point where the hash-consing boundary (§4.3) and generativity collide, and it is the sharpest constraint B3 exports (b3 §7 N2 "should appear in B4's charter checklist verbatim").
@@ -257,14 +257,14 @@ Paths give the normalizer neutral heads and a spine-local whnf story (b3 §4.2, 
 
 ### 5.3 The remaining four holes
 
-* **HOLE-SEAL** is the **first genuine language-level unfolding barrier** the glued-NbE normalizer meets (b3 §7 N3).
+- **HOLE-SEAL** is the **first genuine language-level unfolding barrier** the glued-NbE normalizer meets (b3 §7 N3).
   Opacity is "this atom has no δ-rule," a fact the kernel **re-derives rather than trusts** (b3 §4.4, the K2 discipline); it reads on the engine-layer `canUnfold` hook (§4.4), and the unfolded face never builds past it.
   Total, not scoped (the [L-6] theory layer stays reserved, §4.4).
-* **HOLE-VIEW** forces the δ-environment to be **per-scope** (§4.4): the same atom is manifest inside a sealed module and opaque outside.
+- **HOLE-VIEW** forces the δ-environment to be **per-scope** (§4.4): the same atom is manifest inside a sealed module and opaque outside.
   This is the one hole that constrains the _shape_ of the normalizer's definitional environment rather than adding a redex.
-* **HOLE-PACK** reduces generatively (the `HOLE-APP` discipline for fresh atoms per `unpack`); `Package` is otherwise inert for conversion, and conversion never runs initialization effects (C5 stands unmodified, b3 §7 N5).
+- **HOLE-PACK** reduces generatively (the `HOLE-APP` discipline for fresh atoms per `unpack`); `Package` is otherwise inert for conversion, and conversion never runs initialization effects (C5 stands unmodified, b3 §7 N5).
   `Package σ` is a frozen-core positive value former added at B3.4 through the `core-ir-contract.md` §0 discipline (b3 §4.6).
-* **HOLE-COERCE** is a **negative** hole: because matching is coercive (b3 §4.3), the normalizer never compares signatures and never needs permutation/width equations in conversion.
+- **HOLE-COERCE** is a **negative** hole: because matching is coercive (b3 §4.3), the normalizer never compares signatures and never needs permutation/width equations in conversion.
   This is what keeps the def-eq pipeline (§4.5) signature-free, and it is also the B6-telescope-door invariant I3 (b3 §8) — so the normalizer must **not** grow signature comparison even opportunistically.
 
 ---
@@ -273,46 +273,46 @@ Paths give the normalizer neutral heads and a spine-local whnf story (b3 §4.2, 
 
 The kernel handshake (b3 §6.2/§6.3) determines _which_ normalizer meets _which_ hole.
 
-* **The elaborator flattens; the kernel checks the residue** (b3 §6.2 posture (b), recommended).
+- **The elaborator flattens; the kernel checks the residue** (b3 §6.2 posture (b), recommended).
   Structures export as member `Def`s with structured (path-segment) names (R2) plus signature metadata; **functor applications are instantiated by the elaborator before export** — each generative instantiation exports its minted atoms + member `Def`s.
   The kernel's new obligations are only an `AbstractType` declaration form (a minted atom with its arity, **no δ-rule**) and, at B3.4, the `Package` former with `pack`/`unpack` typing.
-* **Consequence for the normalizer (B4-RC6): the kernel normalizer sees only instantiated residue.** Functor _bodies_ are not independently kernel-normalized at B3 — only their instantiations (b3 §6.2 honest trade; b3 Q1).
+- **Consequence for the normalizer (B4-RC6): the kernel normalizer sees only instantiated residue.** Functor _bodies_ are not independently kernel-normalized at B3 — only their instantiations (b3 §6.2 honest trade; b3 Q1).
   So in the **kernel** (replay/B9) normalizer, `HOLE-APP` is permanently neutral; the kernel meets `AbstractType` atoms (`HOLE-SEAL`) and `Package` (`HOLE-PACK`) as new S2 kernel vocabulary, never a live functor application.
   The **elaborator-side / S2** normalizer is where `HOLE-APP` and `HOLE-PROJ` fire.
-* **This is the S1→S2 growth of the kernel subset ladder** (S0-S3; `spec/kernel-boundary.md`).
+- **This is the S1→S2 growth of the kernel subset ladder** (S0-S3; `spec/kernel-boundary.md`).
   At S1 conversion is type-only (§2.3); the module forms are term-indexed and enter kernel conversion at **S2** (the El/description-code stage the B2.1 seed anticipates).
   `AbstractType`/`Package` are kernel-vocabulary growth under the standing per-phase subset-growth obligation (fcw.11), and the R1 reserved declaration-kind tags (b3 §6.3, ratified 2026-07-20) keep the format additive.
-* **The kernel takes no interning table into the TCB** (§4.3; massive-term §3.2 C3).
+- **The kernel takes no interning table into the TCB** (§4.3; massive-term §3.2 C3).
   Any sharing the kernel normalizer sees is decode-preserved; the id-equality fast path is the only "sharing-aware" step, and it is trivially sound.
-* **What the kernel normalizer must NOT do** (b3 §8 anti-commitments, dualized): never compare signatures (keep `HOLE-COERCE` negative); never memoize across functor instantiations (the generative-aliasing hazard); never make `Package` eliminable by anything but `unpack`; never bake width/permutation equations into conversion.
+- **What the kernel normalizer must NOT do** (b3 §8 anti-commitments, dualized): never compare signatures (keep `HOLE-COERCE` negative); never memoize across functor instantiations (the generative-aliasing hazard); never make `Package` eliminable by anything but `unpack`; never bake width/permutation equations into conversion.
 
 ---
 
 ## 7. Hazards
 
-* **H1 — the half-built-glue trap** (§4.1; impl-models §5.2, Outlook AGAINST).
+- **H1 — the half-built-glue trap** (§4.1; impl-models §5.2, Outlook AGAINST).
   Building the term-face while believing the unfolding-face exists (or vice versa).
   Mitigation: name both faces in the value-domain type before either is built (B4-RC1); design face (b) jointly with the engine hints table.
-* **H2 — the generative-aliasing hazard** (§5.1; b3 §7 N2).
+- **H2 — the generative-aliasing hazard** (§5.1; b3 §7 N2).
   Content-addressed sharing that does not include minted atoms silently aliases two functor instantiations.
   Mitigation: minted-atoms-in-identity (B4-RC3), checkable against the R4 minted-atom table.
   This is the sharpest and most soundness-relevant hazard.
-* **H3 — un-focusing readback is the largest seam** (§2.2; L-machine landing SEAM 1).
+- **H3 — un-focusing readback is the largest seam** (§2.2; L-machine landing SEAM 1).
   Exact higher-order comparison needs `𝓕⁻¹`; the term-face cache only covers the inert case.
   Mitigation/decision: B4-RC9 (land origin-`NodeId` term-face now; scope full `𝓕⁻¹` as a B4 sub-rung or defer behind the KIND-granularity fallback).
-* **H4 — explicit thunk memoization** (§4.2; impl-models §5.6 #10).
+- **H4 — explicit thunk memoization** (§4.2; impl-models §5.6 #10).
   No host laziness in Rust; un-memoized closures are the Idris 2 performance cliff.
   Mitigation: explicit update-able thunk cells (Agda `Pure`-vs-`Pointer` split) from day one; a cost smalltt's benchmarks silently exclude.
-* **H5 — iterative-or-die** (§2.3; the recursion dylint gate).
+- **H5 — iterative-or-die** (§2.3; the recursion dylint gate).
   Any recursive conversion/normalization/readback face fails the merge gate and can overflow on adversarial depth.
   Mitigation: worklist/defunctionalized from birth; quote via the Agda `ArgK` spine-zipper shape; the depth-budgeted recursive checker (H-A, B2.1 record) is a stopgap owing a defunctionalized successor.
-* **H6 — no annotation culture for transparency defaults** (§4.4; impl-models Outlook).
+- **H6 — no annotation culture for transparency defaults** (§4.4; impl-models Outlook).
   Height-from-DAG-depth is mechanical, but "what is reducible by default" is a policy gap.
   Mitigation: B4-RC8 (owner policy call); sensible defaults + the `canUnfold` hook.
-* **H7 — the two-driver-one-domain composition is gandr's own bet** (impl-models Outlook AGAINST).
+- **H7 — the two-driver-one-domain composition is gandr's own bet** (impl-models Outlook AGAINST).
   No surveyed system runs effects + first-class `K` + conversion over one value domain; the precedents de-risk the _parts_, not the composition (smalltt has no `K`, no data/case, no erasure).
   Mitigation: the Agda-style in-loop fallback to the reference evaluator (impl-models §3.1, §5.1 #3) grows coverage incrementally and keeps the ADR-48 oracle honest; the `jit ≡ eval` differential (ADR-51) is the verification net.
-* **H8 — per-scope δ-environment complexity** (§4.4; `HOLE-VIEW`).
+- **H8 — per-scope δ-environment complexity** (§4.4; `HOLE-VIEW`).
   A global definitional table is wrong once transparent ascription and sealing coexist.
   Mitigation: scope the δ-environment from the start, even before `HOLE-VIEW` is plugged (the empty per-scope environment degenerates to the S1 seed).
 
@@ -345,25 +345,25 @@ Numbered locally **B4-RC1..B4-RC9** to avoid collision with the shared RQ-n name
 > Global RQ numbers: **RQ-18..RQ-26 = RC1..RC9; RQ-27 = RC10.** The scoped/declared unfolding of GSACB [L-6] (Agda `opaque`/`unfolding` is its practical face) remains the reserved theory layer per §4.4 — RC8(B) is the Lean engine posture only, deliberately weaker.
 > Ratification record on `gandr-9pv`.
 
-* **B4-RC1 — the two-face glued split (adopt).** Name term-face and unfolding-face in the value-domain type; implement term-face (origin-`NodeId`) immediately, design unfolding-face (`VUnfold`) jointly with the engine hints table so quote-face and def-eq-unfold policies are one table.
+- **B4-RC1 — the two-face glued split (adopt).** Name term-face and unfolding-face in the value-domain type; implement term-face (origin-`NodeId`) immediately, design unfolding-face (`VUnfold`) jointly with the engine hints table so quote-face and def-eq-unfold policies are one table.
   Alternative: the single conflated "glued" of ADR-50 D — rejected as the half-built-glue trap (impl-models §5.2).
-* **B4-RC2 — the def-eq pipeline, id-equality first (adopt the Lean recipe set with citations).** id-eq → cached-word guards → iterative structural → lazy-δ/heights (taller-unfolds, args-first + failure cache) → smart-unfolding → `ConvState` speculation (impl-models §2.2-2.4, §4.3).
+- **B4-RC2 — the def-eq pipeline, id-equality first (adopt the Lean recipe set with citations).** id-eq → cached-word guards → iterative structural → lazy-δ/heights (taller-unfolds, args-first + failure cache) → smart-unfolding → `ConvState` speculation (impl-models §2.2-2.4, §4.3).
   Alternative: eval-both-sides with no caches (Idris 2) — rejected.
-* **B4-RC3 — minted-atoms-in-identity for the content-address discipline (adopt; soundness).** Functor/`unpack` minted atoms are part of value identity; freshness is a checkable property against the R4 minted-atom table.
+- **B4-RC3 — minted-atoms-in-identity for the content-address discipline (adopt; soundness).** Functor/`unpack` minted atoms are part of value identity; freshness is a checkable property against the R4 minted-atom table.
   Alternative: atoms outside identity — rejected as the generative-aliasing hazard (b3 §7 N2).
-* **B4-RC4 — the six-hole parameterization (adopt; the B3-before-B4 mechanism).** Build the B4 skeleton with `HOLE-PROJ/-APP/-SEAL/-VIEW/-PACK/-COERCE` as neutrals; fill each as its B3 rung (B3.1-B3.4) lands.
+- **B4-RC4 — the six-hole parameterization (adopt; the B3-before-B4 mechanism).** Build the B4 skeleton with `HOLE-PROJ/-APP/-SEAL/-VIEW/-PACK/-COERCE` as neutrals; fill each as its B3 rung (B3.1-B3.4) lands.
   Alternative: block B4 on the full module system — rejected.
-* **B4-RC5 — smart-unfolding on case-tree progress (adopt).** A recursive definition unfolds only if its scrutinee makes progress, implemented on gandr's first-class case (no `_sunfold` companion); couples to the L2 unroll-freeze lane.
+- **B4-RC5 — smart-unfolding on case-tree progress (adopt).** A recursive definition unfolds only if its scrutinee makes progress, implemented on gandr's first-class case (no `_sunfold` companion); couples to the L2 unroll-freeze lane.
   Alternative: unconditional δ — rejected (impl-models §2.4).
-* **B4-RC6 — kernel normalizer sees instantiated residue only (owner call; mirrors b3 Q1).** `HOLE-APP` fires elaborator-side only; the kernel meets `AbstractType`/`Package` as S2 vocabulary, never a live functor.
+- **B4-RC6 — kernel normalizer sees instantiated residue only (owner call; mirrors b3 Q1).** `HOLE-APP` fires elaborator-side only; the kernel meets `AbstractType`/`Package` as S2 vocabulary, never a live functor.
   Alternative: kernel-certify functor bodies at B3 (b3 §6.2 (a)) — the TCB-size/replay-cost trade R1's reserved tags keep open.
-* **B4-RC7 — stuck values carry blocker identity (adopt).** Spec the stuck-value shape (Agda `IsValue`) before the conversion checker; reuse the L machine's `StuckReason` vocabulary (impl-models §5.6 #3).
+- **B4-RC7 — stuck values carry blocker identity (adopt).** Spec the stuck-value shape (Agda `IsValue`) before the conversion checker; reuse the L machine's `StuckReason` vocabulary (impl-models §5.6 #3).
   Alternative: stuck-as-outcome only — deferrable but cheaper to lay now.
-* **B4-RC8 — default transparency policy (OPEN owner call).** Height-from-DAG-depth is mechanical; the default reducibility set is a policy gap (no annotation culture, impl-models Outlook).
+- **B4-RC8 — default transparency policy (OPEN owner call).** Height-from-DAG-depth is mechanical; the default reducibility set is a policy gap (no annotation culture, impl-models Outlook).
   Options span all-reducible-by-default to an `@[irreducible]`-style opt-out; needs an owner decision before the engine layer lands.
-* **B4-RC9 — un-focusing readback timing (OPEN owner call).** Land origin-`NodeId` term-face now (covers the inert case) and scope full `𝓕⁻¹` (L-machine landing SEAM 1) as a B4 sub-rung, or land full `𝓕⁻¹` at B4 landing.
+- **B4-RC9 — un-focusing readback timing (OPEN owner call).** Land origin-`NodeId` term-face now (covers the inert case) and scope full `𝓕⁻¹` (L-machine landing SEAM 1) as a B4 sub-rung, or land full `𝓕⁻¹` at B4 landing.
   Recommendation leans to the staged option — the seam is the largest in the port (~800-1400 LOC estimate) and the term-face cache defers the pressure — but it is a genuine scoping fork for the owner.
-* **B4-RC10 — D8/closure-plane non-foreclosure invariants (added and adopted at ratification, 2026-07-21; RQ-27).** The phase-K3 closure-conversion lane — notes-distillate D8: Sullivan abstract closures [A-22a]/[A-22b] as in-IL 2-cells at the `U`/`force` boundary only, feeding the CC-normal Cranelift pre-lowering where `jit ≡ eval` is a theorem — is downstream of B4, and the IL already reserves its seam (`core-sequent/src/il.rs` emits `Cocase` as the pre-closure-conversion form; the `Closure` producer is deliberately absent at L0; "phase-K3" is `proposal-sequent-kernel.md` §8 vocabulary, a namespace distinct from the K1-K5 kernel invariants).
+- **B4-RC10 — D8/closure-plane non-foreclosure invariants (added and adopted at ratification, 2026-07-21; RQ-27).** The phase-K3 closure-conversion lane — notes-distillate D8: Sullivan abstract closures [A-22a]/[A-22b] as in-IL 2-cells at the `U`/`force` boundary only, feeding the CC-normal Cranelift pre-lowering where `jit ≡ eval` is a theorem — is downstream of B4, and the IL already reserves its seam (`core-sequent/src/il.rs` emits `Cocase` as the pre-closure-conversion form; the `Closure` producer is deliberately absent at L0; "phase-K3" is `proposal-sequent-kernel.md` §8 vocabulary, a namespace distinct from the K1-K5 kernel invariants).
   B4 takes no design content from D8 but must not foreclose it; three invariants: (i) the value domain keeps closures abstract first-order `(Env, NodeId)` — the Sullivan abstract-closure posture — never specialized toward post-CC concrete closure records; (ii) the NbE ≡ L-machine differential compares at the value/readback level, never the IL-shape level, so it extends to CC-normal adequacy (`normalize∘CC ≡ normalize`) when phase-K3 lands; (iii) whnf/conversion is indifferent to `Cocase`-vs-`Closure` IL surface forms, and thunk cells (H4) stay representation-agnostic at the `U`/`force` boundary CC will rewrite.
   The Sullivan digests (`sequent-machines-closures`, `sequent-machines-effcc`) remain distill-pending; their absorption is owed to the phase-K3 lane, not B4.
 

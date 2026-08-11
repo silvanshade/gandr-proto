@@ -10,14 +10,14 @@ This document owns the architecture and the design space around both.
 
 **Built, and verified against the tree at write time.**
 
-* **A fixed table of twelve binary operators and one unary.** `gandr-surface-engine`'s `lower/node_kinds` module declares the table as twelve spelling-to-prelude-name pairs — `||` `&&` `==` `!=` `<` `<=` `>` `>=` `++` `+` `-` `*`, mapping to `or` `and` `eq` `ne` `lt` `le` `gt` `ge` `concat` `add` `sub` `mul` — plus the unary negation's prelude name, and it mirrors the grammar crate's own table.
-* **The lowering is the forced-prelude application, and it is tagged.** `gandr-surface-engine`'s `lower` module lowers a binary expression to an application of a forced prelude variable, in curried form, with every synthesized node tagged as an operator elaboration in the origin map.
-* **The origin record is richer than the design asked for.** `gandr-surface-engine`'s `origin` module records, per synthesized node, the originating node's identity, its **per-node merkle hash**, its byte range, the elaboration tag, and a hole note — and the merkle hash is reproducible across runs and processes, which the parse-tree address it replaced was not.
-* **The precedence model is a named graph.** The grammar's precedence structure is named groups with binds-tighter edges, per-group associativity, a precomputed reachability closure, and a fingerprint; incomparable pairs are honoured rather than resolved, and an ambiguous mix raises the taxonomy's maximum-severity obligation.
-* **The fixity declaration parses and declines.** `op <fixity> <level> "spelling" ;` is admitted with the fixity classes as contextual tiles and the spelling as a string literal, so the labeler never has to tokenize a user operator.
-* **The extension seam is implemented and unwired.** `gandr-surface-grammar`'s `model` module has `Pbg::extend`, which folds declared operators into a fresh grammar — changed fingerprint, added mold candidate, base mold identities preserved — with named contract witnesses.
+- **A fixed table of twelve binary operators and one unary.** `gandr-surface-engine`'s `lower/node_kinds` module declares the table as twelve spelling-to-prelude-name pairs — `||` `&&` `==` `!=` `<` `<=` `>` `>=` `++` `+` `-` `*`, mapping to `or` `and` `eq` `ne` `lt` `le` `gt` `ge` `concat` `add` `sub` `mul` — plus the unary negation's prelude name, and it mirrors the grammar crate's own table.
+- **The lowering is the forced-prelude application, and it is tagged.** `gandr-surface-engine`'s `lower` module lowers a binary expression to an application of a forced prelude variable, in curried form, with every synthesized node tagged as an operator elaboration in the origin map.
+- **The origin record is richer than the design asked for.** `gandr-surface-engine`'s `origin` module records, per synthesized node, the originating node's identity, its **per-node merkle hash**, its byte range, the elaboration tag, and a hole note — and the merkle hash is reproducible across runs and processes, which the parse-tree address it replaced was not.
+- **The precedence model is a named graph.** The grammar's precedence structure is named groups with binds-tighter edges, per-group associativity, a precomputed reachability closure, and a fingerprint; incomparable pairs are honoured rather than resolved, and an ambiguous mix raises the taxonomy's maximum-severity obligation.
+- **The fixity declaration parses and declines.** `op <fixity> <level> "spelling" ;` is admitted with the fixity classes as contextual tiles and the spelling as a string literal, so the labeler never has to tokenize a user operator.
+- **The extension seam is implemented and unwired.** `gandr-surface-grammar`'s `model` module has `Pbg::extend`, which folds declared operators into a fresh grammar — changed fingerprint, added mold candidate, base mold identities preserved — with named contract witnesses.
   **Nothing outside its own tests calls it.**
-* **The seam supports four fixities and the grammar admits five.** `Fixity` has left- and right-associative infix, prefix, and postfix, each with the precedence band it lands at; the grammar's fixity tile alternation additionally admits the non-associative `infix`, which has no band.
+- **The seam supports four fixities and the grammar admits five.** `Fixity` has left- and right-associative infix, prefix, and postfix, each with the precedence band it lands at; the grammar's fixity tile alternation additionally admits the non-associative `infix`, which has no band.
 
 **Designed, and not built.** User-declared operators reaching the grammar at all; import and scope provenance for a declared operator; operator sections; closed and bracketed notation; programmable un-expanders; type-directed overload selection; and every tier above the fixed table.
 
@@ -27,8 +27,8 @@ The one commitment everything else follows from: **what the parser recognizes mu
 
 Stated as two obligations rather than as one slogan, because they fail separately:
 
-* **Capture is declaration-independent.** The grammar recognizes an operator's _shape_ from its tokens and their contexts alone, never by consulting a fixity declaration, an import, or an inferred type.
-* **Resolution reads a table.** Precedence, associativity, and the target an operator denotes come from a machine-resident table that is ordinary serializable data, and the table is what extends.
+- **Capture is declaration-independent.** The grammar recognizes an operator's _shape_ from its tokens and their contexts alone, never by consulting a fixity declaration, an import, or an inferred type.
+- **Resolution reads a table.** Precedence, associativity, and the target an operator denotes come from a machine-resident table that is ordinary serializable data, and the table is what extends.
 
 **Under the current substrate the split lands in an unusual place, and the difference is worth stating precisely because it changes what the seam is.** The pre-reboot design put capture in a generated parser that produced a flat, unresolved operator sequence, and resolution in a separate resumable pass over the machine's operator table.
 The precedence-bounded grammar dissolves that separation by absorbing the resolver: the melder _is_ a resumable push machine over a named precedence DAG, so it fixes operator **shape** during the parse, and there is no flat sequence to re-resolve afterwards.
@@ -208,18 +208,18 @@ That path is deliberately separate and must not be back-ported as parse-time mut
 An implementation of this architecture is conforming only if all of the following hold.
 **The list is rewritten against the gates that exist**, and where a pre-reboot item named a generated-parser property, the current structural equivalent stands in its place.
 
-* the grammar is built once, fingerprinted, and never mutated during a parse;
-* every form clears the three build-time gates, so no operator form exposes adjacent sort holes;
-* a CST records the fingerprint of the grammar that produced it;
-* capture is declaration-independent — no operator form's recognition consults a declaration, an import, or an inferred type;
-* precedence is a named graph with reachability and honoured incomparability, never a total order imposed on it;
-* an ambiguous mix raises a diagnostic at a source span and is never resolved by priority, import order, or type;
-* open alphabetic mixfix is not admitted;
-* a fixed builtin table and a future declared table read the **same** structure, so neither is a throwaway;
-* operators lower to existing core forms only, and add no core node;
-* the origin record preserves enough to explain or reverse the elaboration, keyed on a fingerprint that outlives the run;
-* the display path falls back to the lowered form rather than inventing a source rendering; and
-* any tier that affects the table does so through recorded, replayable declarations.
+- the grammar is built once, fingerprinted, and never mutated during a parse;
+- every form clears the three build-time gates, so no operator form exposes adjacent sort holes;
+- a CST records the fingerprint of the grammar that produced it;
+- capture is declaration-independent — no operator form's recognition consults a declaration, an import, or an inferred type;
+- precedence is a named graph with reachability and honoured incomparability, never a total order imposed on it;
+- an ambiguous mix raises a diagnostic at a source span and is never resolved by priority, import order, or type;
+- open alphabetic mixfix is not admitted;
+- a fixed builtin table and a future declared table read the **same** structure, so neither is a throwaway;
+- operators lower to existing core forms only, and add no core node;
+- the origin record preserves enough to explain or reverse the elaboration, keyed on a fingerprint that outlives the run;
+- the display path falls back to the lowered form rather than inventing a source rendering; and
+- any tier that affects the table does so through recorded, replayable declarations.
 
 ## Open questions
 

@@ -21,13 +21,13 @@ Native proofs verify ordered-map facts, not byte offsets in a Bao blob.
 
 `current` — The core contract is intentionally narrow:
 
-* sorted canonical records in;
-* duplicate or unsorted input rejected, not merged;
-* local `storage-chunker` parameter commitments consumed as consensus material;
-* rolling/chunker boundary state treated as layout metadata, not node identity;
-* BLAKE3 over versioned, domain-separated encoded node bytes;
-* root manifests binding tree kind, encoding version, hash marker, separator convention, record count, chunker parameters, and root-node hash;
-* proof verification independent of any backing store.
+- sorted canonical records in;
+- duplicate or unsorted input rejected, not merged;
+- local `storage-chunker` parameter commitments consumed as consensus material;
+- rolling/chunker boundary state treated as layout metadata, not node identity;
+- BLAKE3 over versioned, domain-separated encoded node bytes;
+- root manifests binding tree kind, encoding version, hash marker, separator convention, record count, chunker parameters, and root-node hash;
+- proof verification independent of any backing store.
 
 That contract is the thing to preserve when changing internals.
 Stores and adapters may make proof generation faster, but proof consumers must still be able to verify from the root, parameters, query material, and carried proof bytes.
@@ -39,16 +39,16 @@ It is a Prolly/Merkle-search-tree composition with a Mach-specific root, record,
 
 The prior art was model-only because the mismatches are load-bearing:
 
-* **Dolt:** useful for node-layout, cursor, chunking, and packed-block ideas.
+- **Dolt:** useful for node-layout, cursor, chunking, and packed-block ideas.
   Not adopted because Dolt is a SQL database with static-schema tuples, SHA-family chunk identity, product-owned commits/merges/push/pull, and store traversal as the main integrity surface.
   Mach needs canonical byte records, BLAKE3 identity, portable proof transcripts, and no hidden tuple or merge policy in core.
-* **Okra:** useful as an LMDB overlay pattern: ordered key/value storage can support Merkle nodes and snapshots.
+- **Okra:** useful as an LMDB overlay pattern: ordered key/value storage can support Merkle nodes and snapshots.
   Not adopted as core because the verifier must remain store-independent, and persistent backend choice/history ownership are still outside this crate.
-* **IPLD / Noms / CAR:** useful for explicit configuration/profile thinking and interchange adapters.
+- **IPLD / Noms / CAR:** useful for explicit configuration/profile thinking and interchange adapters.
   Not adopted because CID/DAG-CBOR/SHA2 defaults, ecosystem block traversal, duplicate handling, CAR root selection, and codec failure modes do not match the current BLAKE3 encoded-node proof contract.
-* **mnem:** useful for small-core boundaries, checked blockstore discipline, canonical encoding habits, CAR-aware adapter posture, and benchmark discipline.
+- **mnem:** useful for small-core boundaries, checked blockstore discipline, canonical encoding habits, CAR-aware adapter posture, and benchmark discipline.
   Not adopted because mnem is a memory graph with CID/DAG-CBOR and retrieval surfaces, not an ordered-record BLAKE3 proof tree.
-* **zhangfengcdt/prollytree:** useful for sorted streaming construction, recursive parent chunkers, hard caps, first-key pivots, in-memory store seams, append/fast-forward ideas, and history-independence tests.
+- **zhangfengcdt/prollytree:** useful for sorted streaming construction, recursive parent chunkers, hard caps, first-key pivots, in-memory store seams, append/fast-forward ideas, and history-independence tests.
   Not adopted because its identity, proof model, duplicate handling, and broader API shape do not match Mach's domain-separated BLAKE3 nodes, strict duplicate rejection, explicit root context, and portable membership/non-membership/range witnesses.
 
 `designed direction` — Keep borrowing mechanics through benchmarks, adapters, and reviewed profiles.

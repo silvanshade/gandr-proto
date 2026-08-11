@@ -4,11 +4,11 @@ The complete design of the layout-side directed univalence statement summarized 
 
 ## The substrate is directed — the evidence
 
-* Generators are oriented schemas; the backward half is a _formal_ inverse, sound only where the generator carries inverse-plus-round-trip evidence.
-* Symmetrization is free doubling, not substrate: groupoid paths are words over an involutive alphabet with cancellation imposed one dimension up as oriented rules — rules over a directed substrate, not a symmetric substrate.
-* Even the groupoid certificate grade is one-sided: replay-equivalence compares only the forward translator.
-* The saturation alphabet is variance-typed with no inverses anywhere; the eliminator's discharge is a covariant Yoneda extension consuming no symmetry.
-* The directed eliminators are precedented in the landed profunctor layer (directed path induction whose groupoid instance specializes to symmetric J; Π as right extension along a conjoint, with no inverses anywhere in that module).
+- Generators are oriented schemas; the backward half is a _formal_ inverse, sound only where the generator carries inverse-plus-round-trip evidence.
+- Symmetrization is free doubling, not substrate: groupoid paths are words over an involutive alphabet with cancellation imposed one dimension up as oriented rules — rules over a directed substrate, not a symmetric substrate.
+- Even the groupoid certificate grade is one-sided: replay-equivalence compares only the forward translator.
+- The saturation alphabet is variance-typed with no inverses anywhere; the eliminator's discharge is a covariant Yoneda extension consuming no symmetry.
+- The directed eliminators are precedented in the landed profunctor layer (directed path induction whose groupoid instance specializes to symmetric J; Π as right extension along a conjoint, with no inverses anywhere in that module).
   One qualification survives adversarial reading: Π-*substitution* does consume inverses at named groupoid sites — one new site per fibre depth — so the blanket "the directed development uses no inverses" must be scoped to the eliminators, not the whole Π story.
 
 The exact primitive-to-derived relation: the groupoid path protype is the **free involutive doubling of the evidence-invertible restriction of the directed protype, with cancellation adjoined as dimension-2 rules** — a localization of a restriction.
@@ -24,10 +24,10 @@ Groupoid-as-quotient fails (the groupoid protype has more letters and more rules
 
 The four obligations:
 
-* **sound**: every generator schema names a translator with replay evidence; positive words realize by unconditional composition (string-shaped composites discharge the acyclicity gate structurally);
-* **full**: every leaf-natural one-way certificate is replay-equal to a realized positive word — stratified fullness at the unit-plus-restriction fragment (hom formation as the unit protype restricted along the endpoint maps, one constructor class beyond the groupoid statement's unit fragment);
-* **sectioned**: the constructed inverse satisfies β at replay-equivalence and η at the directed rule congruence — the grade discipline verbatim, never code equality on either side;
-* **core-coincident**: the canonical comparison from the groupoid statement into the invertible core of the directed one is a bijection at the stated grades.
+- **sound**: every generator schema names a translator with replay evidence; positive words realize by unconditional composition (string-shaped composites discharge the acyclicity gate structurally);
+- **full**: every leaf-natural one-way certificate is replay-equal to a realized positive word — stratified fullness at the unit-plus-restriction fragment (hom formation as the unit protype restricted along the endpoint maps, one constructor class beyond the groupoid statement's unit fragment);
+- **sectioned**: the constructed inverse satisfies β at replay-equivalence and η at the directed rule congruence — the grade discipline verbatim, never code equality on either side;
+- **core-coincident**: the canonical comparison from the groupoid statement into the invertible core of the directed one is a bijection at the stated grades.
   Genuinely new work: invertible realizations arise from non-invertible letters (a fold after an injection realizes the identity while neither letter is invertible), so the directed rule layer needs the simplicial-identity-style cells _and_ a word-problem argument on the invertible-realization sub-stock.
 
 The two statements, side by side:

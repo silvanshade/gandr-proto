@@ -54,11 +54,11 @@
 
 **Surface syntax** (`wyrd@failed-refactor:crates/gandr-grammar/src/surface/term.rs`):
 
-* `module_declaration` rule at `term.rs:222-235` — `module TypeIdent (: record_type_ascription)? { module_member* }`; the transparent record ascription `#{ field: Type, … }` at `term.rs:322-335`; members at `term.rs:1555`.
-* `import_declaration` at `term.rs:243-255` (`import <string> as identifier ;`); `operator_declaration` (reserved) at `term.rs:266-284`; `rec_block` (reserved) at `term.rs:290-307`.
-* Record literal/update `record_expression` at `term.rs:1858` (comment `term.rs:1842-1858`); record patterns at `term.rs:1271`.
-* Qualified paths `M.l` reuse the ordinary `projection_expression` node — there is **no** dedicated qualified-name grammar, and no `open`/`use` form exists.
-* Registration: `wyrd@failed-refactor:crates/gandr-grammar/src/surface.rs:140`; pipeline node kind `wyrd@failed-refactor:crates/gandr-pipeline/src/lower/node_kinds.rs:32`; CST readers `wyrd@failed-refactor:crates/gandr-pipeline/src/synnode.rs:1959-2103` (recognition test at `synnode.rs:4612`).
+- `module_declaration` rule at `term.rs:222-235` — `module TypeIdent (: record_type_ascription)? { module_member* }`; the transparent record ascription `#{ field: Type, … }` at `term.rs:322-335`; members at `term.rs:1555`.
+- `import_declaration` at `term.rs:243-255` (`import <string> as identifier ;`); `operator_declaration` (reserved) at `term.rs:266-284`; `rec_block` (reserved) at `term.rs:290-307`.
+- Record literal/update `record_expression` at `term.rs:1858` (comment `term.rs:1842-1858`); record patterns at `term.rs:1271`.
+- Qualified paths `M.l` reuse the ordinary `projection_expression` node — there is **no** dedicated qualified-name grammar, and no `open`/`use` form exists.
+- Registration: `wyrd@failed-refactor:crates/gandr-grammar/src/surface.rs:140`; pipeline node kind `wyrd@failed-refactor:crates/gandr-pipeline/src/lower/node_kinds.rs:32`; CST readers `wyrd@failed-refactor:crates/gandr-pipeline/src/synnode.rs:1959-2103` (recognition test at `synnode.rs:4612`).
 
 **The ADR-42 namespace (module-select)**: `wyrd@failed-refactor:crates/gandr-pipeline/src/lower.rs:3125-3161` — `projection()` emits `Value::Var("M.l")` tagged `ElabKind::ModuleSelect` (`lower.rs:3141-3151`) when `is_module_member(M, l)` holds; a known module with an unknown member is a declined `Unsupported` (`lower.rs:3170-3175`).
 The registry is the const table `MODULE_BUILTINS` at `wyrd@failed-refactor:crates/gandr-pipeline/src/prelude.rs:53-90` — `(module, member, NativePrim)` rows for the modules `prim`, `list`, `record`, `string`, `regex`, `path` — driving all three faces from one table: recognition (`prelude.rs:124`, `:157`), typing `prelude_ctx()` (`prelude.rs:192-208`), evaluation `prelude_env()` (`prelude.rs:238-254`), plus the unqualified `OPERATOR_BUILTINS` table (`prelude.rs:96-110`).
@@ -87,12 +87,12 @@ A stale note at `attributes.rs:175-179` claims the module-root host "is not land
 
 ### 2.3 What the corpus exercises, and the agda-deps consumer
 
-* `model/29-modules.gandr` (under `wyrd@failed-refactor:crates/gandr-corpus/examples/`) is the flagship: a transparent-signature module with an **effectful member** (`def reply = #!{ printf … };`), cross-member ordering, a nested record member, and `M.field` projection, with a pinned shell-mode expectation.
-* Pathological goldens: `module-duplicate-member.gandr`, `module-forward-member-reference.gandr` (left-to-right scope; forward reference rejected), `module-malformed-recovery.gandr`.
-* Namespace/host coverage: `model/25-host-modules.gandr` (fs/env/path members through `let x <- …`), `model/26-env-guard-exit.gandr`, `model/28-regex-and-path-builtins.gandr`, plus the list/string/record model files; pathological `host-module-uncalled-selection.gandr`.
-* `surface/module-import.gandr` is the parse-only import witness ("Parse-only; never lowered").
-* **The real consumer**: `wyrd@failed-refactor:scripts/agda-deps.gandr` is an executable production script (run via `mise run agda:deps`, `wyrd@failed-refactor:mise.toml:878`) that declares `module AgdaDeps : #{ repository: String, … } { def … }`, projects `AgdaDeps.branch`/`.repository`, and drives `fs.*`/`path.*`/`string.*` host and prelude members with shell blocks — the module layer is load-bearing for the project's own tooling, not a demo. (The corpus walkthrough `model/14-agda-deps-walkthrough.gandr` is an older, module-free version of the same script — a mid-restoration drift tell, §12 C4.)
-* Test inventory (none `#[ignore]`d): nine module acceptance tests in `wyrd@failed-refactor:crates/gandr-pipeline/tests/acceptance.rs` (`:470`, `:499`, `:771`, `:853`, `:888`, `:966`, `:1327`, `:1405`, `:1977`), session tests (`tests/session.rs:353`, `:931`), surface (`tests/surface.rs:213`), link inline tests, and the `Native` directed-conformance suite (`wyrd@failed-refactor:crates/gandr-core/src/conformance.rs:6693` ff.).
+- `model/29-modules.gandr` (under `wyrd@failed-refactor:crates/gandr-corpus/examples/`) is the flagship: a transparent-signature module with an **effectful member** (`def reply = #!{ printf … };`), cross-member ordering, a nested record member, and `M.field` projection, with a pinned shell-mode expectation.
+- Pathological goldens: `module-duplicate-member.gandr`, `module-forward-member-reference.gandr` (left-to-right scope; forward reference rejected), `module-malformed-recovery.gandr`.
+- Namespace/host coverage: `model/25-host-modules.gandr` (fs/env/path members through `let x <- …`), `model/26-env-guard-exit.gandr`, `model/28-regex-and-path-builtins.gandr`, plus the list/string/record model files; pathological `host-module-uncalled-selection.gandr`.
+- `surface/module-import.gandr` is the parse-only import witness ("Parse-only; never lowered").
+- **The real consumer**: `wyrd@failed-refactor:scripts/agda-deps.gandr` is an executable production script (run via `mise run agda:deps`, `wyrd@failed-refactor:mise.toml:878`) that declares `module AgdaDeps : #{ repository: String, … } { def … }`, projects `AgdaDeps.branch`/`.repository`, and drives `fs.*`/`path.*`/`string.*` host and prelude members with shell blocks — the module layer is load-bearing for the project's own tooling, not a demo. (The corpus walkthrough `model/14-agda-deps-walkthrough.gandr` is an older, module-free version of the same script — a mid-restoration drift tell, §12 C4.)
+- Test inventory (none `#[ignore]`d): nine module acceptance tests in `wyrd@failed-refactor:crates/gandr-pipeline/tests/acceptance.rs` (`:470`, `:499`, `:771`, `:853`, `:888`, `:966`, `:1327`, `:1405`, `:1977`), session tests (`tests/session.rs:353`, `:931`), surface (`tests/surface.rs:213`), link inline tests, and the `Native` directed-conformance suite (`wyrd@failed-refactor:crates/gandr-core/src/conformance.rs:6693` ff.).
 
 ### 2.4 Correcting the spec-survey verdict
 
@@ -124,15 +124,15 @@ From the fcw.11 resolution (`bd comments gandr-fcw.11`) and the PLAN-review amen
 
 ### 3.2 Lineage the design builds on
 
-* **ADR-1** (CBPV adjunction restored): "module functors had to become thunked computations (ADR-11)" — polarity, not taste, fixes the functor's shape.
-* **ADR-11 / `spec/modules.md`**: the 1ML-on-CBPV design record — modules as values, functors as thunked computations, `Package σ ≜ ∃β̄. U_r (F σ)`, Mω transparent existentials ([H-2], [H-3], [H-6]).
-* **ADR-12** (predicativity as an inference fence): the small/large distinction protects **principality**, not consistency; explicit large instantiation always allowed, guessing fuel-bounded.
+- **ADR-1** (CBPV adjunction restored): "module functors had to become thunked computations (ADR-11)" — polarity, not taste, fixes the functor's shape.
+- **ADR-11 / `spec/modules.md`**: the 1ML-on-CBPV design record — modules as values, functors as thunked computations, `Package σ ≜ ∃β̄. U_r (F σ)`, Mω transparent existentials ([H-2], [H-3], [H-6]).
+- **ADR-12** (predicativity as an inference fence): the small/large distinction protects **principality**, not consistency; explicit large instantiation always allowed, guessing fuel-bounded.
   This study applies the same posture to signature inference and avoidance (§4.2, §4.6).
-* **ADR-42 / ADR-45 / ADR-53 / ADR-54 / ADR-58 / ADR-63 / ADR-56**: the built substrate of §2.
-* **`spec/core-ir-contract.md`** §9: `+modules` is a staged extension row ("signatures, functors as `U_r (σ₁ → F σ₂)`, implicits — `modules.md` — signature contexts"); §0 discipline governs any frozen-core former B3 adds.
-* **`spec/kernel-boundary.md`** (ADR-77/78): K1-K5, the `add_decl` choke point, the S-stage subset surface, export obligations E1-E6 — the B2 handshake target (§6).
-* **ADR-50** D/E: glued-NbE value domain and the two-layer unfolding control — the B4 substrate B3's forms must respect (§7); the theory layer cites [L-6].
-* Literature: 1ML [H-2] for the small/large fence and core/module unification thesis; F-ing modules [H-1] for signature matching, avoidance, and the generative/applicative analysis; Mω [H-3] for transparent existentials (deferred); Alice ML [H-6], [H-7] for packages and dynamic matching (deferred to the packages pass); the Definition of SML [T-12] as the stratified-baseline reference; Levy [A-1a], [A-2] for the polarity substrate.
+- **ADR-42 / ADR-45 / ADR-53 / ADR-54 / ADR-58 / ADR-63 / ADR-56**: the built substrate of §2.
+- **`spec/core-ir-contract.md`** §9: `+modules` is a staged extension row ("signatures, functors as `U_r (σ₁ → F σ₂)`, implicits — `modules.md` — signature contexts"); §0 discipline governs any frozen-core former B3 adds.
+- **`spec/kernel-boundary.md`** (ADR-77/78): K1-K5, the `add_decl` choke point, the S-stage subset surface, export obligations E1-E6 — the B2 handshake target (§6).
+- **ADR-50** D/E: glued-NbE value domain and the two-layer unfolding control — the B4 substrate B3's forms must respect (§7); the theory layer cites [L-6].
+- Literature: 1ML [H-2] for the small/large fence and core/module unification thesis; F-ing modules [H-1] for signature matching, avoidance, and the generative/applicative analysis; Mω [H-3] for transparent existentials (deferred); Alice ML [H-6], [H-7] for packages and dynamic matching (deferred to the packages pass); the Definition of SML [T-12] as the stratified-baseline reference; Levy [A-1a], [A-2] for the polarity substrate.
   No MixML/recursive-modules row exists in the citation register — recursive modules stay deferred partly for that reason (§13 Q7).
 
 ---
@@ -166,11 +166,11 @@ B3 keeps the stratification; the collapse (if ever) is the modules-as-telescopes
 P ::= X | P.ℓ                      paths — module variables and component projections
 ```
 
-* **Paths are module values.** Projection from a path is pure and static; a path is a neutral head for conversion.
+- **Paths are module values.** Projection from a path is pure and static; a path is a neutral head for conversion.
   Type components are projected **only from paths** (`P.t` in a type position), which is what makes type-level projection an elaboration-time lookup rather than a computation — the classical ML path discipline ([T-12]; [H-1] §4).
-* **General module expressions do not project.** `(functor-application).ℓ` and `(struct { … }).ℓ` are ill-formed; the expression must be bound to a module name first (module bindings are declarations, so this is A-normalization at the declaration layer, not a term-level restriction).
-* **Value-component projection from a path** yields the component at its declared type; in core-term position a path projection `P.ℓ` of a value component elaborates to that component's item reference (today: the linked binder; post-B3.2: possibly atom-qualified — §6).
-* **Relation to the built layer.** ADR-45's record projection `r.ℓ` stays a computation delivering `F A` (data records are first-class values whose projection can meet an arbitrary scrutinee).
+- **General module expressions do not project.** `(functor-application).ℓ` and `(struct { … }).ℓ` are ill-formed; the expression must be bound to a module name first (module bindings are declarations, so this is A-normalization at the declaration layer, not a term-level restriction).
+- **Value-component projection from a path** yields the component at its declared type; in core-term position a path projection `P.ℓ` of a value component elaborates to that component's item reference (today: the linked binder; post-B3.2: possibly atom-qualified — §6).
+- **Relation to the built layer.** ADR-45's record projection `r.ℓ` stays a computation delivering `F A` (data records are first-class values whose projection can meet an arbitrary scrutinee).
   Module paths are the static counterpart; the two do not collide because the ADR-42/ADR-45 dispatch already distinguishes known-module heads from record values (`lower.rs:3125-3161`, ADR-45 D4).
   The M1-lite implementation detail "user-module projection = `RecordProj` on a linked record value" is **superseded** at B3.1 (§9, §11).
 
@@ -188,26 +188,26 @@ D ::= val ℓ : A                          value component
     | module ℓ : σ                       submodule component
 ```
 
-* **Signatures are ordered and dependency-respecting**: later declarations may refer to earlier ones (`type t : *; val x : t`).
+- **Signatures are ordered and dependency-respecting**: later declarations may refer to earlier ones (`type t : *; val x : t`).
   This is the M1-lite scoping rule ("later members see earlier members, never forward ones") promoted to the signature level — and it is **deliberately not** the ADR-45 record representation (canonical sorted `BTreeMap`, order-free).
   Structure signatures are telescope-shaped because their components depend on each other; that ordering is the single most load-bearing B6-door invariant (§8 I1).
-* **Matching is coercive.** `σ' matches σ` is checked by a matching algorithm that permits dropping components and reordering (the standard ML-family enrichment relation, [H-1] §5), but the result of a successful match is an **explicit elaborated coercion** — a repacking structure expression — not a subsumption step.
+- **Matching is coercive.** `σ' matches σ` is checked by a matching algorithm that permits dropping components and reordering (the standard ML-family enrichment relation, [H-1] §5), but the result of a successful match is an **explicit elaborated coercion** — a repacking structure expression — not a subsumption step.
   Consequences: (i) kernel conversion and the B4 normalizer never compare signatures (§7 N6); (ii) width/permutation flexibility lives entirely in elaboration, so a future re-reading of structures as Σ-telescopes (where reordering is not a subtyping) forecloses nothing (§8 I3); (iii) matching failures are ordinary localized diagnostics.
-* Candidate considered and declined: subsumption-style signature subtyping (the ADR-45 width/depth shape lifted to modules, or an MLsub-style polar treatment [B-5], [B-9]).
+- Candidate considered and declined: subsumption-style signature subtyping (the ADR-45 width/depth shape lifted to modules, or an MLsub-style polar treatment [B-5], [B-9]).
   Declined because it bakes permutation/width equations into conversion — precisely what the B6 telescope door cannot absorb — and because coercive matching is what F-ing modules proved sufficient for full ML modularity [H-1].
-* Transparent ascription `m : σ` checks `m`'s signature against `σ` and **strengthens**: manifest equalities from `m` survive (the `Mod-Transparent` rule of `spec/modules.md` §3).
+- Transparent ascription `m : σ` checks `m`'s signature against `σ` and **strengthens**: manifest equalities from `m` survive (the `Mod-Transparent` rule of `spec/modules.md` §3).
   The landed transparent record ascription of M1-lite is the degenerate value-only case and carries over unchanged.
 
 ### 4.4 Sealing and abstract types — generative, nominal, atom-minted
 
-* `m :> σ` (opaque ascription) checks `m ⇓ σ`, then **mints one fresh nominal atom per abstract `type ℓ : κ` in `σ`** and returns the module at `σ` with those components rebound to the atoms.
+- `m :> σ` (opaque ascription) checks `m ⇓ σ`, then **mints one fresh nominal atom per abstract `type ℓ : κ` in `σ`** and returns the module at `σ` with those components rebound to the atoms.
   Minting rides the ADR-41 `gandr-nominal` `Atom`/`Gensym` substrate — the same inline-identity discipline as `perform`'s op tag, `NativePrim`, and ADR-80's generative-nominal `DataId` (whose "compare the minted id before the structure" subtyping is exactly abstract-type behavior; `spec/core-ir-contract.md` §2).
-* **No ∃-binders enter the core.** `spec/modules.md` §3 presents sealing as `∃β̄. σ[β̄/ᾱ]`; B3 realizes the same abstraction judgment nominally: an abstract type is an atom with no definitional unfolding, recorded in the environment with its kind and provenance.
+- **No ∃-binders enter the core.** `spec/modules.md` §3 presents sealing as `∃β̄. σ[β̄/ᾱ]`; B3 realizes the same abstraction judgment nominally: an abstract type is an atom with no definitional unfolding, recorded in the environment with its kind and provenance.
   This avoids adding quantifiers to the frozen value-type grammar (they are `+poly`-staged) and gives the kernel a checkable story: opacity is "this atom has no δ-rule", a fact the kernel re-derives rather than trusts (K2).
-* **The avoidance problem is fenced, not solved.** Avoidance arises when inference must find a signature for a module expression that does not mention an out-of-scope abstract type; principal solutions do not exist in general ([H-1] §5.4 discussion; the 1ML fence [H-2]).
+- **The avoidance problem is fenced, not solved.** Avoidance arises when inference must find a signature for a module expression that does not mention an out-of-scope abstract type; principal solutions do not exist in general ([H-1] §5.4 discussion; the 1ML fence [H-2]).
   B3's posture, per ADR-12: sealing and module bindings are **declaration-granular** (no term-local module bindings except `unpack`, §4.6), and any type that would escape its atom's scope is an **error demanding an annotation** — the checker never invents an avoiding supertype.
   This keeps inferred signatures principal and errors predictable; the cost (occasional explicit ascription) is the cost ADR-12 already accepted for the core.
-* Sealing at B3 attaches to module declarations (`module M :> σ { … }` and functor result signatures); sealing arbitrary inner expressions adds nothing the declaration form cannot express.
+- Sealing at B3 attaches to module declarations (`module M :> σ { … }` and functor result signatures); sealing arbitrary inner expressions adds nothing the declaration form cannot express.
 
 ### 4.5 Generative vs applicative functors
 
@@ -234,14 +234,14 @@ pack P : σ                   value intro — a path, packed at an EXPLICIT sign
 unpack v : σ as X in t       computation elim — binds module var X over body t, EXPLICIT signature
 ```
 
-* `Package σ` internalizes `U_r (Mod σ)` under the abstraction barrier — `spec/modules.md` §3's `Package σ ≜ ∃β̄. U_r (F σ)` with the existential replaced by the nominal-atom discipline of §4.4: unpacking mints fresh atoms for `σ`'s abstract components (generative unpack; abstraction safety).
-* **Decidability fence (the 1ML lesson, applied):** the module/core boundary is annotated in **both** directions.
+- `Package σ` internalizes `U_r (Mod σ)` under the abstraction barrier — `spec/modules.md` §3's `Package σ ≜ ∃β̄. U_r (F σ)` with the existential replaced by the nominal-atom discipline of §4.4: unpacking mints fresh atoms for `σ`'s abstract components (generative unpack; abstraction safety).
+- **Decidability fence (the 1ML lesson, applied):** the module/core boundary is annotated in **both** directions.
   `pack` always carries `σ`; `unpack` always carries `σ`; a `Package σ` is opaque to core-type inference (no rule ever guesses a module type from core-term structure).
   This is the module-layer instance of ADR-12: checking a given large thing is easy, guessing one is fenced [H-2].
-* **Static matching only at B3.** `spec/modules.md` §3's `Mod-Unpack` includes a _dynamic_ signature match (the Alice ML pickling boundary, [H-6], [H-7]); its consumer is the package/build manager's fetch boundary (`spec/proposal-packages.md` §4), which is the packages pass's territory (§10.1).
+- **Static matching only at B3.** `spec/modules.md` §3's `Mod-Unpack` includes a _dynamic_ signature match (the Alice ML pickling boundary, [H-6], [H-7]); its consumer is the package/build manager's fetch boundary (`spec/proposal-packages.md` §4), which is the packages pass's territory (§10.1).
   B3's `unpack` is checked statically at elaboration and re-checked by the kernel; the dynamic-match slot is reserved, unbuilt.
-* Grades: `Package` carries the thunk grade of its payload (`ω` default, `1` for single-use packages — the module-level linearity `spec/modules.md` §3 motivates); see §13 Q4 for how much of the grade story lands at B3 vs the modes/grades tail slot.
-* Frozen-core impact: `Package` + `pack`/`unpack` are the **only** core grammar additions B3 makes, and they enter through the `core-ir-contract.md` §0 discipline (ADR + contract + dictionary in lock-step), exactly as ADR-45 entered the record former.
+- Grades: `Package` carries the thunk grade of its payload (`ω` default, `1` for single-use packages — the module-level linearity `spec/modules.md` §3 motivates); see §13 Q4 for how much of the grade story lands at B3 vs the modes/grades tail slot.
+- Frozen-core impact: `Package` + `pack`/`unpack` are the **only** core grammar additions B3 makes, and they enter through the `core-ir-contract.md` §0 discipline (ADR + contract + dictionary in lock-step), exactly as ADR-45 entered the record former.
 
 ### 4.7 Elaboration summary table
 
@@ -291,9 +291,9 @@ The fcw.11 exit-gate floor requires from B2 onward that each phase's corpus "exp
 
 Two candidate postures for module-aware kernel checking:
 
-* **(a) Full module vocabulary in the kernel** — `ModuleDef`/`FunctorDef` declarations, module terms, signature matching in the kernel.
+- **(a) Full module vocabulary in the kernel** — `ModuleDef`/`FunctorDef` declarations, module terms, signature matching in the kernel.
   Maximal trust coverage, maximal TCB growth; K4 would have to police signature matching and functor instantiation inside the wall.
-* **(b) Elaborator flattens; kernel checks the residue** — structures export as member `Def`s with **structured (path-segment) names** plus signature metadata; functor **applications are instantiated by the elaborator before export** (each generative instantiation exports its minted atoms + member `Def`s); the kernel's new obligations are only: an `AbstractType` declaration form (a minted atom with its arity, no δ-rule — what makes sealing _kernel-checkable_ rather than elaborator-promised), and (at B3.4) the `Package` former with `pack`/`unpack` typing.
+- **(b) Elaborator flattens; kernel checks the residue** — structures export as member `Def`s with **structured (path-segment) names** plus signature metadata; functor **applications are instantiated by the elaborator before export** (each generative instantiation exports its minted atoms + member `Def`s); the kernel's new obligations are only: an `AbstractType` declaration form (a minted atom with its arity, no δ-rule — what makes sealing _kernel-checkable_ rather than elaborator-promised), and (at B3.4) the `Package` former with `pack`/`unpack` typing.
 
 **Recommendation: (b) at B3**, with (a)'s declaration tags reserved so graduating functor definitions into the kernel later (kernel subset-surface growth is a standing per-phase obligation, fcw.11) is additive.
 Rationale: K-disciplines favor small closed growth (K1/K3); the replay checker (B9) prices every kernel form twice; and posture (b) already closes the soundness gap that matters — **opacity is re-derived by the kernel** (an atom admitted with no unfolding cannot be peeled by a malicious export), rather than trusted from the elaborator.
@@ -303,13 +303,13 @@ The cost — functor _bodies_ are not independently kernel-certified at B3, only
 
 **Yes, B2 should reserve; four items, all cheap at B2 and expensive to retrofit:**
 
-* **R1 — declaration-kind tag space.** Reserve export-format tags for `AbstractType`, `ModuleSig`, `ModuleDef`, `FunctorDef` in the K5 declaration vocabulary.
+- **R1 — declaration-kind tag space.** Reserve export-format tags for `AbstractType`, `ModuleSig`, `ModuleDef`, `FunctorDef` in the K5 declaration vocabulary.
   E4/E5 (validating reader + versioned refusal) already make unknown tags safe; reserving the numbers now means B3 (and a later functor-graduation rung) never renumbers a shipped format.
-* **R2 — structured declaration names.** The S1 export's name field should be a **path-segment list**, not a flat string, from v0.
+- **R2 — structured declaration names.** The S1 export's name field should be a **path-segment list**, not a flat string, from v0.
   This is the cheapest/most-expensive item of the four: the ADR-42 layer's flat `"M.l"` strings (§2.2) must not become the export identity, or every future module-aware consumer (replay, packages ascription pointers per ADR-56, B6 telescopes) parses names out of strings forever.
-* **R3 — a third annotation slot: sealing provenance.** Beside the two slots B2 already reserves (erasure; modes/grades — fcw.11), reserve one per-`Def` slot recording sealed-component provenance (owning module, owning atom set).
+- **R3 — a third annotation slot: sealing provenance.** Beside the two slots B2 already reserves (erasure; modes/grades — fcw.11), reserve one per-`Def` slot recording sealed-component provenance (owning module, owning atom set).
   Same mechanism, same cheap-now/expensive-later call the owner already made twice.
-* **R4 — a minted-atom table section.** Reserve an export section for abstract-type atoms in admission order, so replay **re-mints deterministically** and freshness is a checkable property (K4 applied to generativity), not an imported claim.
+- **R4 — a minted-atom table section.** Reserve an export section for abstract-type atoms in admission order, so replay **re-mints deterministically** and freshness is a checkable property (K4 applied to generativity), not an imported claim.
   This also keeps E1 (self-contained) honest once sealed declarations exist.
 
 **What B2 need NOT do:** no S1 term-language change; no `Package` former (B3 adds it through the §0 discipline at B3.4); no kernel signature matching ever, if §4.3's coercive posture holds (matching output is ordinary terms the kernel re-checks); no commitment now on functor-body kernel checking (R1 keeps both §6.2 postures open).
@@ -321,17 +321,17 @@ The cost — functor _bodies_ are not independently kernel-certified at B3, only
 B4's charter (fcw.11) adapts the ADR-50 D/E glued-NbE, hash-consing normalizer to the L machine, with a whnf/definitional-unfolding discipline "covering module unfolding forms".
 B3 hands B4 exactly these forms:
 
-* **N1 — structure projection.** `struct { …, ℓ = v, … }.ℓ ▷ v`; a projection whose head is a neutral path stays neutral.
+- **N1 — structure projection.** `struct { …, ℓ = v, … }.ℓ ▷ v`; a projection whose head is a neutral path stays neutral.
   Discipline: paths demand **spine-local** whnf only — normalize the head to structure form, never the sibling components (the glued representation's laziness is load-bearing here; [A-37] for NbE over the CBPV/polarized core).
-* **N2 — functor β under generativity.** `(force F)(M) ▷ body[M/X]` **plus atom minting** for the sealed result.
+- **N2 — functor β under generativity.** `(force F)(M) ▷ body[M/X]` **plus atom minting** for the sealed result.
   Generative application is therefore _not_ a confluent pure rewrite: two applications of the same functor to the same argument are **not** convertible, and the normalizer must (i) treat instantiation as a stateful step keyed by the minted atoms, and (ii) **never memoize or hash-cons across instantiations** — the content-addressed sharing of ADR-50 B must include minted atoms in identity or two distinct instantiations would silently alias.
   This is the single sharpest constraint B3 exports to B4; it should appear in B4's charter checklist verbatim.
-* **N3 — sealing as an unfolding barrier.** A sealed component has **no δ-rule**; the glued value's top-level-unfolded face stops at the seal.
+- **N3 — sealing as an unfolding barrier.** A sealed component has **no δ-rule**; the glued value's top-level-unfolded face stops at the seal.
   This is the first genuine language-level unfolding boundary the normalizer meets, and it lands in ADR-50 E's _engine_ layer (transparency/reducibility control); the _theory_ layer — declared, scoped unfolding with extension-type semantics [L-6] — remains reserved for the B6+ dependent-core era (the wyrd-era "evidence layer", a concept superseded by the reboot backbone), and B3's sealing is designed not to preempt it (opacity here is total, not scoped).
-* **N4 — transparent ascription strengthens.** `type ℓ = A` components contribute definitional equations (δ-rules) to the environment; strengthening (§4.3) is the mechanism by which sealed-then-transparently-viewed modules regain equations.
+- **N4 — transparent ascription strengthens.** `type ℓ = A` components contribute definitional equations (δ-rules) to the environment; strengthening (§4.3) is the mechanism by which sealed-then-transparently-viewed modules regain equations.
   The normalizer's definitional environment must be per-scope, since the same atom may be manifest in one scope (inside the sealed module) and opaque outside.
-* **N5 — `unpack`∘`pack`.** Reduces, but generatively (fresh atoms per unpack, §4.6) — the N2 discipline applies; `Package` values are otherwise inert for conversion, and kernel/normalizer conversion never runs initialization effects (kernel-boundary §6 C5 stands unmodified).
-* **N6 — coercions are terms, not conversion.** Because matching is coercive (§4.3), the normalizer never compares signatures and never needs permutation/width equations in conversion; a matching coercion normalizes like any other structure expression.
+- **N5 — `unpack`∘`pack`.** Reduces, but generatively (fresh atoms per unpack, §4.6) — the N2 discipline applies; `Package` values are otherwise inert for conversion, and kernel/normalizer conversion never runs initialization effects (kernel-boundary §6 C5 stands unmodified).
+- **N6 — coercions are terms, not conversion.** Because matching is coercive (§4.3), the normalizer never compares signatures and never needs permutation/width equations in conversion; a matching coercion normalizes like any other structure expression.
 
 ---
 
@@ -340,13 +340,13 @@ B3 hands B4 exactly these forms:
 B6 owns the modules-as-telescopes vs permanent-primitive decision.
 B3 maintains these invariants so **both** outcomes stay reachable:
 
-* **I1 — signatures are ordered telescopes** (§4.3), never canonical-sorted maps.
+- **I1 — signatures are ordered telescopes** (§4.3), never canonical-sorted maps.
   A telescope re-reading `Sig { type t; val x : t } ≈ Σ(t : Type). …` is representation-compatible; a sorted-map representation would not be.
-* **I2 — abstract types are nominal atoms** (§4.4).
+- **I2 — abstract types are nominal atoms** (§4.4).
   Under telescopes, an atom becomes a Σ-bound type variable (the ADR-41 substrate already brokers atom↔de-Bruijn bridging by design); under permanent-primitive it simply stays an atom.
-* **I3 — matching is coercive** (§4.3): no width/permutation subtyping enters conversion, which a Σ-telescope reading could not absorb.
-* **I4 — the path discipline** (§4.2): paths map to telescope projections one-for-one.
-* **I5 — structured names in exports** (§6.3 R2): no flat-string identity anywhere new.
+- **I3 — matching is coercive** (§4.3): no width/permutation subtyping enters conversion, which a Σ-telescope reading could not absorb.
+- **I4 — the path discipline** (§4.2): paths map to telescope projections one-for-one.
+- **I5 — structured names in exports** (§6.3 R2): no flat-string identity anywhere new.
 
 What **would** foreclose the telescope future, recorded as anti-commitments: baking signature width/permutation equations into kernel or normalizer conversion; making flat mangled names the export identity; erasing structure boundaries in exports (flattening without the R3 provenance slot); making `Package` eliminable by anything but `unpack` (an implicit coercion Package→structure would commit modules to being second-class-convertible values).
 Conversely, nothing here _decides for_ telescopes: the stratum stays primitive, and ADR-81's `Σ(x:A). B` (already Live, small-head-only) is untouched by B3.
@@ -357,13 +357,13 @@ Conversely, nothing here _decides for_ telescopes: the stratum stays primitive, 
 
 What the owner's "record-like structuring available from B3 onward" cashes out to:
 
-* **ADR-45 records stay the data former, unchanged**: canonical sorted representation, width/depth subtyping by subsumption, direction-polymorphic `#{…}` literals, `RecordProj`, functional update (ADR-53), record patterns (ADR-54).
+- **ADR-45 records stay the data former, unchanged**: canonical sorted representation, width/depth subtyping by subsumption, direction-polymorphic `#{…}` literals, `RecordProj`, functional update (ADR-53), record patterns (ADR-54).
   Records never contain types; their order-free canonical form is correct _for data_.
-* **Structures are the organization former** B3 adds: ordered, type-bearing, sealable, functor-composable, coercively matched.
+- **Structures are the organization former** B3 adds: ordered, type-bearing, sealable, functor-composable, coercively matched.
   The two formers share surface affinity (`module M : #{…}` ascription survives as the value-only degenerate signature) but deliberately different metatheory (§4.3), and the ADR-45 D4 dispatch (module-member vs record-field projection) already keeps their surfaces from colliding.
-* **The M1-lite lowering is superseded, its semantics preserved.** At B3.1, `module` declarations stop lowering to "one item whose value is a record" and become module-stratum items — necessary because structures now carry type components and atoms, which `Value::Record` cannot.
+- **The M1-lite lowering is superseded, its semantics preserved.** At B3.1, `module` declarations stop lowering to "one item whose value is a record" and become module-stratum items — necessary because structures now carry type components and atoms, which `Value::Record` cannot.
   The _observable_ M1-lite contract — members elaborate exactly once, in source order, left-to-right scoping, no forward references, transparent ascription checks the result — is preserved verbatim, so the existing corpus goldens (`model/29-modules.gandr`, the duplicate/forward/malformed pathologicals, `scripts/agda-deps.gandr`) carry over with unchanged expectations.
-* **The boundary against future dependent records**: dependent records (B6) will be a _data_ former (records whose field types depend on earlier fields); B3's structures are _not_ that — they are second-class-by-default program structure with a first-class escape hatch (`Package`).
+- **The boundary against future dependent records**: dependent records (B6) will be a _data_ former (records whose field types depend on earlier fields); B3's structures are _not_ that — they are second-class-by-default program structure with a first-class escape hatch (`Package`).
   If B6 unifies them, §8's invariants are what make the unification a refinement.
 
 ---
@@ -393,11 +393,11 @@ Whether the exposed signature is transparent-advertisement or identity-bearing s
 
 **Recommendation: yes, row-recorded.**
 
-* The as-built layer already does it: M1-lite sequences member computations in source order, its ascription deliberately does "not impose an empty effect row on effectful members" (`spec/modules.md` §11), and `model/29-modules.gandr` ships an effectful member with a pinned expectation.
+- The as-built layer already does it: M1-lite sequences member computations in source order, its ascription deliberately does "not impose an empty effect row on effectful members" (`spec/modules.md` §11), and `model/29-modules.gandr` ships an effectful member with a pinned expectation.
   A pure-only B3 would _regress_ shipped, corpus-pinned behavior.
-* The typed form: a structure with effectful members elaborates at `Mod^ε σ`; the file linker (today's source-order semantics) is the sequencing point; a functor whose body's row is non-empty is generative **by construction** (§4.5) — the effect substrate arriving from B1 makes this a checked property, not a convention.
-* The kernel is untouched: initialization effects are runtime/elaborator territory; kernel conversion never evaluates effectful computations (kernel-boundary §6 C5), and exported declarations are the _results_ of elaboration.
-* The one genuine hazard — initialization order becoming load-bearing across modules — is contained at B3 because linking stays single-file/source-ordered; the packages pass, which introduces cross-unit graphs, inherits the question with its DAG (proposal-packages §5) and should decide init-order policy there.
+- The typed form: a structure with effectful members elaborates at `Mod^ε σ`; the file linker (today's source-order semantics) is the sequencing point; a functor whose body's row is non-empty is generative **by construction** (§4.5) — the effect substrate arriving from B1 makes this a checked property, not a convention.
+- The kernel is untouched: initialization effects are runtime/elaborator territory; kernel conversion never evaluates effectful computations (kernel-boundary §6 C5), and exported declarations are the _results_ of elaboration.
+- The one genuine hazard — initialization order becoming load-bearing across modules — is contained at B3 because linking stays single-file/source-ordered; the packages pass, which introduces cross-unit graphs, inherits the question with its DAG (proposal-packages §5) and should decide init-order policy there.
 
 ---
 
@@ -424,18 +424,18 @@ The shape most comparable in the record is the A3 effects landing (new judgment 
 
 Flagged, not smoothed, per the survey discipline.
 
-* **C1 — ADR-11/`spec/modules.md` "functors are `U_r (σ₁ → F σ₂)`" vs fcw.11 "own primitive layer, not sugar".** The spec's table reads naturally as _elaboration into the core_ (structures as labeled products, signatures as value types with existential packaging) — which presupposes `+poly`'s `∀/∃` and, for applicative functors, Mω higher kinds, none of which exist.
+- **C1 — ADR-11/`spec/modules.md` "functors are `U_r (σ₁ → F σ₂)`" vs fcw.11 "own primitive layer, not sugar".** The spec's table reads naturally as _elaboration into the core_ (structures as labeled products, signatures as value types with existential packaging) — which presupposes `+poly`'s `∀/∃` and, for applicative functors, Mω higher kinds, none of which exist.
   Resolution adopted here (§4.1): keep the formula as the **shape** of the primitive functor former, reject the encoding reading; the conflict is real and the owner should know the spec's §2 signature grammar (`∀X. σ | ∃X. σ`) is _not_ what B3 builds.
-* **C2 — `spec/core-ir-contract.md` §9 vs `spec/modules.md` §11.** The contract says the MVP slice "takes no … record-valued modules" and `+modules` "remains future work", while `modules.md` §11's banner records the M1-lite _record-module_ slice as landed; the two were committed minutes apart.
+- **C2 — `spec/core-ir-contract.md` §9 vs `spec/modules.md` §11.** The contract says the MVP slice "takes no … record-valued modules" and `+modules` "remains future work", while `modules.md` §11's banner records the M1-lite _record-module_ slice as landed; the two were committed minutes apart.
   Technically reconcilable (M1-lite adds no core node, so the frozen contract had nothing to record), but a reader of the contract alone will under-count the built layer — the gandr corpus port should add an M1-lite note at the contract's §9 `+modules` row.
-* **C3 — the spec-survey/`status.yml` stale verdict.** §2.4 above; corrected to **partial**.
+- **C3 — the spec-survey/`status.yml` stale verdict.** §2.4 above; corrected to **partial**.
   Same drift class as spec-survey §7.1's own findings; the corrected stance should reach the ported `status.yml` (or its gandr successor) with B3.0.
-* **C4 — in-tree code-vs-doc drift (mid-restoration tells).** The grammar comment `term.rs:214` still says module-declaration "lowering deferred"; `attributes.rs:175-179` says the module root "is not landed"; the corpus walkthrough `model/14-agda-deps-walkthrough.gandr` is an older module-free version of the real `scripts/agda-deps.gandr`.
+- **C4 — in-tree code-vs-doc drift (mid-restoration tells).** The grammar comment `term.rs:214` still says module-declaration "lowering deferred"; `attributes.rs:175-179` says the module root "is not landed"; the corpus walkthrough `model/14-agda-deps-walkthrough.gandr` is an older module-free version of the real `scripts/agda-deps.gandr`.
   All three contradict implemented code in the same tree; B3.0 fixes the notes and re-syncs the walkthrough.
-* **C5 — ADR-63's syntactic gate vs scope-aware resolution.** Not a contradiction — ADR-63 names this exact reversal trigger — but B3.1 exercises it, and ADR-63's "reserved names a program cannot rebind" consequence is thereby _narrowed_ (shadowing becomes possible by design, per its own D1 extern-shadow precedent).
-* **C6 — proposal-packages gating.** Its MVP is "gated on the M1 module layer (`modules.md` §11)"; M1 as staged there never landed and B3 re-cuts the staging.
+- **C5 — ADR-63's syntactic gate vs scope-aware resolution.** Not a contradiction — ADR-63 names this exact reversal trigger — but B3.1 exercises it, and ADR-63's "reserved names a program cannot rebind" consequence is thereby _narrowed_ (shadowing becomes possible by design, per its own D1 extern-shadow precedent).
+- **C6 — proposal-packages gating.** Its MVP is "gated on the M1 module layer (`modules.md` §11)"; M1 as staged there never landed and B3 re-cuts the staging.
   The packages pass should re-point its gate at B3's rungs (signatures/ascription at B3.1-3.2; `Package` at B3.4).
-* **C7 — staging order vs `spec/modules.md` §11.** The spec stages sealing at M2 _after_ full M1 structures/functors; B3 lands sealing (B3.2) _before_ functors (B3.3) because the kernel handshake needs `AbstractType` early and functor semantics depend on sealing (§4.5).
+- **C7 — staging order vs `spec/modules.md` §11.** The spec stages sealing at M2 _after_ full M1 structures/functors; B3 lands sealing (B3.2) _before_ functors (B3.3) because the kernel handshake needs `AbstractType` early and functor semantics depend on sealing (§4.5).
   A deliberate reorder, not an oversight.
 
 ---
@@ -444,15 +444,15 @@ Flagged, not smoothed, per the survey discipline.
 
 Separated from the recommendations (§4-§11 state those); each is a genuine fork the owner should call.
 
-* **Q1 — kernel posture for functors** (§6.2): accept instance-only export at B3 (recommended), or require `FunctorDef` bodies kernel-checked from the start?
+- **Q1 — kernel posture for functors** (§6.2): accept instance-only export at B3 (recommended), or require `FunctorDef` bodies kernel-checked from the start?
   R1's reserved tags keep both open; the trade is TCB size + replay cost vs functor-body certification.
-* **Q2 — effectful module initialization** (§10.4): confirm allow-with-row (recommended; pure-only would regress `model/29-modules.gandr` and the agda-deps script), or restrict at B3 and re-admit later?
-* **Q3 — applicative functors** (§4.5): confirm deferral to B6's harmonization pass with the recorded purity-gated re-entry criterion, or pull a purity-restricted applicative form into B3?
-* **Q4 — grades on the module layer** (§4.6): carry `U_r` on functor thunks and packages at B3 (the `spec/modules.md` posture; the `Grade` carrier exists), or defer all module-layer grading to the modes/grades tail slot B2 already reserves?
-* **Q5 — namespace graduation timing** (§10.2): scope-aware resolution at B3.1 (recommended), or keep the syntactic gate until the packages pass to avoid touching three consumers (prelude/host/extern) mid-backbone?
-* **Q6 — implicits**: confirm they are fully out of B3 (this study assumes so per the fcw.11 phrasing; `spec/modules.md` stages them at M3, and [H-4]/[H-5] remain the references when they return).
-* **Q7 — recursive modules**: stay deferred (recommended — no register row exists for the MixML/recursive-modules literature, so pursuing them first requires a bibliography hydration pass), or name a B-phase for them now?
-* **Q8 — named signature bindings**: B3 surfaces signatures structurally (inline `σ` only) with `signature S = σ` as later sugar (recommended), or land named signature declarations at B3.1?
+- **Q2 — effectful module initialization** (§10.4): confirm allow-with-row (recommended; pure-only would regress `model/29-modules.gandr` and the agda-deps script), or restrict at B3 and re-admit later?
+- **Q3 — applicative functors** (§4.5): confirm deferral to B6's harmonization pass with the recorded purity-gated re-entry criterion, or pull a purity-restricted applicative form into B3?
+- **Q4 — grades on the module layer** (§4.6): carry `U_r` on functor thunks and packages at B3 (the `spec/modules.md` posture; the `Grade` carrier exists), or defer all module-layer grading to the modes/grades tail slot B2 already reserves?
+- **Q5 — namespace graduation timing** (§10.2): scope-aware resolution at B3.1 (recommended), or keep the syntactic gate until the packages pass to avoid touching three consumers (prelude/host/extern) mid-backbone?
+- **Q6 — implicits**: confirm they are fully out of B3 (this study assumes so per the fcw.11 phrasing; `spec/modules.md` stages them at M3, and [H-4]/[H-5] remain the references when they return).
+- **Q7 — recursive modules**: stay deferred (recommended — no register row exists for the MixML/recursive-modules literature, so pursuing them first requires a bibliography hydration pass), or name a B-phase for them now?
+- **Q8 — named signature bindings**: B3 surfaces signatures structurally (inline `σ` only) with `signature S = σ` as later sugar (recommended), or land named signature declarations at B3.1?
 
 ---
 

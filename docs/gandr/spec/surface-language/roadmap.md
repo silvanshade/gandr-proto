@@ -25,53 +25,53 @@ Read the two statuses as the lowering route's, and read the description route's 
 
 ## The productivity ladder's next rungs
 
-* **Guardedness rung** — the sigils become checked claims (structural descent; at-least-one-observation), total on the fragment, with the per-rung refusal diagnostic contract; gated on recursive lowering landing.
-* **Sized rung** — a deliberate design pass first (the bounded-quantification/infinite-size interaction is the standing hedge); sizes enter as indices in their own sort reusing the grade-zero erasure machinery, never as a fresh semiring grade; the well-founded fixed-point former is the single recursion-plus-corecursion former that retires the productivity/termination split; the guardedness check is a two-state flag automaton; the named deep-guardedness programs (higher-order `g f = cons 0 (f (g f))`, abstracted `repeat`, `zipWith`, knot-tying traversals) pin the syntactic-check/sizes cliff as corpus goldens.
-* **Derived terminating recursors** — catamorphism/paramorphism eliminators derived per `data` declaration, the first checked-termination lever, bridging the unchecked-`fix` rung to the termination-obligation wave.
+- **Guardedness rung** — the sigils become checked claims (structural descent; at-least-one-observation), total on the fragment, with the per-rung refusal diagnostic contract; gated on recursive lowering landing.
+- **Sized rung** — a deliberate design pass first (the bounded-quantification/infinite-size interaction is the standing hedge); sizes enter as indices in their own sort reusing the grade-zero erasure machinery, never as a fresh semiring grade; the well-founded fixed-point former is the single recursion-plus-corecursion former that retires the productivity/termination split; the guardedness check is a two-state flag automaton; the named deep-guardedness programs (higher-order `g f = cons 0 (f (g f))`, abstracted `repeat`, `zipWith`, knot-tying traversals) pin the syntactic-check/sizes cliff as corpus goldens.
+- **Derived terminating recursors** — catamorphism/paramorphism eliminators derived per `data` declaration, the first checked-termination lever, bridging the unchecked-`fix` rung to the termination-obligation wave.
 
 ## Pending surface lanes
 
-* **The answer-type annotation lane** `run p : F T <- c;` — pending.
-* **The term-in-type splice** (rung 2 of the type grammar's value-endpoint growth) — decided with the parser owner.
-* **Format specifiers** for string interpolation — deferred.
-* **Mixed-word interpolation** for the shell host escape (`"pre $( E ) post"`) — deferred; the standalone-word cut is what landed.
-* **Environment assignment** `FOO=bar cmd` — parse-and-decline today: the labeler munches `NAME=value` into one `environment_assignment` tile, the grammar molds it as a single shell atom, and the lowerer declines that kind by name; what is pending is the prefix's binding semantics, wanted working for the daily-driver rung.
-* **Typed package imports** — deferred past the module rung; `import` resolution is unwired today.
+- **The answer-type annotation lane** `run p : F T <- c;` — pending.
+- **The term-in-type splice** (rung 2 of the type grammar's value-endpoint growth) — decided with the parser owner.
+- **Format specifiers** for string interpolation — deferred.
+- **Mixed-word interpolation** for the shell host escape (`"pre $( E ) post"`) — deferred; the standalone-word cut is what landed.
+- **Environment assignment** `FOO=bar cmd` — parse-and-decline today: the labeler munches `NAME=value` into one `environment_assignment` tile, the grammar molds it as a single shell atom, and the lowerer declines that kind by name; what is pending is the prefix's binding semantics, wanted working for the daily-driver rung.
+- **Typed package imports** — deferred past the module rung; `import` resolution is unwired today.
   The binding constraint carried from the design record is that **resolution stays outside the trusted core** — a resolver supplies source and module data, the elaborator checks the declared signature — and that a hermetic fixture resolver with no network access is the acceptance instrument ([[proposed/modules#module-question-03]]).
   The toolchain half — content-addressed identity, the cache, the lock record, distribution, and the manifest — is [[../implementation/proposed/packages]].
-* **The computation-sort gradual-top spelling** — a named deferral from the module train.
-* **The full module family** (structures, signatures, functors, sealing, `pack`/`unpack`, `Package σ`) — the staging above the built rung in [[proposed/modules#The staging ladder]], then modules as their own primitive layer (the implementation phase).
+- **The computation-sort gradual-top spelling** — a named deferral from the module train.
+- **The full module family** (structures, signatures, functors, sealing, `pack`/`unpack`, `Package σ`) — the staging above the built rung in [[proposed/modules#The staging ladder]], then modules as their own primitive layer (the implementation phase).
   The two open surface questions it carries are the signature spelling ([[proposed/modules#module-question-01]]) and whether inferred impredicativity rides the implicit-search fuel ([[proposed/modules#module-question-02]]).
-* **Effects/control keywords** (`handle`, `perform`, `reset`, `shift`, `resume`, `stk`) — reserved, wired when the effects lane surfaces them; `quote`/`splice` ride the metaprogramming lane.
-* **`yield`/`await`** — keyword-only commitments gated on the handler-reification mechanism (generators/async as handler-to-codata reification).
-* **Labeled `break 'l`** — needs per-label atoms or named handlers; the `'` sigil collides with the character lexer.
-* **Sessions surface** — linear typestate codata with a duality involution, after the codata MVP and the duality engine; no session channel syntax (`(νxy)`, `T ⊥ U`) in any near rung.
-* ~~**The `Path`/`Flow` surface spellings for the directed family**~~ — **settled 2026-07-31** (owner decision, closing the metatheory roadmap's open question 9): the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
+- **Effects/control keywords** (`handle`, `perform`, `reset`, `shift`, `resume`, `stk`) — reserved, wired when the effects lane surfaces them; `quote`/`splice` ride the metaprogramming lane.
+- **`yield`/`await`** — keyword-only commitments gated on the handler-reification mechanism (generators/async as handler-to-codata reification).
+- **Labeled `break 'l`** — needs per-label atoms or named handlers; the `'` sigil collides with the character lexer.
+- **Sessions surface** — linear typestate codata with a duality involution, after the codata MVP and the duality engine; no session channel syntax (`(νxy)`, `T ⊥ U`) in any near rung.
+- ~~**The `Path`/`Flow` surface spellings for the directed family**~~ — **settled 2026-07-31** (owner decision, closing the metatheory roadmap's open question 9): the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
   The landed vocabulary is [[directed-family]]; the identity-layer phase still owns the landing itself.
-* **Display elision of inferable recursion markers** — a projection concern; unowned.
-* **`let` (unassigned) and `mut` (unreserved)** — keyword decisions owned by the dependent-rung and value-semantics passes respectively.
-* **The mode and reference calculus** — parked, with a **binding ordering constraint carried from its design record**: the mutable-value-semantics reading and the broader borrowing-literature reading land their adopt / inspire / reject verdicts **before** the calculus's own design pass begins, so the pass is written against settled verdicts rather than deriving them.
+- **Display elision of inferable recursion markers** — a projection concern; unowned.
+- **`let` (unassigned) and `mut` (unreserved)** — keyword decisions owned by the dependent-rung and value-semantics passes respectively.
+- **The mode and reference calculus** — parked, with a **binding ordering constraint carried from its design record**: the mutable-value-semantics reading and the broader borrowing-literature reading land their adopt / inspire / reject verdicts **before** the calculus's own design pass begins, so the pass is written against settled verdicts rather than deriving them.
   The design space, its sixteen open decisions, and the four foreclosure rules that keep it addable are [[proposed/modes-and-references]] and [[value-semantics#The four foreclosure rules]].
-* **Uniqueness-driven copy elision** — parked, and it is a _runtime_ item rather than a surface one, recorded here because [[value-semantics]] makes its own net verdict conditional on this work being scheduled.
+- **Uniqueness-driven copy elision** — parked, and it is a _runtime_ item rather than a surface one, recorded here because [[value-semantics]] makes its own net verdict conditional on this work being scheduled.
   Its acceptance instrument already exists: the value-semantics stress examples fix the answers a copy-count reduction must not change.
 
 ## Deferred-with-reasons, collected
 
 The fold-in record's deferred class, each with its structural reason — these are **not** silently dropped surface:
 
-* **user operators / prefix / postfix / sections / open mixfix** — open alphabetic mixfix violates Operator Form structurally; sections and closed/bracketed notation are decided extensions; parser-level fixity reopens only under the named trigger (deterministic incremental capture, exact spans, editor recovery preserved);
-* **refinements `{ν : A | φ}`, contracts, refined session payloads** — solver-gated sketch forms;
-* **sized-type surface `C^i`, `∀i<a. B`** — the sized rung's design pass; non-ASCII;
-* **the wheel marker `↻u`** — enters with the term-face/sessions stage;
-* **quotation `‹…›` and the derive semantic tier** — metaprogramming-gated;
-* **extern member attributes `@unwind`/`@variadic`/`@repr(c)`** — the bare-`@` form conflicts with the `@[…]` block discipline ([[attributes#attr-decision-01]]); these are semantic rather than inert, so they also want the tier that does not exist ([[attributes#attr-decision-03]]), and the extern-member attribute story is unfixed;
-* **angle-bracket generics `Result<Db>`** — rejected: `<`/`>` are comparison operators; `Name(args)` is the type-application form;
-* **row-open records `{ℓ : A | ρ}` and set operations `∪`** — need the polymorphism/solver lane; non-ASCII;
-* **references `ref`/`:=`, access modes** — a hard foreclosure of the current surface: no lvalue grammar; the design space, its sixteen open decisions, and the foreclosure rules that keep the addition possible are [[proposed/modes-and-references]] and [[value-semantics#The four foreclosure rules]];
-* **kernel/metatheory notation** (effect-signature braces, effect rows, stratification arrows, multiparty arrows, term-merge) — not committed authored surface.
+- **user operators / prefix / postfix / sections / open mixfix** — open alphabetic mixfix violates Operator Form structurally; sections and closed/bracketed notation are decided extensions; parser-level fixity reopens only under the named trigger (deterministic incremental capture, exact spans, editor recovery preserved);
+- **refinements `{ν : A | φ}`, contracts, refined session payloads** — solver-gated sketch forms;
+- **sized-type surface `C^i`, `∀i<a. B`** — the sized rung's design pass; non-ASCII;
+- **the wheel marker `↻u`** — enters with the term-face/sessions stage;
+- **quotation `‹…›` and the derive semantic tier** — metaprogramming-gated;
+- **extern member attributes `@unwind`/`@variadic`/`@repr(c)`** — the bare-`@` form conflicts with the `@[…]` block discipline ([[attributes#attr-decision-01]]); these are semantic rather than inert, so they also want the tier that does not exist ([[attributes#attr-decision-03]]), and the extern-member attribute story is unfixed;
+- **angle-bracket generics `Result<Db>`** — rejected: `<`/`>` are comparison operators; `Name(args)` is the type-application form;
+- **row-open records `{ℓ : A | ρ}` and set operations `∪`** — need the polymorphism/solver lane; non-ASCII;
+- **references `ref`/`:=`, access modes** — a hard foreclosure of the current surface: no lvalue grammar; the design space, its sixteen open decisions, and the foreclosure rules that keep the addition possible are [[proposed/modes-and-references]] and [[value-semantics#The four foreclosure rules]];
+- **kernel/metatheory notation** (effect-signature braces, effect rows, stratification arrows, multiparty arrows, term-merge) — not committed authored surface.
 
 ## Corpus obligations
 
-* Every surfaced feature lands with its corpus treatment in the same change: a parse-gated `surface/` witness for syntax-only landings (the current posture for the reserved forms), graduating to runnable model plus pathological examples with harness assertions when the semantics lands.
-* Named pending witnesses: the **declared-data update-by-construction** model example — planned with the update surface, deferred when declared data did not exist, and **now owed**, since declared data landed (it must show match-then-rebuild over a multi-constructor type, including that the record-update sugar does not reach a constructor payload — [[value-semantics#Declared data — update by construction]]); the recursion model examples (structural recursion and a mutual group running with expected output, once recursive lowering lands); the pathological unmarked-self example (the error naming the marked spelling); the pathological escaping-reference example (the per-rung refusal); the η-hygiene pin (the completion engine consulting cut polarity); the guardedness cliff goldens (the four named deep-guardedness programs).
-* The corpus counts and the three-tree split (model / pathological / parse-only surface) are as-built facts, kept honest per feature.
+- Every surfaced feature lands with its corpus treatment in the same change: a parse-gated `surface/` witness for syntax-only landings (the current posture for the reserved forms), graduating to runnable model plus pathological examples with harness assertions when the semantics lands.
+- Named pending witnesses: the **declared-data update-by-construction** model example — planned with the update surface, deferred when declared data did not exist, and **now owed**, since declared data landed (it must show match-then-rebuild over a multi-constructor type, including that the record-update sugar does not reach a constructor payload — [[value-semantics#Declared data — update by construction]]); the recursion model examples (structural recursion and a mutual group running with expected output, once recursive lowering lands); the pathological unmarked-self example (the error naming the marked spelling); the pathological escaping-reference example (the per-rung refusal); the η-hygiene pin (the completion engine consulting cut polarity); the guardedness cliff goldens (the four named deep-guardedness programs).
+- The corpus counts and the three-tree split (model / pathological / parse-only surface) are as-built facts, kept honest per feature.

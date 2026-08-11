@@ -45,10 +45,10 @@ This is the runtime host's hand-written signature-and-handler shape **generalize
 
 Three properties fall out for free, and all three are load-bearing for gandr's agentic thesis rather than incidental:
 
-* **Interception is mocking and sandboxing.** A source-level handler over `m` shadows the native handler — the same handler swap that gives the shell its sandbox story.
+- **Interception is mocking and sandboxing.** A source-level handler over `m` shadows the native handler — the same handler swap that gives the shell its sandbox story.
   A test runs a program against a pure gandr handler with **no library loaded at all**; a capability-restricted world denies the operation entirely, and the machine blames the unhandled `perform`.
-* **The effect row is the honest type.** A foreign function's type carries a row recording that calling it reaches foreign code, so **purity is not silently lost**, and code that threads that row is ordinary row-polymorphic code.
-* **The call is inspectable and serializable.** A `perform` is an ordinary node in the addressed arena, so the foreign call is a **visible machine step**, not an opaque host trap — the reified-machine posture extended to the boundary.
+- **The effect row is the honest type.** A foreign function's type carries a row recording that calling it reaches foreign code, so **purity is not silently lost**, and code that threads that row is ordinary row-polymorphic code.
+- **The call is inspectable and serializable.** A `perform` is an ordinary node in the addressed arena, so the foreign call is a **visible machine step**, not an opaque host trap — the reified-machine posture extended to the boundary.
 
 The soundness of installing a native handler is inherited from the host seam's: the handler is ambient and always-resume, which is sound while the linear zone is vacuous and resumption is multi-shot.
 **When the linear zone is populated, the library-lifetime discipline below is what re-earns that soundness** — this is a debt with a named repayment, not an assumption.
@@ -57,9 +57,9 @@ The soundness of installing a native handler is inherited from the host seam's: 
 
 The gate distinguishes two cases, and only one of them is a runtime effect:
 
-* **A statically named library** resolves at link or load time, and the program holds no runtime load capability at all.
+- **A statically named library** resolves at link or load time, and the program holds no runtime load capability at all.
   What is consumed is a **build-time** capability — which libraries this artifact may link — and that belongs to the package and build manager, not to the runtime.
-* **A dynamically loaded library** is a runtime effect requiring an explicit load capability.
+- **A dynamically loaded library** is a runtime effect requiring an explicit load capability.
   A world that does not grant it **cannot load code**, which is least authority applied to the single most dangerous operation gandr has.
 
 **The current cut ships only the static case**, with the capability collapsed to a link-manifest entry and no runtime loading, because runtime loading wants the linear lifetime discipline below and that discipline is not yet available.
@@ -80,9 +80,9 @@ This is the only sound default, because cross-language unwinding is undefined be
 
 Opt-in unwinding is a **per-function attribute**, and its status differs by path:
 
-* on the **interpreter path** it is currently un-catchable, because the runtime-signature foreign-call library does not model foreign unwinding; the attribute is accepted and the runtime still aborts.
+- on the **interpreter path** it is currently un-catchable, because the runtime-signature foreign-call library does not model foreign unwinding; the attribute is accepted and the runtime still aborts.
   **The attribute reserves the type ahead of the mechanism** — which is the point of accepting it at all.
-* on the **compiled path** it can lower to a call form that catches, routing a caught unwind into a typed failure channel — **but the Windows structured-exception mechanism is not covered**, so opt-in unwinding on Windows aborts regardless.
+- on the **compiled path** it can lower to a call form that catches, routing a caught unwind into a typed failure channel — **but the Windows structured-exception mechanism is not covered**, so opt-in unwinding on Windows aborts regardless.
 
 The typed channel a caught unwind would land in is a deferred refinement of the unwinding rule: a foreign unwind is a context-erasing unwind that runs the captured frame destructors in reverse.
 The named source for that refinement is Congard, Munch-Maccagnoni, and Douence's exceptional-unwind work presented at ESOP 2026; **that locator is carried from the design record and is unverified here**.
@@ -124,17 +124,17 @@ Until that representation lands, the boundary **copies**: allocate a null-termin
 
 Two rules with teeth:
 
-* **An interior null is a boundary error**, checked at the copy.
+- **An interior null is a boundary error**, checked at the copy.
   A character pointer would truncate at it and silently pass a shorter string than the program wrote, so it is rejected rather than passed.
-* **A character pointer returned from C is an opaque pointer, not a gandr string**, until the program explicitly copies it in and declares who frees the C buffer.
+- **A character pointer returned from C is an opaque pointer, not a gandr string**, until the program explicitly copies it in and declares who frees the C buffer.
   Auto-marshalling a returned pointer is deferred because **ownership of the returned buffer is undecidable from the type alone** — this is a named dead end, not an unfinished feature.
 
 ### Aggregates cross by pointer, and that is pinned early
 
 **Only scalars and pointers cross by value.** Struct-by-value arguments and struct returns are deferred, and the rationale is pinned now precisely to prevent a later retrofit:
 
-* gandr's record former has a **canonical sorted-field representation** that does **not** match C struct field order, so a record-to-struct mapping requires an **explicitly declared layout** — a field-order attribute — and never the record's native shape.
-* Struct return is the hidden-pointer ABI corner, whose platform-specific classification — small structs in registers versus in memory — is exactly where hand-rolled foreign interfaces break.
+- gandr's record former has a **canonical sorted-field representation** that does **not** match C struct field order, so a record-to-struct mapping requires an **explicitly declared layout** — a field-order attribute — and never the record's native shape.
+- Struct return is the hidden-pointer ABI corner, whose platform-specific classification — small structs in registers versus in memory — is exactly where hand-rolled foreign interfaces break.
   Getting it right needs the ABI-classification reference below, not a guess.
 
 So the stance is fixed early and conservatively: **scalars and pointers by value, aggregates by pointer**, with the caller marshalling a record into a foreign buffer explicitly.
@@ -209,19 +209,19 @@ Everything that would require a kernel-format change, the linear zone, or the ba
 
 ## Interactions with the rest of the system
 
-* **The string representation.** The null-terminated owned form is the zero-copy target, and the foreign boundary is its primary motivator.
+- **The string representation.** The null-terminated owned form is the zero-copy target, and the foreign boundary is its primary motivator.
   Until it lands, the boundary copies.
   See [[../surface-language/value-semantics#The cut, and the growth path]].
-* **Self-hosting.** A self-hosted front end would bind its parser — a C library — through this boundary, making it the **capstone consumer** and the driving test case for the opaque-handle and lifetime model.
-* **The host-effect seam.** The scoped-handler work proves the effect-signature-with-native-handler shape this generalizes; the `extern` block is that shape _source-generated_ rather than hand-written ([[../implementation#The runtime host]], [[capability-model]]).
-* **The compilation backend.** The five requirements above are a direct input to the backend's intermediate-representation design.
-* **Data declarations.** A foreign opaque type is the degenerate declared datatype — a sort with no constructors — and a declared C layout is a data-declaration attribute, so the struct-by-value growth path routes through that surface ([[../surface-language/declarations#data declarations]]).
-* **Value semantics and modes.** This boundary is where gandr's only representation model lives, so it is also the one place several mode-calculus decisions already have a home rather than a question.
+- **Self-hosting.** A self-hosted front end would bind its parser — a C library — through this boundary, making it the **capstone consumer** and the driving test case for the opaque-handle and lifetime model.
+- **The host-effect seam.** The scoped-handler work proves the effect-signature-with-native-handler shape this generalizes; the `extern` block is that shape _source-generated_ rather than hand-written ([[../implementation#The runtime host]], [[capability-model]]).
+- **The compilation backend.** The five requirements above are a direct input to the backend's intermediate-representation design.
+- **Data declarations.** A foreign opaque type is the degenerate declared datatype — a sort with no constructors — and a declared C layout is a data-declaration attribute, so the struct-by-value growth path routes through that surface ([[../surface-language/declarations#data declarations]]).
+- **Value semantics and modes.** This boundary is where gandr's only representation model lives, so it is also the one place several mode-calculus decisions already have a home rather than a question.
   "Arguments are borrowed in, returns are owned" is the **boundary instance of the mode calculus**, and the linear library handle is its exclusive-borrow case.
   The full boundary discipline, and the decisions it turns on — representation and ABI stability, ownership in the calling convention, foreign value representation, and the unsoundness of contraction on a non-trivially-copyable foreign type — are [[../surface-language/proposed/modes-and-references#Foreign-interface design impact]].
-* **Attributes.** The unwind, variadic, and layout markers, the calling convention, and the link and symbol names are typed **attribute schemas** on foreign declarations ([[../surface-language/declarations#Attributes]]).
-* **Modules and packaging.** Which libraries an artifact may link, and how they are found, is the package and build concern; the link manifest lives there.
-* **A wasm target.** A foreign interface over wasm is **imports** — a different ABI with no dynamic loading, no runtime-signature call library, and no C struct classification.
+- **Attributes.** The unwind, variadic, and layout markers, the calling convention, and the link and symbol names are typed **attribute schemas** on foreign declarations ([[../surface-language/declarations#Attributes]]).
+- **Modules and packaging.** Which libraries an artifact may link, and how they are found, is the package and build concern; the link manifest lives there.
+- **A wasm target.** A foreign interface over wasm is **imports** — a different ABI with no dynamic loading, no runtime-signature call library, and no C struct classification.
   It is a **separate lowering**, not this path, and the ABI slot is where it grows.
 
 ## The corpus treatment
@@ -249,13 +249,13 @@ Each owed example names the feature it waits on: the mock example waits on the r
 Where the design record left a question open or under-specified, the landed surface answered it.
 These are descriptive of the tree, not a new design face.
 
-* **Grammar.** `extern`, `from`, and `type` are reserved keywords; a block's interior is a flat semicolon-terminated list of opaque type declarations and bodiless function signatures, reusing the existing parameter and type rules with zero grammar conflicts.
-* **Member attributes are deferred from the grammar.** The unwind and variadic markers are attribute territory and neither is on the current path, so **the block accepts un-attributed members only**.
-* **The module namespace is the library string.** `extern "c" from "m"` binds the namespace `m`, so **the library string must be a valid lowercase identifier** to be selectable.
+- **Grammar.** `extern`, `from`, and `type` are reserved keywords; a block's interior is a flat semicolon-terminated list of opaque type declarations and bodiless function signatures, reusing the existing parameter and type rules with zero grammar conflicts.
+- **Member attributes are deferred from the grammar.** The unwind and variadic markers are attribute territory and neither is on the current path, so **the block accepts un-attributed members only**.
+- **The module namespace is the library string.** `extern "c" from "m"` binds the namespace `m`, so **the library string must be a valid lowercase identifier** to be selectable.
   A namespace-versus-library split is a growth item for libraries whose names are not identifiers.
-* **The payload is the argument record keyed by declared parameter names**, uniformly — including a one-parameter call, and the empty record for a zero-parameter call, which the foreign-call elaboration handles directly rather than through the general zero-argument call form.
-* **Boundary types at the surface.** In the elaborated signature the C string type is typed as gandr's string (the value that actually crosses), an opaque handle as a machine word, and a void result as unit; the six atoms are their own rigid atoms.
-* **Session persistence.** The registry persists across REPL submissions, so a foreign call on a later line sees a module declared earlier; an `extern` block itself yields no runnable item.
+- **The payload is the argument record keyed by declared parameter names**, uniformly — including a one-parameter call, and the empty record for a zero-parameter call, which the foreign-call elaboration handles directly rather than through the general zero-argument call form.
+- **Boundary types at the surface.** In the elaborated signature the C string type is typed as gandr's string (the value that actually crosses), an opaque handle as a machine word, and a void result as unit; the six atoms are their own rigid atoms.
+- **Session persistence.** The registry persists across REPL submissions, so a foreign call on a later line sees a module declared earlier; an `extern` block itself yields no runnable item.
 
 ## Open questions, with dispositions
 
@@ -294,24 +294,24 @@ The hazard is precise: **a trampoline outliving its closure is undefined behavio
 
 **For.**
 
-* The safety model **is** the tool-and-effect model gandr already committed to, so mocking, sandboxing, least authority, and inspectability are inherited rather than built.
-* The fixed-width scalar atoms make the numeric boundary an **identity map** — unplanned, and real.
-* The linear library lifetime turns the sharpest dynamic-foreign-interface undefined behaviour into a caught linearity error **with no new mechanism**.
-* The cut is genuinely small and sound, and rides landed infrastructure.
+- The safety model **is** the tool-and-effect model gandr already committed to, so mocking, sandboxing, least authority, and inspectability are inherited rather than built.
+- The fixed-width scalar atoms make the numeric boundary an **identity map** — unplanned, and real.
+- The linear library lifetime turns the sharpest dynamic-foreign-interface undefined behaviour into a caught linearity error **with no new mechanism**.
+- The cut is genuinely small and sound, and rides landed infrastructure.
 
 **Against.**
 
-* **The compiled path's C-ABI work is real, unglamorous, and has no small-language precedent to copy.** The named reference is an implementation to mine, not a library to depend on.
+- **The compiled path's C-ABI work is real, unglamorous, and has no small-language precedent to copy.** The named reference is an implementation to mine, not a library to depend on.
   This is the honest cost centre of the whole design.
-* Struct-by-value is deferred, and **a large fraction of real C APIs pass structs**; the boundary will feel toothless against them until that growth lands.
-* The distinct foreign-handle node is a kernel-format change, so full type-safe handle provenance and automatic checked release are not near-term.
-* Opt-in unwinding is type-reserved but abort-backed on the interpreter and on Windows, and the typed-unwind story depends on a refinement that is itself deferred.
+- Struct-by-value is deferred, and **a large fraction of real C APIs pass structs**; the boundary will feel toothless against them until that growth lands.
+- The distinct foreign-handle node is a kernel-format change, so full type-safe handle provenance and automatic checked release are not near-term.
+- Opt-in unwinding is type-reserved but abort-backed on the interpreter and on Windows, and the typed-unwind story depends on a refinement that is itself deferred.
 
 **Three dead ends, named so they are not rediscovered.**
 
-* **A zero-overhead direct binding that bypasses the effect row** — tempting for hot loops — would forfeit interception and audit, and is **not adopted**; it survives only as a reversal-triggered fallback.
-* **Auto-marshalling a returned character pointer into a gandr string** is a dead end, because the return buffer's ownership is undecidable from the type.
-* **A generic pointer type former** is declined in favour of per-type opaque atoms, which buy everything it would.
+- **A zero-overhead direct binding that bypasses the effect row** — tempting for hot loops — would forfeit interception and audit, and is **not adopted**; it survives only as a reversal-triggered fallback.
+- **Auto-marshalling a returned character pointer into a gandr string** is a dead end, because the return buffer's ownership is undecidable from the type.
+- **A generic pointer type former** is declined in favour of per-type opaque atoms, which buy everything it would.
 
 **Net:** the safety model is a high-confidence consequence of gandr's existing effect, capability, and linearity design, and the cut is sound and small; the genuine risk and cost sit **entirely** in the compiled path's C ABI and in the deferred struct, handle, and unwind growth — none of which blocks the interpreter.
 

@@ -14,13 +14,13 @@ It fixes the **protocol shapes and the crate and transport layout** those consum
 
 **Built, and verified against the tree at write time by reading definitions rather than the prose beside them.**
 
-* **The leaf wire crate exists, and it is a true leaf.** `gandr-surface-render-remote` declares exactly one dependency — `serde`, optional, behind a default-off `codecs` feature — and no workspace crate at all.
+- **The leaf wire crate exists, and it is a true leaf.** `gandr-surface-render-remote` declares exactly one dependency — `serde`, optional, behind a default-off `codecs` feature — and no workspace crate at all.
   A renderer that needs only the in-process types pays nothing for serialization, and a remote client links no checker-side crate.
-* **The frame envelope is realized at wire schema version 1.** Its `wire` module carries `WIRE_SCHEMA_VERSION`, the `RenderFrame` envelope, the five-variant `FrameBody`, the `ReportView` and `MachineView` projections, `ServerCaps`, and the `NodeDelta` patch form.
-* **The envelope's invariants are enforced at decode, not merely documented.** `RenderFrame`'s fields are private; the five body-specific constructors are the only public construction path; and the deserializer routes through a validator that rejects a schema-version mismatch, a `doc_uri` and `doc_version` pair that is not present or absent in lockstep, and any body whose scope disagrees with its routing keys.
-* **The presentation seam is realized beside it.** The `present` module carries the highlight and mark spans, the diagnostic and goal cards, cursor-type and completion candidates, the preview and transcript frames, and the total byte-offset to row-and-column projection.
-* **One in-tree consumer exists.** `gandr-surface-grammar`'s `highlight` module produces `HlSpan` values in the crate's `HlRole` vocabulary — the only place in this tree that the wire types are produced from real input.
-* **The report envelope the lightweight channel projects from is at schema version 2.** `gandr-surface-engine`'s `diag` module carries diagnostics, hole goals, typed marks, resolved attributes, and a reserved obligation slot in one versioned envelope.
+- **The frame envelope is realized at wire schema version 1.** Its `wire` module carries `WIRE_SCHEMA_VERSION`, the `RenderFrame` envelope, the five-variant `FrameBody`, the `ReportView` and `MachineView` projections, `ServerCaps`, and the `NodeDelta` patch form.
+- **The envelope's invariants are enforced at decode, not merely documented.** `RenderFrame`'s fields are private; the five body-specific constructors are the only public construction path; and the deserializer routes through a validator that rejects a schema-version mismatch, a `doc_uri` and `doc_version` pair that is not present or absent in lockstep, and any body whose scope disagrees with its routing keys.
+- **The presentation seam is realized beside it.** The `present` module carries the highlight and mark spans, the diagnostic and goal cards, cursor-type and completion candidates, the preview and transcript frames, and the total byte-offset to row-and-column projection.
+- **One in-tree consumer exists.** `gandr-surface-grammar`'s `highlight` module produces `HlSpan` values in the crate's `HlRole` vocabulary — the only place in this tree that the wire types are produced from real input.
+- **The report envelope the lightweight channel projects from is at schema version 2.** `gandr-surface-engine`'s `diag` module carries diagnostics, hole goals, typed marks, resolved attributes, and a reserved obligation slot in one versioned envelope.
 
 **Designed, and not built.** Everything else in this document: the bus server, every transport, the language-server adapter, the attach handshake and its token, the bounded structural decoder, the delta engine, and the whole version-2 diagnostics-transport contract.
 No language-server, bus, terminal-renderer, or neutral-diagnostics crate exists in this tree under any name.
@@ -218,9 +218,9 @@ The leaf never imports the neutral diagnostics crate: their independently closed
 
 **The first cut.**
 
-* The **language server ships without the bus**: diagnostics, hover goal-at-cursor, and the status notification, over a whole-file recheck inside the script-scale latency budget.
-* The **bus's first cut** is the unix-socket transport, whole checked frames, exact source, state, and document-version fencing, capability-token attach, and one attached terminal renderer.
-* The renderers of that cut are the attached terminal renderer and the streaming agent, consuming the same checked candidates.
+- The **language server ships without the bus**: diagnostics, hover goal-at-cursor, and the status notification, over a whole-file recheck inside the script-scale latency budget.
+- The **bus's first cut** is the unix-socket transport, whole checked frames, exact source, state, and document-version fencing, capability-token attach, and one attached terminal renderer.
+- The renderers of that cut are the attached terminal renderer and the streaming agent, consuming the same checked candidates.
   An editor webview is deliberately not in it.
 
 **The growth path**, each item additive behind the shapes already committed: node-keyed delta frames and obligation deltas once the incremental machinery lands and the reserved obligation slot populates; the WebSocket transport with the editor webview behind it; the QUIC transport for cross-machine attach; and session-typing the bus once session types exist.
@@ -350,14 +350,14 @@ Construction and decoding are `O(B + N log N)` time and `O(B + N)` bounded stora
 
 The implementation is not enabled until every one of the following holds.
 
-* Server, leaf, and webview fixtures produce and re-encode **identical canonical bytes and digests** across languages.
-* Every ceiling above and every inherited diagnostics ceiling passes at one below, exactly at, and one above the limit, with **allocation-counting assertions before reserve**.
-* Hostile fixtures cover late, duplicate, unknown, and reordered fields; alternate JSON spellings; unsupported bus, frame, and report versions; malformed length prefixes; invalid UTF-8, hexadecimal, spans, links, and omissions; and digest corruption.
-* Splice fixtures cover the same source and version under different URIs, the same URI and version under different semantic states, nested-versus-outer version mismatch, stale buffer versions, and mutation caught at the final pre-render recheck.
-* Parity fixtures prove that the command-line terminal output, the editor protocol, the terminal renderer, the webview, and the agent stream all share candidate references, tagged order, severities and codes, supplemental links, the truncation marker, and omission counts.
-* Version-2 schema fixtures **reject every legacy mark, diagnostic, and goal field**, and renderer tests prove cards, underlines, and goals all derive from the one checked frame.
-* Dependency gates prove the leaf has no workspace-crate dependency and that its decoder feature contains only the serialization, JSON, and hashing dependencies; that the bus client and terminal-renderer graph has no diagnostics, pipeline, or checker dependency; that the server feature is the only conversion owner; and that the language server and the core and pipeline crates stay free of `miette`, the terminal diagnostic renderer, whose report types must never become a semantic authority.
-* Compile-fail and API tests prove that **no** proof serialization, remote report decode, checked-frame-to-report conversion, or renderer-side semantic switch exists.
+- Server, leaf, and webview fixtures produce and re-encode **identical canonical bytes and digests** across languages.
+- Every ceiling above and every inherited diagnostics ceiling passes at one below, exactly at, and one above the limit, with **allocation-counting assertions before reserve**.
+- Hostile fixtures cover late, duplicate, unknown, and reordered fields; alternate JSON spellings; unsupported bus, frame, and report versions; malformed length prefixes; invalid UTF-8, hexadecimal, spans, links, and omissions; and digest corruption.
+- Splice fixtures cover the same source and version under different URIs, the same URI and version under different semantic states, nested-versus-outer version mismatch, stale buffer versions, and mutation caught at the final pre-render recheck.
+- Parity fixtures prove that the command-line terminal output, the editor protocol, the terminal renderer, the webview, and the agent stream all share candidate references, tagged order, severities and codes, supplemental links, the truncation marker, and omission counts.
+- Version-2 schema fixtures **reject every legacy mark, diagnostic, and goal field**, and renderer tests prove cards, underlines, and goals all derive from the one checked frame.
+- Dependency gates prove the leaf has no workspace-crate dependency and that its decoder feature contains only the serialization, JSON, and hashing dependencies; that the bus client and terminal-renderer graph has no diagnostics, pipeline, or checker dependency; that the server feature is the only conversion owner; and that the language server and the core and pipeline crates stay free of `miette`, the terminal diagnostic renderer, whose report types must never become a semantic authority.
+- Compile-fail and API tests prove that **no** proof serialization, remote report decode, checked-frame-to-report conversion, or renderer-side semantic switch exists.
 
 The cutover changes the outer schema, the leaf mirror, the server adapter, the renderer and agent decoders, and the fixtures **atomically**.
 Afterwards production emits and accepts version 2 only: **version 1 is historical documentation, not a compatibility mode.**
@@ -368,18 +368,18 @@ This is a protocol _over_ the inspection of gandr programs, so its examples come
 
 **Model programs**, each exercising one projection facet:
 
-* a program with a single typed hole in checking position, whose commented expectation is the goal-at-cursor payload — the expected type and the local context;
-* one fail-fast candidate with linked total-mark evidence beside an independent error mark, pinning canonical candidate and supplement projection without any legacy wire field;
-* a small well-typed program — a bind chain over a pair — whose full derivation forest is itself the teaching artifact;
-* a program annotated with its machine-summary scalars, so a reader learns to read the digest;
-* once session types land, a protocol-advancing program whose derivation shows the session badges the bus carries.
+- a program with a single typed hole in checking position, whose commented expectation is the goal-at-cursor payload — the expected type and the local context;
+- one fail-fast candidate with linked total-mark evidence beside an independent error mark, pinning canonical candidate and supplement projection without any legacy wire field;
+- a small well-typed program — a bind chain over a pair — whose full derivation forest is itself the teaching artifact;
+- a program annotated with its machine-summary scalars, so a reader learns to read the digest;
+- once session types land, a protocol-advancing program whose derivation shows the session badges the bus carries.
 
 **Pathological fixtures**, each pinning a failure mode of the streaming path:
 
-* a term near the concrete-syntax depth ceiling, asserting the projection **degrades** — machine-driven and heap-safe — rather than aborting;
-* an edit script that re-solves a variable the whole file mentions, forcing checkpoint invalidation to a full re-frame, which is the correctness anchor for the delta-versus-frame fallback;
-* an edit-then-edit-before-acknowledgement sequence, asserting the version fence drops the superseded frame;
-* once obligations populate, a program with many outstanding obligations, stressing obligation-delta coalescing.
+- a term near the concrete-syntax depth ceiling, asserting the projection **degrades** — machine-driven and heap-safe — rather than aborting;
+- an edit script that re-solves a variable the whole file mentions, forcing checkpoint invalidation to a full re-frame, which is the correctness anchor for the delta-versus-frame fallback;
+- an edit-then-edit-before-acknowledgement sequence, asserting the version fence drops the superseded frame;
+- once obligations populate, a program with many outstanding obligations, stressing obligation-delta coalescing.
 
 The edit-script fixtures double as the bus integration tests, and the single-file examples double as goldens for both channels.
 
@@ -393,9 +393,9 @@ The edit-script fixtures double as the bus integration tests, and the single-fil
 
 Three dead ends are named so that they are not re-proposed as fresh ideas.
 
-* **Tunnelling the heavy stream through vendor-experimental editor-protocol payloads.** It is the tempting shortcut and it is exactly the coupling the two-channel split refuses.
-* **Building the editor webview before the terminal renderer.** The webview is a large lift — a WebSocket transport, bundling, and a content-security policy — with an unproven payoff over a terminal renderer, and building it before a renderer has validated the protocol inverts the risk.
-* **A gossip mesh transport.** Point-to-point suffices, and the mesh layers were pre-1.0 at survey time.
+- **Tunnelling the heavy stream through vendor-experimental editor-protocol payloads.** It is the tempting shortcut and it is exactly the coupling the two-channel split refuses.
+- **Building the editor webview before the terminal renderer.** The webview is a large lift — a WebSocket transport, bundling, and a content-security policy — with an unproven payoff over a terminal renderer, and building it before a renderer has validated the protocol inverts the risk.
+- **A gossip mesh transport.** Point-to-point suffices, and the mesh layers were pre-1.0 at survey time.
 
 **Net.** Build the language server without the bus and the unix-socket bus feeding an attached terminal renderer first; commit the shapes as the durable core; and treat the webview, the cross-machine transport, deltas, and session-typing as growth gated on real demand.
 

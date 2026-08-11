@@ -52,10 +52,10 @@ The 2015 paper's use of Ackermann as a negative example of size-proportionate en
 
 The load-bearing design element in every generation is **canonicality by construction**: the constructor set is chosen so that the map to the semantic domain is a bijection, hence no runtime normalization pass exists and equality is syntactic.
 
-* **Ackermann / HFS (2008).** `f(x) = Σ_{a∈x} 2^{f(a)}` [P bijective, 0808.0753 Props 1–2]; canonical given set-distinctness; direction-asymmetric size behavior (§2 note).
-* **Hereditarily binary (2013).** `data T = E | V T [T] | W T [T]` — a number is its bijective-base-2 digit string with _run-lengths encoded recursively as further `T` values_; the alternation of `V`/`W` blocks is the uniqueness discipline.
+- **Ackermann / HFS (2008).** `f(x) = Σ_{a∈x} 2^{f(a)}` [P bijective, 0808.0753 Props 1–2]; canonical given set-distinctness; direction-asymmetric size behavior (§2 note).
+- **Hereditarily binary (2013).** `data T = E | V T [T] | W T [T]` — a number is its bijective-base-2 digit string with _run-lengths encoded recursively as further `T` values_; the alternation of `V`/`W` blocks is the uniqueness discipline.
   **[P]** `n : T → ℕ` is a canonical bijection (1306.1128 Prop 5); **[P]** successor/predecessor are total inverses, _mechanized in Coq with the induction principle `hbNat_ind` printed_ (1306.1128 p.3) — the program's one existence proof that a compressed type supports total induction-shaped definitions.
-* **Catalan-generic (2014).** The `Cat` class — `e` nullary, `c` binary, `c′` its inverse, with laws exactly presenting the **free structure over `{e, c}`** (1406.1796 §3.1; deck B slide 6 laws (1)–(2)).
+- **Catalan-generic (2014).** The `Cat` class — `e` nullary, `c` binary, `c′` its inverse, with laws exactly presenting the **free structure over `{e, c}`** (1406.1796 §3.1; deck B slide 6 laws (1)–(2)).
   Canonical form: maximal runs, adjacent blocks differing, top digit 1 (1406.1796 eq. (3)).
   Because `c` is a bijection onto ℕ⁺, a non-canonical representation is _unrepresentable_ — canonicality needs no enforcement pass at all (1406.1796 §3.4 + Conclusion p.38).
   Genericity: the same algorithms run on binary trees, multiway trees, Dyck words, and ℕ itself (the cross-validation oracle), covering the 58 known Catalan instances.
@@ -131,12 +131,12 @@ The hard gate from the `gandr-9a9` intake analysis stands: format-level compress
 The sound home for the axis is **judgment-level, at S2+**: regularity formers (iteration / description codes, the anticipated S2 former set) whose typing rules check a block body once and quantify over the count — closure over _checking_ by construction, per the free-structure reframe.
 The sweep upgrades that staging from a direction to a template:
 
-* present the former set as a **free structure with by-construction canonicality** (an alternation-style uniqueness condition; §3);
-* keep **equality syntactic on canonical forms** — the conversion-checking payoff (§4), with `cmp`'s skip-identical-leading-blocks shape as the model;
-* expect Σ-adjacent operations cheap and everything else conditional; treat division-like operations as the resistance test;
-* prove the compressed type's **induction principle in the metatheory mirror** (the `hbNat_ind` precedent);
-* enforce canonical form by the **generalized E4 pattern** (canonical bytes = maximally-compressed normal form, compression-aware re-encode-compare), with the new proof obligation the sweep makes precise: **uniqueness/confluence of maximal compression** — trivial for DAG sharing, genuinely nontrivial for run-length regularities (overlapping runs compete; a canonical decomposition rule needs a uniqueness argument);
-* conversion against the unfold equations goes through **controlled decompression** — the smart-unfolding/transparency recipe (`impl-models-deep-read.md` §2.4) reread for compressed constructors.
+- present the former set as a **free structure with by-construction canonicality** (an alternation-style uniqueness condition; §3);
+- keep **equality syntactic on canonical forms** — the conversion-checking payoff (§4), with `cmp`'s skip-identical-leading-blocks shape as the model;
+- expect Σ-adjacent operations cheap and everything else conditional; treat division-like operations as the resistance test;
+- prove the compressed type's **induction principle in the metatheory mirror** (the `hbNat_ind` precedent);
+- enforce canonical form by the **generalized E4 pattern** (canonical bytes = maximally-compressed normal form, compression-aware re-encode-compare), with the new proof obligation the sweep makes precise: **uniqueness/confluence of maximal compression** — trivial for DAG sharing, genuinely nontrivial for run-length regularities (overlapping runs compete; a canonical decomposition rule needs a uniqueness argument);
+- conversion against the unfold equations goes through **controlled decompression** — the smart-unfolding/transparency recipe (`impl-models-deep-read.md` §2.4) reread for compressed constructors.
 
 ### 7.1 Near-term cheap wins (no judgment changes)
 

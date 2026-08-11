@@ -11,12 +11,12 @@ A bead written from any checkout is immediately visible in all of them — no pu
 That immediacy is about **visibility**, and it does not extend to the remote: because every checkout advances the same branch, worktrees still contend with each other when pushing.
 The database syncs **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote), the only off-machine copy:
 
-* **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
-* **pull before relying on reads** — `bd dolt pull` at session start and before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this); this guards **cross-machine** staleness, not worktree-to-worktree staleness;
-* trust the remote over a local clone when they disagree;
-* **expect a rejected push, and do not escalate** — see below;
-* **read remotes with `bd dolt remote list`** — `bd dolt show` reports `Remotes: (none)` even when `origin` is configured and pushes are arriving (`gandr-mib`);
-* **server lifecycle is owner-controlled** — agents never run `bd dolt stop`/`start` or restart the Dolt server unprompted: a mid-session kill is what forked per-worktree clones and double-recorded a closeout on 2026-07-22 (`gandr-fid.15`).
+- **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
+- **pull before relying on reads** — `bd dolt pull` at session start and before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this); this guards **cross-machine** staleness, not worktree-to-worktree staleness;
+- trust the remote over a local clone when they disagree;
+- **expect a rejected push, and do not escalate** — see below;
+- **read remotes with `bd dolt remote list`** — `bd dolt show` reports `Remotes: (none)` even when `origin` is configured and pushes are arriving (`gandr-mib`);
+- **server lifecycle is owner-controlled** — agents never run `bd dolt stop`/`start` or restart the Dolt server unprompted: a mid-session kill is what forked per-worktree clones and double-recorded a closeout on 2026-07-22 (`gandr-fid.15`).
 
 ### A rejected push is contention, not breakage
 
@@ -56,42 +56,42 @@ That is a property of the prefixes, not a safeguard anyone designed, so do not l
 
 The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never recurs.
 
-* **A bead is a work item, not a memory.** File a bead only for work someone will plausibly execute within the current or next program of work.
+- **A bead is a work item, not a memory.** File a bead only for work someone will plausibly execute within the current or next program of work.
   Insight belongs in an ADR (decision), the corpus (design), or the notes repo (contributor context) — never parked in the tracker.
-* **Consolidation-first.** Filing what would be the third bead on one topic means the topic needs ONE topic bead instead — extend or replace; never accumulate siblings an agent must reassemble.
+- **Consolidation-first.** Filing what would be the third bead on one topic means the topic needs ONE topic bead instead — extend or replace; never accumulate siblings an agent must reassemble.
   Residual seams discovered during work go into the owning topic bead (a `bd comment` or a description line), not as new dangling beads, unless immediately schedulable.
-* **Research expires.** A research question gets one bead whose deliverable is a decision (adopt/defer, recorded as an ADR); when the pass completes, the bead closes and residual leads go to the single project watchlist bead.
+- **Research expires.** A research question gets one bead whose deliverable is a decision (adopt/defer, recorded as an ADR); when the pass completes, the bead closes and residual leads go to the single project watchlist bead.
   A lead not promoted to a decision by the next triage sweep is deleted — it can be re-asked if it ever matters again.
-* **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; deferred topic beads reviewed for reactivation.
-* **Closed beads are never purged** (owner ruling, 2026-08-07, retiring the former purge-after-~2-weeks clause).
+- **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; deferred topic beads reviewed for reactivation.
+- **Closed beads are never purged** (owner ruling, 2026-08-07, retiring the former purge-after-~2-weeks clause).
   Closeout comments, question/answer identifiers, and commit-hash maps are cited from documents and other beads, and a purge orphans every citation; the accumulation problem the purge aimed at belongs to the pruning of _open_ beads above.
-* **Epics need children or a close date.** An epic with no active children is either done (close it) or a label (fold it into a topic bead).
+- **Epics need children or a close date.** An epic with no active children is either done (close it) or a label (fold it into a topic bead).
 
 ## Conventions
 
-* **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
+- **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
   Prefer one compact bead that carries a topic's current state over several partial beads an agent must reassemble.
   Prune aggressively at triage; a dropped question can be re-asked later if it ever matters again (owner posture, 2026-07-12).
-* **Reconstruction is the filing acid test.** A contributor must be able to reconstruct and execute the full task from the bead plus standing project guidance alone.
+- **Reconstruction is the filing acid test.** A contributor must be able to reconstruct and execute the full task from the bead plus standing project guidance alone.
   Include the intended outcome, boundaries and non-goals, governing decisions and provenance, affected interfaces, dependencies, acceptance and verification evidence, and authoritative references needed to act safely.
   Do not depend on private notes, session history, branch state, or an unstated conversation.
   Point to stable tracked project records instead of duplicating them; if the contract cannot remain compact, use one topic bead with executable children rather than omitting context.
 
 ### Titles and metadata
 
-* **Normalize titles as `<scope>: <subject>`.** Use one or more comma-delimited members of the closed `GANDR_SCOPES` vocabulary in `.commitlintrc.mts`; sort multiple scopes lexicographically, with no spaces between them.
+- **Normalize titles as `<scope>: <subject>`.** Use one or more comma-delimited members of the closed `GANDR_SCOPES` vocabulary in `.commitlintrc.mts`; sort multiple scopes lexicographically, with no spaces between them.
   The bead type remains structured metadata and is not repeated in the title.
   Keep ordinary words lower-case, preserving case only inside a backtick-delimited literal whose spelling is case-sensitive.
   The subject is action-oriented and names the outcome, decision, or question—not implementation steps, status, dates, branch names, bead IDs, or provenance unless one is essential to distinguish the work.
   Titles have no trailing period, must fit the commitlint 100-character ceiling, and should usually fit within 72 characters.
-* **Choose the precise work type.** Use `decision` for an explicit choice or ratified architecture record; `spike` for a timeboxed investigation that reduces uncertainty before commitment; `story` for a user-perspective capability; and `milestone` only for a zero-work completion marker over related issues.
+- **Choose the precise work type.** Use `decision` for an explicit choice or ratified architecture record; `spike` for a timeboxed investigation that reduces uncertainty before commitment; `story` for a user-perspective capability; and `milestone` only for a zero-work completion marker over related issues.
   Use `epic`, `feature`, `bug`, `task`, or `chore` when their ordinary meanings fit better; do not force an underused type onto mismatched work.
-* **Choose metadata before filing.** Before every `bd create`, run `bd label list-all` and `bd types list-all`, then select the most appropriate existing labels and work type.
+- **Choose metadata before filing.** Before every `bd create`, run `bd label list-all` and `bd types list-all`, then select the most appropriate existing labels and work type.
   Do not invent a near-synonym for convenience.
   If nothing fits well—or the bead would not surface reliably in a targeted search—consult the user before adding a metadata category.
   With explicitly granted full autonomy, create a category when appropriate and report every metadata-category addition or change at closeout.
   When searching a label family, enumerate the matching labels by prefix and query every applicable exact label.
-* **Retain full research citations in the bead.** For every relevant paper, record its title, authors, year, and the best-fitting unique locator—prefer a DOI, then an arXiv or HAL identifier, then a stable URL.
+- **Retain full research citations in the bead.** For every relevant paper, record its title, authors, year, and the best-fitting unique locator—prefer a DOI, then an arXiv or HAL identifier, then a stable URL.
   Cite standards, repositories, issues, and other research sources with equivalent identifying detail and a resolvable locator; a corpus path or filename alone is not a research citation.
   Never leave the only citation in session context or a notes-repository report.
   Put references known at filing in the description.
@@ -107,29 +107,29 @@ Two boundaries keep it that way.
 
 ### Safe graph and field updates
 
-* **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
+- **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
   Verify the backup status and retain the backup until the operation is complete, synchronized, and verified safe to roll forward without it.
   Follow the end-to-end [beads graph sweep workflow](beads-graph-sweep.xml) for baseline capture, read-only classification, deterministic mutation, conservation checks, and reporting.
-* **Progress additions are comments only, except references and ledger beads.** After filing, append progress, evidence, and closeout chronology with `bd comment`; never accumulate them by amending `notes`, `description`, `design`, or `acceptance_criteria`.
+- **Progress additions are comments only, except references and ledger beads.** After filing, append progress, evidence, and closeout chronology with `bd comment`; never accumulate them by amending `notes`, `description`, `design`, or `acceptance_criteria`.
   Edit those standing fields only to correct the bead's authoritative current contract, to add and maintain its canonical research references, or to maintain a **ledger bead** as defined below.
-* **A ledger bead is edited in place, and that is the point of it** (owner ruling, 2026-08-02).
+- **A ledger bead is edited in place, and that is the point of it** (owner ruling, 2026-08-02).
   A ledger bead's substance is a **register whose current state is the deliverable** — one row per tracked thing, kept correct — rather than a task with a history.
   A register split across a comment stream is not a register: a reader would have to reassemble the present from a chronology, which is exactly the fragmentation it exists to prevent.
   So its `design` field is edited in place, and a change that affects a row updates that row in the same change.
   Comments on a ledger bead are for anything that is **not** a row.
-* **What makes a bead a ledger bead, so this does not become a licence to amend anything.** It says so in its own description, it is a register rather than a task, and its rows are maintained by _other_ work rather than by progress on itself.
+- **What makes a bead a ledger bead, so this does not become a licence to amend anything.** It says so in its own description, it is a register rather than a task, and its rows are maintained by _other_ work rather than by progress on itself.
   The specification absorption ledger (`gandr-fid.11`) is the standing instance: one row per pre-reboot source, updated by whichever absorption touches that source.
   Everything else keeps the comment-only rule, and "this bead accumulates state" is not on its own a reason to claim the exception — most beads accumulate state, which is what comments are for.
-* Beads cite corpus paths (`docs/gandr/spec/…`) so an agent lands with context.
-* Every doc-drift finding files a bead — drift produces work items, not silent warnings.
-* Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
+- Beads cite corpus paths (`docs/gandr/spec/…`) so an agent lands with context.
+- Every doc-drift finding files a bead — drift produces work items, not silent warnings.
+- Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
   Trust `bd show`/`bd blocked` over `bv` when they disagree.
-* `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness.
+- `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness.
   JSON listing commands paginate; pass `-n 0` (or use `bd export`) for complete sets.
-* **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
+- **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
   Keep `notes`, `description`, `design`, and `acceptance_criteria` compact: standing directions plus a short pointer at most.
   Field updates REPLACE content and can clobber prior context; comments append safely.
-* **Tracker text is never hard-wrapped** (owner ruling, 2026-08-02).
+- **Tracker text is never hard-wrapped** (owner ruling, 2026-08-02).
   `bd show` renders descriptions and comments inside its own fixed-width box and re-wraps every source line to that width, so text authored with hard line breaks at any other width double-wraps into stranded one-word fragments and becomes unreadable — the failure was observed across an entire bead's comment stream before the cause was found.
   Write one line per paragraph and one line per list item, however long, with blank lines between blocks, and let the renderer do all the wrapping; this applies equally to text passed inline and via `--file`, and worker briefs must carry the rule.
   A wide markdown table is unreadable in that box regardless of wrapping — in tracker text prefer one line per row (`row — verdict — grade` style) and keep real tables in corpus documents.
@@ -147,12 +147,12 @@ This is the same failure the reference discipline exists to prevent, met from th
 
 ### Where a queue lives
 
-* **A bead that needs decisions gets a queue bead as its child** (`bd create … --parent <bead>`), so the queue's identifier is a suffix of the work it serves and the link is structural rather than remembered.
-* **An epic gets one queue bead for the whole epic**, never one per child.
+- **A bead that needs decisions gets a queue bead as its child** (`bd create … --parent <bead>`), so the queue's identifier is a suffix of the work it serves and the link is structural rather than remembered.
+- **An epic gets one queue bead for the whole epic**, never one per child.
   A question raised while working a child goes on the epic's queue bead, and names the child it concerns.
-* The queue bead's type is `decision` and it carries the **`human`** label, so `bd list --label human --status open` is the standing view of everything waiting on the owner.
+- The queue bead's type is `decision` and it carries the **`human`** label, so `bd list --label human --status open` is the standing view of everything waiting on the owner.
   `human` marks _awaiting the owner_ and is what separates a queue bead from an ordinary `decision` bead an agent will research and record.
-* Title it `<scope>: decision queue for <topic>` so it reads as a container rather than as a decision someone is about to take.
+- Title it `<scope>: decision queue for <topic>` so it reads as a container rather than as a decision someone is about to take.
 
 ### Posing a question
 
@@ -200,10 +200,10 @@ The bead that executes a ruling carries the owner's framing; the option letter i
 
 ### Closeout
 
-* The **ruling of record lands in the authoritative artifact** — the corpus document, the decision record, the code, or the owning bead's standing contract — never only in the comment stream.
-* A follow-up comment records the execution and names where the ruling landed, so the queue bead reads as an audit trail rather than a second source of truth.
-* A child bead's queue closes when its parent's decisions are taken and executed; an **epic's queue bead lives as long as the epic** and closes with it.
-* The comment stream may be cited, but citing it never substitutes for the ruling's home.
+- The **ruling of record lands in the authoritative artifact** — the corpus document, the decision record, the code, or the owning bead's standing contract — never only in the comment stream.
+- A follow-up comment records the execution and names where the ruling landed, so the queue bead reads as an audit trail rather than a second source of truth.
+- A child bead's queue closes when its parent's decisions are taken and executed; an **epic's queue bead lives as long as the epic** and closes with it.
+- The comment stream may be cited, but citing it never substitutes for the ruling's home.
 
 ## Feature landing and residual closeout
 
@@ -214,11 +214,11 @@ Passing narrower gates (build, scoped clippy, nextest) is not sufficient: the me
 
 ### Demonstrability lands with the feature
 
-* **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md)).
+- **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md)).
   These examples are landing evidence, never residual work.
   A syntax-first change includes its parse-gated `surface/` witness.
   The semantics-graduation change promotes that witness to runnable `model/`, adds runnable pathological coverage, harness assertions, and coverage-map registration in that same change.
-* **Internal engine feature with no language surface.** The implementing change includes named runnable crate fixtures exercised by named crate tests or harness assertions and mirroring the intended future gandr programs.
+- **Internal engine feature with no language surface.** The implementing change includes named runnable crate fixtures exercised by named crate tests or harness assertions and mirroring the intended future gandr programs.
   Its closeout residuals bead names those future programs and the exact surface blocker that enables promotion.
   The manual face says plainly that no user syntax exists yet; conformance-only support is not presented as a runnable feature.
 

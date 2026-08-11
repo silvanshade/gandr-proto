@@ -50,10 +50,10 @@ That argument belonged to a parser generator gandr no longer uses, and the as-bu
 
 **Two update flavors fall out of one overlay, both statically checked, neither needing a row variable.**
 
-* **Field replacement** — `ℓ ∈ dom(r)`.
+- **Field replacement** — `ℓ ∈ dom(r)`.
   The field's _type_ may change (a "strong" update), and that is sound for a reason worth stating rather than assuming: the result is a **fresh** value, so there is no aliasing edge along which an old observer could reach the new type.
   Strong update is unsound only where the update is visible through an alias, and here nothing is.
-* **Field extension** — `ℓ ∉ dom(r)`.
+- **Field extension** — `ℓ ∉ dom(r)`.
   The result is a _wider_ closed record type.
   This is expressible over closed records precisely because the result shape is statically known; it is **not** the polymorphic extension that needs a row variable, and it does not anticipate one.
 
@@ -101,10 +101,10 @@ A **manifest** value is one that has already reduced to a literal structure (a `
 
 Three details of record:
 
-* **The names are underscore-spelled.** Surface identifiers cannot contain `-`, so the design's `update-at` reads `update_at` and so on.
-* **Two names add no primitive.** `append` reuses the list-concatenation primitive and `concat` reuses `flatten`; the other six are new `NativePrim` variants.
+- **The names are underscore-spelled.** Surface identifiers cannot contain `-`, so the design's `update-at` reads `update_at` and so on.
+- **Two names add no primitive.** `append` reuses the list-concatenation primitive and `concat` reuses `flatten`; the other six are new `NativePrim` variants.
   This is not an economy for its own sake — a second primitive with identical behavior is a second thing every oracle and every mutation campaign has to cover.
-* **The honest boundary is a defined halt, never a panic.** The index type is `Integer`; an out-of-bounds index — or a non-manifest argument — degenerates to a **gradual hole**, which evaluates to a blame outcome — a defined, reportable halt carrying the site that produced it, in the gradual-typing sense, not an exception and not a panic.
+- **The honest boundary is a defined halt, never a panic.** The index type is `Integer`; an out-of-bounds index — or a non-manifest argument — degenerates to a **gradual hole**, which evaluates to a blame outcome — a defined, reportable halt carrying the site that produced it, in the gradual-typing sense, not an exception and not a panic.
   The corpus pins this as a failure golden.
 
 There is deliberately **no** `xs[i] := v` lvalue and **no** in-place index assignment.
@@ -114,9 +114,9 @@ There is deliberately **no** `xs[i] := v` lvalue and **no** in-place index assig
 Declared data is generative-nominal and its constructors carry a **product** of fields, not a record, so the record-update overlay does not reach inside a constructor.
 Its update surface is therefore **construction**:
 
-* **Multi-constructor data** is updated by **match-then-rebuild**: match on the constructor, read the fields you keep, apply a constructor to the new field values.
+- **Multi-constructor data** is updated by **match-then-rebuild**: match on the constructor, read the fields you keep, apply a constructor to the new field values.
   No sugar hides the match, and that is the honest reading rather than an ergonomic oversight — _you cannot update a field of a value whose constructor you have not established_, exactly as with any sum.
-* **Single-constructor, record-shaped data** was designed to inherit the `#{ d | ℓ = v }` sugar on the assumption that a constructor's payload is a record.
+- **Single-constructor, record-shaped data** was designed to inherit the `#{ d | ℓ = v }` sugar on the assumption that a constructor's payload is a record.
   As built, the payload is a field product, so **the sugar does not apply**.
   A single-constructor value is updated by match-then-rebuild like any other; the sugar's return is growth-path work, not a landed rung.
 
@@ -157,15 +157,15 @@ It is worth being precise about what would put it at risk — not a bug in updat
 The **surface meaning** of every update above is copy-and-update.
 Whether the runtime physically copies is a separate, purely operational question, and the answer is allowed to differ per site:
 
-* when the base is provably **unique** at the update site — its last use, no live alias — the runtime **may** mutate it in place and hand the same allocation back, an **unobservable** optimization precisely because value semantics guarantees no other observer;
-* when the base is shared, the runtime copies.
+- when the base is provably **unique** at the update site — its last use, no live alias — the runtime **may** mutate it in place and hand the same allocation back, an **unobservable** optimization precisely because value semantics guarantees no other observer;
+- when the base is shared, the runtime copies.
 
 This is the intended optimization target, adopted here as a commitment, and the uniqueness analysis stays entirely below the surface: an implementation seam, never a typing rule.
 The precedents are three, and they differ in where they put the analysis, which is exactly the choice left open:
 
-* **static last-use with reuse specialization**, as in Perceus [@reinking-xie-de-moura-leijen-2021-perceus], which emits precise reference-counting instructions so that cycle-free programs are garbage-free and reuse analysis yields guaranteed in-place updates;
-* **borrowed references with inferred borrow annotations**, as in the reference-counting scheme for a purely functional language of [@ullrich-de-moura-2019-immutable-beans], which minimizes count updates rather than eliminating them;
-* **copy-on-write for dynamically sized containers with stack allocation for fixed-size values**, as in the mutable-value-semantics implementation strategy of [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics].
+- **static last-use with reuse specialization**, as in Perceus [@reinking-xie-de-moura-leijen-2021-perceus], which emits precise reference-counting instructions so that cycle-free programs are garbage-free and reuse analysis yields guaranteed in-place updates;
+- **borrowed references with inferred borrow annotations**, as in the reference-counting scheme for a purely functional language of [@ullrich-de-moura-2019-immutable-beans], which minimizes count updates rather than eliminating them;
+- **copy-on-write for dynamically sized containers with stack allocation for fixed-size values**, as in the mutable-value-semantics implementation strategy of [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics].
 
 The **stronger** version — where the _type system_ certifies exclusivity, so elision is guaranteed rather than best-effort and part-wise in-place mutation becomes expressible — is the borrow calculus, and it is out of scope here by decision, not by omission.
 
@@ -178,16 +178,16 @@ It is stated as two lists and four rules because "don't paint yourself into a co
 
 **Code may assume (stable; these will not be revoked):**
 
-* pure value semantics — every value is a mathematical value, and no construct exposes aliasing-visible mutation;
-* graded thunks `U_r B` — a suspended computation carrying a grade `r` from a preordered semiring that bounds how many times it may be forced — are the **only** quantitative discipline on the surface;
-* functional update and construction are the **whole** mutation surface, and any structural sharing beneath them is invisible and unobservable;
-* evaluation order is call-by-push-value sequencing — update reads are ordinary computations delivering `F A`.
+- pure value semantics — every value is a mathematical value, and no construct exposes aliasing-visible mutation;
+- graded thunks `U_r B` — a suspended computation carrying a grade `r` from a preordered semiring that bounds how many times it may be forced — are the **only** quantitative discipline on the surface;
+- functional update and construction are the **whole** mutation surface, and any structural sharing beneath them is invisible and unobservable;
+- evaluation order is call-by-push-value sequencing — update reads are ordinary computations delivering `F A`.
 
 **These stay open — do not design against their absence _or_ their presence:**
 
-* references and mutable cells (`ref`, `:=`);
-* `inout` and exclusive-borrow parameter modes, and the exclusivity law that would justify them;
-* regions or scopes for reference lifetimes; mode-bounded polymorphism; the access-capability algebra.
+- references and mutable cells (`ref`, `:=`);
+- `inout` and exclusive-borrow parameter modes, and the exclusivity law that would justify them;
+- regions or scopes for reference lifetimes; mode-bounded polymorphism; the access-capability algebra.
 
 ### The four foreclosure rules
 
@@ -233,17 +233,17 @@ Every growth-path item is an **addition** over what is built, never a retrofit �
 
 ## Interactions with the rest of the language
 
-* **Declared data and pattern matching** are the primary consumer: they receive the update surface and the red line, and update-by-construction is the introduction-side dual of matching.
-* **Recursion and loops** inherit the loop-state model from this stance: `for` / `while` / `loop` thread state as **values** through a fold, with no mutable loop variable — the accumulator is rebound, never mutated ([[recursion#Loops, and the break/continue discipline]]).
+- **Declared data and pattern matching** are the primary consumer: they receive the update surface and the red line, and update-by-construction is the introduction-side dual of matching.
+- **Recursion and loops** inherit the loop-state model from this stance: `for` / `while` / `loop` thread state as **values** through a fold, with no mutable loop variable — the accumulator is rebound, never mutated ([[recursion#Loops, and the break/continue discipline]]).
   The loop-carried accumulator is also the **uniqueness hot path**, and the corpus pins it as such.
-* **Attributes.** The surface attribute blocks and their payloads are [[declarations#Attributes]]; the design record additionally states that the _entity-attribute storage layer_ keys attributes by stable identity in a content-hash-neutral side table, so an attribute edit is a functional update of the attribute record and is consistent with the red line.
+- **Attributes.** The surface attribute blocks and their payloads are [[declarations#Attributes]]; the design record additionally states that the _entity-attribute storage layer_ keys attributes by stable identity in a content-hash-neutral side table, so an attribute edit is a functional update of the attribute record and is consistent with the red line.
   **That storage claim has both a corpus home and a realization, and neither of them is here**: [[attributes#Attachment by stable id]] owns the side table and its hash neutrality, and `gandr-surface-engine`'s `attributes` module builds it — the pass returns the resolved attributes beside its findings and never reads or mutates the lowered items, so an item's content-address is unchanged by adding, editing, or removing one.
   As built the identity is the item's index in the lowered item list, and the arena-of-node-id re-key the design specifies is recorded there as a lossless swap rather than a redesign.
-* **Modules** are immutable values; module and package metadata is typed attribute data, updated by construction ([[declarations#module declarations]]).
-* **The foreign interface** is where value semantics meets the memory model, and it is the workload that reopens the string-representation question — a boundary needs a representation, and "plain owned UTF-8" is a choice that a real foreign call can make expensive.
-* **Self-hosting** is the workload most likely to hit the performance limits of deep functional update, and is therefore the trigger that puts the elision work on the critical path with concrete benchmarks behind it.
-* **A wasm target** turns the elision seam from an interpreter nicety into a code-generation obligation, because linear-memory codegen has to decide the question rather than defer it.
-* **Per-assumption grading**, if it is ever adopted, is a value-semantics-of-migration concern; the boundary note keeps `U_r` as the only surface grade precisely so that it stays a clean future addition.
+- **Modules** are immutable values; module and package metadata is typed attribute data, updated by construction ([[declarations#module declarations]]).
+- **The foreign interface** is where value semantics meets the memory model, and it is the workload that reopens the string-representation question — a boundary needs a representation, and "plain owned UTF-8" is a choice that a real foreign call can make expensive.
+- **Self-hosting** is the workload most likely to hit the performance limits of deep functional update, and is therefore the trigger that puts the elision work on the critical path with concrete benchmarks behind it.
+- **A wasm target** turns the elision seam from an interpreter nicety into a code-generation obligation, because linear-memory codegen has to decide the question rather than defer it.
+- **Per-assumption grading**, if it is ever adopted, is a value-semantics-of-migration concern; the boundary note keeps `U_r` as the only surface grade precisely so that it stays a clean future addition.
 
 ## The corpus treatment
 
@@ -313,9 +313,9 @@ The as-built finding above sharpens it: the single-constructor case, which the d
 
 Recorded because a stance whose costs are unwritten reads as free.
 
-* **Value semantics without any uniqueness surface is a real performance cliff before elision exists.** Deep or wide functional update is an `O(n)` copy until the runtime work lands; the stress examples exist because the risk is real, not hypothetical.
+- **Value semantics without any uniqueness surface is a real performance cliff before elision exists.** Deep or wide functional update is an `O(n)` copy until the runtime work lands; the stress examples exist because the risk is real, not hypothetical.
   The named dead end is shipping update builtins whose _signatures_ assume physical copies — which [[#value-rule-03|value-rule-03]] forbids precisely so that the cliff can be removed without a surface break.
-* **Update-by-construction is verbose**, and more verbose as built than as designed, since the single-constructor case did not inherit the sugar.
+- **Update-by-construction is verbose**, and more verbose as built than as designed, since the single-constructor case did not inherit the sugar.
   Users accustomed to record-update-everywhere will find it heavy until row polymorphism or lenses arrive.
   This is an honest ergonomics gap and it is not on the critical path.
 

@@ -89,18 +89,18 @@ The nominal _type-theory_ aim (nullary parametricity as name abstraction) is a d
 
 ## Dissolved forks — do not re-litigate
 
-* **Planar versus groupoid** is not a fork: ordering is a section of the quotient, never a planarization; at the as-built layer there is no symmetry to give up, and at the design layer the question is settled by the identification-sorting test (presentation symmetry free; automorphism symmetry to canonicalization soundness).
+- **Planar versus groupoid** is not a fork: ordering is a section of the quotient, never a planarization; at the as-built layer there is no symmetry to give up, and at the design layer the question is settled by the identification-sorting test (presentation symmetry free; automorphism symmetry to canonicalization soundness).
   **Read the dissolution in both directions.** It does not only forbid planarizing the theory; it also means a **planar result is consumable at the representation**, because the merger already is a planar tensor and canonicalization is the passage that makes the convolution symmetric.
   Refusing a planar theorem on the grounds that "gandr is symmetric" is the error this fork's dissolution exists to prevent, and it has been made repeatedly — see [[../metatheory#The representation is not the theory]].
   **Name which "planar" the consumption is in, because the word carries two conditions and the dissolution supplies only one of them.** The **base-objects** sense — the monoidal base is the free monoid on the colours, so interface objects are lists rather than multisets — is what the merger has, and it is what this dissolution is about.
   The **crossing-free-embedding** sense — the diagram's wiring drawn in the plane with no wire crossing another — is a separate condition, and gandr's diagrams do not satisfy it: `Gandr.Shape.Planarity` builds a connected wheel-free shape whose underlying graph is the complete bipartite graph on three and three, hence non-planar [@kuratowski-1930-courbes-gauches].
   So the dissolution licenses consuming a **base-objects-planar** result at the representation and licenses nothing about a crossing-free-embedding one; that second consumption needs the factorization owed at [[roadmap#meta-obligation-02|meta-obligation-02]].
   **Over-correcting is the other error and this bullet forbids it too**: the failure is at the diagram layer, since a cell is connected and acyclic and therefore a tree, and grafting is what leaves the fragment.
-* **Tight versus loose** is a stratification, not a three-way architectural fork: the loose object is the ambient hom, the tight object is the modality over it, and each object sits at a layer rather than the design choosing a home.
-* **The monad-composition placement** ("compose the derivation arity with the term arity") is interchange, on which the witness ruling has already ruled; its lax form at the certificate layer is settled, its strict form at the shape layer is the scheduled duoid equation, and the only named payoff of a genuinely composite doctrine-and-term monad (a nerve theorem for the doctrine itself, making _certificates_ univalent) is reachable by the universe-presentation route without it.
-* **`Web` as the many-to-many arity**: a web is a forest — many-in, one-out per component — the operad-of-trees arity; the properadic arity is a _graph_.
+- **Tight versus loose** is a stratification, not a three-way architectural fork: the loose object is the ambient hom, the tight object is the modality over it, and each object sits at a layer rather than the design choosing a home.
+- **The monad-composition placement** ("compose the derivation arity with the term arity") is interchange, on which the witness ruling has already ruled; its lax form at the certificate layer is settled, its strict form at the shape layer is the scheduled duoid equation, and the only named payoff of a genuinely composite doctrine-and-term monad (a nerve theorem for the doctrine itself, making _certificates_ univalent) is reachable by the universe-presentation route without it.
+- **`Web` as the many-to-many arity**: a web is a forest — many-in, one-out per component — the operad-of-trees arity; the properadic arity is a _graph_.
   Its surviving contribution is the witness discipline.
-* **Full multi-globularity** (many-to-many coboundaries at every dimension) overshoots: multi-arity is needed at exactly the base dimension.
+- **Full multi-globularity** (many-to-many coboundaries at every dimension) overshoots: multi-arity is needed at exactly the base dimension.
   **Its revisit trigger was restated, and the old one can no longer fire** (`gandr-njmt`, 2026-08-08).
   The old trigger was "a genuine (non-singleton) multi-sum family", measured and singleton — but the linearity ruling refuses the non-linear pattern that would produce the family, so watching for it is watching for a shape the admission boundary now prevents.
   The live trigger is the **per-type comonoid generalization**: a type supplying a copy is where a genuine family could reappear, and landing that supply re-arms the watch.
@@ -139,39 +139,39 @@ Each was asserted in a retired record and is withdrawn with its reason; do not r
 
 Four collisions were caught in one pass and one shipped before it was checked; the lens that works costs minutes.
 
-* **"simply connected"** names three different things: a condition on cell-shape _objects_ (deliberately dropped); a computed property of a _coherence complex_ (which you do not choose — it decides whether coherence holds, and applies to both universe structures); and partition-complex _connectivity_ (which you want high, since it lowers the arity at which coherence data is determined).
+- **"simply connected"** names three different things: a condition on cell-shape _objects_ (deliberately dropped); a computed property of a _coherence complex_ (which you do not choose — it decides whether coherence holds, and applies to both universe structures); and partition-complex _connectivity_ (which you want high, since it lowers the arity at which coherence data is determined).
   The mode distinction that keeps them apart: **presented** structure has a coherence question; **defined** operations have equations to prove, and no coherence theorem addresses them.
   Canonicalization is what would move the pasting structure from defined to presented — that is the item to watch.
-* **"polarity"**: the pretype-theory line's polarities are _variance modalities_; gandr's are CBPV producer/consumer via the palette orientation.
+- **"polarity"**: the pretype-theory line's polarities are _variance modalities_; gandr's are CBPV producer/consumer via the palette orientation.
   Different axes; the useful relation is that the first is a worked solution to the variance cost gandr prices separately.
-* **"Feynman"**: see the naming hazard in the main document — two different objects under one word.
-* **"Conduché"**: this one _survived_ the check — the measured cellular condition is a definitional match with the discrete Conduché condition, not a name match.
-* **"arity"**: monads-with-arities (nerve side) versus arity monads (carrier side) come apart exactly at gandr's rung; every claim must say which sense it uses.
-* **"hereditary"**: the Koszul line supersedes the polytope/cubical-Feynman technique, not the hereditary condition; hereditariness — many-to-many maps decomposing uniquely as tensor products of many-to-one maps, the axis whose _failure_ distinguishes props and wheeled structures from operads — is **not decided anywhere in the corpus** and stays an open lead, not a settled question.
-* **"Rigid"**: two structures share the name — the canonicalization record on a setoid (`Gandr.Rigid`) and the extent-preserving offset-fixed arena map class (`Gandr.Arena.Structure.Rigid`).
+- **"Feynman"**: see the naming hazard in the main document — two different objects under one word.
+- **"Conduché"**: this one _survived_ the check — the measured cellular condition is a definitional match with the discrete Conduché condition, not a name match.
+- **"arity"**: monads-with-arities (nerve side) versus arity monads (carrier side) come apart exactly at gandr's rung; every claim must say which sense it uses.
+- **"hereditary"**: the Koszul line supersedes the polytope/cubical-Feynman technique, not the hereditary condition; hereditariness — many-to-many maps decomposing uniquely as tensor products of many-to-one maps, the axis whose _failure_ distinguishes props and wheeled structures from operads — is **not decided anywhere in the corpus** and stays an open lead, not a settled question.
+- **"Rigid"**: two structures share the name — the canonicalization record on a setoid (`Gandr.Rigid`) and the extent-preserving offset-fixed arena map class (`Gandr.Arena.Structure.Rigid`).
   The shared diagnosis (the representation carries structure the semantics cannot see, and rigidity certifies it does not leak — bracketing in one, ordering in the other) is why the name recurs; a rename decision is owed **before a third `Rigid` appears**.
   The arity interface's representation map is **not** a third one: it is the canonicalization record itself, arriving as a field ([[../metatheory#The arity interface, universe-style]]).
-* **"Σ"**: four different objects in the literature of this corpus — gandr's linear typing zone (the context's Σ), a signature functor in the structural-operational sense, the dependent sum, and the Sierpiński object.
+- **"Σ"**: four different objects in the literature of this corpus — gandr's linear typing zone (the context's Σ), a signature functor in the structural-operational sense, the dependent sum, and the Sierpiński object.
   The semidecision type's naming rule exists precisely for the last of these: it is **Sier**, never spelled as a Σ.
   The same census applies, milder, to `U` (thunk versus unit versus universe), `coh`, `world`, and `region`: any claim using one of these words names its object at first use.
 
 ## Mode and posture rules, standing
 
-* **The generality ruling** (owner, binding): the substrate carries full circuit-algebra generality; restrictions are gandr-side static analysis; a carrier notion that cannot express what the shape layer provides is wrong, not scoped.
-* **Build the residual now**: implement remaining pieces as they occur; if a piece will not close, parameterize a module by its assumptions so what is assumed is in the signature.
+- **The generality ruling** (owner, binding): the substrate carries full circuit-algebra generality; restrictions are gandr-side static analysis; a carrier notion that cannot express what the shape layer provides is wrong, not scoped.
+- **Build the residual now**: implement remaining pieces as they occur; if a piece will not close, parameterize a module by its assumptions so what is assumed is in the signature.
   Three residuals taken rather than deferred each exposed a structural defect; a deferred residual is a claim that nothing depends on it, and that claim has been false three times running.
-* **Characterize before building**: say what a structure is categorically and lay the instances out first; an instance that cannot be filled is an obligation nobody had listed.
-* **A refutation resting on a fact about us is a representation finding, not a refutation** — and a fact about us that is _mechanized_ is the strongest warrant available, not the weakest.
-* **A price quoted against a superseded presentation is not evidence about the current cost** — re-quote before spending.
-* **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
+- **Characterize before building**: say what a structure is categorically and lay the instances out first; an instance that cannot be filled is an obligation nobody had listed.
+- **A refutation resting on a fact about us is a representation finding, not a refutation** — and a fact about us that is _mechanized_ is the strongest warrant available, not the weakest.
+- **A price quoted against a superseded presentation is not evidence about the current cost** — re-quote before spending.
+- **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
   When a source is consumed, the register entry or the consuming document says which sections.
-* **A record can be adopted while one of its fields is refuted, and the refutation is the useful half.** An imported interface's fields are separable claims: a field whose instances all satisfy it for a reason gandr's rung does not share is refuted _at that rung_ without touching the rest of the record.
+- **A record can be adopted while one of its fields is refuted, and the refutation is the useful half.** An imported interface's fields are separable claims: a field whose instances all satisfy it for a reason gandr's rung does not share is refuted _at that rung_ without touching the rest of the record.
   The worked case is the arity interface's representation map, adopted as a field and refuted in its published form at both of gandr's kits, with a mechanized witness at one and two existing decidability checks at the other; what the refutation buys is the identification of the field with an obligation already on the books.
   So the question to ask of an imported field is **which property of the source's instances is doing the work**, and whether gandr's carrier has it — not whether the field is stated for a general enough universe.
-* **Sorting needs a decidable order, constructively.** A sorted-normal-form canonicalization (the `Rigid` route) presupposes a decidable linear order on the payload; without one, the classical final-coalgebra constructions imply the lesser limited principle of omniscience [@joram-veltri-2023-finite-bags] — the constructive precondition of the whole section discipline.
+- **Sorting needs a decidable order, constructively.** A sorted-normal-form canonicalization (the `Rigid` route) presupposes a decidable linear order on the payload; without one, the classical final-coalgebra constructions imply the lesser limited principle of omniscience [@joram-veltri-2023-finite-bags] — the constructive precondition of the whole section discipline.
   The published type-theoretic twin of "ordering is a section" (manifestly finite sets as linearly-ordered finite sets, an at-most-one-path type against an `n!`-path 1-type) is [@yorgey-2014-species].
-* **Geometry as motivation is free; geometry as primitive is priced** (the trusted-surface criterion).
-* **Adversarial findings against a published paper are tensions with a resolution path**, not discoveries of error, unless proved otherwise; carry each source's publication status with its claims.
+- **Geometry as motivation is free; geometry as primitive is priced** (the trusted-surface criterion).
+- **Adversarial findings against a published paper are tensions with a resolution path**, not discoveries of error, unless proved otherwise; carry each source's publication status with its claims.
 
 ## Code concordance
 

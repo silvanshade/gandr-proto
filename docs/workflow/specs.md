@@ -70,11 +70,11 @@ Fidelity and clarity are different properties and are checked in different passe
 The fidelity pass asks: is anything dropped, mis-stated, or unsupported?
 The clarification pass re-reads for confusion, and fixes in place:
 
-* **claims that are true but read as their opposite** — a title that names the programme, not the property; a "not X" where the emphasis lands on X;
-* **terms used before definition**, and jargon with no gloss on first use;
-* **unnamed works** — "a published mechanization", "the leading implementation" — which must be named or the claim marked locator-pending;
-* **cryptic compressions** — "paid in three currencies" without the three currencies named, "the opposite direction" without the direction stated;
-* **attributions that mislead** — a citation whose displayed claim is not what the cited work says.
+- **claims that are true but read as their opposite** — a title that names the programme, not the property; a "not X" where the emphasis lands on X;
+- **terms used before definition**, and jargon with no gloss on first use;
+- **unnamed works** — "a published mechanization", "the leading implementation" — which must be named or the claim marked locator-pending;
+- **cryptic compressions** — "paid in three currencies" without the three currencies named, "the opposite direction" without the direction stated;
+- **attributions that mislead** — a citation whose displayed claim is not what the cited work says.
 
 A confusion found is fixed where it stands, never logged for later.
 
@@ -101,12 +101,12 @@ Collisions like that are invisible until someone cites one and means the other.
 
 Three rules follow, and the third is what makes the first two worth the edit:
 
-* **Prefix by topic, number by position.** The prefix is the disambiguator; the number is only an index within it.
+- **Prefix by topic, number by position.** The prefix is the disambiguator; the number is only an index within it.
   Numbering is **stable** — retiring an item leaves its number unused rather than renumbering the rest, because renumbering silently invalidates every reference taken before it.
-* **Give the identifier an anchor.** An identifier nobody can link to is a search string.
+- **Give the identifier an anchor.** An identifier nobody can link to is a search string.
   Prefer a heading per item (`### meta-spike-04`), which Obsidian resolves as `[[metatheory/roadmap#meta-spike-04]]`; a table cannot be linked into row by row, so a list of items that get cited individually should not be a table.
   Where a heading per item is too heavy, lead the item with the bolded identifier and link to the section.
-* **Cite by link, not by code.** `[[roadmap#Open questions|meta-question-19]]` survives a document being reorganised and tells the reader where to go; `open question 19` does neither.
+- **Cite by link, not by code.** `[[roadmap#Open questions|meta-question-19]]` survives a document being reorganised and tells the reader where to go; `open question 19` does neither.
 
 Retired schemes are the exception and stay exactly as they were: the concordance in the guards ledger exists to decode old notes, so the codes in its left-hand column are data, not usage.
 
@@ -130,8 +130,8 @@ The fix belongs in the sentence, never in a formatter exemption.
 
 So the hazard is the abbreviation standing before a capitalised token, which in this corpus is almost always a **locator with a letter in it** — and the Latin abbreviations are safe in practice, because what follows them is normally lowercase.
 
-* **Where the punctuation introduces or separates, use a colon.** `Note:`, `Caveat:`, `Definition B.2:` — a colon is never a sentence end, so nothing has to be disambiguated and nothing depends on what follows.
-* **Where the period only abbreviates a locator, drop it.** The corpus already reads `Prop 5.13`, `Thm 4.10`, `Def 3.1.1`; keep locators in that form and the capital after them stops mattering.
+- **Where the punctuation introduces or separates, use a colon.** `Note:`, `Caveat:`, `Definition B.2:` — a colon is never a sentence end, so nothing has to be disambiguated and nothing depends on what follows.
+- **Where the period only abbreviates a locator, drop it.** The corpus already reads `Prop 5.13`, `Thm 4.10`, `Def 3.1.1`; keep locators in that form and the capital after them stops mattering.
 
 ### Two more formatter rules that rewrite structure rather than reporting it
 
@@ -152,7 +152,7 @@ When prose-measurement tooling exists for the corpus again, it measures and loca
 
 ## Pointers
 
-* `docs/gandr/spec/README.md` — the corpus's own conventions (format, math, citations, anchors, status, dispositions).
-* `docs/gandr/MANIFEST.yml` — the corpus registry; the `docs:manifest-drift` gate watches it.
-* [review.md](review.md) — the review doctrine and finding dispositions.
-* [docs.md](docs.md) — documentation economy, scoped to _which documents exist_, never fidelity.
+- `docs/gandr/spec/README.md` — the corpus's own conventions (format, math, citations, anchors, status, dispositions).
+- `docs/gandr/MANIFEST.yml` — the corpus registry; the `docs:manifest-drift` gate watches it.
+- [review.md](review.md) — the review doctrine and finding dispositions.
+- [docs.md](docs.md) — documentation economy, scoped to _which documents exist_, never fidelity.

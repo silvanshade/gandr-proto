@@ -75,14 +75,14 @@ A Rust tool pays an alphabet-transcription tax against a moving target; an Agda-
 
 **The call — RATIFY: path (C), Rust with a frozen minimal fixture.**
 
-* Crate: `crates/workflow-search` (the `workflow-` tooling charter fits the study's own "semantics-free, no-TCB, bug-finder" framing; a deliberate commitlint scope row when the crate lands, `tooling` scope for interim commits).
-* v1 scope: **one user** — the interchange-independence instance.
+- Crate: `crates/workflow-search` (the `workflow-` tooling charter fits the study's own "semantics-free, no-TCB, bug-finder" framing; a deliberate commitlint scope row when the crate lands, `tooling` scope for interim commits).
+- v1 scope: **one user** — the interchange-independence instance.
   The iu track pins the exact target cell (candidate: the double-distribution interchange `R-coh`) and the minimal `_⇒²_` sub-fragment it touches, then freezes that sub-alphabet as a checked-in fixture with a provenance pin to `UaBase/Rules.agda@<commit>` — the core-sequent pre-lowered-fixtures discipline, reader included.
   This bounds transcription to a page and makes staleness explicit: an "underivable within N" answer is version-scoped to the pinned alphabet.
-* Interface: `bounded_search(alphabet, target_cell, bound) → DerivedBy(path) | NotFoundWithin(bound)`, a standalone bounded BFS with decline-with-report (mirroring `CompletionBudget`) — **not** a generalization of theory-computads over an alphabet trait (a real cross-module refactor; deferred until ≥ 2 Rust-native alphabets justify it).
-* Epistemic status: `NotFoundWithin` is _evidence_, never a theorem — same posture as J-42's own uncertified tool.
-* Costs to budget: the workspace lint wall (`indexing_slicing`, `arithmetic_side_effects`, `panic`/`unwrap` denies) makes a search tool meaningfully more expensive than a throwaway; and alphabet churn requires a re-sync discipline on the fixture.
-* Recorded alternative: if the owner prioritizes the reusable substrate over the iu answer, v1 becomes path (A) — bounded-enumeration/evidence entry points on the existing `CmdPat` engine, iu alphabets deferred.
+- Interface: `bounded_search(alphabet, target_cell, bound) → DerivedBy(path) | NotFoundWithin(bound)`, a standalone bounded BFS with decline-with-report (mirroring `CompletionBudget`) — **not** a generalization of theory-computads over an alphabet trait (a real cross-module refactor; deferred until ≥ 2 Rust-native alphabets justify it).
+- Epistemic status: `NotFoundWithin` is _evidence_, never a theorem — same posture as J-42's own uncertified tool.
+- Costs to budget: the workspace lint wall (`indexing_slicing`, `arithmetic_side_effects`, `panic`/`unwrap` denies) makes a search tool meaningfully more expensive than a throwaway; and alphabet churn requires a re-sync discipline on the fixture.
+- Recorded alternative: if the owner prioritizes the reusable substrate over the iu answer, v1 becomes path (A) — bounded-enumeration/evidence entry points on the existing `CmdPat` engine, iu alphabets deferred.
   Do not attempt both in one v1.
 
 ## 5. R4 — the directed band: confirmed pure re-entry work

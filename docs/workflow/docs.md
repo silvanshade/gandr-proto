@@ -11,14 +11,14 @@ The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A
 Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (owner, 2026-07-21, `gandr-fid.0`; the 2026-07-21 fidelity audits measured the first absorption pass at ~50-70% retention because this scoping was implicit).
 Every `docs/gandr/spec/` and `docs/research/` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
-* **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
-* **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
-* **Concise, scannable, chunked** — lead with a summary or table; split by concern instead of appending.
-* **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
-* **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
+- **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
+- **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
+- **Concise, scannable, chunked** — lead with a summary or table; split by concern instead of appending.
+- **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
+- **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
   When uncertain whether content is load-bearing, treat it as load-bearing.
   For spec absorption the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree ([specs.md](specs.md)).
-* **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the contributor's private workspace, never in the tracked tree (`AGENTS.md` §"Commits and publishable history").
+- **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the contributor's private workspace, never in the tracked tree (`AGENTS.md` §"Commits and publishable history").
   What a survey _decides_ gets distilled into the design record; the survey itself does not move into `docs/`.
 
 Per-crate `crates/*/docs/STATUS.xml` is the lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
@@ -34,9 +34,9 @@ It is the authority; nothing else describes the design normatively.
 Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — owner ratification is pending, `gandr-wvd.17`), which validates three XML classes (`gandr-712`).
 They share one minimal block/inline substrate (`section`, `prose`, `list`, `table`, `code`; `inline-code`, `label`/`ref` coined anchors, `cite` bibliography keys) and one parse-is-validate discipline (banner presence, status presence, label define-once, label/cite resolution, per-class schema):
 
-* **research records** — `docs/research/*.xml` (`<research-record>`): status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.
-* **workflow docs** — `docs/workflow/*.xml` (`<workflow-doc>`): a required `read-when` banner and rule/convention lists.
-* **the per-crate lean tier** — `crates/*/docs/STATUS.xml` (`<crate-status>`): a `crate` scope, dated sections, current-state prose.
+- **research records** — `docs/research/*.xml` (`<research-record>`): status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.
+- **workflow docs** — `docs/workflow/*.xml` (`<workflow-doc>`): a required `read-when` banner and rule/convention lists.
+- **the per-crate lean tier** — `crates/*/docs/STATUS.xml` (`<crate-status>`): a `crate` scope, dated sections, current-state prose.
 
 The status lifecycle is the shared five-value vocabulary (`built | partial | adopted-unbuilt | design-pass | dormant`); a research proposal under review authors as `design-pass`, its human status phrase carried in the banner.
 
@@ -80,7 +80,15 @@ Research surveys never enter `docs/` at all: distill what was _decided_ into the
 A formatter/linter must never be satisfied at the cost of an artifact's **fidelity**; relax or scope the tool (raise the limit, disable the rule, exclude the path), never alter content to appease it .
 Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the content-mutating `typos` and `sizelint` run tree-wide with targeted fidelity excludes (`*.typ`, `*.agda`, `*.agda-lib` in `treefmt.toml`, mirrored in `typos.toml` so standalone editor/CLI runs are safe).
 
-## Authoring math- and symbol-dense Markdown
+## The unordered-list marker is `-`
+
+Every unordered list takes `-`, at every nesting depth (owner ruling, 2026-08-10); `rumdl.toml` `[ul-style] style = "dash"` is what enforces it, and MD004 under `treefmt` is where a stray marker is caught.
+The two reasons are both about what the character does when it is _not_ being read as a marker.
+`*` is also the emphasis token, so a leading `*` and an emphasis span opened later on the same line are one character playing two roles — the ambiguity the section below spends its length on.
+And `*` is auto-paired by editors, which completes the typed marker into `**` and turns a new list item into a dangling strong-emphasis run.
+
+The retired `sublist` style additionally made a marker a function of its item's **depth** (`*` at the top level, `+` beneath it), so re-indenting a block rewrote markers that had nothing else wrong with them.
+One marker everywhere decouples the two: an indent change stays an indent change.
 
 Markdown has no first-class math: `*`, `_`, `[`, `^` are structural tokens.
 The one **corrupting** hazard is a bare `*` used as an operator (e.g. `d*G`): CommonMark pairs intraword `*`s into emphasis and `rumdl fmt` rewrites them **silently while reporting success** — never run the formatter on a doc that still holds bare-`*` math (if you did, `git checkout` the file, wrap the math, retry).
@@ -88,15 +96,15 @@ A capitalised name-like `[Label]` bracket is the only other trip (MD052); plain 
 
 The convention (authored docs are clean by construction):
 
-* **Inline math / `*`-bearing operators** — default to `$…$` LaTeX (renders as real math, is typst-portable, rumdl-inert): `$d^{*}G$`, `$s^2 = 0$`.
+- **Inline math / `*`-bearing operators** — default to `$…$` LaTeX (renders as real math, is typst-portable, rumdl-inert): `$d^{*}G$`, `$s^2 = 0$`.
   A backtick code span is the fallback for code-like identifiers.
   Wrap the _whole_ expression containing the `*`.
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
-* **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`docs/gandr/spec/README.md`).
+- **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`docs/gandr/spec/README.md`).
   A balanced block is inert to the reflow wherever it sits: its own paragraph, tight against prose, inside a list item or a blockquote, all on one line, or carrying sentence-looking periods in its body.
   An **unbalanced** `$$` is the live hazard — with no closing delimiter the block stops being recognised, the reflow absorbs it into the surrounding prose line, and `rumdl check` reports success on the result.
-* **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
-* **Write every paragraph expecting the line breaks to fall at sentence boundaries** — that is what `reflow-mode = "semantic-line-breaks"` means, and inline formatting must not straddle one of those boundaries.
+- **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
+- **Write every paragraph expecting the line breaks to fall at sentence boundaries** — that is what `reflow-mode = "semantic-line-breaks"` means, and inline formatting must not straddle one of those boundaries.
   A sentence's period therefore sits _outside_ the emphasis that ends it: write `**the rule**.` rather than `**the rule.**` (both are code spans here, so this bullet does not demonstrate the effect on itself).
   **Dangling formatting** — an emphasis span that swallows the full stop it ends on — hides that boundary from the splitter, which then leaves the sentences joined on one line instead of splitting them there.
   The outcome is stable rather than stuck: `rumdl check` accepts the joined line and the merge wall stays green, so the cost is a paragraph that stops reading one sentence per line, not a failing gate.

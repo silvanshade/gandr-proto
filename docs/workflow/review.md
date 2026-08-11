@@ -7,10 +7,10 @@
 The gates catch **structural** faults (formatting, hash drift, dangling references), not **semantic** ones — a change can pass every gate while quietly distorting a claim or missing an instance nobody thought to grep for.
 So any substantial or publishable-stakes change (an absorption, a multi-document edit, a curation pass, anything touching the corpus) gets an **independent adversarial review before landing/pushing and before bead closeout**: An immutable checkpoint may exist solely as isolated-review input, but it is not landed or pushed.
 
-* **Independent** — a reviewer separate from the author, given the changed files (and the source they derive from), not the author's rationale.
-* **Adversarial** — prompted to find faults: "what is wrong, missing, or distorted here?"
-* **Multi-lens** — distinct lenses for distinct failure modes: fidelity to source, policy/leakage compliance, cross-reference integrity, fresh-reader coherence, context-economy ([docs.md](docs.md)).
-* **Demonstrability** — apply the full canonical checklist in [corpus.md](corpus.md): surfaced means same-change runnable model and pathological examples, harness assertions, and coverage-map registration; internal-only means named runnable crate fixtures exercised by named crate tests/harness assertions, intended future programs, and the exact corpus-promotion blocker.
+- **Independent** — a reviewer separate from the author, given the changed files (and the source they derive from), not the author's rationale.
+- **Adversarial** — prompted to find faults: "what is wrong, missing, or distorted here?"
+- **Multi-lens** — distinct lenses for distinct failure modes: fidelity to source, policy/leakage compliance, cross-reference integrity, fresh-reader coherence, context-economy ([docs.md](docs.md)).
+- **Demonstrability** — apply the full canonical checklist in [corpus.md](corpus.md): surfaced means same-change runnable model and pathological examples, harness assertions, and coverage-map registration; internal-only means named runnable crate fixtures exercised by named crate tests/harness assertions, intended future programs, and the exact corpus-promotion blocker.
   The manual must not present conformance-only support as user syntax.
 
 Scale to the change: a one-line fix needs only the gates; a cross-cutting corpus pass earns several lenses.
@@ -34,37 +34,37 @@ The fidelity instrument is the **content-class inventory**: for each class — d
 
 Preconditions and boundaries:
 
-* **A doc change with no declared source set cannot be fidelity-reviewed** — declaring sources is part of authoring, not an optional courtesy.
+- **A doc change with no declared source set cannot be fidelity-reviewed** — declaring sources is part of authoring, not an optional courtesy.
   For absorption work the ledger (`docs/research/`) is the source-set registry; for net-new components the commissioning bead names the sources.
-* Reboot-era operating notes stating "no adversarial reviewers" (the PLAN-assembly posture) **do not apply to documentation authoring**; this section supersedes them for that class (`gandr-fid.0`).
-* The merge discipline for re-absorption: reboot truth wins on status and naming; the source wins on payload the reboot copy dropped.
+- Reboot-era operating notes stating "no adversarial reviewers" (the PLAN-assembly posture) **do not apply to documentation authoring**; this section supersedes them for that class (`gandr-fid.0`).
+- The merge discipline for re-absorption: reboot truth wins on status and naming; the source wins on payload the reboot copy dropped.
 
 ## Absorption and reboot passes
 
 Migrations and reboots are the highest-volume absorption work there is, and the 2026-07-31 spec-reboot review measured their characteristic failures: one open question settled by assertion, a red gate never run, works cited with no entries, entries never cited, and a long tail of silently dropped detail.
 The rules below are what a migration owes beyond the per-document procedure of [specs.md](specs.md).
 
-* **The disposition ledger.** Every open item in a source — an open question, spike, obligation, falsifier, pending read — gets exactly one disposition, recorded where a reader meets it: **carried**; **declined with a reversal condition**; **parked with a reason**; or **retired with a tombstone saying why**.
+- **The disposition ledger.** Every open item in a source — an open question, spike, obligation, falsifier, pending read — gets exactly one disposition, recorded where a reader meets it: **carried**; **declined with a reversal condition**; **parked with a reason**; or **retired with a tombstone saying why**.
   An item that vanishes without a disposition is a defect; omission is invisible in the artifact and only visible against the source.
-* **A refutation needs the same sign-off in a migration as anywhere else.** A settlement claim for something the source left open ("its consumers no longer spend it") is a refutation; it binds only with owner sign-off, and until then it is recorded as declined with its reversal condition.
+- **A refutation needs the same sign-off in a migration as anywhere else.** A settlement claim for something the source left open ("its consumers no longer spend it") is a refutation; it binds only with owner sign-off, and until then it is recorded as declined with its reversal condition.
   The test is the standing one: is the reason a fact about the machinery, or a fact about us?
-* **Registration is part of authoring.** An unregistered corpus document is a fatal drift-gate finding, so "whether to register" is not a decision the author may leave open.
+- **Registration is part of authoring.** An unregistered corpus document is a fatal drift-gate finding, so "whether to register" is not a decision the author may leave open.
   When authoring directly on `main`, run the docs gates before committing — the pre-commit hook does not watch documentation paths.
-* **References are payload.** Every literature claim carries a key at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
+- **References are payload.** Every literature claim carries a key at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
   An unnamed work ("a published mechanization", "the leading implementation") is named, or the claim is marked locator-pending at the claim.
-* **As-built claims are verified against the tree at write time**, with the module or symbol named.
+- **As-built claims are verified against the tree at write time**, with the module or symbol named.
   "Verified against the crate" without the verification is a finding, and counts are stated with their counting convention.
-* **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
-* **Persist the working reports.** Scout and inventory reports a fold rests on are preserved with the migration log; a disposition table without its reports is not auditable, and the next sweep must not have to re-derive them.
-* **State the pass structure up front.** If a first pass will be re-swept, the log says so where it reports the first pass's folds; "folded" and "swept" must never be ambiguous.
-* **Clarification is a separate pass, and it lands.** Fidelity asks whether anything is dropped, mis-stated, or unsupported; clarification re-reads for confusion — claims true but reading as their opposite, terms before definition, cryptic compressions, misleading attributions — and fixes in place.
+- **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
+- **Persist the working reports.** Scout and inventory reports a fold rests on are preserved with the migration log; a disposition table without its reports is not auditable, and the next sweep must not have to re-derive them.
+- **State the pass structure up front.** If a first pass will be re-swept, the log says so where it reports the first pass's folds; "folded" and "swept" must never be ambiguous.
+- **Clarification is a separate pass, and it lands.** Fidelity asks whether anything is dropped, mis-stated, or unsupported; clarification re-reads for confusion — claims true but reading as their opposite, terms before definition, cryptic compressions, misleading attributions — and fixes in place.
 
 ## Interpreting findings — challenged, not refuted
 
 Adversarial findings are **inputs, not verdicts**, and two kinds bind differently:
 
-* **Binding** — a _fabrication_, a _factual/citation error_, or a genuine _category error_: fixed before the reviewed checkpoint lands/pushes and before bead closeout, not negotiable.
-* **Challenged, not refuted** — a _strategic, feasibility, or redundancy_ judgement: recorded as **challenged** — de-emphasised in the search space, never dismissed as refuted/dead.
+- **Binding** — a _fabrication_, a _factual/citation error_, or a genuine _category error_: fixed before the reviewed checkpoint lands/pushes and before bead closeout, not negotiable.
+- **Challenged, not refuted** — a _strategic, feasibility, or redundancy_ judgement: recorded as **challenged** — de-emphasised in the search space, never dismissed as refuted/dead.
   As the design converges, genuinely-unhelpful negatives self-filter; dismissing early risks discarding a branch a later reframing would revive.
 
 The adversary is never the final say.
@@ -98,9 +98,9 @@ When a rejection's reason is load-bearing vocabulary from our own design, it rea
 The more common one, and harder to spot because it _concedes_ applicability and then loses on cost.
 It arises whenever the analysis is framed **solution-first** — here is a candidate change, now evaluate it — because that framing is structurally rigged:
 
-* costs are **concrete, enumerable and immediate** (migration, churn, risk, the unknowns any systematic change drags in);
-* benefits are **diffuse, speculative and deferred**;
-* and the evaluator is usually mid-task, so the change reads as an _interruption_ whose cost they bear personally while the benefit accrues to someone later.
+- costs are **concrete, enumerable and immediate** (migration, churn, risk, the unknowns any systematic change drags in);
+- benefits are **diffuse, speculative and deferred**;
+- and the evaluator is usually mid-task, so the change reads as an _interruption_ whose cost they bear personally while the benefit accrues to someone later.
 
 Every one of those pushes the same way.
 A cost/benefit run at the moment of encounter is therefore not a neutral instrument, and "yes, but" is what it outputs by default.
@@ -117,9 +117,9 @@ An opportunist lead does not make declines rarer — it makes them the owner's, 
 
 The conservative register is the **default professional one**, so it arrives unexamined and needs disarming explicitly:
 
-* **A speculative research artifact** — this tree — has no shipped consumers, high option value, and cheap recoverable errors.
+- **A speculative research artifact** — this tree — has no shipped consumers, high option value, and cheap recoverable errors.
   Surface aggressively; the bar for _raising_ an opportunity is near zero, and "yes, but" needs to survive the questions below before it binds.
-* **A production artifact with real stakeholders** has genuine switching costs, and stability is itself a feature.
+- **A production artifact with real stakeholders** has genuine switching costs, and stability is itself a feature.
   There "yes, but" is frequently the correct answer.
 
 Do not import the second posture into the first by habit.
@@ -190,9 +190,9 @@ Both read as facts about the machinery; both were facts about a representation w
 Not every turn and not every change — that dilutes it to a ritual.
 It fires on:
 
-* **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
-* **every reversal** of a landed finding, decision, or characterization;
-* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim (`docs/gandr/spec/proof-engineering.md` §"Terminology follows the ladder, and a name may not assert an unchecked correspondence"), and a naming claim fails in precisely the way a reversal does.
+- **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
+- **every reversal** of a landed finding, decision, or characterization;
+- **every first-time characterization claim** — "X **is** a Y" — because a name is a claim (`docs/gandr/spec/proof-engineering.md` §"Terminology follows the ladder, and a name may not assert an unchecked correspondence"), and a naming claim fails in precisely the way a reversal does.
   A reversal-only trigger misses these: one of the two instances above was a naming claim, not a reversal.
 
 **Ask the owner before running one.** The pass costs real budget, and the owner may already know the answer.
@@ -228,11 +228,11 @@ A citation that pointed at nothing would have been caught the moment someone loo
 
 Three rules follow:
 
-* **A not-held list cannot come from a filename sweep**, since you cannot sweep for what is absent.
+- **A not-held list cannot come from a filename sweep**, since you cannot sweep for what is absent.
   Whenever one is written, say where it came from — a named source's bibliography, or recall.
   An unattributed list of things to obtain is recall until proven otherwise.
-* **Obtaining the paper verifies the paper, never the citation.** Read the title page and correct the entry in place; do not let "it turned out to exist" stand in for having checked it.
-* **Do not manufacture the provenance afterwards.** If the source of an association is unknown, record it as unknown.
+- **Obtaining the paper verifies the paper, never the citation.** Read the title page and correct the entry in place; do not let "it turned out to exist" stand in for having checked it.
+- **Do not manufacture the provenance afterwards.** If the source of an association is unknown, record it as unknown.
   Reconstructing a plausible origin for a citation is the same failure one level up, and it is harder to catch because it explains the evidence.
 
 Worked instance, 2026-07-28: a duoidal-bibliography entry recorded from recall as a solo-authored paper under a title matching nothing.

@@ -187,9 +187,9 @@ The consequence for the shell's job migration is direct: **jobs move by referenc
 
 If a captured stack contains linear-zone obligations — open endpoints, held capabilities, acquired channels — then three rules follow, and together they settle a question the effect-handler literature leaves open.
 
-* The reified stack value is itself **linear-zone resident**, because it _owns_ those obligations.
-* **Discarding it without resuming is a linearity error**, unless the discard is explicit: an abandonment operation runs the **unwind obligations** — close, release, drop — recorded in the captured frames.
-* **Duplication is prohibited** — one-shot continuations [@bruggeman-waddell-dybvig-1996-one-shot-continuations] — and multi-shot is permitted only for a stack whose captured linear zone is **empty**.
+- The reified stack value is itself **linear-zone resident**, because it _owns_ those obligations.
+- **Discarding it without resuming is a linearity error**, unless the discard is explicit: an abandonment operation runs the **unwind obligations** — close, release, drop — recorded in the captured frames.
+- **Duplication is prohibited** — one-shot continuations [@bruggeman-waddell-dybvig-1996-one-shot-continuations] — and multi-shot is permitted only for a stack whose captured linear zone is **empty**.
 
 **What this resolves is the handler-versus-protocol tension**: a handler that drops or duplicates its continuation would silently drop or duplicate a session's obligations, and the rule above makes that a typing error rather than a runtime surprise.
 It is enforced by machinery the design already has — linear-zone residency and frame-recorded context deltas — rather than by a new mechanism.
@@ -255,10 +255,10 @@ It was to be derived by the same functional correspondence as the typing machine
 
 **That machine is physically removed, and the polarized command machine is the sole evaluator.** The dynamics of effects and control are built — in `gandr-core-sequent`, over the polarized intermediate language rather than over call-by-push-value terms — and the correspondence is exact where it matters:
 
-* a deep handler is a **consumer** that pattern-matches operation constructors and binds the resumption as a covalue, rather than an operation-keyed handler frame;
-* a delimiter is a **prompt** consumer, and capture is a binding up to it;
-* performing walks the reified frame stack to the nearest handler for the operation, and resuming splices the captured resumption;
-* the reified stack crosses into value position as the same covalue.
+- a deep handler is a **consumer** that pattern-matches operation constructors and binds the resumption as a covalue, rather than an operation-keyed handler frame;
+- a delimiter is a **prompt** consumer, and capture is a binding up to it;
+- performing walks the reified frame stack to the nearest handler for the operation, and resuming splices the captured resumption;
+- the reified stack crosses into value position as the same covalue.
 
 [[../metatheory#The operational substrate — the polarized sequent kernel]] carries that reading from the metatheory side, where it is stated as one mechanism replacing three.
 **An unhandled operation is a defined blame outcome rather than a panic**, and the same seam offers an unclaimed operation to an ambient host handler, which is the runtime host's boundary ([[../implementation#The runtime host]]).
@@ -362,10 +362,10 @@ Written against five sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the grammar, both rules, the stack judgment, the control operators, the linearity rules, the interaction table, and the staging, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
-* **Medium** — the correspondence drawn in [[#What replaced it, and why this is a supersession rather than a gap]] between the design's machine and the built one, which neither the record nor the crate states as a correspondence.
-* **Read against the work** — Selinger's location of the double-negation obstruction (his section 3.5, Lemma 3.9) and the no-backtracking property of row unification (Rémy's section 2 and its Theorems 1 to 3), each discharged from a held paper at the 2026-08-08 revision rather than left on the design record's attribution.
-* **Marked at the claim** — Thielecke's result, and the detail and denumerable-label case of the row-unification algorithm.
+- **High** — the grammar, both rules, the stack judgment, the control operators, the linearity rules, the interaction table, and the staging, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
+- **Medium** — the correspondence drawn in [[#What replaced it, and why this is a supersession rather than a gap]] between the design's machine and the built one, which neither the record nor the crate states as a correspondence.
+- **Read against the work** — Selinger's location of the double-negation obstruction (his section 3.5, Lemma 3.9) and the no-backtracking property of row unification (Rémy's section 2 and its Theorems 1 to 3), each discharged from a held paper at the 2026-08-08 revision rather than left on the design record's attribution.
+- **Marked at the claim** — Thielecke's result, and the detail and denumerable-label case of the row-unification algorithm.
   These are what survives the revision above: each is named by author and subject with no verified locator, and each rests on a work that is **declined for acquisition rather than unexamined** ([[#Works cited here that this corpus does not hold]]).
 
 ### Works cited here that this corpus does not hold

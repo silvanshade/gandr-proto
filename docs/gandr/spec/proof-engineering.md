@@ -23,14 +23,14 @@ Consequences that are structural, not stylistic: quotients need not be effective
 
 **Above the content, the tower is empty — never trivial, and this is not a truncation.** Three things must be kept apart:
 
-* **`𝟘` above the last dimension that carries content** — the correct choice.
+- **`𝟘` above the last dimension that carries content** — the correct choice.
   It says there are no cells there; it asserts nothing, discharges nothing, and if a structure later turns out to have genuine higher cells the dimension opens up.
-* **`𝟙` above** — **forbidden by default.** A terminal hom makes every coherence hold automatically, silently discharging obligations nobody checked.
+- **`𝟙` above** — **forbidden by default.** A terminal hom makes every coherence hold automatically, silently discharging obligations nobody checked.
   That is the failure mode, and it is what "do not truncate prematurely" is about.
   Use it only with a stated reason, as `Setoids`' homotopies do: a `Category`'s 2-cells are the equality on its 1-cells, so above `SETOID`'s homotopies there is nothing left to track, and `disc` there would deny a homotopy the reflexivity it has no reason to deny.
   `Gandr.Category.Instances.INDISC` is the deliberate degenerate case kept beside it as a contrast — every field the unique cell, so every law holds for the reason a terminal object makes every law hold, which is what makes it the category that proves nothing.
   A convention that fills trivial higher dimensions with `𝟙` as a matter of course is **not** this tree's convention, and a reader arriving with that habit should read this bullet as the correction.
-* **Forcing uniqueness of identity proofs** — **out of scope entirely.** The `--without-K` mandate is binding and neither UIP nor definitional proof-irrelevance may enter through any shortcut.
+- **Forcing uniqueness of identity proofs** — **out of scope entirely.** The `--without-K` mandate is binding and neither UIP nor definitional proof-irrelevance may enter through any shortcut.
   Using `_≡_` as a structure's 1-cells carries no UIP claim: nothing above it is asserted, so no two proofs of `f ≡ g` are ever identified.
   Where set-ness is genuinely needed it enters as a `UIP` **parameter** on the index type, as the grafting unit laws take it, never through a shortcut.
 
@@ -80,9 +80,9 @@ Nothing was wrong in the tree while it was missing; it was simply not visible as
 `Category` is a structure over an `∞Graph`, so 2-cells are where its laws live; most structures in this tree are `Set`-level, with propositional `_≡_` for equality.
 The bridge is the **discrete setoid on the identity type**, one dimension up from `Gandr.Graph`'s `disc`:
 
-* 0-cells — the objects;
-* the hom at `(x, y)` — an ∞-graph whose 0-cells are the morphisms and whose **1-cells are `f ≡ g`**, so the setoid relation _is_ the identity type and `Category.homˢ` is the identity setoid;
-* **above that, `𝟘`.**
+- 0-cells — the objects;
+- the hom at `(x, y)` — an ∞-graph whose 0-cells are the morphisms and whose **1-cells are `f ≡ g`**, so the setoid relation _is_ the identity type and `Category.homˢ` is the identity setoid;
+- **above that, `𝟘`.**
 
 That ∞-graph is **`Gandr.Graph.𝔾.≡°`**, and the `Setoid` on it is **`Gandr.Setoid.≡ˢ`**; both carry the reasoning discipline below.
 `Category`'s fields all land at or below that level — `mon-λ`, `mon-ρ`, `mon-α` and `seq↕` are `≡`-cells — which is the record being _lawless at its last dimension_: it states the laws and imposes no coherence among them.
@@ -97,9 +97,9 @@ Truncating with `𝟘` has a consequence that must be met head-on rather than ro
 The tempting repair is to extend the carrier upward until the certification holds.
 **Do not.** Both ways of doing it were built and checked, and both cost more than they pay:
 
-* **with `𝟙`** — the certification above the content becomes a _vacuous_ structure whose laws are discharged by `tt`, and the whole reasoning suite is then available at those addresses returning `tt`, with nothing at the use site distinguishing an informative application from an empty one.
+- **with `𝟙`** — the certification above the content becomes a _vacuous_ structure whose laws are discharged by `tt`, and the whole reasoning suite is then available at those addresses returning `tt`, with nothing at the use site distinguishing an informative application from an empty one.
   That is precisely the silent discharge the `𝟙` bullet above forbids, re-entering through the door that uniformity opens.
-* **with `Id`** — honest, and it does hold, but it leaves _"the identity tower is the intended content"_ and _"the tower is filler for a region nobody observes"_ indistinguishable in the type.
+- **with `Id`** — honest, and it does hold, but it leaves _"the identity tower is the intended content"_ and _"the tower is filler for a region nobody observes"_ indistinguishable in the type.
 
 **The region is the parameter instead.** `Gandr.Graph.At 𝒮 Ξ P` certifies `𝒮` at exactly the addresses admitted by `P`; the total region is `Total` (what `Everywhere` supplies, through `everywhere→At`), a structure whose content stops at the carrier is the singleton region (`Only⋆`, supplied by `at⋆`), and bounded depth sits between.
 So `≡°` keeps its `𝟘`, nothing is extended, nothing is marked, and where a structure has content is **stated in its signature** rather than discovered by whoever next needs it.
@@ -154,11 +154,11 @@ A statement generic in the dimension **binds one `Θ` as a parameter** and is wr
 Nothing is inferred from a cell, so the negative result above never fires.
 Four properties carry the design, and it matters which of them are definitional and which are pinned by a proof:
 
-* `⟦Disc⟧ Ξ ⋆` is `Ξ`, and `⟦Disc⟧ Ξ (⋆ ▸ᵈ x ⇴ y)` is `Ξ ▸ᵍ x ⇴ y` — these hold by `⟦Disc⟧`'s own defining clauses in `Gandr.Graph.Base`, not by a lemma.
+- `⟦Disc⟧ Ξ ⋆` is `Ξ`, and `⟦Disc⟧ Ξ (⋆ ▸ᵈ x ⇴ y)` is `Ξ ▸ᵍ x ⇴ y` — these hold by `⟦Disc⟧`'s own defining clauses in `Gandr.Graph.Base`, not by a lemma.
   So **a generic statement instantiates at a concrete address definitionally**: the telescope form is not a second, parallel way of saying things, it is the same signature with the depth abstracted.
-* That instantiation is **pinned**, so the definitional claim is exercised rather than asserted: `Gandr.Category.Reasoning.trans-assoc²` is the generic four-fold associativity applied at `⋆`, and its statement mentions no telescope at all.
-* A structure can be certified at **every** dimension by a coinductive record carrying the structure at this dimension and the same record one dimension up — `Gandr.Graph.Everywhere`, inhabited by `Gandr.Setoid.Idˢ` and `Gandr.Category.ℂ.Id°`.
-* The address lookup is a recursion **on the code**, so `at° 𝒞 ⋆` is the carrier-level structure on the nose: `Gandr.Graph.at°-⋆` and `at⋆-⋆` are both `refl`, and `Gandr.Category.Reasoning.Id°-↑` is the `refl` one dimension up, reading the tower at `⋆ ▸ᵈ x ⇴ y` as the tower one dimension up read at `⋆`.
+- That instantiation is **pinned**, so the definitional claim is exercised rather than asserted: `Gandr.Category.Reasoning.trans-assoc²` is the generic four-fold associativity applied at `⋆`, and its statement mentions no telescope at all.
+- A structure can be certified at **every** dimension by a coinductive record carrying the structure at this dimension and the same record one dimension up — `Gandr.Graph.Everywhere`, inhabited by `Gandr.Setoid.Idˢ` and `Gandr.Category.ℂ.Id°`.
+- The address lookup is a recursion **on the code**, so `at° 𝒞 ⋆` is the carrier-level structure on the nose: `Gandr.Graph.at°-⋆` and `at⋆-⋆` are both `refl`, and `Gandr.Category.Reasoning.Id°-↑` is the `refl` one dimension up, reading the tower at `⋆ ▸ᵈ x ⇴ y` as the tower one dimension up read at `⋆`.
 
 That last pair is the payoff: a reasoning combinator, a law, or a lemma is written **once** against a structure at a bound telescope and holds at every dimension, instead of being restated per dimension or reached only through a spine nobody can abstract over.
 
@@ -175,12 +175,12 @@ There is deliberately **one** entry point: a suite parameterized by the certific
 
 ### Consequences, and the two things this rules out
 
-* **The write-side macro is unnecessary.** A reflection macro that reconstructs the elided prefix from a cell's type is the obvious alternative design, and the unifier result above is exactly what would force one.
+- **The write-side macro is unnecessary.** A reflection macro that reconstructs the elided prefix from a cell's type is the obvious alternative design, and the unifier result above is exactly what would force one.
   With the telescope bound rather than inferred, there is nothing to reconstruct.
-* **No reflection, and no tactic engine.** Not "not yet" — not at all, under this record.
+- **No reflection, and no tactic engine.** Not "not yet" — not at all, under this record.
   Reflection here is fragile in exactly the way that costs a tree its `--safe` story and its debuggability, and the telescope removes the one motivation that made it look necessary.
   Revisiting this is a decision to be recorded, not a judgement call at a call site.
-* **`DISPLAY` stays.** `Gandr.Graph` already rewrites the projection spines to the derived formers (`_϶`, `_▸ᵍ_⇴_`), which is a display concern and carries no trust weight.
+- **`DISPLAY` stays.** `Gandr.Graph` already rewrites the projection spines to the derived formers (`_϶`, `_▸ᵍ_⇴_`), which is a display concern and carries no trust weight.
   **Elided where stated, explicit where computed:** as-written cell types display with their telescopes elided to the top parallel pair; a reduced or computed type keeps the full telescope, and the elided form must stay visually distinct enough to signal that a prefix was dropped.
 
 ### The telescope-former dress
@@ -200,19 +200,19 @@ Functions into data — `Fin n → A` and its relatives — are the last resort,
 This plays to the strength of the setting rather than working around it.
 Five things follow, and they compound:
 
-* **Impossible cases stop being expressible, so nobody writes them.** `Gandr.Graph`'s coproduct is the exemplar and is worth reading before designing anything here.
+- **Impossible cases stop being expressible, so nobody writes them.** `Gandr.Graph`'s coproduct is the exemplar and is worth reading before designing anything here.
   The naive encoding gives `δ°` by cases on a sum, so the mixed `inl`/`inr` pairs must be assigned `𝟘` and _every consumer at every dimension_ then discharges two cases that have no inhabitants.
   Carrying the boundary constraint in the constructors instead — `Σ⊕δ`, indexed by the pair — means the mixed homs have no constructors at all, the copairing `[_,_]` takes two clauses at each level that meets the sum, and coverage discharges the rest.
   A case you never write is a case that can never drift.
-* **The cost of the naive choice scales with dimension.** A four-way split is an annoyance at dimension 0 and is `4ⁿ` at dimension `n`.
+- **The cost of the naive choice scales with dimension.** A four-way split is an annoyance at dimension 0 and is `4ⁿ` at dimension `n`.
   In an ∞-graph tower that is the difference between a usable structure and an unusable one.
-* **It is what makes the two witness disciplines below achievable** rather than aspirational.
+- **It is what makes the two witness disciplines below achievable** rather than aspirational.
   A family whose indices are constructor-headed satisfies them by construction; a table forces a projection or a `lookup` into every statement, and proofs then proceed by rewriting instead of by matching.
   Rewriting is where `--without-K` friction accumulates.
-* **Equality becomes structural.** Inductive data has decidable propositional equality whenever its payloads do, by ordinary induction.
+- **Equality becomes structural.** Inductive data has decidable propositional equality whenever its payloads do, by ordinary induction.
   Function-typed fields need function extensionality, which `--safe --without-K` does not have and will not be given.
   When a structure's equality is out of reach, treat that as evidence the encoding is wrong before concluding the setting is limited — the two are easy to confuse and the mistake is expensive.
-* **The index is usually the interface, which is what later abstraction quantifies over.** A carrier with no index cannot instantiate an interface that has one.
+- **The index is usually the interface, which is what later abstraction quantifies over.** A carrier with no index cannot instantiate an interface that has one.
 
 Two honest limits, so the rule is applied rather than recited.
 **A family can over-determine**: a term calculus for a structure may admit several derivations of one object, and when it does the redundancy is real and `Gandr.Rigid` is what reconciles a multi-derivation term calculus with a canonical stored form — `Rigid` is the effective quotient by a decidable canonicalization, and a canonical section is never pretended free.
@@ -225,12 +225,12 @@ Proceeding under a stated assumption is **not** available here: the cost of the 
 
 **What trips the gate.** Any of these, on their own:
 
-* a field or carrier typed `Fin n → A` — a finite table written as a function;
-* a structure stored as a function where an inductive family or a `Vec` would carry the same information;
-* a record whose _identity_ matters (it will be compared, stored, addressed, or canonicalized) and which has function-typed fields;
-* wanting function extensionality, or reaching for a bespoke pointwise relation to stand in for an equality that "cannot" be proved;
-* writing a lemma whose only job is to refute a configuration the encoding permits and the object does not have;
-* catching yourself **explaining** a limitation as inherent to the setting.
+- a field or carrier typed `Fin n → A` — a finite table written as a function;
+- a structure stored as a function where an inductive family or a `Vec` would carry the same information;
+- a record whose _identity_ matters (it will be compared, stored, addressed, or canonicalized) and which has function-typed fields;
+- wanting function extensionality, or reaching for a bespoke pointwise relation to stand in for an equality that "cannot" be proved;
+- writing a lemma whose only job is to refute a configuration the encoding permits and the object does not have;
+- catching yourself **explaining** a limitation as inherent to the setting.
 
 That last one is the failure mode this rule exists for, and it is the one that does real damage: an encoding defect described as a property of the theory reads as settled, gets cited downstream, and stops being questioned.
 `--without-K` and SETOID-not-SET are both genuine and both load-bearing — which is exactly why an encoding artifact dressed in their language survives review.
@@ -260,10 +260,10 @@ A deferred decidability question is a wrong-path generator.
 
 **Two obstructions look identical from the symptom side, and only one of them is a representation defect.** Telling them apart is most of the value of running the spike early:
 
-* **Function-typed fields** — a structure stores `Fin n → A` where a `Vec`/`All`/inductive family would carry the same information.
+- **Function-typed fields** — a structure stores `Fin n → A` where a `Vec`/`All`/inductive family would carry the same information.
   Pointwise agreement then cannot be upgraded to propositional equality without function extensionality, which `--safe --without-K` does not have.
   **This is a representation defect**, it is what the STOP above is for, and the repair is to carry the data.
-* **Forced-index deletion** — two witnesses of an inductive family are compared at _fixed_ indices, and matching the second one has to eliminate a reflexive equation such as `x = x` or `ys = ys`.
+- **Forced-index deletion** — two witnesses of an inductive family are compared at _fixed_ indices, and matching the second one has to eliminate a reflexive equation such as `x = x` or `ys = ys`.
   **This is not a representation defect and not a foundation limit.** It is a gap in what pattern matching alone can do, and it has a standard discharge.
 
 The discharge, recorded because it is otherwise re-derived each time: **concentrate the whole debt into one injectivity lemma**, rather than letting it spread across every proof that needs a comparison.
@@ -277,10 +277,10 @@ Whichever is taken, it appears in the signature — never as a postulate, and ma
 
 Three corollaries, each of which was got wrong before it was checked:
 
-* **A blocked `refl` match is not evidence the statement is false.** Uniqueness of a graph-of-multiplication witness reads like it needs K and does not — the fact holds, only the pattern match fails.
+- **A blocked `refl` match is not evidence the statement is false.** Uniqueness of a graph-of-multiplication witness reads like it needs K and does not — the fact holds, only the pattern match fails.
   Record a wall only after the code route has been tried.
-* **Refutations project, they do not match.** Once a `with` has identified one component, `no λ { refl → … }` will fail on the component already identified; discharge it with `cong` through a projection instead.
-* **Relocating the obligation is not discharging it.** A view refactor, a re-indexing for constructor-headed invertibility, or carrying the equation as data will each move the K-step somewhere else without removing it.
+- **Refutations project, they do not match.** Once a `with` has identified one component, `no λ { refl → … }` will fail on the component already identified; discharge it with `cong` through a projection instead.
+- **Relocating the obligation is not discharging it.** A view refactor, a re-indexing for constructor-headed invertibility, or carrying the equation as data will each move the K-step somewhere else without removing it.
   When the obligation is genuinely the K-step, meet it at the h-level condition rather than redesigning around it a fourth time.
 
 ### The witness discipline
@@ -288,9 +288,9 @@ Three corollaries, each of which was got wrong before it was checked:
 Two disciplines are load-bearing rather than cosmetic.
 Both are instances of the familial-first rule above, and both exist to keep structures computing under `--without-K`:
 
-* **Witness syntax stays first-order and constructor-headed.** A defined function must never appear in a matchable index.
+- **Witness syntax stays first-order and constructor-headed.** A defined function must never appear in a matchable index.
   Indices may carry the arity monad's **units** (`[]` and `_∷_`, and a tree kit's `leaf` when one lands); its **multiplication** — append, flatten, graft, substitution — never does, and enters instead as the inductive _graph_ of that operation, a witness relation carried in constructors.
-* **No identity-shaped constructor repeats a frame variable across its result indices.** Identity and diagonal cases are derived, never adjoined as constructor shapes.
+- **No identity-shaped constructor repeats a frame variable across its result indices.** Identity and diagonal cases are derived, never adjoined as constructor shapes.
 
 **These two are not to be re-derived locally, and a local typecheck is not evidence that an exception is safe.** A defined function in an index is stuck unification waiting to happen ("green slime"): it may check fine at the site that introduces it, because that site's own indices are still variables, and then fail at the first consumer that has to match a specific index shape.
 Three shapes trip the first rule and are worth recognising by sight: a **declared diagonal** (`nil : ∀ Γ → Web Γ Γ`); a **chunked index type**, where a flattening function reaches into index position; and **singleton-chunk index expressions**.
@@ -403,16 +403,16 @@ Purpose-built records over raw sigma types; explicit record instances; record ty
 
 Six rules the one-line summary does not carry, each of which has cost something somewhere:
 
-* **Never rename a record field into local domain jargon.** Projecting `seq₀` to a local `compose` or `⊗` hides which algebra discharges the step, and the whole point of opening the instance at the use site is that the discharging structure is one `open` away.
+- **Never rename a record field into local domain jargon.** Projecting `seq₀` to a local `compose` or `⊗` hides which algebra discharges the step, and the whole point of opening the instance at the use site is that the discharging structure is one `open` away.
   Jargon worth having becomes an actual structure with its own record, not an alias.
-* **Package operations; fuse a local data or record module into one external view.** `open X public hiding (module X)` is the shape, so a consumer opens one module rather than three.
-* **Name strictness honestly.** A strict structure says so in its name — `FreeStrictInvolutiveWordCategory`, not `FreeCategory`.
-* **The marks, not the names, carry strictness and decidability.** A name says "strict" only where a weak variant of the _same_ structure exists to be confused with it, which is why `FreeStrictInvolutiveWordCategory` is marked in its name and a `Set`-level instance is not.
+- **Package operations; fuse a local data or record module into one external view.** `open X public hiding (module X)` is the shape, so a consumer opens one module rather than three.
+- **Name strictness honestly.** A strict structure says so in its name — `FreeStrictInvolutiveWordCategory`, not `FreeCategory`.
+- **The marks, not the names, carry strictness and decidability.** A name says "strict" only where a weak variant of the _same_ structure exists to be confused with it, which is why `FreeStrictInvolutiveWordCategory` is marked in its name and a `Set`-level instance is not.
   Where the marks go, and what they are owed, is [[#Weak by default; the marks go on strictness and decidability]].
-* **Parallel modules keep parallel order.** Where two modules deliberately mirror each other's vocabulary — the `Set` layer against the ∞-graph layer, a `Base` against its `Properties` — corresponding definitions appear in the same order.
+- **Parallel modules keep parallel order.** Where two modules deliberately mirror each other's vocabulary — the `Set` layer against the ∞-graph layer, a `Base` against its `Properties` — corresponding definitions appear in the same order.
   The mirroring is load-bearing documentation: it lets the two be read side by side, and order drift breaks that reading.
   Reorder only when genuinely landing the missing counterparts, never speculatively.
-* **Write a boundary in context style, not as a projection spine.** `Ξ ▸ᵍ a ⇴ b ▸ᵍ f ⇴ f′ ϶`, not `Ξ .δ° a b .δ° f f′ .ϵ°`.
+- **Write a boundary in context style, not as a projection spine.** `Ξ ▸ᵍ a ⇴ b ▸ᵍ f ⇴ f′ ϶`, not `Ξ .δ° a b .δ° f f′ .ϵ°`.
   The formers are the projections — `_▸ᵍ_⇴_` **is** `δ°` and `_϶` **is** `ϵ°`, defined beside the ∞-graph record — so the two are the same type on the nose and nothing is paid for the readable one.
   The reason it is a rule rather than a taste: the `DISPLAY` pragmas already rewrite spines _to_ these formers, so a spine in the source means the source and every goal, error and reduced type disagree, and the reader translates by hand.
   Fixity note, since it is the one thing that bites: `_϶` is `infix 0`, the loosest in the file, so it wants to be the last token of its type or parenthesized — after an arrow and inside `(x : … ϶)` it is fine, which covers essentially every field.
@@ -429,9 +429,9 @@ Two devices name a position in the tower and they are not interchangeable.
 
 **A structure record does not.** Its field types name _literal_ dimensions, and pushing telescopes into them is wrong on three counts, the first decisive:
 
-* **A telescope names one address; a record's fields are multi-address relations.** Two-cell composition relates homs at `(a,b)`, `(b,c)` and `(a,c)` — three separate codes whose shared prefixes the syntax cannot factor.
-* **There is no dimension to abstract.** A structure record certifies at _one_ address by design, which is exactly why the region-indexed certification layers over it rather than being baked in.
-* **The ergonomic payoff does not materialize.** The quantified endpoints still have to be bound, because the field needs them at specific dimensions in specific combinations, so the telescoped field is longer rather than shorter.
+- **A telescope names one address; a record's fields are multi-address relations.** Two-cell composition relates homs at `(a,b)`, `(b,c)` and `(a,c)` — three separate codes whose shared prefixes the syntax cannot factor.
+- **There is no dimension to abstract.** A structure record certifies at _one_ address by design, which is exactly why the region-indexed certification layers over it rather than being baked in.
+- **The ergonomic payoff does not materialize.** The quantified endpoints still have to be bound, because the field needs them at specific dimensions in specific combinations, so the telescoped field is longer rather than shorter.
 
 **And the hazard behind the rule, which is easy to misdiagnose.** A telescope applied to a constructor tree _reduces_, so it raises no matching obligation at a use site — that is not what goes wrong.
 What goes wrong is one step further: `⟦Disc⟧` is a **defined function** and therefore non-injective for unification, so the moment an address must be _recovered_ rather than _given_, it is stuck.
@@ -483,8 +483,8 @@ Feynman's ambiguity is between two _different_ objects, and a reader who imports
 
 Two neighbours are worth naming so the near-misses are not rediscovered as identifications:
 
-* Spivak's operad of wiring diagrams [@spivak-2013-operad-wiring-diagrams] has wiring diagrams that are **hierarchically nested boxes with ports**, not a matching datum — a different object under the same word, which is why the word needs the disambiguation above rather than a citation.
-* Libkind and Myers' double operadic theory of systems [@libkind-myers-2025-double-operadic-systems] has **undirected** wiring diagrams that are cospans of finite sets, so arbitrary merging is allowed; this carrier's wiring is **downward** — every sink hit exactly once, no cup, and the nodeless loop inexpressible — so it sits strictly **below** the undirected operad.
+- Spivak's operad of wiring diagrams [@spivak-2013-operad-wiring-diagrams] has wiring diagrams that are **hierarchically nested boxes with ports**, not a matching datum — a different object under the same word, which is why the word needs the disambiguation above rather than a citation.
+- Libkind and Myers' double operadic theory of systems [@libkind-myers-2025-double-operadic-systems] has **undirected** wiring diagrams that are cospans of finite sets, so arbitrary merging is allowed; this carrier's wiring is **downward** — every sink hit exactly once, no cup, and the nodeless loop inexpressible — so it sits strictly **below** the undirected operad.
   That paper's section 8 also reads diagrammatic interaction patterns as the **free** processes of a doctrine, which is a candidate characterization of the wiring layer itself and is filed as one.
 
 The Kaufmann–Ward and Bar-Natan–Dancso attributions above remain recall-grade; verify before either reaches a citation-bearing surface.
@@ -519,28 +519,28 @@ The four-tier policy of the metatheory track, read as mechanization practice:
 
 Supporting disciplines:
 
-* **staged obligations**: acyclicity, tractability, and termination are separate named obligations with separate suppliers, never one monolithic convergence proof;
-* **assumptions live in signatures**: where a piece will not close, discharge what closes and make the rest parameters of the smallest module that needs them — zero silent postulates, and a parameterized module must be instantiated at a concrete witness in the same change, or it is green and vacuous;
-* **build the residual now**: three consecutive residuals taken rather than deferred each exposed a structural defect; a deferred residual is a claim that nothing depends on it;
-* **refutable predicates need refuters**: an invariant is structural or refutable, never both in one type, and a predicate nothing refutes may be vacuous — the counterexample suite is part of the content;
-* **computational pins**: where distinct data share a type (every wiring at a one-colour interface), predict normal forms by hand and pin them, because typechecking alone cannot catch a wrong construction;
-* **the three-routes positioning**: to avoid a quotient, one can make the invariant intrinsic (cannot express non-instances — fatal where refuters are the content), go to higher structure (a HIT and a topologically sensitive ambient), or carry a decidable section — this development takes the third, the only one keeping a computational interpretation without either cost.
+- **staged obligations**: acyclicity, tractability, and termination are separate named obligations with separate suppliers, never one monolithic convergence proof;
+- **assumptions live in signatures**: where a piece will not close, discharge what closes and make the rest parameters of the smallest module that needs them — zero silent postulates, and a parameterized module must be instantiated at a concrete witness in the same change, or it is green and vacuous;
+- **build the residual now**: three consecutive residuals taken rather than deferred each exposed a structural defect; a deferred residual is a claim that nothing depends on it;
+- **refutable predicates need refuters**: an invariant is structural or refutable, never both in one type, and a predicate nothing refutes may be vacuous — the counterexample suite is part of the content;
+- **computational pins**: where distinct data share a type (every wiring at a one-colour interface), predict normal forms by hand and pin them, because typechecking alone cannot catch a wrong construction;
+- **the three-routes positioning**: to avoid a quotient, one can make the invariant intrinsic (cannot express non-instances — fatal where refuters are the content), go to higher structure (a HIT and a topologically sensitive ambient), or carry a decidable section — this development takes the third, the only one keeping a computational interpretation without either cost.
 
 ## Lessons with no other home
 
 Hard-won rules that belong to no single module header (each now verified against its source in the pre-reboot consolidation corpus):
 
-* **The lemma-list diagnostic** (the cheapest early-warning signal, checkable by reading a file's lemma list): _how many of my lemmas exist only to refute a case the encoding permits?_ A nonzero answer is the familial-first STOP firing early.
-* **Check the direction you did not prove.** When writing "is" or "are exactly", check the converse; if it fails, say so and say why — a false converse is usually more informative than the theorem.
+- **The lemma-list diagnostic** (the cheapest early-warning signal, checkable by reading a file's lemma list): _how many of my lemmas exist only to refute a case the encoding permits?_ A nonzero answer is the familial-first STOP firing early.
+- **Check the direction you did not prove.** When writing "is" or "are exactly", check the converse; if it fails, say so and say why — a false converse is usually more informative than the theorem.
   The canonical instance: the converse of "an effective quotient by decidable canonicalization is a decidable-equality set" is **false** — decidable equality on the carrier is strictly stronger, and it is what a content-addressed store actually has (the quotient buys set-ness only at the canonical representatives).
-* **The h-level charge moves, it does not vanish**: demanded function-side it lands on the unit laws, graph-side on functionality; what removes it from both is the heterogeneous structural comparison, which can ignore the witness layer propositional equality has to identify.
+- **The h-level charge moves, it does not vanish**: demanded function-side it lands on the unit laws, graph-side on functionality; what removes it from both is the heterogeneous structural comparison, which can ignore the witness layer propositional equality has to identify.
   The companion rule: before paying for a discipline across a whole tower, build the operation and **measure** what the discipline buys — the measurement is a theorem, not an estimate — and when an interface is about to be extracted, _attempt the extraction against every instance before building any instance's obligations_; the attempt is a review technique that has found defects reading did not.
-* **The `Tower` device**: the moment a coherence's intermediate object is existential (determined by neither endpoint), carry the intermediates as **fields of a record, not indices** — stated with indices the coherence is heterogeneous and needs a transport before it can even be written; packaged, the two routes compare by an ordinary equation and the whole coherence is one congruence.
-* **The statement, not the proof, is often the blocker**: a wall that resists for sessions can fall the day its statement is re-quantified — audit the statement's alphabet before escalating the proof effort.
+- **The `Tower` device**: the moment a coherence's intermediate object is existential (determined by neither endpoint), carry the intermediates as **fields of a record, not indices** — stated with indices the coherence is heterogeneous and needs a transport before it can even be written; packaged, the two routes compare by an ordinary equation and the whole coherence is one congruence.
+- **The statement, not the proof, is often the blocker**: a wall that resists for sessions can fall the day its statement is re-quantified — audit the statement's alphabet before escalating the proof effort.
   The verified instance (the sibling development's coherence complex): the blanket all-cells base statement provably entails uniqueness of identity proofs for arbitrary sets — underivable without K — so the letter alphabet was restricted to coherence-witnessed cells, and the base case became a theorem over one presentation-side ticket (`UIP` of the names, itself a theorem for named presentations); the refutation is kept compile-checked there.
   The companion instance, the **frame-bound impossibility**: the K-debt is an indexing artifact (objects are the family's index, generators are fiber data), so an impossibility record stated for words indexed by one object type says nothing about the same statement re-indexed by a presentation's own 0-cells — under the presentation/interpretation split the needed UIP is a theorem for syntactic presentations, and the sibling layer's single termination-checker exemption is root-caused to semantic indexing of its cell datatype, with a definitional fold over fully syntactic indices as the fix target.
   And the **observation-grade ledger** behind both: a decision-demanding hypothesis overstates the price wherever only proof-irrelevance is used — the confluence port's hypothesis is UIP, not decidable equality, because the decision procedure runs only inside the collapse on a pair already known reflexive.
-* **Compare-sites are existence-grade** almost everywhere: nearly every place two constructions are compared demands only that _some_ mediating cell exists, and per-type J is the one consumer demanding a chosen one — so filler _existence_ machinery (a generator, a completion) suffices at every site but that one.
+- **Compare-sites are existence-grade** almost everywhere: nearly every place two constructions are compared demands only that _some_ mediating cell exists, and per-type J is the one consumer demanding a chosen one — so filler _existence_ machinery (a generator, a completion) suffices at every site but that one.
   The verified inventory (the sibling raise audit) sorts every compare-site into four classes: (I) new congruence operations — mechanical, no filler demand; (II) existence-grade filler demands — the laws' carried components, where any filler works, exactly what completion supplies; (III) chosen-computing demands — the β-class, exactly one at depth one: per-type J needs a chosen contraction datum, not a filler; (IV) instance-side tower demands — structure, not record fields: hom valued in groupoids needs the rung-2 inverse interface at the named conjugation sites, iterating one new site per fiber depth.
   The shape/witness ledger that grades a candidate arity monad's factorization witness sits beside it: compute the shapes, present the graph of the shape-level multiplication first-order, and read its naturality squares — pullbacks place the witness in the lemma layer (polynomial/familial; prop-like relations: compositions, admissible cuts), weak pullbacks in the certificate layer (analytic/species; the decomposition groupoid: partitions with block-symmetry iso-cells), anything less means specification-register only.
 
@@ -575,8 +575,8 @@ Under a role split that means `X/Properties` and `X/Structure` carry the flag as
 
 Two reasons it is a rule rather than a taste:
 
-* **The chain names its intermediate terms.** `trans (cong f p) (trans q (cong g r))` hides what is being rewritten to what; a chain shows the sequence, and a reader can check a single step without reconstructing the whole ladder.
-* **It survives the structure gaining 2-cells.** A proof written against the hom-setoid does not change when a structure later has a genuine equivalence in place of `_≡_`; a `trans` ladder is rewritten from scratch.
+- **The chain names its intermediate terms.** `trans (cong f p) (trans q (cong g r))` hides what is being rewritten to what; a chain shows the sequence, and a reader can check a single step without reconstructing the whole ladder.
+- **It survives the structure gaining 2-cells.** A proof written against the hom-setoid does not change when a structure later has a genuine equivalence in place of `_≡_`; a `trans` ladder is rewritten from scratch.
   Given that this tree's whole direction is to characterize structures more finely, that is not hypothetical.
 
 Single-step arguments — one `cong`, one `refl`, one lemma applied — stay as they are; the rule is about ladders.
@@ -593,7 +593,7 @@ A chain is read down its **terms**; the steps are apparatus beside them, and the
 `Gandr.Shape.Graft`'s `assoc-∷-capped` is the one to copy: it works the layout rule, the reverse step, the head-marker step, and the nested-`begin` rule together.
 The fourth marker and the no-`subst` rule are worked elsewhere in the same file, at the `tower-swap` chains and at `insert-shrink` respectively.
 
-* **`begin`, every step, and `∎` hold one column; the terms are indented two further in.** `begin⟨ … ⟩` and `∎` take the statement's own indentation, each `≈` mark starts a line at that same indentation, and the terms sit between them two columns in.
+- **`begin`, every step, and `∎` hold one column; the terms are indented two further in.** `begin⟨ … ⟩` and `∎` take the statement's own indentation, each `≈` mark starts a line at that same indentation, and the terms sit between them two columns in.
   So the chain reads as a ladder — an outer column of relations with the terms nested inside it — and a step's own length never disturbs the terms:
 
   ```agda
@@ -608,11 +608,11 @@ The fourth marker and the no-`subst` rule are worked elsewhere in the same file,
 
   A step whose proof does not fit continues **two in from its own marker**, and its closing `⟩` goes on a line of its own back in the step column.
   **Nothing is aligned to the right.** Mirroring the steps into a right-hand column — the `agda-categories` presentation — is declined: it is re-flowed by hand on every edit, and it degrades exactly when a step grows, which is when the reader most needs the layout to hold.
-* **A reverse step is `≈⁻¹⟨ p ⟩`, never `sym p` and not stdlib's `≈⟨ p ⟨`.** Taking the proof the other way round is right — a `sym` wrapped around a multi-line proof hides the direction inside the step — but stdlib puts the mark on the **closing** bracket, which is the far end of exactly the steps that need it, and an opening and a closing angle differing only in orientation do not survive skimming.
+- **A reverse step is `≈⁻¹⟨ p ⟩`, never `sym p` and not stdlib's `≈⟨ p ⟨`.** Taking the proof the other way round is right — a `sym` wrapped around a multi-line proof hides the direction inside the step — but stdlib puts the mark on the **closing** bracket, which is the far end of exactly the steps that need it, and an opening and a closing angle differing only in orientation do not survive skimming.
   So the direction goes on the relation, as an inverse.
   `Gandr.Setoid.step-≈⁻¹` **is** stdlib's backward step re-syntaxed and nothing more: no combinator is reimplemented, the transitivity and the `IsRelatedTo` stay the library's, and stdlib's own form remains in scope and is not an error.
   It is a general-setoid step, so it also replaces an `invˢ` or an `inv₁` applied to a whole step — `Gandr.Profunctor.Yoneda`'s `yoneda-to` is the worked example on that side.
-* **A step that rewrites under something marks the head rather than wrapping the step in `cong`.** Most `Set`-level steps are congruences, so `≈⟨ cong f p ⟩` repeats `cong` down the whole chain.
+- **A step that rewrites under something marks the head rather than wrapping the step in `cong`.** Most `Set`-level steps are congruences, so `≈⟨ cong f p ⟩` repeats `cong` down the whole chain.
   Write the term as `[ x ↦ f ]· u` — the same term `f[x := u]`, with the rewritten position named — and the step as `≈·⟨ p ⟩`; the combinator is `Gandr.Setoid.step-≈·`.
   **The head is a binder, not a function slot**, because the rewritten position is usually not the last argument: `[ x ↦ cap q x ]·`, `[ x ↦ spot₂ ∷ x ]·` and `[ r ↦ removal-comp r o ]·` all need the hole named, and a section or a bare lambda there reads as apparatus rather than as the term.
   Agda's `syntax` binds it directly, so nothing in the term is spelled twice.
@@ -621,13 +621,13 @@ The fourth marker and the no-`subst` rule are worked elsewhere in the same file,
   Taking the head and `u` separately makes the step's own index `f u`, and there is nothing left to reconcile.
   **And the marker cannot be plain `≈⟨`**, because the argument slot swallows `u ≈⟨ p ⟩ rest` and Agda reports the ambiguity; the dot appearing in both halves of the device is the better reading anyway.
   This is `Set`-level vocabulary, because `cong` is what makes it: a general setoid wants a congruence witness rather than a function, which is the structure's own business.
-* **The two markers above are independent, so there are four and not three.** A step can rewrite under something _and_ run the other way, and that one is **`≈·⁻¹⟨ p ⟩`** (`Gandr.Setoid.step-≈·⁻¹`).
+- **The two markers above are independent, so there are four and not three.** A step can rewrite under something _and_ run the other way, and that one is **`≈·⁻¹⟨ p ⟩`** (`Gandr.Setoid.step-≈·⁻¹`).
   Its proof reads in the same direction as `≈·⟨ p ⟩`'s — `p : u ≡ v` — and what moves is which end carries the marked term: the term written is `f v` and the chain continues at `f u`.
   Closing the grid is not tidiness: without it a backwards congruence is written `≈⁻¹⟨ cong f p ⟩`, which is the `cong` the third bullet removes and the `sym` the second one removes, both back in the same step.
-* **No `trans` inside a chain: a nested argument that needs several steps is its own `begin` block.** A step whose proof is a `trans` ladder has a chain hidden inside a chain, which is the very thing the outer chain was written to stop.
+- **No `trans` inside a chain: a nested argument that needs several steps is its own `begin` block.** A step whose proof is a `trans` ladder has a chain hidden inside a chain, which is the very thing the outer chain was written to stop.
   Open a second `begin⟨ … ⟩ … ∎` in the argument position instead, parenthesized, laid out by the same rule one level in — its steps in the argument's column, its terms two further.
   `assoc-∷-fuse′` carries two of them, of four and five terms.
-* **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
+- **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
   Name the little lemma; if the pattern repeats, hoist it beside the definition it serves.
   `insert-shrink` is the worked example: the length decrease it needs is an ordinary induction on the insertion rather than a `subst`-and-`<-trans` chase over `insert-length` at five sites, which is also what keeps `match-comp-acc` short.
 
@@ -653,9 +653,9 @@ The assignment of sources to these rungs lives on the arc's tracker epic rather 
 
 Three guards, and the third is the one that has already cost something here:
 
-* Where two sources name the same structure, **the higher rung owns the name**.
-* Where a source's structure is _more general_ than ours, take the name and **state the restriction** rather than inventing a diminutive.
-* **A name is a claim.** Adopt it where the correspondence is _proved_; mark it explicitly as a candidate where it is conjectured; and never let a name assert a correspondence nobody has checked.
+- Where two sources name the same structure, **the higher rung owns the name**.
+- Where a source's structure is _more general_ than ours, take the name and **state the restriction** rather than inventing a diminutive.
+- **A name is a claim.** Adopt it where the correspondence is _proved_; mark it explicitly as a candidate where it is conjectured; and never let a name assert a correspondence nobody has checked.
   The disambiguation recorded above under the circuit carrier's layer letter is the worked example of what the third guard is for: two available words, both ambiguous, and the ambiguities running in opposite directions.
   **A structure named by a presentation carries a fourth obligation**, because such a name asserts that the listed relations are _all_ of them: say **at which arity** the presentation was checked, in the module header beside the name, and re-check it when a consumer exceeds that arity.
   See [[#A presentation is a characterization, and its completeness is arity-scoped]] for why the gap is invisible from below, and for what it has already cost here.
@@ -667,4 +667,4 @@ These are workflow rules owned by `docs/workflow/agda.md`; they are listed here 
 
 ## Sub-documents
 
-* [[proof-engineering/roadmap]] — the discipline-side backlog and owed statements.
+- [[proof-engineering/roadmap]] — the discipline-side backlog and owed statements.

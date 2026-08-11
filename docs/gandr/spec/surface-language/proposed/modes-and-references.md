@@ -15,25 +15,25 @@ The design and the build differ here more than anywhere else in the corpus, and 
 
 **Built, and verified against the tree at write time.**
 
-* **The two-zone context `Γ; Σ` exists.** `gandr-core-checker`'s `ctx` module carries the **intuitionistic zone** `Γ` — ordinary hypotheses, which may be used any number of times or not at all — as a binding stack, and the **linear zone** `Σ` (the `Sigma` type) — obligations that must be used exactly once — as a list of live obligations with `bind` and `consume` operations.
+- **The two-zone context `Γ; Σ` exists.** `gandr-core-checker`'s `ctx` module carries the **intuitionistic zone** `Γ` — ordinary hypotheses, which may be used any number of times or not at all — as a binding stack, and the **linear zone** `Σ` (the `Sigma` type) — obligations that must be used exactly once — as a list of live obligations with `bind` and `consume` operations.
   `Σ` admits **no contraction** — `consume` is single-shot and yields nothing on a second call, so that law is _enforced_ — and **no weakening**, which at this rung is **detectable rather than enforced**: a live obligation at scope close is observable, and the test that pins it asserts exactly that the zone is non-empty, but no code path rejects the close.
   The distinction matters for every claim below that leans on "cannot be silently dropped".
   The type is named `Sigma` in that module and is **not** the dependent-pair former of the same name in the checker's type module; the two are unrelated.
-* **`Σ` is vacuous at v0.** No typing rule populates it, because every obligation source it was designed to hold — session endpoints, held capabilities, acquired shared channels — is a deferred feature that does not exist in the checker.
+- **`Σ` is vacuous at v0.** No typing rule populates it, because every obligation source it was designed to hold — session endpoints, held capabilities, acquired shared channels — is a deferred feature that does not exist in the checker.
   The zone's shape is committed now on the reasoning that retrofitting a context shape is expensive; its discipline is in force the moment a first obligation source lands.
   Until then, **a reified stack captures no obligations, and `resume`, `discard`, and duplication are unrestricted**.
   The rules that would bind once it is populated — one-shot capture, abandonment running the recorded unwind obligations, and multi-shot only for an empty captured zone — are [[../../implementation/effects-and-control#One-shot linearity, and what it resolves]].
-* **Grades exist and are sealed.** `gandr-core-checker`'s `grade` module carries a single concrete carrier over `ℕ ∪ {ω}`, representation-sealed behind a semiring signature (`ZERO`, `ONE`, `OMEGA`, `fin`, `leq`, `plus`, `times`).
+- **Grades exist and are sealed.** `gandr-core-checker`'s `grade` module carries a single concrete carrier over `ℕ ∪ {ω}`, representation-sealed behind a semiring signature (`ZERO`, `ONE`, `OMEGA`, `fin`, `leq`, `plus`, `times`).
   The order carries the two structural rules — `thunk_r t ⇓ U_s B` requires `s ⊑ r`, and `force v` requires `1 ⊑ r`, each checked **per site with no accumulator**, so a grade-`1` thunk forced twice along one path passes both checks independently.
   `Dup` **is built and does use addition**: it reads its split grades off the expected returner-of-product type and enforces `r + s ⊑ grade`.
   `Drop` **is built**, and its side condition `0 ⊑ r` is **not checked because it is vacuous on the default carrier** — zero is the bottom of the order there, so every graded thunk is droppable, which is a tree-verified form of the central finding below rather than a gap.
   Multiplication and the grade-constraint form are genuinely unused outside the carrier module.
   There is **no per-assumption (binder) grading and no context scaling `r · Γ`**; a binder "carries" a grade only derivatively, as the grade of its bound value's thunk type.
-* **The graded operations have normative signatures**: `dup : U_{r+s} B → F (U_r B × U_s B)` and `drop : U_r B → F 1` under `0 ⊑ r`, with grade-contravariant subtyping — `U_r B <: U_s B'` needs `s ⊑ r`.
+- **The graded operations have normative signatures**: `dup : U_{r+s} B → F (U_r B × U_s B)` and `drop : U_r B → F 1` under `0 ⊑ r`, with grade-contravariant subtyping — `U_r B <: U_s B'` needs `s ⊑ r`.
   They belong to the type system proper and are stated there, with the rules they come from and the two places the build diverges from them: [[../../implementation/type-system#Grades]].
-* **The reified stack `Stk(B, C)` is a value type** in `gandr-core-checker`'s `types` module — the evaluation context internalized as data.
-* **The runtime host has no capability model at all.** The seam is ambient and always-resume, with no grant, no allowlist, and no denial outcome ([[../../implementation#The runtime host]]); the design that would price it is [[../../implementation/capability-model]].
-* **The foreign boundary is the one place several of these decisions already have a home.** [[../../implementation/foreign-interface]] owns the boundary C-type mapping, the calling convention, linkage metadata, and the hidden-return-pointer slot, and links back to this document for the mode-facing half.
+- **The reified stack `Stk(B, C)` is a value type** in `gandr-core-checker`'s `types` module — the evaluation context internalized as data.
+- **The runtime host has no capability model at all.** The seam is ambient and always-resume, with no grant, no allowlist, and no denial outcome ([[../../implementation#The runtime host]]); the design that would price it is [[../../implementation/capability-model]].
+- **The foreign boundary is the one place several of these decisions already have a home.** [[../../implementation/foreign-interface]] owns the boundary C-type mapping, the calling convention, linkage metadata, and the hidden-return-pointer slot, and links back to this document for the mode-facing half.
 
 **Designed, and not built.** Sessions (binary and multiparty), manifest sharing with acquire/release, worlds and the mobility judgment, the linear-zone obligations that would populate `Σ`, and the typed-unwinding rule under which abandoning a `Σ`-owning stack runs its recorded close, release, and drop obligations.
 The rules for all but the last are specified in [[../../implementation/type-system]], which is also where the mobility judgment's clauses are stated normatively rather than in the prose form this document uses.
@@ -242,36 +242,36 @@ The distinction between them is not academic — it is the adoption criterion.
 
 **The camps that keep the guarantees without linear types.**
 
-* **Modes.** Uniqueness, affinity, and locality as **mode axes over an adjoint core** [@lorenzen-white-dolan-eisenberg-lindley-2024-oxidizing].
+- **Modes.** Uniqueness, affinity, and locality as **mode axes over an adjoint core** [@lorenzen-white-dolan-eisenberg-lindley-2024-oxidizing].
   The pre-reboot sweep judged this the camp closest to gandr's own shape and the one most likely to **confirm** rather than challenge the design, on the grounds that an adjoint core carrying a lattice of modal qualifiers is structurally what gandr builds toward.
 That is recorded as the sweep's judgement, not as a settled characterization of gandr — the comparison has not been carried out against the built tree.
-* **Capture sets.** Captured variables represented in types, with scoped capabilities giving effects and effect polymorphism [@boruch-gruszecki-odersky-lee-lhotak-brachthauser-2023-capturing].
-* **Reachability types.** Aliasing and separation tracked through reachability qualifiers [@bao-wei-bracevac-jiang-he-rompf-2021-reachability], extended to polymorphism [@wei-bracevac-he-bao-rompf-2024-polymorphic-reachability].
-* **Boolean-negation effects.** Borrowing recast as temporary _freezing_ via effect types over a Boolean lattice with principal inference, leaving aliasing and capture **unrestricted** [@gao-parreaux-2025-invalidation-safety].
+- **Capture sets.** Captured variables represented in types, with scoped capabilities giving effects and effect polymorphism [@boruch-gruszecki-odersky-lee-lhotak-brachthauser-2023-capturing].
+- **Reachability types.** Aliasing and separation tracked through reachability qualifiers [@bao-wei-bracevac-jiang-he-rompf-2021-reachability], extended to polymorphism [@wei-bracevac-he-bao-rompf-2024-polymorphic-reachability].
+- **Boolean-negation effects.** Borrowing recast as temporary _freezing_ via effect types over a Boolean lattice with principal inference, leaving aliasing and capture **unrestricted** [@gao-parreaux-2025-invalidation-safety].
   This is a genuine counter-design to a substructural lean: it tracks _effects_, not capabilities, and its effect domain is a lattice, not a quantale.
 
 **The lines gandr's own substrate descends from.**
 
-* **Graded, modal, and quantitative types** — coeffects, graded monads and comonads, quantitative type theory [@atkey-2018-qtt], and graded modal types with a full language behind them [@orchard-liepelt-eades-2019-graded].
+- **Graded, modal, and quantitative types** — coeffects, graded monads and comonads, quantitative type theory [@atkey-2018-qtt], and graded modal types with a full language behind them [@orchard-liepelt-eades-2019-graded].
   Linear function types in a practical polymorphic setting [@bernardy-boespflug-newton-peytonjones-spiwack-2018-linear-haskell] sit here too.
   The recurring frontier lesson is one gandr has already acted on: **arbitrary-semiring generality buys expressiveness and costs inference, error messages, and adoption**, which is exactly why gandr fixes one sealed carrier and reserves the parametricity to the rules.
-* **Region-based memory and ownership** — regions with inferred allocation and deallocation points [@tofte-talpin-1997-regions], region polymorphism, lifetimes, second-class values, and generational references.
+- **Region-based memory and ownership** — regions with inferred allocation and deallocation points [@tofte-talpin-1997-regions], region polymorphism, lifetimes, second-class values, and generational references.
   This is the home of the deferred "scopes are like regions" and of [[#mode-decision-06]].
   The central tension the calculus must navigate: **aliasing versus deallocation precision** (regions permit cycles but free in bulk; ownership is precise but forbids cycles), and **inference versus modularity**.
-* **Linear, affine, and capability systems** — linear logic, deny-capabilities, effects-as-capabilities, mutable value semantics [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics], and separation-logic metatheory [@jung-jourdan-krebbers-dreyer-2018-rustbelt].
+- **Linear, affine, and capability systems** — linear logic, deny-capabilities, effects-as-capabilities, mutable value semantics [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics], and separation-logic metatheory [@jung-jourdan-krebbers-dreyer-2018-rustbelt].
   The last carries **the honesty constraint of this whole document**: that work shows the surface type system alone cannot justify a language's unsafe escape hatches — soundness rests on the separation-logic metatheory beneath. gandr's analogue is the property-tested derived machine plus a mechanization intent, and the mechanization is unbuilt, so **"sound by construction" is a design posture with a plan, not a proof.**
 
 **Three through-lines, each of which changes what a decision should be.**
 
-* **The capability-effect duality is real, bidirectional, and provably non-dominating.** Rows and capabilities are two strategies of one modal frame, with verified translations in both directions [@tang-lindley-2026-rows-capabilities] — the strongest formal bridge available.
+- **The capability-effect duality is real, bidirectional, and provably non-dominating.** Rows and capabilities are two strategies of one modal frame, with verified translations in both directions [@tang-lindley-2026-rows-capabilities] — the strongest formal bridge available.
   And minimal effect systems and capability systems are **incomparable in expressiveness**, neither subsuming the other [@bao-rompf-2025-type-ability-effect].
   The decision target is therefore a **modal hybrid**, not "pick a discipline".
   The incomparability is a load-bearing _negative_ that argues _for_ a unifying frame rather than for abandonment.
-* **The move off linearity is community-scoped, not field-wide.** The signal concentrates in surface-ergonomics work — people retrofitting Rust-like guarantees into non-linear host languages under an inference and adoption constraint.
+- **The move off linearity is community-scoped, not field-wide.** The signal concentrates in surface-ergonomics work — people retrofitting Rust-like guarantees into non-linear host languages under an inference and adoption constraint.
   The proof-theory and category-theory fragment has **not** moved off; it is _generalizing_ substructure within the family (quantitative type theory is linearity over a semiring; graded monads and coeffects; modes are substructure as a modal lattice over an adjoint core).
   The non-linear camps trade away exactly the compositional structure — monoidal-closed, graded, adjoint — that gandr's metatheory computes over.
   **The adoption criterion that follows: take them for surface ergonomics, never for substrate.**
-* **Sequential and quantale-shaped effects are behaviours over time** [@gordon-2017-flow-sensitive-effects; @gordon-2021-polymorphic-sequential-effects], which gives the trace reading algebraic teeth.
+- **Sequential and quantale-shaped effects are behaviours over time** [@gordon-2017-flow-sensitive-effects; @gordon-2021-polymorphic-sequential-effects], which gives the trace reading algebraic teeth.
   One trap worth carrying: **"quantale" is a partial false friend.** An effect quantale is a _partial_ join-semilattice and a _partial_ monoid — the undefined compositions are load-bearing — whereas the quantales arising from higher rewriting are _complete_ sup-lattices and total.
   Same silhouette, different objects, and neither literature cites the other.
 
@@ -489,9 +489,9 @@ Given the design's control-plane framing, the last two are most plausibly **non-
 
 **Three concept names the calculus must keep apart**, because every existing tool accumulates its complexity precisely by conflating them:
 
-* **duplication** — copying, where the source survives;
-* **relocation** — moving, where the source's storage is given up; bitwise or hooked, destructive or not;
-* **address-stability** — pinning; a _constraint on_ relocation, not an operation.
+- **duplication** — copying, where the source survives;
+- **relocation** — moving, where the source's storage is given up; bitwise or hooked, destructive or not;
+- **address-stability** — pinning; a _constraint on_ relocation, not an operation.
 
 ### Access modes and parameter passing
 
@@ -570,24 +570,24 @@ The copy-by-default versus move-by-default mismatch is **side-stepped by refusin
 
 **What the field's ABI efforts teach**, each with the correction the source's own reviewer applied:
 
-* **crABI** (an unmerged Rust RFC) defines its own option and result types, because niche-optimized standard types cannot be reused across a stable boundary — and **leaves unresolved whether a non-trivial destructor runs and who frees**.
+- **crABI** (an unmerged Rust RFC) defines its own option and result types, because niche-optimized standard types cannot be reused across a stable boundary — and **leaves unresolved whether a non-trivial destructor runs and who frees**.
   The accurate statement is that it has a _manual_ free convention; it does not standardize _automatic_ destructor execution. gandr answers this better through ownership in the calling convention ([[#mode-decision-12]]).
-* **`stabby`** pins a C-based layout and recovers niche-optimized compact sums, at the documented cost of losing pattern matching and of compile time.
+- **`stabby`** pins a C-based layout and recovers niche-optimized compact sums, at the documented cost of losing pattern matching and of compile time.
   A compiler change degraded its vtable handling — **a _performance_ regression, not a soundness or layout break**; the fair characterization is the fragility of a stable ABI on an unfrozen substrate.
-* Extensible-vtable ABI evolution — adding fields and operations without breaking compiled consumers — belongs to **`abi_stable`**, not to `stabby`, which the pre-reboot source had misattributed; the correction is worth nothing unless both crates are named, and the lesson maps onto gandr's module signatures with load-time matching.
-* The two efforts converge on the **two-representation discipline** of [[#mode-decision-11]].
-* The C++ bridging tools — **cxx**, **autocxx**, and **crubit** — converge on **trivial versus opaque**: trivially relocatable types may cross by value, everything richer is opaque behind indirection.
+- Extensible-vtable ABI evolution — adding fields and operations without breaking compiled consumers — belongs to **`abi_stable`**, not to `stabby`, which the pre-reboot source had misattributed; the correction is worth nothing unless both crates are named, and the lesson maps onto gandr's module signatures with load-time matching.
+- The two efforts converge on the **two-representation discipline** of [[#mode-decision-11]].
+- The C++ bridging tools — **cxx**, **autocxx**, and **crubit** — converge on **trivial versus opaque**: trivially relocatable types may cross by value, everything richer is opaque behind indirection.
   **cxx** backs the trivial _claim_ with a generated C++ `static_assert` — **a real check, not an honour system**; the honour-system mechanism is the `trivial_abi` compiler attribute, which is trusted without verification.
   All of them punt on auto-bridging templates and generics.
-* **Trivial relocatability is not standardized in C++.** One proposal was voted into a working draft and then **removed**, over comments that relocation as specified could do more than a bitwise copy; a competing proposal was never in that draft, so it cannot have been removed from it.
+- **Trivial relocatability is not standardized in C++.** One proposal was voted into a working draft and then **removed**, over comments that relocation as specified could do more than a bitwise copy; a competing proposal was never in that draft, so it cannot have been removed from it.
   The durable lesson holds regardless: **byte-relocatability needs an explicit annotation and is not type-inferable even in C++**, so gandr should design its relocatability query as a **pluggable input**.
 
 **Two positive models to copy.**
 
-* A **value-witness-table** model is the lingua franca: each foreign or opaque type is an abstract type carrying declared lifecycle operations — a foreign copy constructor becomes a copy witness, a foreign move constructor becomes a _take_ (move-then-destroy-source), a foreign destructor becomes destroy.
+- A **value-witness-table** model is the lingua franca: each foreign or opaque type is an abstract type carrying declared lifecycle operations — a foreign copy constructor becomes a copy witness, a foreign move constructor becomes a _take_ (move-then-destroy-source), a foreign destructor becomes destroy.
   This is the per-type move hook Rust lacks; its limit is the same as gandr's, namely no first-class immovable value type.
   It also surfaces foreign copies **explicitly** and keeps foreign containers foreign, refusing implicit conversion.
-* Putting the **calling convention in the type system** as an effect on function and function-pointer types, and **enforcing it at load**, converts the classic silent ABI mismatch into a load-time error.
+- Putting the **calling convention in the type system** as an effect on function and function-pointer types, and **enforcing it at load**, converts the classic silent ABI mismatch into a load-time error.
   That language's foreign interface is otherwise C-ABI-only, which is exactly the recommended first-version posture ([[#mode-decision-13]]).
 
 **What the dynamics must grow, in rough order:**
@@ -701,9 +701,9 @@ Every load-bearing claim from it is therefore restated here in full rather than 
 
 **Confidence, by class.**
 
-* **High** — the as-built substrate statements, each verified against the named module in the tree at write time (`gandr-core-checker`'s `ctx`, `grade`, and `types` modules).
-* **High** — the decision register's content and the adversarial corrections carried at each claim, which are transcribed from the source rather than re-derived.
-* **Medium** — the literature attributions, whose identifiers were verified against publisher or preprint records at this pass but whose _claims_ were not re-read from the papers.
-* **Low, and marked as such at the section** — the per-language mechanism tables' proposal, RFC, and issue numbers, carried unverified; and the self-reference treatment, which the source itself flagged as less developed than its siblings.
+- **High** — the as-built substrate statements, each verified against the named module in the tree at write time (`gandr-core-checker`'s `ctx`, `grade`, and `types` modules).
+- **High** — the decision register's content and the adversarial corrections carried at each claim, which are transcribed from the source rather than re-derived.
+- **Medium** — the literature attributions, whose identifiers were verified against publisher or preprint records at this pass but whose _claims_ were not re-read from the papers.
+- **Low, and marked as such at the section** — the per-language mechanism tables' proposal, RFC, and issue numbers, carried unverified; and the self-reference treatment, which the source itself flagged as less developed than its siblings.
 
 Where the design record and the built tree disagree, **the tree wins on status and the design record wins on payload**, and the disagreement is stated at the claim rather than reconciled silently.

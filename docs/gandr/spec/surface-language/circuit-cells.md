@@ -3,14 +3,14 @@
 The design pass on a standing question: the substrate carries the full generality of circuit algebras, and the surface does not.
 This document asks whether it should, sketches a syntax that would, and prices each feature.
 
-* Status: **partially ruled.** The block form's core spellings — the declaration shape, the arrow grid, the statement forms, and the port discipline — are **ruled** (owner, 2026-08-02) and recorded at [[#The block form, ruled]]; the sections below that sketch alternatives to them are superseded where they conflict and are annotated in place.
+- Status: **partially ruled.** The block form's core spellings — the declaration shape, the arrow grid, the statement forms, and the port discipline — are **ruled** (owner, 2026-08-02) and recorded at [[#The block form, ruled]]; the sections below that sketch alternatives to them are superseded where they conflict and are annotated in place.
   **The rule block has since graduated, and the ruling is no longer spellings-only.** A well-formed single-redex block lowers to its whiskered composite behind the cell layer's admission gate, with a runnable corpus witness carrying harness assertions — `crates/surface-corpus/examples/model/circuit/circuit-rule-block.gandr`, which pins the desc render, three store cells, and one whiskered composite — beside six pathological declines under `crates/surface-corpus/examples/pathological/circuit/` (counting the files in that directory).
   The derived-boundary route of [[#The derived pair meets the sphere by checking, not by synthesis]] is the semantics behind it: specified, checked at the declaration table, exercised by crate fixtures, and reached from the surface since 2026-08-02 — writing no sphere, which is the limit that section states.
   What has **not** graduated stays **design sketch** with a parse-only witness at `crates/surface-corpus/examples/surface/circuit-cells.gandr`: the reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper` member's filler, and a `rule` member with no filler.
-* This is the surface half of a standing metatheory obligation: deleting the cell record's simple-connectivity field, or re-carrying it as a consumer-side predicate, "with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass" ([[../metatheory/roadmap]]).
-* The carrier-side facts it rests on are landed and machine-checked (the carrier record, migrated — the corpus README's migration banner); the ruling it must honour is the generality ruling of the [[../metatheory#The substrate is the full circuit-algebra rung|metatheory track]].
+- This is the surface half of a standing metatheory obligation: deleting the cell record's simple-connectivity field, or re-carrying it as a consumer-side predicate, "with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass" ([[../metatheory/roadmap]]).
+- The carrier-side facts it rests on are landed and machine-checked (the carrier record, migrated — the corpus README's migration banner); the ruling it must honour is the generality ruling of the [[../metatheory#The substrate is the full circuit-algebra rung|metatheory track]].
   **Nothing here proposes a carrier change.**
-* The cell members it extends are [[higher-cells]]; the grammar every form must clear is [[grammar]].
+- The cell members it extends are [[higher-cells]]; the grammar every form must clear is [[grammar]].
 
 ## The question, and why it is not about arity
 
@@ -38,9 +38,9 @@ Fan-in and fan-out are a **different** question — aggregation, not connectivit
 The strongest argument for surfacing these is not expressiveness.
 It is that the carrier **deliberately** made them refutable, and a surface that cannot express them wastes that choice.
 
-* The carrier's `node` constructor publishes a corolla's ports into the shared interface **rather than consuming from a pool** — and the recorded reason is exact: "a pool discipline would make wheel-freeness **structural** and cost the predicates their **refuters**."
-* The governing principle is stated once and binds everywhere: **an invariant can be structural or refutable, never both in one type.**
-* Grafting and merging are total and do **not** preserve the predicates.
+- The carrier's `node` constructor publishes a corolla's ports into the shared interface **rather than consuming from a pool** — and the recorded reason is exact: "a pool discipline would make wheel-freeness **structural** and cost the predicates their **refuters**."
+- The governing principle is stated once and binds everywhere: **an invariant can be structural or refutable, never both in one type.**
+- Grafting and merging are total and do **not** preserve the predicates.
   Connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result — with the counterexamples exhibited and refuted in the tree: `bigon`, a graft that reconverges and loses acyclicity; `two-points`, a merge that disconnects and loses connectivity; and `wheel`, a vertex whose out-leg is glued to its own in-leg.
   The tree's named self-gluing, `gluing`, is connected, acyclic, and a cell — a self-gluing is not per se a wheel.
 
@@ -52,8 +52,8 @@ This is the same discipline the identity layer already runs: the K-derivation wi
 The corpus's witness inventory ([[../implementation/roadmap]]) records seven binding guards with **no pathological witness yet**, each owed one on the K-derivation precedent.
 Two of them are guards this document's axes would make writable:
 
-* **declined horizontal composition** — writable exactly when a body can hold two disjoint redexes, which is [[#Reconvergence]];
-* **the symmetry-derivation refusal** — exercised where the parallel direction is written down, which is [[#Disconnection]].
+- **declined horizontal composition** — writable exactly when a body can hold two disjoint redexes, which is [[#Reconvergence]];
+- **the symmetry-derivation refusal** — exercised where the parallel direction is written down, which is [[#Disconnection]].
 
 The wheel is **not** in that inventory, and the inventory's "acyclicity gate's decline" is a different object — the certificate algebra's composition gate declining on a variable-flow cycle, not a shape wheel.
 So the honest claim is narrower than "these axes make the owed witnesses writable": two of the seven become writable, and **a wheel guard would be a new guard**, owing a witness once it exists rather than discharging one already owed.
@@ -130,11 +130,11 @@ The landed description-rule syntax (`rule add(Zero, n) ~> n`) migrates to `==>`.
 
 **Open residuals of the ruling, named rather than absorbed:**
 
-* the `feed` statement's typing is **ruled (owner, 2026-08-02): the typed-delay discipline is required** — the asymmetric, guarded placement, under which the fed-back port must sit at the delayed type, and the delay operator's tick-zero triviality forces the body to compute its own initial state, so no separate initialization slot exists.
+- the `feed` statement's typing is **ruled (owner, 2026-08-02): the typed-delay discipline is required** — the asymmetric, guarded placement, under which the fed-back port must sit at the delayed type, and the delay operator's tick-zero triviality forces the body to compute its own initial state, so no separate initialization slot exists.
   The typing rule, with the delay former's spelling provisional: a body typed `(Γ, s : A.d) --> (Δ, s′ : A)` is closed by `feed : (s′) --> (s)` to `(Γ) --> (Δ)` — the fed-back occurrence is delayed in the premise and produced undelayed, the monoidal-streams shape.
   **The former's name and precise syntax stay provisional** (`.d` is a placeholder): the owner records three collision risks to clear before the spelling is fixed — `Delay` as the partiality monad, should that become relevant; the abstract-stone-duality direction; and the mechanism for the Lipschitz condition, which may want the delay generalized to a graded modality;
-* the back-edge sweep and its diagnostic are a checking obligation, not yet a checker;
-* lexical checks owed at the grammar's landing: `==>` beside the live `=>` of case arms; `<->` against any `<-` use; `--` inside `-->` against comment conventions (the repo comments with `//`).
+- the back-edge sweep and its diagnostic are a checking obligation, not yet a checker;
+- lexical checks owed at the grammar's landing: `==>` beside the live `=>` of case arms; `<->` against any `<-` use; `--` inside `-->` against comment conventions (the repo comments with `//`).
 
 ## The derived pair meets the sphere by checking, not by synthesis
 
@@ -196,10 +196,10 @@ Elaborating a rewrite-sorted port into the interface pair those endpoints come f
 
 **Scope, so the next rung inherits it rather than rediscovers it.** Four limits, each owed rather than decided:
 
-* the derivation reads **one** declared output port, because the boundaries it produces land on the term-shaped store and a term has one root — and for the same reason it admits no **many-out node**, though the ruled form writes one (`node : zip(stream, state) --> (next, out2)`); a many-out interface and a many-out node are both the cell-alphabet question, and this route declines them rather than omitting them;
-* it admits no `feed` statement, so a **wheel-bearing body derives no boundary pair**: a legitimately delay-guarded cycle is refused by the same guard that refuses an unguarded one, and separating them is owed with the `feed` statement's own elaboration;
-* a port bound twice resolves through the first statement that binds it, which keeps the derivation total — binding a port twice is a port-linearity failure, and refusing it belongs to the name-set fold;
-* a wire consumed twice is unfolded twice, so **reconvergence is a shared subterm rather than a shared node**, and a body of `n` doubling frames derives a term of `2ⁿ` nodes.
+- the derivation reads **one** declared output port, because the boundaries it produces land on the term-shaped store and a term has one root — and for the same reason it admits no **many-out node**, though the ruled form writes one (`node : zip(stream, state) --> (next, out2)`); a many-out interface and a many-out node are both the cell-alphabet question, and this route declines them rather than omitting them;
+- it admits no `feed` statement, so a **wheel-bearing body derives no boundary pair**: a legitimately delay-guarded cycle is refused by the same guard that refuses an unguarded one, and separating them is owed with the `feed` statement's own elaboration;
+- a port bound twice resolves through the first statement that binds it, which keeps the derivation total — binding a port twice is a port-linearity failure, and refusing it belongs to the name-set fold;
+- a wire consumed twice is unfolded twice, so **reconvergence is a shared subterm rather than a shared node**, and a body of `n` doubling frames derives a term of `2ⁿ` nodes.
   That is the term-shaped store's own cost and the tree-shaped congruence target never pays it.
   **The budget is built (owner-confirmed, 2026-08-02):** the derivation and the occurrence walk each run under a node ceiling and decline with the ceiling they hit, which is the completion engine's decline-and-report posture rather than a hang, and the ceiling is charged per reading in both traversals because they are two walks of one reconvergence.
 
@@ -215,9 +215,9 @@ The subsections below predate the ruling above and are kept for the analysis the
 
 What survives, restated against the ruled form:
 
-* **The plain form is sugar.** The ordinary positional declaration desugars to the named-port normal form with fresh names minted in order, and the normal form is what the engine ever sees — unchanged, now as the ruling's sugar ladder.
-* **The interface end must be visible.** The sketch kept a result clause for readability; the ruled form makes the output list **structural** (`--> (z : Nat)`), so the reader's need and the machine's datum are one thing and no later pass can delete it as redundant.
-* **The `-x`-parses-as-negation collision is dissolved, not solved.** The sigil form needed a marker to switch argument positions from expressions to ports; the ruled form has no signed names, so the collision cannot arise.
+- **The plain form is sugar.** The ordinary positional declaration desugars to the named-port normal form with fresh names minted in order, and the normal form is what the engine ever sees — unchanged, now as the ruling's sugar ladder.
+- **The interface end must be visible.** The sketch kept a result clause for readability; the ruled form makes the output list **structural** (`--> (z : Nat)`), so the reader's need and the machine's datum are one thing and no later pass can delete it as redundant.
+- **The `-x`-parses-as-negation collision is dissolved, not solved.** The sigil form needed a marker to switch argument positions from expressions to ports; the ruled form has no signed names, so the collision cannot arise.
   The `*`-sigil availability survey below at [[#Open questions, dispositioned]] is likewise dissolved.
 
 ### Attachment is by name, and that is a soundness property
@@ -226,16 +226,16 @@ Wiring is name-sharing: a diagram is a sequence of cell applications with shared
 
 Three reasons, in order of force — the first is the one that matters:
 
-* **Names cannot accidentally order the parallel direction.** The corpus's symmetry ruling is blunt about the stakes: ordering the parallel-component direction "would be a silent catastrophe" — the certificate normal form is a disjoint union of primitives under a **symmetric** monoidal structure, symmetry gives cocommutativity, cocommutativity gives the enveloping-algebra theorem, and that licenses the bracket-vanishing oracle.
+- **Names cannot accidentally order the parallel direction.** The corpus's symmetry ruling is blunt about the stakes: ordering the parallel-component direction "would be a silent catastrophe" — the certificate normal form is a disjoint union of primitives under a **symmetric** monoidal structure, symmetry gives cocommutativity, cocommutativity gives the enveloping-algebra theorem, and that licenses the bracket-vanishing oracle.
   A positional port list imposes an order at every site and would have to be quotiented back out; a name-keyed one never imposes it.
   The cyclic-operad literature makes the same choice for the same reason: its simultaneous-composition term `a{tₓ | x ∈ X}` is explicitly order-irrelevant [@curien-obradovic-2017-cyclic].
-* **A wiring error becomes a named-port diagnostic** rather than an arity-index mismatch, and the polarity prefix makes the direction of every edge readable at the attachment site.
-* **Names dovetail with dependency**: a port's type may mention an earlier port's value (`r : Vec(x)` in an output list), which is the shape the dependent-core era needs anyway — and binding a pinned rewrite's endpoints in the parameter telescope is the same mechanism one dimension up.
+- **A wiring error becomes a named-port diagnostic** rather than an arity-index mismatch, and the polarity prefix makes the direction of every edge readable at the attachment site.
+- **Names dovetail with dependency**: a port's type may mention an earlier port's value (`r : Vec(x)` in an output list), which is the shape the dependent-core era needs anyway — and binding a pinned rewrite's endpoints in the parameter telescope is the same mechanism one dimension up.
 
 The published attachment discipline closest to this is the named approach to opetopes [@curien-hothanh-mimram-2019-opetopes], whose grafting rule attaches at a **named face** and carries exactly two side conditions worth copying:
 
-* the target face must be **unused** — "ensures that `a` hasn't been used for grafting beforehand", i.e. port linearity;
-* the boundaries must **agree** — the glued cell's iterated source must match the face's source.
+- the target face must be **unused** — "ensures that `a` hasn't been used for grafting beforehand", i.e. port linearity;
+- the boundaries must **agree** — the glued cell's iterated source must match the face's source.
 
 Its authors are explicit that these are not bureaucracy: "ill-formed graftings may occur with n-pasting diagrams, for `n ≥ 3`, and the side condition is necessary to rule them out."
 A second datum from the same system is worth carrying: substitution there can **add equations** to the ambient theory.
@@ -252,8 +252,8 @@ So degenerate attachment is an **identification, not a no-op** — a surface tha
 
 A block's body is a list of circuit applications, and each node is one of two kinds:
 
-* **frame** — an operation (a 1-cell): the context a rewrite happens inside, which is what the boundary language's whiskering construction `f(t̄, ρ, ū)` spells;
-* **redex** — a rewrite (a 2-cell): a named rule instantiation, or a port whose sort is a rewrite face.
+- **frame** — an operation (a 1-cell): the context a rewrite happens inside, which is what the boundary language's whiskering construction `f(t̄, ρ, ū)` spells;
+- **redex** — a rewrite (a 2-cell): a named rule instantiation, or a port whose sort is a rewrite face.
 
 A body whose nodes are all frame is a **1-cell definition** and takes `oper`/`cons`; a body containing redexes is a **2-cell** and takes `rule`.
 Under the ruled form both facts are locally visible and checker-confirmed: a frame line carries `-->`, a redex line carries `==>` (the applied head's kind), so the declaration keyword, the head arrow, and the body lines spell the block's dimension three independent ways.
@@ -274,11 +274,11 @@ A port that ranges over rewrites is sorted by the **2-cell face at the level's o
 | `Path(Nat, x, x′)` — the `Model` field  | the _interpretation_ written into the syntax, and `Path` is groupoidal      | **wrong level, and unsound**: it silently makes a directed rewrite invertible |
 | `Nat ==> Nat` — the 2-cell face         | two rewrites, whiskerable into one frame                                    | **adopted, and now ruled**                                                    |
 
-* The sort is the **boundary sort, not the boundary terms**.
+- The sort is the **boundary sort, not the boundary terms**.
   `node : p(x) ==> (x′)` unifies `p`'s source with `x` and binds `x′` to its target, so the inhabitant is the triple `(a, b, ρ : a ==> b)` — the same interface-pair shape as a hole.
   A pinned form `rule p : x ==> x′` stays available when the interface should name its endpoints, and binding pinned rewrites in the parameter telescope is what lets a congruence cell's body shrink to its frame.
-* The spelling is **stable across the directed family**: it interprets as `Path` under today's invertible overlay and as the directed former when that lands, with no surface change; `<=>` marks the invertible member explicitly rather than by overlay.
-* **Hazard dissolved by the ruling**: the sketch's `~>` in type position sat one glyph from `~~>`, the directed former at the type level.
+- The spelling is **stable across the directed family**: it interprets as `Path` under today's invertible overlay and as the directed former when that lands, with no surface change; `<=>` marks the invertible member explicitly rather than by overlay.
+- **Hazard dissolved by the ruling**: the sketch's `~>` in type position sat one glyph from `~~>`, the directed former at the type level.
   With `~>` retired and `==>` the face former, the near-collision no longer exists; `Step(Nat, x, x′)` is no longer needed as an escape.
 
 **As built, and where the elaboration lives.** `gandr-theory-levitation`'s `elaborate` module carries the three pieces: a `RewritePort` in a rule's parameter telescope (`CircuitRule::ports`), the `InterfacePair` its declaration binds, and the whiskered composite a block elaborates to.
@@ -357,9 +357,9 @@ The merger's incidence theorem holds in both directions — no edge of a merge j
 
 Two consequences for the surface:
 
-* The surface form is the shell's `&` (parallel jobs) lifted into the cell layer, and it is what the cell record's single-spine pattern must grow to hold.
+- The surface form is the shell's `&` (parallel jobs) lifted into the cell layer, and it is what the cell record's single-spine pattern must grow to hold.
   It connects to the corpus's existing ruling that a multi-root (forest) interface stays symmetric.
-* What disconnection **buys** in the derivation dimension is named already: **concurrency** — parallel independent rewriting.
+- What disconnection **buys** in the derivation dimension is named already: **concurrency** — parallel independent rewriting.
 
 The hazard to state rather than solve: the symmetry discipline above applies here most sharply, because a parallel body is precisely where an implementation is tempted to impose a traversal order.
 
@@ -468,8 +468,8 @@ This is why the keyword marks the block: the wheel is a property of the whole wi
 
 Two implementation precedents for the checking, both read:
 
-* DisCoPy detects cycles with Kahn's algorithm over the box-dependency graph, and separates `is_acyclic` from `is_causal` (left-monogamous **and** acyclic **and** topologically ordered) and from `is_boundary_connected` — with the documentation careful that these are independent: "there are acyclic diagrams that are not boundary-connected … and there are boundary-connected diagrams that are cyclic, e.g. the trace of an endomorphism" [@discopy].
-* Its `make_causal` is the **cycle-breaking constructor**: for each back-edge it splits a wire onto the boundary and traces it away.
+- DisCoPy detects cycles with Kahn's algorithm over the box-dependency graph, and separates `is_acyclic` from `is_causal` (left-monogamous **and** acyclic **and** topologically ordered) and from `is_boundary_connected` — with the documentation careful that these are independent: "there are acyclic diagrams that are not boundary-connected … and there are boundary-connected diagrams that are cyclic, e.g. the trace of an endomorphism" [@discopy].
+- Its `make_causal` is the **cycle-breaking constructor**: for each back-edge it splits a wire onto the boundary and traces it away.
   That is "cut the wheel, expose it as feedback" as an executable operation, and it is the shape gandr's normalization would take.
 
 What a wheel **buys** in the derivation dimension is named in the corpus already: **cyclic derivation** — the completion loop's fixpoints.
@@ -490,10 +490,10 @@ rule fuse : (x : A) ==> (r : C) {
 The adopted hole theory is monoidal context theory [@roman-2023-monoidal-context], read for this pass.
 Four things it supplies, and one correction to how the corpus currently states it.
 
-* **A hole is its interface pair.** Contexts are objects of `Cᵒᵖ × C` — a pair `(X / Y)` for a hole admitting a process from `X` to `Y` — and in the one-dimensional case a context is literally a list of such pairs with the arrow-fragments between them, composed by substitution at a numbered hole.
-* **Two tensors, with an operational reading that matches gandr's own.** `X ◁ Y` is "Y happens after X, and may depend on it"; `X ⊗ Y` is "X and Y happen independently, in parallel".
+- **A hole is its interface pair.** Contexts are objects of `Cᵒᵖ × C` — a pair `(X / Y)` for a hole admitting a process from `X` to `Y` — and in the one-dimensional case a context is literally a list of such pairs with the arrow-fragments between them, composed by substitution at a numbered hole.
+- **Two tensors, with an operational reading that matches gandr's own.** `X ◁ Y` is "Y happens after X, and may depend on it"; `X ⊗ Y` is "X and Y happen independently, in parallel".
   The interchange between them is **lax**, one-way — which is precisely the strength the corpus's interchange stratification assigns to the ambient duoidal category of interfaces ([[../metatheory#Interchange, by layer]]).
-* **A hole at the unit severs the diagram.** The `I` unit is a hole with no wires, which splits the diagram into two independent pieces; the `N` unit is no hole at all; and normalization is what "sews these two parts".
+- **A hole at the unit severs the diagram.** The `I` unit is a hole with no wires, which splits the diagram into two independent pieces; the `N` unit is no hole at all; and normalization is what "sews these two parts".
   Written in this sketch's notation, the two units look like this — and the first is the `both` block of [[#Disconnection]], read as one context rather than as two components:
 
 ```text
@@ -512,7 +512,7 @@ rule whole : (src : A) ==> (dst : D) {
 **This is the disconnection axis and the hole axis meeting**: disconnection is a hole with an empty interface.
 That identification is the most useful thing this reading produced, and it is now carried by the corpus's Holes section ([[../metatheory#Holes]]).
 
-* **Polarity plus acyclicity is a published, linear-time discipline.** The same work's polar lists are lists of types with a polarity function, and a **polar shuffle** is a bijection between the positive and negative halves whose induced directed graph is **acyclic** — with validity checkable in time linear in the interfaces, at most one shuffle between distinctly-typed lists, and composition preserving acyclicity.
+- **Polarity plus acyclicity is a published, linear-time discipline.** The same work's polar lists are lists of types with a polarity function, and a **polar shuffle** is a bijection between the positive and negative halves whose induced directed graph is **acyclic** — with validity checkable in time linear in the interfaces, at most one shuffle between distinctly-typed lists, and composition preserving acyclicity.
 
   gandr's two-sided ports **are** a polar list — inputs the negative half, outputs the positive — and its attachment check **is** a polar shuffle.
   Side by side, the `fuse` block above and its polar reading:
@@ -540,8 +540,8 @@ A gandr surface should not copy the notation; it should copy the structure.
 
 Fan-in and fan-out are a separate axis from connectivity, and the corpus already splits it:
 
-* **Routing is free.** Non-combining multi-output is just the target map — pure routing, no structure required.
-* **Combining is not.** Aggregating several contributions into one destination requires a **commutative monoid on the target**; unrestricted fan-in is not free wiring.
+- **Routing is free.** Non-combining multi-output is just the target map — pure routing, no structure required.
+- **Combining is not.** Aggregating several contributions into one destination requires a **commutative monoid on the target**; unrestricted fan-in is not free wiring.
 
 So a fan-in cell is lawful only when its target carries that structure, and the surface should make the obligation visible rather than letting a diagram imply it:
 
@@ -590,9 +590,9 @@ Each was read for this pass; each entry says what was verified and what was **no
 **The polarity hazard is bounded rather than dissolved, and the bound is narrow enough to state at the claim.** The thesis carries an exchangeable-output presentation and proves it equivalent to the entries-only one, so entries-only machinery is in principle transportable to a setting with a distinguished output.
 Three hypotheses stop that from touching the hazard as recorded.
 
-* The equivalence holds for **constant-free** cyclic operads only — the underlying species must be empty on the empty set and on every singleton — which gandr's signatures are not, since nullary constructors are ordinary and the arity-zero corolla is a legitimate cell shape.
-* The distinguished output is **exchangeable with any input**, by an involutive action satisfying an exchange law; that is a _marking_, and gandr's polarity is an _orientation_ — an involution on colours with a fixed pole, under which a wire runs at most one way (`forth-not-back`, `cut-oriented`). gandr's own carrier already carries the theorem that separates them: over one self-dual colour there is **no** orientation at all (`mono-unoriented`), and the entries-only setting is that case.
-* The observable consequence of having no polarity is in the syntax itself: the μ-syntax's rewriting system is **not confluent**, and the failure is exactly at the symmetry of the cut, with a redex and both its reducts denoting one tree — and five distinct normal forms exhibited for a single tree (sec. 2.4.2).
+- The equivalence holds for **constant-free** cyclic operads only — the underlying species must be empty on the empty set and on every singleton — which gandr's signatures are not, since nullary constructors are ordinary and the arity-zero corolla is a legitimate cell shape.
+- The distinguished output is **exchangeable with any input**, by an involutive action satisfying an exchange law; that is a _marking_, and gandr's polarity is an _orientation_ — an involution on colours with a fixed pole, under which a wire runs at most one way (`forth-not-back`, `cut-oriented`). gandr's own carrier already carries the theorem that separates them: over one self-dual colour there is **no** orientation at all (`mono-unoriented`), and the entries-only setting is that case.
+- The observable consequence of having no polarity is in the syntax itself: the μ-syntax's rewriting system is **not confluent**, and the failure is exactly at the symmetry of the cut, with a redex and both its reducts denoting one tree — and five distinct normal forms exhibited for a single tree (sec. 2.4.2).
   A per-cut polarity orientation is what gandr has and what that system lacks.
 
 So the disposition is: **the hazard stands, with its reason upgraded from "no distinction exists" to "the distinction that exists is the wrong one, and its absence is observable as non-confluence".** Do not cite the equivalence as a licence to import the entries-only machinery into a polarised setting without checking constant-freeness first.
@@ -602,8 +602,8 @@ Chyp is the closest existing thing to the question this sketch asks — a declar
 Generators are declared by arity alone (`gen f : 2 -> 1`); diagrams are built from sequential `;`, parallel `*`, `id`, the empty diagram `id0`, and an arbitrary-permutation swap `sw[…]`; internal wires exist only as the positional seam of a composition; and there is consequently no ancilla scope, no binder, and no unbound-wire error class.
 Two data points travel with that choice and both bear on [[#Attachment is by name, and that is a soundness property]].
 
-* **The cost of all-positional wiring is visible and admitted.** Permutation indices are local to each swap, so "splitting or combining swap maps will change some indices in general" — positional wiring is not compositional in its indices, which is the concrete price this sketch's name-keyed attachment is paying to avoid.
-* **Its golden rule is the diagram-normal-form half made into a user-visible law**: "only connectivity matters", decided by cospan isomorphism rather than by rewriting.
+- **The cost of all-positional wiring is visible and admitted.** Permutation indices are local to each swap, so "splitting or combining swap maps will change some indices in general" — positional wiring is not compositional in its indices, which is the concrete price this sketch's name-keyed attachment is paying to avoid.
+- **Its golden rule is the diagram-normal-form half made into a user-visible law**: "only connectivity matters", decided by cospan isomorphism rather than by rewriting.
   A surface that wires by name has to earn the same law rather than inherit it, because two name-different bodies must still denote one diagram.
 
 This is a **counter-model for the notation and a confirmation for the semantics**, and saying which is which is the useful outcome of reading it.
@@ -633,17 +633,17 @@ A document about "circuit cells" is exactly where the wrong neighbour is importe
 
 ## Source and confidence
 
-* **This document's status is the load-bearing part of it, and it split on 2026-08-02.** The block form's core spellings are ruled ([[#The block form, ruled]], owner, in design dialogue): those code blocks are spellings.
+- **This document's status is the load-bearing part of it, and it split on 2026-08-02.** The block form's core spellings are ruled ([[#The block form, ruled]], owner, in design dialogue): those code blocks are spellings.
   The **rule block** has a corpus witness and a surface elaboration as of that same date, named in the status list above; the derived-boundary route is the semantics it carries — specified at [[#The derived pair meets the sphere by checking, not by synthesis]], exercised by crate fixtures, and reached from source.
   Everything the status list names as not graduated — the reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper` member's filler, a `rule` member with no filler — plus holes and aggregation, remains a sketch, and its code blocks remain shapes.
-* The **carrier facts are high confidence**: they are landed, machine-checked, and named in the carrier record (migrated — the corpus README's migration banner).
+- The **carrier facts are high confidence**: they are landed, machine-checked, and named in the carrier record (migrated — the corpus README's migration banner).
   Nothing here proposes changing them, and the no-cup consequence is quoted rather than inferred.
-* The **rulings it honours** — the generality ruling, the symmetry refusal, the horizontal-composition decline and its reversal condition, the aggregation split — are quoted from the corpus with their reversal conditions intact.
-* The **precedents were read for this pass**, and three claims that an intermediate summary had attributed to them did not survive: the μ-syntax is not a polarity precedent and has no `μ̃`; the opetopic acyclicity condition is not a theorem; and the corpus's own paraphrase of monoidal context theory's main result conflates two statements.
+- The **rulings it honours** — the generality ruling, the symmetry refusal, the horizontal-composition decline and its reversal condition, the aggregation split — are quoted from the corpus with their reversal conditions intact.
+- The **precedents were read for this pass**, and three claims that an intermediate summary had attributed to them did not survive: the μ-syntax is not a polarity precedent and has no `μ̃`; the opetopic acyclicity condition is not a theorem; and the corpus's own paraphrase of monoidal context theory's main result conflates two statements.
   Those corrections are recorded above rather than quietly dropped.
-* The **feedback-versus-trace distinction is not a finding of this pass.** Feedback categories are the project's already-adopted entry tier for wheels, and the cartesian-trace hazard is recorded beside them in the register.
+- The **feedback-versus-trace distinction is not a finding of this pass.** Feedback categories are the project's already-adopted entry tier for wheels, and the cartesian-trace hazard is recorded beside them in the register.
   What this pass contributes is corroboration against a production implementation, plus the observation that the adopted structure supplies a **second, typed** guard discipline beside a block keyword.
   An earlier draft claimed the distinction as new and claimed a locator was owed for it.
   Both were wrong and both are withdrawn: the register carries the locators, and the position was already taken.
-* This document was **adversarially reviewed** against its sources before landing, and that pass caught four real defects, all corrected here: a witness-inventory claim naming a guard the inventory does not contain; a "`fix`-versus-wheel firewall" that exists nowhere in the corpus; the novelty and locator errors above; and a guarded-form fence stated in the present indicative when it is this document's own proposal.
+- This document was **adversarially reviewed** against its sources before landing, and that pass caught four real defects, all corrected here: a witness-inventory claim naming a guard the inventory does not contain; a "`fix`-versus-wheel firewall" that exists nowhere in the corpus; the novelty and locator errors above; and a guarded-form fence stated in the present indicative when it is this document's own proposal.
   The lesson recorded for the next pass: **check the project's bibliography register before declaring a locator owed**, and before calling a position new.

@@ -18,9 +18,9 @@
 
 The groupoid/iso case is fixed (iu-notes:WYRD-INTAKE.md W3; `iu:docs/spec/DESIGN-ua-base-vocabulary.md` §§1–6): **ua-base** is the protype isomorphism `CodeIso(x ⨟ y) ≅ (x ⤳ y)`, decomposed as
 
-* **O1 — sound realization**: `⟦−⟧ : (x ⤳ y) → CodeIso(x ⨟ y)`, iso-valued by construction (every edit generator names a translator pair with round-trip evidence);
-* **O2 — fullness**: every certificate in the fixed iso stock is replay-equal to a realized path;
-* **O3 — round trips**: a section `edit` with **β at replay-equivalence `≈ʳ`** and **η at rule congruence `≈ᶜ`** — never code equality on either side;
+- **O1 — sound realization**: `⟦−⟧ : (x ⤳ y) → CodeIso(x ⨟ y)`, iso-valued by construction (every edit generator names a translator pair with round-trip evidence);
+- **O2 — fullness**: every certificate in the fixed iso stock is replay-equal to a realized path;
+- **O3 — round trips**: a section `edit` with **β at replay-equivalence `≈ʳ`** and **η at rule congruence `≈ᶜ`** — never code equality on either side;
 
 with **three quantifier alphabets fixed in the statement** (the eq² discipline, `DESIGN-ua-base-vocabulary.md` §2): paths **certificate-generated**, instances **saturated** (modules over the path relation = the store being a profunctor, W2), isos **leaf-natural**.
 The executed demonstrator is `iu:src/Internal/UaBase/` — nine gate-green leaf modules (`Code`, `Value`, `Iso`, `Edit`, `Realization`, `Normalize`, `Complete`, `Rules`, `Negation`) proving O1, O2 (absolute on the leaf-free toy fragment), and O3-β, plus four η-tranche modules (`Faithful`, `WordProblem`, `Canonical`, `Coxeter`) in which η is **staged**: `--safe`-green as a _conditional_ development, reduced — **as of 2026-07-19, with the closure actively in motion** — to the **seven `letterC` walls** of the `Discharge` module (`iu:src/Internal/UaBase/Canonical.agda:1647-1662`; W14; iu bead `iu-c2h.1`), with the Sₙ Coxeter coherence (`perm-hom`) discharged **unconditionally** (`iu:src/Internal/UaBase/Coxeter.agda:1446-1664`).
@@ -55,16 +55,16 @@ The answer from the executed demonstrator's own source is **yes, with a precise 
 
 The evidence, each item cited to the executed code:
 
-* **E1 — generators are oriented.** The edit alphabet is `data EditGen : Code → Code → Set` with directed schemas (`⊗assoc : EditGen ((c ⊗ d) ⊗ e) (c ⊗ (d ⊗ e))`, `dist : EditGen (c ⊗ (d ⊕ e)) ((c ⊗ d) ⊕ (c ⊗ e))`, …), and the in-code comment says it outright: _"each a directed schema with a formal inverse under `bwd`"_ (`iu:src/Internal/UaBase/Edit.agda:46-58`).
-* **E2 — symmetrization is free doubling, not substrate.** Paths are words over the **involutive character alphabet** `Char` (`fwd`/`bwd`, `iu:src/Internal/Rewriting.agda:98-106`) — the _free strict involutive word category_, the module header's own phrase.
+- **E1 — generators are oriented.** The edit alphabet is `data EditGen : Code → Code → Set` with directed schemas (`⊗assoc : EditGen ((c ⊗ d) ⊗ e) (c ⊗ (d ⊗ e))`, `dist : EditGen (c ⊗ (d ⊕ e)) ((c ⊗ d) ⊕ (c ⊗ e))`, …), and the in-code comment says it outright: _"each a directed schema with a formal inverse under `bwd`"_ (`iu:src/Internal/UaBase/Edit.agda:46-58`).
+- **E2 — symmetrization is free doubling, not substrate.** Paths are words over the **involutive character alphabet** `Char` (`fwd`/`bwd`, `iu:src/Internal/Rewriting.agda:98-106`) — the _free strict involutive word category_, the module header's own phrase.
   `w ++ inv w` is **not** `[]`: cancellation is imposed one dimension up, as the oriented rules `cancelˡ`/`cancelʳ : (inv w ++ w) ⇒² []` inside the rule congruence (`iu:src/Internal/UaBase/Rules.agda:370-371`).
   The groupoid content of ua-base is therefore _rules over a directed substrate_, not a symmetric substrate.
-* **E3 — the design already mandated directed paths; the code deviated.** `DESIGN-ua-base-vocabulary.md` §7 requires _"Paths are `Step*`-shaped"_ — the purely directed snoc kit with **no** inverse constructor (`here`/`then`, `iu:src/Internal/Step.agda:64-66`) — while the executed `Edit x y = Word ℰ x y` uses the involutive `Word` instead (`iu:src/Internal/UaBase/Edit.agda:72-73`).
+- **E3 — the design already mandated directed paths; the code deviated.** `DESIGN-ua-base-vocabulary.md` §7 requires _"Paths are `Step*`-shaped"_ — the purely directed snoc kit with **no** inverse constructor (`here`/`then`, `iu:src/Internal/Step.agda:64-66`) — while the executed `Edit x y = Word ℰ x y` uses the involutive `Word` instead (`iu:src/Internal/UaBase/Edit.agda:72-73`).
   The directed statement _redeems the design's own substrate mandate_ rather than departing from it.
-* **E4 — even the certificate grade is one-sided.** Replay-equivalence, the grade at which β is stated, compares **only the forward translator**: `f ≐ g = (a : A) → f .to a ≡ g .to a` (`iu:src/Internal/UaBase/Iso.agda:39-41`).
+- **E4 — even the certificate grade is one-sided.** Replay-equivalence, the grade at which β is stated, compares **only the forward translator**: `f ≐ g = (a : A) → f .to a ≡ g .to a` (`iu:src/Internal/UaBase/Iso.agda:39-41`).
   The groupoid demonstrator never inspects the inverse when comparing certificates.
-* **E5 — the saturation alphabet is already directed.** Saturation = the store being a profunctor (W2), and the profunctor module structure is variance-typed with no inverses anywhere: `actˡ` contravariant, `actʳ` covariant, laws `act-idn*`/`act-seq*`/`act-xchg` (`iu:src/Internal/Profunctor.agda:52-123`); the unit-UP discharge is the Yoneda correspondence whose extension map is one covariant action, `yoneda-from w .cmp h = P .actʳ (w .cmp a) h` (`iu:src/Internal/Profunctor/Yoneda.agda:50-51`), and whose round trips are `act-idnʳ` plus dinaturality — no symmetry consumed.
-* **E6 — the directed precedents are in-tree.** `iu:src/Internal/Profunctor/Tabulator/Path.agda:29-33` is _directed path induction_ whose groupoid instance _specializes_ to the symmetric J; `iu:src/Internal/Profunctor/Tabulator/Pi.agda:21` declares _"EVERYTHING IN THIS MODULE IS DIRECTED — no inverses appear anywhere"_ and builds Π as a right extension along the display map's **conjoint**.
+- **E5 — the saturation alphabet is already directed.** Saturation = the store being a profunctor (W2), and the profunctor module structure is variance-typed with no inverses anywhere: `actˡ` contravariant, `actʳ` covariant, laws `act-idn*`/`act-seq*`/`act-xchg` (`iu:src/Internal/Profunctor.agda:52-123`); the unit-UP discharge is the Yoneda correspondence whose extension map is one covariant action, `yoneda-from w .cmp h = P .actʳ (w .cmp a) h` (`iu:src/Internal/Profunctor/Yoneda.agda:50-51`), and whose round trips are `act-idnʳ` plus dinaturality — no symmetry consumed.
+- **E6 — the directed precedents are in-tree.** `iu:src/Internal/Profunctor/Tabulator/Path.agda:29-33` is _directed path induction_ whose groupoid instance _specializes_ to the symmetric J; `iu:src/Internal/Profunctor/Tabulator/Pi.agda:21` declares _"EVERYTHING IN THIS MODULE IS DIRECTED — no inverses appear anywhere"_ and builds Π as a right extension along the display map's **conjoint**.
   The ratified charter language is already "directed core, groupoidal overlay" (`PLAN-temporal-realignment.md` §2 T1, §9 ADR-12 D5) — and the pre-reboot corpus carries the same finding as a named, load-bearing item: _"gandr's type-level operators are directed already; invertibility is an **overlay** (ADR-69's invertible flag), not the default"_ (wyrd@failed-refactor:docs/gandr/spec/proposal-identity-univalence.md:198-200, the item titled exactly "Directed core, groupoidal overlay").
 
 **The exact primitive-to-derived relation.** Write `ℰ⇝` for the directed edit alphabet (§5.1) and `ℰ ⊂ ℰ⇝` for its **evidence-invertible sub-alphabet** — the generators carrying a designated inverse schema _plus per-schema round-trip evidence_ (the O1 hard constraint of the groupoid vocabulary).
@@ -76,43 +76,43 @@ Then:
 
 Two readings are thereby rejected honestly:
 
-* _Groupoid-as-quotient fails._ `x ⤳ y` is neither a sub-protype nor a quotient of `x ⇝ y` — it has more letters (the `bwd` half) and more rules (cancellation); the correct arrow is localization of a restriction.
-* _Directed-by-forgetting fails._ One cannot obtain the directed statement by discarding inverses from the groupoid one: the one-way generator classes (§5.1) and their rule layer are strictly new material, and the fullness quantifier ranges over a strictly larger certificate stock (§5.3).
+- _Groupoid-as-quotient fails._ `x ⤳ y` is neither a sub-protype nor a quotient of `x ⇝ y` — it has more letters (the `bwd` half) and more rules (cancellation); the correct arrow is localization of a restriction.
+- _Directed-by-forgetting fails._ One cannot obtain the directed statement by discarding inverses from the groupoid one: the one-way generator classes (§5.1) and their rule layer are strictly new material, and the fullness quantifier ranges over a strictly larger certificate stock (§5.3).
 
 ## 4. The directed statement — candidates, comparison, recommendation
 
 ### 4.1 The two protypes, replaced
 
-* **`CodeHom(x ⨟ y)` — the directed certificate stock.** Translator _singletons_: a forward map with replay evidence on the fragment, no inverse and no round-trip demand.
+- **`CodeHom(x ⨟ y)` — the directed certificate stock.** Translator _singletons_: a forward map with replay evidence on the fragment, no inverse and no round-trip demand.
   Identity is **replay-equivalence `≈ʳ` unchanged** — E4 shows the groupoid grade already compares only the forward map, so `≈ʳ` transfers verbatim.
   Note `≈ʳ` remains an _equivalence relation on each hom stock_; directedness lives in the 1-cells' orientation, not in the comparison grade.
-* **`x ⇝ y` — the directed path protype.** Certificate-generated **positive words** (`Step*`-shaped, E3 — no `bwd` half) over the directed vocabulary `ℰ⇝`, compared by the directed rule congruence `≈ᶜ⇝` generated by an oriented dimension-2 rule layer (§5.1).
+- **`x ⇝ y` — the directed path protype.** Certificate-generated **positive words** (`Step*`-shaped, E3 — no `bwd` half) over the directed vocabulary `ℰ⇝`, compared by the directed rule congruence `≈ᶜ⇝` generated by an oriented dimension-2 rule layer (§5.1).
 
 ### 4.2 Candidate statements
 
 **D-A — the maximal (GWB-shaped) statement.** `CodeHom(x ⨟ y) ≅ (x ⇝ y)` with the O2 quantifier over _all_ replay-total translators.
 This is Q-15's Definition 1.2 transplanted: hom-certificates ≅ functions.
 
-* On the **leaf-free** fragment this is the right absolute target (no leaves for naturality to constrain; the stock is all functions between finite value sets, and generation is elementary).
-* Over leaves it is **refuted at the first infinite leaf**, by the directed sibling of the leaf-shift witness (W1): a **constant-literal translator** `x ⇝ Integer-leaf` (send everything to `17`) is replay-total and replay-distinct from every structurally-generated map, but is not uniform in the _target_ leaf contents — no finitary vocabulary reaches it.
+- On the **leaf-free** fragment this is the right absolute target (no leaves for naturality to constrain; the stock is all functions between finite value sets, and generation is elementary).
+- Over leaves it is **refuted at the first infinite leaf**, by the directed sibling of the leaf-shift witness (W1): a **constant-literal translator** `x ⇝ Integer-leaf` (send everything to `17`) is replay-total and replay-distinct from every structurally-generated map, but is not uniform in the _target_ leaf contents — no finitary vocabulary reaches it.
   Verdict: keep D-A as the leaf-free absolute form; as the general statement it is D-C minus the fence, i.e. false.
 
 **D-B — the lax/adjoint statement.** Require every one-way generator to carry one-sided adjoint evidence (a designated section or retraction), and state the round trips one-sidedly — β in one direction at `≈ʳ`, the other direction a comparison 2-cell.
 
-* This is the companion/conjoint-*pair* reading, and it is the right shape **at the VDC face** for restrictions of realized tight maps (§7) — but as the base statement it fails the grade discipline: η would live at a lax 2-cell grade, adjoint choices are not schema-uniform (a non-injective, non-surjective translator has no canonical section _or_ retraction), and the statement stops being an isomorphism of protypes at stated grades.
+- This is the companion/conjoint-*pair* reading, and it is the right shape **at the VDC face** for restrictions of realized tight maps (§7) — but as the base statement it fails the grade discipline: η would live at a lax 2-cell grade, adjoint choices are not schema-uniform (a non-injective, non-surjective translator has no canonical section _or_ retraction), and the statement stops being an isomorphism of protypes at stated grades.
   Verdict: decline as the ua statement; retain the content as the equipment structure the reflection face hosts.
 
 **D-C — the fenced directed statement (RECOMMENDED).**
 
 > **ua-dir (base-stratum, μ-free).** Over the same Desc fragment as ua-base, with the certificate alphabet fixed to the **leaf-natural one-way stock** (§5.3): the realization `⟦−⟧ : (x ⇝ y) → CodeHom(x ⨟ y)` of the directed edit polygraph `ℰ⇝` is
 >
-> + **O1⇝ sound**: every generator schema names a translator with replay evidence; paths realize by (unconditional) composition of translators;
-> + **O2⇝ full**: every leaf-natural one-way certificate is replay-equal to a realized positive word — fullness of the D1 interpretation at the **unit-plus-restriction fragment** over the Desc signature;
-> + **O3⇝ sectioned**: the constructed `edit⇝` satisfies **β at `≈ʳ`** and **η at `≈ᶜ⇝`** — the grade discipline verbatim from the groupoid case, never code equality;
+> - **O1⇝ sound**: every generator schema names a translator with replay evidence; paths realize by (unconditional) composition of translators;
+> - **O2⇝ full**: every leaf-natural one-way certificate is replay-equal to a realized positive word — fullness of the D1 interpretation at the **unit-plus-restriction fragment** over the Desc signature;
+> - **O3⇝ sectioned**: the constructed `edit⇝` satisfies **β at `≈ʳ`** and **η at `≈ᶜ⇝`** — the grade discipline verbatim from the groupoid case, never code equality;
 >
 > and additionally
 >
-> + **O4 — core coincidence (new, directed-only)**: the canonical comparison from the groupoid statement into the invertible core of the directed one — `(x ⤳ y)/≈ᶜ → core((x ⇝ y)/≈ᶜ⇝)` on paths, `CodeIso ↪ CodeHom`-image on certificates — is a bijection at the stated grades.
+> - **O4 — core coincidence (new, directed-only)**: the canonical comparison from the groupoid statement into the invertible core of the directed one — `(x ⤳ y)/≈ᶜ → core((x ⇝ y)/≈ᶜ⇝)` on paths, `CodeIso ↪ CodeHom`-image on certificates — is a bijection at the stated grades.
 >   Concretely: every positive word whose realization is invertible is `≈ᶜ⇝`-congruent to (the positive image of) a groupoid-vocabulary word.
 
 **What replaces symmetry: nothing at dimension 1, deliberately.** `sym` is overlay data — available exactly on the evidence-invertible sub-alphabet, via the localization of §3 — and its absence from `ℰ⇝` is the entire directed content.
@@ -163,9 +163,9 @@ Presentations of this monoid are classical, but the register holds **no row** fo
 The univalent-typoids precedent (Q-20, arXiv:2205.06651) carries a load-bearing caveat in the groupoid case: its `Ua` targets the _ambient identity type_, which Hedberg degenerates over decidable codes (W16).
 The directed case splits this into two sharper facts:
 
-* **There is no ambient crutch to degenerate to.** MLTT has no native hom former, so a directed `Ua` _cannot_ target ambient identity — the directed statement is forced into the typoid-function/Rezk-completion direction (realization-as-functor) from the start.
+- **There is no ambient crutch to degenerate to.** MLTT has no native hom former, so a directed `Ua` _cannot_ target ambient identity — the directed statement is forced into the typoid-function/Rezk-completion direction (realization-as-functor) from the start.
   What was a caveat in the groupoid case is a structural feature here.
-* **The new degeneracy is thinness.** The directed analog of "UIP-by-stealth" is _poset collapse_: if the hom protype is proof-irrelevant (thin), ua-dir degenerates to an order-rigidity statement — the directed analog of the T2 rigidity horn (`PLAN-temporal-realignment.md` §2 T2).
+- **The new degeneracy is thinness.** The directed analog of "UIP-by-stealth" is _poset collapse_: if the hom protype is proof-irrelevant (thin), ua-dir degenerates to an order-rigidity statement — the directed analog of the T2 rigidity horn (`PLAN-temporal-realignment.md` §2 T2).
   The constant-map witness (§5 table) is the permanent guard: four replay-distinct parallel certificates at `(Bool, Bool)` refute any thin rendering.
   Recommendation: file it buildout-side as a permanent negative test beside U3.0c and the leaf-shift witness (W1), at whichever phase first carries a directed hom stock (§10 Q7).
 
@@ -176,13 +176,13 @@ The directed case splits this into two sharper facts:
 B7 does not start from nothing.
 The pre-reboot tree carries a complete groupoid identity layer whose **typing side is port-ready**:
 
-* **Former.** `Path A x y` is the first dependent value former (rule `Path-Form`, ADR-76), with endpoints **invariant under subtyping** — _"covariant widening is unsound without transport"_ is recorded at the former itself (wyrd@failed-refactor:crates/gandr-core/src/types.rs:180-202).
+- **Former.** `Path A x y` is the first dependent value former (rule `Path-Form`, ADR-76), with endpoints **invariant under subtyping** — _"covariant widening is unsound without transport"_ is recorded at the former itself (wyrd@failed-refactor:crates/gandr-core/src/types.rs:180-202).
   That invariance note is the groupoid core already refusing to fake directedness: covariant endpoint-widening _is_ a `Flow`-shaped transport, and the core declines it until the directed family provides it honestly.
-* **Intro / elim.** `Value::Here` (wyrd@failed-refactor:crates/gandr-core/src/syntax.rs:803, builder :1036-1042) and `Comp::Walk` with the `WalkMotive`/`WalkBase` binder pair (:1702, :1216, :1238) — the **dinatural ML-J primitive** of ADR-76 D4, motive over both endpoints and the path (`walk` delivers `C[a/x][b/y][p/q]`, :1688-1689).
+- **Intro / elim.** `Value::Here` (wyrd@failed-refactor:crates/gandr-core/src/syntax.rs:803, builder :1036-1042) and `Comp::Walk` with the `WalkMotive`/`WalkBase` binder pair (:1702, :1216, :1238) — the **dinatural ML-J primitive** of ADR-76 D4, motive over both endpoints and the path (`walk` delivers `C[a/x][b/y][p/q]`, :1688-1689).
   The dinatural (unbased) form was chosen precisely to keep the groupoidal core aligned with a directed reflected layer (wyrd@failed-refactor:docs/gandr/spec/proposal-identity-univalence.md:95-96); it is E6's directed-path-induction shape one level down.
-* **Rules.** Rule `Walk` in the typing machine (wyrd@failed-refactor:crates/gandr-core/src/machine.rs:1678-1681; frame pops :2437, :2473; suspended frames :558-582), lock-step with the recursive checker.
-* **The K fence.** The `case`-on-`Path` decline carries the literal `without-k` substring, asserted by the pathological corpus witness `pathological/identity/k-derivation.gandr` (wyrd@failed-refactor:crates/gandr-core/src/error.rs:126-144) — ADR-76 D4's binding adequacy obligation, executed.
-* **Vocabulary.** ADR-79 fixes both families' spellings before any directed rule exists: groupoid `Path`/`here`/`walk`/`then`/`back`; directed former `Flow` (ADR-79 spelling `Step`), **no `back` by design**, transformation notation `~~>`.
+- **Rules.** Rule `Walk` in the typing machine (wyrd@failed-refactor:crates/gandr-core/src/machine.rs:1678-1681; frame pops :2437, :2473; suspended frames :558-582), lock-step with the recursive checker.
+- **The K fence.** The `case`-on-`Path` decline carries the literal `without-k` substring, asserted by the pathological corpus witness `pathological/identity/k-derivation.gandr` (wyrd@failed-refactor:crates/gandr-core/src/error.rs:126-144) — ADR-76 D4's binding adequacy obligation, executed.
+- **Vocabulary.** ADR-79 fixes both families' spellings before any directed rule exists: groupoid `Path`/`here`/`walk`/`then`/`back`; directed former `Flow` (ADR-79 spelling `Step`), **no `back` by design**, transformation notation `~~>`.
 
 **The unpaid half is the dynamics.** The pre-reboot sequent lane declines any program mentioning `Value::Here`/`Comp::Walk` **whole** (`FocusOrigin::Unsupported`; wyrd@failed-refactor:crates/gandr-sequent/src/focus.rs:1644-1703) — L-machine Walk-β was explicitly the _other_ lane's work and never landed.
 Since the reboot's B1 retires the CEK in favor of the L machine (`PLAN.html` §4, B1), **B7 must build the identity layer's L-machine dynamics new** — Walk-β and the directed eliminator's β — not port them.
@@ -202,9 +202,9 @@ Pass 1 could not see this; it changes the B7 estimate, not the design.
 
 Two facts make the directed column cheap to build:
 
-* **The side condition is term-structural and total — no variance-sorted contexts needed at B7.** The pre-reboot tree proves this implementable: `MotiveShape` (`CovariantTarget`/`Constant` admissible, `ContravariantSource` refused), `check_directed_j` as a total checker returning `JError::MotiveNotCovariant`, and named property witnesses (`symmetry_is_never_derivable`) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:105-117, :230-251, :227-228.
+- **The side condition is term-structural and total — no variance-sorted contexts needed at B7.** The pre-reboot tree proves this implementable: `MotiveShape` (`CovariantTarget`/`Constant` admissible, `ContravariantSource` refused), `check_directed_j` as a total checker returning `JError::MotiveNotCovariant`, and named property witnesses (`symmetry_is_never_derivable`) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:105-117, :230-251, :227-228.
   The polarity check inspects only the motive's use of the moving endpoint; contexts stay variance-blind.
-* **The design stance is already precedented twice**: the without-K unifier refuses the deletion step exactly as the polarity condition refuses the contravariant motive — the pre-reboot module records the analogy in so many words (wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:10-24).
+- **The design stance is already precedented twice**: the without-K unifier refuses the deletion step exactly as the polarity condition refuses the contravariant motive — the pre-reboot module records the analogy in so many words (wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:10-24).
 
 **Variance staging** (what lands where): B7 — none (motive-shape check only, per the above); B10 — variance-sorted contexts on the **reflected layer only**, porting the Ł1 design record that `−ᵒᵖ` lives on reflected signatures and the frozen core is untouched (§7.1); metatheory — the general dipresheaf variance judgment.
 
@@ -218,13 +218,13 @@ B7's permanent guards are the two derivation witnesses in the table.
 
 **Recommendation: yes — reserve one variance/directedness annotation slot in the S1/export format at B2**, with the honest note that B7 itself never reads it.
 
-* **The moment is singular.** The S1/export format _already_ reserves annotation slots as a B2 design act — erasure and modes/grades (`PLAN.html` §4, B2 row) — so the reserved-slot vocabulary is open on the table exactly once.
-* **What the slot is NOT for.** `Flow` and its eliminator are _term constructors_; they ride the standing kernel subset-growth obligation at B7 like every other former, and need no reservation.
-* **What it IS for.** The polarity/variance **annotation plane**: B9's variance-marked certificate boundaries (§8.1 item 1) and B10's variance-sorted reflected contexts annotate binders and boundaries _orthogonally to term structure_ — the same annotation shape as erasure and modes/grades, which is why the same mechanism fits.
-* **Cheap now.** One reserved tag plus one format-doc line; semantics-free; compatible with ADR-79's honesty gate (the gate fences surface _rules_, not schema reservations — a reserved slot front-runs nothing).
-* **Expensive later.** From B9 the format has **two independent consumers** — the kernel's export writer and the kernel-replay second checker (`PLAN.html` §4, B9; §6: the certified TCB is "S1 term language, conversion, replay").
+- **The moment is singular.** The S1/export format _already_ reserves annotation slots as a B2 design act — erasure and modes/grades (`PLAN.html` §4, B2 row) — so the reserved-slot vocabulary is open on the table exactly once.
+- **What the slot is NOT for.** `Flow` and its eliminator are _term constructors_; they ride the standing kernel subset-growth obligation at B7 like every other former, and need no reservation.
+- **What it IS for.** The polarity/variance **annotation plane**: B9's variance-marked certificate boundaries (§8.1 item 1) and B10's variance-sorted reflected contexts annotate binders and boundaries _orthogonally to term structure_ — the same annotation shape as erasure and modes/grades, which is why the same mechanism fits.
+- **Cheap now.** One reserved tag plus one format-doc line; semantics-free; compatible with ADR-79's honesty gate (the gate fences surface _rules_, not schema reservations — a reserved slot front-runs nothing).
+- **Expensive later.** From B9 the format has **two independent consumers** — the kernel's export writer and the kernel-replay second checker (`PLAN.html` §4, B9; §6: the certified TCB is "S1 term language, conversion, replay").
   Retrofitting an annotation plane after that is a coordinated format bump across both checkers, on the TCB.
-* **The honest alternative, priced.** Nothing before B9 reads the slot, so deferring to B7 (or even B9 itself) is _workable_ — but the deferral saves one line of schema and bets that B3–B6 consumers ossify no format assumptions; the price asymmetry says reserve now.
+- **The honest alternative, priced.** Nothing before B9 reads the slot, so deferring to B7 (or even B9 itself) is _workable_ — but the deferral saves one line of schema and bets that B3–B6 consumers ossify no format assumptions; the price asymmetry says reserve now.
   Owner call recorded as §10 Q1.
 
 ## 7. The VDC face — what the pre-reboot directed modules already provide, what D-C still needs
@@ -234,15 +234,15 @@ It is the LLV fragment (Q-3) engineered; the survey below is the honest inventor
 
 ### 7.1 The inventory — the Ł1–Ł4 ladder, executed
 
-* **Ł1 — variance-sorted reflected contexts.** `Variance` is the closed two-way polarity vocabulary, with the engine's third case `Mixed` deliberately _not_ a directed variance (`Variance::of_cell` maps it to `None` — it is the dinaturality shape); `OpSig` pairs a frozen-core signature with a variance slot, and the `−ᵒᵖ` involution lives **on reflected signatures only** — the frozen core carries no `op` (wyrd@failed-refactor:crates/gandr-vdc/src/directed/context.rs:33-93, :107-161).
+- **Ł1 — variance-sorted reflected contexts.** `Variance` is the closed two-way polarity vocabulary, with the engine's third case `Mixed` deliberately _not_ a directed variance (`Variance::of_cell` maps it to `None` — it is the dinaturality shape); `OpSig` pairs a frozen-core signature with a variance slot, and the `−ᵒᵖ` involution lives **on reflected signatures only** — the frozen core carries no `op` (wyrd@failed-refactor:crates/gandr-vdc/src/directed/context.rs:33-93, :107-161).
   `DirectedContext::check_cell_variance` turns the engine's derived variance metadata into a _checkable_ judgment, rejecting mismatched and mixed holes (:183-214, :335).
   **Transfer**: this design record — variance on the reflected layer, never on the kernel's objects — is the binding precedent behind §6.2's variance staging.
-* **Ł2 — hom as directed equality.** `DirectedHom {sig, src, tgt}` with contravariant source and covariant target, diagonal `refl`, and the polarity-restricted directed J: `check_directed_j` is a **total checker** under which **symmetry is underivable by construction** — the contravariant motive is refused, with `DirectedJ::symmetry` provided precisely so tests can assert its refusal on every generated hom (wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:47-94, :105-117, :177-183, :230-251).
-* **Ł3 — (co)ends as quantifiers, finite carriers.** `Diagram`/`End`/`Coend` over finite discrete carriers, with **Fubini and co-Yoneda as derived transformations** (`fubini_swap` an involution; `coyoneda_collapse` collapsing the density coend to the diagonal summand) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/coend.rs:47-171, :255, :291.
+- **Ł2 — hom as directed equality.** `DirectedHom {sig, src, tgt}` with contravariant source and covariant target, diagonal `refl`, and the polarity-restricted directed J: `check_directed_j` is a **total checker** under which **symmetry is underivable by construction** — the contravariant motive is refused, with `DirectedJ::symmetry` provided precisely so tests can assert its refusal on every generated hom (wyrd@failed-refactor:crates/gandr-vdc/src/directed/hom.rs:47-94, :105-117, :177-183, :230-251).
+- **Ł3 — (co)ends as quantifiers, finite carriers.** `Diagram`/`End`/`Coend` over finite discrete carriers, with **Fubini and co-Yoneda as derived transformations** (`fubini_swap` an involution; `coyoneda_collapse` collapsing the density coend to the diagonal summand) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/coend.rs:47-171, :255, :291.
   Two honesty boundaries are stated in the module itself: carriers are **finite**, and the hom is **refl-generated** — `discrete_hom_inhabited` is inhabited exactly on the diagonal (:314; module header :14-24).
-* **Ł4 — the boundary theorem, operational.** `directed_cut` routes certificate composition off the invertibility boundary: wholly-invertible certificates compose through the **ungated** `compose_invertible` (`CutOutcome::Coherent` — never declined), everything else consults the acyclicity gate (`CutOutcome::Directed`/`Declined` with the flow cycle as diagnostic) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/boundary.rs:41-54, :128-143, :160-170.
+- **Ł4 — the boundary theorem, operational.** `directed_cut` routes certificate composition off the invertibility boundary: wholly-invertible certificates compose through the **ungated** `compose_invertible` (`CutOutcome::Coherent` — never declined), everything else consults the acyclicity gate (`CutOutcome::Directed`/`Declined` with the flow cycle as diagnostic) — wyrd@failed-refactor:crates/gandr-vdc/src/directed/boundary.rs:41-54, :128-143, :160-170.
   This is §2 item 2's composability boundary (LLV Thm 4.5 vs 5.3, W12) already running as code, and the port precedent for §8.1 item 2's composition-mode tag.
-* **The core hooks.** The undirected face already has restriction along tight maps (`Vdc::restrict`, wyrd@failed-refactor:crates/gandr-vdc/src/vdc.rs:900-915), the symmetric path protype, and the groupoid certificate stock as `Iso` _pairs_ of derivations.
+- **The core hooks.** The undirected face already has restriction along tight maps (`Vdc::restrict`, wyrd@failed-refactor:crates/gandr-vdc/src/vdc.rs:900-915), the symmetric path protype, and the groupoid certificate stock as `Iso` _pairs_ of derivations.
 
 ### 7.2 The gap analysis — five items between the inventory and D-C
 
@@ -261,11 +261,11 @@ It is the LLV fragment (Q-3) engineered; the survey below is the honest inventor
 
 D-C's representation home at the VDC face reads directly off the inventory:
 
-* **`x ⇝ y` (the directed path protype)** refines the symmetric path protype exactly as `DirectedHom` refines it in the pre-reboot tree — same signature, oriented endpoints — with its members realized as positive words and its rule congruence `≈ᶜ⇝` riding the cell store.
-* **O2⇝'s fragment is the unit-plus-restriction fragment** (§2 item 3): hom formation as unit restricted along endpoint maps is the _missing_ item 2 above, which is why §9 stations it at B10 and why the fullness statement cannot be even _stated_ on the reflection face before then.
-* **D-B's content lands here, not in the statement**: companions/conjoints for realized tight maps are the equipment the reflection face hosts; one-way certificates with one-sided adjoint evidence become restrictions of realized tight maps, without ever weakening the ua statement's grades (§4.2).
-* **O4's kernel-side face** is cheap where it touches Ł4: `all_participating_invertible` already computes the _certificate-level_ invertibility predicate; what O4 adds is the protype-level comparison, which is metatheory (§8.3 item 4).
-* **The two-mode composition** (§8.1 item 2) ports `directed_cut`'s routing verbatim: invertible lane ungated, directed lane through the acyclicity gate, string-shaped composites structurally loop-free.
+- **`x ⇝ y` (the directed path protype)** refines the symmetric path protype exactly as `DirectedHom` refines it in the pre-reboot tree — same signature, oriented endpoints — with its members realized as positive words and its rule congruence `≈ᶜ⇝` riding the cell store.
+- **O2⇝'s fragment is the unit-plus-restriction fragment** (§2 item 3): hom formation as unit restricted along endpoint maps is the _missing_ item 2 above, which is why §9 stations it at B10 and why the fullness statement cannot be even _stated_ on the reflection face before then.
+- **D-B's content lands here, not in the statement**: companions/conjoints for realized tight maps are the equipment the reflection face hosts; one-way certificates with one-sided adjoint evidence become restrictions of realized tight maps, without ever weakening the ua statement's grades (§4.2).
+- **O4's kernel-side face** is cheap where it touches Ł4: `all_participating_invertible` already computes the _certificate-level_ invertibility predicate; what O4 adds is the protype-level comparison, which is metatheory (§8.3 item 4).
+- **The two-mode composition** (§8.1 item 2) ports `directed_cut`'s routing verbatim: invertible lane ungated, directed lane through the acyclicity gate, string-shaped composites structurally loop-free.
 
 ## 8. Certificates and metatheory
 
@@ -345,22 +345,22 @@ Recommendations made in the body are restated here only where the owner still ho
 
 ### 11.1 Findings about the sources
 
-* **Design-vs-code substrate deviation (load-bearing here).** `DESIGN-ua-base-vocabulary.md` §7 mandates `Step*`-shaped paths; the executed demonstrator uses the involutive `Word` (`iu:src/Internal/UaBase/Edit.agda:72-73`).
+- **Design-vs-code substrate deviation (load-bearing here).** `DESIGN-ua-base-vocabulary.md` §7 mandates `Step*`-shaped paths; the executed demonstrator uses the involutive `Word` (`iu:src/Internal/UaBase/Edit.agda:72-73`).
   Not an error — the involutive form is what the _groupoid_ statement needs — but the directed design should be read as restoring the mandated substrate, and the deviation is worth an erratum note iu-side.
-* **The groupoid η is staged, not landed — and closing in real time (as of 2026-07-19, proof in motion).** The execution record's "landed gate-green" covers the nine O1/O2/β modules; `faithful`/`η-section` exist only inside honest parameterized modules (walls are module parameters — zero postulates, zero holes, zero unsolved-metas pragmas across the tranche, all inside the `--safe` gate).
+- **The groupoid η is staged, not landed — and closing in real time (as of 2026-07-19, proof in motion).** The execution record's "landed gate-green" covers the nine O1/O2/β modules; `faithful`/`η-section` exist only inside honest parameterized modules (walls are module parameters — zero postulates, zero holes, zero unsolved-metas pragmas across the tranche, all inside the `--safe` gate).
   The chain: `faithful`/`η-section` follow from one wall `triv` (`iu:src/Internal/UaBase/Faithful.agda:166-195`), `triv` is proved from `perm-hom` + `letterC` (`iu:src/Internal/UaBase/WordProblem.agda:176-221`), `letterC` from the **seven** `Discharge` walls (`iu:src/Internal/UaBase/Canonical.agda:1647-1662`: `collapse-⊗assoc`, `w-⊗comm`, `w-⊕swap`, `w-dist`, `w-⊗ˡ`, `w-⊗ʳ`, `w-⊕ˡ`), and `perm-hom` is **unconditional** (`Coxeter.agda:1446-1664`).
   The trajectory since pass 1's source snapshot: the entire Coxeter layer and the `collapse-⊗unit` wall closed on 2026-07-17 (walls eight → seven), and uncommitted work observed 2026-07-19 has one further wall (`w-⊕swap`) down to a single inductive hole.
   Consumers of "ua-base is proved" should carry this asterisk **with its date**; the directed η plan (§8.3 item 2) deliberately copies the staging shape rather than assuming a closed precedent, and re-baselines at re-entry (§10 Q9).
-* **The vocabulary design doc lags the η code by one refinement step.** `DESIGN-ua-base-vocabulary.md`'s η staging record (2026-07-17) still frames the residual as one typed `NFC` lemma; the code has since refined `NFC` into `triv` discharged from the seven `letterC` walls plus the now-unconditional `perm-hom`.
+- **The vocabulary design doc lags the η code by one refinement step.** `DESIGN-ua-base-vocabulary.md`'s η staging record (2026-07-17) still frames the residual as one typed `NFC` lemma; the code has since refined `NFC` into `triv` discharged from the seven `letterC` walls plus the now-unconditional `perm-hom`.
   A refinement, not a contradiction — but a reader of the doc alone underestimates both the progress (the Coxeter layer is closed) and the residual structure (seven named walls).
   Worth folding into the same iu-side erratum sweep as the whisker-closure note below.
-* **A stale note in the execution record.** The record flags whisker-closure of `≈ᶜ` as an open design decision, but the executed `Rules.agda:476-479` has since added the positional-whisker congruences (`cong-⊗ˡ*` …).
+- **A stale note in the execution record.** The record flags whisker-closure of `≈ᶜ` as an open design decision, but the executed `Rules.agda:476-479` has since added the positional-whisker congruences (`cong-⊗ˡ*` …).
   Doc lags code by one step; harmless, worth a one-line iu-side sweep.
 
 ### 11.2 Register notes
 
-* **Gap: transformation-monoid / finite-set-category presentations.** The directed word problem (§5.1) needs the classical presentations of the full transformation monoid and/or the skeletal category of finite sets (face/degeneracy-style convergent systems).
+- **Gap: transformation-monoid / finite-set-category presentations.** The directed word problem (§5.1) needs the classical presentations of the full transformation monoid and/or the skeletal category of finite sets (face/degeneracy-style convergent systems).
   The register holds no row; one should be added before the metatheory re-entry cites it.
   This study deliberately states the need without inventing a locator.
-* **Riehl–Shulman was declined** from the register (Appendix 2 of `docs/research/bibliography-v2.md`); Q-15 builds on that line, and Q-15's own locator is sufficient anchor for this design's purposes — no re-registration is requested.
-* The task-level shorthand "the FVDblTT thesis (register Q-1)" resolves in the register to **Q-2** (the thesis, PRIMARY) with Q-1 the secondary paper; citations above follow the register.
+- **Riehl–Shulman was declined** from the register (Appendix 2 of `docs/research/bibliography-v2.md`); Q-15 builds on that line, and Q-15's own locator is sufficient anchor for this design's purposes — no re-registration is requested.
+- The task-level shorthand "the FVDblTT thesis (register Q-1)" resolves in the register to **Q-2** (the thesis, PRIMARY) with Q-1 the secondary paper; citations above follow the register.

@@ -60,7 +60,7 @@ The asymmetry is the design seam: prefixes resume, suffixes do not.
 The `Environment` (`env.rs:151`) holds the admitted declarations in admission order with their marks, the internal arena, the transitive audit (`env.rs:335`), and the **admission watermark** (`env.rs:12–16`, the D1(C) content-start watermark — the Idris `branchDepth`/`staging` transactional-overlay pattern, `impl-models-deep-read.md:107–109`, §5.6 #4).
 That `Environment` at index `k` is precisely the state a plane-4 checkpoint snapshots, resumable by admitting past the watermark.
 
-* The outer layer (`storage-artifact`) is the untrusted CAS wiring: `ArtifactManifest` binds the 85-byte chunker parameter commitment, the record count, the root node hash, and the inner format version; `ArtifactIdentity = BLAKE3(manifest)` is the b3sum-provenance successor, and hashing lives outside the TCB (the `storage-artifact` crate's module documentation).
+- The outer layer (`storage-artifact`) is the untrusted CAS wiring: `ArtifactManifest` binds the 85-byte chunker parameter commitment, the record count, the root node hash, and the inner format version; `ArtifactIdentity = BLAKE3(manifest)` is the b3sum-provenance successor, and hashing lives outside the TCB (the `storage-artifact` crate's module documentation).
 
 ### 2.3 The three reader budgets — and why they are monotone in the prefix
 
@@ -79,27 +79,27 @@ This record prices **against** these magnitudes, never around them: the streamin
 
 ### 2.4 The storage crates as built (the streaming substrate)
 
-* `storage-chunker` — `#![no_std]`, **zero runtime deps** (`Cargo.toml:14` empty `[dependencies]`); `RecordBoundaryRule::BETWEEN_RECORDS` (`src/lib.rs:614`) cuts only between complete records, so a chunk boundary **is** a declaration boundary; the 85-byte `PARAMETER_COMMITMENT_LEN` (`src/lib.rs:45`, `0x55`) is what the manifest binds.
-* `storage-prolly-trees` — the ordered-record Merkle tree with `BlockStore` (`src/store.rs:75`), `InMemoryBlockStore` (`:109`, verifies on every insert and load), and `PackedSegmentStore` (`:243`, in-memory append-only, **explicitly not a persistent backend or stable on-disk format**, `docs/STATUS.md:39–40`).
+- `storage-chunker` — `#![no_std]`, **zero runtime deps** (`Cargo.toml:14` empty `[dependencies]`); `RecordBoundaryRule::BETWEEN_RECORDS` (`src/lib.rs:614`) cuts only between complete records, so a chunk boundary **is** a declaration boundary; the 85-byte `PARAMETER_COMMITMENT_LEN` (`src/lib.rs:45`, `0x55`) is what the manifest binds.
+- `storage-prolly-trees` — the ordered-record Merkle tree with `BlockStore` (`src/store.rs:75`), `InMemoryBlockStore` (`:109`, verifies on every insert and load), and `PackedSegmentStore` (`:243`, in-memory append-only, **explicitly not a persistent backend or stable on-disk format**, `docs/STATUS.md:39–40`).
   Membership / non-membership / range proofs and witness transcripts live in `src/proof.rs`, **feature-gated** behind the default `proofs` feature (`Cargo.toml:22–28`).
-* **Two inherited-deferred residuals directly constrain plane 2** (`storage-prolly-trees/src/lib.rs:31–39`): the tree is **two-level** (the scale ceiling), and **incremental/streaming witness verification is deferred — the witness verifier is full-rebuild; `bao` provides verified streaming as dev evidence only.** `bao 0.13.1` is a **dev-dependency** (`storage-prolly-trees/Cargo.toml:20`), exercised only to encode/decode canonical snapshot bytes as adapter evidence in tests; the crate is explicitly **not** a bao byte-stream proof format (`README.md:16,68–69`).
+- **Two inherited-deferred residuals directly constrain plane 2** (`storage-prolly-trees/src/lib.rs:31–39`): the tree is **two-level** (the scale ceiling), and **incremental/streaming witness verification is deferred — the witness verifier is full-rebuild; `bao` provides verified streaming as dev evidence only.** `bao 0.13.1` is a **dev-dependency** (`storage-prolly-trees/Cargo.toml:20`), exercised only to encode/decode canonical snapshot bytes as adapter evidence in tests; the crate is explicitly **not** a bao byte-stream proof format (`README.md:16,68–69`).
   **There is no production code path that streams-and-verifies today.**
 
 ### 2.5 The prior art already in the tree — A2.3 checkpointing and the rkyv posture
 
 Two in-tree facts make plane 4 an adaptation, not a green field:
 
-* **The checker plane already checkpoints and already gates incremental≡from-scratch.** `core-checker/src/checkpoint.rs` implements `checkpoint_program` (`:232`), `resume` (`:281`), `resume_with` (`:312`); `core-checker/tests/incremental.rs:1–8` is the A2.3 differential gate — "incremental validated resume ≡ from-scratch re-typing … the skips never change the answer."
+- **The checker plane already checkpoints and already gates incremental≡from-scratch.** `core-checker/src/checkpoint.rs` implements `checkpoint_program` (`:232`), `resume` (`:281`), `resume_with` (`:312`); `core-checker/tests/incremental.rs:1–8` is the A2.3 differential gate — "incremental validated resume ≡ from-scratch re-typing … the skips never change the answer."
   This is the mechanism plane 4 mirrors, but at the **kernel-replay** (TCB) plane rather than the elaborator plane — a decisive difference the trust posture turns on (§3.2). (Note a STATUS/code tension flagged in §7 H-1: `core-checker/docs/STATUS.md:27` calls A2.3 "frozen" while `checkpoint.rs` and its passing gate exist.)
-* **The C3-priced checkpoint posture is already ratified for the kernel plane.** `storage-rkyv-design.md:160` — "kernel replay **never** consumes rkyv states — K2/E3 re-check from canonical bytes; the rkyv path is a checkpoint/cache accelerator … never TCB soundness"; A2 checkpoints are named its first consumer (`:170,181,198`), and the spike lands no crate.
+- **The C3-priced checkpoint posture is already ratified for the kernel plane.** `storage-rkyv-design.md:160` — "kernel replay **never** consumes rkyv states — K2/E3 re-check from canonical bytes; the rkyv path is a checkpoint/cache accelerator … never TCB soundness"; A2 checkpoints are named its first consumer (`:170,181,198`), and the spike lands no crate.
   Plane 4 stays strictly inside this posture; its contribution is to make the grain, the gate, and the anti-evasion price concrete for the post-B2.3 export-artifact replay path.
 
 ### 2.6 The program landmarks this record feeds
 
-* **B4** — the "Perf architecture" phase: the glued-NbE hash-consing normalizer adapted to the L machine, which **is** the conversion engine (`PLAN.html` backbone node "B4 Perf architecture"; `b3-module-system-design.md:319–328`).
-* **A2.5** — the A2 incrementality lane's first milestone, a **streaming demo** run **alongside B4**: "marks + obligations + goals streamed during synthesis" (`PLAN.html`, the A2 lane / wvd.14).
+- **B4** — the "Perf architecture" phase: the glued-NbE hash-consing normalizer adapted to the L machine, which **is** the conversion engine (`PLAN.html` backbone node "B4 Perf architecture"; `b3-module-system-design.md:319–328`).
+- **A2.5** — the A2 incrementality lane's first milestone, a **streaming demo** run **alongside B4**: "marks + obligations + goals streamed during synthesis" (`PLAN.html`, the A2 lane / wvd.14).
   It is a synthesis-plane demo; plane 2 (export-artifact streaming decode) is a **storage-plane** substrate that can back its persistence/replay side (§4.4 — the two streams must not be conflated).
-* **B9** — the "Certificates + kernel-replay" phase, where **kernel-replay (the independent second checker)** lands.
+- **B9** — the "Certificates + kernel-replay" phase, where **kernel-replay (the independent second checker)** lands.
   The in-tree rule is verbatim: re-deriving records from opaque foreign bytes is "a reader-side framing walk against the format specification, **never shared code**" (`storage-artifact/README.md:44`, `docs/STATUS.md:25`). (The literal terms "clean-room replayer" / "independent replayer" do **not** appear in the tree; the tree's terms are "kernel-replay (independent second checker)" and "the future B9 replayer" — used here.)
 
 ---
@@ -117,10 +117,10 @@ The outer plane already makes "do two artifacts share a prefix of length `k`?" c
 
 Options weighed:
 
-* **(A) whole-artifact only (status quo).** No reuse; every replay is from-scratch.
+- **(A) whole-artifact only (status quo).** No reuse; every replay is from-scratch.
   Reject: forfeits the entire plane.
-* **(B) per-declaration (record-granular) resume.** Rejected by construction: a single record is _not_ independently replayable (`record.rs:14`) — a suffix segment may reference prefix table entries, so you cannot resume "at declaration `k` alone" without the `0..k` arena.
-* **(C) prefix-granular (recommended).** Resume the `Environment` at a prefix boundary; the prolly prefix-hash is the cache key.
+- **(B) per-declaration (record-granular) resume.** Rejected by construction: a single record is _not_ independently replayable (`record.rs:14`) — a suffix segment may reference prefix table entries, so you cannot resume "at declaration `k` alone" without the `0..k` arena.
+- **(C) prefix-granular (recommended).** Resume the `Environment` at a prefix boundary; the prolly prefix-hash is the cache key.
   Aligns the checkpoint grain with the E2 replay grain and the plane-2 stream grain — **one grain, three consumers**.
 
 ### 3.2 P4-D2 — checkpoint trust posture: cache-accelerator only (the C3 price)
@@ -133,10 +133,10 @@ The prefix-hash match is **outer / untrusted plumbing** — it proves provenance
 
 Two sub-postures, and the C3 line between them:
 
-* **(a) In-process memoization (C3-clean, the sound win).** Resume from an `Environment` **this process already produced by from-scratch `add_decl`**.
+- **(a) In-process memoization (C3-clean, the sound win).** Resume from an `Environment` **this process already produced by from-scratch `add_decl`**.
   Sound because the inner wall ran once, at checkpoint creation; the hash only _selects which_ memoized state, it never _substitutes_ for checking.
   This is the reuse a build/session gets for free across prefix-sharing artifacts.
-* **(b) Persisted / cross-trust checkpoint (C3 violation if trusted).** Loading a serialized `Environment` from disk or a peer and using it _without_ re-deriving it through `add_decl` is exactly integrity-substitutes-validity — a trusted table smuggled into the TCB, the C3 prohibition.
+- **(b) Persisted / cross-trust checkpoint (C3 violation if trusted).** Loading a serialized `Environment` from disk or a peer and using it _without_ re-deriving it through `add_decl` is exactly integrity-substitutes-validity — a trusted table smuggled into the TCB, the C3 prohibition.
   To admit it soundly you must **re-validate = re-replay** the prefix, at which point the checkpoint is a _performance hint_ (which prefix to expect / prefetch), not a trust shortcut.
 
 **The honest consequence, stated plainly:** because re-validation _is_ re-checking, a persisted checkpoint buys **no sound saving of the checking work** — only of the re-decode/re-parse (the cheaper, already amplification-bounded step).
@@ -218,8 +218,8 @@ That is a budget-evasion vector introduced _by the combination_, invisible to ei
 
 Two consequences worth recording:
 
-* **Owner flag 2 is aggravated from a new angle.** A heavily-shared prefix consumes table-entry budget that the suffix then cannot use; with cross-declaration sharing, `MAX_TABLE_ENTRIES` (only ~1.3× headroom, §2.3) becomes the binding constraint for large checkpointed/streamed theories — independent corroboration that it is the first budget to raise.
-* **The per-declaration cap needs no carry.** `MAX_EXPANDED_TERM_WORK` is per-root and local; only the two _artifact-total_ accumulators cross the boundary.
+- **Owner flag 2 is aggravated from a new angle.** A heavily-shared prefix consumes table-entry budget that the suffix then cannot use; with cross-declaration sharing, `MAX_TABLE_ENTRIES` (only ~1.3× headroom, §2.3) becomes the binding constraint for large checkpointed/streamed theories — independent corroboration that it is the first budget to raise.
+- **The per-declaration cap needs no carry.** `MAX_EXPANDED_TERM_WORK` is per-root and local; only the two _artifact-total_ accumulators cross the boundary.
 
 ---
 
@@ -233,18 +233,18 @@ No decision is taken here; this paragraph is the posture statement the charter r
 
 ## 7. Hazards
 
-* **H-1 (A2.3 STATUS/code tension — reconcile before relying).** `core-checker/docs/STATUS.md:27` calls the A2.3 incremental checkpoint/diff engine "frozen", yet `core-checker/src/checkpoint.rs` and the passing `tests/incremental.rs` differential exist.
+- **H-1 (A2.3 STATUS/code tension — reconcile before relying).** `core-checker/docs/STATUS.md:27` calls the A2.3 incremental checkpoint/diff engine "frozen", yet `core-checker/src/checkpoint.rs` and the passing `tests/incremental.rs` differential exist.
   Plane 4 mirrors that mechanism (§2.5, §3.3), so the owner should reconcile whether A2.3 is built-and-mis-documented or the code is a not-yet-live scaffold, before P4-D3 leans on it as precedent.
-* **H-2 (persisted-checkpoint C3 trap — document now, before anyone builds a store).** The `storage-artifact` store already persists artifacts; the temptation to persist replayed `Environment` state alongside and trust it by hash is real and is exactly the integrity-substitutes-validity violation (§3.2b).
+- **H-2 (persisted-checkpoint C3 trap — document now, before anyone builds a store).** The `storage-artifact` store already persists artifacts; the temptation to persist replayed `Environment` state alongside and trust it by hash is real and is exactly the integrity-substitutes-validity violation (§3.2b).
   The boundary must be recorded _before_ a checkpoint store is built, not after.
-* **H-3 (over-claiming verified streaming).** Any doc or demo that presents bao as delivering verified streaming _today_ is unsupported (§2.4); the witness verifier is full-rebuild and bao is dev-only.
+- **H-3 (over-claiming verified streaming).** Any doc or demo that presents bao as delivering verified streaming _today_ is unsupported (§2.4); the witness verifier is full-rebuild and bao is dev-only.
   Claim only the _route_, not the capability.
-* **H-4 (two-stream conflation at A2.5).** The A2.5 synthesis stream (checker plane, A2.3) and the export-decode stream (storage plane, plane 2) are different objects (§4.4); a demo that treats them as one will mis-attribute where budgets, checkpoints, and verification apply.
-* **H-5 (E4 speculation surprise).** Under P2-D3(ii), a streamed artifact can replay a valid prefix and _then_ be rejected as non-canonical (§4.3); a consumer that equates "prefix replayed" with "artifact accepted" is wrong.
+- **H-4 (two-stream conflation at A2.5).** The A2.5 synthesis stream (checker plane, A2.3) and the export-decode stream (storage plane, plane 2) are different objects (§4.4); a demo that treats them as one will mis-attribute where budgets, checkpoints, and verification apply.
+- **H-5 (E4 speculation surprise).** Under P2-D3(ii), a streamed artifact can replay a valid prefix and _then_ be rejected as non-canonical (§4.3); a consumer that equates "prefix replayed" with "artifact accepted" is wrong.
   The closing E4 stamp is authoritative.
-* **H-6 (two-level tree scale ceiling).** The prolly tree is two-level (§2.4); the scale plane the whole program targets will eventually need the deferred multi-level tree before checkpoint/stream over a genuinely large corpus is real.
+- **H-6 (two-level tree scale ceiling).** The prolly tree is two-level (§2.4); the scale plane the whole program targets will eventually need the deferred multi-level tree before checkpoint/stream over a genuinely large corpus is real.
   Not blocking now; load-bearing later.
-* **H-7 (doc-drift noticed, out of scope — reported per the standing duty).** `storage-chunker/docs/STATUS.md:25–33` + `README.md:31–38` cite a `benches/chunker.rs` and criterion/fastcdc/blake3 dev-deps that **do not exist** in this worktree (no `benches/`, empty `[dev-dependencies]`).
+- **H-7 (doc-drift noticed, out of scope — reported per the standing duty).** `storage-chunker/docs/STATUS.md:25–33` + `README.md:31–38` cite a `benches/chunker.rs` and criterion/fastcdc/blake3 dev-deps that **do not exist** in this worktree (no `benches/`, empty `[dev-dependencies]`).
   Separately, the ported `AGENTS.md` points to `ARCHITECTURE.md` and `docs/HAZARDS.md`, neither of which exists here (the roadmap is `PLAN.html`).
   Both are stale-reference hazards worth a cleanup pass; neither is in this lane's scope.
 
@@ -252,13 +252,13 @@ No decision is taken here; this paragraph is the posture statement the charter r
 
 ## 8. Verification register — confirmed and corrected against the tree
 
-* **Confirmed by read:** the strictly-earlier child-order invariant making a prefix self-contained (`read.rs:15–18,918`); a record is not independently replayable (`record.rs:14`); the three budgets, magnitudes, and their one-forward-scan `DecodeMetrics` (`export.rs:125,140,166,359`; `read.rs:340–376`); `write_segmented`/`SegmentedArtifact` as a hash-free structural byproduct (`export.rs:497`, `write.rs:163`); the `Environment` + admission-watermark state (`env.rs:12–16,151,227,335`); the storage crates' surfaces and the bao-dev-only / full-rebuild / two-level deferrals (`storage-prolly-trees/src/lib.rs:31–39`, `Cargo.toml:20`, `store.rs`); the A2.3 checkpoint precedent (`core-checker/src/checkpoint.rs`, `tests/incremental.rs`); the ratified checkpoint-as-cache-accelerator posture (`storage-rkyv-design.md:160`).
-* **Corrected / sharpened:**
-  + The charter's "checkpoint trust as a C3-priced fast path" is sharpened to its exact price: the fast path **cannot cross the trust boundary** — persisted checkpoints buy no sound _checking_ saving (§3.2).
+- **Confirmed by read:** the strictly-earlier child-order invariant making a prefix self-contained (`read.rs:15–18,918`); a record is not independently replayable (`record.rs:14`); the three budgets, magnitudes, and their one-forward-scan `DecodeMetrics` (`export.rs:125,140,166,359`; `read.rs:340–376`); `write_segmented`/`SegmentedArtifact` as a hash-free structural byproduct (`export.rs:497`, `write.rs:163`); the `Environment` + admission-watermark state (`env.rs:12–16,151,227,335`); the storage crates' surfaces and the bao-dev-only / full-rebuild / two-level deferrals (`storage-prolly-trees/src/lib.rs:31–39`, `Cargo.toml:20`, `store.rs`); the A2.3 checkpoint precedent (`core-checker/src/checkpoint.rs`, `tests/incremental.rs`); the ratified checkpoint-as-cache-accelerator posture (`storage-rkyv-design.md:160`).
+- **Corrected / sharpened:**
+  - The charter's "checkpoint trust as a C3-priced fast path" is sharpened to its exact price: the fast path **cannot cross the trust boundary** — persisted checkpoints buy no sound _checking_ saving (§3.2).
     This distinguishes the plane-4 (TCB) checkpoint from the A2.3 (elaborator) one, which the raw framing conflates.
-  + "bao verified streaming" is a **route, not a current capability** (§2.4) — the sweep confirmed no production streams-and-verifies path; prior prose ambiguous on this is corrected here.
-  + The program's independent-replayer landmark is **"B9 kernel-replay (independent second checker)"**; the terms "clean-room replayer" / "independent replayer" are **not** in the tree and are avoided.
-* **Not independently re-derived (cited as ratified prior art):** the C3 no-hash-consing-in-TCB constraint and the E/K invariants (`massive-term-design.md` §3.2; the wvd.2 15:58 staging comment), the referenced-but-unmaterialized `kernel-boundary.md` node (`massive-term-design.md:11,398`).
+  - "bao verified streaming" is a **route, not a current capability** (§2.4) — the sweep confirmed no production streams-and-verifies path; prior prose ambiguous on this is corrected here.
+  - The program's independent-replayer landmark is **"B9 kernel-replay (independent second checker)"**; the terms "clean-room replayer" / "independent replayer" are **not** in the tree and are avoided.
+- **Not independently re-derived (cited as ratified prior art):** the C3 no-hash-consing-in-TCB constraint and the E/K invariants (`massive-term-design.md` §3.2; the wvd.2 15:58 staging comment), the referenced-but-unmaterialized `kernel-boundary.md` node (`massive-term-design.md:11,398`).
 
 ---
 

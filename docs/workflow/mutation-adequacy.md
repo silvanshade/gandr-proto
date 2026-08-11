@@ -20,13 +20,13 @@ This campaign is the mutation-adequacy face of the consolidated closeout **resid
 
 ## The mathematical frame
 
-* **Extension vs intension** (calf; Niu–Sterling–Grodin–Harper, POPL 2022).
+- **Extension vs intension** (calf; Niu–Sterling–Grodin–Harper, POPL 2022).
   Extensional properties concern _what_ an item returns; intensional properties _how_ it computes.
   `# Contract`'s `requires`/`ensures`/`provides`/`fails`/`panics` are the extensional face; `- intension:` the intensional face.
   **Noninterference** relates them: extensional behavior never depends on an intensional observation; retuning an intension (with its tests) leaves every extensional witness green.
-* **Reach, infect, propagate, reveal** (Ammann–Offutt).
+- **Reach, infect, propagate, reveal** (Ammann–Offutt).
   A test kills a mutant only when it reaches the mutated site, infects the state (a distinguishing input), propagates the difference to something observable, and reveals it (the oracle asserts on it).
-* **Tests are opens** (the synthetic-topology reading; Escardó, ENTCS 87 (2004)).
+- **Tests are opens** (the synthetic-topology reading; Escardó, ENTCS 87 (2004)).
   Synthetic topology treats a property as **open** when it is _semidecidable_: a finite computation can confirm it holds (run the test, watch it fail the mutant) but no finite computation can confirm its negation.
   A kill event is such an open; a mutant's survival is the **closed complement** — the property "no test distinguishes this mutant", which no amount of green runs can verify, only fail to refute.
   That is the precise form of "a differential suite proves agreement, not correctness": testing **refutes** equivalence and never confirms it.
@@ -62,30 +62,30 @@ Prefer the strongest rung that can carry a decision surface; the hypothesis stat
 
 Binding rules:
 
-* **External oracle.** An L1/L2 oracle must be external to the mutated code (a naive reference, a replay checker, a pinned golden).
+- **External oracle.** An L1/L2 oracle must be external to the mutated code (a naive reference, a replay checker, a pinned golden).
   Self-agreement is blind to any mutant shifting both runs identically; such surfaces take a pinned external golden.
-* **Declared projections.** Intensional assertions go only through declared `- intension:` projections.
+- **Declared projections.** Intensional assertions go only through declared `- intension:` projections.
   Fingerprints compare pairs of live computations, never serve as pinned goldens.
-* **Extensional completeness.** Every `- fails:`/`- ensures:` bullet has a witness asserting the **exact variant or value** on a triggering input.
+- **Extensional completeness.** Every `- fails:`/`- ensures:` bullet has a witness asserting the **exact variant or value** on a triggering input.
   `is_err()`-only checks do not witness; `#[should_panic]` is disqualified (it passes on _any_ panic and rewards the mutant).
-* **Boundary-biased inputs.** For dense decision surfaces, one boundary-biased property test over scattered unit cases; finite classes enumerated exhaustively (a shared combinator home is a tracked follow-up).
-* **Design for adequacy.** Prefer the API shape that returns evidence — mutants become self-incriminating and trust concentrates in small validators, where the L3 rigor is spent.
-* **Per-file coverage floors.** Crate-level coverage judgment is banned ([ci.md](ci.md) §"Parked: the push tier and scheduled campaigns").
+- **Boundary-biased inputs.** For dense decision surfaces, one boundary-biased property test over scattered unit cases; finite classes enumerated exhaustively (a shared combinator home is a tracked follow-up).
+- **Design for adequacy.** Prefer the API shape that returns evidence — mutants become self-incriminating and trust concentrates in small validators, where the L3 rigor is spent.
+- **Per-file coverage floors.** Crate-level coverage judgment is banned ([ci.md](ci.md) §"Parked: the push tier and scheduled campaigns").
 
 ## From contract to tests — how to read the blocks
 
 Each clause compiles to a test obligation:
 
-* **`- ensures:`** → one witness per postcondition asserting the exact value (or declared projection) on an ordinary input **plus** every boundary input the hypothesis names.
-* **`- fails:` / `# Errors`** → one witness per failure mode: trigger exactly that mode, assert the exact variant (and discriminating payload).
+- **`- ensures:`** → one witness per postcondition asserting the exact value (or declared projection) on an ordinary input **plus** every boundary input the hypothesis names.
+- **`- fails:` / `# Errors`** → one witness per failure mode: trigger exactly that mode, assert the exact variant (and discriminating payload).
   "An error occurred" witnesses nothing.
-* **`- requires:`** → not driven as tests; they define the valid input space, whose _boundary_ generator strategies must cover.
+- **`- requires:`** → not driven as tests; they define the valid input space, whose _boundary_ generator strategies must cover.
   In-body, back with `debug_assert!`.
-* **`- panics: none.`** → testable under mutation with no dedicated test, provided boundary inputs actually run.
-* **`- intension:`** → one witness per declared property, only through the declared projection; when retuning an intension, revise these witnesses in the same change and confirm every extensional witness stays green.
-* **`- hypothesis:`** → this IS the test plan: L1 → write the validator test (validate evidence against the input, never a predicted answer; the validator itself gets L3 rigor); L2 → write or extend the differential/golden, confirm the oracle is external; L3 residue → enumerate the named boundary inputs exhaustively, pair each with the named observation.
-* **`- witness:`** → closing bookkeeping (G0-checked): each named witness must actually assert what the hypothesis says — the standard is a reviewer can apply the mutant by hand and watch the named witness fail.
-* **Authoring order.** Contract before implementation where practical; hypothesis before tests; witnesses last.
+- **`- panics: none.`** → testable under mutation with no dedicated test, provided boundary inputs actually run.
+- **`- intension:`** → one witness per declared property, only through the declared projection; when retuning an intension, revise these witnesses in the same change and confirm every extensional witness stays green.
+- **`- hypothesis:`** → this IS the test plan: L1 → write the validator test (validate evidence against the input, never a predicted answer; the validator itself gets L3 rigor); L2 → write or extend the differential/golden, confirm the oracle is external; L3 residue → enumerate the named boundary inputs exhaustively, pair each with the named observation.
+- **`- witness:`** → closing bookkeeping (G0-checked): each named witness must actually assert what the hypothesis says — the standard is a reviewer can apply the mutant by hand and watch the named witness fail.
+- **Authoring order.** Contract before implementation where practical; hypothesis before tests; witnesses last.
   A later survivor **falsifies** the hypothesis: classify, strengthen input or oracle or complete the missing projection, update contract+hypothesis+witnesses together.
 
 ## Instrument limits, gates, and the success metric

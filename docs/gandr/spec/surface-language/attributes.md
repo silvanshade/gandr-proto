@@ -13,19 +13,19 @@ The load-bearing stance, stated once: **an attribute is data _about_ an entity, 
 The layer is built and runs.
 Every claim in this section names the module it was read from, and the corpus examples named below were executed rather than inspected.
 
-* **The marker parses as a fresh single-character token.** `gandr-surface-grammar`'s `surface::term` module contributes an `attribute_block` rule at `Item` sort whose body is `@[ attr (, attr)* ]`, with `attr ::= identifier | identifier ( expression )`.
+- **The marker parses as a fresh single-character token.** `gandr-surface-grammar`'s `surface::term` module contributes an `attribute_block` rule at `Item` sort whose body is `@[ attr (, attr)* ]`, with `attr ::= identifier | identifier ( expression )`.
   Blocks stack: a `def` item takes any number of them, and so does a module member.
-* **Attributes are collected for top-level items only.** `gandr-surface-engine`'s `lower` module records one raw attribute per marker entry, keyed to the item's index, in the top-level item loop.
+- **Attributes are collected for top-level items only.** `gandr-surface-engine`'s `lower` module records one raw attribute per marker entry, keyed to the item's index, in the top-level item loop.
   A module member's attribute block therefore **parses and is then dropped** — it is neither projected nor diagnosed ([[proposed/modules#module-question-04]]).
-* **Eight schemas are registered, and every one is inert.** `gandr-surface-engine`'s `attributes` module holds the registry as a `const` table: `doc` and `deprecated` from the entity vocabulary, and `name`, `license`, `authors`, `package`, `dependency`, and `toolchain` from the manifest vocabulary, which shares this one registry rather than carrying its own.
+- **Eight schemas are registered, and every one is inert.** `gandr-surface-engine`'s `attributes` module holds the registry as a `const` table: `doc` and `deprecated` from the entity vocabulary, and `name`, `license`, `authors`, `package`, `dependency`, and `toolchain` from the manifest vocabulary, which shares this one registry rather than carrying its own.
   `dependency` is repeatable; the other seven are single-valued.
-* **Payload typing is ordinary value typing, driven by the iterative typing machine.** The pass builds a checking state against the schema's value type and steps `gandr-core-checker`'s `machine` module to completion, so it never recurses on the host stack — the same driver the diagnostics and goals passes use.
-* **Five diagnostics are realized**: an unknown name with a did-you-mean over the registry (a two-row Levenshtein program with a maximum distance of three), a repeated single-valued attribute, a bare marker where the schema needs a payload, a payload outside the **value fragment** — the literals, records, lists, and constructor applications a payload may be, as against a computation — and the ordinary type error of an ill-typed payload.
-* **Storage never touches the item's term.** The pass returns a side table of resolved attributes plus the findings, and the lowered items are neither read nor mutated by it, so an item's content-address is unchanged by adding, editing, or removing an attribute.
-* **The projection is an additive report field.** `gandr-surface-engine`'s `diag` module carries `attributes` as a field of the report envelope at schema version 2, with no version bump: a consumer that ignores it reads the report unchanged.
+- **Payload typing is ordinary value typing, driven by the iterative typing machine.** The pass builds a checking state against the schema's value type and steps `gandr-core-checker`'s `machine` module to completion, so it never recurses on the host stack — the same driver the diagnostics and goals passes use.
+- **Five diagnostics are realized**: an unknown name with a did-you-mean over the registry (a two-row Levenshtein program with a maximum distance of three), a repeated single-valued attribute, a bare marker where the schema needs a payload, a payload outside the **value fragment** — the literals, records, lists, and constructor applications a payload may be, as against a computation — and the ordinary type error of an ill-typed payload.
+- **Storage never touches the item's term.** The pass returns a side table of resolved attributes plus the findings, and the lowered items are neither read nor mutated by it, so an item's content-address is unchanged by adding, editing, or removing an attribute.
+- **The projection is an additive report field.** `gandr-surface-engine`'s `diag` module carries `attributes` as a field of the report envelope at schema version 2, with no version bump: a consumer that ignores it reads the report unchanged.
   Each row is a node id, a schema name, a payload, a tier, and a span.
   The payload is rendered by the module's deterministic `Debug` projection **pending the shared surface pretty-printer**, which is the one place the projection is not yet in its final form.
-* **The projection includes a payload that fails to type.** A well-formed attachment whose payload is ill-typed still produces a row — the value is present, and a renderer shows it beside the diagnostic.
+- **The projection includes a payload that fails to type.** A well-formed attachment whose payload is ill-typed still produces a row — the value is present, and a renderer shows it beside the diagnostic.
   An unknown, duplicate, missing, or non-value attribute is a diagnostic only.
 
 Three things the design describes and this tree does **not** have.
@@ -264,19 +264,19 @@ The one row that has moved since the design was written is **consumers**: the de
 
 Each of these is a hook this design must not foreclose, and most are consumers of it.
 
-* **Data declarations and patterns** — the per-symbol in-block slot is a position of _this_ document's `attr` production, owned by the data design; constructor attributes such as a constructor marker, a fixity, or a reserved grade slot are its first users.
-* **Modules and packaging** — module and package metadata is typed attribute data on a unit's root declaration, and the manifest **consumes** the attachment mechanism rather than inventing a format.
+- **Data declarations and patterns** — the per-symbol in-block slot is a position of _this_ document's `attr` production, owned by the data design; constructor attributes such as a constructor marker, a fixity, or a reserved grade slot are its first users.
+- **Modules and packaging** — module and package metadata is typed attribute data on a unit's root declaration, and the manifest **consumes** the attachment mechanism rather than inventing a format.
   A package coordinate is an inert attribute, and the content-addressed cache hashes the unit's _syntax_, so inert package metadata is hash-neutral and the manifest does not perturb the address.
   The manifest's intended host — a module root that takes a leading attribute block — does not exist, so the schemas validate on a top-level definition as the unit-root stand-in ([[proposed/modules#module-question-04]]).
   The manifest's own design, its field-role taxonomy, and the content-address boundary that routes identity-bearing participation around this layer are [[../implementation/proposed/packages#The manifest]].
-* **Build configuration** — build-target configuration is attribute data on a build target: the same typed-schema mechanism, a different entity, a different registry, so packaging and build configuration do not collide.
-* **Readable errors** — the attribute diagnostics render through the same adapter as every other diagnostic, and attribute provenance rides the origin and elaboration-kind machinery.
-* **The foreign interface** — an `extern` block's link target, capability, and abort-on-unwind policy change what type-checks and how a symbol is bound, so they are **semantic** attributes: modeled as syntax and hash-participating.
+- **Build configuration** — build-target configuration is attribute data on a build target: the same typed-schema mechanism, a different entity, a different registry, so packaging and build configuration do not collide.
+- **Readable errors** — the attribute diagnostics render through the same adapter as every other diagnostic, and attribute provenance rides the origin and elaboration-kind machinery.
+- **The foreign interface** — an `extern` block's link target, capability, and abort-on-unwind policy change what type-checks and how a symbol is bound, so they are **semantic** attributes: modeled as syntax and hash-participating.
   The member-attribute surface is currently deferred, and the reason is a surface collision rather than a semantic one — the bare `@` spelling the member form wanted conflicts with the `@[…]` block discipline ([[roadmap#Deferred-with-reasons, collected]], [[../implementation/foreign-interface]]).
-* **Code generation** — the natural first _semantic_ consumer: a generating attribute carries quoted syntax, rides the elaborator interface, and records its elaboration inputs in the dependency footprint so it stays checkpoint-sound.
-* **Operators and notation** — operator fixity and precedence are semantic per-symbol attributes, hash-participating, and they realize one shape of the operator footprint the fixity declaration already reserves ([[declarations#Operator-fixity declarations]]).
-* **Doc objects and imported documentation** — `doc` is the doc-object's home, and importing documentation from a foreign toolchain maps its comments onto `doc` attributes on the imported entities.
-* **Value semantics** — the functional record-update stance informs an eventual attribute-editing surface ([[value-semantics#Functional record update]]); minor, and off the built path.
+- **Code generation** — the natural first _semantic_ consumer: a generating attribute carries quoted syntax, rides the elaborator interface, and records its elaboration inputs in the dependency footprint so it stays checkpoint-sound.
+- **Operators and notation** — operator fixity and precedence are semantic per-symbol attributes, hash-participating, and they realize one shape of the operator footprint the fixity declaration already reserves ([[declarations#Operator-fixity declarations]]).
+- **Doc objects and imported documentation** — `doc` is the doc-object's home, and importing documentation from a foreign toolchain maps its comments onto `doc` attributes on the imported entities.
+- **Value semantics** — the functional record-update stance informs an eventual attribute-editing surface ([[value-semantics#Functional record update]]); minor, and off the built path.
 
 ## The corpus examples
 
@@ -297,11 +297,11 @@ Built and passing, under `crates/surface-corpus/examples`:
 
 Planned and **not** built, each with the milestone that activates it:
 
-* a **declared-record-schema payload** example, showing that attribute typing _is_ ordinary value typing field by field — writable today, and the only planned model example with no gate in front of it;
-* a **hash-neutrality** example asserting that two entities differing only in an inert attribute hash equal while a semantic difference hashes distinct — gated on the semantic tier, since half of it is unstateable without one;
-* a **semantic-attribute** example carrying a code-generation request — gated on the same tier;
-* a **misplaced-attribute** example — gated on the `data`-block slot admitting non-item targets, which is what makes the diagnostic reachable;
-* an **expression-position** example pinning a reserved-not-implemented parse diagnostic — gated on that slot being _reserved_, which it currently is not: the block rule is `Item`-sorted, so the position fails to parse rather than declining.
+- a **declared-record-schema payload** example, showing that attribute typing _is_ ordinary value typing field by field — writable today, and the only planned model example with no gate in front of it;
+- a **hash-neutrality** example asserting that two entities differing only in an inert attribute hash equal while a semantic difference hashes distinct — gated on the semantic tier, since half of it is unstateable without one;
+- a **semantic-attribute** example carrying a code-generation request — gated on the same tier;
+- a **misplaced-attribute** example — gated on the `data`-block slot admitting non-item targets, which is what makes the diagnostic reachable;
+- an **expression-position** example pinning a reserved-not-implemented parse diagnostic — gated on that slot being _reserved_, which it currently is not: the block rule is `Item`-sorted, so the position fails to parse rather than declining.
 
 ## Why this shape
 

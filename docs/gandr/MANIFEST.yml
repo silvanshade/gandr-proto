@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 37ba9d43cc58c924ac91586de486f1d212df00278c9cec63444fdb42b59a3cb2
+    b3: f4a221e355aca79ea5172ed5b8ebdf27592fe07985861a63ec7dfb4358dd1572
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -19,22 +19,22 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 08f3f7b323af885f9ad79b885697aa404f1de3868a7c89ca40e97855b20dab87
+    b3: 6bc1f9380218fd50f540e86b3455dfa48c20970f712a900e359f18802198f0d6
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 15f22521a8d9fc34ab8722a71c4296325cd8cf6f7a8ed07391cecd690e56c974
+    b3: bb52523e5f3b3fca1bd05954ae8722163430bf7624ed24aaf9f032e76927785f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: e928e4259cf124edc06884aee41abf115cd0dcc5b1049d830ca4de33f91f8271
+    b3: 6ae2d21ca8d03bcd50bcb496c546f0986db2657fdb97ee44bcc21b56485d9453
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 0d875ae3d16eb66ed3f7b011f7cad5c60b1558c28cd827e51273451b9a77442e
+    b3: 406b8d53c173e475bc8e676e95a900c3ccbe67a25b8379c5606b281655f3251e
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -44,142 +44,142 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 6764d05aff889e240ce889eed6d1e4669bda5396cca8a47a770766651817b7c1
+    b3: 5e00b023b4984ff2d265522580d89f6e480f0f63dff397971baf7c9a14ef83c8
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
     role: subdocument
-    b3: 1f74b77271fa0ffb21c92ec2d12018738d370bd41ac2fdf83dfa6a4f8b9642d3
+    b3: 0b395881b5066ee303ea75e191703e94c9930a2c66becc4f0e9e826a82b8307a
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: 0f65734090ffc7fd883fa1ebcd9c18c090827a319eed2e9616f07a67f6cb16c3
+    b3: 94e75078f855100e855121af12dd588bab1e914e7f2e977abfa31db8a9d3b97a
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
     role: subdocument
-    b3: f7caa03fd0d2c89a15a62d7ba29115526f4143082b6715b76bd5c5581ce27a88
+    b3: 5b5020f746ebd60a72905c92ae303b93f530aba69b64c2790089595dc29ba3bd
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/layout-and-coherence.md
     role: subdocument
-    b3: 1bc1a3083a5603f135b92fbceebc5c837d768c7b9a098b68671d6eac95a1bb1e
+    b3: 7ad06f0eec4721a3b5d86631891e2e96b19d1ed1191c4bb53bd07d427f69c84a
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/ambient-and-primitives.md
     role: subdocument
-    b3: 840abae752a93f957376262ce11b34f6ac88d963d8e29c8ba1a2b6b184cb50b1
+    b3: bdade2fe92adada052d7f54801fc772c122d9d5fff29d37f4beb00820466e758
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/exact-reals.md
     role: subdocument
-    b3: abdbd89676037bca9fac30a32a8e00172fce24b01cdd1395ad8ef56eecfab213
+    b3: 3ac0a5ebf9395b90d2b64e0de5c4f4e85a15b166d1b20bcfcd4161712e08027b
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/type-system.md
     role: subdocument
-    b3: 7234efd36ebbcff3b14fa052a33c552ec427001636a6f90932ce7bdf4eceedf2
+    b3: c11c59789a451f83e19415a7017142b5b6a0c2a70cd27e36ae85a00fa5b4aff0
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/typing-machine.md
     role: subdocument
-    b3: c8594df09024d87b9d0d3ca0a1b766aef74657778f0b79d4c46e5ef1e2201ca6
+    b3: 49113e516c947dad55089c9d8b64a726dc3760f055c3e2043a9e7cdfcf8ded61
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/effects-and-control.md
     role: subdocument
-    b3: 5d18d86644e886ece951c06e9d02b736390395e431bce7dffb742582e50b6090
+    b3: ef56d8d221dd3aa689cb62ab9c6453736dcc164569a03cdfd565e683f9a4a101
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/incremental-pipeline.md
     role: subdocument
-    b3: f9f4f72c573494c5e8643e1bf359808c081b1300e52efa920e36bf15a94a7fc3
+    b3: 44a870cbf22cace14fc1f52bcc70548e03a198b2caead1870245e751757c63be
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 06fa3b21efbb803393cf1328dcf594afbd8c8c14bd82fd03e666f5ac9765009d
+    b3: 3c5e4c4bfe78e8e7bb427630ef86464d5b24d15ec17f27f6ab2abc083ce7b335
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
     role: subdocument
-    b3: ad73fa866d39096ac118dc9ccc1f89899ce52dc3f0cca73163501e5e416db13e
+    b3: 8dac57567657bdfca186bc4e18f38e3f15d82098ebbab2a36f2e9017a3e5d1bf
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: 8657dbceaf12f4723cc15cb1461f92d90e2fe5911ec11a4a28e4b4ff7e6c9307
+    b3: 41c702a3344de4e918f18a87bdc770928c51df8facc31e18dd577e0a3e35b45d
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
     role: subdocument
-    b3: 54f143e6875711517b01d36a2756ff718fefcfa3d086137920d159a6273d69f3
+    b3: 6b8b8b0e3703b7f6048e6f118404fe64319cc6876b0fc50dee4839a07a25158d
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 74dcea6756471fdb905cf8a2734c78587096fd0d3511f37f2041b519562bd7b6
+    b3: 7442b166e1946dce142fe3ef9af7039ee7e0350f74a73040cb0af8aa06aef143
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
     role: subdocument
-    b3: 720d12f8618fa9678963f8ddda0919a68771ef3bc94b17c957c84e23ab7b1df1
+    b3: 6a5f5ee30d0febf681097427d7c5064fc232a8913a054ebc46fd03aa38c69322
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
     role: subdocument
-    b3: a2407b554dc0c010c1fb0dd075d82ee44c39b12bb4cb3381bedf753e6412cbaf
+    b3: ed6bbd83de677053a21762c1eda1ba941c5862bf40e72ab8b69cb0cd00671105
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/signatures.md
     role: subdocument
-    b3: e730b023068a33e1a88f2ce9a227cf6bf35c56c4ca04709d8ac1b2f837eb4f8c
+    b3: 5b2b6ddaf9d8f9269301c977b64b4b4f3f7643d287cfd456d4623ebfa3258875
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: e0f3af31ffefda02513e3a9eeec071602c2a72ba2fd13a5e3b98ea0f32c3df5b
+    b3: 0e88c3ba31b0948e928b37594a753ede1c3f5eb35528668b6549b1821af26c26
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
     role: subdocument
-    b3: a4efac52ef388ecafadf0eb895f190f2570f514621abb115d7eb15a0422beafc
+    b3: 5566aa7bc755d2cd77e5c22b11fb6e036990ee7abe3a8f5adc886294c9aa5e1b
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/attributes.md
     role: subdocument
-    b3: f990cf2c686584517297a9d43831bdadf292f206fc040a8a87b3251ef1fc6cba
+    b3: 18dd5cabec0afa77d36d2ae15d74c32ec182b7d1bd19e25252e4b5ee2a00453e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/directed-family.md
     role: subdocument
-    b3: 07951b07b60e6c54fdb7ac1e5c7984e978dffe7649583ee88a985367d3ee5ece
+    b3: ac77baf98d8159aaef16711978ed76f5e852daac74ab1cd6cc26913860309a7e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: 6a0aa8b5e1d0b1a88f2ec479258738189732885622447cc3bb5f55a3906b6deb
+    b3: 817c3d1b0c476f0b7cc27561d801a2e2a6de6b272217170dcb66479e2d3ee4fa
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
     role: subdocument
-    b3: f3886233d01f73d5c3e6ec953d1c0a4f7d0f1205dca8d684f43f47af7c0e8982
+    b3: 2133035044219a1bc60b72e0f7e7c2a3bbeee4d62505a2ab3fd87e44d87603a4
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 8b8d18383f0cda8239e9ab21dbbc5df2888f960048e84cfea34a276b43aec84e
+    b3: 21ef74eca46f938e35515e622ae8a96eddd76c50f5c92837ff0da5c369b19eb3
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: fc2af4cfa6f98bcd877bb2d58f398dc26ebca361d1bc58227c1a5a66424bce59
+    b3: 444165a070bb819a3bb7f6f2b35df3140d08b47e439190b4f0ad1409635fa897
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
-    b3: 16d9cbc820e4c81c9360ea4392763e666bddcf69cc9db0dd73781542002ed612
+    b3: e26782e19d75fd8a0baed2e05ad5dd32709584f125bc6d541dca8c4b48ad49a1
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/sized-types.md
@@ -189,61 +189,61 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
-    b3: 0fee6538138e2728b1f5a5d8696077e90cc8f4e28b2af52a987d7ea862c57713
+    b3: a47cba2e40b2f07fa5f63778488d426e0a6702ea5a58a9228b1a484c531c075d
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/graph-substrate.md
     role: subdocument
-    b3: 8326d708642c6beef2c9ca258e37692a13d8e1d01a42c65e68221e62ef1d884f
+    b3: 7e8ca5a3bd995d0b71762ada0a4308155b83ac48016e3c1255bfc6a34e51f123
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
-    b3: d1d5371acf416e562452d23c2c3c6b0d84c47f6e35910e3e0f56b5be11a20762
+    b3: cfa4e628160940f48b93a60bb0290e615e159048ffa8f7fb6d7501045df8274c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
     role: subdocument
-    b3: 584b48e12f0c0928cc16b887506952fb7a75574b8a0d6e3f7940a19710eba7d7
+    b3: b321dfbf60838764b5f2d409cf7d8ce92ef11fc8d859786a9b69dd602724991c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
-    b3: 6fb1888774c5d062c9a7564e06e6478bcc877165368cd8c24dee5be3ccc4d43b
+    b3: 6e2b26e91d7644871495b235ead8857ead40a01675b31095a50bd43c9144697a
     edges:
       - { rel: registered-under, to: spec/proof-engineering.md }
   - path: spec/surface-language/value-semantics.md
     role: subdocument
-    b3: 27d2ddb8fb0f799f096794a6f3dde167be3b130851c42acaed39acb78595db52
+    b3: 108c7162ef6f293b5c243aa8c756ba511b636165f84a2ac3d37d35897ce7069e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modes-and-references.md
     role: subdocument
-    b3: e9aaf167b08700867c1eede92a401fb69af6641fb035bcfc1b37ce7a012b63f3
+    b3: 53767ea6298171cf87036906b5ec4723666ee5fd59ba65bfe98018802e0615f6
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modules.md
     role: subdocument
-    b3: 36481afa2b7f086b194bebe9a580a6207a9ed12702d6c7eef42b4b04a2e869c4
+    b3: 49c0763a2b23e3afd8ad730bbf767a3557d0d23aa7309b2505d2ad450c6b1880
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md
     role: subdocument
-    b3: e70f9f8f3f9232162eafd576a6dae0a92de88f7f4add934240924b5f0a33b398
+    b3: 32a812ef4816379c1542c4a0d572c64b1cb1aae2a1383c288099be96388c4a23
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/packages.md
     role: subdocument
-    b3: 313e3738dea78f41413058dfc631049d23b447fbda4fca965d9808e797491e8c
+    b3: d3a99a7861e3f7e53acf7a89631fd84ce1364cba85058d7fafe4cf615d3c9273
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/inspection-protocol.md
     role: subdocument
-    b3: d155a104ffe728d83ac946e1473fa196706bc1d900b0637440be720a06bc8632
+    b3: 3591855f0942e8b5c6775f5d1317578a3d0342375d930654649792800bdac8cd
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/feature-staging.md
     role: subdocument
-    b3: 2d4fbe5e622ffa4b6592cb2170142ccc0054a16f0a5aa489eff7d0e71c09f356
+    b3: f152d658476276734d31c82921fa9d22503caf109d7963cc63a39dc8b7c02108
     edges:
       - { rel: registered-under, to: spec/implementation.md }

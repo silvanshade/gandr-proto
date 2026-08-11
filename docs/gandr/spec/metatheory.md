@@ -46,11 +46,11 @@ That is the content of _ordering is a section, never a planarization of the theo
 
 The two directions of the error, each with its standing instances.
 
-* **Attributing a representation property to the theory.** "Σ-freeness is the single load-bearing criterion" — true of the ordered representation by construction, **false of the rung constitutively**.
+- **Attributing a representation property to the theory.** "Σ-freeness is the single load-bearing criterion" — true of the ordered representation by construction, **false of the rung constitutively**.
   "Rigidity means the objects have trivial automorphisms" — false at every rung above one-in/one-out; **rigidity is a property of the representation**.
   "The ordered representation is warranted on the carrier side by supplying a cartesian arity" — re-based, because the construction's existence needs no cartesian arity at all and what the ordering buys is decidability.
   "The cell shape must be simply connected" as a **substrate** restriction — it restricts the `Cell` record, whose operations are typed at `Shape`, are total, and do not preserve it.
-* **Refusing an import because the theory lacks a property the representation has, or the reverse.** This is the direction the corpus states least well and pays for most. gandr's theory is symmetric, so a **planar** theorem looks barred — but the merger already _is_ a planar tensor, the base being the free monoid on the colours, and canonicalization is the passage to multisets that makes the convolution symmetric.
+- **Refusing an import because the theory lacks a property the representation has, or the reverse.** This is the direction the corpus states least well and pays for most. gandr's theory is symmetric, so a **planar** theorem looks barred — but the merger already _is_ a planar tensor, the base being the free monoid on the colours, and canonicalization is the passage to multisets that makes the convolution symmetric.
   A planar theorem therefore lands where gandr's order already lives, consumed **through** the section rather than refused ([[implementation/circuit-terms#The design questions|circuit-terms-question-21]]) — **in the base-objects sense of the word, and that qualification is load-bearing**, because "planar" wears two conditions here and the instance holds in one of them.
   The **base-objects** sense is the one just stated: the monoidal base is the _free_ monoid on the colours, so interface objects are lists rather than multisets.
   It is a fact about the **objects**, and it is the direction the section is built along.
@@ -82,8 +82,8 @@ Cubical type theory [@cohen-coquand-huber-mortberg-2018-cubical] installs it **i
 
 Identity-as-function versus identity-as-data, with one consequence each:
 
-* in the cubical setting, constancy of a path is a _property_ of a function, judgmentally invisible; in gandr, `refl` is a _constructor_ — the empty word — and therefore pattern-matchable;
-* cubical transport computes by induction on the _type_; gandr's transport is realization computed by induction on the _generator_.
+- in the cubical setting, constancy of a path is a _property_ of a function, judgmentally invisible; in gandr, `refl` is a _constructor_ — the empty word — and therefore pattern-matchable;
+- cubical transport computes by induction on the _type_; gandr's transport is realization computed by induction on the _generator_.
 
 Two prior commitments, neither adopted for the identity story, compose into exactly what this placement needs: **levitation** supplies a recursable universe (one cannot compute identity by recursion over an open universe, but a levitated universe is an inductive object one can recurse over), and **polygraphs** supply a generated identity (elimination is structural, `refl` is detectable, the eliminator never consults a stuck uniform primitive).
 That the design was over-determined by independent engineering decisions is recorded as evidence of its soundness, and the same over-determination shape recurs at [[#The coherence economy]].
@@ -142,11 +142,11 @@ Rigidity is a property of the **representation**, never of the objects: the grap
 The kernel is a polarized System-L command IL [@binder-2024-grokking]: producers, consumers, and commands $angle.l p bar.v_ε c angle.r$ as first-class arena-resident data, with the frozen call-by-push-value core [@levy-cbpv] as the source calculus and a static focusing translation between them.
 Four of its properties carry the rest of this document.
 
-* **Redexes are at the cut, so overlaps are shallow.** A rewrite cell's left-hand side is a cut between a constructor pattern and an operation frame; no rule searches a term tree.
+- **Redexes are at the cut, so overlaps are shallow.** A rewrite cell's left-hand side is a cut between a constructor pattern and an operation frame; no rule searches a term tree.
   Critical-pair enumeration is tractable where tree rewriting needs full traversal, which is why the compositional-rewriting suite of [[#The doctrine layer]] can be run at all.
-* **Consumers are first-class, so the seam is visible.** Under continuation-passing the same overlap hides behind a lambda; visibility is what makes fusion a derived 2-cell with a certificate rather than a pass.
-* **Strategy is a per-cut polarity orientation.** Positive cuts fire the producer-side binder first, negative cuts the consumer-side one; evaluation strategy is an orientation choice on cells, not a global language property, and the two-region store discipline the machine adopts is the heap/frame split of the modal-sequent line [@caspar-munch-maccagnoni-2026-s4] with its modality reinterpreted as residency, never imported as a type former.
-* **Multi-conclusion contexts have a home.** The linear consumer zone is where a multi-conclusion reading lives, and it is the declared growth point for the multi-output term face.
+- **Consumers are first-class, so the seam is visible.** Under continuation-passing the same overlap hides behind a lambda; visibility is what makes fusion a derived 2-cell with a certificate rather than a pass.
+- **Strategy is a per-cut polarity orientation.** Positive cuts fire the producer-side binder first, negative cuts the consumer-side one; evaluation strategy is an orientation choice on cells, not a global language property, and the two-region store discipline the machine adopts is the heap/frame split of the modal-sequent line [@caspar-munch-maccagnoni-2026-s4] with its modality reinterpreted as residency, never imported as a type former.
+- **Multi-conclusion contexts have a home.** The linear consumer zone is where a multi-conclusion reading lives, and it is the declared growth point for the multi-output term face.
 
 **Fusion is Squier completion on cut seams** [@squier-1987-word-problems].
 Surface rewrite members elaborate to oriented command cells; overlaps at cuts are bona-fide critical pairs; a budgeted completion loop synthesizes derived cells whose certificates are the pair of joining paths, differential-tested against the two-step composite and **replayed rather than trusted**.
@@ -171,12 +171,12 @@ Consumer-side closures (co-closures) are undeveloped in the source line and are 
 
 **Four kernel boundaries that are invariants, not preferences.**
 
-* **Progress holds only for focused statements**: un-focused input can be stuck, so elaboration runs the focusing translation (administrative-redex-avoiding) or accepts partial progress — a real invariant on the checker-to-machine boundary.
-* **Where the function type lives**: the frozen CBPV core keeps its formers as the source and typing calculus; the IL _represents_ abstraction and application as application-codata internally — a representation choice inside the IL, invisible to the contract.
-* **Handlers are consumer-side case analysis**: a deep handler is a consumer pattern-matching operation constructors and binding the resumption as a _covalue_ argument; the delimiter is a prompt covalue and capture is a μ-binding up to it.
+- **Progress holds only for focused statements**: un-focused input can be stuck, so elaboration runs the focusing translation (administrative-redex-avoiding) or accepts partial progress — a real invariant on the checker-to-machine boundary.
+- **Where the function type lives**: the frozen CBPV core keeps its formers as the source and typing calculus; the IL _represents_ abstraction and application as application-codata internally — a representation choice inside the IL, invisible to the contract.
+- **Handlers are consumer-side case analysis**: a deep handler is a consumer pattern-matching operation constructors and binding the resumption as a _covalue_ argument; the delimiter is a prompt covalue and capture is a μ-binding up to it.
   The same machinery read from the typing side, with the rules it realizes, is [[implementation/effects-and-control#What replaced it, and why this is a supersession rather than a gap]].
   One mechanism replaces operation-keyed handler frames, delimited-control primitives, and loop operations, and it is more inspectable (a handler is IL data); the reserved further unification is that copatterns and delimited control are the same mechanism.
-* **η-hygiene in completion**: codata-η is valid only call-by-name and data-η only call-by-value, so the completion engine must consult the cut polarity before using any η-shaped step in a joining path — an easy-to-miss soundness constraint, to be pinned by a pathological corpus witness.
+- **η-hygiene in completion**: codata-η is valid only call-by-name and data-η only call-by-value, so the completion engine must consult the cut polarity before using any η-shaped step in a joining path — an easy-to-miss soundness constraint, to be pinned by a pathological corpus witness.
   A standing cost row sits beside it: in sequent calculi a **guarded coinduction rule destroys cut elimination** [@komendantskaya-rozplokhas-basold-2020-new-normal], so any completion engine whose polarity-consulting η steps meet guarded rules must budget for that loss rather than assume the cut-elimination metatheory survives the addition.
 
 **Two fusion-engine obligations and one scope fence.** When handler reductions enter the cell store, completion runs _over the handler reduction theory_ (the fine-grained reduction theory as the rewrite system), making confluence-with-handler-reductions a discharge obligation of the fusion engine rather than an assumption; full handler residualization holds only for a typed subset, so graded thunks plausibly fall outside it and the compile-versus-evaluate differential is the safety net for the dynamic-handler fragment — an explicit boundary to record when that phase lands.
@@ -309,11 +309,11 @@ data Shape : List Ob → List Ob → Set where
 
 Landed and green on this carrier (the full record, with each theorem named, has migrated — the corpus README's migration banner):
 
-* **the cut** (`cap` on `Match`): source-to-source pairing, with the flow-through fragment named by the `CapFree` predicate;
-* **the merger** $⊠$ (`merge`, derived, not a constructor): the parallel composition of shapes, with whiskering falling out as the merger at an identity operand — definitionally, which is the strongest available evidence the operation is right;
-* **the edge listing**: one entry per pair the wiring makes, correcting a half-edge/edge mis-identification the cut exposed; undirected predicates (`Connected`, `Acyclic`, `SimplyConn`, `Walk`) hold on every shape and mention no polarity, directed predicates (`Arc`, `WheelFree`, `Ranked`) take a polarity and are uniform in it;
-* **the palette**: the colour involution $ω$ with the orientation $"pole"$, `cut-oriented` reading a legitimate cut's direction off the poles, and the theorem that one self-dual colour admits _no_ orientation — the free compact closed category on one self-dual object appearing in the carrier as an empty type;
-* **the merger's incidence theorem, both directions**: no edge of a merge joins the two operands, and each operand's own adjacencies survive — so a merge of two connected shapes has **exactly two components, and they are the operands**.
+- **the cut** (`cap` on `Match`): source-to-source pairing, with the flow-through fragment named by the `CapFree` predicate;
+- **the merger** $⊠$ (`merge`, derived, not a constructor): the parallel composition of shapes, with whiskering falling out as the merger at an identity operand — definitionally, which is the strongest available evidence the operation is right;
+- **the edge listing**: one entry per pair the wiring makes, correcting a half-edge/edge mis-identification the cut exposed; undirected predicates (`Connected`, `Acyclic`, `SimplyConn`, `Walk`) hold on every shape and mention no polarity, directed predicates (`Arc`, `WheelFree`, `Ranked`) take a polarity and are uniform in it;
+- **the palette**: the colour involution $ω$ with the orientation $"pole"$, `cut-oriented` reading a legitimate cut's direction off the poles, and the theorem that one self-dual colour admits _no_ orientation — the free compact closed category on one self-dual object appearing in the carrier as an empty type;
+- **the merger's incidence theorem, both directions**: no edge of a merge joins the two operands, and each operand's own adjacencies survive — so a merge of two connected shapes has **exactly two components, and they are the operands**.
   Disconnection is what the substrate says, not what the engine arranges.
 
 Grafting and merging are total and **do not preserve the predicates**: connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result, with the counterexamples exhibited and refuted in the tree — `bigon`, two corollas grafted along two legs that reconverge and so lose acyclicity; `two-points`, a merge of two cells that disconnects and so loses connectivity; and `wheel`, one vertex whose out-leg is glued to its own in-leg, closing a directed loop.
@@ -364,8 +364,8 @@ The corrected statement of what a kit is (the retired record's "two arity monads
 
 The old licence — "both arities are cartesian because the symmetric group acts freely" — is **dead at the circuit rung and replaced by two facts**:
 
-* **for the nerve**: $T^times$ **has arities** at `Set` (the graphs inside graphical species), which is the hypothesis the abstract nerve theorem consumes [@berger-mellies-weber-2012-arities]; cartesianness is not on that chain;
-* **for the carrier**: Leinster's _presentation_ of generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr's **ordered representation** supplies one — but the construction's existence needs neither that nor pullback preservation (below), so what the ordering buys on this side is **decidability** and not existence; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
+- **for the nerve**: $T^times$ **has arities** at `Set` (the graphs inside graphical species), which is the hypothesis the abstract nerve theorem consumes [@berger-mellies-weber-2012-arities]; cartesianness is not on that chain;
+- **for the carrier**: Leinster's _presentation_ of generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr's **ordered representation** supplies one — but the construction's existence needs neither that nor pullback preservation (below), so what the ordering buys on this side is **decidability** and not existence; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
 
 **The carrier-side requirement is not what it was assumed to be, and the unified framework prices it in three tiers rather than one** [@cruttwell-shulman-2009-generalized-multicategories].
 Cartesian means the monad preserves pullbacks _and_ every naturality square of the unit and multiplication is a pullback (Definition B.2).
@@ -412,10 +412,10 @@ The interpretation is the **vertex** family at the circuit rung, not the leg fam
 
 **Three divergences from the published record are forced, and one of them deletes three of its fields.**
 
-* **The codes are indexed by their interface**, not a bare type.
+- **The codes are indexed by their interface**, not a bare type.
   This is the reason the cell shape was re-presented familially: an unindexed carrier gives an arity abstraction nothing to quantify over.
-* **The unit is a family, not an element** — one unit code per generator, which at the circuit rung is the corolla family and at the linear kit is the one-edge path.
-* **The positions are labelled**, so the interpretation is a family too: the positions spanning a given interface.
+- **The unit is a family, not an element** — one unit code per generator, which at the circuit rung is the corolla family and at the linear kit is the one-edge path.
+- **The positions are labelled**, so the interpretation is a family too: the positions spanning a given interface.
   Substitution needs the label to _type_ the family it substitutes, and the right-unit law needs it to name which unit goes where.
   The published positions are bare because the published codes are bare finite sets.
 
@@ -449,11 +449,11 @@ At the circuit kit the surplus is the **vertex ordering**, and no interpretation
 
 **What the presentation costs, measured at both kits.** The linear instance is landed in `Gandr.Arity.Universe`, where the answer was already known and so serves as the control: if the presentation is not cheaper there, it will not be cheaper where the answer is unknown.
 
-* **The unit and associativity laws are the existing lemmas, read off the graph by functionality.** The left-unit law _is_ the linear kit's left-unit lemma; associativity runs on its associativity lemma.
+- **The unit and associativity laws are the existing lemmas, read off the graph by functionality.** The left-unit law _is_ the linear kit's left-unit lemma; associativity runs on its associativity lemma.
   The presentation reuses the kit rather than replacing it.
-* **The whiskering lemma has no counterpart.** Whiskering is a compatibility the _binary_ multiplication needs — moving one operand past the other's interface — and substitution at all positions never moves an operand past anything.
-* **One lemma is the whole new price**: substitution distributes over concatenation, which is what stating associativity over positions costs in place of stating it over witnesses.
-* **The interpretation law is inhabited as an equivalence and not as a map.** The three laws consume only its pairing direction, so the splitting direction is what makes the instance satisfy the published field as stated rather than a weakening of it; it is written as a view throughout, so a consumer learns the decomposition by matching rather than by inverting a defined function in an index.
+- **The whiskering lemma has no counterpart.** Whiskering is a compatibility the _binary_ multiplication needs — moving one operand past the other's interface — and substitution at all positions never moves an operand past anything.
+- **One lemma is the whole new price**: substitution distributes over concatenation, which is what stating associativity over positions costs in place of stating it over witnesses.
+- **The interpretation law is inhabited as an equivalence and not as a map.** The three laws consume only its pairing direction, so the splitting direction is what makes the instance satisfy the published field as stated rather than a weakening of it; it is written as a view throughout, so a consumer learns the decomposition by matching rather than by inverting a defined function in an index.
 
 The code relation carries its own three laws, which the presentation is what forced: it is the relation the laws are stated at and the relation the representation map lands in, so reflexivity alone does not suffice.
 All three are available heterogeneously and none of them is available homogeneously — the endpoints must stay distinct variables, or a constructor match has a reflexive equation to delete, which is the same wall that defers decidable equality on the linear carrier and not a second one.
@@ -561,9 +561,9 @@ The trace is not a downward-category operation but the wheeled prop's, and it is
 
 Two things the ruling owes, and one prediction it makes — the two remain owed, and both are now stated as Agda types beside the former rather than only here:
 
-* **an agreement lemma** between the derived grafting and the built `graft`, without which `verts-graft`, the two unit laws and the merger's incidence theorems do not transfer, and the tree carries two compositions;
-* **the count law** — that the two sides of associativity close the same number of circles — which is the source's $k$ formula as an induction, and is the one place the count is paid for rather than carried;
-* **the ladder-depth claim is a prediction**: the closure's own exchange law — closing two wires in either order — is predicted at arity three by the recorded debt-arity law, which is the braid and is proved, and its falsifier is a cap case that reaches the four-layer coherence instead.
+- **an agreement lemma** between the derived grafting and the built `graft`, without which `verts-graft`, the two unit laws and the merger's incidence theorems do not transfer, and the tree carries two compositions;
+- **the count law** — that the two sides of associativity close the same number of circles — which is the source's $k$ formula as an induction, and is the one place the count is paid for rather than carried;
+- **the ladder-depth claim is a prediction**: the closure's own exchange law — closing two wires in either order — is predicted at arity three by the recorded debt-arity law, which is the braid and is proved, and its falsifier is a cap case that reaches the four-layer coherence instead.
   That coherence is held too, so the falsifier costs the prediction and not the route.
 
 > **Two alternatives were assessed and are not taken; both are recorded so neither is re-proposed.** Mapping circles to zero inside the _full_ Brauer category is unavailable at this base before it is weighed at all: **it needs a zero morphism**, being an ideal construction in a linear setting, and gandr's carrier is combinatorial at `Set`.
@@ -639,10 +639,10 @@ The locators above are verified at source; what remains marked is the author-pai
 **The coherence verdict.** Must the structural coherence family of a tree-shaped edit calculus be imposed as mathematics, or is it presentational?
 Presentational, in two halves, and the proof is landed:
 
-* _the hierarchy dissolves as one theorem, not a family_: a rigid arena map — extent-preserving (`ext`) and offset-fixed (`fixed`) — composes and whiskers to rigid maps, and any two rigid words with a common source agree at value grade.
+- _the hierarchy dissolves as one theorem, not a family_: a rigid arena map — extent-preserving (`ext`) and offset-fixed (`fixed`) — composes and whiskers to rigid maps, and any two rigid words with a common source agree at value grade.
   The associativity and unit generators are rigid, so **every** diagram built from that hierarchy commutes, at every code, with no cell imposed; the pentagon and triangle are instances.
   No uniqueness of identity proofs, no transport: a coherence cell here is an equation between _functions_, so the recast stays clean without K. Dissolution's cost is one theorem plus four closure lemmas, **independent of dimension** — which is the cost claim that matters, against a generated family whose members grow exponentially;
-* _what carries content is proved directly_: the two symmetries and the left distributor are not rigid; their obligations (the sum hexagon, distributor naturality) are discharged by induction through the arena's computation rules.
+- _what carries content is proved directly_: the two symmetries and the left distributor are not rigid; their obligations (the sum hexagon, distributor naturality) are discharged by induction through the arena's computation rules.
 
 The **completeness half is declined, with a reversal condition** — see [[metatheory/guards#the declined completeness half]]. gandr consumes only soundness (congruent words realize equally, cheap _because of_ the dissolution theorem); the engine's normal-form test is a decidable under-approximation of replay-equivalence, and a normal-form-equal, replay-divergent pair is a kill signal, not a soundness hole to close by theorem.
 The residue after dissolution is the symmetric-group word problem in the groupoid alphabet and the full transformation-monoid word problem in the directed one; neither is owed, because both are the completeness half.
@@ -706,8 +706,8 @@ What this retires: the old restriction chain (properadic nerve restricted along 
 The chain's last unchecked step (whether the old framework's Segal-object category is literally the monograph's strict properadic one, with the pushout-of-corolla-representables computation unverified) is retired with it, not carried.
 What it leaves owed, both scheduled:
 
-* **the oriented-slice transfer**: the arities statement is made for $T^times$ on $"GS"$ and not restated for gandr's oriented $O T^times$ on $"OGS" = "GS"\/"Di"$; the transfer along the slice is routine (the slice equivalence is used in the source's own proofs) but unwritten — a paragraph, not a programme;
-* **the presentation of $Θ_(T^times, "Gr")$**: the theorem needs only the category's existence; the _mechanization_ (degree, the degree-raising and degree-lowering subcategories, factorization, decidable morphism equality, the per-degree Segal check) needs its morphisms concretely, which the source does only for the unital case.
+- **the oriented-slice transfer**: the arities statement is made for $T^times$ on $"GS"$ and not restated for gandr's oriented $O T^times$ on $"OGS" = "GS"\/"Di"$; the transfer along the slice is routine (the slice equivalence is used in the source's own proofs) but unwritten — a paragraph, not a programme;
+- **the presentation of $Θ_(T^times, "Gr")$**: the theorem needs only the category's existence; the _mechanization_ (degree, the degree-raising and degree-lowering subcategories, factorization, decidable morphism equality, the per-degree Segal check) needs its morphisms concretely, which the source does only for the unital case.
 
 A caution that travels with the re-basing: the connected and disconnected presentations are genuinely different theories (the generating map between them is not quadratic), so properad-level results must not be expected to transfer by restriction — the rung change is a re-warrant, not a restriction.
 
@@ -805,8 +805,8 @@ The gate is real and stays: per-stratum `ua` exists exactly where that stratum's
 
 Two further obligations sharpen the statement:
 
-* **the two-cell coherence**: a univalence map must be a _typoid function_ — equivalent equivalences go to equal identifications ($"Ua"^2$) [@petrakis-2022-typoids]; the pasting-side analogue (respect for the graphical maps' 2-cells) is unstated and owed;
-* **the target discipline**: the statement must **not** target the ambient identity type — over decidable codes Hedberg collapses it, so the groupoidal form says nothing exactly where gandr lives; the realization-as-functor direction is forced from the start, which is one of the three forcings of [[#Directed univalence]].
+- **the two-cell coherence**: a univalence map must be a _typoid function_ — equivalent equivalences go to equal identifications ($"Ua"^2$) [@petrakis-2022-typoids]; the pasting-side analogue (respect for the graphical maps' 2-cells) is unstated and owed;
+- **the target discipline**: the statement must **not** target the ambient identity type — over decidable codes Hedberg collapses it, so the groupoidal form says nothing exactly where gandr lives; the realization-as-functor direction is forced from the start, which is one of the three forcings of [[#Directed univalence]].
 
 ### Transport, and the two cost measures
 
@@ -850,10 +850,10 @@ The directed statement is the general case and the groupoidal one is its inverti
 
 **The statement of record** (the fenced directed statement; the maximal and lax alternatives are priced and declined in [[metatheory/directed-univalence]]): over the recursion-free description fragment, with the certificate alphabet fixed to the leaf-natural one-way stock, the realization of the directed edit polygraph is
 
-* **sound** — every generator schema names a translator with replay evidence; paths realize by composition, unconditionally, because string-shaped composites are structurally loop-free;
-* **full** — every leaf-natural one-way certificate is replay-equal to a realized positive word, at the unit-plus-restriction fragment;
-* **sectioned** — β at replay-equivalence, η at the directed rule congruence, never code equality;
-* **core-coincident** — the comparison from the groupoid statement into the invertible core of the directed one is a bijection at the stated grades; this is genuinely new work, because invertible realizations arise from non-invertible letters, and it needs the directed rule layer's simplicial-identity cells plus a word-problem argument on the invertible-realization sub-stock.
+- **sound** — every generator schema names a translator with replay evidence; paths realize by composition, unconditionally, because string-shaped composites are structurally loop-free;
+- **full** — every leaf-natural one-way certificate is replay-equal to a realized positive word, at the unit-plus-restriction fragment;
+- **sectioned** — β at replay-equivalence, η at the directed rule congruence, never code equality;
+- **core-coincident** — the comparison from the groupoid statement into the invertible core of the directed one is a bijection at the stated grades; this is genuinely new work, because invertible realizations arise from non-invertible letters, and it needs the directed rule layer's simplicial-identity cells plus a word-problem argument on the invertible-realization sub-stock.
 
 The alphabets are fixed in the statement: paths are **positive words** (no backward half; symmetry is nothing at dimension 1, deliberately), instances are saturated (profunctor modules, already variance-typed), certificates are translator _singletons_ — a forward map with replay evidence, no inverse and no round-trip demand.
 The forward-only certificate shape is a decision, not an omission; the four-transport-fields-plus-corecursive-field package a computational bisimulation-style univalence carries belongs to the invertible core, i.e. to the core-coincidence obligation.
@@ -955,12 +955,12 @@ A second, independent hole theory exists for the _higher-order_ direction — di
 
 ### Doctrine odds and ends that are load-bearing
 
-* **Cartesian double theories.** The 2-dimensional fragment of a shape block is a presentation of a cartesian double theory with product-preserving lax-functor models; test the cartesian law against the _framed_ pairing–projection bijection, expect iso-strong and never strict; a bare virtual double category is not cartesian in that sense, and until the reflection face's cartesian-fibrational notion is reconciled with the double-theory notions, every verdict names which notion it tested.
-* **Variance.** The comonoid-style settings pay an opposite-category operator with polarity machinery through every judgment; gandr's internal language deliberately excludes it, and the variance layer is a priced future axis, not a current structure ([[metatheory/ambient-and-primitives]]).
-* **Aggregation is not functorial; data migration is** — the source's own words, and its title is the programme, not a property: _Functorial Aggregation_ models aggregation _inside_ the functorial data-migration ecosystem (disjoint unions of conjunctive queries as parametric right adjoints), while observing that inserting a row gives no map between the aggregated results [@spivak-garner-fairbanks-2021-aggregation].
+- **Cartesian double theories.** The 2-dimensional fragment of a shape block is a presentation of a cartesian double theory with product-preserving lax-functor models; test the cartesian law against the _framed_ pairing–projection bijection, expect iso-strong and never strict; a bare virtual double category is not cartesian in that sense, and until the reflection face's cartesian-fibrational notion is reconciled with the double-theory notions, every verdict names which notion it tested.
+- **Variance.** The comonoid-style settings pay an opposite-category operator with polarity machinery through every judgment; gandr's internal language deliberately excludes it, and the variance layer is a priced future axis, not a current structure ([[metatheory/ambient-and-primitives]]).
+- **Aggregation is not functorial; data migration is** — the source's own words, and its title is the programme, not a property: _Functorial Aggregation_ models aggregation _inside_ the functorial data-migration ecosystem (disjoint unions of conjunctive queries as parametric right adjoints), while observing that inserting a row gives no map between the aggregated results [@spivak-garner-fairbanks-2021-aggregation].
   Aggregation needs a commutative monoid on the target — multisets, the free one, are the canonical target — and every quantity accumulated over a derivation (fuel, cost, counters) lives in that non-functorial regime, where symmetry re-enters through the cost model rather than the type theory.
-* **The recurring étale condition.** Homotopy quotients that add arrows keep symmetries carried and positions decidable [@kock-2012-data-types]; discrete-opfibration conditions make dependent sums compute coproducts; exponentiability of polynomials in the virtual setting [@fujii-lack-2025-familial] — one invariant seen three times; name it and enforce it wherever a decomposition, sum, or product is formed.
-* **Virtual-honesty formulations worth keeping.** Bicategories are virtual bicategories with all composites (via cocartesian 2-cells), so the virtual reading and the relative-monad machinery share one formulation of "composite".
+- **The recurring étale condition.** Homotopy quotients that add arrows keep symmetries carried and positions decidable [@kock-2012-data-types]; discrete-opfibration conditions make dependent sums compute coproducts; exponentiability of polynomials in the virtual setting [@fujii-lack-2025-familial] — one invariant seen three times; name it and enforce it wherever a decomposition, sum, or product is formed.
+- **Virtual-honesty formulations worth keeping.** Bicategories are virtual bicategories with all composites (via cocartesian 2-cells), so the virtual reading and the relative-monad machinery share one formulation of "composite".
   And the game-semantics layer stack does **not** map onto gandr's universe stratification, nor onto module or abstract-type sealing — sealing is generative.
 
 ## The certificate algebra
@@ -972,9 +972,9 @@ A returning derivation has no replayable representative, and the derivation dime
 **The normal form.** The certificate normal form is closure under abstraction isomorphism (content addressing — already the store's identity), trivial-unit insertion and removal (empty-path elimination — the path calculus's unit laws; the empty path is not an edge, so unit insertion has no tile of its own), and **shift equivalence**: two adjacent cell applications at disjoint positions with trivial overlap commute.
 The contract, at full strength and correctly scoped:
 
-* normal-form equality **decides shift equivalence** — an iff, from the uniqueness of primitive factorization and the shift-equivalence characterization [@behr-2019-tracelets] [@behr-kock-2021-tracelet-hopf];
-* shift equivalence **implies** replay-equivalence — sound;
-* the converse is **constructibly false** in gandr's own codebase: replay-equivalence is pure proof-irrelevance beyond replayability, so two confluence certificates joining by different routes are replay-equal with different primitive multisets.
+- normal-form equality **decides shift equivalence** — an iff, from the uniqueness of primitive factorization and the shift-equivalence characterization [@behr-2019-tracelets] [@behr-kock-2021-tracelet-hopf];
+- shift equivalence **implies** replay-equivalence — sound;
+- the converse is **constructibly false** in gandr's own codebase: replay-equivalence is pure proof-irrelevance beyond replayability, so two confluence certificates joining by different routes are replay-equal with different primitive multisets.
 
 > The normal form is a performance fast path, never a decidability result; replay-equivalence is already decidable by boundary equality plus two replays, and the normal form answers its _cost_ question.
 
@@ -1081,10 +1081,10 @@ The five headline directions, for orientation: extend to the directed case (it i
 
 ## Sub-documents
 
-* [[metatheory/roadmap]] — everything that remains, with costs and falsifiers.
-* [[metatheory/directed-univalence]] — the directed statement in full: candidate comparison, alphabets, grades, guards, the kernel formers, the equipment inventory.
-* [[metatheory/layout-and-coherence]] — the layout calculus per former, the coherence modules, the arena generalization detail.
-* [[metatheory/ambient-and-primitives]] — the cubical contact in full (the J ledger, the verified evaluator register, the price ledger), the internalization currency table, the technology-cluster survey.
-* [[metatheory/exact-reals]] — the exact-reals and synthetic-topology line: the semantic contract, the reified architecture, the staged plan, the equipment and temporal readings, and `ua_topo`.
-* [[metatheory/guards]] — the do-not-reopen ledger: declined halves with reversal conditions, dissolved forks, withdrawn claims, name-collision warnings, and the code concordance to the retired records.
-* [[metatheory/citation-hazards]] — locator defects, version drift, unverified reports, and per-source publication status.
+- [[metatheory/roadmap]] — everything that remains, with costs and falsifiers.
+- [[metatheory/directed-univalence]] — the directed statement in full: candidate comparison, alphabets, grades, guards, the kernel formers, the equipment inventory.
+- [[metatheory/layout-and-coherence]] — the layout calculus per former, the coherence modules, the arena generalization detail.
+- [[metatheory/ambient-and-primitives]] — the cubical contact in full (the J ledger, the verified evaluator register, the price ledger), the internalization currency table, the technology-cluster survey.
+- [[metatheory/exact-reals]] — the exact-reals and synthetic-topology line: the semantic contract, the reified architecture, the staged plan, the equipment and temporal readings, and `ua_topo`.
+- [[metatheory/guards]] — the do-not-reopen ledger: declined halves with reversal conditions, dissolved forks, withdrawn claims, name-collision warnings, and the code concordance to the retired records.
+- [[metatheory/citation-hazards]] — locator defects, version drift, unverified reports, and per-source publication status.

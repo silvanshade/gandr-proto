@@ -12,16 +12,16 @@ This document is what that surface lowers **into**.
 
 **Built, and verified against the tree at write time.**
 
-* **The kernel's term vocabulary has no fixpoint.** `gandr-kernel-core`'s `term` module declares `Computation` with exactly six formers — `Lambda`, `Application`, `Return`, `Bind`, `Force`, `Case` — and `Value` with seven, of which `Thunk` is the only one that embeds a computation.
+- **The kernel's term vocabulary has no fixpoint.** `gandr-kernel-core`'s `term` module declares `Computation` with exactly six formers — `Lambda`, `Application`, `Return`, `Bind`, `Force`, `Case` — and `Value` with seven, of which `Thunk` is the only one that embeds a computation.
   Its `types` module declares `CompType` with exactly two formers, `Returner` and `Arrow`.
   Nothing in either enum binds a name in its own body.
-* **The thunk is graded upstream and ungraded in the kernel.** `gandr-core-checker`'s `syntax` module carries `Value::Thunk(Grade, …)` and `ValueType::Thunk(Grade, …)`; `gandr-kernel-core`'s `ValueType::Thunk` takes only the computation type, because grades are erased before the certified stage and survive only in the export format.
+- **The thunk is graded upstream and ungraded in the kernel.** `gandr-core-checker`'s `syntax` module carries `Value::Thunk(Grade, …)` and `ValueType::Thunk(Grade, …)`; `gandr-kernel-core`'s `ValueType::Thunk` takes only the computation type, because grades are erased before the certified stage and survive only in the export format.
   `Grade` itself is a sealed newtype in `gandr-core-checker`'s `grade` module whose entire cross-module surface is a semiring signature — `ZERO`, `ONE`, `OMEGA`, `fin`, `leq`, `plus`, `times`.
-* **Call-by-need forcing, with black-holing, is built and running.** `gandr-core-sequent`'s `store` module declares `MemoState` as `Unforced | InProgress | Forced` behind an interior-mutable `Cell` with nominal identity; its `machine` module's `force`, `force_inline`, and `force_probe` implement the probe-and-write-back discipline this document's memoization argument depends on.
+- **Call-by-need forcing, with black-holing, is built and running.** `gandr-core-sequent`'s `store` module declares `MemoState` as `Unforced | InProgress | Forced` behind an interior-mutable `Cell` with nominal identity; its `machine` module's `force`, `force_inline`, and `force_probe` implement the probe-and-write-back discipline this document's memoization argument depends on.
   The memo policy is uniform across grades.
-* **The step budget is one shared constant.** `gandr-core-checker`'s `outcome` module declares `STEP_BUDGET` as `1_000_000` and documents itself as the single source of truth: the L machine and the shell and foreign-interface drivers all run the same budget.
-* **The recursive-scope surface pass runs before lowering.** `gandr-surface-engine`'s `lower/recursion_surface` module resolves which bare names are fix-bound and classifies instantiation-slot residents, item by item, before ordinary lowering sees the expression.
-* **A recursive definition does not lower.** In `gandr-surface-engine`'s `lower` module, a `def rec` whose body is a **copattern clause list** is treated as a codata introduction and elaborates to a `Cosplit` record of thunks; a `def rec` whose body is a **statement block** — the user-recursion case — falls through to the total-mode hole.
+- **The step budget is one shared constant.** `gandr-core-checker`'s `outcome` module declares `STEP_BUDGET` as `1_000_000` and documents itself as the single source of truth: the L machine and the shell and foreign-interface drivers all run the same budget.
+- **The recursive-scope surface pass runs before lowering.** `gandr-surface-engine`'s `lower/recursion_surface` module resolves which bare names are fix-bound and classifies instantiation-slot residents, item by item, before ordinary lowering sees the expression.
+- **A recursive definition does not lower.** In `gandr-surface-engine`'s `lower` module, a `def rec` whose body is a **copattern clause list** is treated as a codata introduction and elaborates to a `Cosplit` record of thunks; a `def rec` whose body is a **statement block** — the user-recursion case — falls through to the total-mode hole.
   So the surface parses, scope-checks, and then declines.
 
 **Designed, and not built.** Everything else here: the former itself, its checker and operational rules, its machine realization, the recursive-definition elaboration, the derived terminating eliminators, and every rung of the termination ladder past the budget.
@@ -295,11 +295,11 @@ That naming is carried; **no bibliography key is minted for it, because neither 
 
 ## Interactions
 
-* **Data and patterns.** The case eliminators structural recursion consumes belong to the data surface; the derived terminating eliminators are a **joint** obligation with it, since they are generated per declaration.
-* **Effects and control.** The loop escapes are algebraic operations on the handler machinery; the delimited-control pair stays reserved for user-level control and is untouched.
-* **Value semantics and modes.** The grade-`1` tail refinement and the discard-runs-unwind path both touch the mode and linearity calculus ([[../../surface-language/proposed/modes-and-references]]); neither is in the cut.
-* **The kernel's certified stage.** Adding a former to the innermost stage is the most expensive kind of change available here, and the graded-versus-erased split makes the placement question real rather than procedural.
-* **Self-hosting.** User recursion is a prerequisite for writing gandr in gandr; the gate scripts themselves need no core recursion, so this unblocks the **language user** rather than the bootstrap.
+- **Data and patterns.** The case eliminators structural recursion consumes belong to the data surface; the derived terminating eliminators are a **joint** obligation with it, since they are generated per declaration.
+- **Effects and control.** The loop escapes are algebraic operations on the handler machinery; the delimited-control pair stays reserved for user-level control and is untouched.
+- **Value semantics and modes.** The grade-`1` tail refinement and the discard-runs-unwind path both touch the mode and linearity calculus ([[../../surface-language/proposed/modes-and-references]]); neither is in the cut.
+- **The kernel's certified stage.** Adding a former to the innermost stage is the most expensive kind of change available here, and the graded-versus-erased split makes the placement question real rather than procedural.
+- **Self-hosting.** User recursion is a prerequisite for writing gandr in gandr; the gate scripts themselves need no core recursion, so this unblocks the **language user** rather than the bootstrap.
 
 ## The example plan
 

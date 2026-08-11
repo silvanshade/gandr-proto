@@ -7,13 +7,13 @@ What the pipeline produces downstream — CST, lowering, the machines — is the
 
 The normative parser is **not BNF, PEG, tree-sitter, or GF**: a checked **precedence-bounded grammar** over named precedence DAGs, hand-written constructor code with no codegen, in the tylr lineage [@moon-blinn-porter-omar-2025-tylr].
 
-* A **grammar** is a set of forms: regexes over lexical tiles and recursive sorts, each attached to a `(sort, precedence)` pair.
-* A **mold** is a zipper into the grammar, interned to a compact `MoldId(u32)`: `{ label, rctx, prec, sort }`, where `rctx` is the regex-context zipper.
+- A **grammar** is a set of forms: regexes over lexical tiles and recursive sorts, each attached to a `(sort, precedence)` pair.
+- A **mold** is a zipper into the grammar, interned to a compact `MoldId(u32)`: `{ label, rctx, prec, sort }`, where `rctx` is the regex-context zipper.
   Molds are deterministic and fingerprint-scoped: ids are assigned in canonical table order at grammar build; the mold table folds into the grammar's fingerprint; **a CST records the fingerprint of the grammar that produced it**, so mold ids never migrate silently across grammar revisions.
-* The **precedence DAG** is a named graph, not a number line: named precedence groups, edges for binds-tighter, per-group associativity, a precomputed reachability closure, and a fingerprint; strict precedence is reachability, and incomparable pairs are honored — an ambiguous mix is an error, never a guess.
+- The **precedence DAG** is a named graph, not a number line: named precedence groups, edges for binds-tighter, per-group associativity, a precomputed reachability closure, and a fingerprint; strict precedence is reachability, and incomparable pairs are honored — an ambiguous mix is an error, never a guess.
   The choice of a graph over a number line, its literature grounding, and what it buys over the integer-level systems are [[operators#The precedence model is a named graph, not a number line]].
   **The DAG and the walk relation are not parser-internal notions**: both are public artifacts of the shared graph substrate, which also carries the analysis justifying the generalization and the re-proof obligations it leaves open ([[../implementation/graph-substrate#The precedence DAG]]).
-* The pipeline:
+- The pipeline:
 
 ```text
 source text → lexer (hand-rolled byte DFA) → molder (obligation-minimizing dry run over the grammar)
@@ -22,11 +22,11 @@ source text → lexer (hand-rolled byte DFA) → molder (obligation-minimizing d
   → the typing machine + the L machine → outcome
 ```
 
-* The **melder** is a resumable push machine over persistent, first-order, serializable state: `push` is total (Shift / Reduce / Degrout — incomparable precedences complete-and-reduce with grout at bottom, guaranteeing termination); `finalize` is a _query_ computing the completion that would close the input now, without committing it; batch `parse` is the derived fold `labeler ∘ molder ∘ fold(push) ∘ commit(finalize)`.
+- The **melder** is a resumable push machine over persistent, first-order, serializable state: `push` is total (Shift / Reduce / Degrout — incomparable precedences complete-and-reduce with grout at bottom, guaranteeing termination); `finalize` is a _query_ computing the completion that would close the input now, without committing it; batch `parse` is the derived fold `labeler ∘ molder ∘ fold(push) ∘ commit(finalize)`.
   The stack is one slope of terraces; the emission log is append-only, so rollback is truncation and checkpoints are cheap.
-* **Error recovery is the obligation taxonomy, not panic-and-resync**, with lexical ambiguity resolved by obligation minimum rather than in the lexer.
-* The CST's node kinds are deliberately **form-name-free**; declaration forms live in grammar rules at the item sort and in node-kind constants the lowerer dispatches on — there is no typed top-level declaration enum.
-* Tree-sitter survives as **parity/reference tooling** (editor grammars, highlight preprocessing) under a differential parity harness; grammar growth is PBG-only, and the PBG-only construct kinds are a parity exemption registry (`PBG_ONLY_KINDS`, below).
+- **Error recovery is the obligation taxonomy, not panic-and-resync**, with lexical ambiguity resolved by obligation minimum rather than in the lexer.
+- The CST's node kinds are deliberately **form-name-free**; declaration forms live in grammar rules at the item sort and in node-kind constants the lowerer dispatches on — there is no typed top-level declaration enum.
+- Tree-sitter survives as **parity/reference tooling** (editor grammars, highlight preprocessing) under a differential parity harness; grammar growth is PBG-only, and the PBG-only construct kinds are a parity exemption registry (`PBG_ONLY_KINDS`, below).
 
 ## The three build-time gates
 
@@ -73,11 +73,11 @@ pattern:     atom < as < or
 type:        atom < application < product < sum < set < arrow
 ```
 
-* New item forms land at `item.singleton`; new block-leading expression forms (loops, `for`) land at `expression.atom` beside `if`/`case`/`thunk`/`co`; patterns extend the `pattern.*` chain.
-* `ret` binds loosest and is right-associative; postfix (call, instantiation, projection) is tightest.
-* Term-level binary operators are left-associative; **type operators are right-associative** (an unparenthesized flat chain like `A * B * C` written against the grain is a user-visible error).
-* The union `|`, intersection `/\`, and lazy product `&` type operators sit in **pairwise-incomparable right-associative bands** — mixing them requires parentheses, so there are no set-operation precedence puzzles.
-* The shell sub-grammar carries its own three-level ladder: `|` (pipe) tightest, then `&&`, then `||`.
+- New item forms land at `item.singleton`; new block-leading expression forms (loops, `for`) land at `expression.atom` beside `if`/`case`/`thunk`/`co`; patterns extend the `pattern.*` chain.
+- `ret` binds loosest and is right-associative; postfix (call, instantiation, projection) is tightest.
+- Term-level binary operators are left-associative; **type operators are right-associative** (an unparenthesized flat chain like `A * B * C` written against the grain is a user-visible error).
+- The union `|`, intersection `/\`, and lazy product `&` type operators sit in **pairwise-incomparable right-associative bands** — mixing them requires parentheses, so there are no set-operation precedence puzzles.
+- The shell sub-grammar carries its own three-level ladder: `|` (pipe) tightest, then `&&`, then `||`.
 
 ## The keyword and operator tables
 
@@ -95,33 +95,33 @@ The live keyword set (one table; a rename is a one-table change):
 | circuit block form                 | `sign`, `oper` (globally reserved); `sort`, `node`, `feed` (contextual)                                                                                                                                                                                                           |
 | reserved for proposals (not wired) | `handle`, `perform`, `reset`, `shift`, `quote`, `splice`                                                                                                                                                                                                                          |
 
-* Reservation policy: a **small closed set of globally reserved keywords**, with fixity classes contextual; new keywords are swept against the corpus for identifier collisions first — the fold-in reserved fourteen (`data codata rec op rule import module for in while loop break continue with`) globally, collision-free.
+- Reservation policy: a **small closed set of globally reserved keywords**, with fixity classes contextual; new keywords are swept against the corpus for identifier collisions first — the fold-in reserved fourteen (`data codata rec op rule import module for in while loop break continue with`) globally, collision-free.
   As built the lowercase reservation is `KEYWORDS` in `gandr-surface-parser`'s `mold` module and is a **ban** — a reserved word never enters the identifier menu; the uppercase reservation is the separate `UPPER_KEYWORDS` constant beside it (`F`, `U`, and the primitive type names) and is a **preference**, re-admitting the generic labels where the reserved tile is structurally inadmissible, so `sign Unknown` still names a declaration.
-* `rec` was a legal identifier before its reservation — an accepted, intended source break (the explicit-marker decision); `codata` reserves as one whole keyword so it never lexes as `co` + `data`.
-* The circuit block form reserves exactly its two **item-position** leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is otherwise an expression statement, so an unreserved form-first lead would tie its own tile against `identifier` at every declaration.
+- `rec` was a legal identifier before its reservation — an accepted, intended source break (the explicit-marker decision); `codata` reserves as one whole keyword so it never lexes as `co` + `data`.
+- The circuit block form reserves exactly its two **item-position** leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is otherwise an expression statement, so an unreserved form-first lead would tie its own tile against `identifier` at every declaration.
   Its other leads stay contextual — the member keyword `sort` and the body statements `node` / `feed` are `≐`-successors inside an open block, so a program may still bind them as ordinary names (`list.sort` is a live projection in the corpus, so `sort` could not be reserved even if wanted).
   Contextual is **not** inadmissible-everywhere-else, and the one collision that bought was closed with the member terminator (gandr-ng9.14): while members carried no separator, a member lead was admissible exactly where the previous member's bare-sort side would sit, so `sign S { oper f : sort --> Nat … }` regrouped cleanly and wrongly.
   Every member is now terminated by `;`, and a member lead is admissible only after the terminator, so the same source molds `sort` as a `type_variable` at the bare-sort slot — the wrong regroup has no admissible reading left.
-* The fixed term operator table: `||`, `&&`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `++`, `+`, `-`, `*` (binary, left-associative), unary `-`; comparison chains ride the comparison band.
-* The circuit arrow grid is four tiles and never more — `-->` / `<->` (circuit 1-cell formers) and `==>` / `<=>` (rewrite faces at every dimension) ([[circuit-cells#The block form, ruled]]).
+- The fixed term operator table: `||`, `&&`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `++`, `+`, `-`, `*` (binary, left-associative), unary `-`; comparison chains ride the comparison band.
+- The circuit arrow grid is four tiles and never more — `-->` / `<->` (circuit 1-cell formers) and `==>` / `<=>` (rewrite faces at every dimension) ([[circuit-cells#The block form, ruled]]).
   Each strictly extends a live shorter tile (`->`, `<-`, `==`, `<=`), so all four sit ahead of their prefixes in the labeler's longest-first table; `=>` never competes (neither glyph prefixes the other), and `--` is not a comment lead here.
   A word may carry trailing primes (`′`), the ruled form's spelling for a rewrite's target endpoint; ASCII `'` stays the shell single-quote opener.
-* The primitive type set: `Any`, `Boolean`, `Char`, `Integer`, `Never`, `String`, `Symbol`, `Unit`, `Unknown`, `Void`, and the sized atoms `u32`, `u64`, `i32`, `i64`, `f32`, `f64`.
+- The primitive type set: `Any`, `Boolean`, `Char`, `Integer`, `Never`, `String`, `Symbol`, `Unit`, `Unknown`, `Void`, and the sized atoms `u32`, `u64`, `i32`, `i64`, `f32`, `f64`.
 
 ## The adaptations registry
 
 Every divergence from a sketched design is recorded in-code as an `Adaptation` record on the grammar rule — the authoritative registry of surface shapings, each with its rationale:
 
-* **`def rec` folded into the `def` family** as a fourth tail discriminating on the `rec` keyword after `def`, so `def` keeps one form-first mold and the rec-vs-name choice is locally decidable (a second `def` form-start would tie every top-level `def`).
-* **Grade prefixes restricted to `{ number, ω }`** — the bare-identifier grade spelling is dropped, because a graded field `Cons(1 x: a)` must stay first-token-distinct from an ungraded field named `n`.
-* **One `{` with an interior alternative** for `def rec` bodies (copattern clauses versus statement body), so two brace-led branches never share a context.
-* **Operator-fixity declarations spelled `op <fixity> <level> "spelling" ;`** — designed fresh (no sketch existed), reusing the reserved `op` lead with a string-literal spelling so the labeler needs no user-operator token; the per-module wiring seam (`Pbg::extend`) is deliberately unwired.
+- **`def rec` folded into the `def` family** as a fourth tail discriminating on the `rec` keyword after `def`, so `def` keeps one form-first mold and the rec-vs-name choice is locally decidable (a second `def` form-start would tie every top-level `def`).
+- **Grade prefixes restricted to `{ number, ω }`** — the bare-identifier grade spelling is dropped, because a graded field `Cons(1 x: a)` must stay first-token-distinct from an ungraded field named `n`.
+- **One `{` with an interior alternative** for `def rec` bodies (copattern clauses versus statement body), so two brace-led branches never share a context.
+- **Operator-fixity declarations spelled `op <fixity> <level> "spelling" ;`** — designed fresh (no sketch existed), reusing the reserved `op` lead with a string-literal spelling so the labeler needs no user-operator token; the per-module wiring seam (`Pbg::extend`) is deliberately unwired.
   What wiring that seam costs, and the architecture the declaration serves, are [[operators]].
-* **Loops reuse the block form**; **string interpolation lives only in expression-position strings**; **the shell subshell is spelled with square brackets** (POSIX parentheses stay free for the `$( E )` host escape); **braced parameter expansion `${name}` is a distinct labeler mode from interpolation `${E}`**; **spaced hole names `? name`** attach where an immediate-token rule could not hold.
-* Member forms are **first-token-discriminated by case** inside `data`/`codata` blocks: uppercase-led constructors versus lowercase-led `oper`/`rule` keywords (the retired `op` member lead still parses and is declined with its respelling).
-* **The `oper` / `rule` circuit judgment is declared once** and shared by the `sign` member and the top-level declaration, and telescope binders are confined to the parameter side — a duplicated tail would clone the signature, the port lists, and the body statements into a second set of molds, widening the hottest menus (`identifier`, `(`, `:`) twice as far.
-* **The circuit arrow grid is admitted whole at every arrow position**, with the confirmation left to the checker: a body line's arrow comes from the applied head's kind, which is an environment fact no grammar sees, and a grammar restricted to the matching glyph would turn a nameable disagreement into a parse failure.
-* **A top-level circuit declaration takes parenthesized sides**, so the sugar ladder's bare-sort rungs are `sign`-member-only.
+- **Loops reuse the block form**; **string interpolation lives only in expression-position strings**; **the shell subshell is spelled with square brackets** (POSIX parentheses stay free for the `$( E )` host escape); **braced parameter expansion `${name}` is a distinct labeler mode from interpolation `${E}`**; **spaced hole names `? name`** attach where an immediate-token rule could not hold.
+- Member forms are **first-token-discriminated by case** inside `data`/`codata` blocks: uppercase-led constructors versus lowercase-led `oper`/`rule` keywords (the retired `op` member lead still parses and is declined with its respelling).
+- **The `oper` / `rule` circuit judgment is declared once** and shared by the `sign` member and the top-level declaration, and telescope binders are confined to the parameter side — a duplicated tail would clone the signature, the port lists, and the body statements into a second set of molds, widening the hottest menus (`identifier`, `(`, `:`) twice as far.
+- **The circuit arrow grid is admitted whole at every arrow position**, with the confirmation left to the checker: a body line's arrow comes from the applied head's kind, which is an environment fact no grammar sees, and a grammar restricted to the matching glyph would turn a nameable disagreement into a parse failure.
+- **A top-level circuit declaration takes parenthesized sides**, so the sugar ladder's bare-sort rungs are `sign`-member-only.
   An Item-sort form that can end in a **sort hole** does not close — the melder has no following tile of an enclosing form to close it against, so a bare-sort side detaches and the declaration silently keeps only its prefix, a clean parse of the wrong tree that the zero-obligation gate cannot see.
   No other Item form in this grammar ends in a sort hole either: every `def` / `module` / `import` / `data` tail ends in `;`, `}`, or `)`.
   Inside a `sign` block the bare rungs stay available, because there the member's sort hole is form-**interior**.
@@ -155,15 +155,15 @@ The complete reserved-slot inventory, as built:
 
 The constructs the parity grammar does not produce, registered as the parity exemption — twelve construct kinds (new rule provenances) and fourteen member surfaces (adaptation surfaces):
 
-* construct kinds: `break_expression`, `circuit_declaration`, `codata_declaration`, `continue_expression`, `data_declaration`, `for_expression`, `import_declaration`, `loop_expression`, `operator_declaration`, `rec_block`, `sign_declaration`, `while_expression`;
-* member surfaces: `braced_variable_expansion`, `case_with_view`, `circuit_body`, `circuit_member`, `circuit_signature`, `codata_observation`, `def_rec`, `feed_statement`, `grade_prefix`, `node_statement`, `op_member`, `parameterized_observation`, `rule_member`, `string_interpolation`.
+- construct kinds: `break_expression`, `circuit_declaration`, `codata_declaration`, `continue_expression`, `data_declaration`, `for_expression`, `import_declaration`, `loop_expression`, `operator_declaration`, `rec_block`, `sign_declaration`, `while_expression`;
+- member surfaces: `braced_variable_expansion`, `case_with_view`, `circuit_body`, `circuit_member`, `circuit_signature`, `codata_observation`, `def_rec`, `feed_statement`, `grade_prefix`, `node_statement`, `op_member`, `parameterized_observation`, `rule_member`, `string_interpolation`.
 
 ## Performance and reuse discipline
 
-* **No incremental parsing** — a measured finding, not a gap: at gandr's file scale, cold melder reparse is inside the latency budget (measured: ~253 µs largest corpus file, ~816 µs p99 in the pre-reboot pipeline; streaming push ~116 ns/token; obligation queries ~53 ns), and incremental locality is inherited from operator-precedence parsing's bounded-context property — statement-level resync by merkle identity, with sub-statement resync a later optimization, never a correctness feature.
-* **Precomputation at grammar build**: the walk relation, the mold-candidate menus, the zipper steps and nullability bounds, and the precedence closure are all built once and content-addressed; a precomputed decision table may later replace dry-run search where the choice is context-free, gated on a differential proof of equivalence.
-* Reuse keys carry the grammar fingerprint, so a top-of-file grammar-affecting edit invalidates exactly the right decisions.
-* The melder's state is first-order, flat, and serializable — checkpoints, arena-resident stacks, allocation-free push.
+- **No incremental parsing** — a measured finding, not a gap: at gandr's file scale, cold melder reparse is inside the latency budget (measured: ~253 µs largest corpus file, ~816 µs p99 in the pre-reboot pipeline; streaming push ~116 ns/token; obligation queries ~53 ns), and incremental locality is inherited from operator-precedence parsing's bounded-context property — statement-level resync by merkle identity, with sub-statement resync a later optimization, never a correctness feature.
+- **Precomputation at grammar build**: the walk relation, the mold-candidate menus, the zipper steps and nullability bounds, and the precedence closure are all built once and content-addressed; a precomputed decision table may later replace dry-run search where the choice is context-free, gated on a differential proof of equivalence.
+- Reuse keys carry the grammar fingerprint, so a top-of-file grammar-affecting edit invalidates exactly the right decisions.
+- The melder's state is first-order, flat, and serializable — checkpoints, arena-resident stacks, allocation-free push.
 
 ## Source and confidence
 

@@ -57,10 +57,10 @@ But the **directed** program is not iso-only: the one-way classes of `ℰ⇝` (E
 
 The certificate-carried design is settled in the pre-reboot spec and survives into the reboot as posture:
 
-* "U3's computability claim inherits η's qualifier until the sibling closes it — **but the acyclicity floor is operationally sufficient on its own**" (`wyrd@failed-refactor:docs/gandr/spec/proposal-ua-base.md` Ln 110).
-* The U3 gate line: " _η-unconditional in the sibling, **or** the acyclicity floor with certificate-carried per-instance discharge_ (the latter is **not a degraded mode**; it defers the universal theorem only)" (ibid.
+- "U3's computability claim inherits η's qualifier until the sibling closes it — **but the acyclicity floor is operationally sufficient on its own**" (`wyrd@failed-refactor:docs/gandr/spec/proposal-ua-base.md` Ln 110).
+- The U3 gate line: " _η-unconditional in the sibling, **or** the acyclicity floor with certificate-carried per-instance discharge_ (the latter is **not a degraded mode**; it defers the universal theorem only)" (ibid.
   Ln 115; staged into gate row D at Ln 238).
-* Decision (4): two-mode certificate composition — unconditional on the invertible band, gated (lax, side-conditioned interchange) on the directed band (ibid.
+- Decision (4): two-mode certificate composition — unconditional on the invertible band, gated (lax, side-conditioned interchange) on the directed band (ibid.
   Ln 245); executed pre-reboot as `directed_cut`'s routing (`wyrd@failed-refactor:crates/gandr-vdc/src/directed/boundary.rs:41-54`; surveyed in `directed-univalence-design.md` §7.1 Ł4).
 
 All of this was argued _internally_: from the η staging, from LLV's composability boundary, from the temporal program's P4.
@@ -81,18 +81,18 @@ The second half of the import is that the tractability fence should be **named d
 J-42's FP condition (≤ 1 diagonal filler per commuting square) is checkable per presentation, is satisfied by free bases, and is exactly what makes canonicity (Thm 3.23) and decidability (Thm 3.28) go through.
 Two places in the merged project already gesture at this without naming it:
 
-* **`cells_equal`'s decidable normal-form fast path** is recorded as available "on convergent fragments" (`iu-ij6` 2026-07-15 addition; W10) — but _which_ fragments is currently informal.
+- **`cells_equal`'s decidable normal-form fast path** is recorded as available "on convergent fragments" (`iu-ij6` 2026-07-15 addition; W10) — but _which_ fragments is currently informal.
   An FP-style predicate is the natural scope annotation: the fast path is sound exactly where a convergence/canonicity theorem holds, and the certificate-carried mode is the residual everywhere else.
-* **The base-stratum decidability** of the ua-base tower is, in J-42's terms, the free-base collapse (p. 57): iu's normalization-to-towers puts every canonical arrow into a fragment where the word problem reduces to permutation-word comparison over a convergent (Coxeter) presentation — the iso/groupoid analogue of "the factorization order becomes linear and the FP test is prefix/suffix comparison."
+- **The base-stratum decidability** of the ua-base tower is, in J-42's terms, the free-base collapse (p. 57): iu's normalization-to-towers puts every canonical arrow into a fragment where the word problem reduces to permutation-word comparison over a convergent (Coxeter) presentation — the iso/groupoid analogue of "the factorization order becomes linear and the FP test is prefix/suffix comparison."
   This is the honest metatheory face of the U3 claim "this stratum is entirely computable" (`proposal-ua-base.md` Ln 106).
 
 ### 3.4 Priced recommendations
 
-* **R1 — record the frontier in the B9 certificate component's rationale.** The B9 schema already carries the composition-mode tag + acyclicity witness (`directed-univalence-design.md` §8.1 item 2).
+- **R1 — record the frontier in the B9 certificate component's rationale.** The B9 schema already carries the composition-mode tag + acyclicity witness (`directed-univalence-design.md` §8.1 item 2).
   Extend the _rationale element_ (not the schema) with the tractability classification: each mode names _why_ it is available — `convergent-fragment` (a canonicity theorem covers the boundary; decision by NF) vs `certificate-carried` (general band; per-instance witness).
   Price: prose in the rationale element, zero schema bytes, zero semantics.
   Expensive later only in the soft sense: undocumented, the fast-path/general split re-derives itself in every review.
-* **R2 — name an FP-style predicate in the T5 spec register, statement-grade.** The tree-ARS kernel (T5) is already spec-first — `VSquier` is "named here, never built" (`iu:src/Internal/Doctrine/Complex.agda` Ln 272-312 register discipline).
+- **R2 — name an FP-style predicate in the T5 spec register, statement-grade.** The tree-ARS kernel (T5) is already spec-first — `VSquier` is "named here, never built" (`iu:src/Internal/Doctrine/Complex.agda` Ln 272-312 register discipline).
   Add one named predicate to that register: `Tractable Φ` (working name), the per-presentation condition under which the completion machinery may promise unique normal forms — FP-shaped, instantiated by the convergent fragments (the Coxeter stratum today; any future `⇒²⇝` convergence pass).
   Price: one statement-grade record field beside `VAcyclicAt`; no proof obligation created.
   This is deliberately the same absorb-as-statement discipline the doctrinal carrier HANDOFF set ("enough to show there is some sort of analogous tower").
@@ -146,9 +146,9 @@ The §1 boundary — focusing degenerates on iso-only fragments — inverts on t
 The `ℰ⇝` one-way classes (E-proj/E-dup/E-inj/E-fold) introduce genuine polarity into the path calculus, and the directed convergence pass is flagged in the directed design as its honest price: the word problem grows to the transformation-monoid setting, "no formalized rewriting twin is known," and the register holds no presentation row (`directed-univalence-design.md` §5.1, §8.2, §11.2 / §10 Q8).
 J-42 bears on exactly this gap, twice:
 
-* **Methodologically**: a focusing-staged canonical form (alternating-polarity towers, then multifocusing to canonical representatives, then completion of the residue) is the natural architecture for `⇒²⇝` — J-42's strictly-alternating formula normalization is face/degeneracy-flavored in the same way the E-inj/E-fold simplicial-identity cells are.
+- **Methodologically**: a focusing-staged canonical form (alternating-polarity towers, then multifocusing to canonical representatives, then completion of the residue) is the natural architecture for `⇒²⇝` — J-42's strictly-alternating formula normalization is face/degeneracy-flavored in the same way the E-inj/E-fold simplicial-identity cells are.
   The register already carries the polarity line this would draw on (C-5, C-7 — the same Zeilberger).
-* **Bibliographically**: J-42's own cross-references (Simmons's structural focalization; the Uustalu–Veltri–Wan line, their [52], [54–55]) are the candidate payers for the missing transformation-monoid/finite-set-category register row.
+- **Bibliographically**: J-42's own cross-references (Simmons's structural focalization; the Uustalu–Veltri–Wan line, their [52], [54–55]) are the candidate payers for the missing transformation-monoid/finite-set-category register row.
 
 **R4 — when the `⇒²⇝` convergence pass is scoped at the Temporal Univalence re-entry, evaluate a focusing-staged normal form before committing to a raw completion pass.** Price now: one planning note (this section); the evaluation itself is re-entry work and blocks nothing.
 This recommendation deliberately does _not_ touch the groupoid stratum, whose walls-based closure is nearly complete and should not be re-architected (`directed-univalence-design.md` §11.1's in-motion caveat; the closure has advanced further since — re-baseline at re-entry per its §10 Q9).
@@ -179,9 +179,9 @@ Per the standing fcw.11 rule (buildout first; metatheory parked), every item her
 
 ## 7. Register notes
 
-* **J-42 row correction (recommended regardless of Q4)**: summary should read _Free bifibration on a functor; focusing/multifocusing canonical forms; KB-completion + Newman canonicity (Thm 3.23); FP decidability frontier (Thms 3.27/3.28); executable enumerator (footnote 3); no monoidal/distributive content; no formalization_ — the current "Bicartesian monoidal coherence" belongs to no content of this paper.
-* **Adjacent unregistered line (optional row).** Došen & Petrić, _Coherent Bicartesian and Sesquicartesian Categories_ (arXiv math/0006091 **v5** — cite v5 only; the printed 2001 bicartesian claim is withdrawn in-paper).
+- **J-42 row correction (recommended regardless of Q4)**: summary should read _Free bifibration on a functor; focusing/multifocusing canonical forms; KB-completion + Newman canonicity (Thm 3.23); FP decidability frontier (Thms 3.27/3.28); executable enumerator (footnote 3); no monoidal/distributive content; no formalization_ — the current "Bicartesian monoidal coherence" belongs to no content of this paper.
+- **Adjacent unregistered line (optional row).** Došen & Petrić, _Coherent Bicartesian and Sesquicartesian Categories_ (arXiv math/0006091 **v5** — cite v5 only; the printed 2001 bicartesian claim is withdrawn in-paper).
   Relevant as the graph-faithfulness/decision precedent for the _groupoid_ statement and as the actual referent of the mis-filed summary.
   Low urgency; iu-side manual work is its first consumer.
-* **Register gaps this study states without inventing locators** (the §11.2 discipline of the directed design): (i) Johnstone's FP source (J-42's [26]); (ii) the Dawson–Paré–Pronk free-adjoint/Π₂ line (their [15–16]) — both needed only if/when the FP predicate or the zigzag adjacency becomes citation-bearing; (iii) the transformation-monoid / finite-set-category presentations row — already demanded by `directed-univalence-design.md` §10 Q8; J-42's [52], [54–55] are candidate payers.
-* **Out-of-scope flags, recorded so they are not lost.** (a) J-42's zigzag/free-fibrant-double-category construction (Thm 2.8) is the closest prior art for the B10 companions/conjoints gap (`directed-univalence-design.md` §7.2 item 2) — a separate study if B10 wants it. (b) J-42 is pen-and-paper with executable-but-uncertified tooling; together with the unpaid-multiplicative-coherence status of Q-14 this bears on the iu manual's machine-checked novelty claim — iu-side manual work, not gandr design. (c) The Uustalu–Veltri–Wan Agda formalizations named in J-42's references require a claim-scoping verification before any iu-side novelty sentence lands; flagged to the iu track.
+- **Register gaps this study states without inventing locators** (the §11.2 discipline of the directed design): (i) Johnstone's FP source (J-42's [26]); (ii) the Dawson–Paré–Pronk free-adjoint/Π₂ line (their [15–16]) — both needed only if/when the FP predicate or the zigzag adjacency becomes citation-bearing; (iii) the transformation-monoid / finite-set-category presentations row — already demanded by `directed-univalence-design.md` §10 Q8; J-42's [52], [54–55] are candidate payers.
+- **Out-of-scope flags, recorded so they are not lost.** (a) J-42's zigzag/free-fibrant-double-category construction (Thm 2.8) is the closest prior art for the B10 companions/conjoints gap (`directed-univalence-design.md` §7.2 item 2) — a separate study if B10 wants it. (b) J-42 is pen-and-paper with executable-but-uncertified tooling; together with the unpaid-multiplicative-coherence status of Q-14 this bears on the iu manual's machine-checked novelty claim — iu-side manual work, not gandr design. (c) The Uustalu–Veltri–Wan Agda formalizations named in J-42's references require a claim-scoping verification before any iu-side novelty sentence lands; flagged to the iu track.

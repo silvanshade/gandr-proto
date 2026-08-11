@@ -14,10 +14,10 @@ In this system the solver is already a reified, serializable, steppable machine 
 
 **Built, and verified against the tree at write time.**
 
-* **The worklist solver's constraint language, decomposition, and transitions are specified**, and its subtyping fragment is built in the degenerate case where no metavariable is in play — `gandr-core-checker`'s `subtype` module, whose goals sit in an explicit worklist and are replaced by their child goals ([[../type-system#What the tree actually decides]]).
-* **One constraint form's decision procedure is sealed behind a carrier signature**, which is the closest thing in the tree to a domain boundary: `gandr-core-checker`'s `grade` module newtypes `Grade` over a module-private representation, so the semiring signature — the zero, one and unbounded elements, the finite constructor, and the order, addition and multiplication operations — is the entire cross-module surface.
-* **A dependency-footprint mechanism exists**, at item granularity rather than per constraint: `gandr-core-incremental`'s `footprint` module captures the ambient-context names a lowered item read, and over-approximates by marking a footprint opaque on any node it cannot represent ([[../incremental-pipeline]]).
-* **A fuel-bounded semi-decision procedure with a trail is specified**, for implicit resolution, and is the mechanism this design reuses ([[../../surface-language/proposed/modules#Implicit resolution]]).
+- **The worklist solver's constraint language, decomposition, and transitions are specified**, and its subtyping fragment is built in the degenerate case where no metavariable is in play — `gandr-core-checker`'s `subtype` module, whose goals sit in an explicit worklist and are replaced by their child goals ([[../type-system#What the tree actually decides]]).
+- **One constraint form's decision procedure is sealed behind a carrier signature**, which is the closest thing in the tree to a domain boundary: `gandr-core-checker`'s `grade` module newtypes `Grade` over a module-private representation, so the semiring signature — the zero, one and unbounded elements, the finite constructor, and the order, addition and multiplication operations — is the entire cross-module surface.
+- **A dependency-footprint mechanism exists**, at item granularity rather than per constraint: `gandr-core-incremental`'s `footprint` module captures the ambient-context names a lowered item read, and over-approximates by marking a footprint opaque on any node it cannot represent ([[../incremental-pipeline]]).
+- **A fuel-bounded semi-decision procedure with a trail is specified**, for implicit resolution, and is the mechanism this design reuses ([[../../surface-language/proposed/modules#Implicit resolution]]).
 
 **Designed, and not built.** Everything else here: the domain interface itself, the registration surface, the per-domain trail watermarks, the per-domain fuel budget, the refinement types, the obligation generation, the SMT discharge and its query cache, the contracts sugar, the query cards, and every row of the interaction table.
 
@@ -155,11 +155,11 @@ requires/ensures p  ≡  refinements on the argument and result positions
 
 ### Discharge and diagnostics
 
-* **Backend.** Z3 [@moura-bjorner-2008-z3], or an equivalent such as CVC5, compiled to the target runtime and run on a background thread for interactive exploration, and as a separate process for the command-line and interactive surfaces.
-* **Caching is free, given footprints.** Queries are hash-consed and cached by query hash, and `footprint` makes a cached result valid across every edit that does not touch its inputs — so the incremental story is inherited from the pipeline rather than built.
-* **Visualization is the differentiator.** Each obligation renders as a query card in the derivation surface, carrying the premise refinements, the goal, and on failure the model.
+- **Backend.** Z3 [@moura-bjorner-2008-z3], or an equivalent such as CVC5, compiled to the target runtime and run on a background thread for interactive exploration, and as a separate process for the command-line and interactive surfaces.
+- **Caching is free, given footprints.** Queries are hash-consed and cached by query hash, and `footprint` makes a cached result valid across every edit that does not touch its inputs — so the incremental story is inherited from the pipeline rather than built.
+- **Visualization is the differentiator.** Each obligation renders as a query card in the derivation surface, carrying the premise refinements, the goal, and on failure the model.
   A failing obligation shows its counterexample **as a binding environment** — "with `n = -1, d = 3` the postcondition fails" — which is the form the interactive surface already renders bindings in.
-* **Candidate refinements proposed by a language model are an editor affordance, and nothing in the core depends on one.** They arrive as suggested annotations whose query cards are pre-run, so the solver remains the checker and the proposer remains outside the trusted path.
+- **Candidate refinements proposed by a language model are an editor affordance, and nothing in the core depends on one.** They arrive as suggested annotations whose query cards are pre-run, so the solver remains the checker and the proposer remains outside the trusted path.
 
 ### Interactions
 
@@ -268,7 +268,7 @@ Written against four sources, named because a change with no declared source set
 
 **Confidence, by class.**
 
-* **High** — the interface, the rules, the grammars, and the staging, which are transcribed from the design record rather than re-derived.
-* **High** — the as-built statements, each verified against the named module at write time, including the correction to the design record's claim about the grade domain.
-* **Medium** — the account of the published foundation, whose abstract, contributions and corrections were read and whose body was not.
-* **Marked at the claim** — the typechecker-plugin precedent and the MoonBit release, both locator-pending; and the three liquid-types citations, whose metadata is transcribed from a held work's bibliography rather than from the works themselves.
+- **High** — the interface, the rules, the grammars, and the staging, which are transcribed from the design record rather than re-derived.
+- **High** — the as-built statements, each verified against the named module at write time, including the correction to the design record's claim about the grade domain.
+- **Medium** — the account of the published foundation, whose abstract, contributions and corrections were read and whose body was not.
+- **Marked at the claim** — the typechecker-plugin precedent and the MoonBit release, both locator-pending; and the three liquid-types citations, whose metadata is transcribed from a held work's bibliography rather than from the works themselves.
