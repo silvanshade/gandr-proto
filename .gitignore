@@ -4,6 +4,9 @@ notes/
 # Coordinator/session briefs and review surfaces (contributor-concern;
 # machine-local paths — never tracked)
 /PROMPT.md
+# Live agent-session state that some agent coordination harnesses maintain at
+# the checkout root: per-session scratch, never committed.
+/SESSION.md
 .lavish/
 
 # mise local opt-in environment selector (created by `mise run dev:enable`).

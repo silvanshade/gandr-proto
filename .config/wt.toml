@@ -142,4 +142,8 @@ exclude = [
   "fuzz/artifacts/**",
   ".rumdl_cache/",
   ".rumdl_cache/**",
+  # A wholly ignored root-level FILE arrives from the enumeration as its exact
+  # path, so the bare name is the form that matches and the doubling above does
+  # not apply; a fresh worktree must not inherit another session's live state.
+  "SESSION.md",
 ]

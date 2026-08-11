@@ -23,6 +23,9 @@
 
 Contributor notes live outside this tree in each contributor's private workspace (`AGENTS.md` §"Commits and publishable history"), so worktree lifecycle operations cannot strand them — the historical sibling notes repositories and the in-repo gitignored `notes/` with its `notes-guard` gate are all retired.
 
+`SESSION.md` at the repository root is live per-session state maintained by agent coordination harnesses: it is gitignored, never committed, and excluded from `copy-ignored` so a fresh worktree cannot inherit another session's state.
+A session that finds it missing from `.gitignore` in any repository adds the ignore entry first.
+
 ## Mutating sub-agents: the Worktrunk-owned lane
 
 A sub-agent with Bash/git access shares the live working tree unless given its own path — a stray `git checkout`/formatter/merge can revert uncommitted work (realized in the predecessor project during the record-rung adversarial pass).
