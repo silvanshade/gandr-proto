@@ -81,6 +81,11 @@ beads-pull = "bd dolt pull"
 #   <dir>/    matches the collapsed entry "<dir>", and nothing under it
 #   <dir>/**  matches entries under "<dir>", and not "<dir>" itself
 #
+# The two shapes are not even mutually exclusive: a directory ignored by a
+# nested .gitignore of its own comes back as BOTH the collapsed entry and its
+# children in one enumeration (measured 2026-08-10 on a cache directory that
+# ships such a file), so a single form leaves half the entries copied.
+#
 # Writing one form, chosen from how .gitignore happens to cover that directory
 # today, is the bug this list repairs (gandr-vibl): the exclusion becomes a
 # silent no-op when the enumeration comes back in the other shape, and it fails
@@ -101,14 +106,30 @@ beads-pull = "bd dolt pull"
 #   fuzz/artifacts/  —  AFL++ crash artifacts. A crash the source worktree
 #     found is noise in a branch that never produced it; the seed corpora that
 #     DO belong to every worktree are tracked, so this step never sees them.
-#   coverage/  —  llvm-cov output. A copied report is warm against the SOURCE
-#     tree — the same failure mode as .rumdl_cache below — and `coverage:check`
-#     regenerates it.
-#   .rumdl_cache/  —  rumdl caches per file and does not invalidate on
-#     configuration change, so a copied cache is warm against the SOURCE tree's
-#     file set: measured 2026-08-06, a copied cache reported MD057 "does not
-#     exist" against a link target created after the cache warmed, and only
-#     --no-cache told the truth.
+#   coverage/  —  llvm-cov output, and the exclusion is about the REPORT, not
+#     the cost of copying one: a report carried into a branch describes the
+#     SOURCE tree's lines and reads as this branch's own, which is a wrong
+#     answer rather than a slow one. `coverage:check` regenerates it.
+#
+# Which ignored entries get excluded is decided by principle, not by precedent
+# (owner ruling, 2026-08-10):
+#
+#   CACHES ARE COPIED, deliberately, and no cache is singled out for exclusion.
+#     Warming them is the point of this step; the copy is a reflink, so it
+#     costs no disk on a copy-on-write filesystem until something writes.
+#     Staleness is not grounds for exclusion — a cache that misreports after
+#     the tree moves under it misreports the same way IN PLACE, so excluding it
+#     here hides a defect in the cache instead of fixing it. (This retired the
+#     .rumdl_cache exclusion, whose stated reason was exactly that: rumdl keys
+#     per file and does not invalidate on configuration change, and on
+#     2026-08-06 it reported MD057 "does not exist" against a link target
+#     created after the cache warmed — reproducible with no copy involved.)
+#   EXCLUSIONS EXIST FOR TWO REASONS, and each entry above or below names one:
+#     cross-session state a fresh worktree must not inherit (.beads and the
+#     session briefs), and artifacts that BREAK when copied — the class of
+#     environments that bake absolute paths at creation time and resolve to the
+#     source worktree afterwards. Nothing in this tree is in that second class
+#     today; the entry exists so the next one is recognized.
 #
 # Deliberately NOT excluded, so the reflink copy happens:
 #
@@ -118,6 +139,10 @@ beads-pull = "bd dolt pull"
 #   node_modules/  —  same reasoning, and it is relocatable: every symlink in
 #     it is relative and its .bin shims resolve through $basedir, so a copy
 #     runs the copy's own toolchain rather than the source worktree's.
+#   .lavish/  —  rendered review surfaces. Its .gitignore block files it with
+#     the session briefs, but it is generated OUTPUT rather than live
+#     coordination state, and inheriting it costs a branch nothing. Owner
+#     ruling, 2026-08-10.
 #
 # Four patterns were deleted rather than repaired (gandr-vibl), because each
 # names something that should be copied or nothing at all:
@@ -140,10 +165,10 @@ exclude = [
   "coverage/**",
   "fuzz/artifacts/",
   "fuzz/artifacts/**",
-  ".rumdl_cache/",
-  ".rumdl_cache/**",
-  # A wholly ignored root-level FILE arrives from the enumeration as its exact
-  # path, so the bare name is the form that matches and the doubling above does
-  # not apply; a fresh worktree must not inherit another session's live state.
+  # The session briefs. A wholly ignored root-level FILE arrives from the
+  # enumeration as its exact path, so the bare name is the form that matches
+  # and the doubling above does not apply; a fresh worktree must not inherit
+  # another session's live state or another session's brief.
+  "PROMPT.md",
   "SESSION.md",
 ]
