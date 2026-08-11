@@ -1,7 +1,7 @@
 //! The batch parser: `labeler ∘ molder ∘ fold(push) ∘ commit(finalize)`.
 //!
-//! [`parse`](fn@crate::parse) is the whole front-end composed
-//! (`proposal-parser-interaction-core` §4.1): it labels the source, molds each
+//! [`parse`](fn@crate::parse) is the whole front-end composed:
+//! it labels the source, molds each
 //! token to its obligation-minimizing [`gandr_surface_syntax::MoldId`], folds
 //! the molded stream through the melder's `push`, records trivia for
 //! losslessness, and commits the batch [`Cst`]. The result carries the buffered

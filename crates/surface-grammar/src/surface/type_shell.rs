@@ -357,15 +357,15 @@ fn add_lexical_rules(
     Ok(())
 }
 
-/// Add shell-context structural rules — the POSIX shell DSL MVP surface.
+/// Add shell-context structural rules — the POSIX shell DSL surface.
 ///
-/// # W4e shell-surface coverage
+/// # Shell-surface coverage
 ///
 /// The shell forms below mold in the shell block's interior Expression hole
 /// (`#!{ … }`), where command atoms juxtapose and the operator / separator
-/// forms bind them. This table records what POSIX-shell surface the W4e MVP
+/// forms bind them. This table records what POSIX-shell surface the fragment
 /// **folds in** (parses, zero-obligation) versus what is **deliberately out**
-/// (deferred to a later shell stage). Parse level only — the semantics
+/// (deferred). Parse level only — the semantics
 /// (`runtime-host` host seam) are a separate track.
 ///
 /// ## Folded in (parses today)
@@ -375,16 +375,16 @@ fn add_lexical_rules(
 /// | simple command           | `cmd arg …`                      | `shell_word` atom juxtaposition (one word class)         |
 /// | environment assignment   | `FOO=bar cmd`                    | `environment_assignment` (whole-token `NAME=` munch)     |
 /// | single-quoted string     | `'…'` (verbatim run)             | `single_quoted_string` (opaque `single_quoted_content`)  |
-/// | double-quoted string     | `"…"` (fragments + escapes)      | `double_quoted_string` (W4e proper lexing)               |
+/// | double-quoted string     | `"…"` (fragments + escapes)      | `double_quoted_string`                                   |
 /// | simple parameter         | `$name`                          | `variable_expansion` (`$` branch)                        |
-/// | braced parameter         | `${name}`                        | `variable_expansion` (`${` branch; W4e, PBG-only)        |
-/// | parameter in a `"…"`      | `"… $name … ${name} …"`          | inline expansion in `double_quoted_string` (W4e)         |
+/// | braced parameter         | `${name}`                        | `variable_expansion` (`${` branch; PBG-only)             |
+/// | parameter in a `"…"`      | `"… $name … ${name} …"`          | inline expansion in `double_quoted_string`               |
 /// | pipeline                 | `a \| b`, `a \|& b`              | `pipeline` binary infix                                  |
-/// | logical control          | `a && b`, `a \|\| b`             | the `&&` / `\|\|` expression binaries                    |
+/// | logical control          | `a && b`, `a \|\|`               | the `&&` / `\|\|` expression binaries                    |
 /// | list separators          | `a ; b`, `a & b`                 | `list_operator` (`;` / `&`)                              |
 /// | redirection              | `> >> < <& >& <>` + target       | `redirection_operator` + juxtaposed target               |
-/// | file descriptor          | `2>`, `2>&1`                     | `file_descriptor` (W4e — digit run before a redirect)    |
-/// | subshell                 | `[ … ]`                          | `subshell` (W4e — distinct shell-context brackets)       |
+/// | file descriptor          | `2>`, `2>&1`                     | `file_descriptor` (a digit run before a redirect)        |
+/// | subshell                 | `[ … ]`                          | `subshell` (distinct shell-context brackets)             |
 /// | host escape              | `$( E )`                         | `host_escape` (a gandr expression interior)              |
 ///
 /// ## Deliberately out (deferred POSIX tail)
@@ -430,7 +430,7 @@ fn add_lexical_rules(
 /// and they assert absence of panic rather than a named decline.
 ///
 /// The former `command` / `command_name` / `argument` / `redirection`
-/// composites are DELETED (the W4e perf reshape): their placeholder tiles
+/// composites are removed: their placeholder tiles
 /// never molded, but their extra fresh-menu molds tied every shell word and
 /// file descriptor into a molder dry-run + lookahead per token — the dominant
 /// shell batch cost. Their kinds fold as adaptations onto `shell_word` /
@@ -528,7 +528,7 @@ fn add_shell_rules(
         atom,
         tile(TileLabel("environment_assignment")),
     ));
-    // ONE shell-word atom class (W4e perf reshape). The committed
+    // ONE shell-word atom class. The committed
     // tree-sitter grammar distinguishes `command_name` / `argument` /
     // `shell_word` — a distinction with no PBG-parse-level content (all three
     // are the same juxtaposed Expression atom over the same lexeme class),
@@ -575,7 +575,7 @@ fn add_shell_rules(
             tile(TileLabel("'")),
         ]),
     ));
-    // A shell double-quoted string `"…"` (W4e): a `"`-delimited run
+    // A shell double-quoted string `"…"`: a `"`-delimited run
     // of `double_string_fragment` text, `\.` escapes, and parameter expansions
     // (`$name` / `${name}`). The labeler's shell double-quote mode emits these
     // constituent tokens, so the string is one atom (interior spaces preserved),
@@ -606,10 +606,10 @@ fn add_shell_rules(
         AdaptationReason("W4e divergence: the committed tree-sitter `double_quoted_string` interior admits a `command_substitution` `$!{ … }`; the MVP drops it (command substitution is the deferred POSIX tail) so the interior is fragments / escapes / parameter expansions only. The `command_substitution` named kind stays realised by its standalone rule; the inline `variable_expansion` shape (`$ variable_name` / `${ variable_name }`) replaces the dead `variable_expansion` composite tile the labeler never emits."),
     ));
     rules.push(double_quoted_string);
-    // A parameter expansion `$name` OR its braced form `${name}` (W4e).
+    // A parameter expansion `$name` OR its braced form `${name}`.
     // The two spellings share ONE `variable_expansion` provenance
     // and discriminate on the opener tile (`$` vs `${`), so a shell parameter is
-    // one construct with one eventual semantics seam. The braced form is a W4e
+    // one construct with one eventual semantics seam. The braced form is a
     // divergence from the committed tree-sitter grammar (grammar.js
     // `variable_expansion` = `$` `variable_name`, no braced form), recorded as an
     // adaptation. Its interior is a `variable_name`, NOT a host-expression hole:
@@ -665,9 +665,10 @@ fn add_shell_rules(
     ));
     // `subshell` (`[ … ]`, grammar.js `subshell`): a bracket-delimited shell
     // group whose commands mold by juxtaposition in the interior Expression
-    // hole, exactly like the shell block. W4c folded it away because its `[`
-    // opener competed with the host list literal at every `[`; W4e reintroduces
-    // it PROPERLY on distinct shell-context bracket tiles (`subshell_open` /
+    // hole, exactly like the shell block. An earlier spelling folded the form
+    // away because its `[` opener competed with the host list literal at every
+    // `[`; it is reintroduced on distinct shell-context bracket tiles
+    // (`subshell_open` /
     // `subshell_close`, emitted only inside a shell block), so the host list
     // literal's `[` menu is untouched — the fold-away's whole cost concern is
     // avoided while the form becomes real and moldable. This is a DIVERGENCE
@@ -700,7 +701,7 @@ fn add_shell_rules(
     // (`fd? op target`) was a dead rule over placeholder tiles (its
     // `redirection_operator` / `argument` / string tiles never molded — a real
     // `>` molds through THIS alternation) whose `file_descriptor` form-start
-    // mold tied every fd token. It is folded here as an adaptation (W4e):
+    // mold tied every fd token. It is folded here as an adaptation:
     // the fd / operator / target grouping is the semantic
     // stage's job over the juxtaposed atoms, exactly as it already was.
     let mut redirection_operator = rule(
@@ -762,7 +763,7 @@ fn pipe_rule(
 }
 
 /// Build the inline parameter-expansion shape used inside a shell double-quoted
-/// string: `$ variable_name` or `${ variable_name }` (W4e).
+/// string: `$ variable_name` or `${ variable_name }`.
 ///
 /// Inlined (not a `variable_expansion` composite tile) so it matches the
 /// labeler's constituent tokens; the same two-branch shape the standalone

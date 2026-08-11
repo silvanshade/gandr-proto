@@ -1,4 +1,4 @@
-//! The `Send`-safe presentation seam, graduated from `gandr-tui::present`.
+//! The `Send`-safe presentation seam for gandr renderers.
 //!
 //! These are the plain-data types the pipeline worker hands a renderer, plus
 //! the byte-offset ↔ (row, column) projection the byte-span surface requires.
@@ -6,11 +6,10 @@
 //! The pipeline's semantic values (`Ty`, `Eval`, `Lowered`, …) are `Rc`-based
 //! and must not leave the worker thread; everything here is plain data
 //! (strings, ranges, enums), so it crosses a channel — or, once serialized, a
-//! socket. `gandr-tui::present` re-exports these types unchanged; the render
-//! bus ([`crate::wire`]) carries them as frame bodies. This is the seam the
-//! inspection-protocol proposal calls "the in-process worker→present seam
-//! promoted to a wire protocol"
-//! (the inspection-protocol proposal §1).
+//! socket. In-process renderers consume these types directly, and the render
+//! bus ([`crate::wire`]) carries them as frame bodies: the in-process
+//! worker→present seam promoted to a wire protocol (the inspection-protocol
+//! design).
 
 use core::fmt;
 use core::ops::Range;
@@ -194,11 +193,11 @@ impl core::error::Error for PosOfByteError
 {
 }
 
-/// A semantic highlight role (the capture names of the grammar's
-/// `highlights.scm`, folded to the classes a theme styles).
+/// A semantic highlight role (the capture classes of the tree-sitter highlight
+/// surface, folded to the classes a theme styles).
 ///
-/// Graduated from `gandr-tui::highlight` so both the in-process TUI renderer
-/// and a bus client project the same role vocabulary.
+/// Shared by every renderer — in-process and bus client alike — so all
+/// project the same role vocabulary.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HlRole

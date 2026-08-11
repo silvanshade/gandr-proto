@@ -1,9 +1,10 @@
 //! The obligation taxonomy and the `Delta` minimization order.
 //!
-//! Ported from tylr's `structure/Oblig.re` with gandr's `AmbiguousPrec`
-//! addition. The Rust enum is declared in **severity order** so `derive(Ord)`
-//! is the truth (graph-core §5.2: tylr orders severity via its `all` list, not
-//! its variant declaration order; gandr fixes this at the type level).
+//! The taxonomy descends from tylr's `structure/Oblig.re` with gandr's
+//! `AmbiguousPrec` addition. The Rust enum is declared in **severity order** so
+//! `derive(Ord)` is the truth: tylr orders severity via its `all` list rather
+//! than its variant declaration order, and gandr fixes the order at the type
+//! level.
 
 use core::cmp::Ordering;
 

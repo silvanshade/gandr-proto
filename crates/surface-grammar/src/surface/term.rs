@@ -122,7 +122,7 @@ fn items(
     out.push(def);
 }
 
-/// Append the W4d fold-in declaration forms: `data` / `codata`
+/// Append the fold-in declaration forms: `data` / `codata`
 /// datatypes and their members, the `import` module MVP, the reserved
 /// operator-fixity declaration, and the reserved mutual-recursion `rec` block.
 ///
@@ -644,7 +644,7 @@ fn attributes_parameters_externs(
     // standalone rule additionally gives their opener a form-first Item-sort mold
     // — `attribute` / `parameter` a bare `identifier`, `parameters` a `(` — that
     // ties with every operand at a fresh slot, a spurious competitor the molder
-    // must break by lookahead (the W2′ helper-rule class the W4c audit found;
+    // must break by lookahead (the helper-rule class the fold-in audit found;
     // folding it fixes correctness and cost together). They are folded into
     // `attribute_block` (recorded as adaptations for the parity inventory); their
     // inlined occurrences still realise each helper's shape.
@@ -1242,7 +1242,7 @@ fn lexical(
         expr,
         t(TileLabel("character")),
     ));
-    // The expression-position string additionally admits W4d interpolation
+    // The expression-position string additionally admits interpolation
     // segments `${ E }` — a multi-tile
     // bracket-family member (open `${`, a host-Expression hole, close `}`)
     // interleaved with the fragment / escape runs, no format specs. The
@@ -1747,8 +1747,8 @@ fn comma1(element: Regex) -> Regex
 /// the wrong tree. The `sign` block's member list once claimed an exemption
 /// here — its leads are reserved words, never hole-content candidates — but
 /// the exemption was falsified by the member-collapse hazards the graduation
-/// rung surfaced, and the sign block now takes the same mandatory `;`
-/// terminator (owner directive, gandr-ng9.14; [`crate::surface::circuit`]).
+/// rung surfaced, and the sign block takes the same mandatory `;`
+/// terminator ([`crate::surface::circuit`]).
 /// A mandatory separator restores the discrimination: after the hole only
 /// `;`, `,`, or `}` is admissible, none of which competes with hole content.
 fn member_list(element: Regex) -> Regex
@@ -1942,8 +1942,8 @@ fn primary_expressions(
     // the molder must break by lookahead. It is folded into `case_expression`
     // (recorded as an adaptation); the inlined arms still realise its shape.
     // The case body's arms are `opt`-wrapped so an empty/absurd match `case x
-    // {}` over an uninhabited type parses (W4d #14); the reserved
-    // with-view `case e with e { … }` (W4d #23) adds an optional `with`
+    // {}` over an uninhabited type parses; the reserved
+    // with-view `case e with e { … }` adds an optional `with`
     // scrutinee, the `with` tile separating the two Expression holes.
     let mut case = r(
         RuleName("case_expression"),
@@ -1983,7 +1983,7 @@ fn primary_expressions(
             alt([block(), if_tail()]),
         ]),
     ));
-    // W4d control-flow atoms.
+    // Control-flow atoms.
     // Each is keyword-led — a fresh first-token discriminator, siblings of
     // `if` / `case` at `expression.atom`, flowing into `expression_statement`
     // for `;`-terminated statement position. `for` binds a single identifier
@@ -2116,7 +2116,7 @@ fn primary_expressions(
     // as juxtaposed command atoms (`command_name`, `single_quoted_string`, …)
     // joined by the separator / operator forms (`;`, `&&`, the `|` pipeline), the
     // way the corpus shell blocks parse. The `[ … ]` subshell is a real
-    // Expression-atom form of its own now (W4e;
+    // Expression-atom form of its own now (
     // `type_shell::add_shell_rules`), molded on distinct shell-context bracket
     // tiles, so it is no longer folded into this block.
     out.push(r(

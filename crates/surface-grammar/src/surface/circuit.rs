@@ -97,7 +97,7 @@ pub fn rules(precs: &PrecTable) -> Result<Vec<Rule>, PbgError>
 ///
 /// `sign Nat { sort … ; data … ; oper … ; rule … ; }`. Every member is
 /// **terminated** by `;` (the surface's declaration terminator), and the
-/// terminator is load-bearing, not admitted (owner directive, gandr-ng9.14):
+/// terminator is load-bearing, not admitted:
 /// an unseparated member list is a clean parse of the WRONG tree — a member
 /// ends in a sort hole (the signature's bare-sort side), the walk's
 /// `≐`-relation crosses the hole, and at the fill position the next member's

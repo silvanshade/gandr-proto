@@ -17,14 +17,14 @@
 //!
 //! # Parity
 //!
-//! [`highlight`](fn@crate::highlight) is E2-differential-checked byte-for-byte
-//! against `gandr_surface_tree_sitter::highlight` over the tree-sitter base
-//! corpus; see the `highlight_parity` integration test and the `parity` section
-//! of the grammar contract-fixtures manifest. Where the frozen PBG is
-//! structurally coarser than the committed tree-sitter grammar (it molds all
-//! shell words as `command_name`, so it cannot split the leading command from
-//! its arguments), the divergence is enumerated there with a one-line
-//! justification rather than papered over.
+//! The byte-for-byte differential against the tree-sitter highlighter is the
+//! designed parity lane, deferred with the tree-sitter reference; the
+//! named-kind inventory ([`crate::parity`]) is the substrate table it will
+//! consume. Where the PBG is structurally coarser than the committed
+//! tree-sitter grammar (it molds every shell word as the single `shell_word`
+//! atom, so it cannot split the leading command from its arguments), the
+//! divergence is enumerated with a one-line justification rather than papered
+//! over.
 
 use alloc::vec::Vec;
 
@@ -114,14 +114,14 @@ pub fn highlight(
 }
 
 /// The keyword tile forms — the `highlights.scm` keyword list plus the type
-/// keywords `F`/`U`/`mu` and the `end` session terminator, and the W4d/W4e
+/// keywords `F`/`U`/`mu` and the `end` session terminator, and the
 /// syntax-growth keywords that the live highlighter must keep honest on the
 /// surface corpus.
 const KEYWORDS: &[&str] = &[
     "def", "val", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
     "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
     "fork", "acquire", "release", "migrate", "at", "forall", "F", "U", "mu", "end",
-    // W4d/W4e syntax-growth keywords; `module` is now mirrored by tree-sitter,
+    // Syntax-growth keywords; `module` is mirrored by tree-sitter,
     // while the rest remain PBG-only/parity-exempt (`crate::PBG_ONLY_KINDS`).
     "data", "codata", "for", "while", "loop", "break", "continue", "import", "module", "in", "rec",
     "op", "rule", "with", "infix", "infixl", "infixr", "prefix", "postfix",
@@ -683,8 +683,8 @@ fn open_bracket(
 
 /// Classify a shell command-word tile (`shell_word`, formerly `command_name`).
 ///
-/// The PBG molds every shell word as the single `shell_word` atom class (W4e
-/// perf reshape; `command_name` folded onto it as an adaptation); the leading
+/// The PBG molds every shell word as the single `shell_word` atom class
+/// (`command_name` folded onto it as an adaptation); the leading
 /// word vs argument split is resolved positionally by [`resolve_shell`]. One
 /// form is command-head-transparent — a `!` negation, which carries no role and
 /// does not consume the following command.
@@ -711,10 +711,9 @@ fn classify_command_word(view: NodeView<'_>) -> (Option<HlRole>, ShellKind)
 /// forms (`?` as a hole vs a session receive, attribute-block punctuation). The
 /// structurally-ambiguous forms the PBG shares one mold for — a bare
 /// `identifier` (variable reference, call target, binder, field, world) and the
-/// shell `shell_word` (the single word class that absorbed `command_name` in
-/// the W4e perf reshape) — return [`None`] here.
-/// `None` means "no span" (an uncaptured token) **only** when
-/// [`highlight`](fn@crate::highlight) also declines the structural pass; a
+/// shell `shell_word` (the single word class that absorbed `command_name`) —
+/// return [`None`] here. `None` means "no span" (an uncaptured token) **only**
+/// when [`highlight`](fn@crate::highlight) also declines the structural pass; a
 /// captured-but-unmapped token (attribute-block punctuation, an `@attribute`
 /// name) returns `Some(HlRole::Other)`, which is a real span, distinct from the
 /// absent-span case.

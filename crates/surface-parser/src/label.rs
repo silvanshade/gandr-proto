@@ -88,7 +88,7 @@ pub enum Lexeme
     VariableName,
     /// A shell subshell opener `[` (grammar.js `subshell` = `[ … ]`). A
     /// shell-context bracket, DISTINCT from the host list-literal `[`, so a
-    /// subshell never widens the host `[` mold menu (W4e).
+    /// subshell never widens the host `[` mold menu.
     SubshellOpen,
     /// A shell subshell closer `]`, the shell-context partner of
     /// [`Lexeme::SubshellOpen`].
@@ -96,7 +96,7 @@ pub enum Lexeme
     /// A shell redirection file descriptor: a digit run immediately before a
     /// `<` / `>` redirection operator (`2>`, `2>&1`; grammar.js
     /// `file_descriptor`). A bare digit run NOT before a redirection stays an
-    /// ordinary shell word (W4e).
+    /// ordinary shell word.
     FileDescriptor,
     /// Insignificant layout: whitespace, newlines, comments, or a shebang.
     Space,
@@ -649,7 +649,7 @@ pub fn label(src: SourceSlice<'_>) -> Vec<Token>
     // word (grammar.js `variable_expansion` = `$` `variable_name`).
     let mut shell_var = false;
     // Track whether the cursor sits inside a shell braced parameter expansion
-    // `${name}` (W4e): the interior lexes as a `variable_name`
+    // `${name}`: the interior lexes as a `variable_name`
     // parameter and the matching `}` closes the brace WITHOUT touching
     // `shell_depth` (it is not the shell block's closer). This is a shell-native
     // brace, DISTINCT from the string-interpolation `${ E }` (`interp_stack`):
@@ -659,7 +659,7 @@ pub fn label(src: SourceSlice<'_>) -> Vec<Token>
     // `${name:-word}` / `${#name}` operator forms are the deferred POSIX tail).
     let mut shell_brace = false;
     // Track whether the cursor sits inside a shell double-quoted string
-    // `"…"` (W4e): the interior lexes as `double_string_fragment`
+    // `"…"`: the interior lexes as `double_string_fragment`
     // runs, `\.` escapes, and `$name` / `${name}` expansions (grammar.js
     // `double_quoted_string`), so a quoted argument with interior spaces is ONE
     // string rather than juxtaposed shell words. The `$` / `${` dispatch rides
@@ -669,7 +669,7 @@ pub fn label(src: SourceSlice<'_>) -> Vec<Token>
     // which never lexes shell expansions.
     let mut shell_double = false;
     // String-interpolation frames: each `"… ${` opens an interpolation whose
-    // interior lexes as ordinary host-expression tokens (W4d string-segment
+    // interior lexes as ordinary host-expression tokens (the string-segment
     // mode). The stack entry is that interpolation's `{`-brace depth (the
     // opening `${` counts as one); a `}` that returns the depth to zero closes
     // the interpolation and resumes the containing string. A stack (not a
@@ -815,7 +815,7 @@ fn scan_string_interior(
     match bytes.byte(pos).map(u8::from) {
         | Some(b'"') => ScanResult::new(Lexeme::Quote, pos.advance(ByteWidth::ONE)),
         | Some(b'\\') => scan_escape(bytes, pos),
-        // `${` opens a W4d string interpolation; the caller leaves string mode.
+        // `${` opens a string interpolation; the caller leaves string mode.
         | Some(b'$') if bytes.byte(pos.advance(ByteWidth::ONE)) == Some(SourceByte::from(b'{')) => {
             ScanResult::new(Lexeme::Punct, pos.advance(ByteWidth::TWO))
         },
@@ -879,7 +879,7 @@ fn scan_variable_name(
         ScanResult::new(Lexeme::Unknown, pos.advance(ByteWidth::ONE))
     }
 }
-/// Scan one lexeme of shell braced-parameter interior (`${…}`, W4e): the
+/// Scan one lexeme of shell braced-parameter interior (`${…}`): the
 /// closing `}`, or the parameter's `variable_name` run.
 ///
 /// The MVP interior is a bare parameter name `[A-Za-z0-9_]+` (grammar.js
@@ -911,7 +911,7 @@ fn scan_braced_shell_interior(
     }
 }
 
-/// Scan one lexeme of shell double-quoted interior (`"…"`, W4e): the closing
+/// Scan one lexeme of shell double-quoted interior (`"…"`): the closing
 /// `"`, a `\.` escape, a `$`-led expansion, or a `double_string_fragment` run
 /// up to the next `"` / `\` / `$` (grammar.js `double_quoted_string`).
 ///
@@ -1250,7 +1250,7 @@ fn scan_dollar(
 {
     match bytes.byte(pos.advance(ByteWidth::ONE)).map(u8::from) {
         | Some(b'!') => scan_shell_start(bytes, pos, SourceByte::from(b'{')),
-        // `${` opens a braced parameter expansion (`${name}`, W4e); the two-byte
+        // `${` opens a braced parameter expansion (`${name}`); the two-byte
         // opener is one lexeme, and the caller sets the brace mode so the
         // interior lexes as a `variable_name` and the matching `}` does not
         // close the shell block.
@@ -1751,7 +1751,7 @@ mod tests
         // `#!{ echo ${HOME}; }`: the shell `${` opens a braced parameter whose
         // interior is a `variable_name` (VariableName), and the matching `}`
         // closes the brace WITHOUT closing the shell block — the shell block's
-        // own `}` still follows. This is the W4e shell-brace mode, distinct from
+        // own `}` still follows. This is the shell-brace mode, distinct from
         // the string-interpolation `${ E }` (whose interior is host tokens).
         let src = "#!{ echo ${HOME}; }";
         let tokens = label(SourceSlice::from(src));
@@ -2245,7 +2245,7 @@ mod tests
     fn string_interpolation_segments_the_string()
     {
         // `"a ${ x } b"` lexes as an open fragment, the `${` opener, the host
-        // expression `x`, the `}` closer, and the closing fragment — the W4d
+        // expression `x`, the `}` closer, and the closing fragment — the
         // string-segment mode. The interior `x` is an ordinary LowerWord, not
         // string content.
         let src = "\"a ${ x } b\"";

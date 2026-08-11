@@ -1,6 +1,6 @@
 //! Resumable push-machine melder and obligation taxonomy for gandr.
 //!
-//! This crate is the W4′ parser lane of the surface front-end. It owns two
+//! This crate is the parser lane of the surface front-end. It owns two
 //! artifacts:
 //!
 //! 1. The **obligation taxonomy** ([`oblig`]): the closed [`Oblig`] severity
@@ -15,11 +15,11 @@
 //!    non-destructive [`finalize`](MeldState::finalize) query complete the
 //!    streaming surface.
 //!
-//! The push seam consumes only the W3′ handoff surface: precedence comparisons
-//! at form-group granularity (`PrecDag` checks), form-local material from
-//! `Pbg::adjacencies` and the interned regex-context steps, and interned `u32`
-//! ids throughout — no string comparison past the caller, no re-derived
-//! precedence arithmetic.
+//! The push seam consumes only the grammar's handoff surface: precedence
+//! comparisons at form-group granularity (`PrecDag` checks), form-local
+//! material from `Pbg::adjacencies` and the interned regex-context steps, and
+//! interned `u32` ids throughout — no string comparison past the caller, no
+//! re-derived precedence arithmetic.
 
 extern crate alloc;
 

@@ -8,7 +8,7 @@
 //! differential harness, projection, and
 //! highlighting; it never defines the tile vocabulary.
 //!
-//! **Parity exemption (W4d).** The fold-in constructs — `data` /
+//! **Parity exemption.** The fold-in constructs — `data` /
 //! `codata` datatypes, `def rec` + copatterns, `for` / `while` / `loop` /
 //! `break` / `continue`, `import`, operator-fixity declarations, and their
 //! reserved members — are PBG-only: the committed tree-sitter grammar does not
@@ -21,7 +21,7 @@
 //! construct carries its `provenance` from [`crate::PBG_ONLY_KINDS`]; the two
 //! registries are disjoint.
 //!
-//! **Projection re-scope (W5′).** `grammar.js` remains the
+//! **Projection re-scope.** `grammar.js` remains the
 //! tree-sitter source; the committed `grammar.json` is NOT
 //! projected from the PBG. The PBG is an abstract structural model: tiles are
 //! bare labels with no lexical regexes (some are placeholders no labeler token

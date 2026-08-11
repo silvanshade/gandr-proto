@@ -8,7 +8,7 @@
 //!   retry.
 //! * **Degrout** (incomparable): complete-and-reduce the head level with grout,
 //!   deferring the comparison down the slope; guaranteed to conclude at Shift
-//!   because grout sits at `⊥`, comparable to everything (graph-core §5.2).
+//!   because grout sits at `⊥`, comparable to everything.
 //!
 //! Incomparable precedences **within one sort** classify as
 //! [`Oblig::AmbiguousPrec`] at maximum severity
@@ -17,11 +17,10 @@
 //!
 //! The stack is a single `Vec`-backed slope of terraces with O(1) access at
 //! both ends (`Vec::first`/`Vec::last`/`push`/`pop`) and no ambient state — the
-//! P2 edit-state readiness constraint. Emission is an **append-only log**
+//! edit-state readiness constraint. Emission is an **append-only log**
 //! replayed into the `gandr-surface-syntax` [`CstBuilder`] at `commit`; a
 //! [`Checkpoint`] records the log length and the (small, first-order) slope, so
-//! rollback is log truncation and checkpoints are cheap and serializable
-//! (proposal §4.1).
+//! rollback is log truncation and checkpoints are cheap and serializable.
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;

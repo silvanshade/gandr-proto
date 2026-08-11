@@ -16,7 +16,7 @@
 //!   ban: when no reserved candidate is admissible at the live frontier (a
 //!   primitive-type spelling at a declaration-NAME slot, where only
 //!   `type_identifier` molds), the menu widens to the class's generic labels
-//!   (`Molder::gather_reserved_fallback`, gandr-ng9.14).
+//!   (`Molder::gather_reserved_fallback`).
 //! * **Candidate pre-filter (§5.2).** [`MeldState::admits_at`] discards every
 //!   structurally-inadmissible candidate against a once-per-token
 //!   [`Frontier`](crate::Frontier) — a form-continuation tile with no matching
@@ -242,7 +242,7 @@ fn source_slice(src: SourceText<'_>) -> SourceSlice<'_>
 /// keyword tile — not the wide identifier menu that would let, say, `ret` be
 /// read as a variable.
 ///
-/// The W4d fold-in globally reserves the thirteen new
+/// The fold-in globally reserves the thirteen new
 /// keyword-led forms' leads — `data` / `codata` declarations, `def rec`
 /// (`rec`), `data` / `codata` operation and 2-cell members (`op` / `rule`),
 /// the `for … in` / `while` / `loop` / `break` / `continue` control forms,
@@ -345,7 +345,7 @@ pub fn candidate_labels<'text>(
             labels.push(CandidateLabel::from("double_string_fragment"));
         },
         | Lexeme::EscapeSequence => labels.push(CandidateLabel::from("escape_sequence")),
-        // ONE label: the grammar's single shell-word atom class (W4e).
+        // ONE label: the grammar's single shell-word atom class.
         // The former `command_name` / `argument` labels rode the
         // dead composite shell rules; with those folded away, a shell word has
         // exactly one mold and takes the molder's sole-admissible fast path —
@@ -388,7 +388,7 @@ pub fn candidate_labels<'text>(
 /// type slot. The reservation is a preference, not a ban: at a slot where the
 /// reserved tile is structurally inadmissible (a declaration's NAME position),
 /// [`Molder::gather_reserved_fallback`] re-admits the generic labels so the
-/// word can still name the declaration (`sign Unknown`; gandr-ng9.14).
+/// word can still name the declaration (`sign Unknown`).
 const UPPER_KEYWORDS: &[&str] = &[
     "Any", "Unknown", "Never", "Boolean", "Integer", "Char", "String", "Symbol", "Unit", "Void",
     "F", "U",
@@ -726,7 +726,7 @@ impl<'pbg> Molder<'pbg>
     /// `constructor` / `type_identifier` — a `sign` block's name, a `sort`
     /// member's colour, a `data` head — where the reserved tile is
     /// structurally inadmissible, and there it repaired the whole declaration
-    /// (`sign Unknown` molded nothing; gandr-ng9.14). When no gathered
+    /// (`sign Unknown` molded nothing). When no gathered
     /// candidate is admissible at the live frontier, the molder re-gathers
     /// with the class's generic labels appended; the reserved candidates stay
     /// in the menu so the last-resort path still flags the exact obligation

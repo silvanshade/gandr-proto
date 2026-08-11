@@ -1,32 +1,31 @@
-//! The executable example corpus harness (ADR-52; epic `wyrd-61ck`, harness
-//! bead `wyrd-on3m`).
+//! The executable example corpus harness (ADR-52).
 //!
 //! The corpus is **three trees** (`docs/workflow/corpus.md` —
 //! never mixed):
 //!
 //! * [`MODEL_DIR`] holds the literate, learn-gandr-by-example programs;
 //! * [`PATHOLOGICAL_DIR`] holds the semantic edge cases and failure goldens;
-//! * [`SURFACE_DIR`] holds the **W4d syntax fold-in fixtures** (`wyrd-ku0f`):
-//!   PBG-only parse-only programs exercising surface the committed tree-sitter
-//!   grammar does not yet produce (`data` / `codata`, `def rec` + copatterns,
-//!   `for` / `while` / `loop` / `break` / `continue`, `import`, string
-//!   interpolation, and the reserved operation / rule / grade / GADT /
-//!   attribute / fixity slots), plus the ruled circuit block form (`sign`
-//!   blocks, the four-glyph arrow grid, two-sided ports, and the `node` /
-//!   `feed` body statements) in the shapes that have **not** graduated — the
-//!   reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper`
-//!   member's filler, and a `rule` member with no filler — plus the port
-//!   discipline's own fixtures. The surface tree is **firewalled from
-//!   execution**: this harness ([`check_case`], the corpus walker) runs the
-//!   model and pathological trees only, so surface fixtures never lower or
-//!   evaluate. Their gate is the PBG parser's zero-obligation corpus sweep
-//!   (`gandr-parser` `acceptance::corpus_molds_to_zero_obligations`), which
-//!   reads all three trees; the surface tree carries no `//@` directives. A
-//!   surface fixture that is deliberately ill-formed **after** parsing — the
-//!   shared-port refutations — lives here rather than in [`PATHOLOGICAL_DIR`],
-//!   because the walker that reads that tree lowers what it finds and those
-//!   fixtures' shapes have not graduated; its own gate is the named crate test
-//!   that reads it.
+//! * [`SURFACE_DIR`] holds the **surface syntax fold-in fixtures**: PBG-only
+//!   parse-only programs exercising surface the committed tree-sitter grammar
+//!   does not yet produce (`data` / `codata`, `def rec` + copatterns, `for` /
+//!   `while` / `loop` / `break` / `continue`, `import`, string interpolation,
+//!   and the reserved operation / rule / grade / GADT / attribute / fixity
+//!   slots), plus the ruled circuit block form (`sign` blocks, the four-glyph
+//!   arrow grid, two-sided ports, and the `node` / `feed` body statements) in
+//!   the shapes that have **not** graduated — the reserved `<->` glyph, the
+//!   `feed` wheel, the many-out node, an `oper` member's filler, and a `rule`
+//!   member with no filler — plus the port discipline's own fixtures. The
+//!   surface tree is **firewalled from execution**: this harness
+//!   ([`check_case`], the corpus walker) runs the model and pathological trees
+//!   only, so surface fixtures never lower or evaluate. Their gate is the PBG
+//!   parser's zero-obligation corpus sweep (`gandr-parser`
+//!   `acceptance::corpus_molds_to_zero_obligations`), which reads all three
+//!   trees; the surface tree carries no `//@` directives. A surface fixture
+//!   that is deliberately ill-formed **after** parsing — the shared-port
+//!   refutations — lives here rather than in [`PATHOLOGICAL_DIR`], because the
+//!   walker that reads that tree lowers what it finds and those fixtures'
+//!   shapes have not graduated; its own gate is the named crate test that reads
+//!   it.
 //!
 //! The ruled circuit **rule block** itself has graduated and is runnable: the
 //! model witness is `examples/model/circuit/circuit-rule-block.gandr` and its
@@ -78,7 +77,7 @@
 //!
 //! Expected values are written in [`render_value`]'s deliberately structural
 //! grammar (booleans render as their `1 + 1` encoding `Inl(())` / `Inr(())`):
-//! the surface pretty-printer is still owned by `wyrd-6n5m` / `wyrd-57er`, and
+//! the surface presentation printer is the planned `surface-render` crate, and
 //! this harness must not grow a rival one — [`render_value`] is a test-side
 //! notation, not a printer.
 //!
@@ -142,8 +141,8 @@ pub const MODEL_DIR: &str = "examples/model";
 /// failure goldens — testing artifacts, never pedagogy (ADR-52 Decision C).
 pub const PATHOLOGICAL_DIR: &str = "examples/pathological";
 
-/// The surface tree, relative to the crate root: the W4d syntax fold-in
-/// fixtures (`wyrd-ku0f`).
+/// The surface tree, relative to the crate root: the surface syntax fold-in
+/// fixtures.
 ///
 /// PBG-only, parse-only programs (`data` / `codata`, `def rec`, control flow,
 /// `import`, string interpolation, and the reserved slots) that the committed
@@ -421,8 +420,8 @@ pub struct Case
 /// # Contract
 /// - ensures: returns one human-readable failure per unmet expectation (or per
 ///   infrastructure failure); an empty vector means the example passes.
-/// - provides: the corpus walker tests' single entry point, and the seam the
-///   instrumentation surface (`wyrd-9onc`) extends.
+/// - provides: the corpus walker tests' single entry point, and the seam an
+///   instrumentation surface extends.
 #[inline]
 #[must_use]
 pub fn check_case<'source, T>(source: T) -> Vec<String>
@@ -1074,7 +1073,7 @@ fn check_ffi(
 /// Renders a machine [`Value`] into the harness's structural notation.
 ///
 /// This is a **test-side notation**, not a pretty-printer (that surface is
-/// owned by `wyrd-6n5m` / `wyrd-57er`): annotations are transparent, booleans
+/// the planned `surface-render` crate's): annotations are transparent, booleans
 /// appear as their `1 + 1` encoding (`Inl(())` / `Inr(())`), thunks render
 /// opaquely, and anything unrecognized renders `<opaque>`. Rendering is
 /// depth-bounded (`<deep>` beyond [`RENDER_DEPTH_LIMIT`]).

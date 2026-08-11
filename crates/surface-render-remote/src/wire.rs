@@ -1,42 +1,39 @@
 //! The versioned render-bus frame + delta wire schema.
 //!
 //! These types realize the render-bus protocol of the inspection-protocol
-//! proposal (the inspection-protocol proposal §4–§5): the
-//! frame envelope, the machine-state projection a renderer paints, the
-//! incremental delta form, and the scalar machine summary. They are the
-//! serialized image of the in-process worker→present seam ([`crate::present`])
-//! — the same projection, now crossing a socket instead of an `mpsc` channel.
+//! design: the frame envelope, the machine-state projection a renderer
+//! paints, the incremental delta form, and the scalar machine summary. They
+//! are the serialized image of the in-process worker→present seam
+//! ([`crate::present`]) — the same projection, now crossing a socket instead of
+//! an `mpsc` channel.
 //!
-//! # Versioning discipline (proposal Axis C)
+//! # Versioning discipline
 //!
 //! Every document-scoped message carries `(doc_uri, doc_version)`: `doc_uri`
-//! identifies the document, `doc_version` is the LSP `textDocument` version the
-//! projection describes. A renderer paints a frame only while its `doc_version`
-//! matches the buffer it shows, and requests a [`FrameBody::Resync`] otherwise;
-//! the server coalesces to the latest version per document under edit pressure.
-//! [`RenderFrame::schema_version`] is the wire-format version — the bus
-//! analogue of the pipeline `Report`'s `schema_version` — and a consumer checks
-//! it before decoding.
+//! identifies the document, `doc_version` is the editor-protocol document
+//! version the projection describes. A renderer paints a frame only while its
+//! `doc_version` matches the buffer it shows, and requests a
+//! [`FrameBody::Resync`] otherwise; the server coalesces to the latest version
+//! per document under edit pressure. [`RenderFrame::schema_version`] is the
+//! wire-format version — the bus analogue of the report envelope's own schema
+//! version — and a consumer checks it before decoding.
 //!
-//! # Session-typeable shape (proposal Axis E)
+//! # Session-typeable shape
 //!
 //! The message set is the projection of a binary session — `?Attach . !Hello .
-//! μ X. ( !Frame . X ⊕ !Delta . X & ?Resync . X & ?Detach . end )`. When A4
-//! sessions land (`type-system.md` §"Shared sessions: manifest sharing"
-//! through §"Multiparty session types") the bus server becomes a typed
-//! endpoint and today's JSON frames are that protocol's messages, with no
-//! consumer break.
+//! μ X. ( !Frame . X ⊕ !Delta . X & ?Resync . X & ?Detach . end )`. When
+//! session types land, the bus server becomes a typed endpoint and today's
+//! JSON frames are that protocol's messages, with no consumer break.
 //!
-//! # `report` — the present projection, not the pipeline `Report`
+//! # `report` — the present projection, not the pipeline report
 //!
 //! [`FrameBody::Frame`] carries a [`ReportView`] — the [`crate::present`]
 //! projection (highlight/mark spans, diagnostic and goal cards) — rather than a
-//! re-export of `gandr_pipeline::diag::Report`. This keeps the crate a true
-//! leaf (no pipeline dependency) and is exactly the renderer-facing shape the
-//! `gandr-tui` worker already produces; the proposal's §4 sketch wrote `report:
-//! Report` generically, and §1 resolves it as "the same projection" the present
-//! seam carries. The structured `gandr_pipeline::diag::Report` remains the
-//! Channel-1 (LSP) and agent-JSON surface.
+//! re-export of the engine's structured report. This keeps the crate a true
+//! leaf (no pipeline dependency), and the view is exactly the renderer-facing
+//! shape an in-process renderer consumes. The structured report
+//! (`gandr-surface-engine`'s `diag` module) remains the editor-channel and
+//! agent-JSON surface.
 
 use core::fmt;
 
@@ -126,9 +123,10 @@ impl fmt::Display for DocumentUri<'_>
 /// (additive fields do not require a bump). A consumer checks
 /// [`RenderFrame::schema_version`] against this before decoding a stream.
 ///
-/// This is distinct from the pipeline `Report`'s own `schema_version`
-/// (currently `2`): that versions the diagnostics/goals/marks JSON envelope on
-/// Channel 1; this versions the render-bus envelope.
+/// This is distinct from the structured report's own schema version (the
+/// engine's `diag` envelope, at version 2): that versions the
+/// diagnostics/goals/marks JSON envelope on the editor channel; this versions
+/// the render-bus envelope.
 pub const WIRE_SCHEMA_VERSION: WireSchemaVersion = WireSchemaVersion(1);
 
 /// One bus message: the frame envelope of proposal §4.
@@ -645,9 +643,9 @@ impl ServerCaps
 /// The present-projection view carried by a [`FrameBody::Frame`]: the
 /// renderer-facing diagnostics, goals, marks, and highlights.
 ///
-/// This is the serialized image of the fields the `gandr-tui` worker hands its
-/// renderer (a [`crate::present::PreviewFrame`] minus its cursor-local and
-/// generation fields, which are Channel-1 / in-process concerns). Obligations
+/// This is the serialized image of the fields an in-process renderer consumes
+/// (a [`crate::present::PreviewFrame`] minus its cursor-local and generation
+/// fields, which are editor-channel / in-process concerns). Obligations
 /// are reserved: they arrive via [`FrameBody::Delta`] once the pipeline's
 /// reserved slot populates.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]

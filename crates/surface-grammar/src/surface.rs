@@ -1,4 +1,6 @@
-//! Built-in precedence-bounded grammar surface for Gandr tree-sitter nodes.
+//! The built-in precedence-bounded grammar surface: the term, type/shell, and
+//! circuit rule assemblies, the named precedence table, and the named-kind
+//! registries.
 
 pub mod circuit;
 #[cfg_attr(
@@ -199,10 +201,11 @@ pub const TREE_SITTER_NAMED_KINDS: &[&str] = &[
     "wildcard",
 ];
 
-/// PBG-only construct kinds folded in by W4d and W4e.
+/// PBG-only construct kinds: the folded-in surface forms the committed
+/// tree-sitter grammar does not produce.
 ///
 /// These are surface forms — new datatype / control / declaration constructs
-/// and the reserved / folded member forms inside them, plus the W4e shell
+/// and the reserved / folded member forms inside them, plus the shell
 /// braced parameter form `${name}` — that the committed tree-sitter grammar
 /// (`packages/tree-sitter-gandr`) does **not** produce.
 /// They are the **parity exemption**: a rule may carry one of these as its
@@ -210,8 +213,8 @@ pub const TREE_SITTER_NAMED_KINDS: &[&str] = &[
 /// being a committed tree-sitter named kind. Because the tree-sitter
 /// differential harness ranges over [`TREE_SITTER_NAMED_KINDS`] only, none of
 /// these ever appears in [`crate::named_kind_parity`] — parity coverage stays
-/// exact for the existing tree-sitter kinds, and the W4d forms are covered by
-/// the PBG-only corpus (`crates/surface-corpus/examples/surface/`) and this
+/// exact for the existing tree-sitter kinds, and the folded forms are covered
+/// by the PBG-only corpus (`crates/surface-corpus/examples/surface/`) and this
 /// registry instead. The set is disjoint from [`TREE_SITTER_NAMED_KINDS`].
 ///
 /// Two groups: the new rule provenances (the constructs' own kinds) and the

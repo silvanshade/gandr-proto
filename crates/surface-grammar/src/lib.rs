@@ -1,10 +1,13 @@
 //! Checked precedence-bounded grammar core for gandr.
 //!
-//! This crate owns the representation shared by generated surface grammar
-//! tables and graph-walk adaptation code. It deliberately contains no
-//! parser-specific declaration language: clients provide constant [`Rule`]
-//! values over a validated [`PrecDag`], and [`Pbg::build`] performs the
-//! cross-rule checks.
+//! This crate owns the checked grammar the surface front-end parses over: the
+//! [`Pbg`] model with its build-time gates, the interned mold table and
+//! regex-zipper contexts, the generative walk-index front-end over the shared
+//! graph substrate's walk engine, the `built_in` surface grammar, the
+//! mold-driven syntax highlighter, and the named-kind parity inventory. It
+//! deliberately contains no parser-specific declaration language: clients
+//! provide constant [`Rule`] values over a validated [`PrecDag`], and
+//! [`Pbg::build`] performs the cross-rule checks.
 
 extern crate alloc;
 
