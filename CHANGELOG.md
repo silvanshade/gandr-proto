@@ -9,6 +9,8 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 - The retirement continues: the `surface-syntax`, `surface-parser`, `surface-grammar`, and `surface-render-remote` sets leave the tree.
   `surface-corpus` shipped no docs directory, so nothing relocates for it.
   The design material the four sets carried is corrected at its new home rather than copied — including the grammar STATUS's stale grammar fingerprint and declared mold count (two updates behind the tree's pinned values) and the parser STATUS's stale test count, line count, and corpus-gate narrative.
+- The retirement completes with the tier's last two sets: `surface-engine` and `surface-driver` leave the tree.
+  The engine record's stale figures are repaired at its new home rather than copied — its STATUS recorded 27,997 source lines across 25 files and 379 tests where the tree measures 33,441 lines across 35 source files and 463 tests — and the driver's manifest head claim that each deferred face needs an unlanded crate (false for three of the four it named) is repaired in the same area.
 
 ## 2026-08-10
 
@@ -20,6 +22,19 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 - **core-checker**: extracted the A2.3 incremental trio (`checkpoint`, `footprint`, `region`, with the four boundary wrappers only they used and the `theory-orders` dependency) into `gandr-core-incremental` — the engine existed twice in the workspace, and the extraction takes the better-written half of each differing pair into one crate; nothing here consumed the trio, so the move is a re-home.
   Same landing: `effect::host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent host seam, so surface lowering and the native runtime share one authority.
 
+## 2026-08-09
+
+- **surface-engine**: handed the item-granular checkpoint engine to `gandr-core-incremental` — removed this crate's second copy (the `footprint` and `checkpoint` modules, near-identical to core-checker's by common descent), retired `lower::LoweredItem` in favour of the seam's `region::Item` it was field-for-field identical to, dropped the `gandr-theory-orders` edge that left with the engine, and removed four `boundary` wrappers that named the extracted engine's vocabulary with no use site.
+  The from-scratch-versus-resume differential stays here in `tests/incremental.rs`, resuming through the item seam against `prelude_ctx` — the extracted crate's own gate runs parser-free against a test double, so the two gates cover the engine and the front end separately.
+
+## 2026-08-08
+
+- **surface-engine**: gave the source driver a path-shaped face — `run::run_source_file` reads a source file and runs it exactly as `run::run_source` runs source text, reporting the path in `RunFileError::Read` so a diagnostic can name the file, with a source-level failure travelling unchanged.
+  This is the seam the `gandr <file>` script runner stands on; a `#!…` shebang line needs no stripping anywhere (it is grammar trivia), so an executable script and its text run identically.
+- **surface-driver**: un-stubbed the toolchain driver with the script-runner face (front-end rung F5) — `gandr <file>` runs one source file through `run_source_file`, `gandr --help` prints the accepted command line, and every other command-line shape is refused, so a deferred face fails loudly rather than being read as a filename.
+  The outcome-to-status contract is the crate's substance: `0` for a value terminal, the script's own `proc.exit` code reduced to a byte, `1` for a blame, stuck configuration, or fatal host abort, and `2` for a source that never reached the machine; a successful run prints nothing of the driver's own.
+  `scripts/agda-deps.gandr` is the first production consumer, run by `mise run agda:deps`.
+
 ## 2026-08-07
 
 - **surface-grammar**: the nested generator block becomes the one `data` form — the declaration head binds the family's parameters once as typed binders and carries the index arity as the head annotation, every generator member is a judgment with its telescope kept local, and the retired Haskell-style shapes (the bare-parameter head, the field-tuple member, the comma member separator) stay admissible so the stage-0 elaborator declines them with the respelling; `codata` takes the same head discipline.
@@ -28,6 +43,8 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 
 ## 2026-08-02
 
+- **surface-engine**: landed the circuit surface check — the `circuit` module confirms every arrow of the ruled circuit block form against the kind of the thing it belongs to (a declaration's from its kind keyword, a body line's from the applied head's kind), a row disagreement is a named, located diagnostic, and the reserved `<->` declines naming the reversible-oper lane; the check deliberately stops at arrows and names.
+  Same landing: `desc_elab`'s `rule` member reads the ruled `==>` face arrow, declining the retired `~>` with the respelling located at the arrow itself, and the `cst_read` module was extracted from `desc_elab` — the flat-tile-run `Reader` / `Cursor` both the stage-0 elaborator and the circuit check walk declarations with.
 - **surface-grammar**: landed the ruled circuit block form in the checked surface — the `sign` block with `sort` / `data` / `oper` / `rule` judgment members, the four-glyph arrow grid (`-->` / `<->` circuit 1-cell formers, `==>` / `<=>` rewrite faces), arrow-separated two-sided port lists, and the top-level `oper` / `rule` declaration with its `node` / `feed` body statements.
   The grammar admits any grid glyph at every arrow position by design — arrow-kind confirmation is an environment fact the checker owns — and a top-level circuit declaration takes parenthesized sides so no Item form ends in a sort hole.
   Same landing: the `data` / `codata` `rule` member's face arrow migrates from `~>` to `==>`, with the retired `~>` kept admissible in the arrow slot so the decline names the respelling.
@@ -41,6 +58,8 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
   Same landing: the kernel-native levelled-universe and explicit-lift goldens, and the artifact-total amplification bound `MAX_ARTIFACT_EXPANDED_WORK` with the deterministic `DecodeMetrics` the export exit gate records.
 - **storage-artifact**: landed the outer-layer CAS wiring for kernel v1 export artifacts — the record model over `write_segmented`, declaration-granular chunking into a `BlockStore`-backed prolly tree, the canonical versioned `ArtifactManifest`, and `ArtifactIdentity = BLAKE3(manifest)` as the b3sum-provenance successor, with the two-wall discipline (outer integrity, inner validity) pinned in docs and history-independence pinned by a differential.
 - **storage-chunker**: reconciled the absorbed documentation — removed benchmark claims that have no executable source in this tree; the crate ships no benchmark target and an empty dev-dependency table.
+- **surface-engine**: ported at rung F3 — the complete CST-to-core front-end engine (total lowering, origin tracking, structured diagnostics and goals, prelude/host/attribute tables, edit-action reconstruction, linking, stateful sessions, and the one-shot source driver), re-pointing seven predecessor dependencies one-to-one, splitting the eighth (`gandr-core`) by authority into `gandr-core-checker` and `gandr-core-sequent`, and adding the host-capability adapter `gandr-runtime-host` as the tenth edge.
+  Session and linker evaluation moved to the L machine; `run::run_source` relocated from the runtime so the engine owns the language-level source entry; statement recognition and diagnostics adapted to the reboot grammar's `val` / `run` spellings with no compatibility alias left.
 - **surface-syntax / surface-render-remote**: ported into the tree at front-end rung F0 — the flat-arena CST leaf (the `Cst` arena, the checked `CstBuilder`, the framed FNV-1a structural-identity hash, the whitespace-insensitive structural diff) and the leaf wire-protocol types of the typing-machine inspection render bus (the `present` seam and the versioned `wire` frame + delta schema), verbatim ports of the wyrd `gandr-syntax` and `gandr-render-proto` crates with retired-tracker provenance dropped.
 - **surface-grammar**: ported at rung F1 — the checked precedence-bounded grammar core plus the mold-driven highlighter, re-pointing the three workspace dependencies to their reboot homes and omitting the `parity` feature entirely (tree-sitter returns at rung F6, so the default dependency graph is tree-sitter-free by construction); the parser-coupled contracts suite was parked to F2.
 - **surface-parser**: ported at rung F2 — the resumable push-machine melder plus the obligation taxonomy, dropping the vestigial direct graph edge (the grammar's re-exports carry every precedence type the parser uses) and restoring the grammar's six parser-coupled contracts tests through the deliberate dev-only cycle-break edge.
