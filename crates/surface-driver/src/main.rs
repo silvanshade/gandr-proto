@@ -14,8 +14,10 @@
 //! process as an exit status only.
 //!
 //! The REPL, `tui`, `lsp`, `mcp`, `fmt`, and `build` faces are **deferred**:
-//! each needs a crate this reboot has not landed, and `Cargo.toml` records
-//! which. They arrive with their dependency edges, not by uncommenting.
+//! the REPL waits on a line-editor decision wired to the landed grammar,
+//! parser, and syntax crates, and the rest have no implementing crate in the
+//! tree. `Cargo.toml` records which. They arrive with their dependency edges,
+//! not by uncommenting.
 
 use std::ffi::OsString;
 use std::io::Write as _;

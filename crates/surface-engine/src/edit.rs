@@ -1,6 +1,7 @@
 //! Edit-action reconstruction: a localized structured diff of the lowered CBPV
-//! core (`A2`; `incremental-pipeline.md` §"pipeline-decision-02", the Porter
-//! disposition; `edit-action work`).
+//! core
+//! (`docs/gandr/spec/implementation/incremental-pipeline.md`
+//! §"pipeline-decision-02", the Porter disposition).
 //!
 //! # The impedance gate this closes
 //!
@@ -12,14 +13,16 @@
 //! one-hole-context edits (not text diffs), and so always knows *which* child
 //! an edit touched. (The corpus carries the verified harvest of both — Porter's
 //! order-maintenance intervals and binding pointers, Pantograph's typed
-//! error-boundary — in `incremental-pipeline.md` §"pipeline-decision-02" and
-//! §"pipeline-decision-04"; the per-paper claims live there, not duplicated
-//! here.) gandr's A2 front end, by contrast, produces a melder CST (the
-//! merkle-hashed `gandr-surface-syntax` arena) and a re-lowered core term. This
-//! module is the **translation layer** between the two: it reconstructs a
-//! localized edit-action script over the lowered core from the before/after
-//! lowerings, plus a byte-range **localizer** that maps a [`SourceEdit`]'s old
-//! extent to the smallest enclosing core term (the *edit locus*).
+//! error-boundary — in
+//! `docs/gandr/spec/implementation/incremental-pipeline.md`
+//! §"pipeline-decision-02" and §"pipeline-decision-04"; the per-paper claims
+//! live there, not duplicated here.) This front end, by contrast, produces a
+//! melder CST (the merkle-hashed `gandr-surface-syntax` arena) and a re-lowered
+//! core term. This module is the **translation layer** between the two: it
+//! reconstructs a localized edit-action script over the lowered core from the
+//! before/after lowerings, plus a byte-range **localizer** that maps a
+//! [`SourceEdit`]'s old extent to the smallest enclosing core term (the *edit
+//! locus*).
 //!
 //! # Coverage with fallback (be honest)
 //!
@@ -34,8 +37,8 @@
 //!   `syntax::HoleId`). This holds *regardless* of how well the diff localized:
 //!   the worst case is a single coarse [`Action::Replace`] of a whole subtree
 //!   (or an item alignment that deletes-and-reinserts rather than recognizing a
-//!   move), which is exactly the "re-lower-then-diff" residual the bead names —
-//!   expressed as an action, not a separate bail-out path.
+//!   move), which is exactly the "re-lower-then-diff" residual — expressed as
+//!   an action, not a separate bail-out path.
 //! - **Localization is partial.** Where the two terms share structure (the
 //!   common case: an edit inside one definition), the diff descends to the
 //!   changed node and emits a pin-point action ([`Action::SetInt`],
@@ -49,19 +52,18 @@
 //! [`apply`] operates on the **term forest** ([`Item`]s — names,
 //! ascriptions, and core terms), *not* on the [`OriginMap`]: byte ranges and
 //! CST identity are a function of lowering, and reconstructing them from an
-//! action script is the order-maintenance-over-CST resync problem
-//! (`CST-resynchronization work`, Pterodactyl relative positioning),
-//! deliberately out of scope here. The [`localize`] half uses the existing
-//! [`OriginMap`] byte-range nesting as its positioning substrate: a byte->node
-//! *stabbing* query answered in **O(depth)** by descending the nesting (the
-//! ranges nest, so the smallest enclosing entry is reached by stepping into the
-//! containing child at each level — never scanning the whole map,
-//! `stable-origin work`). The `gandr-theory-orders` `Interval` containment is a
-//! *different* query — O(1) node->node *ancestry*, the query the future
-//! dirty-frontier engine (A2.3) consumes, not a drop-in speed-up for this
+//! action script is the order-maintenance-over-CST resync problem, deliberately
+//! out of scope here. The [`localize`] half uses the existing [`OriginMap`]
+//! byte-range nesting as its positioning substrate: a byte->node *stabbing*
+//! query answered in **O(depth)** by descending the nesting (the ranges nest,
+//! so the smallest enclosing entry is reached by stepping into the containing
+//! child at each level — never scanning the whole map). The
+//! `gandr-theory-orders` `Interval` containment is a *different* query — O(1)
+//! node->node *ancestry*, the query a dirty-frontier engine over
+//! order-maintenance keys consumes, not a drop-in speed-up for this
 //! byte->node lookup. Rebasing the [`OriginMap`] onto order-maintenance keys,
 //! so a whitespace reparse leaves positions invariant, is the OM-over-CST
-//! resync (`CST-resynchronization work`).
+//! resync.
 //!
 //! # Index conventions
 //!
@@ -165,8 +167,8 @@ pub enum Subtree
 /// (see the module doc's index conventions). The three *coarse* actions
 /// ([`Self::Replace`], [`Self::FillHole`], [`Self::EraseToHole`]) all install a
 /// whole new subtree — [`apply`] treats them identically; they are kept
-/// distinct because the distinction is exactly the signal a consumer (the A2.4
-/// agent stream) wants: a hole *filled*, a term *erased to a hole*, or a
+/// distinct because the distinction is exactly the signal an agent-facing
+/// consumer wants: a hole *filled*, a term *erased to a hole*, or a
 /// constructor *replaced*.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Action
@@ -848,7 +850,7 @@ enum RebuildTask<'term>
     {
         /// Value node to rebuild.
         value: &'term Value,
-        /// Origin path the plan is consulted at.
+        /// Origin path the edit plan is consulted at.
         path: OriginPath,
     },
     /// Rebuild a computation node.
@@ -856,7 +858,7 @@ enum RebuildTask<'term>
     {
         /// Computation node to rebuild.
         comp: &'term Comp,
-        /// Origin path the plan is consulted at.
+        /// Origin path the edit plan is consulted at.
         path: OriginPath,
     },
     /// Assemble a parent after its children have been rebuilt.
@@ -2068,7 +2070,8 @@ fn handle_clause_child(index: ItemIndex) -> OriginPathComponent
 /// identifiers** (typing ignores them, so the diff treats two holes at the same
 /// position as equal and leaves the old identifier in place). The [`OriginMap`]
 /// is *not* reconstructed — only the term forest (names, ascriptions, terms);
-/// re-deriving byte ranges is `origin-reconstruction work`.
+/// re-deriving byte ranges is the origin-reconstruction problem, deliberately
+/// separate.
 ///
 /// # Contract
 /// - requires: `script` was produced by [`diff`] / [`diff_items`] from `old`
@@ -2319,9 +2322,9 @@ pub fn edit_locus(
 /// span — answered by an **O(depth) descent** of the [`OriginMap`]'s nested
 /// byte ranges: the ranges nest, so the smallest enclosing entry is reached by
 /// stepping into the containing child at each level rather than scanning the
-/// whole map (`stable-origin work`). It is *not* the `gandr-theory-orders`
-/// `Interval` containment, which answers node->node *ancestry* in O(1) for the
-/// dirty-frontier engine (A2.3, `CST-resynchronization work`) — a different
+/// whole map. It is *not* the `gandr-theory-orders`
+/// `Interval` containment, which answers node->node *ancestry* in O(1) for a
+/// dirty-frontier engine over order-maintenance keys — a different
 /// query. The locus is the **smallest-byte-range** entry containing the edit;
 /// among entries sharing that minimal range — synthesized elaboration nodes
 /// (operator desugaring, the `def` sugar) legitimately share a span — the
@@ -2477,7 +2480,7 @@ fn descend_locus(
 }
 
 /// The reference localizer: an exhaustive linear stab over every origin entry
-/// (the pre-`stable-origin work` implementation). Retained as the external
+/// (the pre-descent implementation). Retained as the external
 /// oracle [`localize_traced`] `debug_assert`s the O(depth) descent against.
 fn localize_reference(
     origin: &OriginMap,
@@ -2517,7 +2520,7 @@ fn contains(
 }
 
 /// A source edit's byte extents — the localizer input that replaced the retired
-/// `tree_sitter::InputEdit` (`stable-origin work`).
+/// `tree_sitter::InputEdit`.
 ///
 /// The melder is a *batch* parser, so the row/column positions tree-sitter
 /// carried for incremental reparse are not consumed here; the localizer needs

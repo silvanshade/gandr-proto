@@ -1,5 +1,5 @@
-//! Tests for the edit-action reconstruction layer (`edit`; `edit-action work`,
-//! `edit-action oracle work`).
+//! Tests for the edit-action reconstruction layer ([`edit`]) and its
+//! soundness oracle.
 //!
 //! Six classes:
 //!
@@ -1555,7 +1555,7 @@ mod tests
         }
     }
 
-    /// The A3 effect/control constructors and the grade structural ops localize
+    /// The effect/control constructors and the grade structural ops localize
     /// edits into their children rather than coarse-replacing, and `apply`
     /// stays the diff's adjoint over them (`deep edit descent`). The surface
     /// does not yet lower to these forms, so the fixtures build the core
@@ -2080,7 +2080,7 @@ mod tests
             ])
         }
 
-        /// A depth-bounded strategy over the A3 effect/control + grade
+        /// A depth-bounded strategy over the effect/control + grade
         /// constructors, built directly (the surface does not lower to them),
         /// for the randomized soundness oracle.
         fn comp_strategy() -> impl Strategy<Value = Comp>

@@ -1,4 +1,4 @@
-//! REPL session engine tests (`REPL-session work`): the read → lower → type →
+//! REPL session engine tests: the read → lower → type →
 //! eval → result slice — literal evaluation, cross-line definition carry-over,
 //! the fixed-table operator evaluation, the annotation story for check-only
 //! forms, and the decline-eval-on-holes validator.
@@ -291,8 +291,7 @@ mod tests
         }
     }
     /// A prelude arithmetic operator evaluates through the native prelude and
-    /// uses the `gradual-arithmetic work` gradual arithmetic type (`F
-    /// Unknown`).
+    /// uses the gradual arithmetic type (`F Unknown`).
     #[test]
     fn arithmetic_operators_type_check_and_evaluate()
     {
@@ -364,13 +363,12 @@ mod tests
         }
     }
     /// A module-qualified native builtin types (its declared type, applied) and
-    /// evaluates through the prelude binding-environment (module/prelude
-    /// design, `module-selection work`): `prim.id(5)` is `F Integer` and
+    /// evaluates through the prelude binding-environment: `prim.id(5)` is
+    /// `F Integer` and
     /// reduces to `5`; `prim.const(7, 9)` reduces to its first argument
     /// `7`. The end-to-end seam — module-select elaboration (`prim.id` ⇒
     /// `Var("prim.id")`), the native node, and the eval prelude — is the
-    /// same native-prelude path used by `gradual-arithmetic work`
-    /// operators.
+    /// same native-prelude path the gradual-arithmetic operators use.
     #[test]
     fn module_builtins_type_and_evaluate()
     {
@@ -445,9 +443,9 @@ mod tests
             | _ => panic!("an annotated list should evaluate"),
         }
     }
-    /// `list.each` maps a pure closure over a list through the module prelude
-    /// (`list-combinator work`): `list.each(thunk { fn(x) { x + 1 } }, [1, 2,
-    /// 3])` types to `F (List ?)` and evaluates to `[2, 3, 4]` — the
+    /// `list.each` maps a pure closure over a list through the module prelude:
+    /// `list.each(thunk { fn(x) { x + 1 } }, [1, 2, 3])` types to
+    /// `F (List ?)` and evaluates to `[2, 3, 4]` — the
     /// closure argument, the list argument, and the native-combinator seam
     /// end to end.
     #[test]
@@ -728,7 +726,7 @@ mod tests
     }
     /// A computation-sorted ascription gives the check-only computations an
     /// expected type outside a `def` signature: `(t : B)` elaborates to
-    /// `force ((thunk t) : U_ω B)` (`computation-ascription work`), so an `if`
+    /// `force ((thunk t) : U_ω B)`, so an `if`
     /// in bare expression position types and evaluates.
     #[test]
     fn computation_ascription_types_and_evaluates_check_only_forms()

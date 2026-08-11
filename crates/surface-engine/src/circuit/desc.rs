@@ -73,7 +73,7 @@
 //!
 //! * a **many-out node** or a **many-out interface** — one output port per
 //!   statement is what a single-rooted term can hold, and widening it is the
-//!   cell-alphabet question (`gandr-ui9`);
+//!   cell-alphabet question, which the decline names;
 //! * a **`feed` statement** — a wheel-bearing body derives no boundary pair,
 //!   and separating a delay-guarded cycle from an unguarded one is owed with
 //!   the `feed` statement's own elaboration;

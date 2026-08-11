@@ -1,4 +1,4 @@
-//! A2.2 acceptance tests (`A2-PLAN.md` §A2.2), one module per class:
+//! Total-lowering acceptance tests, one module per class:
 //!
 //! 1. [`tests::recovery_fixtures`] — `incomplete-input.gandr` and
 //!    `parser-recovery.gandr` lower **totally** and type to completion (`Done`
@@ -24,7 +24,7 @@
     )
 )]
 
-/// A2.2 acceptance tests for total lowering and the goals report.
+/// Acceptance tests for total lowering and the goals report.
 #[cfg(test)]
 mod tests
 {
@@ -664,7 +664,7 @@ mod tests
         }
 
         proptest! {
-            /// Randomized re-statement of the property (the plan asks for a
+            /// Randomized re-statement of the property (the design asks for a
             /// proptest), additionally cutting *within* the final line at a
             /// char boundary — strictly more prefixes than the exhaustive
             /// line-prefix loop.

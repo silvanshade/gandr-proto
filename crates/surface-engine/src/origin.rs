@@ -1,11 +1,10 @@
-//! Source identity for lowered terms: the `OriginMap` side table
-//! (`A2-PLAN.md` §A2.1 scope item 4, decision D4).
+//! Source identity for lowered terms: the `OriginMap` side table.
 //!
-//! `gandr-core-checker` syntax stays span-free; this module maps stable origin
-//! node IDs to CST node IDs and byte ranges, plus an elaboration tag for
+//! `gandr-core-checker` syntax stays span-free and parser-free by decision;
+//! this module is where positions live instead. It maps stable origin node
+//! IDs to CST node IDs and byte ranges, plus an elaboration tag for
 //! synthesized nodes (the `def` sugar, operator elaboration, `if` desugaring,
-//! …) so elaborations can be un-sugared on demand (`proposal-surface-syntax.md`
-//! §5.2).
+//! …) so elaborations can be un-sugared on demand.
 //!
 //! # Stable IDs and legacy paths
 //!
@@ -218,14 +217,13 @@ pub enum ElabKind
     /// occurrence both carry this tag).
     BindHoist,
     /// `let x = v; t` ⇒ `Bind(Ret v, x, t)` (the recorded `let`-value
-    /// elaboration of the plan).
+    /// elaboration of the design).
     LetValueBind,
     /// `t;` ⇒ `Bind(t, "_", …)` (statement sequencing sugar).
     SeqDiscard,
     /// A computation-sorted ascription `(t : B)` ⇒ `force ((thunk t) : U_ω B)`
     /// — core has no computation-annotation node, so the expected type rides
-    /// the thunk annotation and `force` synthesizes it back
-    /// (`computation-ascription work`).
+    /// the thunk annotation and `force` synthesizes it back.
     CompAscription,
     /// Multi-parameter/multi-argument currying: the *inner* nodes of
     /// `fn(x, y) { t }` ⇒ `fn(x) { fn(y) { t } }` and `f(v, w)` ⇒ `f(v)(w)`.
@@ -237,14 +235,14 @@ pub enum ElabKind
     /// n-ary tuple pattern `let (x, y, z) = v;`.
     SplitNest,
     /// A module-select `M.l` whose value is a known module name ⇒ the flat
-    /// qualified `Var("M.l")` (module/prelude design, `module-selection work`;
-    /// the MVP module layer's namespace half — pure elaboration, unlike the
-    /// structural `t.fst` / `t.snd` projection the same
-    /// `projection_expression` otherwise lowers to).
+    /// qualified `Var("M.l")` (the module layer's namespace half — pure
+    /// elaboration, unlike the structural `t.fst` / `t.snd` projection the
+    /// same `projection_expression` otherwise lowers to).
     ModuleSelect,
     /// `module M (: #{ … })? { members… }` ⇒ one named record item with
     /// source-ordered generated binds for member definitions and a final
-    /// returned record (checked-module M1-lite lowering; no core module node).
+    /// returned record (the checked-module record lowering; no core module
+    /// node).
     /// This tag marks the synthesized record and the module-only sequencing
     /// envelope so diagnostics can distinguish module sugar from an ordinary
     /// record literal or user-written `let`.
@@ -284,20 +282,20 @@ pub enum ElabKind
     HostPerform,
 }
 
-/// What a hole elides (`A2-PLAN.md` §A2.2).
+/// What a hole elides.
 ///
 /// The structured note carried by every hole the lowerer synthesizes in
-/// total mode (the plan: "with a `HoleNote::{SyntaxError, UnsupportedForm}`
-/// in the origin map"); the catalogue mirrors the input-shaped
+/// total mode ("with a `HoleNote::{SyntaxError, UnsupportedForm}` in the
+/// origin map"); the catalogue mirrors the input-shaped
 /// [`crate::lower::LowerError`] constructors, which are what total lowering
 /// converts. The note plus the entry's byte range answer "what was elided,
 /// and where" — together with the expected type from the goals report, this
-/// is the v0 seed of the A2.4 agent stream.
+/// is the seed of the hole-goal surface.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HoleNote
 {
-    /// An `ERROR` or `MISSING` CST region (the melder-CST switch, `melder-CST
-    /// migration` M3, retired this in favor of the per-obligation-class
+    /// An `ERROR` or `MISSING` CST region (the melder-CST switch retired this
+    /// in favor of the per-obligation-class
     /// notes below; the variant is retained for compatibility but has no
     /// producer).
     SyntaxError,
@@ -399,7 +397,7 @@ pub struct OriginEntry
     /// deterministic within one parse but *positional* — a within-tree
     /// address (the substrate the structural diff aligns on), never
     /// a cross-run identity. [`OriginMap::snapshot`] keys on [`Self::cst_hash`]
-    /// instead (`stable-origin work`).
+    /// instead.
     pub cst_node: NodeId,
     /// The originating CST node's per-node merkle hash
     /// ([`gandr_surface_syntax::Cst::hash`], behind
@@ -407,14 +405,14 @@ pub struct OriginEntry
     /// node's significant structure. Reproducible across runs *and* processes —
     /// the property the freed tree-sitter subtree address it superseded
     /// provably lacked — so [`OriginMap::snapshot`] includes it as a sound
-    /// provenance golden key (`stable-origin work`).
+    /// provenance golden key.
     pub cst_hash: StableHash,
     /// The originating CST node's byte range in the source.
     pub byte_range: SourceRange,
     /// The elaboration tag, present exactly on synthesized nodes.
     pub elaboration: Option<ElabKind>,
     /// The hole note, present exactly on holes synthesized by total-mode
-    /// lowering (A2.2): what was elided at this position.
+    /// lowering: what was elided at this position.
     pub note: Option<HoleNote>,
 }
 
@@ -513,9 +511,9 @@ impl OriginMap
     /// one `path => byte_range #cst_hash [elaboration] (note)` line per entry
     /// (elaboration and note only when present), in legacy path order.
     ///
-    /// [`OriginEntry::cst_hash`] is **included** (`stable-origin work`): the
-    /// per-node merkle hash is a content fingerprint, reproducible across
-    /// runs *and* processes, so it is a sound golden key over provenance.
+    /// [`OriginEntry::cst_hash`] is **included**: the per-node merkle hash is
+    /// a content fingerprint, reproducible across runs *and* processes, so it
+    /// is a sound golden key over provenance.
     /// The positional [`OriginEntry::cst_node`] (the dense arena slot) is
     /// deliberately omitted — like the tree-sitter node address it
     /// superseded, it is a within-tree position, not a reproducible

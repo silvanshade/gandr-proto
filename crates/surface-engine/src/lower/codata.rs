@@ -1,4 +1,4 @@
-//! Codata: the negative-half elaboration (proposal-codata-corecursion §2–4).
+//! Codata: the negative-half elaboration (the codata/corecursion design).
 //!
 //! A `codata C { π₁: B₁, … }` block declares named **observations** — the dual
 //! of a `data` block's field-tuple constructors (a constructor says what a
@@ -16,11 +16,11 @@
 //!   exercises the projection-copattern axis: every clause leads with `.π`, so
 //!   the engine partitions the clauses by observation (the `Cosplit` step). The
 //!   data-only fragment degenerates to exactly the planned Maranget matrix —
-//!   the pattern-matrix work extends this engine rather than introducing a
+//!   the pattern-matrix design extends this engine rather than introducing a
 //!   second one. Coverage (every observation answered exactly once) is a
 //!   *separate phase* from productivity (codata design §4.1) — the productivity
-//!   ladder (guardedness, sizes) is `guarded-corecursion work`/beyond and runs
-//!   on the already-elaborated tree.
+//!   ladder (guardedness, sizes) is beyond this slice and runs on the
+//!   already-elaborated tree.
 //! * **The `Cosplit` node** ([`Cosplit`], codata design §4.2, C3). One
 //!   elaboration- level case-tree node: a record of branches keyed by
 //!   observation, reducing only when observed.
@@ -39,11 +39,11 @@
 //!   `#{ π: U_ω B }`; the codata type `C` is a synonym for its carrier, not a
 //!   minted nominal id. Nominal tagging is the single frozen-core touch
 //!   declared-data design schedules for declared data (shared, both polarities)
-//!   — deferred with the data-block work (`datatype-description work`), out of
-//!   this zero-core slice.
+//!   — deferred with the datatype-description lane, out of this zero-core
+//!   slice.
 //! * **No corecursion.** The `fix self` desugaring of a *recursive* copattern
-//!   definition (codata design §5.1) and the guardedness rung (§5.2) are
-//!   `guarded-corecursion work`. This slice lowers the copattern clauses to the
+//!   definition (codata design §5.1) and the guardedness rung (§5.2) are the
+//!   guarded-corecursion lane. This slice lowers the copattern clauses to the
 //!   `Cosplit` record-of-thunks with **no** `fix` binder: a non-recursive
 //!   codata value (a finite record of observations) evaluates end-to-end; a
 //!   self-referential body observes an unbound name (honest stuckness until
@@ -260,7 +260,7 @@ impl Lowerer<'_>
 
     /// Lowers a copattern definition `def rec f(params?) -> C { .π => e, … }`
     /// to its route-(a) carrier (codata design §4.2/§5.1, minus the `fix`
-    /// binder that is `guarded-corecursion work`).
+    /// binder that is the guarded-corecursion lane's).
     ///
     /// The copattern clauses elaborate through the lhs-problem engine to a
     /// [`Cosplit`], which lowers to the record of graded thunks. A nullary

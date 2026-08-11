@@ -1,5 +1,4 @@
-//! Declared data: the positive-half elaboration
-//! (`proposal-data-patterns.md`; declared-data work).
+//! Declared data: the positive-half elaboration (the declared-data design).
 //!
 //! A `data D(ā) { C₀, C₁(x: A), … }` block declares generative-nominal
 //! **constructors** (1-cells). A constructor application `C(v̄)` introduces a

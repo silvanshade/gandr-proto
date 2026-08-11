@@ -1,6 +1,5 @@
 //! The `SynNode` adapter: the melder CST (`gandr-surface-syntax`) presented
-//! through the lowerer's tree-sitter-shaped interface (`melder-CST migration`,
-//! W5′; checked-PBG front-end design).
+//! through the lowerer's named-node interface.
 //!
 //! `gandr_surface_syntax::Cst` is deliberately **form-name-free**: a node is
 //! one of [`NodeKind::Cell`]/[`NodeKind::Meld`]/[`NodeKind::Wald`]/
@@ -95,8 +94,7 @@ mod label
     pub const SIGN: TileSpelling = TileSpelling("sign");
     /// Circuit 1-cell member / top-level circuit declaration lead tile.
     pub const OPER: TileSpelling = TileSpelling("oper");
-    /// `module` declaration lead tile (PBG surface; `M1-lite module-root
-    /// work`).
+    /// `module` declaration lead tile (the checked-module surface).
     pub const MODULE: TileSpelling = TileSpelling("module");
     /// Attribute-block opener.
     pub const AT_BRACKET: TileSpelling = TileSpelling("@[");
@@ -224,7 +222,7 @@ mod label
     /// `command_name`).
     pub const COMMAND_NAME: TileSpelling = TileSpelling("shell_word");
     /// A command-local environment assignment `NAME=value`, molded as one tile
-    /// from the labeler's whole-token munch (`environment-assignment work`).
+    /// from the labeler's whole-token munch.
     pub const ENVIRONMENT_ASSIGNMENT: TileSpelling = TileSpelling("environment_assignment");
 }
 
@@ -364,8 +362,9 @@ impl SynTree
     /// The committed concrete syntax tree this tree's views borrow from.
     ///
     /// The structural-diff seam ([`gandr_surface_syntax::diff`],
-    /// incremental-pipeline.md §"The structural diff") consumes two trees'
-    /// [`Cst`]s directly (`stable-origin work`); the merkle hashes it aligns on
+    /// `docs/gandr/spec/implementation/incremental-pipeline.md` §"The
+    /// structural diff") consumes two trees'
+    /// [`Cst`]s directly; the merkle hashes it aligns on
     /// are the same the origin map records
     /// ([`crate::origin::OriginEntry::cst_hash`]).
     #[inline]
@@ -375,12 +374,12 @@ impl SynTree
         &self.cst
     }
 
-    /// The structural CST diff against a re-parse (incremental-pipeline.md
-    /// §"The structural diff"): [`gandr_surface_syntax::diff`] over the two
+    /// The structural CST diff against a re-parse
+    /// (`docs/gandr/spec/implementation/incremental-pipeline.md` §"The
+    /// structural diff"): [`gandr_surface_syntax::diff`] over the two
     /// committed trees. Merkle-hash pruning matches every subtree whose
     /// significant content is unchanged, so an edit confined to one item leaves
-    /// every *other* item's root in [`gandr_surface_syntax::Diff::matches`]
-    /// (`stable-origin work`).
+    /// every *other* item's root in [`gandr_surface_syntax::Diff::matches`].
     ///
     /// # Contract
     /// - requires: `self` and `new` are parses over the same built-in grammar
@@ -655,7 +654,7 @@ impl<'tree> SynNode<'tree>
     /// This node's stable CST identity for the origin map
     /// ([`gandr_surface_syntax::NodeId`]): a real node's dense arena slot, or a
     /// run's first significant child. The `NodeId`-typed identity that
-    /// superseded the freed tree-sitter subtree address (`stable-origin work`)
+    /// superseded the freed tree-sitter subtree address
     /// — positional within one parse (the substrate the structural diff
     /// aligns on), paired with the reproducible [`Self::cst_hash`] for
     /// provenance.
@@ -668,8 +667,7 @@ impl<'tree> SynNode<'tree>
 
     /// This node's per-node merkle hash ([`gandr_surface_syntax::Cst::hash`] of
     /// [`Self::cst_node`]): a content fingerprint over the node's significant
-    /// structure, reproducible across runs and processes (`stable-origin
-    /// work`).
+    /// structure, reproducible across runs and processes.
     #[inline]
     #[must_use]
     pub fn cst_hash(self) -> StableHash
@@ -1188,11 +1186,11 @@ impl<'tree> SynNode<'tree>
             | Some(label::DEF) => self.classify_def(sig, SignificantIndex(start)),
             | Some(label::EXTERN) => node_kinds::EXTERN_BLOCK,
             // The `data` / `codata` datatype-declaration leads. These classify
-            // for the levitation stage-0 elaborator (`crate::desc_elab`,
-            // datatype-description work): the SynNode dispatch surface recognizes the
+            // for the levitation stage-0 elaborator (`crate::desc_elab`):
+            // the SynNode dispatch surface recognizes the
             // declaration kinds, though the lowerer's `item()` still firewalls
-            // them from term lowering (their semantics graduate under
-            // pattern-matrix work).
+            // them from term lowering (their semantics graduate under the
+            // pattern-matrix design).
             | Some(label::DATA) => node_kinds::DATA_DECLARATION,
             | Some(label::CODATA) => node_kinds::CODATA_DECLARATION,
             // The ruled circuit block form's two item-position leads. They
@@ -1480,7 +1478,7 @@ impl<'tree> SynNode<'tree>
     /// first body tile is a leading projection `.` or the default-arm `_`),
     /// rather than an ordinary statement body. The copattern body is the codata
     /// intro (codata design §5.1, `codata MVP`); a statement body is user
-    /// recursion (`user-recursion work`), which the codata MVP declines.
+    /// recursion, which the codata MVP declines.
     #[inline]
     #[must_use]
     pub fn def_rec_has_copattern_body(self) -> CopatternBodyFlag

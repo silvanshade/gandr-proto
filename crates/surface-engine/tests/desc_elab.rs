@@ -1,5 +1,5 @@
-//! End-to-end levitation stage-0 elaboration tests (the predecessor design
-//! record).
+//! End-to-end levitation stage-0 elaboration tests (the levitation design's
+//! description layer).
 //!
 //! These drive the whole path — parse a `data` / `codata` block, elaborate it
 //! to a `gandr_theory_levitation::SignDesc`, then run the generic consumers

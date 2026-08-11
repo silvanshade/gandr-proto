@@ -1,5 +1,6 @@
 //! Levitation **stage-0 elaboration**: `data` / `codata` blocks → the
-//! `gandr_theory_levitation` declaration table (proposal-levitation.md §3).
+//! `gandr_theory_levitation` declaration table (the levitation design's
+//! description layer).
 //!
 //! This is the thin adapter between the parser's flat CST and the description
 //! layer: it reads a parsed [`node_kinds::DATA_DECLARATION`] /

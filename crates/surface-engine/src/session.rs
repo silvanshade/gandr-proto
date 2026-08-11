@@ -1,4 +1,5 @@
-//! The REPL session engine (proposal §4, `incremental-pipeline.md` §"The
+//! The REPL session engine
+//! (`docs/gandr/spec/implementation/incremental-pipeline.md` §"The
 //! read-evaluate loop").
 //!
 //! The smallest end-to-end interactive slice: [`Session::submit`] takes one
@@ -8,7 +9,8 @@
 //! typing machine and, for an expression item, evaluates it on the
 //! [`gandr_core_sequent::machine`] L machine, returning the structured
 //! [`Submission`] a front-end renders. The engine itself is presentation-free
-//! (no `Display`, decision D3) so every frontend reuses the same session core.
+//! (no `Display`; the core stays free of presentation dependencies) so every
+//! frontend reuses the same session core.
 //!
 //! # Cross-line definitions — the interim "session-prelude" (strategy A)
 //!
@@ -23,7 +25,7 @@
 //!   binds `name : A` into [`Session::ctx`], so a later line's expression types
 //!   against it;
 //! - **evaluation** runs each definition to a *value* once, at definition time
-//!   (eager, but v0-safe: the pure spine is terminating and effect-free), and
+//!   (eager, but safe here: the pure spine is terminating and effect-free), and
 //!   stores that value; a later expression folds the stored values into a
 //!   `ret`-`Bind` chain ([`eval_chain`]) — the same sequencing shape the
 //!   lowerer gives a block's `val` / `run` statements — so the L machine
@@ -38,14 +40,16 @@
 //! definition runs exactly once (REPL memoization).
 //!
 //! This is the interim simplification of the persisted `Γ`/`Θ` of
-//! `incremental-pipeline.md` §"The read-evaluate loop"; the persistent typed
-//! context (with checkpoints) is A2.3. Only definitions with a **value type**
+//! `docs/gandr/spec/implementation/incremental-pipeline.md` §"The read-evaluate
+//! loop"; the checkpointed persistent context lives in
+//! `gandr-core-incremental`'s item-granular engine. Only definitions with a
+//! **value type**
 //! are bindable as variables (CBPV: a variable is a value); a definition of
 //! bare computation type — e.g. an un-thunked `λ` — is reported with `bound =
 //! false` and left out of scope (thunk it to name it), matching the lowerer's
 //! own `let` discipline.
 //!
-//! # What evaluates in v0
+//! # What evaluates
 //!
 //! The pure CBPV spine (literals, pairs, lists, injections, `let`/bind,
 //! forcing a thunk, `case`/`split` over closed scrutinees, lambdas), **plus**
@@ -92,7 +96,7 @@ use crate::prelude_env;
 /// The outcome of one lowered item in a [`Submission`], in source order.
 ///
 /// Typing failures and hole goals are carried by the submission's
-/// [`diag::Report`] (the A2.4 surface); the variants here add the *success*
+/// [`diag::Report`]; the variants here add the *success*
 /// information a front-end needs — a definition's type and whether it entered
 /// scope, and an expression's type and evaluation outcome — plus markers for
 /// the non-success items so a consumer can iterate items and the report in
@@ -130,7 +134,7 @@ pub enum ItemOutcome
         /// The first typing error, as raised by the checker.
         error: TypeError,
     },
-    /// An item carrying one or more holes: evaluation is declined (the bead's
+    /// An item carrying one or more holes: evaluation is declined (the
     /// parse-completeness validator) and the holes are listed as goals in the
     /// submission's report.
     Holey,
@@ -143,7 +147,7 @@ pub enum ItemOutcome
 
 /// The structured result of one [`Session::submit`].
 ///
-/// Pairs the A2.4 [`diag::Report`] (diagnostics and hole goals, rendered by the
+/// Pairs the [`diag::Report`] (diagnostics and hole goals, rendered by the
 /// front-end) with one [`ItemOutcome`] per lowered item, in source order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Submission
@@ -267,9 +271,9 @@ impl Session
     ///
     /// # Contract
     /// - ensures: on success returns a [`Submission`] with one [`ItemOutcome`]
-    ///   per lowered item (in source order) and the A2.4 [`diag::Report`];
-    ///   every value-typed `def` item is bound into the session (`ctx` and the
-    ///   eval prelude) before later items in the same submission are processed.
+    ///   per lowered item (in source order) and the [`diag::Report`]; every
+    ///   value-typed `def` item is bound into the session (`ctx` and the eval
+    ///   prelude) before later items in the same submission are processed.
     /// - provides: the smallest end-to-end interactive slice (read → lower →
     ///   report → type → eval → result).
     /// - fails: only the infrastructure lowering failures
@@ -400,7 +404,7 @@ impl Default for Session
 /// Types one lowered item against `base`, returning its result type.
 ///
 /// The "terminal computation type of a `Done` expression item" the REPL shows
-/// before the value (the `REPL-session work` pipeline-result-type addition).
+/// before the value.
 /// Uses [`crate::goals::initial_state`]'s sort-and-ascription dispatch, then
 /// drives the heap-stacked typing machine to completion: an item is checked
 /// against its recorded ascription when the sorts match, inferred otherwise.

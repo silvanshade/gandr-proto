@@ -1,5 +1,5 @@
-//! CST type nodes → core [`ValueType`]/[`CompType`] (`A2-PLAN.md` §A2.1
-//! covered fragment, "Types" row; §A2.2 total mode).
+//! CST type nodes → core [`ValueType`]/[`CompType`] — the covered fragment's
+//! "Types" row, in both strictness modes.
 //!
 //! Covered: atoms (`primitive_type`, `type_identifier`), `F`, `U[r]`, `->`,
 //! `*`, `+`, `&`, parenthesized. Everything else (unions, intersections,
@@ -84,11 +84,11 @@ pub fn lower_value_ty(
 
 /// Lowers a primitive type name.
 ///
-/// [SPECULATIVE DECISION] The plan maps atoms/`primitive_type` to core
+/// [SPECULATIVE DECISION] The design maps atoms/`primitive_type` to core
 /// atoms; two primitives get structural meanings so the surface is coherent
 /// with the literal story: `Unit` is core `1`, and `Boolean` is `1 + 1` —
 /// the type of `true`/`false`, which lower to annotated injections into
-/// `1 + 1` ("Booleans need no core change", §A2.1 scope item 2). A third
+/// `1 + 1` ("Booleans need no core change"). A third
 /// keyword, `Unknown`, is the gradual top [`ValueType::Unknown`] — the
 /// consistency hole an ascription names explicitly — NOT the rigid
 /// `atom("Unknown")` the opaque fallback would otherwise give. All other

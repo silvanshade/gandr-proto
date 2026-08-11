@@ -1,4 +1,4 @@
-//! A2.4 acceptance tests (`A2-PLAN.md` §A2.4, decision D7), one module per
+//! Diagnostics-and-goals acceptance tests, one module per
 //! class:
 //!
 //! 1. [`tests::coverage`] — the error corpus drives **every reachable**
@@ -14,13 +14,12 @@
 //!    report, plus a hand-written wire-shape pin for the reserved `Other` /
 //!    surface-unreachable `EffectRowMismatch` marks the corpus cannot
 //!    construct.
-//! 5. [`tests::semantic_marks`] — the incremental-pipeline design marks surface
-//!    (`semantic-marks work`): each reachable mark kind is covered, the marks
-//!    oracle holds at the pipeline boundary (error marks iff ill-typed;
-//!    well-typed hole-free ⇒ no marks), `is_error` classifies the empty hole
-//!    alone, every mark span lies within its source, no surface mark is
-//!    silently dropped, and no surface source yields an effect-row or `Other`
-//!    mark.
+//! 5. [`tests::semantic_marks`] — the incremental-pipeline design's marks
+//!    surface: each reachable mark kind is covered, the marks oracle holds at
+//!    the pipeline boundary (error marks iff ill-typed; well-typed hole-free ⇒
+//!    no marks), `is_error` classifies the empty hole alone, every mark span
+//!    lies within its source, no surface mark is silently dropped, and no
+//!    surface source yields an effect-row or `Other` mark.
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -31,7 +30,7 @@
     )
 )]
 
-/// A2.4 acceptance tests for the diagnostics and goals JSON surface.
+/// Acceptance tests for the diagnostics and goals JSON surface.
 #[cfg(test)]
 mod tests
 {
@@ -381,8 +380,7 @@ mod tests
         }
     }
 
-    /// Acceptance class 5: the incremental-pipeline design semantic marks
-    /// (`semantic-marks work`).
+    /// Acceptance class 5: the incremental-pipeline design's semantic marks.
     mod semantic_marks
     {
         use super::*;
@@ -576,8 +574,8 @@ mod tests
         /// `marks()` drops nothing (the `Stk`-interior drop path is forward-
         /// compat-dead on surface input). This pins the term → origin coverage
         /// the marks surface depends on, against a future lowering regression
-        /// that adds a term child without a matching origin entry
-        /// (`semantic-marks work` soundness guard). Drives the marker
+        /// that adds a term child without a matching origin entry.
+        /// Drives the marker
         /// directly (mirroring `mark_item`), so it observes drops
         /// `marks()` would otherwise hide.
         #[test]

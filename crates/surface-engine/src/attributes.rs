@@ -1,7 +1,8 @@
-//! The entity-attribute layer (proposal-attributes.md).
+//! The entity-attribute layer
+//! (`docs/gandr/spec/surface-language/attributes.md`).
 //!
 //! An **entity attribute** is a named, typed datum attached to a declaration
-//! entity through the leading `@[…]` marker ([`crate::lower`], grammar §2).
+//! entity through the leading `@[…]` marker ([`crate::lower`]).
 //! This module owns the three landed disciplines the layer composes:
 //!
 //! 1. a **schema registry** ([`REGISTRY`]) binding attribute names to value
@@ -170,8 +171,9 @@ fn schema_authors() -> ValueType
 /// signature, required capabilities) gate on the unbuilt semantic tier, and the
 /// `resolved` dependency-address participation gates on resolution.
 ///
-/// The manifest's intended host is the M1-lite **module root**, which is not
-/// landed; until it is, a manifest schema validates on a top-level `def` item
+/// The manifest's intended host is the **module root**, for which the grammar
+/// provides no attribute attachment point; until it does, a manifest schema
+/// validates on a top-level `def` item
 /// (the unit-root stand-in the grammar provides today). The schemas and their
 /// checker path are complete; module-root attachment and the local lock record
 /// remain open.

@@ -1,13 +1,12 @@
 //! Shared type renderers from semantic values to presentation strings.
 //!
 //! The type-rendering trio is the shared machine-state → presentation
-//! projection used by the REPL and LSP, kept outside the core in accordance
-//! with decision D3 (no core `Display`; the `use_debug` lint forbids `Debug` in
-//! user-facing output).
+//! projection used by the REPL and LSP, kept outside the core (no core
+//! `Display`; the `use_debug` lint forbids `Debug` in user-facing output).
 //!
 //! This duplication of the REPL bin's renderer remains sanctioned-temporary:
-//! the shared pretty-printer family (`gandr-doc`,
-//! `proposal-pretty-printing.md`) replaces both copies.
+//! the shared pretty-printer family, designed and not built, replaces both
+//! copies.
 
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
@@ -33,7 +32,7 @@ pub fn ty(ty: &Ty) -> String
 ///
 /// # Contract
 /// - ensures: total over `ValueType`; the grade is elided (the fuller pretty
-///   printer is scoped work, `proposal-pretty-printing.md`).
+///   printer is designed direction).
 /// - panics: none.
 #[inline]
 #[must_use]

@@ -342,7 +342,7 @@ mod tests
         }
 
         // A double-quoted argument carrying an escape sequence has child nodes, so
-        // it is out of the v0 no-interpolation fragment.
+        // it is out of the no-interpolation fragment.
         assert!(matches!(
             strict_error("#!{ echo \"a\\tb\" }"),
             LowerError::Unsupported {
@@ -567,7 +567,7 @@ mod tests
     #[test]
     fn out_of_fragment_statement_patterns_are_unsupported()
     {
-        // A constructor pattern in a `let` is out of the A2.1 fragment.
+        // A constructor pattern in a `let` is out of the covered fragment.
         assert!(matches!(
             strict_error("thunk { val Foo(x) = v; ret 1 }"),
             LowerError::Unsupported {
@@ -587,7 +587,7 @@ mod tests
     fn out_of_fragment_shell_constructs_are_unsupported_strictly_and_holed_totally()
     {
         // Block-level control operators and still-unsupported in-command
-        // decorations remain out of the v0 simple-command fragment. Safe
+        // decorations remain out of the simple-command fragment. Safe
         // `$(...)` host escapes are covered by shell lowering shape tests.
         let cases: &[(&str, &str)] = &[
             ("#!{ ls | grep x }", "pipeline"),

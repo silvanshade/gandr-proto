@@ -1,4 +1,4 @@
-//! A2.1 acceptance tests (`A2-PLAN.md` §A2.1), one module per class:
+//! Strict-lowering acceptance tests, one module per class:
 //!
 //! 1. [`tests::fixture_roundtrip`] — `cst-to-ast-core.gandr` lowers and
 //!    `square` type-checks against its recorded ascription with
@@ -67,7 +67,7 @@ mod tests
     use crate::common::TestPathComponent;
     use crate::common::TestText;
 
-    /// The `current/` fixtures inside the A2.1 covered fragment: these must
+    /// The `current/` fixtures inside the covered fragment: these must
     /// lower without error and have committed golden snapshots.
     const IN_FRAGMENT_FIXTURES: [&str; 8] = [
         "anchor-evidence",
@@ -311,7 +311,7 @@ mod tests
                 // The env-assignment now molds as one `environment_assignment`
                 // tile, so the parse no longer raises a syntax
                 // obligation on the split `=` and lowering reaches the OUTERMOST
-                // out-of-fragment construct — the A8 pipeline — naming it, rather
+                // out-of-fragment construct — the shell pipeline — naming it, rather
                 // than reporting an unlocalized `Syntax` error for the whole block.
                 ("grammar-facts-core", |error| {
                     matches!(*error, LowerError::Unsupported {
@@ -320,7 +320,7 @@ mod tests
                     })
                 }),
                 // `List(Integer)` is now in-fragment (the surface contract), so this fixture
-                // lowers its `map_square` and first-errors on the A8 shell
+                // lowers its `map_square` and first-errors on the shell
                 // pipeline inside the shell block.
                 ("benchmark-mixed", |error| {
                     matches!(*error, LowerError::Unsupported {
@@ -358,7 +358,7 @@ mod tests
 
         proptest! {
             /// Byte-truncations of one fixture never panic the lowerer (full
-            /// truncation-typeability is A2.2's gate).
+            /// truncation-typeability is the total mode's gate).
             #[test]
             fn truncations_never_panic(cut in 0_usize .. 100_usize)
             {
@@ -428,7 +428,7 @@ mod tests
             }
         }
 
-        /// The elaborations the plan names are recorded where expected in
+        /// The elaborations the design names are recorded where expected in
         /// `cst-to-ast-core`: the `def` sugar, operator elaboration, the
         /// `if` desugaring, the boolean-literal injection, and the hoist.
         #[test]

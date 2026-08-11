@@ -1,26 +1,29 @@
-//! The incremental typing pipeline for the gandr language (milestone A2,
-//! the gandr roadmap; design:
-//! the incremental-pipeline design record).
+//! The surface engine for the gandr language: the CST-to-core front end the
+//! incremental typing pipeline
+//! (`docs/gandr/spec/implementation/incremental-pipeline.md`) runs on.
 //!
-//! This crate implements the pipeline's first boxes:
+//! The pipeline faces this crate implements:
 //!
-//! - **A2.1 — CST → core lowering** over the Stage-1-typeable fragment, with
-//!   source identity kept in a side table ([`origin::OriginMap`], decision D4 —
-//!   `gandr-core-checker` syntax stays span-free and parser-free).
-//! - **A2.2 — total lowering and goals**: [`lower::lower_source_total`] lowers
-//!   *every* parseable input — syntax errors and out-of-fragment constructs
-//!   become holes carrying [`origin::HoleNote`]s (D5; pipeline spec §"Holes") —
+//! - **CST → core lowering** over the covered fragment, with source identity
+//!   kept in a side table ([`origin::OriginMap`]) — `gandr-core-checker` syntax
+//!   stays span-free and parser-free by decision, so positions live here and
+//!   never in the core.
+//! - **Total lowering and goals**: [`lower::lower_source_total`] lowers *every*
+//!   parseable input — syntax errors and out-of-fragment constructs become
+//!   holes carrying [`origin::HoleNote`]s (the pipeline spec's §"Holes": a hole
+//!   is a term with a typing rule, not a parse failure with a placeholder) —
 //!   and [`goals::goals_report`] lists every hole with its span, expected type,
-//!   and local `Γ` (the v0 agent-stream seed).
-//! - **A2.4 — diagnostics and goals surface**: [`diag::report`] maps typing
+//!   and local `Γ`.
+//! - **The diagnostics and goals surface**: [`diag::report`] maps typing
 //!   failures (`FailureState` + `TypeError` + the [`origin::OriginMap`]) and
-//!   hole goals into one versioned, serde-JSON [`diag::Report`] — the v0 of the
-//!   agent stream (D7).
+//!   hole goals into one versioned, serde-JSON [`diag::Report`] — the report
+//!   envelope the inspection surface
+//!   (`docs/gandr/spec/implementation/inspection-protocol.md`) projects from.
 //! - **Entity attributes** ([`attributes`]): the `@[…]` marker's registry,
 //!   payload checker path (iterative, the attribute contract), and inert side
 //!   table, projected into [`diag::Report::attributes`]
-//!   (proposal-attributes.md). Hash-neutral — an inert attribute never enters
-//!   an item's core-IR term.
+//!   (`docs/gandr/spec/surface-language/attributes.md`). Hash-neutral — an
+//!   inert attribute never enters an item's core-IR term.
 //! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
 //!   lowering front end as an implementation of
 //!   [`gandr_core_incremental::region::ItemSource`], so the item-granular
@@ -32,27 +35,27 @@
 //!   through the seam against the surface prelude, the differential gate's
 //!   front-end half.
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
-//!   of two lowerings — the Porter/Pantograph "edit-action" both consume but
-//!   leave out of scope (`incremental-pipeline.md` §"pipeline-decision-02" and
-//!   §"pipeline-decision-04"). A foundation-independent A2 brick: it needs
-//!   neither the checkpoint base (A2.3) nor the solver, so it lands ahead of
-//!   them as the seam they will consume.
+//!   of two lowerings — the "edit-action" the incremental-typing and
+//!   structure-editor literature both consume but leave out of scope
+//!   (`docs/gandr/spec/implementation/incremental-pipeline.md`
+//!   §"pipeline-decision-02" and §"pipeline-decision-04"). It needs neither the
+//!   checkpoint engine nor a solver, so it stands as the seam they consume.
 //!
-//! Later rungs add the streaming driver (A2.5) and, in
-//! `gandr-core-incremental`, the per-term-node solver-coupled checkpoint
-//! granularity above its item-level base.
+//! The streaming driver is designed and not built; `gandr-core-incremental`
+//! owns the item-granular checkpoint engine, and per-term-node solver-coupled
+//! granularity above its item-level base is likewise designed direction.
 //!
-//! Entry points: [`lower::lower_source`] (strict, A2.1) and
-//! [`lower::lower_source_total`] (total, A2.2). Lowering is syntax-directed
+//! Entry points: [`lower::lower_source`] (strict) and
+//! [`lower::lower_source_total`] (total). Lowering is syntax-directed
 //! and total-or-structured-error ([`lower::LowerError`]); see [`lower`] for
 //! the covered fragment, the recorded sort-mediation decisions, and the
 //! strict-error → hole conversion table.
 //!
 //! [`prelude`] provides the typing context ([`prelude::prelude_ctx`]) and the
 //! eval binding-environment ([`prelude::prelude_env`]) for the operators and
-//! the module-qualified native builtins that elaboration targets (the design
-//! record). [`host`] provides the canonical host effect signatures (`Exec` /
-//! `Fs` / `Env` / `Proc`) and the reserved host modules (`fs` / `env` / `proc`)
+//! the module-qualified native builtins that elaboration targets.
+//! [`host`] provides the canonical host effect signatures (`Exec` / `Fs` /
+//! `Env` / `Proc`) and the reserved host modules (`fs` / `env` / `proc`)
 //! whose member calls elaborate to performs against them.
 
 #![cfg_attr(

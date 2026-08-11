@@ -1,11 +1,11 @@
-//! The goals report (`A2-PLAN.md` §A2.2).
+//! The goals report.
 //!
 //! Lists every hole with its origin span, the expected type at its
-//! position, and the local typing context — the plan's "a goals report API
-//! returns (byte range, expected type) for every hole". This is the v0 seed
-//! of the A2.4 agent stream (D7: "the same report carries hole goals"); the
+//! position, and the local typing context — "a goals report API returns
+//! (byte range, expected type) for every hole". This is the seed of the
+//! hole-goal surface the versioned [`crate::diag::Report`] carries; the
 //! surface here is deliberately minimal — plain data, no serialization —
-//! JSON arrives with A2.4's `Report`.
+//! JSON arrives with the report envelope.
 //!
 //! # How goals are collected
 //!
@@ -126,7 +126,7 @@ pub struct Goal
 /// - ensures: returns one `Goal` per hole in `lowered`, in (item, path) order;
 ///   each carries its span and note, plus the expected type and local `Γ` where
 ///   the machine reached the hole in checking mode (else `None`).
-/// - provides: the v0 goals report (the A2.4 agent-stream seed).
+/// - provides: the goals report the versioned envelope carries.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -293,8 +293,8 @@ fn observe_item(
 /// lowered item: against its recorded ascription when the sorts match,
 /// otherwise in inference mode.
 ///
-/// Shared by the goals report (pass 2 below) and the A2.4 diagnostics
-/// surface ([`crate::diag`]) so both drive items through the machine
+/// Shared by the goals report (pass 2 below) and the diagnostics surface
+/// ([`crate::diag`]) so both drive items through the machine
 /// identically. The dispatch is total over `Term`'s two sorts (its upstream
 /// growth point is retired; an added sort is a compile-visible change here).
 pub(crate) fn initial_state(

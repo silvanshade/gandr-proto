@@ -595,8 +595,9 @@ impl<'tree> Shape<'_, 'tree>
 /// Split a member region into runs that each begin at a top-level occurrence
 /// of one of `leads`.
 ///
-/// The ruled `sign` block terminates every member with `;` (owner directive,
-/// gandr-ng9.14: the terminator is load-bearing at the member level). A lead
+/// The ruled `sign` block terminates every member with `;`, and the
+/// terminator is load-bearing at the member level: an unterminated member
+/// list would otherwise parse cleanly as the wrong tree. A lead
 /// deeper than the top level belongs to a parameter binder rather than a new
 /// member, and material before the first lead is dropped, because it belongs
 /// to no member. Each run's trailing top-level `;` — the member's terminator

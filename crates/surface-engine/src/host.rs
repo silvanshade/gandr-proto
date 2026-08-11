@@ -1,5 +1,4 @@
-//! The source-level module surface over the canonical host signatures
-//! (the effects-control-shell design record §3/§5).
+//! The source-level module surface over the canonical host signatures.
 //!
 //! [`gandr_core_checker::effect::host`] owns the canonical `Exec` / `Fs` /
 //! `Proc` / `Env` signatures alongside the representation-independent host
@@ -17,8 +16,8 @@
 //! syntactic: `fs` / `env` / `proc` are reserved module names, not scoped
 //! bindings.
 //!
-//! v0 assumes vacuous `Σ` and multi-shot resumption; the runtime host installs
-//! the ambient handler for these signatures.
+//! The current surface assumes vacuous `Σ` and multi-shot resumption; the
+//! runtime host installs the ambient handler for these signatures.
 
 use gandr_core_checker::effect::EffectSig;
 pub use gandr_core_checker::effect::host::ENV;

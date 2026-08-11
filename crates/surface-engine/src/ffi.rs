@@ -1,5 +1,5 @@
 //! Foreign-function-interface declarations, extracted from `extern` blocks by
-//! the lowerer (proposal-ffi.md §2, §4).
+//! the lowerer (`docs/gandr/spec/implementation/foreign-interface.md`).
 //!
 //! An `extern "c" from "m" { … }` block declares a **foreign module**: a set of
 //! opaque handle types (`type Db;`, §4.4) and bodyless foreign-function
@@ -7,7 +7,7 @@
 //! [`ForeignModule`] per block, elaborates each call `m.op(args)` to a
 //! `perform m.op {payload}` against the module's [`ForeignModule::effect_sig`]
 //! (§3.1 — "a foreign call is an effect op"), and surfaces the declarations on
-//! [`crate::lower::Lowered::foreign`] so a native handler (`gandr-ffi`) can
+//! [`crate::lower::Lowered::foreign`] so a native FFI handler can
 //! resolve the C symbols and marshal the boundary.
 //!
 //! Only the MVP boundary type mapping (§4) is modelled: the six numeric atoms

@@ -1,4 +1,4 @@
-//! CST → core-CBPV lowering (`A2-PLAN.md` §§A2.1–A2.2).
+//! CST → core-CBPV lowering.
 //!
 //! [`lower_source`] parses with the melder front-end
 //! ([`crate::synnode::SynTree`], the lowering contract) viewed through the
@@ -7,22 +7,21 @@
 //! and total-or-structured-error**: every construct either lowers or yields a
 //! [`LowerError`]; nothing panics.
 //!
-//! # Strictness (A2.2 total lowering)
+//! # Strictness
 //!
 //! Two modes ([`Strictness`]):
 //!
-//! - [`Strictness::Strict`] (A2.1 behavior, [`lower_source`]): syntax errors
-//!   and out-of-fragment constructs are [`LowerError`]s.
+//! - [`Strictness::Strict`] ([`lower_source`]): syntax errors and
+//!   out-of-fragment constructs are [`LowerError`]s.
 //! - [`Strictness::Total`] ([`lower_source_total`]): lowering is **total on
 //!   parseable input** — every input-shaped failure becomes a
 //!   [`Value::Hole`]/[`Comp::Hole`] carrying a [`crate::origin::HoleNote`]
 //!   (what was elided) and the elided region's byte range in the origin map;
 //!   `ERROR`/`MISSING` CST nodes lower to holes wherever they occur (item-,
 //!   statement-, and expression-local — recovery granularity is the consuming
-//!   position, at least statement-local per the plan's D-decision). Only the
-//!   two *infrastructure* failures ([`LowerError::ParserUnavailable`],
-//!   [`LowerError::ParseFailed`]) survive as errors; neither depends on the
-//!   input text.
+//!   position, at least statement-local). Only the two *infrastructure*
+//!   failures ([`LowerError::ParserUnavailable`], [`LowerError::ParseFailed`])
+//!   survive as errors; neither depends on the input text.
 //!
 //! Conversion table (strict error → total-mode lowering):
 //!
@@ -51,8 +50,7 @@
 //! `ValueType::Unknown`/`CompType::Unknown` in total mode (types are not
 //! terms, so they cannot be holes), and the `Unknown` inside the
 //! ascription/annotation is itself the visible signal — it surfaces in the
-//! goals report as a partially-unknown expected type. A2.4 may enrich this
-//! with ranged type diagnostics.
+//! goals report as a partially-unknown expected type.
 //!
 //! [SPECULATIVE DECISION] **Skipped-arm coarseness**: a `case` arm or `co`
 //! field that cannot lower in total mode (unknown constructor, duplicate,
@@ -67,10 +65,10 @@
 //! Core CBPV separates values from computations; the surface does not. Two
 //! coercions, both decidable at lowering with no type information, mediate:
 //!
-//! - **Force sugar** (the plan's rule): a call head — or, by the same
+//! - **Force sugar** (the design's rule): a call head — or, by the same
 //!   rationale, a projection target — that lowers to a *value* is wrapped in
 //!   `Force`, because the principal premise must be a computation.
-//! - **`Ret`/`Bind` mediation** [SPECULATIVE DECISION; the plan requires `ret
+//! - **`Ret`/`Bind` mediation** [SPECULATIVE DECISION; the design requires `ret
 //!   (x * x)` to lower but does not name the mechanism]: a value in computation
 //!   position (block tail, arm body, …) is wrapped in `Ret`
 //!   ([`crate::origin::ElabKind::RetCoercion`]); a computation in value
@@ -186,8 +184,8 @@ pub enum LowerError
     #[error("parsing produced no tree")]
     ParseFailed,
 
-    /// The parse tree contains an `ERROR` or `MISSING` node. A2.1 stops
-    /// here; A2.2 lowers these regions to holes instead.
+    /// The parse tree contains an `ERROR` or `MISSING` node. Strict mode stops
+    /// here; total mode lowers these regions to holes instead.
     #[error("syntax error at bytes {byte_range:?}")]
     Syntax
     {
@@ -195,9 +193,9 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
-    /// A construct outside the A2.1 covered fragment (sessions, sharing,
+    /// A construct outside the covered fragment (sessions, sharing,
     /// worlds, `leta`, type abstraction/instantiation, shell blocks,
-    /// strings, …). A2.2 converts these to holes-with-notes.
+    /// strings, …). Total mode converts these to holes-with-notes.
     #[error("unsupported construct `{kind}` at bytes {byte_range:?}")]
     Unsupported
     {
@@ -314,8 +312,8 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
-    /// A `case` over `Inl`/`Inr` is missing one arm (plan: an error in this
-    /// rung; it becomes a hole body in A2.2).
+    /// A `case` over `Inl`/`Inr` is missing one arm (an error in strict
+    /// mode; it becomes a hole body in total mode).
     #[error("missing `{constructor}` case arm at bytes {byte_range:?}")]
     MissingCaseArm
     {
@@ -327,7 +325,7 @@ pub enum LowerError
 
     /// A block with no tail expression: the bind-chain has no final
     /// computation. [SPECULATIVE DECISION] No default tail is invented
-    /// (`ret ()` would be a semantic choice); A2.2 makes this a hole.
+    /// (`ret ()` would be a semantic choice); total mode makes this a hole.
     #[error("block has no tail expression at bytes {byte_range:?}")]
     EmptyBlock
     {
@@ -458,16 +456,16 @@ impl From<ArenaBridgeError> for LowerError
     }
 }
 
-/// The lowering mode: A2.1 fail-fast or A2.2 total (see the module doc's
+/// The lowering mode: fail-fast or total (see the module doc's
 /// conversion table).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Strictness
 {
-    /// A2.1 behavior: syntax errors and out-of-fragment constructs are
-    /// structured [`LowerError`]s (fail-fast over the file).
+    /// Fail-fast: syntax errors and out-of-fragment constructs are
+    /// structured [`LowerError`]s.
     #[default]
     Strict,
-    /// A2.2 behavior: total on parseable input — input-shaped failures
+    /// Total on parseable input — input-shaped failures
     /// lower to holes carrying [`HoleNote`]s.
     Total,
 }
@@ -533,7 +531,7 @@ pub struct Lowered
     /// The foreign modules declared by `extern` blocks, in source order
     /// (proposal-ffi.md §2). `extern` blocks are declarations, not runnable
     /// items, so they contribute no [`Item`]; a native FFI handler
-    /// (`gandr-ffi`) consumes these to resolve C symbols and marshal the
+    /// consumes these to resolve C symbols and marshal the
     /// boundary (§5.1).
     pub foreign: Vec<ForeignModule>,
     /// The `codata` blocks declared by *this* source, keyed by codata type name
@@ -606,12 +604,12 @@ impl Lowered
 }
 
 /// Parses `source` and lowers it to core CBPV in [`Strictness::Strict`]
-/// mode (the A2.1 surface, kept verbatim).
+/// mode.
 ///
 /// # Contract
 /// - ensures: on success every top-level item lowers, yielding a `Lowered`
 ///   (items in source order plus the `OriginMap`); no holes are synthesized.
-/// - provides: the strict A2.1 lowering of `source`.
+/// - provides: the strict lowering of `source`.
 /// - fails: the first out-of-fragment construct, `ERROR`/`MISSING` region, or
 ///   malformed node aborts lowering; per-region recovery is the `Total` mode.
 /// - panics: none.
@@ -627,8 +625,8 @@ pub fn lower_source(source: PipelineSource<'_>) -> LowerResult<Lowered>
     lower_source_with(source, Strictness::Strict)
 }
 
-/// Parses `source` and lowers it to core CBPV in [`Strictness::Total`] mode
-/// (A2.2): total on parseable input — see the module doc's conversion
+/// Parses `source` and lowers it to core CBPV in [`Strictness::Total`] mode:
+/// total on parseable input — see the module doc's conversion
 /// table.
 ///
 /// # Contract
@@ -636,7 +634,7 @@ pub fn lower_source(source: PipelineSource<'_>) -> LowerResult<Lowered>
 ///   constructs and error regions become `Value::Hole`/`Comp::Hole` holes, each
 ///   carrying a `HoleNote` and its elided byte range in the `OriginMap` (the
 ///   module doc's conversion table).
-/// - provides: total lowering on parseable input (the goals/agent-stream seed).
+/// - provides: total lowering on parseable input (the goals-report seed).
 /// - fails: only the input-independent infrastructure failures
 ///   `LowerError::ParserUnavailable` and `LowerError::ParseFailed`.
 /// - panics: none.
@@ -825,9 +823,10 @@ fn first_obligation_in_source_order(
 }
 
 /// Maps the obligation responsible for a grout-leaf recovery hole to the
-/// [`HoleNote`] the hole carries (M3's obligation-class → note table). The
+/// [`HoleNote`] the hole carries (the melder's obligation-class → note
+/// table). The
 /// obligation carries only its class and span ([`ObligationInstance`]); the
-/// fielded notes the plan sketched (`MissingDelimiter { expected }`,
+/// fielded notes the design sketched (`MissingDelimiter { expected }`,
 /// `IncompleteKeyword { expected }`, `AmbiguousOperatorPrecedence {
 /// candidates }`) are derived from the span and
 /// `source` where recoverable and otherwise simplified — the melder's
@@ -1004,7 +1003,7 @@ struct ModuleField
     origin: OriginNode,
 }
 
-/// One simple shell command accepted by the bootstrap v0 shell lowering.
+/// One simple shell command accepted by the bootstrap shell lowering.
 struct HostCommand
 {
     /// The program name passed to `Exec::exec`.
@@ -1217,7 +1216,7 @@ struct Lowerer<'src>
 
 impl Lowerer<'_>
 {
-    /// Whether total-mode (A2.2) recovery is active.
+    /// Whether total-mode recovery is active.
     fn total(&self) -> TotalMode
     {
         matches!(self.strictness, Strictness::Total).into()
@@ -1515,7 +1514,7 @@ impl Lowerer<'_>
     /// A *float-shaped* numeral — one carrying a fractional point or an
     /// exponent — lowers to an `f64` [`Value::Num`] (Rust's default for an
     /// unsuffixed float). An *integer-shaped* one stays the frozen
-    /// [`Value::Int`] typed by `Integer` (A2.1), and an i64-overflowing integer
+    /// [`Value::Int`] typed by `Integer`, and an i64-overflowing integer
     /// is an error rather than silently becoming a float. A float whose
     /// magnitude overflows `f64` (parsing to a non-finite `inf`) is likewise an
     /// error, symmetric with the integer case and matching Rust. (A suffixed
@@ -2578,7 +2577,7 @@ impl Lowerer<'_>
             };
             if slot.is_some() {
                 // [SPECULATIVE DECISION] Duplicate arms for one constructor
-                // are out of fragment (the plan names only the missing-arm
+                // are out of fragment (the design names only the missing-arm
                 // case); total mode keeps the first.
                 if bool::from(self.total()) {
                     continue;
@@ -2600,7 +2599,7 @@ impl Lowerer<'_>
                 if !bool::from(self.total()) {
                     return Err(error);
                 }
-                // The hole *is* the missing arm's body (plan §A2.2).
+                // The hole *is* the missing arm's body (total mode).
                 (node_kinds::DISCARD_BINDER.to_owned(), {
                     let hole = self.comp_hole(node, &error)?;
                     core::convert::identity(hole)
@@ -2953,7 +2952,7 @@ impl Lowerer<'_>
                 | node_kinds::NAME_FST => &mut fst,
                 | node_kinds::NAME_SND => &mut snd,
                 // [SPECULATIVE DECISION] n-ary/other-named lazy products are
-                // out of fragment (the plan covers exactly `fst`/`snd`);
+                // out of fragment (the design covers exactly `fst`/`snd`);
                 // total mode skips them.
                 | _ => {
                     if bool::from(self.total()) {
@@ -3374,9 +3373,9 @@ impl Lowerer<'_>
         recursive::unary(self, node)
     }
 
-    /// Lowers the bootstrap v0 `#!{ … }` shell surface to host-effect
+    /// Lowers the bootstrap `#!{ … }` shell surface to host-effect
     /// operations. This intentionally accepts only flat simple commands
-    /// separated by `;`/newlines/`&`; A8 shell control (pipes, `&&`, `||`,
+    /// separated by `;`/newlines/`&`; fuller shell control (pipes, `&&`, `||`,
     /// subshells, redirects, command substitutions, variable expansion, job
     /// control) remains out of fragment. A standalone `$(gandr-expression)`
     /// argument is evaluated before its containing command and contributes one
@@ -3447,7 +3446,7 @@ impl Lowerer<'_>
         Ok(acc)
     }
 
-    /// Collects the flat simple commands accepted in a v0 shell block.
+    /// Collects the flat simple commands accepted in a shell block.
     fn collect_shell_commands<'tree>(
         &mut self,
         node: SynNode<'tree>,
@@ -3841,7 +3840,7 @@ impl Lowerer<'_>
             },
             | node_kinds::DOUBLE_QUOTED_STRING => {
                 // A double-quoted argument carrying an escape sequence (a
-                // backslash) is out of the v0 no-interpolation fragment. The
+                // backslash) is out of the no-interpolation fragment. The
                 // melder inlines the escape as a flat `escape_sequence` tile
                 // (not a named child), so the region is detected by its text —
                 // any backslash — rather than by sub-node presence.
@@ -3955,10 +3954,10 @@ impl Lowerer<'_>
     }
 
     /// The binder of an identifier or wildcard pattern (wildcards bind the
-    /// plan's `_` discard name); other pattern forms are out of fragment.
+    /// `_` discard name); other pattern forms are out of fragment.
     ///
     /// [SPECULATIVE DECISION] Nested tuple and constructor sub-patterns are
-    /// out of the A2.1 fragment (the plan names only "tuple pattern" and
+    /// out of the covered fragment (the design names only "tuple pattern" and
     /// "identifier pattern").
     fn pattern_binder(
         &self,
