@@ -209,8 +209,11 @@ A reviewer handed the rationale ratifies its frame, and the frame is what was wr
 This document generates most of the project's owner decisions — a refutation needs sign-off, a decline needs the owner to see the option, an adversarial pass needs asking before it runs.
 None of them is posed as a compressed inline batch in chat.
 
-Every one goes on the **owner-decision queue**, which lives on the tracker: a queue bead per topic, one comment per question, answered by comment.
-The mechanism, the identifier rule, and the closeout discipline are [`tracker.md`](tracker.md) §"The owner-decision queue"; the binding statement is `AGENTS.md` §"The owner-decision queue".
+Each one is an **escalation** and takes the escalation path: one concise entry on the standing decision surface held in the maintainer's private research workspace, reached through whoever dispatched the work.
+The owner answers there, the agent executes, the ruling's record lands in the owning bead here, and the outboard entry is retired only then.
+The mechanism and what binds however a ruling arrives are [`tracker.md`](tracker.md) §"Decisions: act by default, escalate at the bright line"; the binding statement is `AGENTS.md` §"Owner decisions and the bright line".
+
+**A refutation is the case that most needs this and is the easiest to skip**, because the point at which one is recorded rarely feels like a decision — which is why §"Refutations bind only with owner sign-off" states the requirement rather than leaving it to the escalation rule to imply.
 
 ## A recalled citation that turns out to be on-target is still unverified
 

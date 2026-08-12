@@ -134,76 +134,78 @@ Two boundaries keep it that way.
   Write one line per paragraph and one line per list item, however long, with blank lines between blocks, and let the renderer do all the wrapping; this applies equally to text passed inline and via `--file`, and worker briefs must carry the rule.
   A wide markdown table is unreadable in that box regardless of wrapping — in tracker text prefer one line per row (`row — verdict — grade` style) and keep real tables in corpus documents.
 
-## The owner-decision queue
+## Decisions: act by default, escalate at the bright line
 
-> Adopted (owner, 2026-08-02) after compressed in-chat decision batches proved hard to answer: items were hard to tell apart, hard to answer individually, and easy to lose.
-> Re-homed onto the tracker the same day, for the reason below.
+**An agent decides by default and keeps building.** Work never pauses on a choice this section does not send to the owner, and an agent that cannot decide asks whoever dispatched the work rather than filing anything.
 
-Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker**, not posed as inline batches in chat and not collected in a shared document.
+This replaces a queue — a `decision` bead per topic, one question per comment, answered by comment — that ran here from 2026-08-02 and was retired by owner ruling on 2026-08-12.
+Four things went wrong with it, and each was structural rather than a lapse: hosting process documentation in beads was the founding mistake; a choice-shaped contract manufactured volume, because anything can be posed as a question; the queue bottlenecked buildout, because work waited on a batch nobody had reached; and bead prose grew into walls unreadable by the one person who most needs to read them.
 
-**Why the tracker rather than a queue document, stated once so it is not re-litigated.** A shared queue document has a single mutable identifier space, a single file, and no query surface, so every concurrent writer is a collision waiting to happen — and the first one arrived within a day of adoption, when two sessions independently minted the same `owner-q-016` for unrelated questions.
-The tracker already answers all three: bead identifiers are allocated centrally and cannot collide, comments append instead of conflicting, and one label makes the whole open queue a single query.
-This is the same failure the reference discipline exists to prevent, met from the tooling side: **a colliding identifier is worse than none, because it reads as precise**.
+### The bright line
 
-### Where a queue lives
+A choice reaches the owner when it is one of exactly three things.
 
-- **A bead that needs decisions gets a queue bead as its child** (`bd create … --parent <bead>`), so the queue's identifier is a suffix of the work it serves and the link is structural rather than remembered.
-- **An epic gets one queue bead for the whole epic**, never one per child.
-  A question raised while working a child goes on the epic's queue bead, and names the child it concerns.
-- The queue bead's type is `decision` and it carries the **`human`** label, so `bd list --label human --status open` is the standing view of everything waiting on the owner.
-  `human` marks _awaiting the owner_ and is what separates a queue bead from an ordinary `decision` bead an agent will research and record.
-- Title it `<scope>: decision queue for <topic>` so it reads as a container rather than as a decision someone is about to take.
+| Escalate                                                                                                                 | The failure it closes                                                |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| **Expensive to reverse** — non-regenerable deletions, public-facing names, cross-repository contracts, schema migrations | the cost of being wrong falls on someone who cannot undo it          |
+| **In conflict with an explicit prior owner ruling**, where the conflict survives the judgment below                      | an agent overturning a ruling by deciding again, quietly             |
+| **A decline of something the owner explicitly asked for**                                                                | a request answered by not doing it, with the refusal never surfacing |
 
-### Posing a question
+**Nothing else escalates.** Being unsure is not a fourth line, and neither is expensive-to-do, contested-between-agents, or interesting-to-ask.
 
-**One question is one comment**, and it opens with its identifier.
+**The conflict case inherits the first case's bar; it is not a line of its own.** An apparent conflict is judged before it is escalated: where the owner's recent directives point in a newer direction that plausibly overrides the older ruling, and following that direction is cheap to reverse, follow it and keep building, with the record naming the ruling it supersedes and what would restore it.
+Escalate only when the conflict survives that judgment **and** resolving it either way is expensive to reverse.
+Read without the qualification, this case is a hatch every surface disagreement fits through.
 
-**File it before raising it, always.** The bead comment is written first; a reply may then point at it, summarize it, or list several at once.
-Chat is a pointer to the queue and is never the queue: an unfiled question exists only in a transcript, and a transcript is the one artifact in this project that nothing can search, cite, or hand to the next session.
+**A refutation is not exempt from the line — it sits on it.** A refutation is a decline in the strongest form this project admits, and [`review.md`](review.md) §"Refutations bind only with owner sign-off" is what routes it here.
 
-**A question does not become exempt by being framed as something less than a question.** "Worth asking at some point", "ripe to ask if you want them", "a decision that is arguably yours", "I did not file these unasked" — each of those reads as _not yet a question_ and therefore as outside the rule, which is exactly how an unfiled question survives long enough to be answered ambiently.
-The test is not how the item is framed; it is **whether an owner ruling would change what happens next**.
-If it would, it is a queue question, and it is filed before it is mentioned.
+### Everything else: choose, record, keep building
 
-**Filing costs one comment and asking permission to file costs a round trip.** An agent never needs leave to file a question, so proposing to file one instead of filing it is strictly worse for everyone: the owner reads the same text either way, and only one of the two readings leaves a record.
+Choose by the project's choice ethic — the most principled option theoretically, the most interesting frontier-wise, or the most performant, ideally a novel synthesis of all three; **never the easiest for effort's sake alone**.
 
-### When a ruling arrives without a question
+**One choice is one compact comment on the bead the work belongs to**, carrying three things and nothing else:
 
-It will happen anyway — an owner answers something in conversation, or an agent asks ambiently and gets a reply.
-**The ruling is valid; the record is what is missing**, and the repair is the same in both cases and is owed before the work proceeds.
+- the choice, stated as what is now true;
+- the viable alternatives, named in a clause each;
+- **the reversal condition** — what would trigger revisiting it.
 
-1. **File the question retroactively**, at the next free number, written as it should have been written — the context, what the decision changes, the options, and the recommendation the agent actually held.
-   Do not reverse-engineer it into whatever makes the given answer look inevitable.
-2. **Record the ruling in a separate comment, authored by the agent and marked as a transcription**, naming that the owner gave it in conversation and that the question was filed after the fact.
-   This is the one case where an agent's comment carries the owner's decision, and marking it is what keeps it distinguishable from the owner answering directly.
-   It does not license inferring a ruling that was never given: §"Answering, and what an agent may not do" is unchanged, and silence is still not consent.
-3. **Land the ruling in its authoritative artifact** as usual, and let the execution comment name where it landed.
+**No retroactive questions.** A decision already taken is a record, so it is written as a record; filing the question it would have been is the manufactured volume this model exists to end.
 
-**The identifier is `<queue-bead-id>-question-NN`**, zero-padded, numbered within that bead, and stable: retiring a question leaves its number unused rather than renumbering the rest.
+### The rare escalation goes outboard
 
-**The prefix is always the hosting queue bead's own identifier — never the identifier of a bead the question is about.** A question may concern another bead entirely, or half of one and half of another; it still takes the prefix of the bead it _lives on_, and its body names whatever else it concerns.
-That is what makes the identifier self-locating: `gandr-fid.14.7-question-03` is in `gandr-fid.14.7`, always, and a reader who meets it in a commit message or another bead knows exactly where to look.
+**The standing decision surface is held in the maintainer's private research workspace, not in this repository** (owner ruling, 2026-08-12).
+One escalation is one concise entry there: the decision line, short options, **the recommendation first**, and context carried as links into real documentation rather than restated.
+The surface is named by what it is rather than by a path, for the reason the `spec:` corpus is: a pointer into a tree that is not checked out here is not a reference this repository can hold.
 
-**Each question is self-contained**, to the same standard as a bead's own reconstruction test: the context, a plain-terms explanation, a **concrete statement of what the decision changes**, the options, and the agent's recommendation with its reason.
-An owner should be able to answer from the comment alone, without session history.
+**The order is transactional, and the order is the point.** The owner answers on that surface.
+The agent executes the ruling.
+The record lands in the owning bead **here**.
+**Only then is the entry deleted** — so every stable identifier ends its life with exactly one durable home, and no ruling is ever in flight between two of them.
 
-### Answering, and what an agent may not do
+Reaching the surface is a crossing, not a tracked artifact: an agent working here raises the escalation through whoever dispatched the work, under `AGENTS.md` §"Dispatched work".
+The permitted reference back is an `ss-` identifier cited in a bead, and nothing else.
 
-**The owner answers with a comment** on the same bead, leading with `<queue-bead-id>-answer-NN`, where `NN` is the number of the question it answers (owner usage, 2026-08-02).
-A distinct `answer` word rather than a repeated `question` one is what makes a ruling greppable on its own and keeps a quoted answer from reading as a restatement of the question.
+**`human` marks a work bead carrying an open escalation.** It is rare by construction, it is not a queue, and it is never a container for questions.
 
-**An agent never writes the owner's answer**, never records a ruling the owner did not give, and never converts silence into consent.
-An unanswered question stays unanswered; if the work cannot proceed without it, that is a blocked bead, not a licence to decide.
+### What binds however a ruling arrives
 
-**Record the ruling, not the option label.** An answer that selects an option often sharpens it in the same breath, and the sharpening is the load-bearing part: "option b" plus "and its value is X, not Y" changes what the work _is_, not merely when it happens.
-The bead that executes a ruling carries the owner's framing; the option letter is provenance.
+- **An agent never writes the owner's answer**, never records a ruling the owner did not give, and never reads silence as consent.
+  An unanswered escalation stays unanswered; if the work cannot proceed without it, that is a blocked bead, not a licence to decide.
+- **A ruling given in conversation is recorded the same way** — as a record in the owning bead, with no question filed first.
+- **Record the ruling, not the option label.** An answer that selects an option often sharpens it in the same breath, and the sharpening is the load-bearing part: "option b" plus "and its value is X, not Y" changes what the work _is_, not merely when it happens.
+  The option letter is provenance.
+- **The ruling of record lands in the authoritative artifact** — the corpus document, the decision record, the code, or the owning bead's standing contract — never only in a comment stream.
+  A comment may be cited; citing it never substitutes for the ruling's home.
 
-### Closeout
+### Reading the retired queues
 
-- The **ruling of record lands in the authoritative artifact** — the corpus document, the decision record, the code, or the owning bead's standing contract — never only in the comment stream.
-- A follow-up comment records the execution and names where the ruling landed, so the queue bead reads as an audit trail rather than a second source of truth.
-- A child bead's queue closes when its parent's decisions are taken and executed; an **epic's queue bead lives as long as the epic** and closes with it.
-- The comment stream may be cited, but citing it never substitutes for the ruling's home.
+The `decision` beads carrying `human` hold question and answer comments under the retired scheme, and those streams stay readable rather than being rewritten.
+
+**The identifier is `<queue-bead-id>-question-NN`**, zero-padded, numbered within the hosting bead, answered by `-answer-NN`.
+**The prefix is always the bead the comment _lives on_**, never the bead it concerns — which is what makes `gandr-fid.14.7-question-03` self-locating for a reader meeting it in a commit message or another bead.
+Numbering was stable and stays stable: a retired number is left unused rather than renumbering the rest.
+
+Nothing new is filed under the scheme.
 
 ## Feature landing and residual closeout
 

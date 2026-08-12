@@ -85,13 +85,18 @@ Work here often arrives **dispatched from the maintainer's private research work
   Tracked content — code, tests, documentation, commit messages — carries no such reference, and every landing must stand on its own: a contributor without access to that workspace must be able to understand it from this repository alone.
 - Dispatched work lands through this repository's own worktree lifecycle and merge wall, exactly as native work does.
 
-## The owner-decision queue
+## Owner decisions and the bright line
 
-Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker, not posed inline and not collected in a document**: a queue bead per topic, one self-contained question per comment identified `<queue-bead-id>-question-NN`, answered by comment under the matching `-answer-NN`.
-**File the question before raising it, and never ask leave to file one** — an unfiled question exists only in a transcript, which nothing can search or cite.
-If a ruling nonetheless arrives without a filed question, file the question retroactively and record the ruling as an agent-authored transcription comment before the work proceeds.
-Every ruling of record lands in the authoritative project artifact; the comment stream is the deliberation record, never the ruling's home.
-The full discipline, including the identifier and numbering rules, is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The owner-decision queue".
+**The agent decides by default and keeps building.** A choice reaches the owner only when it is one of three things: expensive to reverse, in conflict with an explicit prior owner ruling where the conflict survives being judged and is expensive to resolve either way, or a decline of something the owner explicitly asked for.
+Being unsure is not a fourth line.
+Everything else the agent chooses by the project's choice ethic and records as one compact comment on the bead the work belongs to — the choice as what is now true, the viable alternatives in a clause each, and the reversal condition.
+
+**A real escalation goes outboard.** The standing decision surface is held in the **maintainer's private research workspace**, not in this repository, and is reached through whoever dispatched the work (§"Dispatched work").
+The owner answers there, the agent executes the ruling, the record lands in the owning bead **here**, and the outboard entry is retired only then — so no ruling is ever in flight between two homes.
+Decisions are never posed as inline chat batches and never collected in a document in this tree.
+
+An agent never writes the owner's answer, never records a ruling that was not given, and never reads silence as consent; every ruling of record lands in the authoritative project artifact, and a comment stream is deliberation rather than the ruling's home.
+The full discipline, including how the retired decision queues are read, is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"Decisions: act by default, escalate at the bright line".
 
 ## Work tracking
 

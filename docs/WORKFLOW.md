@@ -23,7 +23,7 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 
 | Read                                                             | When your task involves                                                                                                                   |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits, the owner-decision queue                                               |
+| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits, owner decisions and the escalation bright line                         |
 | [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml) | graph-wide bead classification, normalization, redundancy, citation sweeps                                                                |
 | [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
 | [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
@@ -68,8 +68,9 @@ The design corpus and its BLAKE3 registry have left this repository, so registra
 
 | Question                           | Answer lives in                                                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| What is the design?                | `docs/gandr/` (authoritative)                                                                                       |
+| What is the design?                | the specification corpus, cited as `spec:` and held outside this repository (`AGENTS.md`)                           |
 | Why was it decided?                | `gandr-fcw` wayfinder tracker + `PLAN.html` (reboot; `docs/adr/` deferred)                                          |
+| Who decides, and where?            | the agent by default; escalations go outboard ([workflow/tracker.md](workflow/tracker.md))                          |
 | What's next, in what order?        | the tracker's programme epic `gandr-e08j` (the buildout wayfinder; see `AGENTS.md` §"Start here")                   |
 | How are docs kept trustworthy?     | the format wall ([workflow/ci.md](workflow/ci.md)) + the fidelity review ([workflow/review.md](workflow/review.md)) |
 | What work is open right now?       | `bv --robot-triage`                                                                                                 |
