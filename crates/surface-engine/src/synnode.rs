@@ -2008,7 +2008,19 @@ impl<'tree> SynNode<'tree>
         self.run(container, SignificantIndex(lo), SignificantIndex(hi), kind)
     }
 
-    /// The `module` block's ordered definition/signature members.
+    /// The `module` block's ordered definition/signature and nested-module
+    /// members.
+    ///
+    /// # Contract
+    /// - ensures: returns body members in source order, including one-level
+    ///   nested modules, while excluding the header ascription.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: locating the module body before segmentation prevents its
+    ///   inline record signature from becoming a body member.
+    /// - mutants: segment the raw declaration window; use `brace_body`.
+    /// - witnesses: `recognizes_one_level_nested_module_member`.
     fn module_members(self) -> Vec<Self>
     {
         self.definition_members(self.module_body())
@@ -2020,7 +2032,21 @@ impl<'tree> SynNode<'tree>
         self.definition_members(self.brace_body())
     }
 
-    /// Segment definition members inside one already-located brace body.
+    /// Segment definition or one-level nested-module members inside one
+    /// already-located brace body.
+    ///
+    /// # Contract
+    /// - ensures: each returned node spans one complete member in source order;
+    ///   malformed suffixes stop segmentation rather than overlapping nodes.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: advancing to each delimiter-aware member end partitions
+    ///   the body while preserving leading attributes.
+    /// - mutants: advance from the lead rather than the run start; ignore
+    ///   `end`.
+    /// - witnesses: `recognizes_one_level_nested_module_member` and
+    ///   `recognizes_module_declaration`.
     fn definition_members(
         self,
         region: Option<(NodeId, Span)>,
@@ -2034,7 +2060,7 @@ impl<'tree> SynNode<'tree>
         let mut out = Vec::new();
         let mut index = body.start;
         while index < body.end {
-            let Some(def_index) = self.module_member_def_index(
+            let Some(lead_index) = self.module_member_lead_index(
                 (&sig).into(),
                 SignificantIndex(index),
                 SignificantIndex(body.end),
@@ -2042,9 +2068,17 @@ impl<'tree> SynNode<'tree>
             else {
                 break;
             };
-            let kind = self.classify_def((&sig).into(), def_index);
+            let kind = if sig
+                .get(lead_index.0)
+                .is_some_and(|&node| self.tree.tile_label(node) == Some(label::MODULE))
+            {
+                node_kinds::MODULE_DECLARATION
+            }
+            else {
+                self.classify_def((&sig).into(), lead_index)
+            };
             let end = self
-                .module_member_end((&sig).into(), def_index, SignificantIndex(body.end), kind)
+                .module_member_end((&sig).into(), lead_index, SignificantIndex(body.end), kind)
                 .0;
             out.push(self.run(
                 container,
@@ -2060,8 +2094,19 @@ impl<'tree> SynNode<'tree>
         out
     }
 
-    /// The significant-child index of a module member's `def` tile.
-    fn module_member_def_index(
+    /// The significant-child index of a module member's lead tile.
+    ///
+    /// # Contract
+    /// - ensures: skips complete leading attribute blocks and returns only a
+    ///   `def` or `module` tile within `[lo, hi)`.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: delimiter-aware attribute skipping preserves the actual
+    ///   member lead even when attribute interiors contain keywords.
+    /// - mutants: skip one tile per attribute; accept arbitrary named tiles.
+    /// - witnesses: `recognizes_one_level_nested_module_member`.
+    fn module_member_lead_index(
         self,
         sig: SignificantChildren<'_>,
         lo: SignificantIndex,
@@ -2083,10 +2128,25 @@ impl<'tree> SynNode<'tree>
             index = close.0.saturating_add(1);
         }
         let node = sig.get(index)?;
-        (self.tree.tile_label(*node) == Some(label::DEF)).then_some(SignificantIndex(index))
+        matches!(
+            self.tree.tile_label(*node),
+            Some(label::DEF | label::MODULE)
+        )
+        .then_some(SignificantIndex(index))
     }
 
     /// The end of one module member run.
+    ///
+    /// # Contract
+    /// - ensures: functions and nested modules end after their matching body
+    ///   brace; signature/value definitions end after their semicolon.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: member kind determines the only two valid terminator
+    ///   families while shared brace matching handles inline record signatures.
+    /// - mutants: stop at the first `}`; scan every member for `;`.
+    /// - witnesses: `recognizes_one_level_nested_module_member`.
     fn module_member_end(
         self,
         sig: SignificantChildren<'_>,
@@ -2097,14 +2157,15 @@ impl<'tree> SynNode<'tree>
     {
         let def_index = def_index.0;
         let limit = limit.0;
-        if kind == node_kinds::DEF_FUNCTION
-            && let Some(open) = self.find_tile(
-                sig,
-                SignificantIndex(def_index),
-                SignificantIndex(limit),
-                label::LBRACE,
-            )
-        {
+        if matches!(
+            kind,
+            node_kinds::DEF_FUNCTION | node_kinds::MODULE_DECLARATION
+        ) && let Some(open) = self.find_tile(
+            sig,
+            SignificantIndex(def_index),
+            SignificantIndex(limit),
+            label::LBRACE,
+        ) {
             return SignificantIndex(
                 self.matching_close(sig, open, label::LBRACE, label::RBRACE)
                     .map(|index| index.0)
@@ -2124,60 +2185,81 @@ impl<'tree> SynNode<'tree>
     }
 
     /// The optional transparent record-type ascription of a module declaration.
+    ///
+    /// # Contract
+    /// - ensures: returns exactly the balanced `#{ ... }` after the module name
+    ///   and colon, or `None` when no such header field exists.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: fixed header positions plus balanced delimiters
+    ///   distinguish the ascription from records inside the body.
+    /// - mutants: take the first `#{` anywhere; stop at the first `}`.
+    /// - witnesses: `recognizes_module_declaration` and
+    ///   `recognizes_one_level_nested_module_member`.
     fn module_ascription(self) -> Option<Self>
     {
-        let container = self.backing_id()?;
+        let window = self.raw_container_window();
+        let container = window.container;
         let sig = self.tree.sig_children(container);
-        let module_index = self.find_tile(
-            (&sig).into(),
-            SignificantIndex(0),
-            SignificantIndex(sig.len()),
-            label::MODULE,
-        )?;
+        let module_index =
+            self.find_tile((&sig).into(), window.start, window.limit, label::MODULE)?;
         let after_name = module_index.0.saturating_add(2);
-        if sig
-            .get(after_name)
-            .and_then(|&node| self.tree.tile_label(node))
-            != Some(label::COLON)
+        if after_name >= window.limit.0
+            || sig
+                .get(after_name)
+                .and_then(|&node| self.tree.tile_label(node))
+                != Some(label::COLON)
         {
             return None;
         }
         let open = self.find_tile(
             (&sig).into(),
             SignificantIndex(after_name.saturating_add(1)),
-            SignificantIndex(sig.len()),
+            window.limit,
             label::HASH_BRACE,
         )?;
         let close = self.matching_close((&sig).into(), open, label::HASH_BRACE, label::RBRACE)?;
-        Some(self.run(
-            container,
-            open,
-            SignificantIndex(close.0.saturating_add(1)),
-            node_kinds::RECORD_TYPE,
-        ))
+        (close.0 < window.limit.0).then(|| {
+            self.run(
+                container,
+                open,
+                SignificantIndex(close.0.saturating_add(1)),
+                node_kinds::RECORD_TYPE,
+            )
+        })
     }
 
     /// The module body span, skipping an optional record-type ascription.
+    ///
+    /// # Contract
+    /// - ensures: returns the interior of the balanced declaration body braces,
+    ///   never the inline signature's record braces.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: consuming a balanced optional ascription before searching
+    ///   for `{` isolates the body despite the shared `}` token.
+    /// - mutants: search from the name; treat `#{` as the body opener.
+    /// - witnesses: `recognizes_one_level_nested_module_member`.
     fn module_body(self) -> Option<(NodeId, Span)>
     {
-        let container = self.backing_id()?;
+        let window = self.raw_container_window();
+        let container = window.container;
         let sig = self.tree.sig_children(container);
-        let module_index = self.find_tile(
-            (&sig).into(),
-            SignificantIndex(0),
-            SignificantIndex(sig.len()),
-            label::MODULE,
-        )?;
+        let module_index =
+            self.find_tile((&sig).into(), window.start, window.limit, label::MODULE)?;
         let after_name = module_index.0.saturating_add(2);
-        let body_search_start = if sig
-            .get(after_name)
-            .and_then(|&node| self.tree.tile_label(node))
-            == Some(label::COLON)
+        let body_search_start = if after_name < window.limit.0
+            && sig
+                .get(after_name)
+                .and_then(|&node| self.tree.tile_label(node))
+                == Some(label::COLON)
         {
             let ascription_open = self.find_tile(
                 (&sig).into(),
                 SignificantIndex(after_name.saturating_add(1)),
-                SignificantIndex(sig.len()),
+                window.limit,
                 label::HASH_BRACE,
             )?;
             let ascription_close = self.matching_close(
@@ -2194,12 +2276,15 @@ impl<'tree> SynNode<'tree>
         let open = self.find_tile(
             (&sig).into(),
             SignificantIndex(body_search_start),
-            SignificantIndex(sig.len()),
+            window.limit,
             label::LBRACE,
         )?;
         let close = self
             .matching_close((&sig).into(), open, label::LBRACE, label::RBRACE)
-            .map_or_else(|| sig.len().saturating_sub(1).max(open.0), |index| index.0);
+            .map_or_else(
+                || window.limit.0.saturating_sub(1).max(open.0),
+                |index| index.0.min(window.limit.0),
+            );
         Some((container, Span {
             start: open.0.saturating_add(1),
             end: close,
@@ -2811,7 +2896,24 @@ impl<'tree> SynNode<'tree>
     }
 
     /// The significant-child index of the `close` tile matching the `open` at
-    /// `open_index` (respecting nesting of same-shaped brackets).
+    /// `open_index`.
+    ///
+    /// Both `{` and `#{` share `}`. A scan for either opener therefore counts
+    /// both spellings, so a record nested inside a block cannot close the block
+    /// early (and conversely for a block nested inside a record).
+    ///
+    /// # Contract
+    /// - requires: `open_index` names an `open` tile in `sig`.
+    /// - ensures: returns the matching `close` index, counting both brace
+    ///   opener spellings whenever they share `}`; returns `None` if
+    ///   unbalanced.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: a single depth counter over every opener sharing the close
+    ///   spelling prevents record and block interiors from closing each other.
+    /// - mutants: count only `open`; return the first close.
+    /// - witnesses: `recognizes_one_level_nested_module_member`.
     fn matching_close(
         self,
         sig: SignificantChildren<'_>,
@@ -2823,7 +2925,10 @@ impl<'tree> SynNode<'tree>
         let mut depth = 0_usize;
         for (offset, node) in sig.iter().enumerate().skip(open_index.0) {
             let text = self.tree.tile_label(*node);
-            if text == Some(open) {
+            let opens = text == Some(open)
+                || (close == label::RBRACE
+                    && matches!(text, Some(label::LBRACE | label::HASH_BRACE)));
+            if opens {
                 depth = depth.saturating_add(1);
             }
             else if text == Some(close) {
@@ -4899,6 +5004,69 @@ mod tests
             node_kinds::BLOCK,
             body.kind(),
             "function body adapts as a block"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn recognizes_one_level_nested_module_member() -> Result<(), String>
+    {
+        let parsed = tree(
+            "module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } { \
+             def before = 0; \
+             module inner : #{ answer: Integer } { def answer = 42; } \
+             def after = inner.answer; \
+             }",
+        )?;
+        assert!(
+            parsed.obligations().is_empty(),
+            "nested module molds cleanly: {:?}",
+            parsed.obligations()
+        );
+        let outer = item0(&parsed)?;
+        let members = outer.children_by_field_name(node_kinds::FIELD_MEMBER);
+        assert_eq!(3, members.len(), "outer module has three members");
+        assert_eq!(
+            members
+                .iter()
+                .map(|member| member.kind())
+                .collect::<Vec<_>>(),
+            vec![
+                node_kinds::DEF_VALUE,
+                node_kinds::MODULE_DECLARATION,
+                node_kinds::DEF_VALUE,
+            ],
+            "nested module remains in source order"
+        );
+        let inner = nth(&members, 1)?;
+        assert_eq!(
+            "inner",
+            field(inner, node_kinds::FIELD_NAME)?.text().as_ref(),
+            "nested module exposes its lowercase component name"
+        );
+        let ascription = field(inner, node_kinds::FIELD_ASCRIPTION)?;
+        assert_eq!(
+            node_kinds::RECORD_TYPE,
+            ascription.kind(),
+            "nested module exposes its inline structural signature"
+        );
+        let signature_fields = ascription.named_children();
+        assert_eq!(1, signature_fields.len(), "one nested signature field");
+        assert_eq!(
+            "answer",
+            field(nth(&signature_fields, 0)?, node_kinds::FIELD_NAME)?
+                .text()
+                .as_ref(),
+            "nested signature field name"
+        );
+        let inner_members = inner.children_by_field_name(node_kinds::FIELD_MEMBER);
+        assert_eq!(1, inner_members.len(), "one nested definition");
+        assert_eq!(
+            "answer",
+            field(nth(&inner_members, 0)?, node_kinds::FIELD_NAME)?
+                .text()
+                .as_ref(),
+            "nested member name"
         );
         Ok(())
     }

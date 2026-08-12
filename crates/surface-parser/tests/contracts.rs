@@ -113,6 +113,65 @@ fn module_declarations_mold_zero_obligation() -> Result<(), Box<dyn Error>>
     }
     Ok(())
 }
+
+#[test]
+fn nested_module_members_mold_zero_obligation() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built_in()?;
+    let src = "module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } { \
+               def before = 0; \
+               module inner : #{ answer: Integer } { def answer = 42; } \
+               def after = inner.answer; \
+               }";
+    let result = parse(&pbg, SourceSlice::from(src))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "nested module source must mold cleanly; obligations: {:?}",
+        result
+            .obligations()
+            .iter()
+            .map(|obligation| obligation.class)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        result.cst().grammar_fingerprint(),
+        pbg.fingerprint(),
+        "nested module parse commits against the shared built-in grammar"
+    );
+    let root = result.cst().node(result.cst().root())?;
+    assert_eq!(NodeKind::Wald, root.kind());
+    Ok(())
+}
+
+#[test]
+fn deeper_nested_module_uses_ordinary_recovery() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let src = "module Outer { module inner { \
+               module deeper { def x = 1; } def y = 2; \
+               } }";
+    let result = parse(pbg, SourceSlice::from(src))?;
+    assert!(
+        !bool::from(result.is_clean()),
+        "the second nested rung must remain outside the clean grammar"
+    );
+    assert!(
+        result
+            .obligations()
+            .iter()
+            .all(|obligation| obligation.class != Oblig::AmbiguousPrec),
+        "the nesting ceiling must use ordinary recovery, not precedence ambiguity"
+    );
+    assert_eq!(
+        NodeKind::Wald,
+        {
+            let root = result.cst().node(result.cst().root())?;
+            root.kind()
+        },
+        "the recovered source still commits"
+    );
+    Ok(())
+}
 #[test]
 fn malformed_module_member_uses_ordinary_recovery() -> Result<(), Box<dyn Error>>
 {

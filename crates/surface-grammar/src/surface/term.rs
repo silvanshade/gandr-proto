@@ -251,13 +251,13 @@ fn declarations(
     out.push(codata);
 
     // --- module declaration (checked-PBG surface and lowering) ---------------
-    // `module M { def … }` and `module M : #{ field: Type, … } { def … }`.
+    // `module M { def ... }` and `module M : #{ field: Type, ... } { def ... }`.
     // The shared `module type_identifier` opener owns one mold; the optional
     // `:` is the sole discriminator for the transparent record-type ascription
-    // branch, after which the body admits the non-recursive def/signature member
-    // family. Lowering resolves member signatures, rejects duplicate members,
-    // and constructs the record-backed module value with the optional ascription.
-    // Functor, sealing, and recursive-module forms stay outside this declaration.
+    // branch. The outer body admits the non-recursive def/signature family plus
+    // one lowercase nested module whose body is definition-only. Lowering
+    // resolves signatures, rejects duplicate members, preserves source order,
+    // and completes the final record.
     out.push(r(
         RuleName("module_declaration"),
         Provenance("module_declaration"),
@@ -1769,7 +1769,18 @@ fn member_sep() -> Regex
 }
 
 /// Build one checked module body member.
+///
+/// The first module rung admits one level of nested structure. A nested
+/// component reuses the ordinary module declaration shape, but its body stays
+/// on the definition-only member family so this grammar does not claim
+/// arbitrary-depth nesting.
 fn module_member() -> Regex
+{
+    alt([module_definition_member(), nested_module_member()])
+}
+
+/// Build one definition/signature member shared by outer and nested modules.
+fn module_definition_member() -> Regex
 {
     seq([
         repeat(attr_block_inline()),
@@ -1795,6 +1806,19 @@ fn regular_def_tail() -> Regex
                 block(),
             ]),
         ]),
+    ])
+}
+
+/// Build one lowercase, one-level nested module component.
+fn nested_module_member() -> Regex
+{
+    seq([
+        t(TileLabel("module")),
+        t(TileLabel("identifier")),
+        opt(seq([t(TileLabel(":")), record_type_ascription()])),
+        t(TileLabel("{")),
+        repeat(module_definition_member()),
+        t(TileLabel("}")),
     ])
 }
 

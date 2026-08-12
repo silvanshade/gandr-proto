@@ -5,13 +5,13 @@
 ; class declared-data: 8
 ; class effects-control: 11
 ; class eligible: 21
-; class hole-unknown: 10
+; class hole-unknown: 11
 ; class identity: 9
 ; class machine-numeric: 1
 ; class native: 7
 ; class not-typeable: 2
 ; class open-free-name: 62
-; class structural-stock: 29
+; class structural-stock: 28
 ; columns: <source>\t<item-index>\t<class>
 model/01-first-computation.gandr	0	eligible
 model/02-definitions.gandr	0	eligible
@@ -146,7 +146,7 @@ pathological/large-list-append-vs-set.gandr	2	open-free-name
 pathological/list-update-out-of-bounds.gandr	0	open-free-name
 pathological/module-duplicate-member.gandr	0	hole-unknown
 pathological/module-forward-member-reference.gandr	0	open-free-name
-pathological/module-invalid-member.gandr	0	structural-stock
+pathological/module-invalid-member.gandr	0	hole-unknown
 pathological/module-linker-late-run-target.gandr	0	eligible
 pathological/module-linker-late-run-target.gandr	1	eligible
 pathological/module-linker-multiple-run-targets.gandr	0	eligible

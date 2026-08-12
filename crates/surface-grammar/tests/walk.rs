@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x11ed_981d_95a5_1344);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xe1a2_a77d_da69_7b6c);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -89,10 +89,12 @@ mod contracts
     /// First-class holes keep `hole_name` at a single mold (the `?` hole's
     /// optional tail); the `number.type` Type-sort atom adds the `number`
     /// lexeme's type realisation; and the `module M (: #{ … })? { def … }`
-    /// Item form contributes its keyword-led opener, its inline record-type
-    /// ascription, and one body-local copy of the non-recursive
-    /// def/signature family. The distinct `run`- and `val`-led bind rules each
-    /// contribute one keyword mold in their 19 expanded statement contexts.
+    /// Item form contributes its keyword-led opener, inline record-type
+    /// ascription, and body-local non-recursive definition/signature family.
+    /// The one-level nested-module member adds 81 molds: its keyword, name,
+    /// braces, optional inline signature, and definition-only body copy.
+    /// The distinct `run`- and `val`-led bind rules each contribute one keyword
+    /// mold in their 20 expanded statement contexts.
     /// The dedicated instantiation-sort forms add seven molds: two `<`
     /// occurrences and one each for `>`, `=`, `tail`, and the two
     /// named-resident `identifier` occurrences. The circuit block form adds
@@ -100,7 +102,7 @@ mod contracts
     /// `rule` judgment is declared **once** and shared by the `sign` member and
     /// the top-level declaration precisely to keep that number from doubling,
     /// and the parameter-side binders are kept off the result side for the same
-    /// The rule-face migration adds four: the `data` and `codata`
+    /// reason. The rule-face migration adds four: the `data` and `codata`
     /// members' face arrow becomes a two-way alternation (`==>` ruled, `~>`
     /// retired-but-admissible), and each member family carries two copies of
     /// its arrow through `comma1`. The nested generator-block form adds
@@ -112,7 +114,7 @@ mod contracts
     /// alternations rather than adding rules of their own. The sign member
     /// terminator adds one: the `;` tile after the inlined member family
     /// (gandr-ng9.14).
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1783);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1864);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -121,40 +123,40 @@ mod contracts
     /// the reachable multi-mold metric belongs to the generative walk
     /// front-end.
     const DECLARED_CANDIDATE_INVENTORY: &[(&str, usize)] = &[
-        ("!", 20),
+        ("!", 21),
         ("!=", 1),
         ("\"", 16),
         ("#!{", 1),
-        ("#{", 4),
+        ("#{", 5),
         ("$", 3),
         ("${", 3),
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 154),
-        (")", 157),
+        ("(", 162),
+        (")", 165),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 68),
+        (",", 71),
         ("-", 2),
         ("-->", 15),
-        ("->", 8),
+        ("->", 9),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 126),
-        (";", 190),
+        (":", 134),
+        (";", 201),
         ("<", 4),
         ("<&", 1),
-        ("<-", 19),
+        ("<-", 20),
         ("<->", 13),
         ("<=", 1),
         ("<=>", 13),
         ("<>", 1),
-        ("=", 50),
+        ("=", 53),
         ("==", 1),
         ("==>", 17),
         ("=>", 8),
@@ -163,7 +165,7 @@ mod contracts
         (">=", 1),
         (">>", 1),
         ("?", 2),
-        ("@[", 3),
+        ("@[", 4),
         ("Any", 1),
         ("Boolean", 1),
         ("Char", 1),
@@ -177,10 +179,10 @@ mod contracts
         ("Unknown", 1),
         ("Void", 1),
         ("[", 11),
-        ("]", 14),
+        ("]", 15),
         ("_", 31),
-        ("acquire", 19),
-        ("as", 78),
+        ("acquire", 20),
+        ("as", 82),
         ("at", 1),
         ("block_comment", 1),
         ("block_comment_content", 1),
@@ -194,7 +196,7 @@ mod contracts
         ("constructor", 6),
         ("continue", 1),
         ("data", 8),
-        ("def", 4),
+        ("def", 5),
         ("double_string_fragment", 1),
         ("drop", 1),
         ("dup", 1),
@@ -212,7 +214,7 @@ mod contracts
         ("for", 1),
         ("forall", 1),
         ("force", 1),
-        ("fork", 38),
+        ("fork", 40),
         ("from", 1),
         ("hold", 1),
         // One mold — the `?` hole's optional-tail occurrence. The
@@ -222,19 +224,19 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 266),
+        ("identifier", 281),
         ("if", 2),
         ("import", 1),
         ("in", 1),
         ("infix", 1),
         ("infixl", 1),
         ("infixr", 1),
-        ("leta", 19),
+        ("leta", 20),
         ("line_comment", 1),
         ("list_operator", 3),
         ("loop", 1),
         ("migrate", 1),
-        ("module", 1),
+        ("module", 2),
         ("mu", 1),
         ("negation", 1),
         ("newline", 1),
@@ -247,11 +249,11 @@ mod contracts
         ("postfix", 1),
         ("prefix", 1),
         ("rec", 2),
-        ("recv", 19),
-        ("release", 19),
+        ("recv", 20),
+        ("release", 20),
         ("ret", 1),
         ("rule", 12),
-        ("run", 19),
+        ("run", 20),
         ("select", 1),
         ("send", 1),
         ("shebang", 1),
@@ -274,15 +276,15 @@ mod contracts
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),
-        ("val", 19),
+        ("val", 20),
         ("variable_name", 5),
         ("while", 1),
         ("with", 1),
-        ("{", 31),
+        ("{", 33),
         ("|", 4),
         ("|&", 1),
         ("||", 2),
-        ("}", 42),
+        ("}", 45),
         ("~>", 4),
         ("ω", 16),
     ];
@@ -699,7 +701,8 @@ mod contracts
         // grammar's), the contextual body leads `node` / `feed`, the item-lead
         // `oper`, and `data` — which crosses from single- to multi-mold because
         // a `sign` member and a parameter-telescope binder join the datatype
-        // declaration. `sign` and `sort` each stay single-mold.
+        // declaration. `sign` and `sort` each stay single-mold. The nested
+        // member makes `module` cross from one reachable mold to two.
         let pbg = built_in()?;
         let index = walk_index(&pbg)?;
         let reachable = reachable_molds(&pbg, &index);
@@ -712,7 +715,7 @@ mod contracts
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
         assert_eq!(
-            72,
+            73,
             multi,
             "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0

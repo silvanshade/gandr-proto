@@ -987,11 +987,12 @@ struct ModuleBinding
     bound: COut,
 }
 
-/// One field of the final checked-module record.
+/// One candidate field of the checked-module record.
 ///
 /// # Contract
-/// - ensures: `value` is the field value placed under `label` in the returned
-///   record; `origin` mirrors that value for diagnostics and goals.
+/// - ensures: absent an explicit structural signature, `value` is returned
+///   under `label`; repacking may omit it while `origin` continues to mirror
+///   every value that remains.
 /// - panics: none.
 struct ModuleField
 {
@@ -1001,6 +1002,52 @@ struct ModuleField
     value: Value,
     /// The field value's origin shadow.
     origin: OriginNode,
+}
+
+/// Source-ordered state accumulated while lowering one module body.
+///
+/// # Contract
+/// - ensures: signatures, definitions, bindings, and candidate return fields
+///   remain associated with exactly one module declaration.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: separate collections preserve source evaluation while
+///   structural matching filters only the final record payload.
+/// - mutants: filter bindings with fields; share state across declarations.
+/// - witnesses: `module_signature_repacking_hides_extra_members` and
+///   `module_members_bind_in_source_order_and_return_record`.
+#[derive(Default)]
+struct ModuleBody
+{
+    /// Member signatures awaiting their matching definitions.
+    sigs: Vec<PendingSig>,
+    /// First definition range for each occupied member name.
+    definitions: BTreeMap<String, SourceRange>,
+    /// Computations evaluated in source order.
+    bindings: Vec<ModuleBinding>,
+    /// Candidate fields from which the final record is repacked.
+    fields: Vec<ModuleField>,
+}
+
+/// A validated definition member ready for expression lowering.
+///
+/// # Contract
+/// - ensures: `name` is reserved and `explicit` is the matching preceding
+///   signature, when present.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: validation consumes a preceding signature exactly once.
+/// - mutants: discard `explicit`; consume a signature after lowering.
+/// - witnesses: `nested_member_signature_constrains_the_parent_binding` and
+///   `duplicate_module_member_definition_is_rejected`.
+struct ModuleMemberPlan
+{
+    /// The member's record label and generated binder.
+    name: String,
+    /// The matching member signature, when one preceded the definition.
+    explicit: Option<Ty>,
 }
 
 /// One simple shell command accepted by the bootstrap shell lowering.
@@ -4481,17 +4528,75 @@ impl Lowerer<'_>
     /// # Contract
     /// - requires: `node` is a [`node_kinds::MODULE_DECLARATION`].
     /// - ensures: member definitions are evaluated exactly once in source
-    ///   order; each non-duplicate definition contributes one record field;
-    ///   earlier member binders scope over later member definitions and the
-    ///   final record.
+    ///   order; each non-duplicate definition contributes one binding and one
+    ///   candidate record field; earlier binders scope over later definitions
+    ///   and the final record; explicit matching filters candidate fields only.
     /// - fails: [`LowerError::DuplicateModuleMember`] for duplicate member
     ///   definitions, [`LowerError::DanglingSignature`] for unmatched member
     ///   signatures in strict mode, plus ordinary member/type lowering errors.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: bind sequencing plus terminal repacking realizes ordered
+    ///   module evaluation without a core module constructor.
+    /// - mutants: filter bindings with exports; reverse body iteration.
+    /// - witnesses: `module_signature_repacking_hides_extra_members` and
+    ///   `nested_modules_lower_as_parent_members_and_project`.
     fn module_declaration(
         &mut self,
         node: SynNode<'_>,
     ) -> LowerResult<(Item, OriginNode)>
+    {
+        let (name, ascription) = self.module_header(node)?;
+        let mut body = ModuleBody::default();
+        for member in node.children_by_field_name(node_kinds::FIELD_MEMBER) {
+            let Some(plan) = self.module_member_plan(&mut body, member)?
+            else {
+                continue;
+            };
+            let recovery_ascription = plan.explicit.clone();
+            let lowered = if member.kind() == node_kinds::MODULE_DECLARATION {
+                self.nested_module_member_definition(member, plan.name, plan.explicit)
+            }
+            else {
+                self.module_member_definition(member, plan.name, plan.explicit)
+            };
+            self.push_module_member_result(
+                &mut body,
+                member,
+                recovery_ascription.as_ref(),
+                lowered,
+            )?;
+        }
+        let (term, origin) = self.finish_module_body(node, ascription.as_ref(), body)?;
+        Ok((
+            Item {
+                name: Some(name),
+                ascription,
+                term,
+            },
+            origin,
+        ))
+    }
+
+    /// Reads one module declaration's name and optional structural ascription.
+    ///
+    /// # Contract
+    /// - requires: `node` is a [`node_kinds::MODULE_DECLARATION`].
+    /// - ensures: the returned ascription is record-shaped whenever present.
+    /// - fails: ordinary required-field or type-lowering errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: the declaration name and ascription are independent header
+    ///   fields and can be lowered without inspecting the body.
+    /// - mutants: read the first body identifier; accept a non-record type.
+    /// - witnesses: `recognizes_module_declaration` and
+    ///   `nonempty_module_ascription_checks_returned_record`.
+    fn module_header(
+        &self,
+        node: SynNode<'_>,
+    ) -> LowerResult<(String, Option<Ty>)>
     {
         let name_node = required_field(node, node_kinds::FIELD_NAME)?;
         let name = {
@@ -4499,114 +4604,207 @@ impl Lowerer<'_>
             core::convert::identity(text)
         }
         .to_owned();
-        let ascription = match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
+        Ok((name, self.module_ascription(node)?))
+    }
+
+    /// Lowers one module declaration's optional structural ascription.
+    ///
+    /// # Contract
+    /// - ensures: the returned ascription is record-shaped whenever present.
+    /// - fails: ordinary type-lowering and record-shape errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: nested lowering can reuse an already-owned name and lower
+    ///   only the remaining header field.
+    /// - mutants: reread the member name; skip record-shape validation.
+    /// - witnesses: `nested_modules_lower_as_parent_members_and_project`.
+    fn module_ascription(
+        &self,
+        node: SynNode<'_>,
+    ) -> LowerResult<Option<Ty>>
+    {
+        match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
             | Some(ascription_node) => {
                 let ty = self.lower_type_node(ascription_node)?;
-                Some({
-                    let module_record_ascription =
-                        self.module_record_ascription(ty, ascription_node)?;
-                    core::convert::identity(module_record_ascription)
-                })
+                let ty = self.module_record_ascription(ty, ascription_node)?;
+                Ok(Some(ty))
             },
-            | None => None,
-        };
+            | None => Ok(None),
+        }
+    }
 
-        let mut sigs: Vec<PendingSig> = Vec::new();
-        let mut definitions: BTreeMap<String, SourceRange> = BTreeMap::new();
-        let mut bindings: Vec<ModuleBinding> = Vec::new();
-        let mut fields: Vec<ModuleField> = Vec::new();
-
-        for member in node.children_by_field_name(node_kinds::FIELD_MEMBER) {
-            if member.kind() == node_kinds::DEF_SIGNATURE {
-                match self.def_signature(member) {
-                    | Ok(sig) => sigs.push(sig),
-                    | Err(ref error) if bool::from(self.total()) => {
-                        bindings.push(ModuleBinding {
-                            binder: node_kinds::DISCARD_BINDER.to_owned(),
-                            bound: self.comp_hole(member, error)?,
-                        });
-                    },
-                    | Err(error) => return Err(error),
-                }
-                continue;
-            }
-
-            let member_name = match self.module_member_name(member) {
-                | Ok(found_name) => found_name,
+    /// Validates one module-body member and reserves its definition name.
+    ///
+    /// # Contract
+    /// - ensures: signatures are retained for a later definition; a returned
+    ///   plan owns a unique name and consumes its matching signature.
+    /// - fails: duplicate-member, malformed-node, signature, and ordinary
+    ///   recovery-construction errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: reserving names before lowering makes duplicate recovery
+    ///   deterministic and gives every definition at most one signature.
+    /// - mutants: reserve after lowering; leave a duplicate's signature unused.
+    /// - witnesses: `duplicate_module_member_definition_is_rejected` and
+    ///   `dangling_member_signature_is_strict_error_and_total_hole`.
+    fn module_member_plan(
+        &mut self,
+        body: &mut ModuleBody,
+        member: SynNode<'_>,
+    ) -> LowerResult<Option<ModuleMemberPlan>>
+    {
+        if member.kind() == node_kinds::DEF_SIGNATURE {
+            match self.def_signature(member) {
+                | Ok(sig) => body.sigs.push(sig),
                 | Err(ref error) if bool::from(self.total()) => {
-                    bindings.push(ModuleBinding {
+                    let bound = self.comp_hole(member, error)?;
+                    body.bindings.push(ModuleBinding {
                         binder: node_kinds::DISCARD_BINDER.to_owned(),
-                        bound: self.comp_hole(member, error)?,
+                        bound,
                     });
-                    continue;
-                },
-                | Err(error) => return Err(error),
-            };
-
-            let Some(member_name) = member_name
-            else {
-                let error = LowerError::Unsupported {
-                    kind: member.kind(),
-                    byte_range: member.byte_range(),
-                };
-                if bool::from(self.total()) {
-                    bindings.push(ModuleBinding {
-                        binder: node_kinds::DISCARD_BINDER.to_owned(),
-                        bound: self.comp_hole(member, &error)?,
-                    });
-                    continue;
-                }
-                return Err(error);
-            };
-
-            let duplicate_sig = definitions.contains_key(&member_name);
-            if duplicate_sig {
-                drop(take_sig(&mut sigs, member_name.as_str().into()));
-            }
-
-            if duplicate_sig {
-                let error = LowerError::DuplicateModuleMember {
-                    name: member_name,
-                    byte_range: member.byte_range(),
-                };
-                if bool::from(self.total()) {
-                    bindings.push(ModuleBinding {
-                        binder: node_kinds::DISCARD_BINDER.to_owned(),
-                        bound: self.comp_hole(member, &error)?,
-                    });
-                    continue;
-                }
-                return Err(error);
-            }
-            definitions.insert(member_name.clone(), member.byte_range());
-
-            let explicit = take_sig(&mut sigs, member_name.as_str().into());
-            match self.module_member_definition(member, member_name.clone(), explicit.clone()) {
-                | Ok((binding, field)) => {
-                    bindings.push(binding);
-                    fields.push(field);
-                },
-                | Err(ref error) if bool::from(self.total()) => {
-                    if let Some((binding, field)) =
-                        self.recover_module_member(member, error, explicit.as_ref())?
-                    {
-                        bindings.push(binding);
-                        fields.push(field);
-                    }
-                    else {
-                        bindings.push(ModuleBinding {
-                            binder: node_kinds::DISCARD_BINDER.to_owned(),
-                            bound: self.comp_hole(member, error)?,
-                        });
-                    }
                 },
                 | Err(error) => return Err(error),
             }
+            return Ok(None);
         }
 
+        let member_name = match self.module_member_name(member) {
+            | Ok(found_name) => found_name,
+            | Err(ref error) if bool::from(self.total()) => {
+                let bound = self.comp_hole(member, error)?;
+                body.bindings.push(ModuleBinding {
+                    binder: node_kinds::DISCARD_BINDER.to_owned(),
+                    bound,
+                });
+                return Ok(None);
+            },
+            | Err(error) => return Err(error),
+        };
+        let Some(member_name) = member_name
+        else {
+            let error = LowerError::Unsupported {
+                kind: member.kind(),
+                byte_range: member.byte_range(),
+            };
+            if bool::from(self.total()) {
+                let bound = self.comp_hole(member, &error)?;
+                body.bindings.push(ModuleBinding {
+                    binder: node_kinds::DISCARD_BINDER.to_owned(),
+                    bound,
+                });
+                return Ok(None);
+            }
+            return Err(error);
+        };
+
+        if body.definitions.contains_key(&member_name) {
+            drop(take_sig(&mut body.sigs, member_name.as_str().into()));
+            let error = LowerError::DuplicateModuleMember {
+                name: member_name,
+                byte_range: member.byte_range(),
+            };
+            if bool::from(self.total()) {
+                let bound = self.comp_hole(member, &error)?;
+                body.bindings.push(ModuleBinding {
+                    binder: node_kinds::DISCARD_BINDER.to_owned(),
+                    bound,
+                });
+                return Ok(None);
+            }
+            return Err(error);
+        }
+        body.definitions
+            .insert(member_name.clone(), member.byte_range());
+        let explicit = take_sig(&mut body.sigs, member_name.as_str().into());
+        Ok(Some(ModuleMemberPlan {
+            name: member_name,
+            explicit,
+        }))
+    }
+
+    /// Records one lowered module member or its total-mode recovery.
+    ///
+    /// # Contract
+    /// - ensures: success appends one binding and field; total-mode failure
+    ///   appends the richest recoverable replacement in the same source slot.
+    /// - fails: strict mode returns `lowered`'s error; total mode returns only
+    ///   recovery-construction errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: one append point preserves the failed member's source slot
+    ///   in both strict and total modes.
+    /// - mutants: append recovered fields without bindings; swallow strict
+    ///   errors.
+    /// - witnesses: `malformed_module_member_recovers_in_total_mode`.
+    fn push_module_member_result(
+        &mut self,
+        body: &mut ModuleBody,
+        member: SynNode<'_>,
+        explicit: Option<&Ty>,
+        lowered: LowerResult<(ModuleBinding, ModuleField)>,
+    ) -> LowerResult<()>
+    {
+        match lowered {
+            | Ok((binding, field)) => {
+                body.bindings.push(binding);
+                body.fields.push(field);
+            },
+            | Err(ref error) if bool::from(self.total()) => {
+                let recovered = self.recover_module_member(member, error, explicit)?;
+                if let Some((binding, field)) = recovered {
+                    body.bindings.push(binding);
+                    body.fields.push(field);
+                }
+                else {
+                    let bound = self.comp_hole(member, error)?;
+                    body.bindings.push(ModuleBinding {
+                        binder: node_kinds::DISCARD_BINDER.to_owned(),
+                        bound,
+                    });
+                }
+            },
+            | Err(error) => return Err(error),
+        }
+        Ok(())
+    }
+
+    /// Finishes one accumulated module body as its core term.
+    ///
+    /// # Contract
+    /// - ensures: total mode materializes every dangling signature as a
+    ///   hole-producing binding plus candidate field, so export filtering
+    ///   cannot erase its goal; strict mode rejects the first dangling
+    ///   signature.
+    /// - fails: [`LowerError::DanglingSignature`] in strict mode, or ordinary
+    ///   final record construction errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: a recovery binding keeps missing-definition evidence
+    ///   reachable even when structural matching hides its candidate field.
+    /// - mutants: create only a field hole; drop unused signatures.
+    /// - witnesses: `dangling_member_signature_is_strict_error_and_total_hole`.
+    fn finish_module_body(
+        &mut self,
+        node: SynNode<'_>,
+        ascription: Option<&Ty>,
+        body: ModuleBody,
+    ) -> LowerResult<(Term, OriginNode)>
+    {
+        let ModuleBody {
+            sigs,
+            mut bindings,
+            mut fields,
+            ..
+        } = body;
         if bool::from(self.total()) {
             for sig in sigs.into_iter().filter(|sig| !sig.used) {
-                fields.push(self.dangling_module_field(sig));
+                let (binding, field) = self.dangling_module_member(sig)?;
+                bindings.push(binding);
+                fields.push(field);
             }
         }
         else if let Some(dangling) = sigs.iter().find(|sig| !sig.used) {
@@ -4616,16 +4814,55 @@ impl Lowerer<'_>
             });
         }
 
-        let record_ascription = Self::value_ascription(ascription.as_ref());
-        let (term, origin) = Self::module_term(node, bindings, fields, record_ascription)?;
-        Ok((
-            Item {
-                name: Some(name),
-                ascription,
-                term,
-            },
-            origin,
-        ))
+        let record_ascription = Self::value_ascription(ascription);
+        Self::module_term(node, bindings, fields, record_ascription)
+    }
+
+    /// Lowers the definition-only body of a one-level nested module.
+    ///
+    /// # Contract
+    /// - requires: `node` is the nested [`node_kinds::MODULE_DECLARATION`].
+    /// - ensures: the returned term obeys the same ordering and
+    ///   record-repacking contract as a top-level module without constructing
+    ///   an unused item name; `explicit` takes precedence over the inline
+    ///   ascription.
+    /// - fails: ordinary module ascription, member, and finalization errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: a definition-only leaf helper enforces the grammar's
+    ///   one-level nesting bound without native recursion.
+    /// - mutants: call `module_declaration`; scan nested module members.
+    /// - witnesses: `nested_modules_lower_as_parent_members_and_project` and
+    ///   `contracts::deeper_nested_module_uses_ordinary_recovery`.
+    fn leaf_module_declaration(
+        &mut self,
+        node: SynNode<'_>,
+        explicit: Option<Ty>,
+    ) -> LowerResult<(Option<Ty>, Term, OriginNode)>
+    {
+        let inline = self.module_ascription(node)?;
+        let effective = match explicit {
+            | Some(ty) => Some(self.module_record_ascription(ty, node)?),
+            | None => inline,
+        };
+        let mut body = ModuleBody::default();
+        for member in node.children_by_field_name(node_kinds::FIELD_MEMBER) {
+            let Some(plan) = self.module_member_plan(&mut body, member)?
+            else {
+                continue;
+            };
+            let recovery_ascription = plan.explicit.clone();
+            let lowered = self.module_member_definition(member, plan.name, plan.explicit);
+            self.push_module_member_result(
+                &mut body,
+                member,
+                recovery_ascription.as_ref(),
+                lowered,
+            )?;
+        }
+        let (term, origin) = self.finish_module_body(node, effective.as_ref(), body)?;
+        Ok((effective, term, origin))
     }
 
     /// Validates the optional module ascription's record shape without
@@ -4667,7 +4904,7 @@ impl Lowerer<'_>
     ) -> LowerResult<Option<String>>
     {
         match member.kind() {
-            | node_kinds::DEF_VALUE | node_kinds::DEF_FUNCTION => {
+            | node_kinds::DEF_VALUE | node_kinds::DEF_FUNCTION | node_kinds::MODULE_DECLARATION => {
                 let name_node = required_field(member, node_kinds::FIELD_NAME)?;
                 Ok(Some(
                     {
@@ -4681,8 +4918,8 @@ impl Lowerer<'_>
         }
     }
 
-    /// Lowers one checked-module definition to its source-ordered binding and
-    /// final record field.
+    /// Lowers one value or function module definition to its source-ordered
+    /// binding and final record field.
     ///
     /// # Contract
     /// - requires: `name` is the already-read member name.
@@ -4690,6 +4927,13 @@ impl Lowerer<'_>
     ///   field projects that binder into the module record.
     /// - fails: ordinary expression/function lowering errors.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: a generated binder separates one-time evaluation from the
+    ///   candidate field used by terminal repacking.
+    /// - mutants: inline the expression into the field; ignore `explicit`.
+    /// - witnesses: `module_members_bind_in_source_order_and_return_record` and
+    ///   `module_signature_repacking_hides_extra_members`.
     fn module_member_definition(
         &mut self,
         member: SynNode<'_>,
@@ -4702,8 +4946,8 @@ impl Lowerer<'_>
                 let value_node = required_field(member, node_kinds::FIELD_VALUE)?;
                 (
                     {
-                        let as_ref = self.module_value_binding(value_node, explicit.as_ref())?;
-                        core::convert::identity(as_ref)
+                        let bound = self.module_value_binding(value_node, explicit.as_ref())?;
+                        core::convert::identity(bound)
                     },
                     explicit,
                 )
@@ -4721,9 +4965,9 @@ impl Lowerer<'_>
                 };
                 (
                     {
-                        let as_ref =
+                        let bound =
                             Self::module_ret_binding(member, value, origin, effective.as_ref())?;
-                        core::convert::identity(as_ref)
+                        core::convert::identity(bound)
                     },
                     effective,
                 )
@@ -4734,6 +4978,49 @@ impl Lowerer<'_>
                     byte_range: member.byte_range(),
                 });
             },
+        };
+        let field = Self::module_field(name.as_str().into(), member, effective.as_ref());
+        Ok((
+            ModuleBinding {
+                binder: name,
+                bound,
+            },
+            field,
+        ))
+    }
+
+    /// Lowers one nested module as a single parent binding and candidate field.
+    ///
+    /// # Contract
+    /// - requires: `member` is a one-level nested module declaration and `name`
+    ///   is its already-read member name.
+    /// - ensures: the nested body is lowered without native recursion; a
+    ///   preceding member signature takes the same precedence over the inline
+    ///   declaration signature as for ordinary definition sugar.
+    /// - fails: ordinary nested module lowering errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: passing the consumed signature into leaf finalization
+    ///   makes it constrain both the nested binding and parent field.
+    /// - mutants: discard `explicit`; allocate the declaration name again.
+    /// - witnesses: `nested_member_signature_constrains_the_parent_binding`.
+    fn nested_module_member_definition(
+        &mut self,
+        member: SynNode<'_>,
+        name: String,
+        explicit: Option<Ty>,
+    ) -> LowerResult<(ModuleBinding, ModuleField)>
+    {
+        let (effective, term, origin) = self.leaf_module_declaration(member, explicit)?;
+        let bound = match term {
+            | Term::Value(value) => {
+                let ret = Comp::Ret(Rc::new(value));
+                let origin =
+                    OriginNode::new(entry(member, Some(ElabKind::LetValueBind)), vec![origin]);
+                COut::from_legacy_comp(&ret, origin)?
+            },
+            | Term::Comp(comp) => COut::from_legacy_comp(&comp, origin)?,
         };
         let field = Self::module_field(name.as_str().into(), member, effective.as_ref());
         Ok((
@@ -4908,16 +5195,25 @@ impl Lowerer<'_>
         )))
     }
 
-    /// Builds the total-mode field for an unmatched member signature.
+    /// Builds total-mode recovery for an unmatched member signature.
     ///
     /// # Contract
-    /// - ensures: the field value is a fresh hole carrying
-    ///   [`HoleNote::MissingDefinition`] at the signature's source range.
+    /// - ensures: the binding evaluates a fresh hole carrying
+    ///   [`HoleNote::MissingDefinition`] at the signature's source range; the
+    ///   candidate field selects that binder and may be hidden by repacking
+    ///   without erasing the hole.
+    /// - fails: arena allocation/readback failures only.
     /// - panics: none.
-    fn dangling_module_field(
+    ///
+    /// # Adequacy
+    /// - hypothesis: putting recovery evidence in the source-ordered binding,
+    ///   not only the candidate field, makes export filtering lossless.
+    /// - mutants: return only a field hole; annotate only the field projection.
+    /// - witnesses: `dangling_member_signature_is_strict_error_and_total_hole`.
+    fn dangling_module_member(
         &mut self,
         sig: PendingSig,
-    ) -> ModuleField
+    ) -> LowerResult<(ModuleBinding, ModuleField)>
     {
         let error = LowerError::DanglingSignature {
             name: sig.name.clone(),
@@ -4938,7 +5234,7 @@ impl Lowerer<'_>
                     OriginEntry {
                         cst_node: sig.node,
                         cst_hash: sig.hash,
-                        byte_range: sig.byte_range,
+                        byte_range: sig.byte_range.clone(),
                         elaboration: None,
                         note: None,
                     },
@@ -4947,11 +5243,37 @@ impl Lowerer<'_>
             ),
             | None => (hole, hole_origin),
         };
-        ModuleField {
-            label: sig.name,
-            value,
-            origin,
-        }
+        let bound = COut::from_legacy_comp(
+            &Comp::Ret(Rc::new(value)),
+            OriginNode::new(
+                OriginEntry {
+                    cst_node: sig.node,
+                    cst_hash: sig.hash,
+                    byte_range: sig.byte_range.clone(),
+                    elaboration: Some(ElabKind::LetValueBind),
+                    note: None,
+                },
+                vec![origin],
+            ),
+        )?;
+        let field = ModuleField {
+            label: sig.name.clone(),
+            value: Value::var(&sig.name),
+            origin: OriginNode::leaf(OriginEntry {
+                cst_node: sig.node,
+                cst_hash: sig.hash,
+                byte_range: sig.byte_range,
+                elaboration: Some(ElabKind::LetValueBind),
+                note: None,
+            }),
+        };
+        Ok((
+            ModuleBinding {
+                binder: sig.name,
+                bound,
+            },
+            field,
+        ))
     }
 
     /// Constructs the generated final field selecting a member binder.
@@ -5027,11 +5349,24 @@ impl Lowerer<'_>
     /// Builds the module item's final record term, adding generated binds only
     /// when there are member definitions to sequence.
     ///
+    /// An inline record ascription is an explicit structural matching
+    /// coercion: every body member still evaluates in source order, while the
+    /// returned record is rebuilt from only the fields named by the signature.
+    ///
     /// # Contract
     /// - ensures: bindings are nested in source order and the final record is
-    ///   canonical in label order.
+    ///   canonical in label order; an ascribed record exposes exactly the
+    ///   signature's fields.
     /// - fails: arena allocation/readback failures only.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: filtering candidate fields before the final record and
+    ///   folding all bindings afterward separates visibility from evaluation.
+    /// - mutants: filter bindings with fields; fold bindings in source order.
+    /// - witnesses: `module_signature_repacking_hides_extra_members`,
+    ///   `dangling_member_signature_is_strict_error_and_total_hole`, and the
+    ///   `29-modules.gandr` model witness.
     fn module_term(
         node: SynNode<'_>,
         bindings: Vec<ModuleBinding>,
@@ -5039,9 +5374,15 @@ impl Lowerer<'_>
         ascription: Option<ValueType>,
     ) -> LowerResult<(Term, OriginNode)>
     {
+        let exported = match ascription.as_ref() {
+            | Some(&ValueType::Record(ref fields)) => Some(fields),
+            | Some(_) | None => None,
+        };
         let mut fields_by_label: BTreeMap<String, (Value, OriginNode)> = BTreeMap::new();
         for field in fields {
-            fields_by_label.insert(field.label, (field.value, field.origin));
+            if exported.is_none_or(|signature| signature.contains_key(&field.label)) {
+                fields_by_label.insert(field.label, (field.value, field.origin));
+            }
         }
         let mut values = Vec::with_capacity(fields_by_label.len());
         let mut origins = Vec::with_capacity(fields_by_label.len());

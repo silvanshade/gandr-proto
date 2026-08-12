@@ -957,6 +957,147 @@ mod tests
                 "a module record ascription constrains the returned record, not the eager-member effect row"
             );
         }
+
+        /// Inline module signatures elaborate to an explicit record repack:
+        /// hidden body members still run, but they are absent from the returned
+        /// record.
+        #[test]
+        fn module_signature_repacking_hides_extra_members()
+        {
+            let item = sole_item(
+                "module M : #{ visible: Integer } { \
+                 def hidden = 1; def visible = 2; }",
+            );
+            let expected = ValueType::record([("visible".to_owned(), ValueType::integer())]);
+            let Term::Comp(Comp::Bind(_, ref hidden, ref after_hidden)) = item.term
+            else {
+                panic!("hidden member must still be evaluated: {:?}", item.term);
+            };
+            assert_eq!("hidden", hidden);
+            let Comp::Bind(_, ref visible, ref final_ret) = **after_hidden
+            else {
+                panic!("visible member must follow the hidden member: {after_hidden:?}");
+            };
+            assert_eq!("visible", visible);
+            let Comp::Ret(ref returned) = **final_ret
+            else {
+                panic!("module must return its repacked record: {final_ret:?}");
+            };
+            let Value::Annot(ref payload, ref ty) = **returned
+            else {
+                panic!("repacked record must retain the signature annotation: {returned:?}");
+            };
+            let Value::Record(ref fields) = **payload
+            else {
+                panic!("annotated module payload must be a record: {payload:?}");
+            };
+            assert_eq!(
+                fields.keys().map(String::as_str).collect::<Vec<_>>(),
+                vec!["visible"],
+                "signature matching drops hidden fields from the returned record"
+            );
+            assert_eq!(**ty, expected);
+            let Term::Comp(comp) = item.term
+            else {
+                panic!("nonempty module is a computation");
+            };
+            assert_eq!(
+                checker::infer_comp(Ctx::new(), comp),
+                Ok(CompType::returner(expected)),
+                "the explicit repack checks at the structural signature"
+            );
+        }
+
+        /// A one-level nested module is evaluated as one parent member, carries
+        /// its own structural signature, and remains reachable by a dotted
+        /// record path.
+        #[test]
+        fn nested_modules_lower_as_parent_members_and_project()
+        {
+            let lowered = lower_ok(
+                "module Outer : #{ inner: #{ answer: Integer } } { \
+                 def outer_hidden = 1; \
+                 module inner : #{ answer: Integer } { \
+                 def inner_hidden = 2; def answer = 42; \
+                 } \
+                 } \
+                 def use_answer = Outer.inner.answer;",
+            );
+            let outer = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("Outer"))
+                .expect("outer module item");
+            let inner_type = ValueType::record([("answer".to_owned(), ValueType::integer())]);
+            let outer_type = ValueType::record([("inner".to_owned(), inner_type.clone())]);
+            let Term::Comp(ref outer_comp) = outer.term
+            else {
+                panic!("nonempty outer module is a computation: {:?}", outer.term);
+            };
+            assert_eq!(
+                checker::infer_comp(Ctx::new(), outer_comp.clone()),
+                Ok(CompType::returner(outer_type.clone())),
+                "nested module and both structural matching coercions must check"
+            );
+            let Comp::Bind(_, ref outer_hidden, ref after_outer_hidden) = *outer_comp
+            else {
+                panic!("outer hidden member must run first: {outer_comp:?}");
+            };
+            assert_eq!("outer_hidden", outer_hidden);
+            let Comp::Bind(ref inner_bound, ref inner_binder, _) = **after_outer_hidden
+            else {
+                panic!("nested module must be one parent binding: {after_outer_hidden:?}");
+            };
+            assert_eq!("inner", inner_binder);
+            assert_eq!(
+                checker::infer_comp(Ctx::new(), (**inner_bound).clone()),
+                Ok(CompType::returner(inner_type)),
+                "nested module's own repack must hide inner_hidden"
+            );
+
+            let use_answer = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("use_answer"))
+                .expect("dotted projection item");
+            let Term::Comp(ref projection) = use_answer.term
+            else {
+                panic!(
+                    "dotted module path lowers to a computation: {:?}",
+                    use_answer.term
+                );
+            };
+            let mut ctx = Ctx::new();
+            ctx.bind("Outer".to_owned(), outer_type);
+            assert_eq!(
+                checker::infer_comp(ctx, projection.clone()),
+                Ok(CompType::returner(ValueType::integer())),
+                "Outer.inner.answer must infer the nested exported field type"
+            );
+        }
+
+        /// A preceding member signature is not lost when the matching
+        /// definition is a nested module; it overrides the inline signature.
+        #[test]
+        fn nested_member_signature_constrains_the_parent_binding()
+        {
+            let item = sole_item(
+                "module Outer { \
+                 def inner : #{ answer: Integer }; \
+                 module inner : #{ answer: String } { def answer = \"wrong\"; } \
+                 }",
+            );
+            let Term::Comp(Comp::Bind(ref inner_bound, ref binder, _)) = item.term
+            else {
+                panic!("nested module must be one parent binding: {:?}", item.term);
+            };
+            assert_eq!("inner", binder);
+            assert!(
+                checker::infer_comp(Ctx::new(), (**inner_bound).clone()).is_err(),
+                "the preceding Integer signature must reject the inline String module"
+            );
+        }
+
         /// Member definitions become source-ordered binds and one final record
         /// whose fields point at the generated member binders.
         #[test]
@@ -1295,19 +1436,20 @@ mod tests
             );
             SourceRange(start .. start.saturating_add(needle.len()))
         }
-        /// Dangling member signatures reject in strict mode and become a record
-        /// field hole with the usual missing-definition note in total mode.
+        /// Dangling member signatures reject in strict mode and become a
+        /// source-ordered recovery binding in total mode, even when structural
+        /// matching hides their candidate field.
         #[test]
         fn dangling_member_signature_is_strict_error_and_total_hole()
         {
-            let error = lower_err("module M { def missing : Integer; }");
+            let error = lower_err("module M : #{} { def missing : Integer; }");
             assert!(
                 matches!(error, LowerError::DanglingSignature { ref name, .. } if name == "missing"),
                 "dangling member signatures must be structured errors: {error:?}"
             );
 
-            let lowered = lower_source_total("module M { def missing : Integer; }".into())
-                .expect("total lowering must recover a dangling member signature");
+            let lowered = lower_source_total("module M : #{} { def missing : Integer; }".into())
+                .expect("total lowering must recover a hidden dangling member signature");
             let goals = goals_report(&lowered, &prelude_ctx());
             assert!(
                 goals.iter().any(|goal| matches!(

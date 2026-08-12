@@ -1,29 +1,31 @@
-// M1-lite modules: records with source-ordered, exactly-once member evaluation.
+// Primitive modules: records with source-ordered, exactly-once member evaluation.
 //
 // A `module` declaration builds an ordinary record value. The transparent
-// record signature checks only the returned record payload: the shell command
-// member below keeps its `Exec` effect while the final module value is checked
-// against the record shape. Members run left-to-right, so `answer` can see
-// `base`, and nested user paths such as `Facts.inner.answer` are ordinary record
-// projections after the named module value is linked.
+// record signature explicitly repacks the returned record while every body
+// member still evaluates. The shell command member below keeps its `Exec`
+// effect, and the lowercase nested module is one source-ordered component.
+// Nested user paths such as `Facts.inner.answer` are ordinary record
+// projections after the named outer module value is linked.
 //
 // The surrounding shell-mode file also pins the shared source-ordered linker:
 // `seed` is linked before the module, `after` is linked after the module, and
 // the final unnamed record is the single run target.
 def seed = 40;
 
-module Facts : #{ reply: #{ stdout: String, stderr: String, exit_code: Integer }, inner: #{ answer: Integer }, total: Integer } {
-  def reply = #!{ printf 'module member ran\n'; };
-  def base = seed + 1;
-  def answer = base + 1;
-  def inner = #{answer = answer};
+module Facts : #{ inner: #{ answer: Integer }, total: Integer } {
+  def hidden_reply = #!{ printf 'hidden module member ran\n'; };
+  def base = seed + hidden_reply.exit_code + 1;
+  module inner : #{ answer: Integer } {
+    def hidden = base;
+    def answer = base + 1;
+  }
   def total = inner.answer + 1;
 }
 
 def after = Facts.total + 1;
 
-#{after = after, code = Facts.reply.exit_code, saw = string.contains(Facts.reply.stdout, "member ran"), total = Facts.total}
+#{after = after, total = Facts.total}
 
 // The harness checks:
 //@ mode: shell
-//@ expect-shell-value: #{after = 44, code = 0, saw = Inl(()), total = 43}
+//@ expect-shell-value: #{after = 44, total = 43}
