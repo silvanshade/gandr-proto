@@ -171,12 +171,11 @@ fn schema_authors() -> ValueType
 /// signature, required capabilities) gate on the unbuilt semantic tier, and the
 /// `resolved` dependency-address participation gates on resolution.
 ///
-/// The manifest's intended host is the **module root**, for which the grammar
-/// provides no attribute attachment point; until it does, a manifest schema
-/// validates on a top-level `def` item
-/// (the unit-root stand-in the grammar provides today). The schemas and their
-/// checker path are complete; module-root attachment and the local lock record
-/// remain open.
+/// The manifest's host is a top-level module declaration. The common item
+/// attribute path records the block against that lowered module item, so
+/// manifest schemas no longer need a `def` stand-in. Entity schemas still apply
+/// to ordinary items. The schemas and checker path are complete; the local lock
+/// record remains open.
 pub const REGISTRY: &[AttrSchema] = &[
     AttrSchema {
         name: "doc",

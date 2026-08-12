@@ -250,14 +250,14 @@ fn declarations(
     ));
     out.push(codata);
 
-    // --- module declaration (checked-PBG surface; lowering deferred) --------
+    // --- module declaration (checked-PBG surface and lowering) ---------------
     // `module M { def … }` and `module M : #{ field: Type, … } { def … }`.
     // The shared `module type_identifier` opener owns one mold; the optional
     // `:` is the sole discriminator for the transparent record-type ascription
     // branch, after which the body admits the non-recursive def/signature member
-    // family in source order. Module imports, functors, sealing, recursive
-    // modules, packages, and lowering semantics stay out of this checked-grammar
-    // slice.
+    // family. Lowering resolves member signatures, rejects duplicate members,
+    // and constructs the record-backed module value with the optional ascription.
+    // Functor, sealing, and recursive-module forms stay outside this declaration.
     out.push(r(
         RuleName("module_declaration"),
         Provenance("module_declaration"),

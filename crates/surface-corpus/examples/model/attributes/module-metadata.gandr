@@ -5,12 +5,13 @@
 // hosted inside the source unit. A `dependency` is repeatable (one per
 // dependency); `package` and `toolchain` are single-valued.
 //
-// The manifest's real home is the M1-lite module root (`wyrd-wpa0`), which is
-// not landed yet; until it is, the manifest attaches to a top-level `def` as
-// the unit-root stand-in — the schemas and their typing are identical on the
-// module root. Inert coordinates are hash-neutral: they never perturb the
-// unit's content-address (proposal-packages.md §7.4), so editing a coordinate
-// does not change the unit's identity — only what resolution later pins does.
+// The manifest's real home is a top-level module declaration. Attribute
+// collection is item-generic, so this fixture deliberately uses a `def` to
+// isolate the manifest schemas and their typing from module lowering;
+// `model/29-modules.gandr` separately exercises the landed module declaration.
+// Inert coordinates are hash-neutral: they never perturb the unit's
+// content-address (proposal-packages.md §7.4), so editing a coordinate does not
+// change the unit's identity — only what resolution later pins does.
 //
 //@ expect: clean
 //@ expect-def: parser_unit
