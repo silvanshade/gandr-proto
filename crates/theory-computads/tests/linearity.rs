@@ -1,6 +1,6 @@
 //! **Cell-admission linearity** fixtures — the pathological coverage for the
 //! linearity ruling (owner ruling 2026-08-01,
-//! `docs/gandr/spec/implementation/circuit-terms.md` §"The design questions",
+//! `spec:implementation/circuit-terms.md` §"The design questions",
 //! `circuit-terms-question-17`; placement decided 2026-08-02).
 //!
 //! # Why these live here, and what half is promoted

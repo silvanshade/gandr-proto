@@ -95,7 +95,7 @@ use crate::synnode::SynTree;
 
 /// The rewrite-face former of a `rule` member, ruled at `==>` for every
 /// position by the block form
-/// (`docs/gandr/spec/surface-language/circuit-cells.md`).
+/// (`spec:surface-language/circuit-cells.md`).
 const RULE_FACE_ARROW: &str = "==>";
 /// The retired rewrite-face former. It still lexes and still parses in the
 /// member's arrow slot, so a stale face reaches this elaborator whole and is
@@ -1057,7 +1057,7 @@ impl<'tree> Reader<'tree>
     /// per-variable metadata, declining the retired `~>` spelling by name.
     ///
     /// The block-form ruling
-    /// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+    /// (`spec:surface-language/circuit-cells.md` §"The block form,
     /// ruled") makes `==>` the rewrite-face former at every position. The
     /// grammar still admits `~>` in this slot so a stale face arrives here
     /// whole: the decline can then quote the member and name the respelling,

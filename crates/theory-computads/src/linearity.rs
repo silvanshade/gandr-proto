@@ -1,7 +1,7 @@
 //! The **cell-admission linearity boundary**.
 //!
 //! Cell patterns are linear (owner ruling, 2026-08-01;
-//! `docs/gandr/spec/implementation/circuit-terms.md` §"The design questions",
+//! `spec:implementation/circuit-terms.md` §"The design questions",
 //! `circuit-terms-question-17`).
 //!
 //! A metavariable occurring twice on a cell's left-hand side is a **copy on a

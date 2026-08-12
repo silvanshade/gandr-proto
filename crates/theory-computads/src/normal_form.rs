@@ -4,7 +4,7 @@
 //! Research reference: N. Behr & J. Kock, "Tracelet Hopf Algebras and
 //! Decomposition Spaces (Extended Abstract)", EPTCS 372, 323–337, DOI
 //! `10.4204/EPTCS.372.23` — register key `behr-kock-2021-tracelet-hopf` in
-//! `docs/gandr/spec/bibliography.yml`. The shift quotient of the tracelet
+//! `spec:bibliography.yml`. The shift quotient of the tracelet
 //! algebra is free symmetric monoidal on primitives — **statement-level locator
 //! pending**: the register key resolves and the work is the right one, but the
 //! numbered statement this sentence paraphrases is not yet cited here, so the

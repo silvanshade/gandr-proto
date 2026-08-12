@@ -6,7 +6,7 @@ name = "gandr-kernel-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The minimal certified kernel's S1 core -- the pure polarized CBPV value/computation term and type language, the Def/Axiom declaration vocabulary, the append-only environment and its single add_decl choke point (with the one warned bypass and a print-axioms audit), the zero-inference S1 checker, and the C5-quarantined definitional-equality conversion (ADR-77/78; docs/gandr/spec/implementation.md \"The trusted base\")"
+description = "The minimal certified kernel's S1 core -- the pure polarized CBPV value/computation term and type language, the Def/Axiom declaration vocabulary, the append-only environment and its single add_decl choke point (with the one warned bypass and a print-axioms audit), the zero-inference S1 checker, and the C5-quarantined definitional-equality conversion (ADR-77/78; spec:implementation.md \"The trusted base\")"
 license.workspace = true
 publish.workspace = true
 autotests = false
@@ -15,7 +15,7 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
-# TCB dependency wall (docs/gandr/spec/implementation.md, architectural
+# TCB dependency wall (spec:implementation.md, architectural
 # commitments): a gandr-kernel-* crate depends only on other gandr-kernel-*
 # crates and core/alloc. Dev-dependencies are exempt -- test code is not
 # shipped trust.

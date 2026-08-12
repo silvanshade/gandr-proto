@@ -45,7 +45,7 @@
 //! variant does not compile until it states its shape; and a tag emitting to
 //! several destinations declares its own consumer count without the checker
 //! changing. This is the intermediate-language half of the multi-output axis
-//! (`docs/gandr/spec/implementation/circuit-terms.md`, the execution ladder's
+//! (`spec:implementation/circuit-terms.md`, the execution ladder's
 //! `circuit-terms-rung-06`).
 //!
 //! [`CommandNode::Jump`] carries a `c̄` too, but its head is a definition

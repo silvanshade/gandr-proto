@@ -90,7 +90,7 @@
 //! **The gate is one condition, and it is not this module's to discharge.**
 //! The obligation fires when a `CellAlphabet` instance exists whose positions
 //! address a partial store — the addressed, partial heap of
-//! `docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! `spec:implementation/proposed/separation-logic.md`,
 //! `separation-logic-requirement-01` — and whose transitions still report read
 //! against write as two sets rather than one (`separation-logic-requirement-07`
 //! there, which asks the heap interface not to lose the polarization this
@@ -116,7 +116,7 @@
 //! derivation in `gandr-theory-levitation` refuses wiring cycles outright
 //! rather than binding them. The gate is that binder landing with freshness
 //! visible per transition
-//! (`docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! (`spec:implementation/proposed/separation-logic.md`,
 //! `separation-logic-requirement-06`). The freshness this crate *does* have is
 //! a different thing and does not substitute: [`CellAlphabet::rename_apart`]
 //! and [`CellAlphabet::skolemize`] mint fresh **metavariable** names for
@@ -130,9 +130,9 @@
 //! **simultaneous holders**, which is a different axis, needs a partial
 //! cancellative commutative monoid, and is decided by the mode and reference
 //! calculus's shared-borrow question — not here
-//! (`docs/gandr/spec/surface-language/proposed/modes-and-references.md`,
+//! (`spec:surface-language/proposed/modes-and-references.md`,
 //! `mode-decision-05`;
-//! `docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! `spec:implementation/proposed/separation-logic.md`,
 //! `separation-logic-requirement-02`). Inventing one ahead of that decision
 //! would almost certainly re-spell the sealed grade semiring, which counts uses
 //! along a run and does not divide ownership.

@@ -517,7 +517,7 @@ fn generator_telescope() -> Regex
 /// Build the rewrite-face arrow of a `rule` member: the ruled `==>`, or the
 /// retired `~>` kept admissible for its migration decline.
 ///
-/// The block-form ruling (`docs/gandr/spec/surface-language/circuit-cells.md`
+/// The block-form ruling (`spec:surface-language/circuit-cells.md`
 /// §"The block form, ruled") makes `==>` the rewrite-face former at every
 /// position and retires `~>`. Retiring it from the grammar outright would turn
 /// a stale face into a parse repair, which names a token rather than the

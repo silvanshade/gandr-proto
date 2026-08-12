@@ -11,8 +11,7 @@
 //!   variable absent from its left-hand side (`desc-illformed-cell`);
 //! * a **circuit rule**'s wiring must derive the boundary pair its declaration
 //!   fixes — the sphere is checked against, never inferred from, the filler
-//!   (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
-//!   redex");
+//!   (`spec:surface-language/circuit-cells.md`, section "Frame and redex");
 //! * a **bridge arity**'s three maps must compose (`desc-arity-mismatch`);
 //! * a symbol may not **declare derived metadata**: the per-variable variance /
 //!   linearity of a cell face is *derived* ([`derive_cell_var_meta`]), so an
@@ -283,7 +282,7 @@ fn check_sorts(
 /// a derived pair never becomes the sphere, so a mis-glued boundary is a
 /// declaration-table failure with the sphere as the diagnostic rather than a
 /// silently re-indexed cell downstream
-/// (`docs/gandr/spec/surface-language/higher-cells.md`, section "Sphere-typed
+/// (`spec:surface-language/higher-cells.md`, section "Sphere-typed
 /// boundaries").
 ///
 /// The in-signature rule binds here exactly as it does for a written face: the

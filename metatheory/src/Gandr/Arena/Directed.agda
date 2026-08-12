@@ -3,10 +3,10 @@
 ------------------------------------------------------------------------------
 -- Gandr.Arena.Directed — the directed alphabet at the offsets.
 --
--- Partial execution of meta-spike-03 (docs/gandr/spec/metatheory/roadmap.md),
+-- Partial execution of meta-spike-03 (spec:metatheory/roadmap.md),
 -- toward the arena's directed generalization. The design of record is
 -- "characterize as the clone, build as the factorization system"
--- (docs/gandr/spec/metatheory.md; guards.md; layout-and-coherence.md):
+-- (spec:metatheory.md; guards.md; layout-and-coherence.md):
 -- `Rigid` splits as `RigidMono ∩ RigidEpi` at the monotone rung of the
 -- classical ladder, with the simplex category's epi–mono factorization as
 -- the normal form. This module builds the arithmetic substrate of that

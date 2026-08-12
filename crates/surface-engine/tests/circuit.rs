@@ -11,7 +11,7 @@ use gandr_surface_engine::circuit::check_circuit_surface;
 use crate::common::TestText;
 
 /// The congruence cell, verbatim from the ruling
-/// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+/// (`spec:surface-language/circuit-cells.md` §"The block form,
 /// ruled"): a `sign` block presents sorts, operations, and rules — the
 /// item-level `data` member is retired, so no constructors stand here.
 const CONG2: TestText<'static> = TestText(

@@ -1,6 +1,6 @@
 //! **Earned shift-equivalence** fixtures — the two-redex body whose two
 //! readings are one composite
-//! (`docs/gandr/spec/implementation/circuit-terms.md`,
+//! (`spec:implementation/circuit-terms.md`,
 //! `circuit-terms-question-15` and `circuit-terms-spike-07`).
 //!
 //! # Why these live here, and on the toy alphabet

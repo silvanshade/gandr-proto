@@ -1,6 +1,6 @@
 //! Diagnostics, goals, and marks as one versioned JSON report — the envelope
 //! the inspection surface
-//! (`docs/gandr/spec/implementation/inspection-protocol.md`) projects from.
+//! (`spec:implementation/inspection-protocol.md`) projects from.
 //!
 //! The report combines marks, obligations, and goals in one envelope. It maps
 //! a typing failure

@@ -254,8 +254,6 @@ const EXPECTED_GATE_MERGE_STEP_KEYS: &[&str] = &["task"];
 const EXPECTED_MERGE_GATE_TASKS: &[&str] = &[
     "toolchain:pin-check",
     "docs:conflict-markers",
-    "docs:manifest-drift",
-    "docs:reference-integrity",
     "cargo:build",
     "cargo:clippy",
     "cargo:dylint:local",

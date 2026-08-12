@@ -32,7 +32,7 @@ pub const EXTERN_TYPE: SyntaxKind = SyntaxKind("extern_type");
 pub const EXTERN_FUNCTION: SyntaxKind = SyntaxKind("extern_function");
 pub const DATA_DECLARATION: SyntaxKind = SyntaxKind("data_declaration");
 /// A `sign S { … }` signature block — the ruled circuit block form's
-/// declaration table (`docs/gandr/spec/surface-language/circuit-cells.md`
+/// declaration table (`spec:surface-language/circuit-cells.md`
 /// §"The block form, ruled").
 pub const SIGN_DECLARATION: SyntaxKind = SyntaxKind("sign_declaration");
 /// A top-level `oper` / `rule` circuit declaration, standing outside a `sign`

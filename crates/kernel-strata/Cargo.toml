@@ -6,7 +6,7 @@ name = "gandr-kernel-strata"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The minimal certified kernel's level oracle -- canonical {0, +1, max} universe levels with an evidence-returning order oracle, plus landmark-poset admission and entailment by Bezem-Coquand loop-checking (ADR-78; docs/gandr/spec/implementation.md \"The trusted base\")"
+description = "The minimal certified kernel's level oracle -- canonical {0, +1, max} universe levels with an evidence-returning order oracle, plus landmark-poset admission and entailment by Bezem-Coquand loop-checking (ADR-78; spec:implementation.md \"The trusted base\")"
 license.workspace = true
 publish.workspace = true
 

@@ -1,6 +1,6 @@
 //! The headless host-effect runtime for gandr: the host handler of the
 //! effects and control design record
-//! (`docs/gandr/spec/implementation/effects-and-control.md`) — a top-level
+//! (`spec:implementation/effects-and-control.md`) — a top-level
 //! handler that intercepts the flat `Exec`/`Fs`/`Proc`/`Env` signature,
 //! performs the syscall, and resumes the delimited continuation with the
 //! reply.

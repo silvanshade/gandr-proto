@@ -1,5 +1,5 @@
 //! The REPL session engine
-//! (`docs/gandr/spec/implementation/incremental-pipeline.md` §"The
+//! (`spec:implementation/incremental-pipeline.md` §"The
 //! read-evaluate loop").
 //!
 //! The smallest end-to-end interactive slice: [`Session::submit`] takes one
@@ -40,7 +40,7 @@
 //! definition runs exactly once (REPL memoization).
 //!
 //! This is the interim simplification of the persisted `Γ`/`Θ` of
-//! `docs/gandr/spec/implementation/incremental-pipeline.md` §"The read-evaluate
+//! `spec:implementation/incremental-pipeline.md` §"The read-evaluate
 //! loop"; the checkpointed persistent context lives in
 //! `gandr-core-incremental`'s item-granular engine. Only definitions with a
 //! **value type**

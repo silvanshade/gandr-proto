@@ -3,7 +3,7 @@
 //! body statements.
 //!
 //! The spellings here are not this module's to choose: they are ruled at
-//! `docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+//! `spec:surface-language/circuit-cells.md` §"The block form,
 //! ruled", and this module realises that ruling in the checked PBG. The four
 //! shapes the ruling fixes:
 //!

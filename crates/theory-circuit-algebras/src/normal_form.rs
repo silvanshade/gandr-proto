@@ -1,7 +1,7 @@
 //! **Diagram normal form.**
 //!
 //! The third of the three faces the crate boundary ruling names
-//! (`docs/gandr/spec/implementation/circuit-terms.md`,
+//! (`spec:implementation/circuit-terms.md`,
 //! `circuit-terms-question-12`).
 //!
 //! # What this module owns

@@ -1,6 +1,6 @@
 //! The **CSL fibration property suite** over the nominal memo-cell heap — the
 //! independent, unscheduled residual of
-//! `docs/gandr/spec/implementation/roadmap.md`, run against
+//! `spec:implementation/roadmap.md`, run against
 //! `crates/core-sequent/src/store.rs` (the L machine's two-region store,
 //! `proposal-sequent-kernel.md` §4.2; ADR-50 call-by-need).
 //!

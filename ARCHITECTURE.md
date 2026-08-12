@@ -5,7 +5,8 @@ Read this before any structural change.
 It routes into the authoritative docs instead of restating them; where two docs disagree, the linked authority wins.
 
 - How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
-- What the design is: the specification corpus [docs/gandr/spec/](docs/gandr/spec/README.md), the authority within the `docs/gandr/` design corpus.
+- What the design is: the specification corpus, `spec:README.md` and the four track documents under it.
+  **It is not in this repository** — it is held in the maintainer's private research workspace, and this tree cites it by the `spec:` alias rather than by path.
 - Why it was decided: the approved [PLAN.html](PLAN.html) and the beads tracker (the per-file `docs/adr/` log is deferred, [docs/workflow/docs.md](docs/workflow/docs.md)).
 
 ## The system in one paragraph
@@ -22,7 +23,6 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `crates/`                                | the Rust workspace (25 members; domains and layering below)                                                      |
 | `crates/*/docs/`                         | per-crate lean doc tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present — off the corpus main-path |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
-| `docs/gandr/`                            | the design corpus root: index, BLAKE3 `MANIFEST.yml`, and the `spec/` tracks with their Hayagriva bibliography   |
 | `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
 | `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))          |
@@ -86,7 +86,7 @@ The rules the graph enforces:
 2. **Dependencies point inward.** Leaves stay leaves; no library crate may depend on `surface-driver` or on any `workflow-*` tooling crate (they sit off-tier by construction).
 3. **Theory substrate is self-contained.** The `theory-*` leaves (graphs, orders, nominal-automata, recursion) have zero workspace dependencies; the higher theory (levitation, computads, circuit-algebras, virtual-doctrines) stacks over `core-*` — directly, or through another `theory-*` crate, as `circuit-algebras` does — and takes no direct dependency on `storage-*`, `runtime-*`, or `surface-*`.
    The reading is the direct one on both halves: `core-sequent` links `storage-*` for persistence (rule 4), so every crate above it reaches storage transitively and the rule constrains the edges a `theory-*` manifest may declare.
-   `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches completion by being supplied at the engine's instantiation site, and the reverse **library** edge is a dependency cycle the resolver rejects (a `[dev-dependencies]` cycle Cargo does admit, so a test-only edge is refused by this rule rather than by the resolver) ([docs/gandr/spec/implementation/circuit-terms.md](docs/gandr/spec/implementation/circuit-terms.md), `circuit-terms-question-12`).
+   `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches completion by being supplied at the engine's instantiation site, and the reverse **library** edge is a dependency cycle the resolver rejects (a `[dev-dependencies]` cycle Cargo does admit, so a test-only edge is refused by this rule rather than by the resolver) (`spec:implementation/circuit-terms.md`, `circuit-terms-question-12`).
 4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery; the kernel never links them (`core-sequent` does, for persistence).
 5. **`fuzz/` is a separate workspace.** It path-deps ports-in-flight and keeps its own lint posture; the main workspace excludes it.
 
@@ -102,10 +102,10 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
    Sources: [Cargo.toml](Cargo.toml), [docs/workflow/rust.md](docs/workflow/rust.md).
 4. **Project-local Dylint contracts gate merges.** The recursion/termination contract (and its documented relaxations) runs on the merge wall between Clippy and the test suite.
    Sources: [docs/workflow/ci.md](docs/workflow/ci.md), [crates/workflow-dylint/](crates/workflow-dylint/).
-5. **The specification corpus is cited, not free-form.** Every external work is cited by a key that resolves in `docs/gandr/spec/bibliography.yml`, and the bibliography holds no entry the corpus never cites.
-   Source: [docs/gandr/spec/README.md](docs/gandr/spec/README.md), [docs/workflow/specs.md](docs/workflow/specs.md).
-6. **The design corpus is hash-registered.** Editing a doc registered in `docs/gandr/MANIFEST.yml` updates its BLAKE3 sum in the same commit (`docs:manifest-drift` gate).
-   Source: [docs/gandr/README.md](docs/gandr/README.md).
+5. **The specification corpus is cited, not free-form.** Every external work is cited by a key that resolves in `spec:bibliography.yml`, and the bibliography holds no entry the corpus never cites.
+   Source: `spec:README.md`, [docs/workflow/specs.md](docs/workflow/specs.md).
+6. **The design corpus is no longer in this repository.** It left with its BLAKE3 registry, and the `docs:manifest-drift` and `docs:reference-integrity` gates retired with it — there is nothing in this tree for them to register or resolve.
+   The corpus is cited by the `spec:` alias and remains the authority on the design; what this repository relies on is restated here.
 7. **Fidelity beats formatters.** A formatter or linter is relaxed or scoped, never satisfied at the cost of artifact fidelity.
    Source: [docs/workflow/docs.md](docs/workflow/docs.md).
 8. **History is publishable.** Tracked content and commit messages are project-concern only; contributor-concern material lives outside the tree.
@@ -113,10 +113,10 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 
 ## Routing
 
-| Question                     | Authoritative source                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| What is the language design? | [docs/gandr/spec/](docs/gandr/spec/README.md) — the four track documents                                      |
-| Why was it decided?          | [PLAN.html](PLAN.html) + the beads tracker, until `docs/adr/` is re-introduced                                |
-| What is a crate's status?    | `crates/<crate>/docs/` (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present, else its `Cargo.toml`   |
-| How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                                 |
-| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace      |
+| Question                     | Authoritative source                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| What is the language design? | `spec:README.md` — the four track documents, held outside this repository                                   |
+| Why was it decided?          | [PLAN.html](PLAN.html) + the beads tracker, until `docs/adr/` is re-introduced                              |
+| What is a crate's status?    | `crates/<crate>/docs/` (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present, else its `Cargo.toml` |
+| How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                               |
+| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace    |

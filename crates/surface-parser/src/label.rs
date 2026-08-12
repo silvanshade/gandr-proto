@@ -558,10 +558,10 @@ impl Token
 /// directed former on types — still scans as a stray `~` followed by `~>`,
 /// exactly as it did before the migration; landing it stays the one table
 /// entry inserted ahead of `~>`
-/// (`docs/gandr/spec/surface-language/directed-family.md`).
+/// (`spec:surface-language/directed-family.md`).
 ///
 /// The four leading entries are the circuit-cell **arrow grid** (the ruled
-/// block form, `docs/gandr/spec/surface-language/circuit-cells.md` §"The block
+/// block form, `spec:surface-language/circuit-cells.md` §"The block
 /// form, ruled"): the shaft carries the kind-class and the head carries
 /// directedness, so `-->` / `<->` are the circuit 1-cell formers and `==>` /
 /// `<=>` the rewrite faces at every dimension. Each is a strict extension of a
@@ -1575,7 +1575,7 @@ fn scan_word_or_underscore(
 /// prime that ended the word would make `x′y` two adjacent operands with no
 /// operator between them. The primed variable is the ruled circuit block form's
 /// own spelling for a rewrite's target endpoint (`node : p(x) ==> (x′)`,
-/// `docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+/// `spec:surface-language/circuit-cells.md` §"The block form,
 /// ruled"), and it is the mathematical convention the rest of the corpus writes
 /// in prose. ASCII `'` is deliberately **not** a word byte: it opens a shell
 /// single-quoted run, and a word-continuing apostrophe would make `'…'` depend

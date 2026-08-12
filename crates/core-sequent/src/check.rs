@@ -26,7 +26,7 @@
 //!    no arity constant of its own, so a head admitting several return
 //!    continuations is admitted here without a change (the
 //!    intermediate-language half of the multi-output axis:
-//!    `docs/gandr/spec/implementation/circuit-terms.md`, the execution ladder's
+//!    `spec:implementation/circuit-terms.md`, the execution ladder's
 //!    `circuit-terms-rung-06`). A [`CommandNode::Jump`] is the one
 //!    argument-carrying command whose head is a definition name rather than a
 //!    tag, so neither count is decidable from the command alone and its

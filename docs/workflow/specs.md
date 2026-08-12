@@ -1,12 +1,12 @@
 # Workflow: authoring the specification corpus
 
-> Read when: creating, editing, migrating, or re-absorbing any document in `docs/gandr/spec/`.
-> Base practice: `docs/gandr/spec/README.md` (the corpus's own conventions), [review.md](review.md) §"Documentation fidelity review" (the mandatory review) and §"Absorption and reboot passes" (the migration discipline), [docs.md](docs.md) (the economy posture).
+> Read when: creating, editing, migrating, or re-absorbing any document in `spec:`.
+> Base practice: `spec:README.md` (the corpus's own conventions), [review.md](review.md) §"Documentation fidelity review" (the mandatory review) and §"Absorption and reboot passes" (the migration discipline), [docs.md](docs.md) (the economy posture).
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## The corpus is migrating out — no new specification documents
 
-**Owner direction, 2026-08-07, bannered in `docs/gandr/spec/README.md`: do not add new specification documents to this corpus, and prefer editing over growing what is here.** The corpus's deep structure — design, reasoning, open questions, specifications in motion — is moving to the maintainer's research workspace, which is now its primary home; this repository keeps code, tests, and outward-facing user documentation.
+**Owner direction, 2026-08-07, bannered in `spec:README.md`: do not add new specification documents to this corpus, and prefer editing over growing what is here.** The corpus's deep structure — design, reasoning, open questions, specifications in motion — is moving to the maintainer's research workspace, which is now its primary home; this repository keeps code, tests, and outward-facing user documentation.
 What this repository still receives from a design is a **thin decision record** stating the outcome and what it binds — never a new corpus document.
 Dispatched work follows the same rule by default: a dispatch into this repository builds.
 Everything below continues to govern edits to the existing corpus while the migration runs.
@@ -48,12 +48,12 @@ The test: a reader meeting the corpus as a manual learns the design without lear
 4. **Code and signature discipline.** Quote code **byte-exact** against its home — the Agda module or the crate, named at the block (visibility, attributes, field names and types; mark excerpts as excerpts).
    A "quoted" block that silently drops a keyword is a factual error, not an excerpt convention.
    When naming fixtures, name where the test actually lives.
-5. **References and citations.** Every external work is cited by key from `docs/gandr/spec/bibliography.yml` at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
+5. **References and citations.** Every external work is cited by key from `spec:bibliography.yml` at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
    Claims resting on an unverified locator say so at the claim.
    Decisions, commitments, obligations, and findings are referred to by meaningful names and linked anchors, never by bare codes whose referent lives in a retired document.
 6. **As-built claims are verified against the tree at write time**, with the module or symbol named at the claim.
    "Verified against the crate" without the verification performed is a defect; counts (files, commands, members) are stated with their counting convention or their path.
-7. **Gates: `mise run docs:manifest-drift` and `mise run docs:reference-integrity` green, `treefmt` clean.** Registered documents: the manifest hash rides the same commit — an unregistered corpus document is a fatal drift-gate finding, so **registration is part of authoring, not a later decision**.
+7. **Gates: `treefmt` clean.** The manifest-drift and reference-integrity gates retired with the corpus, so registration is no longer part of authoring here; a corpus edit is verified where the corpus now lives.
    When authoring directly on `main`, run the docs gates before committing; the pre-commit hook does not watch documentation paths.
 8. **Mandatory two-axis review** ([review.md](review.md) §"Documentation fidelity review"): an independent read-only reviewer, given the changed files and the declared source set (not the author's rationale), stanced adversarially ("prove load-bearing detail was lost"), recording the per-class retained/compressed/dropped inventory.
    Gate: zero dropped load-bearing classes.
@@ -143,7 +143,8 @@ The fix is in the link, not the table: drop a redundant alias (an anchor whose d
 **Heading levels are increment-enforced, and the formatter silently corrects rather than failing.** `MD001` forbids skipping a level, so a block of identifier headings under a `##` section must be `###` — writing `####` there does not error, it gets rewritten to `###` on the next format, and a reviewer reading the pre-format text will report a nesting problem that no longer exists.
 Check the post-format file before acting on any structural finding about headings.
 
-**And one neighbouring trap, because it fires on the same edit and reports somewhere else entirely.** `§` is reserved for _corpus_ anchors: `docs:reference-integrity` reads `§N.N` as a section reference and fails it as dangling when no corpus document defines it.
+**And one neighbouring convention, which no longer has a gate behind it.** `§` is reserved for _corpus_ anchors, and the reference-integrity gate used to read `§N.N` as a section reference and fail it as dangling when no corpus document defined it.
+The gate retired with the corpus; the convention stands, unenforced.
 An external source's own sections are written out — "appendix B.11", "Example 3.6" — and the gate then leaves them alone.
 
 Explicitly _not_ the target: syllable- and complex-word readability scores (Flesch/Fog and friends).
@@ -152,7 +153,7 @@ When prose-measurement tooling exists for the corpus again, it measures and loca
 
 ## Pointers
 
-- `docs/gandr/spec/README.md` — the corpus's own conventions (format, math, citations, anchors, status, dispositions).
-- `docs/gandr/MANIFEST.yml` — the corpus registry; the `docs:manifest-drift` gate watches it.
+- `spec:README.md` — the corpus's own conventions (format, math, citations, anchors, status, dispositions).
+- The corpus registry left this repository with the corpus, and the `docs:manifest-drift` gate retired with it.
 - [review.md](review.md) — the review doctrine and finding dispositions.
 - [docs.md](docs.md) — documentation economy, scoped to _which documents exist_, never fidelity.

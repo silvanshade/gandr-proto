@@ -4,7 +4,7 @@
 
 - **The buildout wayfinder is the tracker's programme epic `gandr-e08j`** (repo: unify the buildout path around the absorption programme): the current wave, the lane adjacencies, and the triage state live there.
 - `PLAN.html` — the approved reboot roadmap, retained as a historical record; it is no longer the current wayfinder.
-- `docs/gandr/spec/README.md` — the language specification corpus, **which is migrating out of this repository** (its banner carries the rule: do not add specification documents).
+- The language specification corpus, cited as `spec:` — **it has migrated out of this repository** and is held in the maintainer's private research workspace; do not add specification documents here.
 - `docs/WORKFLOW.md` — the workflow routing layer.
   Read it first, then open only the task-scoped file it points to under `docs/workflow/`.
 
@@ -29,11 +29,12 @@ Give each identifier an anchor and cite it **by link, not by code** — `[[metat
 This is not hypothetical, and this project has already paid for it: `S1` named a metatheory spike and an undefined "trusted S1 core" at the same time, and the collision stayed invisible until someone cited one and meant the other.
 Retired schemes are the sole exception and stay exactly as they are — the concordance in the guards ledger exists to decode old notes, so the codes in its left-hand column are data, not usage.
 
-**No ambiguous citations, ever.** A reference to external work is one of exactly two things: a key from a durable reference register — `[@key]` resolving in `docs/gandr/spec/bibliography.yml` (Hayagriva), or an equivalent BibTeX register — or the full title with its authors and its most accurate stable identifier (DOI, ISBN, arXiv id, HAL id, and the like).
+**No ambiguous citations, ever.** A reference to external work is one of exactly two things: a key from a durable reference register — `[@key]` resolving in `spec:bibliography.yml` (Hayagriva), or an equivalent BibTeX register — or the full title with its authors and its most accurate stable identifier (DOI, ISBN, arXiv id, HAL id, and the like).
+**This repository holds no reference register of its own.** The Hayagriva register left with the specification corpus, so a bare key cited here resolves only for a reader who has that corpus; in this tree, prefer the full title with its stable identifier, and use a key only where the surrounding text already cites the corpus.
 "The tagless-final paper", "the leading implementation", "a published mechanization", and a bare author-year with no register entry are each unusable by the next reader and unverifiable by the next reviewer.
 A claim resting on an unverified locator says so at the claim.
 
-The full statement of the identifier rule, with the anchoring and linking conventions, is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"Identifiers are informative, prefixed, and linkable — never a bare letter and a number"; the corpus's citation convention is [`docs/gandr/spec/README.md`](docs/gandr/spec/README.md).
+The full statement of the identifier rule, with the anchoring and linking conventions, is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"Identifiers are informative, prefixed, and linkable — never a bare letter and a number"; the corpus's citation convention is `spec:README.md`.
 
 ## Description is a hypothesis, not evidence
 
@@ -160,12 +161,18 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 
 ## Specification, corpus, and research
 
-- `docs/gandr/spec/README.md` is the specification entry point; the four track documents under it are the design record, and `docs/gandr/spec/bibliography.yml` is the register they cite.
+- `spec:README.md` is the specification entry point; the four track documents under it are the design record, and `spec:bibliography.yml` is the register they cite.
+  All of it is held outside this repository and cited by the alias.
   The prose document-class tool `gandr-workflow-docs` is parked (crate commented out of the workspace), so the tracked `.xml` documents carry no active gate.
   Follow [`docs/workflow/docs.md`](docs/workflow/docs.md).
 - Every surfaced language feature lands its complete executable corpus treatment in the same change.
   Syntax-only work lands a parse-gated `surface/` witness; internal-only work lands named exercised fixtures and an explicit promotion blocker.
   Follow [`docs/workflow/corpus.md`](docs/workflow/corpus.md).
+- **The specification corpus and the research corpus have both left this repository, and neither is coming back.** The specification is still the design authority and nothing else describes the design normatively — it is simply held elsewhere, in the maintainer's private research workspace, along with its Hayagriva register.
+  **Cite it by the `spec:` alias, never by a path**: `spec:implementation/type-system.md`, `spec:metatheory/roadmap.md §"meta-question-19"`.
+  The alias names the corpus and the document, which are stable, and asserts nothing about where either sits.
+  Do not re-create `docs/gandr/`, and do not restore a document from history to cite it.
+  What the specification **decides** is restated here where this repository relies on it; a change that needs the corpus itself is dispatched.
 - **The research corpus has left this repository and is not coming back.** The design studies, deep reads, and staging records that lived under `docs/research/` — including the consolidated literature register — are held and processed in the maintainer's private research workspace, and this repository keeps no copy.
   Do not re-create the directory, cite a path into it, or restore a document from history to cite it.
   What a study **decided** belongs here, distilled into the design record or a thin decision record; the study itself does not.

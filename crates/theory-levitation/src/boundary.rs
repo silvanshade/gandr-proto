@@ -144,7 +144,7 @@ impl CircuitNodeBudget
     /// A wire consumed twice is unfolded twice, so reconvergence is a **shared
     /// subterm** rather than a shared node on the term-shaped store and a body
     /// of `n` doubling frames derives a term of `2ⁿ` nodes
-    /// (`docs/gandr/spec/surface-language/circuit-cells.md`, section "The
+    /// (`spec:surface-language/circuit-cells.md`, section "The
     /// derived pair meets the sphere by checking, not by synthesis"). Bodies
     /// reached the derivation only through the crate's own constructors until
     /// the surface route landed; a ceiling is what turns a source-supplied

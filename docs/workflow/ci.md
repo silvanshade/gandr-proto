@@ -19,8 +19,6 @@ Run the **narrowest gate that proves your change** before any commit; the merge 
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                                                                     |
 | `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                                                                      |
-| `mise run docs:manifest-drift`      | `docs/gandr/MANIFEST.yml` BLAKE3 hashes match registered docs                                                                                 |
-| `mise run docs:reference-integrity` | corpus cross-references (edges, ADR refs, section refs) resolve                                                                               |
 | `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))                                             |
 | `mise run cargo:nextest`            | the current Rust test scope                                                                                                                   |
 | `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly)                                         |
@@ -49,7 +47,7 @@ The release no-panic smoke has no task yet; the parked push plan names `cargo:no
 - Parked pre-merge hook: `adr-guard` (returns when `docs/adr/` exists).
   See [worktrees.md](worktrees.md).
 
-Every commit additionally passes the `prek` **pre-commit** hooks — `treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `no-machine-local-paths`, `cargo:fmt-check` — and the **commit-msg** `commitlint` hook.
+Every commit additionally passes the `prek` **pre-commit** hooks — `treefmt:check`, `docs:conflict-markers`, `no-machine-local-paths`, `cargo:fmt-check` — and the **commit-msg** `commitlint` hook.
 `prek install` arms these once per clone in the primary checkout.
 The old footer-misparse gotcha — a body line beginning `word:` read as a trailer — is retired: commitlint here replaces the stock `footer-leading-blank` with a trailer-aware rule keyed on real trailer tokens, so prose never trips it and a trailer still needs its leading blank line.
 

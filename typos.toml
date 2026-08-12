@@ -16,7 +16,7 @@
 # *.typ: greenfield typst manual sources (Track C) quote Agda/math identifiers
 # verbatim, so they get the same protection.
 #
-# docs/manual/refs.yml, docs/gandr/spec/bibliography.yml: bibliography citation
+# docs/manual/refs.yml: bibliography citation
 # keys and author names are identifiers, not prose; typos has already
 # "corrected" the key aks-2015 → ask-2015 (the exact H8 failure mode,
 # 2026-07-03, internal-univalence).
@@ -40,11 +40,10 @@ extend-exclude = [
   "*.agda-lib",
   "*.typ",
   "docs/manual/refs.yml",
-  # docs/gandr/spec/bibliography.yml: the hayagriva bibliography of the live
-  # spec corpus, same class as docs/manual/refs.yml — citation keys and author
-  # names are identifiers, not prose. The corpus prose stays covered; only this
-  # bibliography YAML is scoped out.
-  "docs/gandr/spec/bibliography.yml",
+  # The corpus hayagriva bibliography was excluded here for the same reason as
+  # docs/manual/refs.yml — citation keys and author names are identifiers, not
+  # prose. It left the repository with the specification corpus, so the entry is
+  # gone rather than stale.
   "vendor/**",
   "metatheory/vendor/**",
 ]

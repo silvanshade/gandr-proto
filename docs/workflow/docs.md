@@ -1,7 +1,8 @@
 # Workflow: documentation discipline
 
 > Read when: adding or restructuring documentation, or authoring math-dense Markdown.
-> Corpus trust machinery (MANIFEST/BLAKE3 registration, edge vocabulary, authority): `docs/gandr/MANIFEST.yml` + [specs.md](specs.md), enforced by the `docs:manifest-drift` gate.
+> Corpus authority and authoring discipline: [specs.md](specs.md).
+> The MANIFEST/BLAKE3 registration machinery and its drift gate retired when the corpus left this repository.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Documentation economy — the gandr posture
@@ -9,7 +10,7 @@
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
 The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
 Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (owner, 2026-07-21, `gandr-fid.0`; the 2026-07-21 fidelity audits measured the first absorption pass at ~50-70% retention because this scoping was implicit).
-Every `docs/gandr/spec/` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
+Every `spec:` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
 - **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
 - **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
@@ -28,7 +29,8 @@ Per-crate ADR/METRICS/OPTIMIZATION files are legacy material outside the three p
 
 ## Specification corpus and the doc tool
 
-The **live design corpus is Markdown** under `docs/gandr/spec/` — four tracks with their sub-documents and roadmaps, registered in `docs/gandr/MANIFEST.yml`, cited against `docs/gandr/spec/bibliography.yml` ([specs.md](specs.md) is the authoring discipline).
+The **live design corpus is Markdown** under `spec:` — four tracks with their sub-documents and roadmaps, cited against `spec:bibliography.yml` ([specs.md](specs.md) is the authoring discipline).
+It is held outside this repository and cited by the alias.
 It is the authority; nothing else describes the design normatively.
 
 Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — owner ratification is pending, `gandr-wvd.17`), which validates three XML classes (`gandr-712`).
@@ -45,13 +47,13 @@ The status lifecycle is the shared five-value vocabulary (`built | partial | ado
 Until it returns, the three tracked `.xml` documents are unformatted and unvalidated by any gate — treat that as the reason to keep the Markdown tail rather than as licence to author more XML by hand.
 
 **Authoring policy (`gandr-712`).** A class with an XML home takes new documents as **XML**, not Markdown; Markdown is the legacy tail there (research, workflow, per-crate STATUS), migrating opportunistically when touched, never in a mass sweep.
-The design corpus is the exception and is not on that path: it authors as Markdown under `docs/gandr/spec/`.
+The design corpus is the exception and is not on that path: it authors as Markdown under `spec:`.
 CHANGELOG has no XML class and is retired: do not create one in either format; fold dated changes into STATUS plus beads and git history.
 `.md` and `.xml` coexist until those tails are gone.
 The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail and for the design corpus — they are the workarounds for Markdown's lack of first-class math.
 Repository entrypoints whose consumers require Markdown names (`README.md`, `AGENTS.md`, `CLAUDE.md`) are routing adapters, not authored-document classes: keep them thin and point substantive material into the class homes.
 Do not add new top-level Markdown guidance.
-Route process material to `docs/workflow/` and design material to `docs/gandr/spec/`; the legacy `docs/WORKFLOW.md` umbrella migrates to `docs/workflow/index.xml`.
+Route process material to `docs/workflow/` and design material to `spec:`; the legacy `docs/WORKFLOW.md` umbrella migrates to `docs/workflow/index.xml`.
 **Staging and design-study material has no destination here** — that class left with the research corpus and is authored in the maintainer's private research workspace, from which only what it decides comes back.
 
 A static-HTML render target for the corpus — Typst math compiled to MathML Core, `typst-fletcher` diagrams to SVG, progressive-enhancement WebComponent islands — remains a design target with nothing built; describe it as design, not as a shipped capability.
@@ -62,7 +64,7 @@ The proposal-lifecycle model below (proposal files as document classes, manual a
 Every external-literature citation in a notes, analysis, or spec doc records a **resolvable locator** — a DOI, arXiv id, or stable URL — at first mention.
 Name-only citations are the recorded hazard that forced `gandr-fcw.10`'s bulk re-verification of the register; a locator at first citation is what keeps a claim checkable without archaeology.
 A bibliography is the canonical home for those locators: a doc cites the key and the bibliography carries the DOI/arXiv/URL.
-For the design corpus and the XML classes that is `docs/gandr/spec/bibliography.yml`.
+For the design corpus and the XML classes that is `spec:bibliography.yml`.
 The consolidated literature register that used to stand behind it left with the research corpus; it was a second register over the same works, and a citation that resolved only there resolves through the maintainer's private research workspace now.
 
 ### Wyrd ADRs are source material, never citable authorities
@@ -104,7 +106,7 @@ The convention (authored docs are clean by construction):
   A backtick code span is the fallback for code-like identifiers.
   Wrap the _whole_ expression containing the `*`.
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
-- **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`docs/gandr/spec/README.md`).
+- **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`spec:README.md`).
   A balanced block is inert to the reflow wherever it sits: its own paragraph, tight against prose, inside a list item or a blockquote, all on one line, or carrying sentence-looking periods in its body.
   An **unbalanced** `$$` is the live hazard — with no closing delimiter the block stops being recognised, the reflow absorbs it into the surrounding prose line, and `rumdl check` reports success on the result.
 - **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.

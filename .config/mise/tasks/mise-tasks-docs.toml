@@ -1,22 +1,10 @@
 #:tombi toml-version = "v1.0.0"
 #:schema https://mise.jdx.dev/schema/mise-task.json
 
-["docs:manifest-drift"]
-description = "Verify docs/gandr/MANIFEST.yml BLAKE3 hashes against registered docs"
-run = """
-cargo run --quiet -p gandr-workflow-gates -- docs-manifest
-"""
-
 ["docs:conflict-markers"]
 description = "Detect unresolved Git conflict markers in tracked files"
 run = """
 nu ./scripts/check-conflict-markers.nu
-"""
-
-["docs:reference-integrity"]
-description = "Verify gandr corpus cross-references (ADR/section refs, manifest anchors) all resolve"
-run = """
-cargo run --quiet -p gandr-workflow-gates -- docs-reference
 """
 
 # Parked: the reference-manual / typst lane is aspirational — docs/manual/**

@@ -1,6 +1,6 @@
 //! Edit-action reconstruction: a localized structured diff of the lowered CBPV
 //! core
-//! (`docs/gandr/spec/implementation/incremental-pipeline.md`
+//! (`spec:implementation/incremental-pipeline.md`
 //! §"pipeline-decision-02", the Porter disposition).
 //!
 //! # The impedance gate this closes
@@ -14,7 +14,7 @@
 //! an edit touched. (The corpus carries the verified harvest of both — Porter's
 //! order-maintenance intervals and binding pointers, Pantograph's typed
 //! error-boundary — in
-//! `docs/gandr/spec/implementation/incremental-pipeline.md`
+//! `spec:implementation/incremental-pipeline.md`
 //! §"pipeline-decision-02" and §"pipeline-decision-04"; the per-paper claims
 //! live there, not duplicated here.) This front end, by contrast, produces a
 //! melder CST (the merkle-hashed `gandr-surface-syntax` arena) and a re-lowered

@@ -3,7 +3,7 @@
 //!
 //! Instead of writing an `lhs ==> rhs` pair, a circuit rule derives both
 //! boundaries from its body
-//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
+//! (`spec:surface-language/circuit-cells.md`, section "Frame and
 //! redex").
 //!
 //! A circuit rule's body is a list of port-named applications, each binding one
@@ -18,7 +18,7 @@
 //!
 //! The declaration fixes the sphere: at dimension 2 a rule lives at
 //! `⋆ ▸ lhs ⇴ rhs` over its sort
-//! (`docs/gandr/spec/surface-language/higher-cells.md`, section "Sphere-typed
+//! (`spec:surface-language/higher-cells.md`, section "Sphere-typed
 //! boundaries"), and [`CircuitRule::sphere`] is that declared boundary pair.
 //! [`derive_boundaries`] computes the wiring's pair; the declaration table
 //! ([`crate::check_desc`]) *compares* the two. Nothing here infers a sphere

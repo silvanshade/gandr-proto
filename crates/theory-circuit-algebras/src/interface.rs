@@ -1,7 +1,7 @@
 //! **Interface bookkeeping.**
 //!
 //! The first of the three faces the crate boundary ruling names
-//! (`docs/gandr/spec/implementation/circuit-terms.md`,
+//! (`spec:implementation/circuit-terms.md`,
 //! `circuit-terms-question-12`).
 //!
 //! # What this module owns
@@ -14,7 +14,7 @@
 //! discrete, and the interface of a cell is the **coproduct of its input and
 //! output ports** — confirmed as the applicable setting's own definition rather
 //! than adopted as a modelling choice
-//! (`docs/gandr/spec/implementation/circuit-terms.md`,
+//! (`spec:implementation/circuit-terms.md`,
 //! `circuit-terms-spike-01`, first claim). The interface is also what earns the
 //! result the lane depends on: confluence is decidable for a computable
 //! terminating system precisely because the Knuth–Bendix property holds for

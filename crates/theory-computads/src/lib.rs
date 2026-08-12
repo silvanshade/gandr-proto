@@ -52,9 +52,9 @@
 //! - [`shift`] — the **earned shift-equivalence witness**: two adjacent
 //!   applications at disjoint positions with trivial overlap are one composite
 //!   transformation, granted per pair against the decided guard
-//!   (`docs/gandr/spec/implementation/circuit-terms.md`,
-//!   `circuit-terms-spike-07`) and carrying the convexity conjunct's discharge
-//!   as a certificate rather than a recomputed sweep.
+//!   (`spec:implementation/circuit-terms.md`, `circuit-terms-spike-07`) and
+//!   carrying the convexity conjunct's discharge as a certificate rather than a
+//!   recomputed sweep.
 //! - [`normal_form`] — the **tracelet normal form**: a canonical form on
 //!   certificate data (unique primitive factorization by content address,
 //!   integer-graded multiplicities, and a causal canonical schedule) whose

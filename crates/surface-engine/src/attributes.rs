@@ -1,5 +1,5 @@
 //! The entity-attribute layer
-//! (`docs/gandr/spec/surface-language/attributes.md`).
+//! (`spec:surface-language/attributes.md`).
 //!
 //! An **entity attribute** is a named, typed datum attached to a declaration
 //! entity through the leading `@[…]` marker ([`crate::lower`]).

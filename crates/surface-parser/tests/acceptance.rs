@@ -180,7 +180,7 @@ fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
 }
 /// The ruled circuit block form molds to a **zero-obligation** reading, over
 /// the worked examples the ruling records verbatim
-/// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+/// (`spec:surface-language/circuit-cells.md` §"The block form,
 /// ruled") plus one case per rung of the surface: the empty interface, the
 /// occurrence label, the pinned-endpoint binder, the invertible face, and the
 /// reserved glyph — which **parses** here and is declined downstream, not at

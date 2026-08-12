@@ -53,10 +53,9 @@
 //!   at two polarities; read the second way the seam is a directed cycle, which
 //!   leaves the fragment before strong connectedness is even asked. The corpus
 //!   records the divergence and states that the answer is owed at the circuit
-//!   rung (`docs/gandr/spec/implementation/circuit-terms.md`, §"The
-//!   correspondence at gandr's own rung, at theorem grade", the block quote
-//!   naming the two layers). Until it is ruled, this reading declines the shape
-//!   and names it.
+//!   rung (`spec:implementation/circuit-terms.md`, §"The correspondence at
+//!   gandr's own rung, at theorem grade", the block quote naming the two
+//!   layers). Until it is ruled, this reading declines the shape and names it.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;

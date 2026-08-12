@@ -2,9 +2,9 @@
 //!
 //! A rewrite-sorted port becomes the interface pair it binds, and the block's
 //! redex becomes the whiskered composite it makes inside the block's frames
-//! (`docs/gandr/spec/surface-language/circuit-cells.md`, sections "Sorting a
+//! (`spec:surface-language/circuit-cells.md`, sections "Sorting a
 //! rewrite port" and "Frame and redex";
-//! `docs/gandr/spec/surface-language/higher-cells.md`, section "The boundary
+//! `spec:surface-language/higher-cells.md`, section "The boundary
 //! language").
 //!
 //! # A rewrite-sorted port is sorted by the face, and binds an interface pair
@@ -362,7 +362,7 @@ pub enum PortInstantiationError
 /// A term of the **boundary language**.
 ///
 /// This is the composite a circuit block's wiring makes out of its redex and
-/// its frames (`docs/gandr/spec/surface-language/higher-cells.md`, section "The
+/// its frames (`spec:surface-language/higher-cells.md`, section "The
 /// boundary language").
 ///
 /// Three of the language's four constructions are built here. `here(t)` is the

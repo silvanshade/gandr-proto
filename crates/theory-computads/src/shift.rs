@@ -1,9 +1,9 @@
 //! The **earned shift-equivalence witness** — the identification the
 //! interchange story earns per redex pair, and never imposes.
 //!
-//! Spec: `docs/gandr/spec/implementation/circuit-terms.md`,
+//! Spec: `spec:implementation/circuit-terms.md`,
 //! `circuit-terms-question-15` and `circuit-terms-spike-07` (the decided
-//! guard); `docs/gandr/spec/metatheory.md` (the hazard the guard answers).
+//! guard); `spec:metatheory.md` (the hazard the guard answers).
 //!
 //! Two adjacent applications at disjoint positions with trivial overlap
 //! commute, so a two-redex body's two sequentializations are **one** composite

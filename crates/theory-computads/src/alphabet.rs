@@ -147,7 +147,7 @@ pub enum PositionOrder
 /// a record per tractability reason, never a documented assumption. The
 /// left-connectedness definition and its automatic-convexity theorem are cited
 /// at their statement numbers in
-/// `docs/gandr/spec/implementation/circuit-terms.md`,
+/// `spec:implementation/circuit-terms.md`,
 /// `circuit-terms-spike-07`.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ConvexityDischarge

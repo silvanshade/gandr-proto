@@ -253,7 +253,7 @@ impl CellMeta
     /// is *copied*, and a hole worn once as a producer and once as a
     /// consumer is the seam, not a copy. Counting bare name occurrences
     /// conflates them and reports the reachable `μ`/`μ̃` seam shape as
-    /// non-linear (`docs/gandr/spec/implementation/circuit-terms.md` §"The
+    /// non-linear (`spec:implementation/circuit-terms.md` §"The
     /// design questions", `circuit-terms-question-17`; owner decision,
     /// 2026-08-02). This derivation records; the refusal is the separate
     /// admission boundary [`crate::linearity::admit_linear_cell`].

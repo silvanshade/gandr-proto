@@ -1,6 +1,6 @@
 //! The surface engine for the gandr language: the CST-to-core front end the
 //! incremental typing pipeline
-//! (`docs/gandr/spec/implementation/incremental-pipeline.md`) runs on.
+//! (`spec:implementation/incremental-pipeline.md`) runs on.
 //!
 //! The pipeline faces this crate implements:
 //!
@@ -18,12 +18,12 @@
 //!   failures (`FailureState` + `TypeError` + the [`origin::OriginMap`]) and
 //!   hole goals into one versioned, serde-JSON [`diag::Report`] — the report
 //!   envelope the inspection surface
-//!   (`docs/gandr/spec/implementation/inspection-protocol.md`) projects from.
+//!   (`spec:implementation/inspection-protocol.md`) projects from.
 //! - **Entity attributes** ([`attributes`]): the `@[…]` marker's registry,
 //!   payload checker path (iterative, the attribute contract), and inert side
 //!   table, projected into [`diag::Report::attributes`]
-//!   (`docs/gandr/spec/surface-language/attributes.md`). Hash-neutral — an
-//!   inert attribute never enters an item's core-IR term.
+//!   (`spec:surface-language/attributes.md`). Hash-neutral — an inert attribute
+//!   never enters an item's core-IR term.
 //! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
 //!   lowering front end as an implementation of
 //!   [`gandr_core_incremental::region::ItemSource`], so the item-granular
@@ -37,9 +37,9 @@
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the "edit-action" the incremental-typing and
 //!   structure-editor literature both consume but leave out of scope
-//!   (`docs/gandr/spec/implementation/incremental-pipeline.md`
-//!   §"pipeline-decision-02" and §"pipeline-decision-04"). It needs neither the
-//!   checkpoint engine nor a solver, so it stands as the seam they consume.
+//!   (`spec:implementation/incremental-pipeline.md` §"pipeline-decision-02" and
+//!   §"pipeline-decision-04"). It needs neither the checkpoint engine nor a
+//!   solver, so it stands as the seam they consume.
 //!
 //! The streaming driver is designed and not built; `gandr-core-incremental`
 //! owns the item-granular checkpoint engine, and per-term-node solver-coupled

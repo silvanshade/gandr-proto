@@ -3,7 +3,7 @@
 //! internal wires.
 //!
 //! The ruled circuit block form
-//! (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+//! (`spec:surface-language/circuit-cells.md` §"The block form,
 //! ruled") requires that **every arrow reports the kind of the thing it belongs
 //! to**, and it is deliberately a *redundancy*: a declaration's kind keyword,
 //! its arrow, and its body lines' arrows spell the block's dimension three

@@ -16,6 +16,9 @@ use gandr_workflow_docs::corpus;
 const REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
 /// The Hayagriva register `cite` keys resolve against.
+// The register this tool resolved `cite` keys against left the repository with
+// the specification corpus; the path below no longer exists in this tree, and
+// re-sourcing it is part of the parked tool's revisit.
 const REFERENCES: &str = "docs/gandr/spec/bibliography.yml";
 
 /// Entry point: `check-docs` | `fmt [FILES...]`.

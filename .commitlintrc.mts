@@ -227,7 +227,7 @@ const GANDR_SCOPES: readonly string[] = [
   "docs",
   // workspace config, hooks, mise, treefmt, commitlint, CI, scripts, wt, fuzz
   "repo",
-  // the design corpus under docs/gandr/spec
+  // the design corpus, cited as `spec:` and held outside this repository
   "spec",
 ];
 

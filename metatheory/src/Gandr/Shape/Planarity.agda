@@ -79,7 +79,7 @@
 -- metatheory decision queue: option (e), the carrier planarity test, sequenced
 -- ahead of the disposition its result selects. The expected-holds and
 -- expected-fails were stated before the run, per the implementation-first
--- posture recorded at `docs/gandr/spec/metatheory/roadmap.md` §*meta-spike-05*.
+-- posture recorded at `spec:metatheory/roadmap.md` §*meta-spike-05*.
 ------------------------------------------------------------------------------
 
 module Gandr.Shape.Planarity where

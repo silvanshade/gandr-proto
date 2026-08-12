@@ -56,8 +56,6 @@ struct CommandOutputBytes(Vec<u8>);
 const MERGE_TASKS: &[Task] = &[
     Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
-    Task::new(NameText("docs:manifest-drift")),
-    Task::new(NameText("docs:reference-integrity")),
     Task::new(NameText("cargo:build")),
     Task::new(NameText("cargo:clippy")),
     Task::new(NameText("cargo:dylint:local")),
@@ -85,8 +83,6 @@ const MERGE_TASKS: &[Task] = &[
 const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
-    Task::new(NameText("docs:manifest-drift")),
-    Task::new(NameText("docs:reference-integrity")),
     Task::new(NameText("cargo:build")),
     Task::new(NameText("cargo:clippy")),
     Task::new(NameText("cargo:dylint:local")),
@@ -1785,8 +1781,6 @@ mod tests
             &[
                 "toolchain:pin-check",
                 "docs:conflict-markers",
-                "docs:manifest-drift",
-                "docs:reference-integrity",
                 "cargo:build",
                 "cargo:clippy",
                 "cargo:dylint:local",
@@ -1806,8 +1800,6 @@ mod tests
             &[
                 "toolchain:pin-check",
                 "docs:conflict-markers",
-                "docs:manifest-drift",
-                "docs:reference-integrity",
                 "cargo:build",
                 "cargo:clippy",
                 "cargo:dylint:local",

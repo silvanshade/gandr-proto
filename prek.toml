@@ -56,24 +56,6 @@ pass_filenames = false
 stages = ["pre-commit"]
 
 [[repos.hooks]]
-id = "docs-manifest-drift"
-name = "docs manifest drift check"
-language = "system"
-entry = "mise run docs:manifest-drift"
-files.glob = ["docs/gandr/**", "crates/workflow-gates/src/docs/**"]
-pass_filenames = false
-stages = ["pre-commit"]
-
-[[repos.hooks]]
-id = "docs-reference-integrity"
-name = "docs reference integrity check"
-language = "system"
-entry = "mise run docs:reference-integrity"
-files.glob = ["docs/gandr/**", "crates/workflow-gates/src/docs/**"]
-pass_filenames = false
-stages = ["pre-commit"]
-
-[[repos.hooks]]
 id = "commitlint"
 name = "commitlint"
 entry = "mise x -- commitlint --edit"

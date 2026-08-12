@@ -362,7 +362,7 @@ impl SynTree
     /// The committed concrete syntax tree this tree's views borrow from.
     ///
     /// The structural-diff seam ([`gandr_surface_syntax::diff`],
-    /// `docs/gandr/spec/implementation/incremental-pipeline.md` §"The
+    /// `spec:implementation/incremental-pipeline.md` §"The
     /// structural diff") consumes two trees'
     /// [`Cst`]s directly; the merkle hashes it aligns on
     /// are the same the origin map records
@@ -375,7 +375,7 @@ impl SynTree
     }
 
     /// The structural CST diff against a re-parse
-    /// (`docs/gandr/spec/implementation/incremental-pipeline.md` §"The
+    /// (`spec:implementation/incremental-pipeline.md` §"The
     /// structural diff"): [`gandr_surface_syntax::diff`] over the two
     /// committed trees. Merkle-hash pruning matches every subtree whose
     /// significant content is unchanged, so an edit confined to one item leaves

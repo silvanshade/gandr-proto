@@ -1,5 +1,5 @@
 //! The surface front end as the checkpoint engine's parser-agnostic item source
-//! (`docs/gandr/spec/implementation/incremental-pipeline.md` §"Cold reparse"
+//! (`spec:implementation/incremental-pipeline.md` §"Cold reparse"
 //! and §"The structural diff").
 //!
 //! # What this module is for
@@ -75,7 +75,7 @@ impl From<&str> for SourceRevision
 /// Lowering runs in total mode, so every parseable revision yields a program:
 /// an out-of-fragment construct or an error region becomes a hole carrying its
 /// note, never a failure
-/// (`docs/gandr/spec/implementation/incremental-pipeline.md` §"Holes"). What
+/// (`spec:implementation/incremental-pipeline.md` §"Holes"). What
 /// survives as an error is the input-independent residue the seam exists to
 /// carry — the parser being unavailable, or the parse machinery itself failing.
 ///

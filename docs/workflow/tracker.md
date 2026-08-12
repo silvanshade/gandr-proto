@@ -120,7 +120,7 @@ Two boundaries keep it that way.
 - **What makes a bead a ledger bead, so this does not become a licence to amend anything.** It says so in its own description, it is a register rather than a task, and its rows are maintained by _other_ work rather than by progress on itself.
   The specification absorption ledger (`gandr-fid.11`) is the standing instance: one row per pre-reboot source, updated by whichever absorption touches that source.
   Everything else keeps the comment-only rule, and "this bead accumulates state" is not on its own a reason to claim the exception — most beads accumulate state, which is what comments are for.
-- Beads cite corpus paths (`docs/gandr/spec/…`) so an agent lands with context.
+- Beads cite corpus paths (`spec:…`) so an agent lands with context.
 - Every doc-drift finding files a bead — drift produces work items, not silent warnings.
 - Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
   Trust `bd show`/`bd blocked` over `bv` when they disagree.

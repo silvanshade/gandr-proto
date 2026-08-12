@@ -24,7 +24,7 @@ For governance docs already on `main`, reviewers stay read-only and the orchestr
 
 Documentation is the one artifact class with **no natural adversary for omission**: a dropped function fails to compile and a dropped case fails a test, but a dropped paragraph fails nothing — `docs:check` validates structure (IDs, terms, cites), so a component that silently sheds half its source's implementation-grade content passes every gate.
 Omission is invisible in the artifact itself; it is only visible in a diff against the sources.
-Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/gandr/spec/` gets a two-axis adversarial review**, not just substantial ones:
+Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `spec:` gets a two-axis adversarial review**, not just substantial ones:
 
 1. **Correctness axis** — the standard lenses above: are the claims that appear accurate, cited, current?
 2. **Fidelity axis** — the reviewer receives the change's **declared source set** (the wyrd files, research sweep, ledger entries, or session decisions it draws from) and adversarially hunts for what was dropped, compressed, or de-linked, stanced as "prove that load-bearing detail was lost."
@@ -193,7 +193,7 @@ It fires on:
 
 - **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
 - **every reversal** of a landed finding, decision, or characterization;
-- **every first-time characterization claim** — "X **is** a Y" — because a name is a claim (`docs/gandr/spec/proof-engineering.md` §"Terminology follows the ladder, and a name may not assert an unchecked correspondence"), and a naming claim fails in precisely the way a reversal does.
+- **every first-time characterization claim** — "X **is** a Y" — because a name is a claim (`spec:proof-engineering.md` §"Terminology follows the ladder, and a name may not assert an unchecked correspondence"), and a naming claim fails in precisely the way a reversal does.
   A reversal-only trigger misses these: one of the two instances above was a naming claim, not a reversal.
 
 **Ask the owner before running one.** The pass costs real budget, and the owner may already know the answer.

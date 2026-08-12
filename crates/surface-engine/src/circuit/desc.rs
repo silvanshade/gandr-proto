@@ -34,7 +34,7 @@
 //! (`rule involutive : (b : Bit) <=> (c : Bit)`), and the declaration table has
 //! no slot for a term-free sphere: a [`gandr_theory_levitation::RuleFace`]
 //! carries two terms, and the sphere-typed representation `Φ ▸ x ⇴ y` is the
-//! higher-cells lane's (`docs/gandr/spec/surface-language/higher-cells.md`,
+//! higher-cells lane's (`spec:surface-language/higher-cells.md`,
 //! section "Sphere-typed boundaries"). Such a member is therefore carried by no
 //! description member rather than approximated by one; its arrow is still
 //! confirmed by the surface check. An **`oper` member with a filler** is a
@@ -47,7 +47,7 @@
 //! sphere's *sorts* and its interface; the endpoint terms would have to come
 //! from the parameter telescope, and even a pinned binder `rule p : x ==> x′`
 //! names only that port's own endpoints, never the whole diagram's
-//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "The derived
+//! (`spec:surface-language/circuit-cells.md`, section "The derived
 //! pair meets the sphere by checking, not by synthesis": "Where every
 //! rewrite-sorted binder is unpinned, the declaration writes no endpoint terms
 //! at all … and the sphere is supplied from outside the block").

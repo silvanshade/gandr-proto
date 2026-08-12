@@ -51,7 +51,7 @@
 //! target ([`derive_boundaries`]). The declared sphere stays the declaration's:
 //! [`check_desc`] checks the derived pair against it, so a mis-glued boundary
 //! fails at the decl table
-//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
+//! (`spec:surface-language/circuit-cells.md`, section "Frame and
 //! redex").
 //!
 //! # Elaborating a circuit block (`elaborate`)
@@ -65,8 +65,8 @@
 //! derivation consumes. A block then elaborates to the boundary language's
 //! whiskered composite of its redex inside its frames ([`elaborate_body`],
 //! [`WhiskeredCell`]), against the boundaries the sphere check already fixed
-//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Sorting a
-//! rewrite port"; `docs/gandr/spec/surface-language/higher-cells.md`, section
+//! (`spec:surface-language/circuit-cells.md`, section "Sorting a
+//! rewrite port"; `spec:surface-language/higher-cells.md`, section
 //! "The boundary language").
 //!
 //! # Multi-out arities (`arity`)

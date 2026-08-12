@@ -2,13 +2,13 @@
 
 > Read when: touching `metatheory/`.
 > Agda is the sole proof vehicle.
-> Design doctrine — representation, characterization, reasoning style, namespacing, the telescope — is `docs/gandr/spec/proof-engineering.md`; this file is the lane's workflow.
+> Design doctrine — representation, characterization, reasoning style, namespacing, the telescope — is `spec:proof-engineering.md`; this file is the lane's workflow.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## What this document is, and is not
 
 This file owns the lane's **workflow**: substrate, residual discipline, layout, flags, gates, dependency policy, solvers, opacity, commit shape, and the done-rule.
-The **design doctrine** — how a structure is represented, characterized, reasoned about, and named — is the proof-engineering track, `docs/gandr/spec/proof-engineering.md`: tree-wide rules no single module header can own.
+The **design doctrine** — how a structure is represented, characterized, reasoned about, and named — is the proof-engineering track, `spec:proof-engineering.md`: tree-wide rules no single module header can own.
 Neither file carries the mathematical plan: that lives in the Agda module headers themselves, and the lane's scope and rationale live on its tracker epic, so a header and the code beneath it can never drift apart.
 
 Consequently: do not restate a theorem, a substrate decision, or a scope fence here.
@@ -121,7 +121,7 @@ Proofs reach for a solver before they are written by hand, and the reach is **on
 
 Goals are **quoted by hand** into the solver's expression syntax, as `Gandr.Arena.Offset` does.
 Reflection-based tactic macros (`Tactic.RingSolver`, `Tactic.MonoidSolver`) are declined as too brittle; proof-by-reflection solvers built on `Relation.Binary.Reflection` are not macros and are the intended target.
-This is the same line `docs/gandr/spec/proof-engineering.md` §"The boundary telescope" draws: **the trusted content is an object-level function with a soundness proof, never a metaprogram**, and nothing in this tree quotes or unquotes syntax.
+This is the same line `spec:proof-engineering.md` §"The boundary telescope" draws: **the trusted content is an object-level function with a soundness proof, never a metaprogram**, and nothing in this tree quotes or unquotes syntax.
 
 The direction of record for a future coherence solver, so it is not re-derived: its kernel should be **this tree's own machinery instantiated at the free structure it decides** — the normal-form function as the normalizer, the rewrite path as the emitted coherence cell — so the solver is the machinery's first consumer and a demonstrator that it computes, rather than a bespoke normalizer bolted on beside it.
 No solver lands before a proof demands it.
@@ -152,7 +152,7 @@ Gate-green alone is half a milestone.
 
 1. **Module headers** — the design record for the structure they own; new content, retracted claims, and located walls all live here first.
 2. **This file** — a gate change, a dependency or commit-shape change; a design rule that recurred belongs to `proof-engineering.md` at item 3 instead.
-3. **The spec tracks under `docs/gandr/spec/`** — the prose design record: `metatheory.md` and its sub-documents for substrate or design movement, `proof-engineering.md` for discipline movement, and the owning track's `roadmap.md` for build-order status.
+3. **The spec tracks under `spec:`** — the prose design record: `metatheory.md` and its sub-documents for substrate or design movement, `proof-engineering.md` for discipline movement, and the owning track's `roadmap.md` for build-order status.
    Say explicitly when no decision or commitment moved.
 4. **The arc's own work list and decision log**, wherever the project's contributor notes keep them — next steps, status, and the lessons whose authoritative home is nonetheless item 2 or 3.
 5. **The tracker** — progress as a comment on the owning item, then push.

@@ -1,13 +1,13 @@
 //! **Circuit-algebra machinery over the cell-alphabet seam.**
 //!
-//! The crate ruled at `docs/gandr/spec/implementation/circuit-terms.md`,
+//! The crate ruled at `spec:implementation/circuit-terms.md`,
 //! `circuit-terms-question-12`, and minted at that document's
 //! `circuit-terms-rung-03`.
 //!
 //! # The boundary, quoted
 //!
 //! The crate exists to hold exactly one line, so the line is quoted rather than
-//! paraphrased (`docs/gandr/spec/implementation/circuit-terms.md`, §"Matching,
+//! paraphrased (`spec:implementation/circuit-terms.md`, §"Matching,
 //! normalization, and the crate boundary"; owner ruling, 2026-08-02):
 //!
 //! > A new **`theory-circuit-algebras`** stands beside the existing theory
@@ -65,7 +65,7 @@
 //! # The matcher seam, and why the dependency direction carries it
 //!
 //! One consequence rides with the boundary and is recorded rather than designed
-//! (`docs/gandr/spec/implementation/circuit-terms.md`, §"Matching,
+//! (`spec:implementation/circuit-terms.md`, §"Matching,
 //! normalization, and the crate boundary"): if completion ever consumes
 //! embedding-based matching, it does so through a **matcher seam supplied where
 //! the engine is instantiated**, never by a downward dependency from

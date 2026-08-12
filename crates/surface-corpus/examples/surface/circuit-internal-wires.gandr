@@ -2,7 +2,7 @@
 // interface are wires, and the name-set fold binds them (parse-only fixture).
 //
 // GRADUATION: the spellings are ruled at
-// docs/gandr/spec/surface-language/circuit-cells.md, "The block form, ruled".
+// spec:surface-language/circuit-cells.md, "The block form, ruled".
 // The ruled circuit rule block has since graduated (the runnable witness is
 // examples/model/circuit/circuit-rule-block.gandr); this fixture stays
 // parse-only because the shapes it exercises -- the `feed` wheel, the many-out

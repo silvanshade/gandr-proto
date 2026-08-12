@@ -1,5 +1,5 @@
 //! Foreign-function-interface declarations, extracted from `extern` blocks by
-//! the lowerer (`docs/gandr/spec/implementation/foreign-interface.md`).
+//! the lowerer (`spec:implementation/foreign-interface.md`).
 //!
 //! An `extern "c" from "m" { … }` block declares a **foreign module**: a set of
 //! opaque handle types (`type Db;`, §4.4) and bodyless foreign-function
