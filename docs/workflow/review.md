@@ -24,7 +24,7 @@ For governance docs already on `main`, reviewers stay read-only and the orchestr
 
 Documentation is the one artifact class with **no natural adversary for omission**: a dropped function fails to compile and a dropped case fails a test, but a dropped paragraph fails nothing — `docs:check` validates structure (IDs, terms, cites), so a component that silently sheds half its source's implementation-grade content passes every gate.
 Omission is invisible in the artifact itself; it is only visible in a diff against the sources.
-Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/gandr/spec/` or `docs/research/` gets a two-axis adversarial review**, not just substantial ones:
+Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/gandr/spec/` gets a two-axis adversarial review**, not just substantial ones:
 
 1. **Correctness axis** — the standard lenses above: are the claims that appear accurate, cited, current?
 2. **Fidelity axis** — the reviewer receives the change's **declared source set** (the wyrd files, research sweep, ledger entries, or session decisions it draws from) and adversarially hunts for what was dropped, compressed, or de-linked, stanced as "prove that load-bearing detail was lost."
@@ -35,7 +35,8 @@ The fidelity instrument is the **content-class inventory**: for each class — d
 Preconditions and boundaries:
 
 - **A doc change with no declared source set cannot be fidelity-reviewed** — declaring sources is part of authoring, not an optional courtesy.
-  For absorption work the ledger (`docs/research/`) is the source-set registry; for net-new components the commissioning bead names the sources.
+  For net-new components the commissioning bead names the sources.
+  The research corpus that used to serve as the absorption source-set registry has left this repository, so absorption work declares its sources in the change itself or in the bead that commissioned it — the obligation to declare them is what mattered, and it did not leave with the directory.
 - Reboot-era operating notes stating "no adversarial reviewers" (the PLAN-assembly posture) **do not apply to documentation authoring**; this section supersedes them for that class (`gandr-fid.0`).
 - The merge discipline for re-absorption: reboot truth wins on status and naming; the source wins on payload the reboot copy dropped.
 

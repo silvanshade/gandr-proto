@@ -29,7 +29,9 @@ use crate::model::Status;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum DocClass
 {
-    /// A `docs/research/` design study or staging record (`<research-record>`).
+    /// A design study or staging record (`<research-record>`). Its former home
+    /// under `docs/research/` left with the research corpus; the variant
+    /// survives for the parked tool's revisit.
     ResearchRecord,
     /// A `docs/workflow/` process or convention document (`<workflow-doc>`).
     WorkflowDoc,

@@ -220,7 +220,8 @@ const GANDR_SCOPES: readonly string[] = [
   // also covers docs/workflow process docs — both are how-we-work machinery
   "workflow",
   // documentation / config areas
-  // docs/research records
+  // research and analysis records; their `docs/research/` home left with the
+  // corpus, so the scope now covers analysis work with no directory of its own
   "analysis",
   // guidance + documentation not otherwise homed (AGENTS, README, KNOWLEDGE, …)
   "docs",

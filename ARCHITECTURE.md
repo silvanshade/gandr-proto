@@ -22,7 +22,6 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `crates/`                                | the Rust workspace (25 members; domains and layering below)                                                      |
 | `crates/*/docs/`                         | per-crate lean doc tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present — off the corpus main-path |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
-| `docs/research/`                         | landed research and design studies, incl. the wyrd→reboot [crate port map](docs/research/crate-port-map.md)      |
 | `docs/gandr/`                            | the design corpus root: index, BLAKE3 `MANIFEST.yml`, and the `spec/` tracks with their Hayagriva bibliography   |
 | `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
@@ -120,4 +119,4 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 | Why was it decided?          | [PLAN.html](PLAN.html) + the beads tracker, until `docs/adr/` is re-introduced                                |
 | What is a crate's status?    | `crates/<crate>/docs/` (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present, else its `Cargo.toml`   |
 | How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                                 |
-| What studies back a design?  | [docs/research/](docs/research/) (landed design studies; the register is `bibliography-v2.md`)                |
+| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace      |

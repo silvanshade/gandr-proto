@@ -9,7 +9,7 @@
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
 The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
 Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (owner, 2026-07-21, `gandr-fid.0`; the 2026-07-21 fidelity audits measured the first absorption pass at ~50-70% retention because this scoping was implicit).
-Every `docs/gandr/spec/` and `docs/research/` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
+Every `docs/gandr/spec/` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
 - **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
 - **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
@@ -34,7 +34,8 @@ It is the authority; nothing else describes the design normatively.
 Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — owner ratification is pending, `gandr-wvd.17`), which validates three XML classes (`gandr-712`).
 They share one minimal block/inline substrate (`section`, `prose`, `list`, `table`, `code`; `inline-code`, `label`/`ref` coined anchors, `cite` bibliography keys) and one parse-is-validate discipline (banner presence, status presence, label define-once, label/cite resolution, per-class schema):
 
-- **research records** — `docs/research/*.xml` (`<research-record>`): status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.
+- **research records** — `<research-record>`: status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.
+  **This class has no home in this repository any more**: `docs/research/` left with the corpus, and the class definition survives only for the parked tool's revisit.
 - **workflow docs** — `docs/workflow/*.xml` (`<workflow-doc>`): a required `read-when` banner and rule/convention lists.
 - **the per-crate lean tier** — `crates/*/docs/STATUS.xml` (`<crate-status>`): a `crate` scope, dated sections, current-state prose.
 
@@ -50,7 +51,8 @@ CHANGELOG has no XML class and is retired: do not create one in either format; f
 The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail and for the design corpus — they are the workarounds for Markdown's lack of first-class math.
 Repository entrypoints whose consumers require Markdown names (`README.md`, `AGENTS.md`, `CLAUDE.md`) are routing adapters, not authored-document classes: keep them thin and point substantive material into the class homes.
 Do not add new top-level Markdown guidance.
-Route process material to `docs/workflow/`, design material to `docs/gandr/spec/`, and staging/design-study material to `docs/research/`; the legacy `docs/WORKFLOW.md` umbrella migrates to `docs/workflow/index.xml`.
+Route process material to `docs/workflow/` and design material to `docs/gandr/spec/`; the legacy `docs/WORKFLOW.md` umbrella migrates to `docs/workflow/index.xml`.
+**Staging and design-study material has no destination here** — that class left with the research corpus and is authored in the maintainer's private research workspace, from which only what it decides comes back.
 
 A static-HTML render target for the corpus — Typst math compiled to MathML Core, `typst-fletcher` diagrams to SVG, progressive-enhancement WebComponent islands — remains a design target with nothing built; describe it as design, not as a shipped capability.
 The proposal-lifecycle model below (proposal files as document classes, manual absorption) is the pre-`gandr-fcw.8` model, superseded by the status-attributed class model and retained only until the tool subsumes it.
@@ -60,14 +62,16 @@ The proposal-lifecycle model below (proposal files as document classes, manual a
 Every external-literature citation in a notes, analysis, or spec doc records a **resolvable locator** — a DOI, arXiv id, or stable URL — at first mention.
 Name-only citations are the recorded hazard that forced `gandr-fcw.10`'s bulk re-verification of the register; a locator at first citation is what keeps a claim checkable without archaeology.
 A bibliography is the canonical home for those locators: a doc cites the key and the bibliography carries the DOI/arXiv/URL.
-For the design corpus and the XML classes that is `docs/gandr/spec/bibliography.yml`; `docs/research/bibliography-v2.md` remains the standing literature register behind it.
+For the design corpus and the XML classes that is `docs/gandr/spec/bibliography.yml`.
+The consolidated literature register that used to stand behind it left with the research corpus; it was a second register over the same works, and a citation that resolved only there resolves through the maintainer's private research workspace now.
 
 ### Wyrd ADRs are source material, never citable authorities
 
 New gandr docs and specs do **not** cite wyrd ADR numbers (`ADR-NN`) or wyrd bead ids (owner rule, 2026-07-21).
 Much of the wyrd decision record is superseded by reboot decisions; a numbered citation quietly codifies the retired idea into the new corpus and forces every reader through stale context to resolve it (the motivating case: a wyrd-era "evidence layer" reservation rode two reboot design studies verbatim before it was caught — the concept had been superseded by the B6/B7 backbone).
 Where wyrd ADR content is load-bearing, **inline the applicable content restated in current terms**, and only where it actually applies to the current context.
-If provenance matters, a distilled prose line ("adapted from the wyrd interpreter-architecture record") suffices; the wyrd tree stays readable as source-material history through the checkout, and `docs/research/crate-port-map.md` carries the wyrd→reboot reconciliation.
+If provenance matters, a distilled prose line ("adapted from the wyrd interpreter-architecture record") suffices, and the wyrd tree stays readable as source-material history through the checkout.
+The wyrd→reboot reconciliation that used to sit beside it left with the research corpus; `crates/` is now the reconciliation, because a crate that exists is the record of what its predecessor became.
 Landed research records that already carry `ADR-NN` citations are historical documents — sync them opportunistically when touched; do not mass-rewrite them.
 
 Landed proposal files still carry the retired lifecycle banners (**Active** / **Adopted** / **Implemented** / **Dormant**); the model is superseded by the status-attributed class model above and is not authored to.

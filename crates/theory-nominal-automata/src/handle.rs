@@ -1,5 +1,6 @@
 //! The finitary orbit-level representation shared by all three models
-//! (design doc `docs/research/nominal-automata.md` §6.4).
+//! (design doc: the nominal-automata study §6.4, departed with the research
+//! corpus).
 //!
 //! Control points, registers, arities, and the partial injective register
 //! stores make an orbit-infinite nominal automaton a finite handle. The papers'

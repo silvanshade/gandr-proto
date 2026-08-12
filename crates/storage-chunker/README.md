@@ -1,7 +1,7 @@
 # storage-chunker
 
 > **Provenance.** This crate (`gandr-storage-chunker`) is a storage-tier skeleton absorbed directly from the owner's unpublished `mach` `prolly-bao-chunker` crate (Apache-2.0, same owner; source commit `fb78601`).
-> It is a direct source absorption adapted to gandr's storage tier and lint discipline — not an external dependency — per the ratified vendor plan in `docs/research/massive-term-design.md` §6.1.
+> It is a direct source absorption adapted to gandr's storage tier and lint discipline — not an external dependency — per the ratified vendor plan in the massive-term design study §6.1, which left this repository with the research corpus.
 > The crate stays `#![no_std]` with zero runtime dependencies (empty `[dependencies]`); the design-lineage name "Prolly-Bao" is retained in the prose below as absorbed.
 > Symbol-qualified names, rather than numeric line anchors, identify source evidence in this doc set.
 

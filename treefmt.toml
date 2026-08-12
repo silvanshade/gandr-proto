@@ -177,8 +177,6 @@ includes = ["*"]
 # H8). Also mirrored in typos.toml extend-exclude so a standalone `typos`
 # (editor/CLI) run — which reads that config, not treefmt's — is safe too.
 # Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
-# docs/research/*.md: literature-register prose is dense with author names and
-# citation keys (identifiers, not prose) — the bibliography failure mode.
 # docs/gandr/spec/bibliography.yml: the live corpus hayagriva bibliography —
 # citation keys and author names are identifiers; mirrored in typos.toml.
 # PLAN.html: generated export carrying bibliography author names and register/
@@ -188,7 +186,6 @@ excludes = [
   "*.typ",
   "*.agda",
   "*.agda-lib",
-  "docs/research/*.md",
   "docs/gandr/spec/bibliography.yml",
   "PLAN.html"
 ]

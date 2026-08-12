@@ -2,10 +2,11 @@
 //!
 //! This puts the doc-tool prose classes (research records, workflow docs, and
 //! per-crate status) on the `cargo nextest` merge wall — a malformed,
-//! mis-cited, or duplicate-label document under `docs/research`,
-//! `docs/workflow`, or `crates/*/docs` fails here. The doc-family
-//! parse-equals-validate pass is the same discipline `check-docs` runs; this
-//! test drives it over the real tree.
+//! mis-cited, or duplicate-label document under `docs/workflow` or
+//! `crates/*/docs` fails here. The research-record class has no directory in
+//! this repository any more: `docs/research` left with the corpus. The
+//! doc-family parse-equals-validate pass is the same discipline `check-docs`
+//! runs; this test drives it over the real tree.
 
 #[cfg(test)]
 mod tests

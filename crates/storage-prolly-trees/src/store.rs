@@ -26,9 +26,11 @@ use crate::types::StoredNodeRef;
 ///
 /// # Contract
 ///
-/// This boundary carries three ratified storage-tier constraints
-/// (`docs/research/massive-term-design.md` §6.1;
-/// `docs/research/storage-rkyv-design.md` §5, §10 Q3/Q5):
+/// This boundary carries three ratified storage-tier constraints. The design
+/// studies that ratified them — the massive-term design and the rkyv storage
+/// design — have left this repository with the research corpus, so each
+/// constraint is stated in full below rather than by reference; that is the
+/// contract, not a summary of one.
 ///
 /// - **Verified-blob guarantee.** [`load`](BlockStore::load) returns only blobs
 ///   whose [`NodeHash`] identity has been verified. An implementor MUST run (or

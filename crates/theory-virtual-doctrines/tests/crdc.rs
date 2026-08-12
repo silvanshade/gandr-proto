@@ -62,8 +62,9 @@
 //!   storms); the wild rows keep the independent direction (found by matching).
 //!   The generators are deliberately narrow seams — a size-proportionate
 //!   bijective unranking over the command-pattern signature (the Tarau axis,
-//!   `docs/research/tarau-regularity-compression.md` §7.1) drops in as an
-//!   alternative value source without touching the row logic (gandr-9a9).
+//!   from the regularity-compression study §7.1, departed with the research
+//!   corpus) drops in as an alternative value source without touching the row
+//!   logic (gandr-9a9).
 //! - **Suite cost is wall-gated**: rows run at modest case counts with
 //!   `PROPTEST_CASES` overriding for shakeout runs (the `conformance.rs`
 //!   posture), and the residue row runs at a shallow normalization budget — a

@@ -45,7 +45,6 @@ extend-exclude = [
   # names are identifiers, not prose. The corpus prose stays covered; only this
   # bibliography YAML is scoped out.
   "docs/gandr/spec/bibliography.yml",
-  "docs/research/*.md",
   "vendor/**",
   "metatheory/vendor/**",
 ]

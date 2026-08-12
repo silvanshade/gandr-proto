@@ -56,10 +56,7 @@ pub struct DocCheckReport
 #[inline]
 pub fn doc_class_dirs(workspace_root: &Path) -> Result<Vec<PathBuf>, DocError>
 {
-    let mut dirs = alloc::vec![
-        workspace_root.join("docs/research"),
-        workspace_root.join("docs/workflow"),
-    ];
+    let mut dirs = alloc::vec![workspace_root.join("docs/workflow"),];
     let crates_root = workspace_root.join("crates");
     if crates_root.is_dir() {
         let entries = std::fs::read_dir(&crates_root).map_err(|source| DocError::Io {

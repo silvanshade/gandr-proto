@@ -166,6 +166,10 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 - Every surfaced language feature lands its complete executable corpus treatment in the same change.
   Syntax-only work lands a parse-gated `surface/` witness; internal-only work lands named exercised fixtures and an explicit promotion blocker.
   Follow [`docs/workflow/corpus.md`](docs/workflow/corpus.md).
+- **The research corpus has left this repository and is not coming back.** The design studies, deep reads, and staging records that lived under `docs/research/` — including the consolidated literature register — are held and processed in the maintainer's private research workspace, and this repository keeps no copy.
+  Do not re-create the directory, cite a path into it, or restore a document from history to cite it.
+  What a study **decided** belongs here, distilled into the design record or a thin decision record; the study itself does not.
+  Where a rule or a design used to delegate authority to one of those documents, the rule now states the content it needs, and git history holds the departed files for archaeology.
 - External research artifacts are references for understanding only.
   Never vendor, port, or depend on companion artifacts, regardless of license.
 

@@ -5,7 +5,8 @@
 //! This crate is a direct source absorption of the owner's prior unpublished
 //! implementation (Apache-2.0, same owner), adapted to the gandr storage tier
 //! and lint discipline — not an external dependency. The ratified vendor plan
-//! is `docs/research/massive-term-design.md` §6.1.
+//! is the massive-term design study §6.1, which left this repository with the
+//! research corpus.
 //!
 //! # Crate boundary
 //!

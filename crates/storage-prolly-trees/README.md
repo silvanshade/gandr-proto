@@ -1,7 +1,7 @@
 # storage-prolly-trees
 
 > **Provenance.** This crate (`gandr-storage-prolly-trees`) is a storage-tier skeleton absorbed directly from the owner's unpublished `mach` `prolly-bao` crate (Apache-2.0, same owner; source commit `fb78601`).
-> It is a direct source absorption adapted to gandr's storage tier and lint discipline — not an external dependency, and not wired into any export path — per the ratified vendor plan in `docs/research/massive-term-design.md` §6.1.
+> It is a direct source absorption adapted to gandr's storage tier and lint discipline — not an external dependency, and not wired into any export path — per the ratified vendor plan in the massive-term design study §6.1, which left this repository with the research corpus.
 > The proof machinery is behind the default `proofs` feature (feature-gated, not stripped); the design-lineage name "Prolly-Bao" is retained in the prose below as absorbed.
 > Line-number anchors in this doc set are carried from the source and are approximate after absorption.
 

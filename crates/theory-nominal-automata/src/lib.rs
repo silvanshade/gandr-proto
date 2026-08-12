@@ -44,8 +44,8 @@
 //!
 //! The crate is the atom space, the monotone allocator, and the sort trait
 //! **plus the explicit-dealloc automaton layer** that reclaims atoms. The
-//! adopted design is `docs/research/nominal-automata.md`; the landed modules
-//! map onto it as follows:
+//! adopted design is the nominal-automata study, which left this repository
+//! with the research corpus; the landed modules map onto it as follows:
 //!
 //! - [`handle`] — the finitary orbit-level representation (control points,
 //!   registers, partial injective stores, degree): design doc §6.4.

@@ -2,7 +2,8 @@
 
 > **Origin.** This crate (`gandr-storage-artifact`) is gandr-native — the outer-layer CAS wiring and manifest identity for kernel export artifacts (B2.3), not an absorption from another tree.
 > It is a `storage-*` tier crate: **untrusted plumbing** by the kernel-boundary naming rule (only `gandr-kernel-*` is trusted).
-> Design of record: `docs/research/massive-term-design.md` §6 (the layered-both CAS decision, the record model, the artifact identity, the two-wall discipline).
+> Design of record: the massive-term design study §6 — the layered-both CAS decision, the record model, the artifact identity, the two-wall discipline.
+> That study left this repository with the research corpus; what it ratified is stated in this crate's own contracts, and git history holds the study.
 
 `storage-artifact` is the consumer layer that turns a kernel v1 export artifact into a content-addressed, canonically-identified object.
 

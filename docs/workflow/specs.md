@@ -1,6 +1,6 @@
 # Workflow: authoring the specification corpus
 
-> Read when: creating, editing, migrating, or re-absorbing any document in `docs/gandr/spec/`; the posture also governs `docs/research/` records.
+> Read when: creating, editing, migrating, or re-absorbing any document in `docs/gandr/spec/`.
 > Base practice: `docs/gandr/spec/README.md` (the corpus's own conventions), [review.md](review.md) §"Documentation fidelity review" (the mandatory review) and §"Absorption and reboot passes" (the migration discipline), [docs.md](docs.md) (the economy posture).
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
