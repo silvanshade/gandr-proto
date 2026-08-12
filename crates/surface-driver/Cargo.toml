@@ -23,7 +23,7 @@ gandr-core-checker.workspace = true
 # The host seam that runs a script: `ShellOutcome` classifies the run the
 # engine's source entry hands back, so the driver reads the outcome the same
 # way every other host consumer does.
-gandr-runtime-host.workspace = true
+gandr-runtime-effects.workspace = true
 # The language-level source entry: `run::run_source_file` composes lowering,
 # linking, and prelude-aware checking with the host seam, so the driver never
 # reimplements the pipeline it fronts.

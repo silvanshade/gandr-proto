@@ -22,7 +22,7 @@ path = "tests/lib.rs"
 [dependencies]
 gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
-gandr-runtime-host.workspace = true
+gandr-runtime-effects.workspace = true
 gandr-surface-engine.workspace = true
 gandr-theory-levitation.workspace = true
 

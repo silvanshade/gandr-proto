@@ -2,7 +2,7 @@
 #:tombi toml-version = "v1.0.0"
 
 [package]
-name = "gandr-runtime-host"
+name = "gandr-runtime-effects"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

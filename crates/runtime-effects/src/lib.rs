@@ -48,7 +48,7 @@
 //! use gandr_core_checker::effect;
 //! use gandr_core_checker::syntax::Comp;
 //! use gandr_core_checker::syntax::Value;
-//! use gandr_runtime_host::run_program;
+//! use gandr_runtime_effects::run_program;
 //!
 //! // perform Exec::exec {program: "true", args: []} >>= r. ret r
 //! let command = Value::record([

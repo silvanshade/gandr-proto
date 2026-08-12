@@ -5,8 +5,8 @@
 //! seam. This module explicitly re-exports that signature API and adds only the
 //! source-facing [`HostModule`] / [`HostMember`] metadata the lowerer needs.
 //! Keeping signatures with the seam avoids table duplication and any
-//! signature-driven surface-engine ↔ runtime-host coupling; the engine's only
-//! runtime edge is the host-capability adapter `run::run_source` composes.
+//! signature-driven surface-engine ↔ runtime-effects coupling; the engine's
+//! only runtime edge is the host-capability adapter `run::run_source` composes.
 //!
 //! The **host modules** ([`HOST_MODULES`]) are the source-level surface
 //! (`host-module surface`): a call `fs.read(path)` whose head is a known host

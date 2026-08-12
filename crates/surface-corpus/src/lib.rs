@@ -39,7 +39,7 @@
 //! end-to-end — through
 //! the REPL session engine ([`gandr_surface_engine::session::Session`],
 //! preserving top-level item order for REPL-shaped expectations), the L-machine
-//! runtime host ([`gandr_runtime_host::run_program`]), lowering alone, the
+//! runtime host ([`gandr_runtime_effects::run_program`]), lowering alone, the
 //! phase-L0 sequent inspector, or the stage-0 description elaborator —
 //! returning the list of expectation failures (empty means pass).
 //!
@@ -112,7 +112,7 @@ use gandr_core_checker::syntax::Value;
 use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
-use gandr_runtime_host::ShellOutcome;
+use gandr_runtime_effects::ShellOutcome;
 use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::desc_cells::DescCells;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
@@ -228,7 +228,7 @@ pub enum Mode
     /// ([`gandr_surface_engine::session::Session::submit`]); the default.
     Session,
     /// Lower, link, and run the file under the L-machine runtime host
-    /// ([`gandr_runtime_host::run_program`]); single-item programs and shell
+    /// ([`gandr_runtime_effects::run_program`]); single-item programs and shell
     /// blocks reach the host handlers.
     Shell,
     /// Preserve and hash-check a native FFI example. Execution remains parked

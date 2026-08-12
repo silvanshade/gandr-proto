@@ -113,7 +113,7 @@ A bump is its own reviewed change: bump the pin, materialize, run the full merge
 
 #### Residuals
 
-- **`std_instead_of_core` lane allowance (2026-07-30, pin `nightly-2026-05-28`).** The 2026-05-28 clippy flags seven `std::` import sites in `gandr-workflow-gates` that the 2026-07-07 clippy accepted (the `core::io` stabilization window shifted between the two; the runtime-host cross-toolchain pair pattern covers the same class for `core::io::Error`).
+- **`std_instead_of_core` lane allowance (2026-07-30, pin `nightly-2026-05-28`).** The 2026-05-28 clippy flags seven `std::` import sites in `gandr-workflow-gates` that the 2026-07-07 clippy accepted (the `core::io` stabilization window shifted between the two; the runtime-effects cross-toolchain pair pattern covers the same class for `core::io::Error`).
   Rather than seven cross-toolchain allow pairs, every nightly clippy invocation in the workflow carries `-A clippy::std_instead_of_core` on the command line: `cargo:clippy` and the `cargo:dylint*` lanes (via `DYLINT_RUSTFLAGS`).
   **Revisit on the next major toolchain bump:** if the newer clippy agrees with the manifest wall on those paths — or the sites are rewritten to a form both toolchains accept — remove the lane flag.
   The residual exists because the pin is held at `nightly-2026-05-28` by the upstream Dylint examples (their `clippy_utils` pin tracks that nightly); it unblocks when Dylint upstream moves past the window.

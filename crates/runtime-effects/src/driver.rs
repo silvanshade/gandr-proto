@@ -378,7 +378,7 @@ mod tests
         let outcome = run_op(
             effect::host::exec(),
             effect::host::EXEC_RUN,
-            command("gandr-runtime-host-no-such-binary-zzq", &[]),
+            command("gandr-runtime-effects-no-such-binary-zzq", &[]),
         );
         assert!(
             matches!(outcome, ShellOutcome::HostFailed(ShellError::Spawn { .. })),
@@ -469,7 +469,7 @@ mod tests
         let outcome = run_op(
             effect::host::fs(),
             effect::host::FS_STAT,
-            Value::string("/gandr-runtime-host/definitely/not/here"),
+            Value::string("/gandr-runtime-effects/definitely/not/here"),
         );
         assert_eq!(
             Some("missing"),
@@ -625,7 +625,7 @@ mod tests
         let outcome = run_op(
             effect::host::fs(),
             effect::host::FS_READ,
-            Value::string("/gandr-runtime-host/definitely/not/here.txt"),
+            Value::string("/gandr-runtime-effects/definitely/not/here.txt"),
         );
         assert!(
             matches!(outcome, ShellOutcome::HostFailed(ShellError::Fs { .. })),

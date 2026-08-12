@@ -2,7 +2,7 @@
 //!
 //! [`run_source`] is the language-level source entry point: it composes the
 //! surface engine's strict lowering, linking, and prelude-aware checking with
-//! the host-effect capability of [`gandr_runtime_host`]. The runtime stays a
+//! the host-effect capability of [`gandr_runtime_effects`]. The runtime stays a
 //! capability adapter — it owns the host seam and the canonical signatures,
 //! never the source pipeline — so the dependency points one way, engine →
 //! runtime, with no cycle.
@@ -22,8 +22,8 @@ use std::path::PathBuf;
 
 use gandr_core_checker::checker;
 use gandr_core_checker::error::TypeError;
-use gandr_runtime_host::ShellOutcome;
-use gandr_runtime_host::run_program_with_prelude;
+use gandr_runtime_effects::ShellOutcome;
+use gandr_runtime_effects::run_program_with_prelude;
 
 use crate::boundary::PipelineSource;
 use crate::link;

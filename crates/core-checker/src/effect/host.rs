@@ -9,7 +9,7 @@
 //! the evaluator that realizes it. That representation-independence is what
 //! makes the seam machine-independent: the L machine realization in
 //! `gandr_core_sequent` (`machine::run_comp_with_host`) is the durable driver
-//! the runtime-host binds against.
+//! the runtime-effects crate binds against.
 //!
 //! The three types here are the seam's whole public vocabulary: a [`HostOp`]
 //! the machine hands out, a [`HostReply`] the host hands back, and the

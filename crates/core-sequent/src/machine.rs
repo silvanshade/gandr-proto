@@ -649,7 +649,7 @@ impl LMachine
     /// stepwise `pending_host_op` / `resume_host` pair over public state
     /// (the CEK's shape) would first have to reify that loop. Interception
     /// inside the loop keeps the seam faithful without that refactor; the
-    /// runtime-host port binds this driver entry.
+    /// runtime-effects port binds this driver entry.
     ///
     /// # Residues (ADR-35 D4 seam over the L representation)
     ///

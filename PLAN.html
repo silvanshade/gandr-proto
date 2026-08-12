@@ -1087,7 +1087,7 @@
 flowchart LR
   subgraph LANES[" lanes "]
     direction TB
-    SB["Substrate burst <br />theory leaf ports · kernel-strata<br />runtime-host · config sweep"]
+    SB["Substrate burst <br />theory leaf ports · kernel-strata<br />runtime-effects · config sweep"]
     A2["A2 incrementality<br />checkpoint base · parser retarget<br />streaming demo"]
     DOC["Docs lane<br />doc tool + absorption program"]
     SUR["Surface lane"]
@@ -1116,7 +1116,7 @@ flowchart LR
       <tbody>
         <tr><td class="font-semibold whitespace-nowrap">B1 Machine port</td><td><code>wvd.1</code></td>
           <td class="text-sm">Port <code>core-checker</code> + <code>core-sequent</code> + marked core. <strong>Machine effect substrate lands here</strong>
-          (IL effect rows; <code>run_with_host</code> handler seam via early <code>runtime-host</code> port). Close residual seams:
+          (IL effect rows; <code>run_with_host</code> handler seam via early <code>runtime-effects</code> port). Close residual seams:
           F⁻¹ un-focusing readback, prelude force-position lookup, identity + declared-data realization.</td>
           <td class="text-sm">L differential green on full corpus <em>including effect rows</em> → <strong>CEK retired</strong>, conformance re-points at L.</td></tr>
         <tr><td class="font-semibold whitespace-nowrap">B2 kernel-core skeleton</td><td><code>wvd.2</code></td>
@@ -1165,7 +1165,7 @@ flowchart LR
       <tbody>
         <tr><td class="font-semibold whitespace-nowrap">Substrate burst</td><td><code>wvd.13</code></td>
           <td class="text-sm">Theory leaf ports (<code>theory-nominal-automata</code>, <code>-graphs</code>, <code>-orders</code>, <code>-computads</code>,
-          <code>-virtual-doctrines</code>, <code>-levitation</code>, <code>-recursion</code>), <code>kernel-strata</code>, <code>runtime-host</code>;
+          <code>-virtual-doctrines</code>, <code>-levitation</code>, <code>-recursion</code>), <code>kernel-strata</code>, <code>runtime-effects</code>;
           config re-sweep; branding cleanup. Wide + short, agent-parallel worktrees.</td>
           <td class="text-sm">Now (cap-exempt)</td></tr>
         <tr><td class="font-semibold whitespace-nowrap">A2 incrementality</td><td><code>wvd.14</code></td>
@@ -1211,7 +1211,7 @@ flowchart LR
       being maintained in tandem for the whole build. The user-facing effect system keeps its late tail slot.</li>
     <li><strong>Perf program three-way split.</strong> Representation commitment (B4, gating) ≠ incremental-coupled residuals (A2 lane) ≠ continuous tuning (standing discipline).
       The wyrd-tracker perf/A2 program was migrated into <code>gandr-wvd</code> rewritten in gandr terms; the old beads are closed with pointers.</li>
-    <li><strong>Crate-port ≠ feature-activation.</strong> <code>runtime-host</code> ports at B1 (the effect seam needs it); <code>runtime-codecs</code> ports on lsp-full demand;
+    <li><strong>Crate-port ≠ feature-activation.</strong> <code>runtime-effects</code> ports at B1 (the effect seam needs it); <code>runtime-codecs</code> ports on lsp-full demand;
       their language-level features stay at their tail slots.</li>
     <li><strong>Anticipation constraints.</strong> B2 reserves TCB annotation slots (erasure, modes/grades); B6 records the subtyping-anticipation constraint — so tail phases
       are additive, not kernel-format or core rewrites.</li>
@@ -1385,7 +1385,7 @@ flowchart LR
         </tr>
         <tr>
           <td><code>gandr-shell</code></td>
-          <td><code>runtime-host</code></td>
+          <td><code>runtime-effects</code></td>
           <td><span class="badge badge-info">rename+rewire</span></td>
           <td>Headless host-effect runtime (Exec/Fs/Proc/Env). <strong>Implements the <code>run_with_host</code> handler seam</strong> (ADR-35) — the decided integration boundary. Rewire deps + seam.</td>
         </tr>

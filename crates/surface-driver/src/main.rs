@@ -24,7 +24,7 @@ use std::io::Write as _;
 use std::process::ExitCode;
 
 use gandr_core_checker::outcome::Eval;
-use gandr_runtime_host::ShellOutcome;
+use gandr_runtime_effects::ShellOutcome;
 use gandr_surface_engine::run::RunFileError;
 use gandr_surface_engine::run::run_source_file;
 

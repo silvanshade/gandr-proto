@@ -360,7 +360,7 @@ impl ShellHandler
         for _ in 0 .. MAX_TEMPDIR_ATTEMPTS {
             let suffix = self.tempdir_counter;
             self.tempdir_counter = self.tempdir_counter.saturating_add(1);
-            let candidate = base.join(format!("gandr-runtime-host-{pid}-{nonce:016x}-{suffix}"));
+            let candidate = base.join(format!("gandr-runtime-effects-{pid}-{nonce:016x}-{suffix}"));
             // `create_dir` (not `create_dir_all`) is deliberate: its
             // fail-on-exists is what guarantees a *fresh* directory —
             // `create_dir_all` would silently accept a pre-existing path.

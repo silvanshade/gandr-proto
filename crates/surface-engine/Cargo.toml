@@ -22,7 +22,7 @@ gandr-core-checker.workspace = true
 # session-facing gate resumes through its checkpoint engine.
 gandr-core-incremental.workspace = true
 gandr-core-sequent.workspace = true
-gandr-runtime-host.workspace = true
+gandr-runtime-effects.workspace = true
 gandr-surface-grammar.workspace = true
 gandr-surface-parser.workspace = true
 gandr-surface-syntax.workspace = true

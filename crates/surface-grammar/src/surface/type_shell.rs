@@ -366,7 +366,7 @@ fn add_lexical_rules(
 /// forms bind them. This table records what POSIX-shell surface the fragment
 /// **folds in** (parses, zero-obligation) versus what is **deliberately out**
 /// (deferred). Parse level only — the semantics
-/// (`runtime-host` host seam) are a separate track.
+/// (`runtime-effects` host seam) are a separate track.
 ///
 /// ## Folded in (parses today)
 ///

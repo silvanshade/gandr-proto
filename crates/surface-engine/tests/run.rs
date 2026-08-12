@@ -13,7 +13,7 @@ use core::sync::atomic::AtomicU32;
 use core::sync::atomic::Ordering;
 use std::path::PathBuf;
 
-use gandr_runtime_host::ShellOutcome;
+use gandr_runtime_effects::ShellOutcome;
 use gandr_surface_engine::run::RunFileError;
 use gandr_surface_engine::run::run_source;
 use gandr_surface_engine::run::run_source_file;

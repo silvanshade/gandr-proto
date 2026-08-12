@@ -584,7 +584,7 @@ name = "gandr"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
- "gandr-runtime-host",
+ "gandr-runtime-effects",
  "gandr-surface-engine",
 ]
 
@@ -639,7 +639,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gandr-runtime-host"
+name = "gandr-runtime-effects"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
@@ -679,7 +679,7 @@ version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
  "gandr-core-sequent",
- "gandr-runtime-host",
+ "gandr-runtime-effects",
  "gandr-surface-engine",
  "gandr-theory-levitation",
 ]
@@ -691,7 +691,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-incremental",
  "gandr-core-sequent",
- "gandr-runtime-host",
+ "gandr-runtime-effects",
  "gandr-surface-grammar",
  "gandr-surface-parser",
  "gandr-surface-syntax",

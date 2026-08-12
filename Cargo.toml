@@ -9,7 +9,7 @@ members = [
   "crates/core-sequent",
   "crates/kernel-core",
   "crates/kernel-strata",
-  "crates/runtime-host",
+  "crates/runtime-effects",
   "crates/storage-artifact",
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
@@ -141,7 +141,7 @@ path = "crates/surface-driver"
 # - gandr
 # - gandr-core-incremental
 # - gandr-core-sequent
-# - gandr-runtime-host
+# - gandr-runtime-effects
 # - gandr-surface-corpus
 # - gandr-surface-engine
 # - gandr-theory-levitation
@@ -157,7 +157,7 @@ path = "crates/core-incremental"
 
 # The polarized System-L command IL, the static focusing translation, and the L machine.
 # consumers:
-# - gandr-runtime-host
+# - gandr-runtime-effects
 # - gandr-surface-corpus
 # - gandr-surface-engine
 # - gandr-theory-circuit-algebras (dev)
@@ -186,8 +186,8 @@ path = "crates/kernel-strata"
 # - gandr
 # - gandr-surface-corpus
 # - gandr-surface-engine
-[workspace.dependencies.gandr-runtime-host]
-path = "crates/runtime-host"
+[workspace.dependencies.gandr-runtime-effects]
+path = "crates/runtime-effects"
 
 # Outer-layer CAS wiring: v1 export artifacts with canonical BLAKE3 manifest identity.
 # consumers:
@@ -462,7 +462,7 @@ features = ["full", "parsing", "visit"]
 # Typed error derive (`thiserror::Error`) for crate error vocabularies.
 # consumers:
 # - gandr-core-checker
-# - gandr-runtime-host
+# - gandr-runtime-effects
 # - gandr-storage-artifact
 # - gandr-storage-prolly-trees
 # - gandr-surface-engine
