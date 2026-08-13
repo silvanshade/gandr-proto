@@ -178,8 +178,8 @@ mod tests
         assert_eq!(
             seam_typings(&seam_program(edited)),
             resumed
-                .typings
-                .into_iter()
+                .typings()
+                .cloned()
                 .map(|typing| {
                     use gandr_core_incremental::checkpoint::ItemTyping;
 

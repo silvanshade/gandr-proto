@@ -69,14 +69,15 @@ mod tests
         let base = checkpoint_with(&seam_program(base_source), &prelude_ctx());
         let edited = seam_program(edited_source);
         let resumed = resume_with(&base, &edited, &prelude_ctx());
+        let resumed_typings: Vec<ItemTyping> = resumed.typings().cloned().collect();
         assert_eq!(
-            resumed.typings,
+            resumed_typings,
             from_scratch(edited_source),
             "incremental resume must equal from-scratch re-typing\n base:   {base_source:?}\n \
              edited: {edited_source:?}"
         );
         assert_eq!(
-            resumed.typings.len(),
+            resumed.typings().len(),
             resumed.adopted.len(),
             "one adoption flag per typing"
         );
@@ -192,7 +193,8 @@ mod tests
             // The dependency really did change type (Integer ⇒ String), so the
             // downstream reader's type moved with it — the gate confirms the
             // incremental path tracked that move.
-            match (&resumed.typings[0], &resumed.typings[1]) {
+            let typings: Vec<&ItemTyping> = resumed.typings().collect();
+            match (typings[0], typings[1]) {
                 | (
                     &ItemTyping::Definition {
                         name: ref x_name, ..
@@ -378,8 +380,9 @@ mod tests
                     .into_iter()
                     .map(|checkpoint| checkpoint.typing)
                     .collect();
+                let actual: Vec<_> = resumed.typings().cloned().collect();
                 prop_assert_eq!(
-                    resumed.typings,
+                    actual,
                     expected,
                     "resume != from-scratch\n base:   {:?}\n edited: {:?}",
                     base_source,

@@ -49,9 +49,10 @@
 //! # The differential gate
 //!
 //! Soundness is the theorem [`resume`] must satisfy and `tests/incremental`
-//! checks: for every edit, `resume(base, edited)` yields **exactly** the
-//! typings [`checkpoint_program`] computes for the edited program from scratch.
-//! Adoption skips re-typing; the gate proves the skips never change the answer.
+//! checks: for every edit, `resume(base, edited)` yields checkpoints whose
+//! typings are **exactly** those [`checkpoint_program`] computes for the edited
+//! program from scratch. Adoption skips re-typing; the gate proves the skips
+//! never change the answer.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -185,14 +186,15 @@ pub struct Checkpoints
 
 /// The result of a validated resume.
 ///
-/// Carries the per-item typings (in edited source order, comparable to
-/// [`checkpoint_program`]) and, per item, whether its base checkpoint was
-/// adopted (reused) rather than re-typed.
+/// Carries the edited program's next checkpoint set and, per item, whether its
+/// base checkpoint was adopted (reused) rather than re-typed. Returning the
+/// checkpoints, rather than a detached typing projection, makes the result the
+/// next resumable state without re-running the from-scratch checker.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Resume
 {
-    /// The typing of each edited item, in source order.
-    pub typings: Vec<ItemTyping>,
+    /// The edited program's next checkpoint set.
+    checkpoints: Checkpoints,
     /// Whether each edited item adopted its base checkpoint (`true`) or was
     /// re-typed (`false`), aligned with [`Self::typings`].
     pub adopted: Vec<bool>,
@@ -200,6 +202,47 @@ pub struct Resume
 
 impl Resume
 {
+    /// Borrows the edited program's per-item typings in source order.
+    ///
+    /// # Contract
+    /// - ensures: yields one typing per checkpoint, in source order.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn typings(&self) -> impl ExactSizeIterator<Item = &ItemTyping> + DoubleEndedIterator
+    {
+        self.checkpoints
+            .items
+            .iter()
+            .map(|checkpoint| &checkpoint.typing)
+    }
+
+    /// Borrows the checkpoint set produced by this resume.
+    ///
+    /// # Contract
+    /// - ensures: returns the resumable state whose typings [`Self::typings`]
+    ///   projects.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn checkpoints(&self) -> &Checkpoints
+    {
+        &self.checkpoints
+    }
+
+    /// Consumes this result into the checkpoint set for the next edit.
+    ///
+    /// # Contract
+    /// - ensures: returns the edited program's checkpoint set without
+    ///   re-checking any item.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn into_checkpoints(self) -> Checkpoints
+    {
+        self.checkpoints
+    }
+
     /// The number of items whose base checkpoint was adopted (reused) — the
     /// reuse the incremental path bought over a from-scratch re-type.
     ///
@@ -279,10 +322,10 @@ pub fn checkpoint_with(
 /// REPL context uses.
 ///
 /// # Contract
-/// - ensures: `resume(base, edited).typings` equals the typings of
+/// - ensures: `resume(base, edited).typings()` equals the typings of
 ///   `checkpoint_program(edited).items` — the differential gate.
-/// - provides: the §"The edit loop" validated resume — re-type the dirty
-///   frontier, adopt the validated remainder.
+/// - provides: the edited program's next checkpoint set, adopting the valid
+///   remainder and re-typing the dirty frontier.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -299,11 +342,12 @@ pub fn resume(
 /// # Contract
 /// - requires: `base` was produced by [`checkpoint_with`] against the same
 ///   `base_ctx` (its cached typings were computed under it).
-/// - ensures: the result equals `checkpoint_with(edited, base_ctx)`'s typings.
-/// - provides: adoption where the validity condition of §"The soundness
-///   condition" holds; a re-type otherwise; and a graceful full-re-type
-///   fallback if the order structure cannot admit the edit
-///   (`incremental-pipeline.md` §"Graceful degradation").
+/// - ensures: the result's typings equal `checkpoint_with(edited, base_ctx)`'s
+///   typings.
+/// - provides: the edited program's next checkpoint set, with adoption where
+///   the validity condition of §"The soundness condition" holds; a re-type
+///   otherwise; and a graceful full-re-type fallback if the order structure
+///   cannot admit the edit (`incremental-pipeline.md` §"Graceful degradation").
 /// - panics: none.
 ///
 /// # Adequacy
@@ -344,12 +388,12 @@ pub fn resume_with(
     // result, only without reuse.
     let Some(order) = splice_order(BaseItemCount(base.items.len()), &edited_to_base)
     else {
-        return resume_all_dirty(edited, &edited_footprints, base_ctx);
+        return resume_all_dirty(edited, edited_footprints, base_ctx);
     };
 
     let mut ctx = base_ctx.clone();
     let item_count = edited.items.len();
-    let mut typings: Vec<Option<ItemTyping>> = vec![None; item_count];
+    let mut checkpoints: Vec<Option<ItemCheckpoint>> = vec![None; item_count];
     let mut adopted: Vec<bool> = vec![false; item_count];
     for edited_index in order {
         let (Some(item), Some(footprint)) = (
@@ -362,17 +406,24 @@ pub fn resume_with(
         let base_index = edited_to_base.get(edited_index.0).copied().flatten();
         let base_checkpoint = base_index.and_then(|index| base.items.get(index.0));
         let is_adopted = adoptable(item, footprint, base_checkpoint, &changed);
-        let typing = if let (true, Some(checkpoint)) = (bool::from(is_adopted), base_checkpoint) {
-            checkpoint.typing.clone()
+        let checkpoint = if let (true, Some(checkpoint)) = (bool::from(is_adopted), base_checkpoint)
+        {
+            checkpoint.clone()
         }
         else {
-            let fresh = type_item(item, &ctx, footprint.has_hole.into());
-            note_binding_change(&mut changed, item, &fresh, base_checkpoint);
-            fresh
+            let typing = type_item(item, &ctx, footprint.has_hole.into());
+            note_binding_change(&mut changed, item, &typing, base_checkpoint);
+            ItemCheckpoint {
+                name: item.name.clone(),
+                ascription: item.ascription.clone(),
+                term: item.term.clone(),
+                footprint: footprint.clone(),
+                typing,
+            }
         };
-        thread_binding(&mut ctx, &typing);
-        if let Some(slot) = typings.get_mut(edited_index.0) {
-            *slot = Some(typing);
+        thread_binding(&mut ctx, &checkpoint.typing);
+        if let Some(slot) = checkpoints.get_mut(edited_index.0) {
+            *slot = Some(checkpoint);
         }
         if let Some(slot) = adopted.get_mut(edited_index.0) {
             *slot = bool::from(is_adopted);
@@ -383,11 +434,13 @@ pub fn resume_with(
     // (the splice is a permutation); a gap can only arise from an
     // order-structure anomaly, which degrades to a full re-type rather than a
     // partial answer.
-    if typings.iter().any(Option::is_none) {
-        return resume_all_dirty(edited, &edited_footprints, base_ctx);
+    if checkpoints.iter().any(Option::is_none) {
+        return resume_all_dirty(edited, edited_footprints, base_ctx);
     }
     Resume {
-        typings: typings.into_iter().flatten().collect(),
+        checkpoints: Checkpoints {
+            items: checkpoints.into_iter().flatten().collect(),
+        },
         adopted,
     }
 }
@@ -684,27 +737,30 @@ fn invert_matches(
 }
 
 /// A full-re-type resume (every item dirty): the graceful-degradation and
-/// oracle path — it recomputes exactly the from-scratch typings.
+/// oracle path — it recomputes exactly the from-scratch checkpoints.
 fn resume_all_dirty(
     edited: &Program,
-    edited_footprints: &[Footprint],
+    edited_footprints: Vec<Footprint>,
     base_ctx: &Ctx,
 ) -> Resume
 {
     let mut ctx = base_ctx.clone();
-    let mut typings: Vec<ItemTyping> = Vec::with_capacity(edited.items.len());
-    for (index, item) in edited.items.iter().enumerate() {
-        let has_hole = edited_footprints
-            .get(index)
-            .is_some_and(|footprint| footprint.has_hole);
-        let typing = type_item(item, &ctx, has_hole.into());
+    let mut checkpoints: Vec<ItemCheckpoint> = Vec::with_capacity(edited.items.len());
+    for (item, footprint) in edited.items.iter().zip(edited_footprints) {
+        let typing = type_item(item, &ctx, footprint.has_hole.into());
         thread_binding(&mut ctx, &typing);
-        typings.push(typing);
+        checkpoints.push(ItemCheckpoint {
+            name: item.name.clone(),
+            ascription: item.ascription.clone(),
+            term: item.term.clone(),
+            footprint,
+            typing,
+        });
     }
-    let dirty = vec![false; typings.len()];
+    let adopted = vec![false; checkpoints.len()];
     Resume {
-        typings,
-        adopted: dirty,
+        checkpoints: Checkpoints { items: checkpoints },
+        adopted,
     }
 }
 

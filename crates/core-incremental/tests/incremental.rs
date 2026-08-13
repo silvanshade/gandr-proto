@@ -148,13 +148,14 @@ mod tests
         let edited_program = items_of(edited);
         let checkpoints = checkpoint_program(&base_program);
         let resumed = resume(&checkpoints, &edited_program);
+        let resumed_typings: Vec<ItemTyping> = resumed.typings().cloned().collect();
         assert_eq!(
-            resumed.typings,
+            resumed_typings,
             from_scratch(&edited_program),
             "incremental resume must equal from-scratch re-typing"
         );
         assert_eq!(
-            resumed.typings.len(),
+            resumed.typings().len(),
             resumed.adopted.len(),
             "one adoption flag per typing"
         );
@@ -274,7 +275,8 @@ mod tests
                 !resumed.adopted[1],
                 "the dependent `y` reads the changed binding `x`, so it is re-typed"
             );
-            match (&resumed.typings[0], &resumed.typings[1]) {
+            let typings: Vec<&ItemTyping> = resumed.typings().collect();
+            match (typings[0], typings[1]) {
                 | (
                     &ItemTyping::Definition {
                         name: ref x_name, ..
@@ -311,10 +313,11 @@ mod tests
                 !resumed.adopted[1],
                 "the dependent `y` is re-typed against the changed `x`"
             );
+            let typings: Vec<&ItemTyping> = resumed.typings().collect();
             assert!(
-                matches!(resumed.typings[1], ItemTyping::TypeError { .. }),
+                matches!(typings[1], ItemTyping::TypeError { .. }),
                 "the ascription `(x : Integer)` fails once `x` is a String: {:?}",
-                resumed.typings[1]
+                typings[1]
             );
         }
     }
@@ -460,7 +463,8 @@ mod tests
                 let resumed = resume(&checkpoints, &edited);
 
                 let expected = from_scratch(&edited);
-                prop_assert_eq!(resumed.typings, expected);
+                let actual: Vec<ItemTyping> = resumed.typings().cloned().collect();
+                prop_assert_eq!(actual, expected);
             }
         }
     }

@@ -4,50 +4,46 @@
 //!
 //! The smallest end-to-end interactive slice: [`Session::submit`] takes one
 //! line of source, lowers it totally ([`crate::lower::lower_source_total`]),
-//! reports diagnostics and hole goals ([`crate::diag::report`]), and — for each
-//! hole-free, well-typed item — types it ([`item_type`]) on the heap-stacked
-//! typing machine and, for an expression item, evaluates it on the
-//! [`gandr_core_sequent::machine`] L machine, returning the structured
-//! [`Submission`] a front-end renders. The engine itself is presentation-free
-//! (no `Display`; the core stays free of presentation dependencies) so every
-//! frontend reuses the same session core.
+//! reports diagnostics and hole goals ([`crate::diag::report`]), and resumes
+//! [`gandr_core_incremental`] at the submitted items' boundaries. The validated
+//! resume reuses prior checkpoints where their terms and dependency footprints
+//! remain valid and re-types the dirty frontier. Hole-free expressions then
+//! evaluate on the [`gandr_core_sequent::machine`] L machine, returning the
+//! structured [`Submission`] a front-end renders. The engine is
+//! presentation-free (no `Display`; the core stays free of presentation
+//! dependencies) so every frontend reuses the same session core.
 //!
-//! # Cross-line definitions — the interim "session-prelude" (strategy A)
+//! # Cross-line definitions
 //!
-//! Top-level items lower *independently* (the lowerer threads no context
-//! between them). Cross-line *definitions* are bridged below *without any core
-//! change*; a separate, orthogonal bridge carries the **prelude**. The L
-//! machine resolves module-qualified native builtins through [`prelude_env`],
-//! which [`Session::submit`] threads into every run. The session bridges
-//! both ways:
+//! Top-level items lower independently. [`Session`] retains their ordered
+//! [`Program`] and the matching [`Checkpoints`], then appends each new
+//! submission and calls [`resume_with`] against the surface prelude context.
+//! The checkpoint engine is therefore the typing authority across lines:
 //!
-//! - **typing** carries an accumulating [`Ctx`]: a processed `def name = …`
-//!   binds `name : A` into [`Session::ctx`], so a later line's expression types
-//!   against it;
-//! - **evaluation** runs each definition to a *value* once, at definition time
+//! - **typing** comes from the resumed [`ItemTyping`] sequence. A bound
+//!   definition's validated typing contributes its name and value type to the
+//!   session context used by diagnostics for the next submission;
+//! - **evaluation** runs each definition to a value once, at definition time
 //!   (eager, but safe here: the pure spine is terminating and effect-free), and
-//!   stores that value; a later expression folds the stored values into a
-//!   `ret`-`Bind` chain ([`eval_chain`]) — the same sequencing shape the
-//!   lowerer gives a block's `val` / `run` statements — so the L machine
-//!   extends its value environment with each stored definition before running
-//!   the expression.
+//!   stores that value. A later expression folds the stored values into a
+//!   `ret`-`Bind` chain ([`eval_chain`]), the same sequencing shape the lowerer
+//!   gives a block's `val` / `run` statements, so the L machine extends its
+//!   value environment with each stored definition before running the
+//!   expression.
 //!
-//! Storing the *evaluated value* (not the definition term) keeps the chain a
-//! sequence of `ret v >>= …`, which never re-runs a computation: an unevaluable
-//! definition — for example, one that reaches defined blame instead of `ret` —
-//! is bound for typing but carries **no** stored value, so it can never make an
-//! *unrelated* later expression stuck (no poisoning), and an evaluable
-//! definition runs exactly once (REPL memoization).
+//! Storing the evaluated value rather than the definition term keeps the chain
+//! a sequence of `ret v >>= …`, which never re-runs a computation. An
+//! unevaluable definition, for example one that reaches defined blame instead
+//! of `ret`, is bound for typing but carries no stored value, so it cannot make
+//! an unrelated later expression stuck. An evaluable definition runs exactly
+//! once (REPL memoization).
 //!
-//! This is the interim simplification of the persisted `Γ`/`Θ` of
-//! `spec:implementation/incremental-pipeline.md` §"The read-evaluate
-//! loop"; the checkpointed persistent context lives in
-//! `gandr-core-incremental`'s item-granular engine. Only definitions with a
-//! **value type**
-//! are bindable as variables (CBPV: a variable is a value); a definition of
-//! bare computation type — e.g. an un-thunked `λ` — is reported with `bound =
-//! false` and left out of scope (thunk it to name it), matching the lowerer's
-//! own `let` discipline.
+//! The item checkpoints are the persisted `Γ`-side state of
+//! `spec:implementation/incremental-pipeline.md` §"The read-evaluate loop".
+//! Only definitions with a **value type** are bindable as variables (CBPV: a
+//! variable is a value). A definition of bare computation type, such as an
+//! un-thunked `λ`, is reported with `bound = false` and left out of scope
+//! (thunk it to name it), matching the lowerer's own `let` discipline.
 //!
 //! # What evaluates
 //!
@@ -68,25 +64,24 @@ use alloc::vec::Vec;
 use gandr_core_checker::boundary::ConstructorTag;
 use gandr_core_checker::ctx::Ctx;
 use gandr_core_checker::error::TypeError;
-use gandr_core_checker::machine;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Term;
 use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::DataId;
 use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_incremental::checkpoint::Checkpoints;
+use gandr_core_incremental::checkpoint::ItemTyping;
+use gandr_core_incremental::checkpoint::resume_with;
 use gandr_core_incremental::region::Item;
+use gandr_core_incremental::region::Program;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 
 use crate::boundary::ConstructorName;
 use crate::boundary::DefinitionName;
-use crate::boundary::HolePresence;
 use crate::boundary::PipelineSource;
 use crate::diag;
 use crate::ffi::ForeignModule;
-use crate::goals::initial_state;
 use crate::lower::LowerError;
 use crate::lower::lower_source_total_seeded;
 use crate::prelude::Prelude;
@@ -96,11 +91,10 @@ use crate::prelude_env;
 /// The outcome of one lowered item in a [`Submission`], in source order.
 ///
 /// Typing failures and hole goals are carried by the submission's
-/// [`diag::Report`]; the variants here add the *success*
-/// information a front-end needs — a definition's type and whether it entered
-/// scope, and an expression's type and evaluation outcome — plus markers for
-/// the non-success items so a consumer can iterate items and the report in
-/// lock-step.
+/// [`diag::Report`]; the variants here add the success information a front-end
+/// needs: a definition's type and whether it entered scope, or an expression's
+/// type and evaluation outcome. Markers for non-success items let a consumer
+/// iterate items and the report in lock-step.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ItemOutcome
 {
@@ -113,7 +107,7 @@ pub enum ItemOutcome
         ty: Ty,
         /// Whether the definition entered scope: `true` for a value-typed
         /// definition (bound into [`Session::ctx`] and the eval prelude),
-        /// `false` for a bare-computation-typed one (reported but not bound —
+        /// `false` for a bare-computation-typed one (reported but not bound;
         /// thunk it to name it).
         bound: bool,
     },
@@ -138,11 +132,6 @@ pub enum ItemOutcome
     /// parse-completeness validator) and the holes are listed as goals in the
     /// submission's report.
     Holey,
-    /// An item of unknown sort — the forward-compatible shape for a future
-    /// `Term` sort. Never produced today: the sort dispatch is total over
-    /// `Term`'s two sorts, and an added sort is a compile-visible change at
-    /// every match.
-    Unknown,
 }
 
 /// The structured result of one [`Session::submit`].
@@ -160,61 +149,55 @@ pub struct Submission
     pub outcomes: Vec<ItemOutcome>,
 }
 
-/// A REPL session: the accumulating typing context and definition prelude that
-/// carry definitions across lines (see the module doc).
+/// A REPL session: item-granular typing checkpoints and the definition values
+/// that carry definitions across lines (see the module doc).
 #[derive(Clone, Debug)]
 pub struct Session
 {
-    /// The typing context: the prelude operators plus every value-typed
-    /// definition bound so far (innermost last, so later definitions shadow).
+    /// The surface prelude context against which every checkpoint set starts.
+    base_ctx: Ctx,
+    /// The typing context after the current checkpoint set, used to report the
+    /// next submission's diagnostics.
     ctx: Ctx,
-    /// The accumulated definition *values*, in definition order — each the
-    /// once-evaluated result of a value-typed `def` ([`Session::define`]). A
-    /// later expression folds these into a `ret`-`Bind` chain ([`eval_chain`]);
-    /// a definition that did not reduce to a value contributes none.
+    /// The complete ordered item program whose typing state is checkpointed.
+    program: Program,
+    /// One validated typing checkpoint per item in [`Self::program`].
+    checkpoints: Checkpoints,
+    /// The accumulated definition values, in definition order, each the
+    /// once-evaluated result of a value-typed `def` ([`Session::define`]).
     defs: Vec<(String, Value)>,
     /// The eval-side prelude binding environment: module-qualified native
-    /// builtins consumed by the L machine's prelude focus. Built once
-    /// ([`prelude_env`]); shared (`Rc`) into every run.
+    /// builtins consumed by the L machine's prelude focus.
     prelude: Prelude,
     /// The `extern`-declared foreign modules accumulated across submissions,
-    /// keyed by namespace (proposal-ffi.md §2). Bridged across lines exactly as
-    /// definitions are: an `extern` block submitted on one line makes a later
-    /// line's call `m.op(args)` elaborate to a `perform` (§3.1). A foreign call
-    /// with no handler installed blames `PerformNoHandler` — the
-    /// capability-denied outcome (§3.2), least authority made visible.
+    /// keyed by namespace (proposal-ffi.md §2).
     foreign: BTreeMap<String, ForeignModule>,
     /// The `codata`-declared observation shapes accumulated across submissions,
-    /// keyed by codata type name (codata design §2). Bridged across lines
-    /// exactly as `extern` modules and definitions are: a `codata C` block
-    /// submitted on one line makes a later line's `def rec f() -> C`
-    /// coverage-check and a later `s.π` observe against it (`codata MVP`).
+    /// keyed by codata type name (codata design §2).
     codata: BTreeMap<String, crate::lower::codata::CodataDecl>,
     /// The `data`-declared datatype shapes accumulated across submissions,
-    /// keyed by datatype name (declared-data design Decision 4). Bridged across
-    /// lines like `codata` and `extern`: the decl table (the constructor
-    /// enumeration and the minted `DataId`) that a front-end renderer
-    /// resolves a declared-constructor value's `tag` against to print its
-    /// constructor name (`Some(3)`, `Red`) rather than the structural
-    /// carrier.
+    /// keyed by datatype name (declared-data design Decision 4).
     data: BTreeMap<String, crate::lower::data::DataDecl>,
 }
 
 impl Session
 {
-    /// Opens a fresh session: the prelude context ([`prelude_ctx`]) and no
-    /// definitions.
+    /// Opens a fresh session: the surface prelude and an empty checkpoint set.
     ///
     /// # Contract
     /// - ensures: the returned session types against the prelude operators and
-    ///   carries no definitions.
+    ///   carries no source items, checkpoints, or definitions.
     /// - panics: none.
     #[inline]
     #[must_use]
     pub fn new() -> Self
     {
+        let base_ctx = prelude_ctx();
         Self {
-            ctx: prelude_ctx(),
+            ctx: base_ctx.clone(),
+            base_ctx,
+            program: Program::default(),
+            checkpoints: Checkpoints::default(),
             defs: Vec::new(),
             prelude: prelude_env(),
             foreign: BTreeMap::new(),
@@ -265,19 +248,18 @@ impl Session
         &self.ctx
     }
 
-    /// Lowers, reports, types, and (for hole-free expressions) evaluates one
-    /// line of source, advancing the session with any new value-typed
-    /// definitions.
+    /// Lowers, reports, incrementally types, and evaluates one line of source.
     ///
     /// # Contract
-    /// - ensures: on success returns a [`Submission`] with one [`ItemOutcome`]
-    ///   per lowered item (in source order) and the [`diag::Report`]; every
-    ///   value-typed `def` item is bound into the session (`ctx` and the eval
-    ///   prelude) before later items in the same submission are processed.
+    /// - ensures: on success returns one [`ItemOutcome`] per newly lowered
+    ///   item, in source order, and retains one validated checkpoint per item
+    ///   seen across the whole session; value-typed definitions enter the
+    ///   diagnostic and evaluation environments before later items are
+    ///   processed.
     /// - provides: the smallest end-to-end interactive slice (read → lower →
-    ///   report → type → eval → result).
+    ///   report → validated resume → eval → result).
     /// - fails: only the infrastructure lowering failures
-    ///   ([`LowerError::ParserUnavailable`] / [`LowerError::ParseFailed`]) —
+    ///   ([`LowerError::ParserUnavailable`] / [`LowerError::ParseFailed`]);
     ///   every parseable input lowers totally, with out-of-fragment regions
     ///   becoming holes.
     /// - panics: none; evaluation runs on the environment-backed L machine, and
@@ -286,6 +268,15 @@ impl Session
     /// # Errors
     ///
     /// Returns the lowering [`LowerError`] for an infrastructure failure.
+    ///
+    /// # Adequacy
+    /// - hypothesis: the session's incremental typing sequence must equal a
+    ///   from-scratch typing of the same accumulated program while preserving
+    ///   cross-line evaluation. The session differential and the core
+    ///   checkpoint differential distinguish stale adoption, missing
+    ///   checkpoints, and a return to detached per-item typing.
+    /// - witness: `tests::session::checkpointed_session_matches_from_scratch`
+    /// - witness: `gandr_core_incremental::tests::incremental`
     #[inline]
     pub fn submit<'source, S>(
         &mut self,
@@ -297,97 +288,96 @@ impl Session
         let source = source.into();
         let lowered = lower_source_total_seeded(source, &self.foreign, &self.codata, &self.data)?;
         let report = diag::report(&lowered, &self.ctx);
+
+        let prior_item_count = self.program.items.len();
+        let mut edited = self.program.clone();
+        edited.items.extend(lowered.items.iter().cloned());
+        let resumed = resume_with(&self.checkpoints, &edited, &self.base_ctx);
+
         let mut outcomes = Vec::with_capacity(lowered.items.len());
-        for (index, item) in lowered.items.iter().enumerate() {
-            let holey = report.goals.iter().any(|goal| goal.item == index);
-            outcomes.push(self.process_item(item, holey));
+        for (item, typing) in lowered
+            .items
+            .iter()
+            .zip(resumed.typings().skip(prior_item_count))
+        {
+            outcomes.push(self.process_item(item, typing));
         }
-        // Persist this submission's `codata` blocks so a later line's copattern
-        // definition or observation sees the declaration (codata design §2 bridge).
-        // Before the `foreign` move below, which partially moves `lowered`.
+        debug_assert_eq!(
+            outcomes.len(),
+            lowered.items.len(),
+            "resume yields one typing and outcome per appended item"
+        );
+        self.program = edited;
+        self.checkpoints = resumed.into_checkpoints();
+
+        // Persist this submission's declaration tables only after lowering and
+        // checkpoint resume both succeeded, so a failed submission changes no
+        // session state.
         for (name, decl) in lowered.codata() {
             self.codata.insert(name.clone(), decl.clone());
         }
-        // Persist this submission's `data` blocks so a later line's renderer
-        // resolves a returned constructor value's name (declared-data design stage d
-        // bridge).
         for (name, decl) in lowered.data() {
             self.data.insert(name.clone(), decl.clone());
         }
-        // Persist this submission's `extern` declarations so a later line's
-        // foreign call sees the module — the FFI analogue of the definition
-        // bridge above (an `extern` block itself yields no runnable item).
         for module in lowered.foreign {
             self.foreign.insert(module.name.clone(), module);
         }
         Ok(Submission { report, outcomes })
     }
 
-    /// Processes one lowered item against the current session, advancing the
-    /// session when the item is a value-typed definition.
+    /// Projects one engine-owned typing into the session's evaluation outcome.
     fn process_item(
         &mut self,
         item: &Item,
-        holey: impl Into<HolePresence>,
+        typing: &ItemTyping,
     ) -> ItemOutcome
     {
-        if holey.into().0 {
-            // The parse-completeness validator: an item with holes is not
-            // evaluated (and a holey definition is not bound); its goals are in
-            // the report.
-            return ItemOutcome::Holey;
-        }
-        match item_type(item, &self.ctx) {
-            | None => ItemOutcome::Unknown,
-            | Some(Err(error)) => ItemOutcome::TypeError { error },
-            | Some(Ok(ty)) => match item.name {
-                | Some(ref name) => self.define(name, item, ty),
-                | None => ItemOutcome::Expression {
-                    value: run_comp_with_prelude(
-                        &eval_chain(&self.defs, &item.term),
-                        self.prelude.as_bindings(),
-                    ),
-                    ty,
-                },
+        match *typing {
+            | ItemTyping::Definition {
+                ref name,
+                ref ty,
+                bound,
+            } => self.define(name, item, ty.clone(), bound),
+            | ItemTyping::Expression { ref ty } => ItemOutcome::Expression {
+                value: run_comp_with_prelude(
+                    &eval_chain(&self.defs, &item.term),
+                    self.prelude.as_bindings(),
+                ),
+                ty: ty.clone(),
             },
+            | ItemTyping::TypeError { ref error } => ItemOutcome::TypeError {
+                error: error.clone(),
+            },
+            | ItemTyping::Holey => ItemOutcome::Holey,
         }
     }
 
-    /// Records a successfully-typed `def name = …` item, binding it into scope
-    /// when it has a value type.
+    /// Records a successfully-typed definition and, when bound, its value.
     fn define<'name>(
         &mut self,
         name: impl Into<DefinitionName<'name>>,
         item: &Item,
         ty: Ty,
+        bound: bool,
     ) -> ItemOutcome
     {
         let name = name.into();
-        match bound_value_type(&ty) {
-            | Some(value_type) => {
-                // Evaluate the definition once, now, under the definitions
-                // already in scope; store its value only when it reduces to
-                // one. A definition that reaches defined blame or another
-                // non-value outcome is type-only — it stores nothing, so it
-                // can never make an unrelated later expression stuck.
-                if let Eval::Value(Comp::Ret(value)) = run_comp_with_prelude(
-                    &eval_chain(&self.defs, &item.term),
-                    self.prelude.as_bindings(),
-                ) {
-                    self.defs.push((name.0.to_owned(), (*value).clone()));
-                }
-                self.ctx.bind(name.0.to_owned(), value_type.clone());
-                ItemOutcome::Definition {
-                    name: name.0.to_owned(),
-                    ty: Ty::Value(value_type),
-                    bound: true,
-                }
-            },
-            | None => ItemOutcome::Definition {
-                name: name.0.to_owned(),
-                ty,
-                bound: false,
-            },
+        if bound && let Ty::Value(ref value_type) = ty {
+            // Evaluate the definition once under the definitions already in
+            // scope. A non-value terminal contributes no eval binding and
+            // cannot poison an unrelated later expression.
+            if let Eval::Value(Comp::Ret(value)) = run_comp_with_prelude(
+                &eval_chain(&self.defs, &item.term),
+                self.prelude.as_bindings(),
+            ) {
+                self.defs.push((name.0.to_owned(), (*value).clone()));
+            }
+            self.ctx.bind(name.0.to_owned(), value_type.clone());
+        }
+        ItemOutcome::Definition {
+            name: name.0.to_owned(),
+            ty,
+            bound,
         }
     }
 }
@@ -398,49 +388,6 @@ impl Default for Session
     fn default() -> Self
     {
         Self::new()
-    }
-}
-
-/// Types one lowered item against `base`, returning its result type.
-///
-/// The "terminal computation type of a `Done` expression item" the REPL shows
-/// before the value.
-/// Uses [`crate::goals::initial_state`]'s sort-and-ascription dispatch, then
-/// drives the heap-stacked typing machine to completion: an item is checked
-/// against its recorded ascription when the sorts match, inferred otherwise.
-///
-/// # Contract
-/// - ensures: returns `Some(Ok(ty))` with the item's value/computation type on
-///   success, `Some(Err(error))` with the first [`TypeError`] on a typing
-///   failure. The `Option` is vestigial: `Term`'s upstream growth point is
-///   retired, so the sort dispatch is total and `None` is never returned (an
-///   added sort would be a compile-visible change at the dispatch).
-/// - panics: none; typing is driven by [`gandr_core_checker::machine`], whose
-///   continuation stack is heap-allocated, so input-scaled nesting in the term
-///   does not consume the host call stack during item type determination.
-#[inline]
-#[must_use]
-pub fn item_type(
-    item: &Item,
-    base: &Ctx,
-) -> Option<Result<Ty, TypeError>>
-{
-    let state = initial_state(item, base);
-    Some(machine::run(state).0)
-}
-
-/// The value type a definition binds into scope, or [`None`] when it has no
-/// value type (a bare computation type — `Arrow` / `With` / `Unknown` — cannot
-/// be a variable in CBPV).
-///
-/// A returner `F A` binds its payload `A` (the value the definition produces);
-/// a value-typed definition binds its own type.
-fn bound_value_type(ty: &Ty) -> Option<ValueType>
-{
-    match *ty {
-        | Ty::Value(ref value_type) => Some(value_type.clone()),
-        | Ty::Comp(CompType::F(ref payload, _)) => Some((**payload).clone()),
-        | _ => None,
     }
 }
 

@@ -955,7 +955,6 @@ fn outcome_label(outcome: &ItemOutcome) -> HarnessLabel
         | ItemOutcome::Expression { .. } => "expression".into(),
         | ItemOutcome::TypeError { .. } => "type-error".into(),
         | ItemOutcome::Holey => "holey".into(),
-        | ItemOutcome::Unknown => "unknown".into(),
     }
 }
 

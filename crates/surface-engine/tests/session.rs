@@ -86,6 +86,36 @@ mod tests
             | ref outcome => panic!("second item should return `greeting`, got {outcome:?}"),
         }
     }
+
+    /// Appending a submission through the session checkpoint state yields the
+    /// same item outcomes as typing and evaluating the accumulated source from
+    /// scratch in one submission.
+    #[test]
+    fn checkpointed_session_matches_from_scratch()
+    {
+        let mut checkpointed = Session::new();
+        let definitions = checkpointed
+            .submit("def x = 40; def y = x + 2")
+            .expect("definition lowering must not fail");
+        assert_clean_submission(&definitions);
+        let expression = checkpointed
+            .submit("ret y")
+            .expect("expression lowering must not fail");
+        assert_clean_submission(&expression);
+
+        let mut resumed_outcomes = definitions.outcomes;
+        resumed_outcomes.extend(expression.outcomes);
+
+        let mut from_scratch = Session::new();
+        let full = from_scratch
+            .submit("def x = 40; def y = x + 2; ret y")
+            .expect("from-scratch lowering must not fail");
+        assert_clean_submission(&full);
+        assert_eq!(
+            resumed_outcomes, full.outcomes,
+            "checkpointed append must preserve the from-scratch outcomes"
+        );
+    }
     /// One-part function sugar pushes the declared `F Integer` result type into
     /// a check-only `case` body, then the definition evaluates normally.
     #[test]

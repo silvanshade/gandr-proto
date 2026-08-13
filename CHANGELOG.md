@@ -4,6 +4,12 @@ Notable changes to the gandr workspace, newest first.
 This is the single workspace changelog; the per-crate `docs/` directories it replaces are leaving the tree, and their salvageable history is preserved here.
 Entries dated before 2026-07-21 record the relevant tier's lineage before its absorption into this tree.
 
+## 2026-08-13
+
+- **surface-engine / core-incremental**: the interactive session now retains its ordered item program and checkpoint set, resumes each appended submission through `gandr-core-incremental`, and derives item outcomes from the resumed typings instead of re-running the interim session-local typing path.
+  `Resume` now carries the edited checkpoints needed by the next append; the script runner remains on its one-shot path.
+  The real-front-end and parser-free resume differentials, the session append differential, and all 119 executable corpus examples cover the cutover.
+
 ## 2026-08-11
 
 - The retirement continues: the `surface-syntax`, `surface-parser`, `surface-grammar`, and `surface-render-remote` sets leave the tree.
