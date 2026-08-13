@@ -1,6 +1,6 @@
-//! The **cell store** — oriented 2-cells over a [`CellAlphabet`],
-//! content-addressed and carrying derived metadata
-//! (the sequent-machines design's §7.3; VDC addendum §A).
+//! The **cell store**: structurally deduplicated, insertion-addressed oriented
+//! 2-cells over a [`CellAlphabet`] with derived metadata (the sequent-machines
+//! design's §7.3; VDC addendum §A).
 //!
 //! A [`Cell`] is an oriented rewrite `lhs ~> rhs` between two command patterns
 //! of the alphabet `A`, with:
@@ -15,12 +15,14 @@
 //!   the `invertible` flag in the sequent alphabet), computed **live** at
 //!   construction by [`CellAlphabet::derive_meta`].
 //!
-//! The store ([`CellStore`]) dedups on **structural identity** ([`Eq`] over the
-//! pattern pair — the content-addressing of §7.3.1) and hands out dense
-//! [`CellId`]s in insertion order, so iteration and completion are
-//! deterministic. Content addressing is by structural content only — no arena
-//! addresses, generation stamps, or session state (the module-level trust
-//! warning of [`crate::alphabet`]).
+//! The store ([`CellStore`]) deduplicates on **structural identity** ([`Eq`]
+//! over the whole cell) and hands out dense [`CellId`]s in insertion order, so
+//! iteration and completion are deterministic. Certificates use those dense
+//! ids as **indexed-store identity**: cloning a store or extending it by
+//! appending cells preserves certificate references, while rebuilding the same
+//! structural cell multiset in another order does not. Structural
+//! deduplication uses no arena addresses, generation stamps, or session state;
+//! it does not make a [`CellId`] a portable content address.
 
 use alloc::vec::Vec;
 
@@ -78,13 +80,18 @@ impl<A: CellAlphabet> Cell<A>
     }
 }
 
-/// A dense **cell identifier** — an index into a [`CellStore`].
+/// A dense **cell identifier**: an insertion-order index into one
+/// [`CellStore`].
+///
+/// A certificate carrying this identifier is tied to the store's existing id
+/// assignment. Clones and append-only extensions preserve the assignment;
+/// permutations may bind the identifier to a different cell.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CellId(pub usize);
 
-/// The **cell store** — a content-addressed, insertion-ordered collection of
-/// cells (`proposal-sequent-kernel.md` §7.3.1).
+/// A structurally deduplicated, insertion-ordered collection of cells
+/// (`proposal-sequent-kernel.md` §7.3.1).
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CellStore<A: CellAlphabet = SequentAlphabet>
@@ -109,8 +116,8 @@ impl<A: CellAlphabet> CellStore<A>
     /// - ensures: a cell structurally equal (same `lhs`/`rhs`/orientation/
     ///   provenance) to one already present returns that cell's existing id and
     ///   does not grow the store; otherwise the cell is appended and its fresh
-    ///   id returned. Content-addressing is thus by structural identity
-    ///   (§7.3.1).
+    ///   id returned. Structural identity controls deduplication; the returned
+    ///   identifier remains an insertion-order address (§7.3.1).
     /// - panics: none.
     #[inline]
     pub fn insert(

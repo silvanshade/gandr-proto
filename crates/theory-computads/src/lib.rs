@@ -28,8 +28,8 @@
 //! - [`subst`] — substitutions, one-sided **matching** (cell application) and
 //!   two-sided **unification** (overlaps), both iterative (ADR-47).
 //! - [`cell`] — the [`cell::Cell`] (`lhs ~> rhs`, orientation, provenance,
-//!   derived metadata) and the content-addressed [`cell::CellStore`], generic
-//!   over the alphabet.
+//!   derived metadata) and the structurally deduplicated, insertion-ordered
+//!   [`cell::CellStore`], generic over the alphabet.
 //! - [`elaborate`] — a whole [`gandr_theory_levitation::SignDesc`] into cells
 //!   (§7.1), the ADR-54 acceptance target: surface `rule` faces
 //!   ([`gandr_theory_levitation::RuleFace`]) become cells, and the declared
@@ -48,7 +48,8 @@
 //!   decline-and-report (§7.3.3).
 //! - [`tracelet`] — replayable 3-cell certificates and the derived fused cell
 //!   (§7.2, §7.3.4), with replay-equivalence as the identity criterion (ADR-69
-//!   D1).
+//!   D1), indexed-store [`cell::CellId`] references, and observable
+//!   [`tracelet::ReplayTrace`] step evidence.
 //! - [`shift`] — the **earned shift-equivalence witness**: two adjacent
 //!   applications at disjoint positions with trivial overlap are one composite
 //!   transformation, granted per pair against the decided guard
@@ -214,6 +215,10 @@ pub use crate::shift::ShiftEquivalence;
 pub use crate::shift::ShiftObstruction;
 pub use crate::shift::derive_shift_equivalence;
 pub use crate::subst::Subst;
+pub use crate::tracelet::ReplayPath;
+pub use crate::tracelet::ReplayPathOutcome;
+pub use crate::tracelet::ReplayStep;
+pub use crate::tracelet::ReplayTrace;
 pub use crate::tracelet::Tracelet;
 pub use crate::tracelet::confluence_tracelet;
 pub use crate::tracelet::derive_fused;

@@ -32,7 +32,9 @@ mod tests
     use gandr_theory_computads::OverlapKind;
     use gandr_theory_computads::Pos;
     use gandr_theory_computads::ProdPat;
+    use gandr_theory_computads::ReplayPathOutcome;
     use gandr_theory_computads::Sym;
+    use gandr_theory_computads::Tracelet;
     use gandr_theory_computads::complete;
     use gandr_theory_computads::derive_fused;
     use gandr_theory_computads::enumerate_overlaps;
@@ -77,8 +79,9 @@ mod tests
         )
     }
 
-    #[test]
-    fn the_fused_cell_certificate_replays_over_the_store()
+    /// The insertion-ordered Peano store and its fused-equals-two-step
+    /// certificate.
+    fn fusion_fixture() -> (CellStore, Tracelet)
     {
         let mut store = peano_store();
         let overlap = enumerate_overlaps(&store)
@@ -90,9 +93,162 @@ mod tests
             })
             .expect("the composition overlap exists");
         let (_id, tracelet) = derive_fused(&overlap, &mut store).expect("fused cell derived");
+        (store, tracelet)
+    }
+
+    #[test]
+    fn the_fused_cell_certificate_replays_over_the_store()
+    {
+        let (store, tracelet) = fusion_fixture();
         assert!(
             bool::from(tracelet.replay(&store)),
             "the fused ≡ two-step certificate replays"
+        );
+    }
+
+    #[test]
+    fn replay_is_pure_over_a_fixed_certificate_and_store()
+    {
+        let (store, tracelet) = fusion_fixture();
+        let first = tracelet.replay_trace(&store);
+        let second = tracelet.replay_trace(&store);
+        let cloned_store = store.clone();
+        let over_clone = tracelet.replay_trace(&cloned_store);
+
+        let emitted_path_a = first
+            .path_a
+            .steps
+            .iter()
+            .map(|step| &step.application)
+            .collect::<Vec<_>>();
+        let emitted_path_b = first
+            .path_b
+            .steps
+            .iter()
+            .map(|step| &step.application)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            emitted_path_a,
+            tracelet.path_a.iter().collect::<Vec<_>>(),
+            "the observable first path contains both recorded applications"
+        );
+        assert_eq!(
+            emitted_path_b,
+            tracelet.path_b.iter().collect::<Vec<_>>(),
+            "the observable second path contains the recorded fused application"
+        );
+        assert_eq!(
+            first.path_a.outcome,
+            ReplayPathOutcome::Reached(first.joins_at.clone()),
+            "the first emitted path reaches the skolemized join"
+        );
+        assert_eq!(
+            first.path_b.outcome,
+            ReplayPathOutcome::Reached(first.joins_at.clone()),
+            "the second emitted path reaches the skolemized join"
+        );
+
+        assert_eq!(first, second, "repeating replay emits the same step trace");
+        assert_eq!(
+            first, over_clone,
+            "cloning the fixed store preserves the emitted step trace"
+        );
+        assert_eq!(
+            bool::from(tracelet.replay(&store)),
+            bool::from(first.verdict()),
+            "the trace verdict agrees with the non-tracing replay verdict"
+        );
+    }
+
+    #[test]
+    fn append_only_store_extension_preserves_replay_trace()
+    {
+        let (mut store, tracelet) = fusion_fixture();
+        let before = tracelet.replay_trace(&store);
+        let unrelated = Cell::new(
+            CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::ctor("Unrelated", []),
+                ConsPat::Top,
+            ),
+            CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::ctor("UnrelatedResult", []),
+                ConsPat::Top,
+            ),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        );
+
+        store.insert(unrelated);
+        let after = tracelet.replay_trace(&store);
+
+        assert_eq!(
+            before, after,
+            "appending an unrelated cell preserves indexed certificate replay"
+        );
+        assert_eq!(
+            bool::from(tracelet.replay(&store)),
+            bool::from(after.verdict()),
+            "the append-stable trace and verdict agree"
+        );
+    }
+
+    #[test]
+    fn store_permutation_is_not_an_indexed_certificate_invariant()
+    {
+        let (store, tracelet) = fusion_fixture();
+        let canonical = tracelet.replay_trace(&store);
+        let cells = store
+            .iter()
+            .map(|(_id, cell)| cell.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            cells.len(),
+            4,
+            "the fixture has three primitives and one fused cell"
+        );
+
+        let mut permuted = CellStore::new();
+        for index in [2_usize, 1, 0, 3] {
+            let cell = cells.get(index).expect("the permutation index is in range");
+            permuted.insert(cell.clone());
+        }
+        assert!(
+            store
+                .iter()
+                .all(|(_id, cell)| permuted.iter().any(|(_other_id, other)| other == cell)),
+            "the permuted store contains the same structural cell multiset"
+        );
+
+        let replayed = tracelet.replay_trace(&permuted);
+        assert_ne!(
+            canonical.path_a, replayed.path_a,
+            "rebinding positional cell zero changes the first emitted path"
+        );
+        assert_eq!(
+            canonical.path_b, replayed.path_b,
+            "the fused cell retained at positional cell three still emits the same path"
+        );
+        assert_eq!(
+            replayed.path_a.outcome,
+            ReplayPathOutcome::Stuck {
+                application: tracelet
+                    .path_a
+                    .first()
+                    .expect("the two-step path has a first application")
+                    .clone(),
+            },
+            "replay exposes the first application rebound by store permutation"
+        );
+        assert!(
+            !bool::from(replayed.verdict()),
+            "an indexed certificate is not invariant under store permutation"
+        );
+        assert_eq!(
+            bool::from(tracelet.replay(&permuted)),
+            bool::from(replayed.verdict()),
+            "the observable and non-tracing routes agree under permutation"
         );
     }
 

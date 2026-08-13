@@ -54,6 +54,80 @@ pub struct Tracelet<A: CellAlphabet = SequentAlphabet>
     pub joins_at: A::Cmd,
 }
 
+/// One successfully executed application in an observable replay path.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReplayStep<A: CellAlphabet = SequentAlphabet>
+{
+    /// The recorded application that fired.
+    pub application: CellApp<A>,
+    /// The command produced by that application.
+    pub result: A::Cmd,
+}
+
+/// The terminal observation of one replayed path.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ReplayPathOutcome<A: CellAlphabet = SequentAlphabet>
+{
+    /// Every recorded application fired, producing this command.
+    Reached(A::Cmd),
+    /// Replay stopped at the first application that could not be executed.
+    Stuck
+    {
+        /// The first unknown or inapplicable recorded step.
+        application: CellApp<A>,
+    },
+}
+
+/// The observable execution of one recorded path.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReplayPath<A: CellAlphabet = SequentAlphabet>
+{
+    /// The skolemized command from which replay started.
+    pub started_at: A::Cmd,
+    /// Every application that fired, in execution order.
+    pub steps: Vec<ReplayStep<A>>,
+    /// The completed command or the first replay obstruction.
+    pub outcome: ReplayPathOutcome<A>,
+}
+
+/// The observable execution of both paths in a tracelet certificate.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReplayTrace<A: CellAlphabet = SequentAlphabet>
+{
+    /// The first path's execution.
+    pub path_a: ReplayPath<A>,
+    /// The second path's execution.
+    pub path_b: ReplayPath<A>,
+    /// The skolemized join both completed paths must reach.
+    pub joins_at: A::Cmd,
+}
+
+impl<A: CellAlphabet> ReplayTrace<A>
+{
+    /// Whether both observed paths completed at the recorded join.
+    ///
+    /// # Contract
+    /// - ensures: positive iff both path outcomes are
+    ///   [`ReplayPathOutcome::Reached`] at `joins_at`.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — a completed two-path replay and a
+    ///   store-permuted replay stuck on its first positional cell distinguish
+    ///   the positive and negative verdicts exactly.
+    /// - witness: `differential::tests::replay_is_pure_over_a_fixed_certificate_and_store`
+    /// - witness: `differential::tests::store_permutation_is_not_an_indexed_certificate_invariant`
+    #[inline]
+    #[must_use]
+    pub fn verdict(&self) -> TraceletReplay
+    {
+        TraceletReplay::from(
+            matches!(self.path_a.outcome, ReplayPathOutcome::Reached(ref term) if *term == self.joins_at)
+                && matches!(self.path_b.outcome, ReplayPathOutcome::Reached(ref term) if *term == self.joins_at),
+        )
+    }
+}
+
 impl<A: CellAlphabet> Tracelet<A>
 {
     /// **Replay** the certificate: re-execute both paths from the peak and
@@ -65,6 +139,10 @@ impl<A: CellAlphabet> Tracelet<A>
     ///   recorded step) both succeed and reach the skolemized `joins_at`. A
     ///   step that no longer fires, or a path that lands elsewhere, yields
     ///   `false`.
+    /// - ensures: resolves every recorded [`CellId`] as an insertion-order
+    ///   index into `store`; it never retargets a step by structural cell
+    ///   content. Store clones and append-only extensions preserve that
+    ///   assignment, while permutations may change the replay.
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -74,6 +152,50 @@ impl<A: CellAlphabet> Tracelet<A>
     ) -> TraceletReplay
     {
         replay_from_peak(
+            store,
+            &self.overlap.peak,
+            &self.joins_at,
+            &self.path_a,
+            &self.path_b,
+        )
+    }
+
+    /// Replay the certificate and retain each successfully executed step.
+    ///
+    /// This is the observable companion to [`Tracelet::replay`]. The ordinary
+    /// verdict path retains no step vectors; callers that need evidence can pay
+    /// for the two exact-capacity vectors and compare their emitted traces.
+    ///
+    /// # Contract
+    /// - ensures: starts both paths at the skolemized peak; records every
+    ///   successful application and its result in path order; stops each path
+    ///   at its first unknown cell or inapplicable step; records the skolemized
+    ///   `joins_at` against which [`ReplayTrace::verdict`] judges completion.
+    /// - ensures: resolves recorded [`CellId`]s by their insertion-order index
+    ///   in `store`, so the emitted trace makes any permuted binding
+    ///   observable.
+    /// - provides: an observable replay step list without changing
+    ///   indexed-store certificate identity.
+    /// - panics: none.
+    /// - intension: allocates one step vector per path with capacity equal to
+    ///   that recorded path's length; [`Tracelet::replay`] retains neither.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L1 evidence + L3 pointwise — repeated and cloned-store
+    ///   replays expose equal traces, append-only extension preserves the
+    ///   trace, and a permutation that rebinds a positional cell id exposes the
+    ///   exact first stuck application.
+    /// - witness: `differential::tests::replay_is_pure_over_a_fixed_certificate_and_store`
+    /// - witness: `differential::tests::append_only_store_extension_preserves_replay_trace`
+    /// - witness: `differential::tests::store_permutation_is_not_an_indexed_certificate_invariant`
+    #[inline]
+    #[must_use]
+    pub fn replay_trace(
+        &self,
+        store: &CellStore<A>,
+    ) -> ReplayTrace<A>
+    {
+        replay_trace_from_peak(
             store,
             &self.overlap.peak,
             &self.joins_at,
@@ -114,12 +236,45 @@ where
 {
     let peak = A::skolemize(peak);
     let target = A::skolemize(joins_at);
-    let ran_a = run_path(store, peak.clone(), path_a);
-    let ran_b = run_path(store, peak, path_b);
+    let ran_a = run_path(store, peak.clone(), path_a, None);
+    let ran_b = run_path(store, peak, path_b, None);
     TraceletReplay::from(
-        matches!(ran_a, Some(ref t) if *t == target)
-            && matches!(ran_b, Some(ref t) if *t == target),
+        matches!(ran_a, ReplayPathOutcome::Reached(ref term) if *term == target)
+            && matches!(ran_b, ReplayPathOutcome::Reached(ref term) if *term == target),
     )
+}
+
+/// Replay two paths while retaining their successful steps.
+///
+/// # Contract
+/// - ensures: returns the same verdict as [`replay_from_peak`] through
+///   [`ReplayTrace::verdict`], with both path executions exposed.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — every differential replay row compares this
+///   evidence-bearing route's verdict with the non-tracing route.
+/// - witness: `differential::tests::replay_is_pure_over_a_fixed_certificate_and_store`
+/// - witness: `differential::tests::append_only_store_extension_preserves_replay_trace`
+/// - witness: `differential::tests::store_permutation_is_not_an_indexed_certificate_invariant`
+#[inline]
+fn replay_trace_from_peak<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    joins_at: &A::Cmd,
+    path_a: &[CellApp<A>],
+    path_b: &[CellApp<A>],
+) -> ReplayTrace<A>
+where
+    A: CellAlphabet,
+{
+    let peak = A::skolemize(peak);
+    let joins_at = A::skolemize(joins_at);
+    ReplayTrace {
+        path_a: trace_path(store, peak.clone(), path_a),
+        path_b: trace_path(store, peak, path_b),
+        joins_at,
+    }
 }
 
 /// Whether two tracelets are **replay-equivalent** — **the definition** of when
@@ -256,28 +411,87 @@ where
     Some((fused_id, tracelet))
 }
 
-/// Run a recorded path from `start`, firing each step by ground rewriting.
+/// Run a recorded path from `start`, optionally retaining successful steps.
 ///
 /// # Contract
-/// - ensures: `Some(term)` when every step's cell fires at its recorded
-///   position in sequence; `None` when any step fails to fire (a stale id or a
-///   no-longer-present redex).
+/// - ensures: [`ReplayPathOutcome::Reached`] contains the final command when
+///   every step fires in sequence; [`ReplayPathOutcome::Stuck`] identifies the
+///   first stale cell id or no-longer-present redex. When `steps` is present,
+///   appends exactly the successfully fired prefix in execution order.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — the fusion fixture exercises the complete path;
+///   its permuted indexed store exercises the first-step obstruction; exact
+///   emitted traces distinguish both outcomes.
+/// - witness: `differential::tests::replay_is_pure_over_a_fixed_certificate_and_store`
+/// - witness: `differential::tests::store_permutation_is_not_an_indexed_certificate_invariant`
 #[inline]
 fn run_path<A>(
     store: &CellStore<A>,
     start: A::Cmd,
     path: &[CellApp<A>],
-) -> Option<A::Cmd>
+    mut steps: Option<&mut Vec<ReplayStep<A>>>,
+) -> ReplayPathOutcome<A>
 where
     A: CellAlphabet,
 {
     let mut current = start;
     for step in path {
-        let cell = store.get(step.cell)?;
-        current = rewrite_at(cell, &current, &step.at)?;
+        let Some(cell) = store.get(step.cell)
+        else {
+            return ReplayPathOutcome::Stuck {
+                application: step.clone(),
+            };
+        };
+        let Some(result) = rewrite_at(cell, &current, &step.at)
+        else {
+            return ReplayPathOutcome::Stuck {
+                application: step.clone(),
+            };
+        };
+        if let Some(steps) = steps.as_deref_mut() {
+            steps.push(ReplayStep {
+                application: step.clone(),
+                result: result.clone(),
+            });
+        }
+        current = result;
     }
-    Some(current)
+    ReplayPathOutcome::Reached(current)
+}
+
+/// Replay one path and retain its successful execution prefix.
+///
+/// # Contract
+/// - ensures: `started_at` is `start`; `steps` and `outcome` are the observable
+///   projection of [`run_path`] over the same inputs.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — trace verdicts are compared with the
+///   non-tracing replay result over complete, append-extended, and permuted
+///   stores.
+/// - witness: `differential::tests::replay_is_pure_over_a_fixed_certificate_and_store`
+/// - witness: `differential::tests::append_only_store_extension_preserves_replay_trace`
+/// - witness: `differential::tests::store_permutation_is_not_an_indexed_certificate_invariant`
+#[inline]
+fn trace_path<A>(
+    store: &CellStore<A>,
+    start: A::Cmd,
+    path: &[CellApp<A>],
+) -> ReplayPath<A>
+where
+    A: CellAlphabet,
+{
+    let started_at = start.clone();
+    let mut steps = Vec::with_capacity(path.len());
+    let outcome = run_path(store, start, path, Some(&mut steps));
+    ReplayPath {
+        started_at,
+        steps,
+        outcome,
+    }
 }
 
 #[cfg(test)]
