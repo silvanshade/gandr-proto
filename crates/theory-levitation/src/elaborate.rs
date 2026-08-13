@@ -1268,8 +1268,8 @@ mod tests
         assert_eq!(
             Err(CircuitElaborationError::ManyRedexOccurrences {
                 occurrences: vec![
-                    RedexOccurrence::new("p", vec![0.into()]),
-                    RedexOccurrence::new("q", vec![1.into()]),
+                    RedexOccurrence::new("p", [0.into()]),
+                    RedexOccurrence::new("q", [1.into()]),
                 ]
                 .into(),
             }),
@@ -1303,8 +1303,8 @@ mod tests
         assert_eq!(
             Err(CircuitElaborationError::ManyRedexOccurrences {
                 occurrences: vec![
-                    RedexOccurrence::new("p", vec![0.into()]),
-                    RedexOccurrence::new("p", vec![1.into()]),
+                    RedexOccurrence::new("p", [0.into()]),
+                    RedexOccurrence::new("p", [1.into()]),
                 ]
                 .into(),
             }),

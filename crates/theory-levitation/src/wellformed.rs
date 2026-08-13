@@ -881,7 +881,7 @@ mod tests
             ])),
             congruence_body(),
         );
-        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits([rule]);
         assert!(
             check_desc(&desc).is_empty(),
             "the derived pair is the pair the declared sphere fixes"
@@ -900,7 +900,7 @@ mod tests
             ])),
             congruence_body(),
         );
-        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits([rule]);
         let diagnostics = check_desc(&desc);
         let mismatch = diagnostics
             .iter()
@@ -947,7 +947,7 @@ mod tests
             ),
             body,
         );
-        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits([rule]);
         let diagnostics = check_desc(&desc);
         assert!(
             diagnostics
@@ -994,7 +994,7 @@ mod tests
             SurfaceSpan::new(0.into(), 1.into()),
         );
         let rule = CircuitRule::new("alphabets", sphere, body);
-        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits([rule]);
         let diagnostics = check_desc(&desc);
         let mismatch = diagnostics
             .iter()
@@ -1030,7 +1030,7 @@ mod tests
             "a",
         );
         let rule = CircuitRule::new("loop", congruence_sphere(FreeTerm::var("a")), body);
-        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits([rule]);
         let diagnostics = check_desc(&desc);
         let cyclic = diagnostics
             .iter()
@@ -1061,11 +1061,11 @@ mod tests
             ])),
             congruence_body(),
         )
-        .with_ports(vec![
+        .with_ports([
             RewritePort::sorted("p", "Nat"),
             RewritePort::sorted("q", "Nat"),
         ]);
-        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits([rule]);
         assert!(
             check_desc(&desc).is_empty(),
             "a redex head the telescope declares is not an out-of-signature symbol"
@@ -1084,8 +1084,8 @@ mod tests
             ])),
             congruence_body(),
         )
-        .with_ports(vec![RewritePort::sorted("p", "Nat")]);
-        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        .with_ports([RewritePort::sorted("p", "Nat")]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits([rule]);
         let diagnostics = check_desc(&desc);
         let unknown = diagnostics
             .iter()

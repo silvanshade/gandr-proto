@@ -842,9 +842,10 @@ mod tests
     #[test]
     fn a_doubling_body_declines_on_the_node_budget()
     {
+        const OVER_BUDGET_LEVELS: DoublingLevels = DoublingLevels(20);
         // Twenty doubling frames derive a term of 2²⁰ leaves; the ceiling turns
         // that into a defined decline naming the ceiling rather than a hang.
-        let body = doubling_body(DoublingLevels(20));
+        let body = doubling_body(OVER_BUDGET_LEVELS);
         assert_eq!(
             Err(CircuitDerivationError::NodeBudget {
                 budget: CircuitNodeBudget::DEFAULT
