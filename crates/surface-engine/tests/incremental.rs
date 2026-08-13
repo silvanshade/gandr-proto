@@ -14,9 +14,9 @@
 //! Four classes:
 //!
 //! 1. [`tests::adoption`] — the reuse the trail-aware footprint buys: a
-//!    body-only edit adopts its *type-stable* dependent (the model
-//!    `incremental-base` ⇄ `incremental-edited` shape), an insertion adopts its
-//!    untouched neighbours, and a no-op edit adopts everything.
+//!    body-only edit adopts its *type-stable* dependent, append sequences grow
+//!    the measured reuse count, insertions adopt untouched neighbours, and
+//!    no-op edits adopt everything.
 //! 2. [`tests::invalidation`] — the re-typing a real dependency change forces:
 //!    a type-changing edit re-types every downstream reader, and a downstream
 //!    type error surfaces exactly as from-scratch.
@@ -78,7 +78,7 @@ mod tests
         );
         assert_eq!(
             resumed.typings().len(),
-            resumed.adopted.len(),
+            resumed.adopted().len(),
             "one adoption flag per typing"
         );
         resumed
@@ -123,13 +123,13 @@ mod tests
             let edited = "def target(x: Integer) -> F Integer {\n  ret (x + 2)\n}\nprint(target)\n";
             let resumed = gate(base, edited);
 
-            assert_eq!(2, resumed.adopted.len(), "two items");
+            assert_eq!(2, resumed.adopted().len(), "two items");
             assert!(
-                !resumed.adopted[0],
+                !resumed.adopted()[0],
                 "the edited definition `target` is re-typed"
             );
             assert!(
-                resumed.adopted[1],
+                resumed.adopted()[1],
                 "the type-stable dependent `print(target)` is adopted, not re-typed"
             );
         }
@@ -143,11 +143,7 @@ mod tests
             let edited = "def a = 1;\ndef b = 2;\ndef c = 3;\n";
             let resumed = gate(base, edited);
 
-            assert_eq!(
-                resumed.adopted,
-                vec![true, false, true],
-                "only `b` is fresh"
-            );
+            assert_eq!(resumed.adopted(), &[true, false, true], "only `b` is fresh");
             assert_eq!(
                 2,
                 usize::from(resumed.adopted_count()),
@@ -163,10 +159,32 @@ mod tests
             let resumed = gate(source, source);
 
             assert!(
-                resumed.adopted.iter().all(|&adopted| adopted),
+                resumed.adopted().iter().all(|&adopted| adopted),
                 "an identity edit reuses everything: {:?}",
-                resumed.adopted
+                resumed.adopted()
             );
+        }
+
+        /// Each append reuses every checkpoint from the preceding prefix; the
+        /// count makes that reuse observable rather than relying on equality.
+        #[test]
+        fn append_sequence_counts_reused_prefixes()
+        {
+            let base = seam_program("def x = 1;\n");
+            let mut checkpoints = checkpoint_with(&base, &prelude_ctx());
+            for (source, expected_adopted) in [
+                ("def x = 1;\ndef y = x;\n", 1),
+                ("def x = 1;\ndef y = x;\ndef z = y;\n", 2),
+            ] {
+                let edited = seam_program(source);
+                let resumed = resume_with(&checkpoints, &edited, &prelude_ctx());
+                assert_eq!(
+                    expected_adopted,
+                    usize::from(resumed.adopted_count()),
+                    "an append must reuse its complete preceding prefix"
+                );
+                checkpoints = resumed.into_checkpoints();
+            }
         }
     }
 
@@ -185,9 +203,9 @@ mod tests
             let edited = "def x = \"hi\";\ndef y = x;\n";
             let resumed = gate(base, edited);
 
-            assert!(!resumed.adopted[0], "the edited `x` is re-typed");
+            assert!(!resumed.adopted()[0], "the edited `x` is re-typed");
             assert!(
-                !resumed.adopted[1],
+                !resumed.adopted()[1],
                 "the dependent `y` reads the changed binding `x`, so it is re-typed"
             );
             // The dependency really did change type (Integer ⇒ String), so the
@@ -223,7 +241,7 @@ mod tests
             let resumed = gate(base, edited);
 
             assert!(
-                !resumed.adopted[1],
+                !resumed.adopted()[1],
                 "the dependent `y` is re-typed against the changed `x`"
             );
         }
@@ -243,7 +261,7 @@ mod tests
             let edited = "def a = 1;\ndef c = 3;\n";
             let resumed = gate(base, edited);
 
-            assert_eq!(resumed.adopted, vec![true, true], "both survivors reused");
+            assert_eq!(resumed.adopted(), &[true, true], "both survivors reused");
         }
 
         /// Renaming a definition is a delete-plus-insert: the renamed item is
@@ -258,7 +276,7 @@ mod tests
 
             // `keep` does not read `foo`/`bar`, so it is adopted; `bar` is a
             // fresh insertion.
-            assert!(resumed.adopted[1], "`keep` is adopted across the rename");
+            assert!(resumed.adopted()[1], "`keep` is adopted across the rename");
         }
     }
 

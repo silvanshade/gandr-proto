@@ -310,9 +310,8 @@ impl Session
         self.program = edited;
         self.checkpoints = resumed.into_checkpoints();
 
-        // Persist this submission's declaration tables only after lowering and
-        // checkpoint resume both succeeded, so a failed submission changes no
-        // session state.
+        // Declaration tables become visible only to later submissions, after
+        // this submission's outcomes have consumed the prior tables.
         for (name, decl) in lowered.codata() {
             self.codata.insert(name.clone(), decl.clone());
         }

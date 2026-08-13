@@ -444,10 +444,6 @@ semantic_copy!(
     pub struct OriginEntryCount(usize);
 );
 semantic_copy!(
-    /// Whether a lowered item contains an unresolved hole.
-    pub struct HolePresence(bool);
-);
-semantic_copy!(
     /// Whether two pipeline structures satisfy a named matching predicate.
     pub struct MatchDecision(bool);
 );
@@ -490,7 +486,6 @@ semantic_bool!(
     TotalMode,
     ListCaseFlag,
     ShellWordContinuation,
-    HolePresence,
     MatchDecision,
     DataMention,
     RecursiveMarkDepthExceeded,

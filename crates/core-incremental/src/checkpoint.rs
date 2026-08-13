@@ -197,7 +197,7 @@ pub struct Resume
     checkpoints: Checkpoints,
     /// Whether each edited item adopted its base checkpoint (`true`) or was
     /// re-typed (`false`), aligned with [`Self::typings`].
-    pub adopted: Vec<bool>,
+    adopted: Vec<bool>,
 }
 
 impl Resume
@@ -241,6 +241,20 @@ impl Resume
     pub fn into_checkpoints(self) -> Checkpoints
     {
         self.checkpoints
+    }
+
+    /// Borrows the edited program's per-item adoption decisions in source
+    /// order.
+    ///
+    /// # Contract
+    /// - ensures: returns one flag per checkpoint; `true` means the base
+    ///   checkpoint was reused rather than re-typed.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn adopted(&self) -> &[bool]
+    {
+        self.adopted.as_slice()
     }
 
     /// The number of items whose base checkpoint was adopted (reused) — the

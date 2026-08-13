@@ -196,7 +196,7 @@ mod tests
             "resuming across the seam must equal a from-scratch re-type"
         );
         assert!(
-            resumed.adopted.iter().any(|adopted| *adopted),
+            resumed.adopted().iter().any(|adopted| *adopted),
             "a body-only edit must adopt at least its type-stable dependent, or the seam is \
              carrying too little for the footprint to clear anything"
         );

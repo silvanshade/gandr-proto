@@ -245,8 +245,8 @@ mod tests
             | _ => panic!("a numeric literal should evaluate"),
         }
     }
-    /// A value-typed `def` is bound and carries to later lines, where it both
-    /// types and evaluates (the interim session-prelude, strategy A).
+    /// A value-typed `def` is checkpointed and carried to later lines, where it
+    /// both types and evaluates.
     #[test]
     fn definitions_carry_across_lines()
     {

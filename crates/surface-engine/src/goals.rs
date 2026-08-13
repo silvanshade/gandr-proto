@@ -340,3 +340,44 @@ fn record(
     goal.expected = expected;
     goal.ctx_local = Some(ctx.bindings().get(base_len.0 ..).unwrap_or(&[]).to_vec());
 }
+
+#[cfg(test)]
+mod tests
+{
+    use gandr_core_incremental::footprint::footprint_of;
+
+    use super::goal_item_flags;
+    use crate::lower::lower_source_total;
+
+    const RECOVERY_FIXTURES: [(&str, &str); 2] = [
+        (
+            "incomplete-input",
+            include_str!("../tests/fixtures/current/incomplete-input.gandr"),
+        ),
+        (
+            "parser-recovery",
+            include_str!("../tests/fixtures/current/parser-recovery.gandr"),
+        ),
+    ];
+
+    /// The goals pass and checkpoint engine agree on the per-item hole
+    /// predicate over both established recovery fixtures.
+    #[test]
+    fn goal_flags_match_checkpoint_footprints_for_recovery_fixtures()
+    {
+        for (name, source) in RECOVERY_FIXTURES {
+            let lowered =
+                lower_source_total(source.into()).expect("total lowering must accept the fixture");
+            let footprint_flags: Vec<bool> = lowered
+                .items
+                .iter()
+                .map(|item| footprint_of(&item.term).has_hole)
+                .collect();
+            assert_eq!(
+                &*goal_item_flags(&lowered),
+                footprint_flags.as_slice(),
+                "goal and checkpoint hole predicates diverged for {name}"
+            );
+        }
+    }
+}
