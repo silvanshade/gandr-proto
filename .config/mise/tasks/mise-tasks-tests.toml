@@ -2,8 +2,11 @@
 #:schema https://mise.jdx.dev/schema/mise-task.json
 
 ["test:adequacy-witnesses"]
-description = "Run the live graph rustdoc Contract adequacy-witness gate"
+description = "Run the live rustdoc Contract adequacy-witness gates"
 run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
 cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-graphs
 """
 
@@ -34,12 +37,18 @@ cargo nextest run -p gandr-workflow-gates
 ["test:graph-boundary"]
 description = "Run the live theory-graphs façade boundary gate (gandr-graph, ported in wave 1)"
 run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
 cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
 """
 
 ["test:graph-gates"]
-description = "Run gandr-workflow-gates Rust tests once, then both live graph gates"
+description = "Run workflow-gates tests, live adequacy gates, and the graph boundary gate"
 run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
 cargo nextest run -p gandr-workflow-gates
 cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-graphs
 cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
