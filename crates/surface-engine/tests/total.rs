@@ -389,6 +389,43 @@ mod tests
             ]);
         }
 
+        /// A recovered import without its required `as` alias is a declaration
+        /// hole with a note, not a silently discarded source fragment.
+        #[test]
+        fn source_import_without_alias_becomes_a_noted_hole()
+        {
+            let source = "import \"file:///lib/parse.gandr\" ;";
+            let lowered = lower_total(source);
+            assert_eq!(
+                1,
+                lowered.items.len(),
+                "the damaged declaration must surface"
+            );
+            assert!(
+                matches!(lowered.items[0].term, Term::Value(Value::Hole(_))),
+                "the damaged declaration must become a value hole"
+            );
+
+            let goals = goals_report(&lowered, &prelude_ctx());
+            assert_eq!(
+                1,
+                goals.len(),
+                "the damaged declaration must produce one goal"
+            );
+            assert_eq!(
+                goals[0].note,
+                Some(HoleNote::MissingDelimiter {
+                    opened_at: (31 .. 32).into(),
+                }),
+                "the goal must retain the parser's repair evidence"
+            );
+            assert_eq!(
+                source.get(goals[0].byte_range.clone()),
+                Some(source),
+                "the goal must retain the damaged declaration's source range"
+            );
+        }
+
         /// The notes of all goals of an inline source, in goal order.
         fn notes<'text>(source: impl Into<TestText<'text>>) -> Vec<HoleNote>
         {

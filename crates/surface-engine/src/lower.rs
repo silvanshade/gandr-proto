@@ -155,9 +155,13 @@ use crate::ffi::ForeignFn;
 use crate::ffi::ForeignModule;
 use crate::ffi::ForeignParam;
 use crate::namespace::Binding;
+use crate::namespace::Collision;
+use crate::namespace::EventKind;
+use crate::namespace::EventRejection;
 use crate::namespace::Modifier;
 use crate::namespace::NamePath;
-use crate::namespace::PermissiveHandler;
+use crate::namespace::NamespaceEventHandler;
+use crate::namespace::RejectionReason;
 use crate::namespace::Scope;
 use crate::namespace::ScopeError;
 use crate::namespace::Segment;
@@ -537,6 +541,49 @@ pub struct RawPayload
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ImportIndex(pub usize);
+
+/// Namespace policy for source imports: one alias names one source.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct ImportNamespaceHandler;
+
+impl NamespaceEventHandler<ImportIndex, SourceRange> for ImportNamespaceHandler
+{
+    type Label = ();
+
+    #[inline]
+    fn not_found(
+        &mut self,
+        _path: &NamePath,
+    ) -> Result<(), EventRejection>
+    {
+        Ok(())
+    }
+
+    #[inline]
+    fn shadow(
+        &mut self,
+        path: &NamePath,
+        _collision: Collision<ImportIndex, SourceRange>,
+    ) -> Result<Binding<ImportIndex, SourceRange>, EventRejection>
+    {
+        Err(EventRejection::new(
+            EventKind::Shadow,
+            path.clone(),
+            RejectionReason::from("an import alias must name one source"),
+        ))
+    }
+
+    #[inline]
+    fn hook(
+        &mut self,
+        _path: &NamePath,
+        _label: &(),
+        subject: Trie<ImportIndex, SourceRange>,
+    ) -> Result<Trie<ImportIndex, SourceRange>, EventRejection>
+    {
+        Ok(subject)
+    }
+}
 
 /// One lowered `import "URI" as name ;` declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -4109,11 +4156,11 @@ impl Lowerer<'_>
 
     /// Lowers the `source_file` node: items in order, with `def_signature`
     /// ascription matching and origin-map assembly. In total mode, recovery
-    /// is item-local: a failed item becomes an item whose term is a hole
-    /// (with a best-effort name, so signature attachment still works), an
-    /// `ERROR` root becomes one hole item, and each dangling signature
-    /// becomes an item whose hole term is the missing definition — the
-    /// signature is its recorded goal.
+    /// is source-form-local: a failed import becomes an unnamed hole item; a
+    /// failed item becomes a hole item with a best-effort name so signature
+    /// attachment still works; an `ERROR` root becomes one hole item; and each
+    /// dangling signature becomes an item whose hole term is the missing
+    /// definition — the signature is its recorded goal.
     fn source_file(
         &mut self,
         root: SynNode<'_>,
@@ -4127,7 +4174,7 @@ impl Lowerer<'_>
         let mut codata: BTreeMap<String, codata::CodataDecl> = BTreeMap::new();
         let mut imports: Vec<ImportDeclaration> = Vec::new();
         let mut import_scope: Scope<ImportIndex, SourceRange> = Scope::new();
-        let mut namespace_handler = PermissiveHandler::<()>::new();
+        let mut namespace_handler = ImportNamespaceHandler;
 
         // The whole file failed to parse as items when it yields no item node
         // yet buffered parse obligations (garbage like `}{` / `@@@`): the melder
@@ -4209,7 +4256,18 @@ impl Lowerer<'_>
                         &mut namespace_handler,
                     ) {
                         | Ok(declaration) => imports.push(declaration),
-                        | Err(_dropped) if bool::from(self.total()) => {},
+                        | Err(ref error) if bool::from(self.total()) => {
+                            let hole = self.value_hole(child, error)?;
+                            items.push(Item {
+                                name: None,
+                                ascription: None,
+                                term: Term::Value({
+                                    let readback_value = hole.readback_value()?;
+                                    core::convert::identity(readback_value)
+                                }),
+                            });
+                            origins.push(hole.origin);
+                        },
                         | Err(error) => return Err(error),
                     }
                     continue;
@@ -4342,13 +4400,14 @@ impl Lowerer<'_>
     }
 
     /// Lowers one `import "URI" as name ;` declaration through the namespace
-    /// engine and retains its surface operands.
+    /// engine, retaining its surface operands and rejecting an alias already
+    /// bound by an earlier import.
     fn lower_import(
         &self,
         node: SynNode<'_>,
         index: ImportIndex,
         scope: &mut Scope<ImportIndex, SourceRange>,
-        handler: &mut PermissiveHandler<()>,
+        handler: &mut ImportNamespaceHandler,
     ) -> LowerResult<ImportDeclaration>
     {
         let uri = self.quoted_string_field(node, node_kinds::FIELD_URI)?;

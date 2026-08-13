@@ -12,7 +12,7 @@
 //! - [`scope`] — the scope value carrying a visible and an export namespace,
 //!   with sections.
 //!
-//! # What this layer is not
+//! # Surface caller and boundaries
 //!
 //! It is deliberately an internal mechanism with no surface syntax of its own:
 //! the modifier language is built by callers, not parsed. Surface lowering is

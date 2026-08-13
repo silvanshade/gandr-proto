@@ -24,6 +24,7 @@ mod tests
     use alloc::vec::Vec;
 
     use gandr_surface_engine::lower::ImportIndex;
+    use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::namespace::Binding;
     use gandr_surface_engine::namespace::Collision;
@@ -684,6 +685,31 @@ mod tests
             lowered.import_scope().export(),
             &Trie::empty(),
             "imports do not re-export their bindings"
+        );
+    }
+
+    #[test]
+    fn duplicate_source_import_alias_is_rejected_as_a_shadow()
+    {
+        let error = lower_source(
+            "import \"file:///lib/parse.gandr\" as parse ;\n\
+             import \"file:///lib/list.gandr\" as parse ;"
+                .into(),
+        )
+        .expect_err("two source imports must not silently shadow at one alias");
+
+        let LowerError::Namespace {
+            error: ScopeError::Rejected(rejection),
+            ..
+        } = error
+        else {
+            panic!("duplicate aliases must reach the namespace rejection surface: {error:?}");
+        };
+        assert_eq!(rejection.kind(), EventKind::Shadow);
+        assert_eq!(rejection.path(), &path("parse"));
+        assert_eq!(
+            rejection.reason().as_ref(),
+            "an import alias must name one source"
         );
     }
 
