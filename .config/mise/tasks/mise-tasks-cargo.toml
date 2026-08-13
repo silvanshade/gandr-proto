@@ -67,7 +67,11 @@ dylint_scope
 
 ["cargo:dylint"]
 description = "Run full project-local and upstream Dylint gates"
-depends = ["cargo:dylint:local"]
+run = [{ task = "cargo:dylint:local" }, { task = "cargo:dylint:upstream" }]
+
+["cargo:dylint:upstream"]
+description = "Run the pinned upstream Dylint rules"
+depends = ["toolchain:materialize"]
 run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN

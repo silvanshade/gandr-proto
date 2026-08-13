@@ -107,7 +107,8 @@ const EXPECTED_LOCAL_DYLINT_PATH: &str = "crates/workflow-dylint";
 /// Project-local Dylint library selector used by cargo-dylint.
 const EXPECTED_LOCAL_DYLINT_LIB: &str = "gandr_workflow_dylint";
 
-/// First cargo command in `cargo:dylint`: the project-local UI contract.
+/// First cargo command in `cargo:dylint:upstream`: the project-local UI
+/// contract.
 const EXPECTED_DYLINT_UI_TEST_COMMAND: &[&str] = &[
     "cargo",
     "test",
@@ -117,6 +118,12 @@ const EXPECTED_DYLINT_UI_TEST_COMMAND: &[&str] = &[
     "--",
     "--nocapture",
 ];
+
+/// Keys the composed `cargo:dylint` task body carries.
+const EXPECTED_DYLINT_FACADE_KEYS: &[&str] = &["description", "run"];
+
+/// Strict lanes the composed `cargo:dylint` task runs, in order.
+const EXPECTED_DYLINT_FACADE_TASKS: &[&str] = &["cargo:dylint:local", "cargo:dylint:upstream"];
 
 /// Exact Clippy command for every lint-eligible workspace target, driver
 /// included (the Dylint driver is an in-workspace crate). The `"$@"` scope
@@ -1414,27 +1421,61 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     };
 
     let cargo_dylint = toml_table_at(&mise_tasks_cargo, ["cargo:dylint"])?;
-    let dylint_depends = toml_table_string_array(cargo_dylint, "depends")?;
-    assert_string_sequence(
-        &dylint_depends,
-        ["cargo:dylint:local"],
-        "full cargo:dylint must depend on the strict project-local pass",
+    assert_table_keys(
+        cargo_dylint,
+        EXPECTED_DYLINT_FACADE_KEYS,
+        "cargo:dylint must stay a composition of the two strict lanes",
     );
-    let cargo_dylint_script = toml_table_string(cargo_dylint, "run")?;
-    let cargo_commands = parse_cargo_invocations(cargo_dylint_script);
+    let Some(dylint_steps) = cargo_dylint.get("run").and_then(toml::Value::as_array)
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "cargo:dylint run plan is not an array",
+        )));
+    };
+    let mut dylint_tasks = Vec::with_capacity(dylint_steps.len());
+    for step in dylint_steps {
+        let Some(step) = step.as_table()
+        else {
+            return Err(Box::new(std::io::Error::other(
+                "cargo:dylint run step is not an inline table",
+            )));
+        };
+        assert_table_keys(
+            step,
+            ["task"],
+            "a cargo:dylint step gained work outside its named lane",
+        );
+        let task_name = toml_table_string(step, "task")?;
+        dylint_tasks.push(task_name.0.to_owned());
+    }
+    assert_string_sequence(
+        &dylint_tasks,
+        EXPECTED_DYLINT_FACADE_TASKS.iter().copied(),
+        "cargo:dylint lane composition changed",
+    );
+
+    let cargo_dylint_upstream = toml_table_at(&mise_tasks_cargo, ["cargo:dylint:upstream"])?;
+    let upstream_depends = toml_table_string_array(cargo_dylint_upstream, "depends")?;
+    assert_string_sequence(
+        &upstream_depends,
+        ["toolchain:materialize"],
+        "cargo:dylint:upstream must materialize the pinned driver toolchain",
+    );
+    let cargo_dylint_upstream_script = toml_table_string(cargo_dylint_upstream, "run")?;
+    let cargo_commands = parse_cargo_invocations(cargo_dylint_upstream_script);
     let Some(ui_test_command) = cargo_commands.first()
     else {
         return Err(Box::new(std::io::Error::other(
-            "cargo:dylint task contains no cargo commands",
+            "cargo:dylint:upstream task contains no cargo commands",
         )));
     };
     assert_string_sequence(
         ui_test_command,
         EXPECTED_DYLINT_UI_TEST_COMMAND,
-        "cargo:dylint must run the project-local Dylint UI suite first",
+        "cargo:dylint:upstream must run the project-local Dylint UI suite first",
     );
 
-    let invocations = parse_dylint_invocations(cargo_dylint_script)?;
+    let invocations = parse_dylint_invocations(cargo_dylint_upstream_script)?;
     let invocation_count = invocations.len();
     let mut invocations = invocations.iter();
     let (Some(upstream_pass), Some(crate_wide_pass), Some(register_lints_pass), None) = (
@@ -1445,7 +1486,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     )
     else {
         return Err(Box::new(std::io::Error::other(format!(
-            "expected three upstream cargo:dylint invocations, found {invocation_count}"
+            "expected three cargo:dylint:upstream invocations, found {invocation_count}"
         ))));
     };
 

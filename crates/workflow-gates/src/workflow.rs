@@ -74,12 +74,6 @@ const MERGE_TASKS: &[Task] = &[
 /// smoke) — which is why the push hook itself stays parked. The integration
 /// witness `tooling::workflow_plan_tasks_exist_or_are_parked` holds that
 /// inventory to exactly those four names.
-///
-/// Known overlap: `cargo:dylint` declares `cargo:dylint:local` as a mise
-/// dependency, so a push sweeps the project-local lane twice — once from the
-/// merge prefix and once under the upstream lane. Removing the overlap means
-/// splitting an upstream-only task out of `cargo:dylint`, which is a change to
-/// the task surface rather than to this list.
 const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
@@ -91,7 +85,7 @@ const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("treefmt:check")),
     Task::new(NameText("core:check")),
     Task::new(NameText("grammar:test")),
-    Task::new(NameText("cargo:dylint")),
+    Task::new(NameText("cargo:dylint:upstream")),
     Task::new(NameText("wrkflw")),
     Task::new(NameText("test:soundness-oracles")),
     Task::new(NameText("test:doc-gates")),
@@ -1808,7 +1802,7 @@ mod tests
                 "treefmt:check",
                 "core:check",
                 "grammar:test",
-                "cargo:dylint",
+                "cargo:dylint:upstream",
                 "wrkflw",
                 "test:soundness-oracles",
                 "test:doc-gates",
