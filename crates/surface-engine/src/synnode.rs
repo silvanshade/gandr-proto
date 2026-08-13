@@ -142,6 +142,8 @@ mod label
     pub const HASH_BRACE: TileSpelling = TileSpelling("#{");
     /// Shell-block opener.
     pub const SHELL_OPEN: TileSpelling = TileSpelling("#!{");
+    /// Command-substitution opener.
+    pub const COMMAND_SUBSTITUTION_START: TileSpelling = TileSpelling("command_substitution_start");
     /// Case lead tile.
     pub const CASE: TileSpelling = TileSpelling("case");
     /// If lead tile.
@@ -1200,6 +1202,7 @@ impl<'tree> SynNode<'tree>
             // pattern-matrix design).
             | Some(label::DATA) => node_kinds::DATA_DECLARATION,
             | Some(label::CODATA) => node_kinds::CODATA_DECLARATION,
+            | Some(label::COMMAND_SUBSTITUTION_START) => node_kinds::COMMAND_SUBSTITUTION,
             // The ruled circuit block form's two item-position leads. They
             // classify so the circuit lowering (`crate::circuit_desc`) can find
             // them and so a form it does not carry names its construct in the

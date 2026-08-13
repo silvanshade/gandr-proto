@@ -117,6 +117,19 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
 }
 
 #[test]
+fn command_substitution_molds_with_zero_obligations() -> Result<(), Box<dyn Error>>
+{
+    let source = "#!{ echo $!{ printf nested; }; }";
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "the command-substitution form must reach lowering without parser repair: {:?}",
+        result.obligations()
+    );
+    Ok(())
+}
+
+#[test]
 fn value_statement_uses_val_keyword() -> Result<(), Box<dyn Error>>
 {
     let pbg = built();

@@ -398,8 +398,7 @@ fn add_lexical_rules(
 /// SEMANTICS (`FOO=bar cmd` — the assignment token itself is folded in above);
 /// command negation (`! cmd`); process substitution (`<( … )`); and job
 /// control / history. Each is a later shell-stage widening, and each
-/// parse-and-declines or lexes as an ordinary word today — except
-/// `command_substitution`, whose current failure mode is below.
+/// parse-and-declines or lexes as an ordinary word today.
 ///
 /// The remaining DEAD placeholder rules retained purely for tree-sitter
 /// named-kind coverage — `shell_list`, `and_expression` / `or_expression`
@@ -422,12 +421,12 @@ fn add_lexical_rules(
 ///
 /// `command_substitution` is neither dead nor landed. Its `list_operator` /
 /// `shell_list` tiles are never emitted, but both are OPTIONAL, so `$!{ … }`
-/// molds on the `command_substitution_start` and `}` tiles the labeler does
-/// emit. Nothing then classifies the resulting meld, so it reaches the lowerer
-/// with an EMPTY kind and fails as `MalformedNode` instead of through the
-/// named `COMMAND_SUBSTITUTION` arm written for it — a defect in the
-/// classification seam, not a deferral. Only the fuzz seeds exercise the form,
-/// and they assert absence of panic rather than a named decline.
+/// molds on the `command_substitution_start` and `}` tiles the labeler emits.
+/// The surface-engine classifier maps that lead to the named
+/// `command_substitution` kind, whose lowerer arm declines it as
+/// `LowerError::Unsupported`; total lowering records the same named decline on
+/// a goal hole. The parser and surface-engine acceptance tests pin both halves
+/// of that parse-and-decline boundary.
 ///
 /// The former `command` / `command_name` / `argument` / `redirection`
 /// composites are removed: their placeholder tiles

@@ -1417,6 +1417,47 @@ mod tests
             }
         }
 
+        /// Command substitution parses as its named form, then declines through
+        /// the shell lowerer's existing unsupported-form path.
+        #[test]
+        fn command_substitution_declines_by_name_in_strict_and_total_modes()
+        {
+            let source = "#!{ echo $!{ printf nested; }; }";
+            let substitution = "$!{ printf nested; }";
+            let expected_range = source_range(source, substitution);
+            let error = lower_err(source);
+            assert!(
+                matches!(
+                    error,
+                    LowerError::Unsupported {
+                        kind: node_kinds::COMMAND_SUBSTITUTION,
+                        ref byte_range,
+                    } if *byte_range == expected_range
+                ),
+                "command substitution must decline by its named kind and local range: {error:?}"
+            );
+
+            let lowered = lower_source_total(source.into())
+                .expect("total lowering must recover command substitution as a hole");
+            let goals = goals_report(&lowered, &prelude_ctx());
+            let Some(goal) = goals.first()
+            else {
+                panic!("command substitution must produce a goal");
+            };
+            assert_eq!(
+                1,
+                goals.len(),
+                "one command substitution must produce one goal, got {goals:?}"
+            );
+            assert_eq!(expected_range.0, goal.byte_range);
+            assert_eq!(
+                Some(HoleNote::UnsupportedForm {
+                    kind: node_kinds::COMMAND_SUBSTITUTION,
+                }),
+                goal.note
+            );
+        }
+
         /// Byte range for a source needle that must occur exactly once.
         fn source_range<'source, 'needle>(
             source: impl Into<TestText<'source>>,
