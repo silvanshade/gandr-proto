@@ -426,6 +426,48 @@ mod tests
             );
         }
 
+        /// A duplicate import alias is rejected through the namespace policy
+        /// and becomes a noted declaration hole under total lowering.
+        #[test]
+        fn duplicate_source_import_alias_becomes_a_noted_hole()
+        {
+            let rejected = "import \"file:///lib/list.gandr\" as parse ;";
+            let source = concat!(
+                "import \"file:///lib/parse.gandr\" as parse ;\n",
+                "import \"file:///lib/list.gandr\" as parse ;",
+            );
+            let lowered = lower_total(source);
+            assert_eq!(
+                1,
+                lowered.imports.len(),
+                "only the non-colliding import must survive"
+            );
+            assert_eq!(
+                1,
+                lowered.items.len(),
+                "the rejected declaration must surface"
+            );
+            assert!(
+                matches!(lowered.items[0].term, Term::Value(Value::Hole(_))),
+                "the rejected declaration must become a value hole"
+            );
+
+            let goals = goals_report(&lowered, &prelude_ctx());
+            assert_eq!(1, goals.len(), "the rejected import must produce one goal");
+            assert_eq!(
+                goals[0].note,
+                Some(HoleNote::UnsupportedForm {
+                    kind: node_kinds::IMPORT_DECLARATION,
+                }),
+                "the goal must identify the rejected import declaration"
+            );
+            assert_eq!(
+                source.get(goals[0].byte_range.clone()),
+                Some(rejected),
+                "the goal must retain the rejected declaration's source range"
+            );
+        }
+
         /// The notes of all goals of an inline source, in goal order.
         fn notes<'text>(source: impl Into<TestText<'text>>) -> Vec<HoleNote>
         {
