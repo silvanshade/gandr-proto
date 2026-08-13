@@ -311,7 +311,7 @@ where
             .arities
             .iter()
             .max()
-            .map_or(Degree::ZERO, |arity| Degree::from(*arity));
+            .map_or(Degree::ZERO, |&arity| Degree::from(arity));
     }
 }
 
@@ -375,9 +375,9 @@ mod tests
             rules,
         )
         .expect("the allocation-only automaton is well-formed");
-        assert_eq!(u32::from(automaton.degree()), 1);
-        assert_eq!(automaton.rules().len(), 2);
-        assert_eq!(channel.sort(), Role::Channel);
+        assert_eq!(1, u32::from(automaton.degree()));
+        assert_eq!(2, automaton.rules().len());
+        assert_eq!(Role::Channel, channel.sort());
     }
 
     /// `Transfer::Allocated` in a free-use rule is rejected.

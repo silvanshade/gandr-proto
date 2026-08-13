@@ -494,7 +494,7 @@ where
             .arities
             .iter()
             .max()
-            .map_or(Degree::ZERO, |arity| Degree::from(*arity));
+            .map_or(Degree::ZERO, |&arity| Degree::from(arity));
     }
 }
 
@@ -611,8 +611,8 @@ mod tests
             rules,
         )
         .expect("the tree automaton is well-formed");
-        assert_eq!(u32::from(automaton.degree()), 1);
-        assert_eq!(automaton.rules().len(), 2);
+        assert_eq!(1, u32::from(automaton.degree()));
+        assert_eq!(2, automaton.rules().len());
     }
 
     /// A free-name rule reading a register its source does not have is

@@ -211,8 +211,8 @@ mod tests
         let witness = witness();
         let word = vec![Letter::Open(witness.fresh), Letter::Free(witness.fresh)];
         assert_eq!(
-            witness.automaton.accepts(&word),
             Membership::ACCEPTED,
+            witness.automaton.accepts(&word),
             "the unnamed-name variant is accepted"
         );
         let word = vec![
@@ -220,8 +220,8 @@ mod tests
             Letter::Free(witness.remembered),
         ];
         assert_eq!(
-            witness.automaton.accepts(&word),
             Membership::REJECTED,
+            witness.automaton.accepts(&word),
             "its α-variant over the remembered name is rejected"
         );
     }
@@ -239,14 +239,14 @@ mod tests
             Letter::Free(witness.remembered),
         ];
         assert_eq!(
-            dropped.accepts(&word),
             Membership::ACCEPTED,
+            dropped.accepts(&word),
             "the α-variant is accepted once the remembered name can be dropped"
         );
         let word = vec![Letter::Open(witness.fresh), Letter::Free(witness.fresh)];
         assert_eq!(
-            dropped.accepts(&word),
             Membership::ACCEPTED,
+            dropped.accepts(&word),
             "the donor's word stays accepted"
         );
     }
@@ -362,7 +362,7 @@ mod tests
             let dropped = name_dropping(&monitor);
             let word: Vec<Letter<Role>> = indices
                 .iter()
-                .filter_map(|index| letter_at(admin, user, LetterIndex(*index)))
+                .filter_map(|&index| letter_at(admin, user, LetterIndex(index)))
                 .collect();
             if bool::from(monitor.accepts(&word)) {
                 prop_assert_eq!(

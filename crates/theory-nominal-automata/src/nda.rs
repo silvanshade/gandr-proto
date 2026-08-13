@@ -472,7 +472,7 @@ where
             .arities
             .iter()
             .max()
-            .map_or(Degree::ZERO, |arity| Degree::from(*arity));
+            .map_or(Degree::ZERO, |&arity| Degree::from(arity));
     }
 }
 
@@ -659,7 +659,7 @@ where
 {
     let slots = transfer
         .iter()
-        .map(|entry| match *entry {
+        .map(|&entry| match entry {
             | Transfer::Keep(register) => store.name(register),
             | Transfer::Allocated => allocated,
             | Transfer::Empty => None,
@@ -786,8 +786,8 @@ mod tests
             Letter::Free(names.admin),
         ];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::ACCEPTED,
+            monitor.accepts(&word),
             "a drained session log is accepted"
         );
     }
@@ -802,8 +802,8 @@ mod tests
         let monitor = session_monitor(&names);
         let word = vec![Letter::Open(names.user), Letter::Free(names.admin)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::REJECTED,
+            monitor.accepts(&word),
             "a log with a live login at the end is rejected"
         );
     }
@@ -817,8 +817,8 @@ mod tests
         let monitor = session_monitor(&names);
         let word = vec![Letter::Close(names.user)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::REJECTED,
+            monitor.accepts(&word),
             "a close without a matching open is rejected"
         );
     }
@@ -832,8 +832,8 @@ mod tests
         let monitor = session_monitor(&names);
         let word = vec![Letter::Free(names.user)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::REJECTED,
+            monitor.accepts(&word),
             "a free use of an unallocated name is rejected"
         );
     }
@@ -858,8 +858,8 @@ mod tests
         let monitor = session_monitor(&names);
         let word = vec![Letter::Open(user), Letter::Open(other)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::REJECTED,
+            monitor.accepts(&word),
             "a second concurrent login exceeds the monitor's degree"
         );
     }
@@ -870,7 +870,7 @@ mod tests
     {
         let names = names();
         let monitor = session_monitor(&names);
-        assert_eq!(u32::from(monitor.degree()), 2);
+        assert_eq!(2, u32::from(monitor.degree()));
     }
 
     /// A rule naming a control point outside the control table is rejected.
@@ -959,10 +959,10 @@ mod tests
         ])];
         let result = Nda::new(vec![Arity::from(1_usize)], initial, BTreeSet::new(), rules);
         assert_eq!(
-            result.expect_err("an allocated-name transfer in an open-close rule is invalid"),
             AutomatonError::MisplacedAllocatedName {
                 control: Control::ZERO,
-            }
+            },
+            result.expect_err("an allocated-name transfer in an open-close rule is invalid")
         );
     }
 
@@ -984,11 +984,11 @@ mod tests
         )];
         let result = Nda::new(vec![Arity::from(1_usize)], initial, BTreeSet::new(), rules);
         assert_eq!(
-            result.expect_err("keeping a deallocated name is invalid"),
             AutomatonError::KeptDeallocatedName {
                 control: Control::ZERO,
                 register: Register::ZERO,
-            }
+            },
+            result.expect_err("keeping a deallocated name is invalid")
         );
     }
 
@@ -1017,14 +1017,14 @@ mod tests
         .expect("the open-close monitor is well-formed");
         let word = vec![Letter::OpenClose(names.user), Letter::Free(names.admin)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::ACCEPTED,
+            monitor.accepts(&word),
             "open-close consumes a letter and keeps no name"
         );
         let word = vec![Letter::OpenClose(names.admin)];
         assert_eq!(
-            monitor.accepts(&word),
             Membership::REJECTED,
+            monitor.accepts(&word),
             "open-close of a name already in memory is freshness-gated"
         );
     }

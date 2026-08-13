@@ -662,23 +662,23 @@ mod tests
         assert_eq!(store.arity(), Arity::from(3_usize));
         assert_eq!(store.name(Register::ZERO), Some(left));
         assert_eq!(
-            store.name(Register(1)),
             None,
+            store.name(Register(1)),
             "the middle register is empty"
         );
         assert_eq!(store.name(Register(2)), Some(right));
         assert_eq!(
-            store.freshness(right),
             Freshness::NOT_FRESH,
+            store.freshness(right),
             "a held name is not fresh for the store"
         );
         assert_eq!(
+            Freshness::FRESH,
             store.freshness(
                 gensym
                     .fresh()
                     .expect("a fresh atom is absent from the store")
             ),
-            Freshness::FRESH,
             "a minted-fresh atom is fresh for the store"
         );
     }
@@ -689,8 +689,8 @@ mod tests
     {
         let store: Store<Role> = Store::empty(Arity::from(2_usize));
         assert_eq!(store.arity(), Arity::from(2_usize));
-        assert_eq!(store.name(Register::ZERO), None);
-        assert_eq!(store.name(Register(1)), None);
+        assert_eq!(None, store.name(Register::ZERO));
+        assert_eq!(None, store.name(Register(1)));
     }
 
     /// The [`super::Configuration`] pairing exposes exactly what was paired.
@@ -703,7 +703,7 @@ mod tests
             .expect("a new allocator can mint the first atom");
         let store = Store::try_new(vec![Some(atom)]).expect("an injective store is valid");
         let configuration = super::Configuration::new(Control::ZERO, store);
-        assert_eq!(configuration.control(), Control::ZERO);
+        assert_eq!(Control::ZERO, configuration.control());
         assert_eq!(configuration.store().name(Register::ZERO), Some(atom));
     }
 
@@ -715,6 +715,6 @@ mod tests
         let atom: Atom<Role> = gensym
             .fresh()
             .expect("a new allocator can mint the first atom");
-        assert_eq!(atom.sort(), Role::Name);
+        assert_eq!(Role::Name, atom.sort());
     }
 }
