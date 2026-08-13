@@ -31,10 +31,6 @@ pub const EXTERN_BLOCK: SyntaxKind = SyntaxKind("extern_block");
 pub const EXTERN_TYPE: SyntaxKind = SyntaxKind("extern_type");
 pub const EXTERN_FUNCTION: SyntaxKind = SyntaxKind("extern_function");
 pub const DATA_DECLARATION: SyntaxKind = SyntaxKind("data_declaration");
-/// A reserved `oper` member inside a `data` block, named for diagnostics.
-pub const DATA_OPER_MEMBER: SyntaxKind = SyntaxKind("oper");
-/// A reserved `rule` member inside a `data` block, named for diagnostics.
-pub const DATA_RULE_MEMBER: SyntaxKind = SyntaxKind("rule");
 /// A `sign S { … }` signature block — the ruled circuit block form's
 /// declaration table (`spec:surface-language/circuit-cells.md`
 /// §"The block form, ruled").

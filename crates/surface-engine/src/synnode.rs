@@ -761,36 +761,6 @@ impl<'tree> SynNode<'tree>
         }
     }
 
-    /// The reserved `oper` and `rule` members of a `data` declaration.
-    ///
-    /// # Contract
-    /// - requires: this node may have any kind; only a
-    ///   [`node_kinds::DATA_DECLARATION`] contributes members.
-    /// - ensures: returns every semicolon- or comma-delimited `oper` / `rule`
-    ///   member in source order, with the run forced to the member's own named
-    ///   kind and its exact source range.
-    /// - provides: the lowering route's parse-and-decline boundary for reserved
-    ///   data members.
-    /// - fails: never.
-    /// - panics: none.
-    ///
-    /// # Adequacy
-    /// - hypothesis: L2 branch coverage distinguishes `oper`, `rule`, and the
-    ///   ignored constructor branch; the combined total-mode witness also pins
-    ///   source order and per-member ranges.
-    /// - witness: `acceptance::tests::lowering_shapes::data_oper_and_rule_members_decline_by_name`
-    pub(crate) fn reserved_data_members(self) -> Vec<Self>
-    {
-        if self.kind() != node_kinds::DATA_DECLARATION {
-            return Vec::new();
-        }
-        self.classified_member_segments(self.brace_body(), |lead| match lead {
-            | Some(label::OPER) => Some(node_kinds::DATA_OPER_MEMBER),
-            | Some(label::RULE) => Some(node_kinds::DATA_RULE_MEMBER),
-            | _ => None,
-        })
-    }
-
     /// The children matching a grammar field name, in source order.
     ///
     /// # Contract
@@ -1952,36 +1922,12 @@ impl<'tree> SynNode<'tree>
         kind: SyntaxKind,
     ) -> Vec<Self>
     {
-        self.classified_member_segments(bounds, |_| Some(kind))
-    }
-
-    /// The member-separated segments within `bounds`, classified from each
-    /// member's lead tile. A lead the classifier declines contributes no node.
-    fn classified_member_segments(
-        self,
-        bounds: Option<(NodeId, Span)>,
-        classify: impl Fn(Option<TileSpelling>) -> Option<SyntaxKind>,
-    ) -> Vec<Self>
-    {
         let Some((container, body)) = bounds
         else {
             return Vec::new();
         };
         let sig = self.tree.sig_children(container);
         let mut out = Vec::new();
-        let mut push_member = |member: Span| {
-            let lead = sig
-                .get(member.start)
-                .and_then(|&node| self.tree.tile_label(node));
-            if let Some(kind) = classify(lead) {
-                out.push(self.run(
-                    container,
-                    SignificantIndex(member.start),
-                    SignificantIndex(member.end),
-                    kind,
-                ));
-            }
-        };
         let mut start = body.start;
         let mut index = body.start;
         while index < body.end {
@@ -1990,17 +1936,24 @@ impl<'tree> SynNode<'tree>
             });
             if is_separator {
                 if index > start {
-                    push_member(Span { start, end: index });
+                    out.push(self.run(
+                        container,
+                        SignificantIndex(start),
+                        SignificantIndex(index),
+                        kind,
+                    ));
                 }
                 start = index.saturating_add(1);
             }
             index = index.saturating_add(1);
         }
         if start < body.end {
-            push_member(Span {
-                start,
-                end: body.end,
-            });
+            out.push(self.run(
+                container,
+                SignificantIndex(start),
+                SignificantIndex(body.end),
+                kind,
+            ));
         }
         out
     }
