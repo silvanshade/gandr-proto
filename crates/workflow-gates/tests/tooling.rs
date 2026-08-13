@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use gandr_workflow_gates::GateError;
 use gandr_workflow_gates::mutants;
 use gandr_workflow_gates::semantic_value;
-use gandr_workflow_gates::workflow;
 
 /// Shared integration-test result type.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -1602,7 +1601,7 @@ fn assert_table_keys<'semantic, Expected, ExpectedItem, Context>(
 }
 
 /// Return the ordered task names one workflow tier's static plan runs.
-fn workflow_plan_task_names(tier: workflow::Tier) -> Vec<String>
+fn workflow_plan_task_names(tier: gandr_workflow_gates::workflow::Tier) -> Vec<String>
 {
     let mut names = Vec::new();
     for task in tier.plan().tasks() {
@@ -1672,7 +1671,7 @@ fn merge_gate_task_order_is_locked() -> TestResult
 fn merge_plan_matches_gate_merge_task() -> TestResult
 {
     let merge_tasks = gate_merge_task_names()?;
-    let plan_tasks = workflow_plan_task_names(workflow::Tier::Merge);
+    let plan_tasks = workflow_plan_task_names(gandr_workflow_gates::workflow::Tier::Merge);
     assert_eq!(
         plan_tasks, merge_tasks,
         "the gandr-workflow-gates merge plan diverged from the gate:merge task body",
@@ -1687,7 +1686,10 @@ fn workflow_plan_tasks_exist_or_are_parked() -> TestResult
 {
     let defined = defined_mise_task_names()?;
     let mut parked = Vec::new();
-    for tier in [workflow::Tier::Merge, workflow::Tier::Push] {
+    for tier in [
+        gandr_workflow_gates::workflow::Tier::Merge,
+        gandr_workflow_gates::workflow::Tier::Push,
+    ] {
         for name in workflow_plan_task_names(tier) {
             if defined.iter().any(|defined_name| defined_name == &name) {
                 continue;
