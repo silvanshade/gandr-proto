@@ -1633,6 +1633,59 @@ mod tests
                 "later well-formed members must survive in order: {rest:?}"
             );
         }
+
+        /// Reserved `oper` and `rule` data members decline by their own names;
+        /// total mode keeps each decline as a separate goal hole.
+        #[test]
+        fn data_oper_and_rule_members_decline_by_name()
+        {
+            for (source, member, expected_kind) in [
+                (
+                    "data NatOp : Type { Zero : NatOp; oper id(x : NatOp) -> NatOp; }",
+                    "oper id(x : NatOp) -> NatOp",
+                    "oper",
+                ),
+                (
+                    "data NatRule : Type { Zero : NatRule; rule id(Zero) ==> Zero; }",
+                    "rule id(Zero) ==> Zero",
+                    "rule",
+                ),
+            ] {
+                let expected_range = source_range(source, member);
+                let error = lower_err(source);
+                assert!(
+                    matches!(
+                        error,
+                        LowerError::Unsupported {
+                            kind,
+                            ref byte_range,
+                        } if kind == expected_kind && *byte_range == expected_range
+                    ),
+                    "data member {member:?} must decline as Unsupported({expected_kind}): {error:?}"
+                );
+            }
+
+            let source = "data Nat : Type { Zero : Nat; oper id(x : Nat) -> Nat; \
+                          rule id(Zero) ==> Zero; }";
+            let lowered = lower_source_total(source.into())
+                .expect("total lowering must recover reserved data members as holes");
+            let goals = goals_report(&lowered, &prelude_ctx());
+            assert_eq!(2, goals.len(), "one goal per reserved member");
+            for (goal, (member, expected_kind)) in goals.iter().zip([
+                ("oper id(x : Nat) -> Nat", "oper"),
+                ("rule id(Zero) ==> Zero", "rule"),
+            ]) {
+                assert_eq!(source_range(source, member).0, goal.byte_range);
+                assert!(
+                    matches!(
+                        goal.note,
+                        Some(HoleNote::UnsupportedForm { kind }) if kind == expected_kind
+                    ),
+                    "the goal for {member:?} must retain Unsupported({expected_kind}), got {:?}",
+                    goal.note
+                );
+            }
+        }
         /// A host escape adjacent to another fragment is one lexical shell
         /// word. With no landed typed concat operation, the lowerer
         /// rejects it rather than splitting it into multiple argv

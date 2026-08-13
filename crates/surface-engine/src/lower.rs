@@ -4156,11 +4156,12 @@ impl Lowerer<'_>
 
     /// Lowers the `source_file` node: items in order, with `def_signature`
     /// ascription matching and origin-map assembly. In total mode, recovery
-    /// is source-form-local: a failed import becomes an unnamed hole item; a
-    /// failed item becomes a hole item with a best-effort name so signature
-    /// attachment still works; an `ERROR` root becomes one hole item; and each
-    /// dangling signature becomes an item whose hole term is the missing
-    /// definition — the signature is its recorded goal.
+    /// is source-form-local: a failed import or reserved data member becomes
+    /// an unnamed hole item; a failed item becomes a hole item with a
+    /// best-effort name so signature attachment still works; an `ERROR` root
+    /// becomes one hole item; and each dangling signature becomes an item whose
+    /// hole term is the missing definition — the signature is its recorded
+    /// goal.
     fn source_file(
         &mut self,
         root: SynNode<'_>,
@@ -4272,20 +4273,40 @@ impl Lowerer<'_>
                     }
                     continue;
                 }
+                if child.kind() == node_kinds::DATA_DECLARATION {
+                    for member in child.reserved_data_members() {
+                        let error = LowerError::Unsupported {
+                            kind: member.kind(),
+                            byte_range: member.byte_range(),
+                        };
+                        if !bool::from(self.total()) {
+                            return Err(error);
+                        }
+                        let hole = self.value_hole(member, &error)?;
+                        items.push(Item {
+                            name: None,
+                            ascription: None,
+                            term: Term::Value({
+                                let readback_value = hole.readback_value()?;
+                                core::convert::identity(readback_value)
+                            }),
+                        });
+                        origins.push(hole.origin);
+                    }
+                    continue;
+                }
                 if matches!(
                     child.kind(),
                     node_kinds::EXTERN_BLOCK
                         | node_kinds::CODATA_DECLARATION
-                        | node_kinds::DATA_DECLARATION
                         | node_kinds::SIGN_DECLARATION
                         | node_kinds::CIRCUIT_DECLARATION
                 ) {
-                    // Consumed by the pre-passes above (a `data` block is a
-                    // declaration, not a runnable item; the lowering contract).
-                    // A `sign` block and a top-level circuit declaration are
-                    // declarations in the same sense: their route is the
-                    // description one ([`crate::circuit::desc`]), which reads
-                    // them into the declaration table, so term lowering sees a
+                    // Consumed by the pre-passes above (declarations, not
+                    // runnable items; the lowering contract). A `sign` block
+                    // and a top-level circuit declaration take the description
+                    // route ([`crate::circuit::desc`]), which reads them into
+                    // the declaration table, so term lowering sees a
                     // declaration rather than an unsupported expression.
                     continue;
                 }
