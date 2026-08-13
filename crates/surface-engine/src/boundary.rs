@@ -220,6 +220,10 @@ semantic_copy!(
     pub struct ShadowPresence(bool);
 );
 semantic_copy!(
+    /// Whether a successfully typed definition enters the session scope.
+    pub struct DefinitionBindingFlag(bool);
+);
+semantic_copy!(
     /// Whether an observation name is reserved.
     pub struct ReservedObservationFlag(bool);
 );

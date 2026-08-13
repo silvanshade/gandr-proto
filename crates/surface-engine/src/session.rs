@@ -78,6 +78,7 @@ use gandr_core_incremental::region::Program;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 
 use crate::boundary::ConstructorName;
+use crate::boundary::DefinitionBindingFlag;
 use crate::boundary::DefinitionName;
 use crate::boundary::PipelineSource;
 use crate::diag;
@@ -336,7 +337,7 @@ impl Session
                 ref name,
                 ref ty,
                 bound,
-            } => self.define(name, item, ty.clone(), bound),
+            } => self.define(name, item, ty.clone(), bound.into()),
             | ItemTyping::Expression { ref ty } => ItemOutcome::Expression {
                 value: run_comp_with_prelude(
                     &eval_chain(&self.defs, &item.term),
@@ -357,11 +358,13 @@ impl Session
         name: impl Into<DefinitionName<'name>>,
         item: &Item,
         ty: Ty,
-        bound: bool,
+        bound: DefinitionBindingFlag,
     ) -> ItemOutcome
     {
         let name = name.into();
-        if bound && let Ty::Value(ref value_type) = ty {
+        if bool::from(bound)
+            && let Ty::Value(ref value_type) = ty
+        {
             // Evaluate the definition once under the definitions already in
             // scope. A non-value terminal contributes no eval binding and
             // cannot poison an unrelated later expression.
@@ -376,7 +379,7 @@ impl Session
         ItemOutcome::Definition {
             name: name.0.to_owned(),
             ty,
-            bound,
+            bound: bound.into(),
         }
     }
 }
