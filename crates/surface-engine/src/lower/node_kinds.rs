@@ -39,6 +39,7 @@ pub const SIGN_DECLARATION: SyntaxKind = SyntaxKind("sign_declaration");
 /// block.
 pub const CIRCUIT_DECLARATION: SyntaxKind = SyntaxKind("circuit_declaration");
 pub const MODULE_DECLARATION: SyntaxKind = SyntaxKind("module_declaration");
+pub const IMPORT_DECLARATION: SyntaxKind = SyntaxKind("import_declaration");
 pub const FIELD_ASCRIPTION: SyntaxField = SyntaxField("ascription");
 pub const FIELD_MEMBER: SyntaxField = SyntaxField("member");
 pub const ATTRIBUTE_BLOCK: SyntaxKind = SyntaxKind("attribute_block");
@@ -46,6 +47,8 @@ pub const ATTRIBUTE: SyntaxKind = SyntaxKind("attribute");
 pub const FIELD_ATTRIBUTE: SyntaxField = SyntaxField("attribute");
 pub const FIELD_PAYLOAD: SyntaxField = SyntaxField("payload");
 pub const FIELD_NAME: SyntaxField = SyntaxField("name");
+pub const FIELD_URI: SyntaxField = SyntaxField("uri");
+pub const FIELD_ALIAS: SyntaxField = SyntaxField("alias");
 pub const FIELD_ARGUMENT: SyntaxField = SyntaxField("argument");
 /// The erased residents carried by an instantiation slot.
 pub const FIELD_INSTANTIATION: SyntaxField = SyntaxField("instantiation");

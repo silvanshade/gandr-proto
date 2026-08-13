@@ -1,11 +1,10 @@
-// W4d surface fold-in — module `import` MVP (parse-only fixture).
+// Module `import` grammar and namespace-lowering rung.
 //
-// GRADUATION: `import "URI" as name ;` enters the PBG grammar now (wyrd-ku0f).
-// The URI is a plain string literal, so new schemes need ZERO grammar change —
-// `file:///` today, others later. The module SYSTEM (resolution, signatures,
-// the 1ML-ish struct/sig family, which the inventory defers over an unresolved
-// `{ … }` vs `sig … end` surface conflict) graduates under wyrd-wpa0.
-// Parse-only; never lowered.
+// `import "URI" as name ;` is recognized by the PBG grammar and retained by
+// surface lowering. `as name` qualifies the import through the namespace
+// engine. The URI remains a plain string literal, so new schemes need no
+// grammar change: `file:///` today, others later. Resolution, signatures, and
+// the wider module system remain separate from this declaration boundary.
 
 import "file:///lib/prelude.gandr" as prelude ;
 

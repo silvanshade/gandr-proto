@@ -23,6 +23,8 @@ mod tests
     use alloc::string::String;
     use alloc::vec::Vec;
 
+    use gandr_surface_engine::lower::ImportIndex;
+    use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::namespace::Binding;
     use gandr_surface_engine::namespace::Collision;
     use gandr_surface_engine::namespace::DottedName;
@@ -638,6 +640,50 @@ mod tests
                 entry("parse.parser", Payload(2)),
             ]),
             "today's import clause is the one-constructor case of the general language"
+        );
+    }
+
+    #[test]
+    fn source_import_reaches_the_namespace_engine_and_exposes_its_alias()
+    {
+        let lowered = lower_source(
+            "import \"file:///lib/parse.gandr\" as parse ;\n\
+             import \"file:///lib/list.gandr\" as list_ext ;"
+                .into(),
+        )
+        .expect("import declarations must lower");
+
+        assert!(lowered.items.is_empty(), "an import is not a runnable item");
+        assert_eq!(
+            lowered
+                .imports
+                .iter()
+                .map(|import| (import.uri.as_str(), import.alias.as_ref()))
+                .collect::<Vec<(&str, &str)>>(),
+            Vec::from([
+                ("file:///lib/parse.gandr", "parse"),
+                ("file:///lib/list.gandr", "list_ext"),
+            ]),
+            "imports retain source order and surface operands"
+        );
+
+        let parse = lowered
+            .import_scope()
+            .resolve(&path("parse"))
+            .expect("the first import must resolve in the visible namespace");
+        let list = lowered
+            .import_scope()
+            .resolve(&path("list_ext"))
+            .expect("the second import must resolve in the visible namespace");
+        assert_eq!(
+            (parse.data, list.data),
+            (ImportIndex(0), ImportIndex(1)),
+            "namespace bindings point to their source-order declarations"
+        );
+        assert_eq!(
+            lowered.import_scope().export(),
+            &Trie::empty(),
+            "imports do not re-export their bindings"
         );
     }
 

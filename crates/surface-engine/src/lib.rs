@@ -8,6 +8,11 @@
 //!   kept in a side table ([`origin::OriginMap`]) — `gandr-core-checker` syntax
 //!   stays span-free and parser-free by decision, so positions live here and
 //!   never in the core.
+//! - **Import namespace lowering**: `import "URI" as name ;` is retained in
+//!   source order and its `as` clause runs through
+//!   [`namespace::Modifier::alias_as`] into the lowering's visible
+//!   [`namespace::Scope`]. This boundary records imports but performs no
+//!   resolution, fetch, or runnable-item synthesis.
 //! - **Total lowering and goals**: [`lower::lower_source_total`] lowers *every*
 //!   parseable input — syntax errors and out-of-fragment constructs become
 //!   holes carrying [`origin::HoleNote`]s (the pipeline spec's §"Holes": a hole

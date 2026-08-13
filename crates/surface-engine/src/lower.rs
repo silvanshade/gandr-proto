@@ -154,6 +154,14 @@ use crate::ffi::CType;
 use crate::ffi::ForeignFn;
 use crate::ffi::ForeignModule;
 use crate::ffi::ForeignParam;
+use crate::namespace::Binding;
+use crate::namespace::Modifier;
+use crate::namespace::NamePath;
+use crate::namespace::PermissiveHandler;
+use crate::namespace::Scope;
+use crate::namespace::ScopeError;
+use crate::namespace::Segment;
+use crate::namespace::Trie;
 use crate::origin::ElabKind;
 use crate::origin::HoleNote;
 use crate::origin::OriginEntry;
@@ -445,6 +453,16 @@ pub enum LowerError
         /// The definition's byte range.
         byte_range: SourceRange,
     },
+
+    /// The namespace engine rejected an import transformation or merge.
+    #[error("import namespace lowering failed at bytes {byte_range:?}: {error}")]
+    Namespace
+    {
+        /// The failed namespace operation.
+        error: ScopeError,
+        /// The import declaration's source range.
+        byte_range: SourceRange,
+    },
 }
 
 impl From<ArenaBridgeError> for LowerError
@@ -515,6 +533,21 @@ pub struct RawPayload
     pub range: SourceRange,
 }
 
+/// The source-order index of an import declaration in a lowered file.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ImportIndex(pub usize);
+
+/// One lowered `import "URI" as name ;` declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImportDeclaration
+{
+    /// The URI string with its surrounding quotes removed.
+    pub uri: String,
+    /// The one-segment alias supplied by the `as` clause.
+    pub alias: Segment,
+}
+
 /// The result of lowering a source file: items plus the origin side table.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Lowered
@@ -534,6 +567,10 @@ pub struct Lowered
     /// consumes these to resolve C symbols and marshal the
     /// boundary (§5.1).
     pub foreign: Vec<ForeignModule>,
+    /// Import declarations in source order. Each declaration contributes a
+    /// root binding to [`Self::import_scope`] and qualifies it through
+    /// [`Modifier::alias_as`]; imports are declarations, not runnable items.
+    pub imports: Vec<ImportDeclaration>,
     /// The `codata` blocks declared by *this* source, keyed by codata type name
     /// (the codata-declaration contract). Like [`Self::foreign`], a `codata`
     /// block is a declaration, not a runnable item — it yields no
@@ -558,6 +595,9 @@ pub struct Lowered
     /// source order (proposal-attributes.md §2); resolved and typed by the
     /// [`crate::attributes`] pass.
     pub attributes: Vec<RawAttr>,
+    /// The namespace scope built from this source's imports. Imports touch only
+    /// its visible namespace, so the export namespace remains empty.
+    import_scope: Scope<ImportIndex, SourceRange>,
 }
 
 impl Lowered
@@ -581,6 +621,14 @@ impl Lowered
     pub(crate) fn data(&self) -> &BTreeMap<String, data::DataDecl>
     {
         &self.data
+    }
+
+    /// The namespace scope built while lowering this source's imports.
+    #[inline]
+    #[must_use]
+    pub const fn import_scope(&self) -> &Scope<ImportIndex, SourceRange>
+    {
+        &self.import_scope
     }
 
     /// A deterministic rendering for golden tests: items in debug format
@@ -4077,6 +4125,9 @@ impl Lowerer<'_>
         let mut attributes: Vec<RawAttr> = Vec::new();
         let mut foreign: Vec<ForeignModule> = Vec::new();
         let mut codata: BTreeMap<String, codata::CodataDecl> = BTreeMap::new();
+        let mut imports: Vec<ImportDeclaration> = Vec::new();
+        let mut import_scope: Scope<ImportIndex, SourceRange> = Scope::new();
+        let mut namespace_handler = PermissiveHandler::<()>::new();
 
         // The whole file failed to parse as items when it yields no item node
         // yet buffered parse obligations (garbage like `}{` / `@@@`): the melder
@@ -4150,6 +4201,19 @@ impl Lowerer<'_>
             // `NominalId → DataId` seam), so it is infallible here.
             self.collect_data();
             for child in named_non_extra_children(root) {
+                if child.kind() == node_kinds::IMPORT_DECLARATION {
+                    match self.lower_import(
+                        child,
+                        ImportIndex(imports.len()),
+                        &mut import_scope,
+                        &mut namespace_handler,
+                    ) {
+                        | Ok(declaration) => imports.push(declaration),
+                        | Err(_dropped) if bool::from(self.total()) => {},
+                        | Err(error) => return Err(error),
+                    }
+                    continue;
+                }
                 if matches!(
                     child.kind(),
                     node_kinds::EXTERN_BLOCK
@@ -4268,11 +4332,43 @@ impl Lowerer<'_>
         Ok(Lowered {
             items,
             foreign,
+            imports,
             codata,
             data: core::mem::take(&mut self.data),
             origin: origin_map,
             attributes,
+            import_scope,
         })
+    }
+
+    /// Lowers one `import "URI" as name ;` declaration through the namespace
+    /// engine and retains its surface operands.
+    fn lower_import(
+        &self,
+        node: SynNode<'_>,
+        index: ImportIndex,
+        scope: &mut Scope<ImportIndex, SourceRange>,
+        handler: &mut PermissiveHandler<()>,
+    ) -> LowerResult<ImportDeclaration>
+    {
+        let uri = self.quoted_string_field(node, node_kinds::FIELD_URI)?;
+        let alias_node = required_field(node, node_kinds::FIELD_ALIAS)?;
+        let alias = Segment::from(self.text(alias_node)?.to_owned());
+        let imported: Trie<ImportIndex, SourceRange> =
+            core::iter::once((NamePath::root(), Binding::new(index, node.byte_range()))).collect();
+        let qualified = Modifier::alias_as(alias.clone())
+            .apply(imported, handler)
+            .map_err(|error| LowerError::Namespace {
+                error: ScopeError::from(error),
+                byte_range: node.byte_range(),
+            })?;
+        scope
+            .import_subtree(&NamePath::root(), qualified, handler)
+            .map_err(|error| LowerError::Namespace {
+                error,
+                byte_range: node.byte_range(),
+            })?;
+        Ok(ImportDeclaration { uri, alias })
     }
 
     /// Collects the leading `@[…]` attribute blocks of one item node into
@@ -4381,8 +4477,8 @@ impl Lowerer<'_>
         node: SynNode<'_>,
     ) -> LowerResult<ForeignModule>
     {
-        let abi = self.extern_string(node, node_kinds::FIELD_ABI)?;
-        let name = self.extern_string(node, node_kinds::FIELD_LIBRARY)?;
+        let abi = self.quoted_string_field(node, node_kinds::FIELD_ABI)?;
+        let name = self.quoted_string_field(node, node_kinds::FIELD_LIBRARY)?;
         // First collect the opaque handle types, so a later member signature
         // referencing one resolves it to a `Ptr` rather than a rejected atom.
         let mut types: Vec<String> = Vec::new();
@@ -4410,15 +4506,14 @@ impl Lowerer<'_>
         Ok(ForeignModule {
             name,
             abi,
-            library: self.extern_string(node, node_kinds::FIELD_LIBRARY)?,
+            library: self.quoted_string_field(node, node_kinds::FIELD_LIBRARY)?,
             types,
             functions,
         })
     }
 
-    /// Reads a quoted `extern`-block attribute string field (`abi` /
-    /// `library`), stripping the delimiting quotes.
-    fn extern_string(
+    /// Reads a quoted string field, stripping the delimiting quotes.
+    fn quoted_string_field(
         &self,
         node: SynNode<'_>,
         field: SyntaxField,
@@ -5687,6 +5782,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::UnknownObservation { ref byte_range, .. }
         | LowerError::DuplicateObservation { ref byte_range, .. }
         | LowerError::MissingObservation { ref byte_range, .. }
+        | LowerError::Namespace { ref byte_range, .. }
         | LowerError::MalformedNode { ref byte_range, .. } => Some(byte_range.clone()),
         | LowerError::ParserUnavailable { .. }
         | LowerError::ParseFailed
@@ -5743,6 +5839,9 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::DuplicateObservation { .. }
         | LowerError::MissingObservation { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::COPATTERN_CLAUSE,
+        },
+        | LowerError::Namespace { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::IMPORT_DECLARATION,
         },
         | LowerError::ParserUnavailable { .. }
         | LowerError::ParseFailed

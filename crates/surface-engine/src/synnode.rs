@@ -96,6 +96,8 @@ mod label
     pub const OPER: TileSpelling = TileSpelling("oper");
     /// `module` declaration lead tile (the checked-module surface).
     pub const MODULE: TileSpelling = TileSpelling("module");
+    /// `import` declaration lead tile.
+    pub const IMPORT: TileSpelling = TileSpelling("import");
     /// Attribute-block opener.
     pub const AT_BRACKET: TileSpelling = TileSpelling("@[");
     /// Attribute-block closer.
@@ -108,6 +110,8 @@ mod label
     pub const EQUALS: TileSpelling = TileSpelling("=");
     /// Signature ascription tile.
     pub const COLON: TileSpelling = TileSpelling(":");
+    /// Import-alias separator tile.
+    pub const AS: TileSpelling = TileSpelling("as");
     /// Statement / item terminator.
     pub const SEMI: TileSpelling = TileSpelling(";");
     /// Comma separator.
@@ -958,12 +962,15 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::HOST_ESCAPE, node_kinds::FIELD_EXPRESSION) => {
                 self.host_escape_expression_field()
             },
-            // The `extern` block's ABI / library strings: the first / second
-            // quote-delimited run (the melder inlines `"…"` as flat tiles, so
-            // the string is a synthesized run, not a node of its own).
+            // The import URI and `extern` ABI are each the first
+            // quote-delimited run. An import's alias is the identifier after
+            // the `as` tile. The melder inlines `"…"` as flat tiles, so each
+            // string is a synthesized run rather than a node of its own.
+            | (node_kinds::IMPORT_DECLARATION, node_kinds::FIELD_URI)
             | (node_kinds::EXTERN_BLOCK, node_kinds::FIELD_ABI) => {
                 self.nth_string_run(StringRunIndex(0))
             },
+            | (node_kinds::IMPORT_DECLARATION, node_kinds::FIELD_ALIAS) => self.after(label::AS),
             | (node_kinds::EXTERN_BLOCK, node_kinds::FIELD_LIBRARY) => {
                 self.nth_string_run(StringRunIndex(1))
             },
@@ -1205,6 +1212,7 @@ impl<'tree> SynNode<'tree>
                 node_kinds::CIRCUIT_DECLARATION
             },
             | Some(label::MODULE) => node_kinds::MODULE_DECLARATION,
+            | Some(label::IMPORT) => node_kinds::IMPORT_DECLARATION,
             | Some(label::REC) => node_kinds::REC_BLOCK,
             | Some(label::VAL) => node_kinds::LET_STATEMENT,
             | Some(label::RUN) => node_kinds::BIND_STATEMENT,

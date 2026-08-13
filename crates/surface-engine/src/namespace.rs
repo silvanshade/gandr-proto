@@ -14,14 +14,13 @@
 //!
 //! # What this layer is not
 //!
-//! It is deliberately an internal mechanism with no surface of its own:
+//! It is deliberately an internal mechanism with no surface syntax of its own:
+//! the modifier language is built by callers, not parsed. Surface lowering is
+//! now its first caller: `import "URI" as name ;` is recognized by the
+//! lowerer's [`crate::synnode::SynNode`] adapter, retained as a source-ordered
+//! declaration, and applied as [`Modifier::alias_as`] to a root binding in the
+//! visible namespace.
 //!
-//! - **No surface syntax.** Nothing here is spelled in gandr source. The
-//!   modifier language is built by callers, not parsed.
-//! - **No import lowering.** `import "URI" as name ;` parses today
-//!   (`surface-grammar`'s `import_declaration` rule) and is not lowered; this
-//!   module does not change that. What it adds is the *meaning* the clause will
-//!   have — see "The `as name` clause" below.
 //! - **No operator-table or attribute-registry wiring.** Both are named in the
 //!   design record as clients of this mechanism; neither is connected here.
 //! - **Nothing kernel-side.** Paths never leave the elaboration layer.
