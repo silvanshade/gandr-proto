@@ -23,6 +23,7 @@ use gandr_surface_parser::label;
 use gandr_surface_parser::parse;
 use gandr_surface_syntax::Cst;
 use gandr_surface_syntax::Material;
+use gandr_surface_syntax::MoldPayload;
 use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::NodeKind;
 use gandr_surface_syntax::SourceSlice;
@@ -1338,7 +1339,7 @@ fn mold_label_of(
         if view.kind() == NodeKind::Token
             && view.material() == Material::Tile
             && view.text().is_ok_and(|slice| slice.as_ref() == text)
-            && let gandr_surface_syntax::MoldPayload::Tile(mold) = view.payload()
+            && let MoldPayload::Tile(mold) = view.payload()
         {
             return pbg.mold(mold).ok().map(|def| def.label.to_owned());
         }
