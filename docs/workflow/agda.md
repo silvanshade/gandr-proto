@@ -110,6 +110,8 @@ The test is ownership, not provenance: if we defined it and it knows nothing abo
 It stays a separate task rather than a gate dependency so a warm tree does not re-enter the fetch path on every run.
 The provisioning itself is `scripts/agda-deps.gandr`, run through the `gandr` script runner: the toolchain provisions its proof vehicle in the language the toolchain is for, and the script's `proc.exit` carries the shell's status out as the task's status.
 It is idempotent by its own guard, and it is silent while it works, because a shell block captures its command's output instead of relaying it (`gandr-czio`) — the task's announcement line is what tells you a clone is under way.
+The merge wall runs `agda:merge-check`, which delegates to `agda:check` when the merge range changes `metatheory/**` and otherwise exits without compiling the proof tree.
+It derives the ordinary range from the merge base of `HEAD` and `main`; `GANDR_MERGE_BASE` pins an explicit base for deterministic replay.
 
 ## Solvers
 

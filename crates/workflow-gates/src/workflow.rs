@@ -61,6 +61,7 @@ const MERGE_TASKS: &[Task] = &[
     Task::new(NameText("cargo:dylint:local")),
     Task::new(NameText("cargo:doc-check")),
     Task::new(NameText("cargo:nextest")),
+    Task::new(NameText("agda:merge-check")),
     Task::new(NameText("treefmt:check")),
 ];
 
@@ -82,6 +83,7 @@ const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("cargo:dylint:local")),
     Task::new(NameText("cargo:doc-check")),
     Task::new(NameText("cargo:nextest")),
+    Task::new(NameText("agda:merge-check")),
     Task::new(NameText("treefmt:check")),
     Task::new(NameText("core:check")),
     Task::new(NameText("grammar:test")),
@@ -1780,6 +1782,7 @@ mod tests
                 "cargo:dylint:local",
                 "cargo:doc-check",
                 "cargo:nextest",
+                "agda:merge-check",
                 "treefmt:check",
             ][..],
             task_names(Tier::Merge.plan())
@@ -1799,6 +1802,7 @@ mod tests
                 "cargo:dylint:local",
                 "cargo:doc-check",
                 "cargo:nextest",
+                "agda:merge-check",
                 "treefmt:check",
                 "core:check",
                 "grammar:test",

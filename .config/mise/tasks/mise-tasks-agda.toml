@@ -46,3 +46,24 @@ run = """
 aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
 cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
 """
+
+["agda:merge-check"]
+description = "Type-check the Agda metatheory when the merge range changes metatheory/"
+run = """
+set -eu
+
+base="${GANDR_MERGE_BASE:-}"
+if [ -z "$base" ]; then
+  base="$(git merge-base HEAD main)"
+fi
+
+if git diff --quiet "$base" HEAD -- metatheory/; then
+  echo "agda:merge-check: no metatheory changes"
+else
+  status=$?
+  if [ "$status" -ne 1 ]; then
+    exit "$status"
+  fi
+  mise run agda:check
+fi
+"""

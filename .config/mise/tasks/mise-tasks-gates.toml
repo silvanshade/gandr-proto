@@ -22,5 +22,6 @@ run = [
   { task = "cargo:dylint:local" },
   { task = "cargo:doc-check" },
   { task = "cargo:nextest" },
+  { task = "agda:merge-check" },
   { task = "treefmt:check" }
 ]

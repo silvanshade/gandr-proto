@@ -15,17 +15,18 @@ Every check has one canonical `mise` task body; hooks invoke that same task rath
 
 Run the **narrowest gate that proves your change** before any commit; the merge wall runs the composed sweep automatically.
 
-| Gate                                | Proves                                                                                                                                        |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                                                                     |
-| `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                                                                      |
-| `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))                                             |
-| `mise run cargo:nextest`            | the current Rust test scope                                                                                                                   |
-| `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly)                                         |
-| `mise run toolchain:pin-check`      | every toolchain reference point agrees with the mise pins (nightly/stable rustc, the materialized Dylint driver file, the typst doc-tool pin) |
-| `mise run cargo:dylint:local`       | strict project-local Dylint scope at `-D warnings` across covered workspace targets                                                           |
-| `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets                                                       |
-| `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                                                            |
+| Gate                             | Proves                                                                                                                                        |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mise run treefmt:check`         | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                                                                     |
+| `mise run docs:conflict-markers` | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                                                                      |
+| `mise run cargo:clippy`          | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))                                             |
+| `mise run cargo:nextest`         | the current Rust test scope                                                                                                                   |
+| `mise run cargo:doc-check`       | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly)                                         |
+| `mise run toolchain:pin-check`   | every toolchain reference point agrees with the mise pins (nightly/stable rustc, the materialized Dylint driver file, the typst doc-tool pin) |
+| `mise run cargo:dylint:local`    | strict project-local Dylint scope at `-D warnings` across covered workspace targets                                                           |
+| `mise run cargo:dylint`          | strict project-local plus pinned upstream rules across Dylint-covered workspace targets                                                       |
+| `mise run agda:check`            | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                                                            |
+| `mise run agda:merge-check`      | the `agda:check` contract when the merge range changes `metatheory/**`; otherwise a fast no-op                                                |
 
 `cargo:clippy` and `cargo:dylint:local` accept trailing package names to scope a run to the crates a change touches (`mise run cargo:clippy gandr-theory-computads`); bare invocations keep the workspace scope the wall composes, so per-module iteration and the composed sweep share one task body ([rust.md](rust.md) §"Iterate lints per touched crate").
 
@@ -37,10 +38,11 @@ The release no-panic smoke has no task yet; the parked push plan names `cargo:no
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
 - **`gate:merge`** — the composed merge check; the `.config/mise/tasks/mise-tasks-gates.toml` task body is authoritative for the membership and its order, so this file does not restate the list only for the two to drift.
-  The shape: the cheap drift/docs checks fail fast up front (with `toolchain:pin-check` first), the compile-class static analyzers run before the test sweep, and `treefmt:check` closes.
+  The shape: the cheap drift/docs checks fail fast up front (with `toolchain:pin-check` first), the compile-class static analyzers run before the test sweep, metatheory changes then run `agda:check`, and `treefmt:check` closes.
   `gandr-workflow-gates` carries the same list so `workflow merge` can replay those boundaries with caching; its `merge_plan_matches_gate_merge_task` witness compares the two definitions, so the crate cannot drift into a second, different merge wall.
   `cargo:dylint:local` loads `gandr-workflow-dylint` over every workspace member at `-D warnings`, with no exclusions; the full upstream Dylint inventory remains on-demand and in the parked push tier.
   `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently.
+  `agda:merge-check` compares `HEAD` with its merge base on `main` and invokes `agda:check` only when that range changes `metatheory/**`; `GANDR_MERGE_BASE` supplies an explicit base for deterministic replay.
   This is the deterministic set a normal diff can realistically break.
   Parked entries return with their prerequisites: `grammar:test` (returns with the tree-sitter grammar port).
 - **`beads`** (`bd dolt pull && bd dolt push`) — makes the branch's beads durable on DoltHub **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race ([tracker.md](tracker.md)).

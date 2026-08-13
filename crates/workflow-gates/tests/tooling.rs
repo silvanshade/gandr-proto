@@ -265,6 +265,7 @@ const EXPECTED_MERGE_GATE_TASKS: &[&str] = &[
     "cargo:dylint:local",
     "cargo:doc-check",
     "cargo:nextest",
+    "agda:merge-check",
     "treefmt:check",
 ];
 
