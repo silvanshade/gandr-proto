@@ -122,14 +122,12 @@ mod tests
             let base = "def target(x: Integer) -> F Integer {\n  ret (x + 1)\n}\nprint(target)\n";
             let edited = "def target(x: Integer) -> F Integer {\n  ret (x + 2)\n}\nprint(target)\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert_eq!(2, resumed.adopted().len(), "two items");
+            assert!(!adopted[0], "the edited definition `target` is re-typed");
             assert!(
-                !resumed.adopted()[0],
-                "the edited definition `target` is re-typed"
-            );
-            assert!(
-                resumed.adopted()[1],
+                adopted[1],
                 "the type-stable dependent `print(target)` is adopted, not re-typed"
             );
         }
@@ -142,8 +140,9 @@ mod tests
             let base = "def a = 1;\ndef c = 3;\n";
             let edited = "def a = 1;\ndef b = 2;\ndef c = 3;\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert_eq!(resumed.adopted(), &[true, false, true], "only `b` is fresh");
+            assert_eq!(adopted, vec![true, false, true], "only `b` is fresh");
             assert_eq!(
                 2,
                 usize::from(resumed.adopted_count()),
@@ -157,11 +156,11 @@ mod tests
         {
             let source = "def a = 1;\ndef b = a;\ndef c = b;\n";
             let resumed = gate(source, source);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert!(
-                resumed.adopted().iter().all(|&adopted| adopted),
-                "an identity edit reuses everything: {:?}",
-                resumed.adopted()
+                adopted.iter().all(|&adopted| adopted),
+                "an identity edit reuses everything: {adopted:?}"
             );
         }
 
@@ -202,10 +201,11 @@ mod tests
             let base = "def x = 1;\ndef y = x;\n";
             let edited = "def x = \"hi\";\ndef y = x;\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert!(!resumed.adopted()[0], "the edited `x` is re-typed");
+            assert!(!adopted[0], "the edited `x` is re-typed");
             assert!(
-                !resumed.adopted()[1],
+                !adopted[1],
                 "the dependent `y` reads the changed binding `x`, so it is re-typed"
             );
             // The dependency really did change type (Integer ⇒ String), so the
@@ -239,9 +239,10 @@ mod tests
             let base = "def x = 1;\ndef y = x + 1;\n";
             let edited = "def x = \"hi\";\ndef y = x + 1;\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert!(
-                !resumed.adopted()[1],
+                !adopted[1],
                 "the dependent `y` is re-typed against the changed `x`"
             );
         }
@@ -260,8 +261,9 @@ mod tests
             let base = "def a = 1;\ndef b = 2;\ndef c = 3;\n";
             let edited = "def a = 1;\ndef c = 3;\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert_eq!(resumed.adopted(), &[true, true], "both survivors reused");
+            assert_eq!(adopted, vec![true, true], "both survivors reused");
         }
 
         /// Renaming a definition is a delete-plus-insert: the renamed item is
@@ -273,10 +275,11 @@ mod tests
             let base = "def foo = 1;\ndef keep = 9;\n";
             let edited = "def bar = 1;\ndef keep = 9;\n";
             let resumed = gate(base, edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             // `keep` does not read `foo`/`bar`, so it is adopted; `bar` is a
             // fresh insertion.
-            assert!(resumed.adopted()[1], "`keep` is adopted across the rename");
+            assert!(adopted[1], "`keep` is adopted across the rename");
         }
     }
 

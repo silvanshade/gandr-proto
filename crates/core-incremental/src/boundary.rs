@@ -95,6 +95,11 @@ copy_wrapper!(
     "Whether a lowered item carries an unresolved hole."
 );
 copy_wrapper!(
+    AdoptionDecision,
+    bool,
+    "Whether one edited item adopted its base checkpoint."
+);
+copy_wrapper!(
     AdoptedItemCount,
     usize,
     "Number of item checkpoints adopted by an incremental resume."

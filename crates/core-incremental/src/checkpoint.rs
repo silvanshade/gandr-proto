@@ -71,6 +71,7 @@ use gandr_theory_orders::OrderMaintenance;
 use gandr_theory_orders::Pos;
 
 use crate::boundary::AdoptedItemCount;
+use crate::boundary::AdoptionDecision;
 use crate::boundary::DefinitionName;
 use crate::boundary::HolePresence;
 use crate::boundary::MatchDecision;
@@ -243,18 +244,20 @@ impl Resume
         self.checkpoints
     }
 
-    /// Borrows the edited program's per-item adoption decisions in source
+    /// Iterates the edited program's per-item adoption decisions in source
     /// order.
     ///
     /// # Contract
-    /// - ensures: returns one flag per checkpoint; `true` means the base
+    /// - ensures: yields one decision per checkpoint; `true` means the base
     ///   checkpoint was reused rather than re-typed.
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn adopted(&self) -> &[bool]
+    pub fn adopted(
+        &self
+    ) -> impl ExactSizeIterator<Item = AdoptionDecision> + DoubleEndedIterator + '_
     {
-        self.adopted.as_slice()
+        self.adopted.iter().copied().map(AdoptionDecision::from)
     }
 
     /// The number of items whose base checkpoint was adopted (reused) — the

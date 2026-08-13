@@ -195,14 +195,12 @@ mod tests
                 def("d", Body::Ref("target".to_owned())),
             ];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert_eq!(2, resumed.adopted().len(), "two items");
+            assert!(!adopted[0], "the edited definition `target` is re-typed");
             assert!(
-                !resumed.adopted()[0],
-                "the edited definition `target` is re-typed"
-            );
-            assert!(
-                resumed.adopted()[1],
+                adopted[1],
                 "the type-stable dependent `d = target` is adopted, not re-typed"
             );
         }
@@ -219,8 +217,9 @@ mod tests
                 def("c", Body::Int(3)),
             ];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert_eq!(resumed.adopted(), &[true, false, true], "only `b` is fresh");
+            assert_eq!(adopted, vec![true, false, true], "only `b` is fresh");
             assert_eq!(
                 2,
                 usize::from(resumed.adopted_count()),
@@ -238,11 +237,11 @@ mod tests
                 def("c", Body::Ref("b".to_owned())),
             ];
             let resumed = gate(&source, &source);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert!(
-                resumed.adopted().iter().all(|&adopted| adopted),
-                "an identity edit reuses everything: {:?}",
-                resumed.adopted()
+                adopted.iter().all(|&adopted| adopted),
+                "an identity edit reuses everything: {adopted:?}"
             );
         }
     }
@@ -265,10 +264,11 @@ mod tests
                 def("y", Body::Ref("x".to_owned())),
             ];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert!(!resumed.adopted()[0], "the edited `x` is re-typed");
+            assert!(!adopted[0], "the edited `x` is re-typed");
             assert!(
-                !resumed.adopted()[1],
+                !adopted[1],
                 "the dependent `y` reads the changed binding `x`, so it is re-typed"
             );
             let typings: Vec<&ItemTyping> = resumed.typings().collect();
@@ -304,9 +304,10 @@ mod tests
                 def("y", Body::CheckInteger("x".to_owned())),
             ];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
             assert!(
-                !resumed.adopted()[1],
+                !adopted[1],
                 "the dependent `y` is re-typed against the changed `x`"
             );
             let typings: Vec<&ItemTyping> = resumed.typings().collect();
@@ -335,8 +336,9 @@ mod tests
             ];
             let edited = [def("a", Body::Int(1)), def("c", Body::Int(3))];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert_eq!(resumed.adopted(), &[true, true], "both survivors reused");
+            assert_eq!(adopted, vec![true, true], "both survivors reused");
         }
 
         /// Renaming a definition is a delete-plus-insert: the renamed item is
@@ -348,8 +350,9 @@ mod tests
             let base = [def("foo", Body::Int(1)), def("keep", Body::Int(9))];
             let edited = [def("bar", Body::Int(1)), def("keep", Body::Int(9))];
             let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
 
-            assert!(resumed.adopted()[1], "`keep` is adopted across the rename");
+            assert!(adopted[1], "`keep` is adopted across the rename");
         }
     }
 
