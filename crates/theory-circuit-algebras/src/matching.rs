@@ -33,6 +33,10 @@
 //! therefore determines a whole connected component with no further choices,
 //! and the only branching left is the choice of seed image per component.
 //!
+//! A successful [`Matching`] reports the number of pending assignments resolved
+//! through [`Matching::steps`]. That projection makes the seed economy
+//! observable without exposing the search's private frames or seed list.
+//!
 //! A component with no generators at all — a bare wire — is seeded on the
 //! target's wires instead, which is the identity pattern's case.
 //!
@@ -337,6 +341,8 @@ pub struct Matching
     admitted: Vec<Embedding>,
     /// The candidates the convexity conjunct refused.
     refused: Vec<ConvexityRefusal>,
+    /// How many pending assignments the search resolved.
+    steps: SearchSteps,
 }
 
 impl Matching
@@ -371,6 +377,14 @@ impl Matching
     pub fn refused_count(&self) -> MatchCount
     {
         MatchCount(self.refused.len())
+    }
+
+    /// How many search steps were consumed.
+    #[inline]
+    #[must_use]
+    pub const fn steps(&self) -> SearchSteps
+    {
+        self.steps
     }
 }
 
@@ -462,7 +476,8 @@ pub fn convexity_warrant(pattern: &Wiring) -> ConvexityWarrant
 ///   port-order-preserving, injective on generators and on wires, and convex in
 ///   `target`; every structurally-complete candidate that is not convex appears
 ///   as a [`ConvexityRefusal`] rather than being dropped; the enumeration is
-///   complete up to the budget.
+///   complete up to the budget; [`Matching::steps`] reports how many pending
+///   assignments the completed search resolved.
 /// - provides: the matching face of the crate boundary, with the convexity
 ///   conjunct decided by the route [`convexity_warrant`] selects — discharged
 ///   for a strongly connected pattern, swept otherwise.
@@ -471,7 +486,8 @@ pub fn convexity_warrant(pattern: &Wiring) -> ConvexityWarrant
 ///   truncated enumeration presented as a complete one is the error worth
 ///   avoiding.
 /// - panics: none.
-/// - intension: components are seeded in pattern generator order and candidates
+/// - intension: exactly one nondeterministic seed is taken per connected
+///   component; components are seeded in pattern generator order and candidates
 ///   in target generator order, so the enumeration is deterministic; the search
 ///   is an explicit backtracking stack, so it never recurses on pattern size.
 ///
@@ -479,10 +495,12 @@ pub fn convexity_warrant(pattern: &Wiring) -> ConvexityWarrant
 /// See the `- fails:` clause above.
 ///
 /// # Adequacy
-/// - hypothesis: L1 evidence — every admitted embedding is validated against
-///   the two diagrams it claims to relate (labels, arities, incidence, and port
-///   order re-checked from the wire map), and the convexity arms are separated
-///   by the published blocking shape and by its non-blocking twin.
+/// - hypothesis: L1 evidence validates every admitted embedding against the two
+///   diagrams it claims to relate (labels, arities, incidence, and port order
+///   re-checked from the wire map), while the published blocking shape and its
+///   non-blocking twin separate the convexity arms; L3 pointwise pins the
+///   multi-root fixture's exact [`Matching::steps`] count, separating one seed
+///   for its connected component from a coarsened seed set.
 /// - witness: `matching::tests::a_multi_output_pattern_embeds`
 /// - witness: `matching::tests::a_multi_root_pattern_embeds`
 /// - witness: `matching::tests::a_reconvergent_pattern_embeds`
@@ -965,7 +983,14 @@ fn search(
             }
         }
     }
-    Ok(admit(pattern, target, completions, warrant))
+    let consumed = budget.0.saturating_sub(remaining.0);
+    Ok(admit(
+        pattern,
+        target,
+        completions,
+        warrant,
+        SearchSteps(consumed),
+    ))
 }
 
 /// Turn complete assignments into admitted embeddings and refusals.
@@ -987,6 +1012,7 @@ fn admit(
     target: &Wiring,
     completions: Vec<Assignment>,
     warrant: ConvexityWarrant,
+    steps: SearchSteps,
 ) -> Matching
 {
     let mut admitted: Vec<Embedding> = Vec::new();
@@ -1028,7 +1054,11 @@ fn admit(
             },
         }
     }
-    Matching { admitted, refused }
+    Matching {
+        admitted,
+        refused,
+        steps,
+    }
 }
 
 /// The span-level seam datum of one embedding — the interface's two halves,
@@ -1355,6 +1385,11 @@ mod tests
             MatchCount(1),
             matching.admitted_count(),
             "two roots are seeded from one component and propagated, not recursed into"
+        );
+        assert_eq!(
+            SearchSteps(24),
+            matching.steps(),
+            "one seed for the multi-root component fixes the exact search cost"
         );
         let embedding = matching
             .admitted()
