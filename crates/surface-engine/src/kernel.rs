@@ -297,18 +297,27 @@ impl KernelAdmissions
     ///   reads no arena state, so the two lowerings agree.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 — the four verdicts are separated by definitions a
-    ///   session can actually submit: a literal that admits, a list literal
-    ///   with no S1 image, a name no prior declaration binds, and a computation
-    ///   definition of returner type. The cross-declaration residue is a second
-    ///   definition whose body is the first definition's name, which admits
-    ///   only when the naming environment was populated; the
-    ///   environment-unchanged residue is a rejected definition followed by an
-    ///   admitted one taking position zero.
+    /// - hypothesis: L3 — the verdicts this function returns are separated by
+    ///   definitions a session can actually submit: an integer literal that
+    ///   admits, a machine-numeric literal with no S1 image, and a computation
+    ///   definition of returner type, whose reported type does not determine
+    ///   its polarity. The cross-declaration residue is a second definition
+    ///   whose body is the first definition's name, which admits only when the
+    ///   naming environment was populated; the environment-unchanged residue is
+    ///   a rejected definition followed by an admitted one taking position
+    ///   zero.
+    /// - hypothesis: the bridge's unresolved-name rejection is reachable only
+    ///   through the gap between the two name spaces, because a name nothing
+    ///   binds fails typing and never arrives here: a definition the session
+    ///   binds but the kernel withheld leaves the name resolvable to the one
+    ///   and free to the other. A name no prior declaration binds at all is a
+    ///   typing failure, and the session withholds it as
+    ///   [`WithheldReason::Untyped`] without calling this function.
     /// - witness: `kernel::a_value_definition_is_admitted`
     /// - witness: `kernel::a_later_definition_refers_to_an_earlier_one`
     /// - witness: `kernel::an_out_of_s1_definition_is_reported_outside_s1`
-    /// - witness: `kernel::a_free_name_is_reported_outside_s1`
+    /// - witness: `kernel::a_body_naming_a_withheld_definition_has_no_s1_image`
+    /// - witness: `kernel::an_untyped_item_is_withheld`
     /// - witness: `kernel::a_returner_definition_is_withheld`
     /// - witness: `kernel::a_rejected_definition_leaves_the_environment_unchanged`
     #[inline]

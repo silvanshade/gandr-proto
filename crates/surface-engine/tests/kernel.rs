@@ -157,6 +157,37 @@ mod tests
         assert_withheld(&submission, WithheldReason::IndeterminateDeclaredType);
     }
 
+    /// The kernel's naming environment is strictly narrower than the session's
+    /// typing context, and a body can reach the gap between them.
+    ///
+    /// A withheld definition still binds its name for the session — the item
+    /// typed, so the session records it — while the kernel adds a constant only
+    /// for a definition that *admitted*. A later body naming it therefore types
+    /// against a bound name and reaches the bridge against a free one, which is
+    /// the only way a session drives the bridge's unresolved-name rejection: a
+    /// name no prior declaration binds at all fails typing first and never
+    /// reaches [`KernelAdmissions::offer`].
+    #[test]
+    fn a_body_naming_a_withheld_definition_has_no_s1_image()
+    {
+        let mut session = Session::new();
+        let withheld = submit(&mut session, "def total = 1 + 2 * 3;");
+        assert_withheld(&withheld, WithheldReason::IndeterminateDeclaredType);
+
+        let submission = submit(&mut session, "def again = total;");
+        let verdict = only_verdict(&submission);
+        assert!(
+            matches!(*verdict, KernelVerdict::OutsideS1 { .. }),
+            "the session binds `total` and the kernel does not, so the bridge \
+             finds the name free, got {verdict:?}"
+        );
+        assert_eq!(
+            AdmittedCount::default(),
+            session.kernel().admitted(),
+            "neither definition admitted, so the environment is still empty"
+        );
+    }
+
     /// The choke point grants the bridge no credence: a definition that lowers
     /// cleanly but whose body does not inhabit its declared type is refused,
     /// and the environment is left as it was.
