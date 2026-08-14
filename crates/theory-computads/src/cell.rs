@@ -23,6 +23,12 @@
 //! structural cell multiset in another order does not. Structural
 //! deduplication uses no arena addresses, generation stamps, or session state;
 //! it does not make a [`CellId`] a portable content address.
+//!
+//! That tradeoff remains deliberate for the hot in-process path. A persistence
+//! or transport format must never serialize [`CellId`]. It must define
+//! canonical bytes for resolved cell content and application position, use a
+//! distinct fixed-width transport address, verify it, and resolve it to a local
+//! [`CellId`] before replay.
 
 use alloc::vec::Vec;
 
@@ -114,10 +120,11 @@ impl<A: CellAlphabet> CellStore<A>
     ///
     /// # Contract
     /// - ensures: a cell structurally equal (same `lhs`/`rhs`/orientation/
-    ///   provenance) to one already present returns that cell's existing id and
-    ///   does not grow the store; otherwise the cell is appended and its fresh
-    ///   id returned. Structural identity controls deduplication; the returned
-    ///   identifier remains an insertion-order address (§7.3.1).
+    ///   provenance/derived metadata) to one already present returns that
+    ///   cell's existing id and does not grow the store; otherwise the cell is
+    ///   appended and its fresh id returned. Structural identity controls
+    ///   deduplication; the returned identifier remains an insertion-order
+    ///   address (§7.3.1).
     /// - panics: none.
     #[inline]
     pub fn insert(
