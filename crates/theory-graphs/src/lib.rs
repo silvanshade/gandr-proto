@@ -1,8 +1,27 @@
-//! Dense-u32 graph algorithms for gandr.
+//! Dense-u32 graph algorithms for gandr, and the grammar structures built on
+//! them.
 //!
 //! The crate exposes a tiny [`EdgeSource`] boundary and keeps the petgraph view
 //! adapter private. Public algorithms consume dense node identifiers only; no
 //! petgraph type appears in the public API.
+//!
+//! # Two halves, and which one callers reach for
+//!
+//! **The algorithm half** — [`topological_sort`],
+//! [`strongly_connected_components`], [`condensation`],
+//! [`immediate_dominators`], [`reachability`], [`shortest_path_lengths`],
+//! [`all_simple_paths`], [`transitive_reduction_closure`], [`cycle_witness`],
+//! the bisimulation and simulation refinements, and
+//! [`adjacency_fingerprint`] — is a general library over [`EdgeSource`]. Only
+//! [`cycle_witness`] currently has a caller outside this crate.
+//!
+//! **The grammar half** — the named precedence DAG (`prec`: [`PrecSpec`],
+//! [`PrecDag`], [`Prec`], [`Assoc`], [`Bound`]) and the declarative walk index
+//! (`walk`: [`WalkSpec`], [`WalkIndex`], [`Walk`], [`Dir`], [`End`]) — is
+//! parser semantics expressed over that library, and it is what gandr's
+//! surface tier depends on this crate for. Both are built on the same dense
+//! node vocabulary and the same fixed FNV fingerprint accumulator, which is why
+//! they share a crate.
 
 extern crate alloc;
 

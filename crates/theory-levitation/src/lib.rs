@@ -29,7 +29,7 @@
 //! total structural [`Eq`]/[`Hash`]; the [`code`] module's tests witness
 //! reflexivity, per-variant distinctness, and use as a hash-map key.
 //!
-//! # 2-cell faces (`cell`)
+//! # 2-cell faces (`rule`)
 //!
 //! A rewrite `lhs ==> rhs` over a signature is a **pair of open terms in the
 //! free structure over that signature** — elements of the free monad `D⋆(V)`

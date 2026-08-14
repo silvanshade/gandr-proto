@@ -21,9 +21,15 @@ use gandr_theory_nominal_automata::Unifiability;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum GandrSort
 {
-    /// **Atom-role.** A machine continuation-environment key (rendered
-    /// `%k{id}`): the fresh name `shift` / `perform` α-rename their captured
-    /// binder to, so distinct captures never collide.
+    /// **Atom-role, reserved.** A machine continuation-environment key
+    /// (rendered `%k{id}`): the fresh name `shift` / `perform` α-rename their
+    /// captured binder to, so distinct captures never collide.
+    ///
+    /// **Nothing constructs this sort yet.** The keys are still minted by
+    /// `gandr-core-sequent`'s focusing pass, from a bare monotone counter
+    /// formatted into the reserved `%`-prefixed namespace; routing them through
+    /// [`gandr_theory_nominal_automata::Gensym`] is the migration this variant
+    /// is reserved for and is not the state of the tree.
     ContKey,
     /// **Atom-role.** A pipeline hoist binder (rendered `%tmp{n}`): the fresh
     /// name a synthesized `Bind` introduces when a value position is lifted to
@@ -34,8 +40,17 @@ pub enum GandrSort
     /// holes with different identifiers type identically (ADR-41 D3). The
     /// Ψ+σ-bearing object is the CMTT staging node, not an atom.
     HoleAddr,
-    /// **Atom-role.** A sealed abstract type's identity: the fresh name an
-    /// opaque ascription mints for one abstract type component.
+    /// **Atom-role, reserved.** A sealed abstract type's identity: the name an
+    /// opaque ascription binds one abstract type component to.
+    ///
+    /// **Sealing does not mint through [`gandr_theory_nominal_automata`], and
+    /// the divergence is deliberate.** A seal's identity must be a *function of
+    /// its sealing site*, so that an admission point can re-elaborate, re-mint
+    /// and refuse a recorded sequence a re-run does not reproduce; a monotone
+    /// allocator offers never-reused identities, which is a different property.
+    /// [`crate::seal::SealTable`] therefore assigns positional serials keyed on
+    /// [`crate::seal::SealSite`], and this variant records that a sealed atom
+    /// is atom-role rather than that it comes from the shared allocator.
     ///
     /// It is a name and never an unknown, which is the load-bearing half. A
     /// sealed type is not a type the checker is waiting to learn — it is one

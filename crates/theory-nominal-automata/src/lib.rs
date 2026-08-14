@@ -1,17 +1,26 @@
 //! A generic **nominal atom** substrate for gandr's machine-minted names.
 //!
 //! gandr mints machine-internal names in several independent places — the
-//! typing machine's captured-continuation keys (`%k{id}`), the pipeline
-//! lowerer's hoist binders (`%tmp{n}`) and hole identifiers, and a future
-//! solver type-variable / grade-variable pool. Each was its own counter plus
-//! format, each separately re-establishing the invariant that the names it
-//! mints are distinct. This crate is the one **shared atom fabric** those
-//! name-spaces are consolidated onto: one allocation discipline ([`Gensym`])
-//! producing sort-tagged [`Atom`]s whose identities are distinct **within a
-//! single allocator**. That per-allocator guarantee is exactly the scope its
-//! consumers need: gandr runs one allocator per sort per pass (one
-//! `State.gensym`, one `Lowerer` hoist/hole allocator), so the names any one
-//! pass mints are mutually distinct.
+//! pipeline lowerer's hoist binders (`%tmp{n}`) and hole identifiers, the
+//! typing machine's captured-continuation keys (`%k{id}`), and a future solver
+//! type-variable / grade-variable pool. Each was its own counter plus format,
+//! each separately re-establishing the invariant that the names it mints are
+//! distinct. This crate is the **shared atom fabric** those name-spaces are
+//! being consolidated onto: one allocation discipline ([`Gensym`]) producing
+//! sort-tagged [`Atom`]s whose identities are distinct **within a single
+//! allocator**. That per-allocator guarantee is exactly the scope its consumers
+//! need: gandr runs one allocator per sort per pass (one `Lowerer` hoist/hole
+//! allocator), so the names any one pass mints are mutually distinct.
+//!
+//! **The consolidation is partial, and the tree is the record of how far it
+//! got.** The lowerer's hoist binders and hole addresses mint here. The
+//! continuation keys do not: they are still `format!("%k{n}")` off a bare
+//! counter in `gandr-core-sequent`'s focusing pass. Sealing minted a third
+//! discipline deliberately — an opaque ascription's abstract-type identity has
+//! to be a *function of the sealing site* so an admission point can re-mint and
+//! compare, which a monotone allocator cannot offer, so `gandr-core-checker`'s
+//! seal table assigns positional serials instead. Two of the sort vocabulary's
+//! six roles are constructed today.
 //!
 //! The consolidation is the structural answer to a measured hazard: keying a
 //! continuation environment by the *source* binder name (dynamic scoping)
@@ -43,8 +52,20 @@
 //! # What this crate is, and is not
 //!
 //! The crate is the atom space, the monotone allocator, and the sort trait
-//! **plus the explicit-dealloc automaton layer** that reclaims atoms. The
-//! adopted design is the nominal-automata study, which left this repository
+//! **plus the explicit-dealloc automaton layer** that reclaims atoms.
+//!
+//! **Only the first is consumed.** [`Gensym`], [`Sort`] and [`Unifiability`]
+//! are the three items other crates name; the automaton layer below — three
+//! model inventories, the membership procedure, the name-dropping
+//! construction, and the decision-procedure catalogue — has no caller in the
+//! workspace and is waiting on the bounded-alphabet restriction and the
+//! classical back-end that every remaining catalogue procedure bottlenecks on.
+//! The ratio is stated here rather than left to a reader to discover: the two
+//! layers are kept in one crate deliberately, because the automaton half is
+//! where the resource-lifecycle work lands, and splitting it would buy a
+//! tidier number at the price of a crate, a name, and a category argument.
+//!
+//! The adopted design is the nominal-automata study, which left this repository
 //! with the research corpus; the landed modules map onto it as follows:
 //!
 //! - [`handle`] — the finitary orbit-level representation (control points,

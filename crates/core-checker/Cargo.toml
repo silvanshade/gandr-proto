@@ -17,8 +17,11 @@ autotests = false
 # dependency direction is the permitted one — the section-2 TCB wall forbids the
 # reverse (gandr-kernel-core depends on gandr-kernel-strata ONLY).
 gandr-kernel-core.workspace = true
-# The nominal atom substrate (ADR-41): runtime continuation-key minting routes
-# through its `Gensym`/`Atom` instead of a bare counter.
+# The nominal atom substrate (ADR-41). This crate names its `Sort` trait and
+# `Unifiability`, and nothing else: `nominal::GandrSort` is the sort vocabulary
+# every machine-minted name-space is tagged with, and the trait impl is what
+# draws the atom-role/variable-role boundary. Minting happens in the crates that
+# allocate — the lowerer holds the `Gensym`s.
 gandr-theory-nominal-automata.workspace = true
 no-panic.workspace = true
 proptest = { workspace = true, optional = true }
