@@ -32,12 +32,22 @@
 //!   [`replay_equivalent`] compares a boundary and asks each side to replay,
 //!   ignoring the recorded paths outright, so no relation reading the paths can
 //!   coincide with it.
+//! - [`equal_flows_over_different_boundaries_are_not_one_certificate`] is the
+//!   **containment** that strictness is a strictness *of*, and it is the one
+//!   the suite originally left unpinned. A relation on certificates that
+//!   compares the projected flows and nothing else is not inside
+//!   replay-equivalence at all: one cell fired on two unrelated instances of
+//!   its left-hand side gives one flow over two boundaries.
+//!   [`flow_equality_implies_replay_equivalence`] checks the implication
+//!   pairwise over every certificate the suite builds.
 //!
 //! [`the_two_legs_of_a_permutation_tile_have_one_flow`]: tests::the_two_legs_of_a_permutation_tile_have_one_flow
 //! [`disjoint_steps_share_no_thread`]: tests::disjoint_steps_share_no_thread
 //! [`the_shift_guard_refuses_a_pair_the_projection_identifies`]: tests::the_shift_guard_refuses_a_pair_the_projection_identifies
 //! [`flow_equality_is_strictly_finer_than_replay_equivalence`]: tests::flow_equality_is_strictly_finer_than_replay_equivalence
 //! [`replay_equivalent_certificates_can_carry_different_flows`]: tests::replay_equivalent_certificates_can_carry_different_flows
+//! [`equal_flows_over_different_boundaries_are_not_one_certificate`]: tests::equal_flows_over_different_boundaries_are_not_one_certificate
+//! [`flow_equality_implies_replay_equivalence`]: tests::flow_equality_implies_replay_equivalence
 //! [`overlaps_between`]: gandr_theory_computads::overlaps_between
 //! [`replay_equivalent`]: gandr_theory_computads::replay_equivalent
 
@@ -52,6 +62,7 @@ mod tests
     use gandr_theory_computads::CellStore;
     use gandr_theory_computads::ConvexityDischarge;
     use gandr_theory_computads::FlowEnd;
+    use gandr_theory_computads::FlowObstruction;
     use gandr_theory_computads::OverlapKind;
     use gandr_theory_computads::Tracelet;
     use gandr_theory_computads::cell_address;
@@ -62,6 +73,7 @@ mod tests
     use gandr_theory_computads::legs_flow_equal;
     use gandr_theory_computads::project_flow;
     use gandr_theory_computads::replay_equivalent;
+    use gandr_theory_computads::tracelet_flow;
     use gandr_theory_computads::tracelets_flow_equal;
 
     use crate::toy_alphabet::Toy;
@@ -416,6 +428,166 @@ mod tests
             !bool::from(flows_equal(&left, &right)),
             "while the threads still tell the two firings apart, at the peak boundary"
         );
+    }
+
+    #[test]
+    fn equal_flows_over_different_boundaries_are_not_one_certificate()
+    {
+        // THE CONTAINMENT, and the regression that fails if the boundary
+        // conjunct is dropped again. A flow forgets the formula-level
+        // arrangement, so one cell fired on two unrelated instances of its
+        // left-hand side projects to ONE flow — same vertex label, same
+        // occurrence count, same threads — over two boundaries that transform
+        // different things into different things. Comparing the flows and
+        // nothing else identifies them, and replay-equivalence does not, so a
+        // flow-only relation is not inside replay-equivalence at all.
+        let (store, composition) = fusion_fixture();
+        let ground = one_step_certificate(
+            &composition,
+            Toy::add(Toy::Zero, Toy::Zero),
+            Toy::Zero,
+            CellApp {
+                cell: composition.right,
+                at: at([]),
+            },
+        );
+        let schematic = one_step_certificate(
+            &composition,
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("y"))),
+            Toy::var(ToyNameRef("y")),
+            CellApp {
+                cell: composition.right,
+                at: at([]),
+            },
+        );
+        assert!(
+            bool::from(ground.replay(&store)) && bool::from(schematic.replay(&store)),
+            "both are certificates: add-Z fires on each peak and reaches each recorded join"
+        );
+        assert!(
+            !bool::from(replay_equivalent(&ground, &schematic, &store)),
+            "and they are two certificates, because their boundaries differ"
+        );
+        let ground_flow =
+            project_flow(&store, &ground.overlap.peak, &ground.path_a).expect("the leg projects");
+        let schematic_flow = project_flow(&store, &schematic.overlap.peak, &schematic.path_a)
+            .expect("the leg projects");
+        assert!(
+            bool::from(flows_equal(&ground_flow, &schematic_flow)),
+            "their two legs carry ONE flow — which is what makes this the sharp case"
+        );
+        assert!(
+            !bool::from(
+                tracelets_flow_equal(&ground, &schematic, &store)
+                    .expect("both certificates project")
+            ),
+            "so the certificate-level relation must separate them on the boundary, or it is not \
+             inside replay-equivalence"
+        );
+    }
+
+    #[test]
+    fn flow_equality_implies_replay_equivalence()
+    {
+        // The containment as a checked implication rather than a claim, over
+        // every certificate this suite builds: the fused derivation, the
+        // two-step presentation of the same boundary, and the two one-step
+        // certificates whose flows coincide over different boundaries.
+        let (mut store, composition) = fusion_fixture();
+        let (_fused, fused_derivation) =
+            derive_fused(&composition, &mut store).expect("the fused cell derives");
+        let two_step = Tracelet {
+            overlap: fused_derivation.overlap.clone(),
+            path_a: fused_derivation.path_a.clone(),
+            path_b: fused_derivation.path_a.clone(),
+            joins_at: fused_derivation.joins_at.clone(),
+        };
+        let step = CellApp {
+            cell: composition.right,
+            at: at([]),
+        };
+        let ground = one_step_certificate(
+            &composition,
+            Toy::add(Toy::Zero, Toy::Zero),
+            Toy::Zero,
+            step.clone(),
+        );
+        let schematic = one_step_certificate(
+            &composition,
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("y"))),
+            Toy::var(ToyNameRef("y")),
+            step,
+        );
+        let certificates = alloc::vec![fused_derivation, two_step, ground, schematic];
+        for left in &certificates {
+            for right in &certificates {
+                let flow_equal = tracelets_flow_equal(left, right, &store)
+                    .expect("every certificate in the set projects");
+                if bool::from(flow_equal) {
+                    assert!(
+                        bool::from(replay_equivalent(left, right, &store)),
+                        "flow equality is inside replay-equivalence, so a positive here forces a \
+                         positive there"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_leg_that_lands_off_the_join_has_no_certificate_flow()
+    {
+        // The refusal the containment rests on. Every recorded step fires, so
+        // the leg is a derivation — of the wrong boundary. A certificate whose
+        // leg lands short of its recorded join does not replay, and projecting
+        // it must refuse rather than hand back a flow that would then be
+        // compared as if it stood for that boundary.
+        let (store, composition) = fusion_fixture();
+        let strays = one_step_certificate(
+            &composition,
+            Toy::add(Toy::Zero, Toy::Zero),
+            Toy::succ(Toy::Zero),
+            CellApp {
+                cell: composition.right,
+                at: at([]),
+            },
+        );
+        assert!(
+            !bool::from(strays.replay(&store)),
+            "the recorded join is not where add-Z lands"
+        );
+        let obstruction =
+            tracelet_flow(&strays, &store).expect_err("so the certificate is refused");
+        assert_eq!(
+            FlowObstruction::LegMissesTheJoin {
+                reached: alloc::boxed::Box::new(Toy::Zero),
+            },
+            obstruction,
+            "and the refusal carries where the leg actually landed"
+        );
+    }
+
+    /// A one-step certificate over a boundary the caller chooses.
+    ///
+    /// The overlap is a carrier for the recorded peak and nothing else: both
+    /// replay and the projection read `overlap.peak`, and these fixtures are
+    /// about which boundary a certificate **records** rather than which
+    /// critical pair produced it.
+    fn one_step_certificate(
+        carrier: &gandr_theory_computads::Overlap<ToyAlphabet>,
+        peak: Toy,
+        joins_at: Toy,
+        step: CellApp<ToyAlphabet>,
+    ) -> Tracelet<ToyAlphabet>
+    {
+        let mut overlap = carrier.clone();
+        overlap.peak = peak;
+        Tracelet {
+            overlap,
+            path_a: alloc::vec![step.clone()],
+            path_b: alloc::vec![step],
+            joins_at,
+        }
     }
 
     /// The toy composition overlap `derive_fused` is exercised on, with its

@@ -195,6 +195,21 @@ const CELL_DOMAIN: &[u8] = b"gandr.tracelet.cell.v1";
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PrimId(u128);
 
+/// A **content address** of a cell — a 128-bit digest over the resolved cell's
+/// content alone, with no position in it.
+///
+/// It is nominally distinct from [`PrimId`] because the two name different
+/// things: a [`PrimId`] addresses a *primitive*, which is a cell **together
+/// with where it fired**, while a [`CellAddress`] addresses the cell and
+/// nothing else. The two digests are domain-separated, so the same cell answers
+/// different values at [`prim_address`] and [`cell_address`] and the types stop
+/// one being passed where the other is meant. Neither is an identity witness
+/// and neither is portable: both are process-local digests over an in-memory
+/// [`core::hash::Hash`] encoding, so nothing may persist or transmit one.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CellAddress(u128);
+
 /// A **primitive certificate** — one indecomposable factor of a normalized
 /// derivation.
 ///
@@ -404,7 +419,10 @@ where
 /// [`prim_address`] digests the position, so labelling a flow vertex with a
 /// primitive address would re-import exactly what the projection discards. The
 /// two addresses are domain-separated, so the same cell answers different
-/// values here and at [`prim_address`] with the root position.
+/// values here and at [`prim_address`] with the root position, and they are
+/// **nominally** separated too — this returns a [`CellAddress`] where
+/// [`prim_address`] returns a [`PrimId`], so the domain separation is a type
+/// error rather than a convention.
 ///
 /// # Contract
 /// - ensures: equal for two cells with equal content, and independent of any
@@ -424,14 +442,14 @@ where
 /// - witness: `flow::tests::the_cell_address_forgets_the_position`
 #[inline]
 #[must_use]
-pub fn cell_address<A>(cell: &Cell<A>) -> PrimId
+pub fn cell_address<A>(cell: &Cell<A>) -> CellAddress
 where
     A: CellAlphabet,
 {
     let mut hasher = ContentHasher::new();
     core::hash::Hasher::write(&mut hasher, CELL_DOMAIN);
     core::hash::Hash::hash(cell, &mut hasher);
-    hasher.digest()
+    hasher.cell_digest()
 }
 
 /// **Normalize** a recorded derivation to its tracelet normal form, or refuse
@@ -1022,10 +1040,16 @@ impl ContentHasher
         }
     }
 
-    /// The digest accumulated so far.
+    /// The digest accumulated so far, as a primitive's content address.
     const fn digest(&self) -> PrimId
     {
         PrimId(self.state)
+    }
+
+    /// The digest accumulated so far, as a cell's content address.
+    const fn cell_digest(&self) -> CellAddress
+    {
+        CellAddress(self.state)
     }
 }
 
@@ -1426,6 +1450,26 @@ mod tests
             prim_address(frame_cell, &root),
             prim_address(elsewhere_cell, &root),
             "and the content address is the same all the same"
+        );
+    }
+
+    #[test]
+    fn the_two_address_domains_are_separated_by_type_and_by_digest()
+    {
+        // A cell address and a primitive address name different things — a
+        // cell, and a cell together with where it fired — so they are
+        // different **types**, and passing one where the other is meant is a
+        // compile error rather than a convention. That separation is the
+        // load-bearing half and it cannot be asserted at runtime; what can be
+        // asserted is the other half, that the domain separator makes the
+        // digests differ too, so a caller reaching past the types with a
+        // conversion still does not find one value standing for both.
+        let cell = frame_defining_cell(&Sym::new("Succ"));
+        let PrimId(primitive) = prim_address(&cell, &Pos::root());
+        let CellAddress(position_free) = cell_address(&cell);
+        assert_ne!(
+            primitive, position_free,
+            "the domain separators keep the two digests of one cell apart"
         );
     }
 }

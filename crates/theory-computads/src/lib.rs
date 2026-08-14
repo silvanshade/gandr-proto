@@ -196,6 +196,7 @@ pub use crate::linearity::copied_hole;
 // `rewrite::normalize` (budgeted term normalization) already owns that name at
 // the crate root, and the two are different operations on different objects.
 // The normal form's entry point is spelled `normal_form::normalize`.
+pub use crate::normal_form::CellAddress;
 pub use crate::normal_form::NormalFormObstruction;
 pub use crate::normal_form::PrimCert;
 pub use crate::normal_form::PrimId;

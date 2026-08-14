@@ -65,6 +65,20 @@
 //! the BV correspondence between cut elimination and yanking has no counterpart
 //! here to transfer or to fail.
 //!
+//! **What is imported is the projection's *shape*; the *control* theory is not
+//! imported and is not claimed.** Definition 3.2 supplies the object — a
+//! labelled vertex set, atom-occurrence edges, and two boundary vertices — and
+//! that is the whole of what this module takes from the source. The source
+//! line's normalisation control (streamlining, the splitting measures, and the
+//! flow rewriting that drives them) is stated for classical deep-inference
+//! systems, and the intuitionistic presentation's own cut elimination is
+//! established indirectly, by simulation in sequent and hypersequent systems,
+//! rather than internally. So no control result reaches gandr's setting by
+//! citation, and none is used here: this module defines a relation and decides
+//! it, and every soundness argument it rests on — the convexity fence above,
+//! the strict projection's safety, the boundary conjunct below — is gandr's
+//! own and is discharged in this tree.
+//!
 //! One boundary convention does diverge from the source, deliberately. The
 //! source's flows forget the premiss and the conclusion outright; this
 //! projection **anchors `⊤`** — a peak occurrence's thread carries which
@@ -145,6 +159,29 @@
 //! [`crate::shift::derive_shift_equivalence`] currently pays two term rewrites
 //! per pair to confirm.
 //!
+//! # The nesting is a claim about **certificates**, and it costs the boundary
+//!
+//! The second containment above is a statement about a relation on
+//! certificates, and it holds only for a certificate-level relation that
+//! compares certificates — boundaries included. A relation reading the two
+//! projected flows and nothing else is **not** inside replay-equivalence: one
+//! metavariable-carrying cell fired on two unrelated ground instances produces
+//! two legs with the same flow over two different boundaries, which
+//! replay-equivalence separates and a flow-only comparison does not. The
+//! chain's second strictness was published in that broken form and is
+//! corrected here rather than quietly narrowed;
+//! `flow::tests::equal_flows_over_different_boundaries_are_not_one_certificate`
+//! is the regression that fails if the boundary conjunct is dropped again.
+//!
+//! The remedy is the one [`crate::normal_form::TraceletNf`] already took:
+//! **the certificate-level datum carries the boundary**, so
+//! [`TraceletFlow`] holds a peak and a join beside the two flows and
+//! [`tracelet_flow`] refuses a leg that lands anywhere else.
+//! [`Flow`] itself is untouched and stays alphabet-free — the alphabet
+//! parameter that the boundary brings sits on [`TraceletFlow`], one level up,
+//! because forgetting the arrangement is the projection's content and
+//! forgetting the endpoints was never part of it.
+//!
 //! # Cost
 //!
 //! Deliberately unoptimized: one rewrite per recorded step, plus a linear scan
@@ -167,7 +204,7 @@ use crate::boundary::FlowVertexIndex;
 use crate::boundary::PeakOccurrenceIndex;
 use crate::cell::CellId;
 use crate::cell::CellStore;
-use crate::normal_form::PrimId;
+use crate::normal_form::CellAddress;
 use crate::normal_form::cell_address;
 use crate::rewrite::CellApp;
 use crate::rewrite::rewrite_at;
@@ -224,7 +261,7 @@ pub struct Flow
 {
     /// `η` — one content address per cell-application event, indexed by
     /// [`FlowEnd::Vertex`]'s `vertex` field.
-    pub labels: Vec<PrimId>,
+    pub labels: Vec<CellAddress>,
     /// `E` with its `up` and `lo` maps.
     pub threads: Vec<FlowThread>,
     /// The warrant the projection's soundness fence was discharged under,
@@ -232,10 +269,28 @@ pub struct Flow
     pub convexity: ConvexityDischarge,
 }
 
-/// The flows of a tracelet's two legs.
+/// The flow of a **certificate** — its boundary, and its two legs' flows.
+///
+/// The boundary is carried for the same reason
+/// [`crate::normal_form::TraceletNf`] carries its own: a certificate is a
+/// boundary together with derivations of it, so a datum standing for one
+/// without its endpoints stands for less than a certificate. A [`Flow`]
+/// forgets the **formula-level arrangement**, which is the projection's whole
+/// content; forgetting the arrangement is not forgetting the endpoints, and a
+/// certificate-level relation that dropped them would identify two
+/// certificates that transform different things the same way.
+///
+/// The alphabet parameter sits **here** and not on [`Flow`]. That placement is
+/// the point: the combinatorial datum stays alphabet-free, and only the
+/// boundary it is a flow *of* is alphabet-shaped.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TraceletFlow
+pub struct TraceletFlow<A: CellAlphabet = SequentAlphabet>
 {
+    /// The term both legs are derivations from, as recorded (schematic; the
+    /// projection skolemizes it).
+    pub peak: A::Cmd,
+    /// The term both legs reach, as recorded (schematic).
+    pub joins_at: A::Cmd,
     /// The first leg's flow.
     pub path_a: Flow,
     /// The second leg's flow.
@@ -261,6 +316,18 @@ pub enum FlowObstruction<A: CellAlphabet = SequentAlphabet>
     {
         /// The step that failed to fire.
         step: Box<CellApp<A>>,
+    },
+    /// Every recorded step fired, and the leg landed somewhere other than the
+    /// certificate's recorded join — so the leg is a derivation, but not a
+    /// derivation of **this** boundary.
+    ///
+    /// Only [`tracelet_flow`] raises it, because only a certificate has a join
+    /// to miss; [`project_flow`] is given a peak and a path and has nothing to
+    /// compare against.
+    LegMissesTheJoin
+    {
+        /// The skolemized term the leg actually reached.
+        reached: Box<A::Cmd>,
     },
 }
 
@@ -399,7 +466,7 @@ impl Flow
     fn vertex_key(
         &self,
         vertex: FlowVertexIndex,
-        label: PrimId,
+        label: CellAddress,
         depth: CausalLayer,
     ) -> VertexKey
     {
@@ -482,7 +549,7 @@ struct VertexKey
     /// The causal layer, compared first.
     depth: CausalLayer,
     /// The cell content address.
-    label: PrimId,
+    label: CellAddress,
     /// The peak occurrences this vertex consumes, sorted.
     from_peak: Vec<PeakOccurrenceIndex>,
     /// How many occurrences it consumes.
@@ -641,6 +708,28 @@ pub fn project_flow<A>(
 where
     A: CellAlphabet,
 {
+    project_walk(store, peak, path).map(|(flow, _reached)| flow)
+}
+
+/// [`project_flow`], keeping the term the leg reached.
+///
+/// The reached term is what [`tracelet_flow`] checks the recorded join
+/// against; [`project_flow`] itself has nothing to compare it with and drops
+/// it.
+///
+/// # Contract
+/// - ensures: [`project_flow`]'s flow, paired with the skolemized term the last
+///   recorded step produced (the skolemized peak, for an empty path).
+/// - panics: none.
+#[inline]
+fn project_walk<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    path: &[CellApp<A>],
+) -> Result<(Flow, A::Cmd), FlowObstruction<A>>
+where
+    A: CellAlphabet,
+{
     let mut current = A::skolemize(peak);
     let mut live: Vec<LiveAtom<A>> = A::command_positions(&current)
         .into_iter()
@@ -652,7 +741,7 @@ where
             at,
         })
         .collect();
-    let mut labels: Vec<PrimId> = Vec::with_capacity(path.len());
+    let mut labels: Vec<CellAddress> = Vec::with_capacity(path.len());
     let mut threads: Vec<FlowThread> = Vec::new();
     for (index, step) in path.iter().enumerate() {
         let Some(cell) = store.get(step.cell)
@@ -714,11 +803,14 @@ where
             lo: FlowEnd::Join,
         });
     }
-    Ok(Flow {
-        labels,
-        threads,
-        convexity: A::convexity_discharge(store),
-    })
+    Ok((
+        Flow {
+            labels,
+            threads,
+            convexity: A::convexity_discharge(store),
+        },
+        current,
+    ))
 }
 
 /// Whether two flows are **the same flow**.
@@ -760,29 +852,82 @@ pub fn flows_equal(
     FlowEquality::from(left == right)
 }
 
-/// Project both legs of a tracelet.
+/// Project a **certificate** to its boundary and its two legs' flows.
+///
+/// Both legs are projected from the shared peak and each is required to reach
+/// the recorded join, so a [`TraceletFlow`] exists only for a certificate that
+/// **replays**. That requirement is what makes the certificate-level relation
+/// below a subrelation of [`crate::tracelet::replay_equivalent`] rather than
+/// merely comparable with it: replay-equivalence is equal peaks, equal joins,
+/// and two successful replays, and projecting establishes the last of the
+/// three while the datum carries the first two.
 ///
 /// # Contract
 /// - requires: the tracelet's paths are the legs recorded from its peak against
 ///   `store`.
-/// - ensures: `Ok(pair)` holding each leg's flow, projected from the shared
-///   peak.
-/// - fails: [`FlowObstruction`], from whichever leg is refused first.
+/// - ensures: `Ok(flow)` carrying the certificate's recorded peak and join and
+///   each leg's flow, and only when **both** legs fire step by step from the
+///   skolemized peak and reach the skolemized join — that is, exactly when
+///   [`crate::tracelet::Tracelet::replay`] holds.
+/// - provides: the certificate-level datum [`tracelets_flow_equal`] compares.
+/// - fails: [`FlowObstruction`], from whichever leg is refused first —
+///   including [`FlowObstruction::LegMissesTheJoin`] for a leg that fires
+///   throughout and lands elsewhere.
 /// - panics: none.
 ///
 /// # Errors
 /// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the reached-the-join requirement owns its own decision
+///   surface, separated by a certificate that replays and one whose second leg
+///   fires completely and lands short of the recorded join.
+/// - witness: `flow::tests::a_certificate_has_its_own_flow`
+/// - witness: `flow::tests::a_leg_that_lands_off_the_join_has_no_certificate_flow`
 #[inline]
 pub fn tracelet_flow<A>(
     tracelet: &Tracelet<A>,
     store: &CellStore<A>,
-) -> Result<TraceletFlow, FlowObstruction<A>>
+) -> Result<TraceletFlow<A>, FlowObstruction<A>>
 where
     A: CellAlphabet,
 {
-    let path_a = project_flow(store, &tracelet.overlap.peak, &tracelet.path_a)?;
-    let path_b = project_flow(store, &tracelet.overlap.peak, &tracelet.path_b)?;
-    Ok(TraceletFlow { path_a, path_b })
+    let target = A::skolemize(&tracelet.joins_at);
+    let path_a = project_leg(store, &tracelet.overlap.peak, &target, &tracelet.path_a)?;
+    let path_b = project_leg(store, &tracelet.overlap.peak, &target, &tracelet.path_b)?;
+    Ok(TraceletFlow {
+        peak: tracelet.overlap.peak.clone(),
+        joins_at: tracelet.joins_at.clone(),
+        path_a,
+        path_b,
+    })
+}
+
+/// Project one leg of a certificate, refusing it unless it reaches `target`.
+///
+/// # Contract
+/// - requires: `target` is the skolemized recorded join.
+/// - ensures: [`project_flow`]'s flow when the leg reaches `target`.
+/// - fails: [`FlowObstruction::LegMissesTheJoin`] when it fires throughout and
+///   lands elsewhere, or whatever [`project_flow`] refuses it for.
+/// - panics: none.
+#[inline]
+fn project_leg<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    target: &A::Cmd,
+    path: &[CellApp<A>],
+) -> Result<Flow, FlowObstruction<A>>
+where
+    A: CellAlphabet,
+{
+    let (flow, reached) = project_walk(store, peak, path)?;
+    if reached == *target {
+        return Ok(flow);
+    }
+    Err(FlowObstruction::LegMissesTheJoin {
+        reached: Box::new(reached),
+    })
 }
 
 /// Whether a tracelet's **two legs have one flow** — the tile-internal reading.
@@ -822,29 +967,50 @@ where
     Ok(flows_equal(&projected.path_a, &projected.path_b))
 }
 
-/// Whether two tracelets have **the same flow**, leg by leg — the
-/// certificate-to-certificate reading.
+/// Whether two tracelets are **the same certificate under the projection** —
+/// the certificate-to-certificate reading: one boundary, and one flow per leg.
+///
+/// **The boundary is part of the comparison, and leaving it out was a
+/// relation-soundness defect this function once had.** Comparing flows alone
+/// answers positively for two certificates that transform *different* peaks
+/// into *different* joins by the same combinatorial pattern — a single
+/// metavariable-carrying cell fired on two unrelated ground instances is
+/// enough over the sequent alphabet — so a flow-only relation is not contained
+/// in [`crate::tracelet::replay_equivalent`] and the strict nesting the module
+/// claims is false for it. Forgetting the formula-level **arrangement**, which
+/// is what the projection is for, is not the same as forgetting the
+/// **endpoints**.
 ///
 /// # Contract
 /// - requires: both tracelets' paths are the legs recorded from their own
-///   peaks.
-/// - ensures: positive iff both project and their two flows agree pairwise.
-/// - provides: the relation the module measures against
-///   [`crate::tracelet::replay_equivalent`]; it is **strictly finer**, and a
-///   positive here does not follow from a positive there.
+///   peaks, and both are read against `store`.
+/// - ensures: positive iff both certificates project — which forces equal
+///   recorded boundaries to be reached, so both replay — **and** their peaks
+///   agree, their joins agree, and their two flows agree pairwise.
+/// - ensures: a positive answer implies [`crate::tracelet::replay_equivalent`]:
+///   equal peaks and equal joins are compared here, and both replays are what
+///   [`tracelet_flow`] established.
+/// - provides: the relation the module measures against replay-equivalence; it
+///   is **strictly finer**, and a positive there does not follow from a
+///   positive here.
 /// - fails: [`FlowObstruction`] when either tracelet is not a pair of
-///   derivations of its peak.
+///   derivations of its own recorded boundary.
 /// - panics: none.
+/// - intension: **the positive answer is the load-bearing one**, as at
+///   [`flows_equal`]: a negative means "not identified here", never "distinct".
 ///
 /// # Errors
 /// See the `- fails:` clause above.
 ///
 /// # Adequacy
-/// - hypothesis: L1 evidence — the decision surface is the conjunction of two
-///   flow comparisons, separated by a certificate against itself and by two
-///   replay-equivalent certificates whose legs differ.
+/// - hypothesis: L2 — the boundary conjunct and the flow conjunct own separate
+///   decision surfaces, separated by a certificate against itself, by two
+///   replay-equivalent certificates whose legs carry different flows, and by
+///   two certificates whose flows are equal over different boundaries.
 /// - witness: `flow::tests::a_certificate_has_its_own_flow`
 /// - witness: `flow::tests::replay_equivalent_certificates_can_carry_different_flows`
+/// - witness: `flow::tests::equal_flows_over_different_boundaries_are_not_one_certificate`
+/// - witness: `flow::tests::flow_equality_implies_replay_equivalence`
 #[inline]
 pub fn tracelets_flow_equal<A>(
     left: &Tracelet<A>,
@@ -856,6 +1022,9 @@ where
 {
     let left = tracelet_flow(left, store)?;
     let right = tracelet_flow(right, store)?;
+    if left.peak != right.peak || left.joins_at != right.joins_at {
+        return Ok(FlowEquality::from(false));
+    }
     let heads = flows_equal(&left.path_a, &right.path_a);
     let tails = flows_equal(&left.path_b, &right.path_b);
     Ok(FlowEquality::from(bool::from(heads) && bool::from(tails)))
@@ -868,7 +1037,6 @@ mod tests
 
     use super::*;
     use crate::cell::Cell;
-    use crate::normal_form::prim_address;
     use crate::pattern::CmdPat;
     use crate::pattern::ConsPat;
     use crate::pattern::Pos;
@@ -893,11 +1061,12 @@ mod tests
             cell_address(&other),
             "two cells with different content have different addresses"
         );
-        assert_ne!(
-            prim_address(&frame, &Pos::root()),
-            cell_address(&frame),
-            "the two addresses are domain-separated, so the position-free one is not the root one"
-        );
+        // The two addresses are domain-separated, and since the correction
+        // that separation is **nominal**: a `CellAddress` and a `PrimId` are
+        // different types, so this assertion cannot be written here at all and
+        // the confusion it guarded against is now a compile error.
+        // `normal_form::tests::the_two_address_domains_are_separated_by_type_and_by_digest`
+        // carries what remains assertable, where the digests are visible.
     }
 
     #[test]
