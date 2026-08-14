@@ -27,6 +27,12 @@
 //! - [`query`] — the constructor-menu [`Query`] surface (path induction over
 //!   rewrite traces, per-overlap seam composition, extension queries,
 //!   instantiation tables).
+//! - [`directed`] — the **LLV directed fragment** over the reflected layer, and
+//!   the crate's largest face: variance-carrying contexts, [`DirectedHom`] with
+//!   a J-eliminator restricted by polarity so symmetry stays underivable, and
+//!   (co)ends as quantifiers with the Fubini and coYoneda operations. It is
+//!   what [`syntax`] deliberately cannot express, and it stages behind
+//!   levitation stage 1.
 //!
 //! # Soundness posture (§8; ADR-68 D4)
 //!

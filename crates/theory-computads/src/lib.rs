@@ -64,6 +64,16 @@
 //!   ([`tracelet::replay_equivalent`]) remains the semantic oracle. It reuses
 //!   the [`shift`] guard as the crate's single independence relation and
 //!   *checks* its own canonicalization by replaying it.
+//! - [`flow`] — the **atom-occurrence flow projection**: a prototype beside the
+//!   shift guard, consumed by nothing. It instantiates the atomic-flow
+//!   definition over tracelet legs and witnesses the **shift quotient** rather
+//!   than certificate identity — [`tracelet::replay_equivalent`] does not read
+//!   the recorded paths, so no relation that reads them can coincide with it.
+//!   Sound exactly on the left-connected-over-acyclic-target discharge, and
+//!   **refused** rather than re-derived on a carrier admitting multi-output or
+//!   disconnected left-hand sides. A positive answer *forces* equal peaks,
+//!   equal joins and two successful replays rather than checking for them
+//!   afterwards, so the boundary is carried by construction.
 //! - [`footprint`] — a **prototype** polarized independence test beside the
 //!   shift guard, consumed by nothing: a transition's match image split into
 //!   rewritten, matched-but-preserved, and framed addresses, with independence
