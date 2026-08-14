@@ -2776,13 +2776,34 @@ codes-decide = refl
 -- strand closes on itself and the circle is counted instead. One edge leaves
 -- on both paths.
 --
--- WHAT THESE ARE EVIDENCE FOR, stated so they are not over-read. The result of
--- the first contraction still has NO vertex and its surviving wire still runs
--- leg to leg, so a degree summing a vertex count and a VERTEX-TO-VERTEX edge
--- count assigns zero to both sides of it. Whether that matters is a question
--- about a morphism class this module does not define and this tree does not
--- have; what these two computations settle is only that the operation exists
--- here, is not invertible, and has that effect on the listings.
+-- WHAT THESE ARE EVIDENCE FOR, NARROWED from an earlier revision that
+-- overreached. The result of the first contraction still has NO vertex and its
+-- surviving wire still runs leg to leg, so a degree summing a vertex count and
+-- a VERTEX-TO-VERTEX edge count assigns zero to both sides of it: the operation
+-- shortens the interface and leaves that degree where it was.
+--
+-- That is the whole of what they show. An earlier revision added that the
+-- operation "is not invertible", and the word had nothing under it here — this
+-- module defines an OPERATION on shapes, not a category of maps between them,
+-- which the sentence carrying it had already said one line up. Two
+-- applications of one function with two different results are not an arrow,
+-- and neither of these computations consults a map layer.
+--
+-- THE WITNESS FOR THAT WORD EXISTS AND IT IS NOT THIS ONE.
+-- `Gandr.Shape.Isotropy.collapse-wires` is a `GMap` from the two-wire identity
+-- onto the single edge and `collapse-not-mono` proves it is not edge-monic, so
+-- a non-invertible degree-preserving map is exhibited there — in the `GMap`
+-- layer, which that module's own header states is NOT the site's morphism
+-- class. The claim belongs to that artifact and to that layer rather than to
+-- these two lines.
+--
+-- AND WHAT SUCH A MAP DOES IS NOT TO FALSIFY THE RAISING AXIOM, per
+-- `Gandr.Shape.Degree`'s own statement: a non-invertible degree-PRESERVING map
+-- is EXCLUDED from a degree-raising class rather than refuting it, because a
+-- non-invertible member of that class has to raise strictly. What it
+-- establishes is that a map in NEITHER class exists, where a Reedy structure
+-- requires every map to factor through them. The constraint on a future site
+-- presentation is that factorization, and not the raising axiom.
 contract-two-wires : close-in head (tail head) (idn 𝟚) ≡ (idn 𝟙 , zero)
 contract-two-wires = refl
 

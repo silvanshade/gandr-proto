@@ -409,7 +409,6 @@ open import Gandr.Shape.Graph
   using (wires)
   using (node)
   using (append-graph)
-  using (append-fun)
   using (append-canon)
   using (idn-match)
   using (Ix)
@@ -466,7 +465,6 @@ open import Gandr.Shape.Graph
   using (𝟙)
   using (𝟚)
   using (_≟ˢ_)
-  using (_≟⊤_)
 
 open import Data.Empty
   using (⊥-elim)
@@ -474,8 +472,6 @@ open import Data.Bool.Base
   using (Bool)
   using (true)
   using (false)
-open import Data.List.Properties
-  renaming (≡-dec to list-dec)
 open import Data.List.Base
   using (List)
   using ([])
