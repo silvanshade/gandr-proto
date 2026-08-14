@@ -4,31 +4,53 @@
 -- Gandr.Metatheory.Certificate.Properties — what replay-equivalence is, and
 -- what no relation reading the recorded derivation can be.
 --
--- ── THE HEADLINE, AND IT IS NOT THE ONE THE ARC SET OUT TO PROVE ────────────
+-- ── ONE DIRECTION IS UNIVERSAL AND THE OTHER IS A HYPOTHESIS ────────────────
 -- The engine side established, for one relation, that cell-support equality and
--- replay-equivalence are INCOMPARABLE rather than ordered. This module shows
--- that is not a fact about cell support. **For every observation `f` of
--- certificates, the kernel of `f` and replay-equivalence are incomparable**, as
--- soon as two conditions hold — and both are conditions this tree can exhibit
--- rather than assume:
+-- replay-equivalence are INCOMPARABLE rather than ordered. Something general is
+-- true here and it is NOT that incomparability. The two directions are not
+-- symmetric, and the whole content is in which one carries a hypothesis.
 --
---   * `f` separates some replay-equivalent pair, which gives
---     `≈ ⊄ Kernel f` (`≈-not-⊆-kernel`); and
---   * some certificate fails to replay, which gives
---     `Kernel f ⊄ ≈` (`kernel-not-⊆-≈`).
+--   * **No observation's kernel is contained in replay-equivalence**
+--     (`kernel-not-⊆-≈`), as soon as one certificate fails to replay. **This
+--     direction does not mention the observation.** A kernel is reflexive on
+--     the nose and replay-equivalence is not reflexive at all, so what no
+--     agreement between two certificates can supply is validity.
+--   * **Replay-equivalence is contained in an observation's kernel exactly when
+--     the observation is `Invariant`** — unchanged by replacing a certificate
+--     with a replay-equivalent one. `≈-not-⊆-kernel` refutes that FROM A
+--     SEPARATING PAIR, so it is a hypothesis about `f` and never a theorem
+--     about every `f`.
 --
--- The two directions fail for DIFFERENT reasons, and keeping them apart is the
--- content. The first is path-blindness: replay-equivalence does not read the
--- recorded derivation, so anything that does will split a class. The second is
--- validity: a kernel relation is reflexive on the nose, and replay-equivalence
--- is not reflexive at all, so no observation can imply it.
+-- **`boundary-invariant` is the standing counterexample to reading the second
+-- direction as universal**: the boundary is an observation, and
+-- replay-equivalence sits inside its kernel outright. So the true universal
+-- statement is weaker than incomparability, and still worth having —
+-- **every observation's kernel either strictly contains replay-equivalence or
+-- is incomparable with it, and none is contained in it.** Incomparability is
+-- the case where the observation reads something the identity forgets; the
+-- boundary is the case where it does not.
 --
--- Structural equality, cell-support equality, flow equality and shift
--- equivalence are all kernels of observations of the recorded derivation. So
--- the containment picture is not "a chain with replay-equivalence at the coarse
--- end". There is no chain. `Examples` supplies both witnesses at a concrete
--- system, which is what stops every statement here from being a claim about an
--- empty type.
+-- An earlier revision of this header claimed incomparability for EVERY
+-- observation. `boundary-invariant`, a hundred lines below it, refutes that —
+-- and the same file's `kernel-⊆-≈-on-valid` says which observations are the
+-- exception. Recorded rather than quietly rewritten, because a file whose
+-- header contradicts its own lemma is the failure this tree keeps its claims in
+-- types to prevent.
+--
+-- ── WHAT IS INSTANTIATED, AND WHAT ONLY FOLLOWS ─────────────────────────────
+-- `Examples` instantiates both directions for ONE observation: the recorded
+-- left leg. Structural equality, cell-support equality, flow equality and shift
+-- equivalence are named in the design corpus and are neither defined nor
+-- instantiated in this tree, so nothing here is a mechanized claim about them.
+--
+-- What does follow for them, without a witness, is the universal direction —
+-- because it does not mention the observation. The corpus's clause that shift
+-- equivalence IMPLIES replay-equivalence is exactly `Kernel f ⊆ ≈` for `f` the
+-- normal form, which the corpus itself presents as an agreement of normal forms
+-- (an iff), and `kernel-not-⊆-≈` refutes it from one invalid certificate alone.
+-- **The containment that would make a chain is the one that fails universally.**
+-- Incomparability proper, which needs the second direction too, is established
+-- here for the recorded leg and for nothing else.
 --
 -- ── WHERE CONTAINMENT DOES HOLD, AND EXACTLY WHAT BUYS IT ───────────────────
 -- Restrict to the certificates that replay and the picture changes completely:
@@ -64,6 +86,7 @@ open import Data.Product.Base
   using (proj₂)
 open import Level
   using (Level)
+  using (_⊔_)
 open import Relation.Binary.Bundles
   using (PartialSetoid)
   using (Setoid)
@@ -137,36 +160,60 @@ module Facts {ℓ} (S : ReplaySystem ℓ) where
     → Rel Certificate ℓ′
   Kernel f a b = f a ≡ f b
 
+  -- An observation is INVARIANT when replay-equivalent certificates are observed
+  -- alike — equivalently, when it factors through the quotient. Naming it is
+  -- what keeps the direction below from being read as universal: it is the
+  -- hypothesis, and observations both satisfying and failing it exist.
+  Invariant : ∀ {ℓ′} {X : Set ℓ′}
+    → (Certificate → X)
+    → Set (ℓ ⊔ ℓ′)
+  Invariant f = ∀ {x y} → x ≈ y → Kernel f x y
+
+  -- And SOUND when observing alike is enough to be the same transformation.
+  -- This is the direction that fails for every observation.
+  Sound : ∀ {ℓ′} {X : Set ℓ′}
+    → (Certificate → X)
+    → Set (ℓ ⊔ ℓ′)
+  Sound f = ∀ {x y} → Kernel f x y → x ≈ y
+
   -- A kernel is always reflexive, whatever the observation is. This innocuous
-  -- fact is the whole of the second incomparability direction.
+  -- fact is the whole of the universal direction below.
   kernel-refl : ∀ {ℓ′} {X : Set ℓ′} (f : Certificate → X) {c}
     → Kernel f c c
   kernel-refl f = refl
 
-  -- FIRST DIRECTION — path-blindness. An observation that separates a
-  -- replay-equivalent pair is not implied by replay-equivalence.
+  -- THE STANDING COUNTEREXAMPLE to reading `Invariant` as always-false. The
+  -- boundary is an observation, and replay-equivalence sits inside its kernel
+  -- outright — so "replay-equivalence is contained in no observation's kernel"
+  -- is refuted here, by projection, and incomparability is not universal.
+  boundary-invariant : Invariant boundary
+  boundary-invariant = ≈-boundary
+
+  -- THE CONDITIONAL DIRECTION — path-blindness, and it needs its witness.
   --
-  -- The hypothesis is where the content is: it says the observation reads
-  -- something the identity forgets. Every observation of the RECORDED
-  -- DERIVATION does, because replay-equivalence reads the derivation only
-  -- through "it runs".
+  -- The hypothesis is the whole content: a replay-equivalent pair the
+  -- observation separates. Without one there is nothing to say, and
+  -- `boundary-invariant` is an observation for which no such pair exists. So
+  -- this is a fact about `f` and never a theorem about all of them.
   ≈-not-⊆-kernel : ∀ {ℓ′} {X : Set ℓ′} (f : Certificate → X) {a b}
     → a ≈ b
     → ¬ (f a ≡ f b)
-    → ¬ (∀ {x y} → x ≈ y → Kernel f x y)
+    → ¬ Invariant f
   ≈-not-⊆-kernel f a≈b separated contained = separated (contained a≈b)
 
-  -- SECOND DIRECTION — validity. No observation's kernel implies
+  -- THE UNIVERSAL DIRECTION — validity. No observation's kernel is contained in
   -- replay-equivalence, as soon as one certificate fails to replay: the kernel
   -- relates that certificate to itself and replay-equivalence does not.
   --
-  -- This direction does not depend on the observation at all, which is the
-  -- point. It is not that cell-support equality happened to be too coarse; it
-  -- is that NO agreement-of-observations relation can carry validity, because
-  -- validity is not an agreement between two certificates.
+  -- **This direction does not depend on the observation at all**, which is the
+  -- point and is what makes it the one that travels. It is not that
+  -- cell-support equality happened to be too coarse; it is that NO
+  -- agreement-of-observations relation can carry validity, because validity is
+  -- not an agreement between two certificates. It is also the direction that
+  -- refutes a containment chain, since a chain needs exactly this containment.
   kernel-not-⊆-≈ : ∀ {ℓ′} {X : Set ℓ′} (f : Certificate → X) {c}
     → ¬ Replays c
-    → ¬ (∀ {x y} → Kernel f x y → x ≈ y)
+    → ¬ Sound f
     -- and the counterexample is `c` against itself
   kernel-not-⊆-≈ f invalid contained = ≈-not-refl invalid (contained (kernel-refl f))
 

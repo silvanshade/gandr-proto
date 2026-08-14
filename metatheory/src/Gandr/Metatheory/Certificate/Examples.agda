@@ -162,9 +162,15 @@ recorded-path-not-⊆-≈ : ¬ (∀ {x y} → Kernel pathᵃ x y → x ≈ y)
 recorded-path-not-⊆-≈ = kernel-not-⊆-≈ pathᵃ stuck-invalid
 
 -- So the recorded-path relation and replay-equivalence are INCOMPARABLE, and
--- the two failures have two different causes. This is the statement the engine
--- side reached for cell-support equality; the observation is a parameter here,
--- so the same pair of refutations covers every relation of that shape.
+-- the two failures have two different causes.
+--
+-- **This is established for the recorded left leg and for nothing else.** The
+-- second refutation above is universal and carries to any observation; the
+-- first is not, and needs a separating pair per observation. `boundary` is an
+-- observation that has none — `Facts.boundary-invariant` — so incomparability
+-- is a property of some observations rather than of all of them, and cell
+-- support, flow equality and shift equivalence would each need their own
+-- witness here before the word applied to them.
 recorded-path-incomparable :
   ¬ (∀ {x y} → x ≈ y → Kernel pathᵃ x y)
   × ¬ (∀ {x y} → Kernel pathᵃ x y → x ≈ y)

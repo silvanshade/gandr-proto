@@ -40,31 +40,56 @@
 -- carries the boundary or is not sound**, and everything finer than the
 -- boundary is about cost or availability.
 --
--- ── TWO REASONS, AND THE ASYMMETRY BETWEEN THEM ─────────────────────────────
--- `NormalFormComparison` is the convergent-fragment reason: a canonical form
--- whose comparison decides. `CarriedWitness` is the general band, where a
--- per-instance witness is the only currency.
+-- ── THE FIRST CANDIDATE REASON IS NOT A REASON, AND THAT IS THE FINDING ─────
+-- `SoundPrefilter` was drafted as the convergent-fragment REASON — a canonical
+-- form whose comparison decides — against `CarriedWitness` as the general band
+-- where a per-instance witness is the only currency. The asymmetry was supposed
+-- to be that the general band is inhabited unconditionally while the
+-- convergent-fragment reason is a claim about a fragment.
 --
--- The asymmetry is worth stating because it is what makes the axis informative.
--- `CarriedWitness` is inhabited for EVERY fragment inside validity,
--- unconditionally — `carried` builds one from the oracle — so it is never a
--- claim about a fragment. `NormalFormComparison` is a claim, and `walk-nf`
--- below is the first inhabitant.
+-- **It is not a claim.** Its fields ask only for a fragment inside validity, a
+-- decidable equality, and one-way soundness. Take the normal form to BE the
+-- boundary and the equality to be the system's own, and soundness is the
+-- boundary-kernel result: `boundary-prefilter` builds one for EVERY fragment
+-- inside validity, exactly as unconditionally as `carried` does. Both records
+-- are floors. Neither is a reason.
 --
--- ── SOUND, AND NOT COMPLETE, BY CONSTRUCTION RATHER THAN BY OVERSIGHT ───────
--- The first inhabitant compares the multiset of steps a derivation records, on
--- top of the boundary. It is strictly finer than replay-equivalence, and
+-- **And the trivial one is complete, which is the sharper half.** On a fragment
+-- inside validity the boundary prefilter answers yes on exactly the
+-- replay-equivalent pairs (`boundary-prefilter-complete`), so it is the oracle
+-- wearing this record's shape. Meanwhile `nf-determines-boundary` says every
+-- sound prefilter's yes-set sits INSIDE the boundary prefilter's. Put together:
+-- **no sound prefilter can answer yes more often than the trivial one, and a
+-- finer normal form answers yes strictly less often.** A prefilter buys cost and
+-- can only lose coverage.
+--
+-- So what the record actually captures is a **sound positive prefilter with an
+-- oracle fall-through**, and it is renamed to that. What it does NOT capture is
+-- anything that would distinguish a tractability reason from any other sound
+-- observation: no cost bound, no coverage claim, no completeness statement over
+-- a named fragment. Adding one of those three is what would make a reason, and
+-- the tree cannot supply the first — cost is invisible here.
+--
+-- **This is a finding about the design space rather than a shortfall.** The
+-- classification the design record asks for exists to say WHY a fragment is
+-- cheap; discovering that the first candidate reason carries no such content is
+-- precisely what a classification by reason is for. `gandr-5lf.9.12` carries
+-- what a reason would have to contain.
+--
+-- ── THE MULTISET INSTANCE, AND WHAT IT NOW DEMONSTRATES ─────────────────────
+-- `walk-nf` compares the multiset of steps a derivation records, on top of the
+-- boundary. It is a strictly finer prefilter than the boundary one, and
 -- `walk-nf-incomplete` exhibits the separation: two presentations of one
--- certificate whose recorded step multisets differ. So the fast path answers
--- "yes" soundly and answers "not decided here" on pairs that are in fact equal,
--- and the fall-through in `fast-path` is not an optimization detail but the
--- only correct shape.
+-- certificate whose recorded step multisets differ. Under the reading above
+-- that is no longer merely "sound but not complete" — it is the concrete
+-- instance of coverage being LOST by refining the normal form, against a
+-- trivial prefilter that already decides.
 --
--- The multiset component of that normal form carries NO soundness weight — the
--- soundness proof routes entirely through the boundary components. What it
--- carries is order-insensitivity (`walk-nf-permutation-invariant`), which is
--- what makes it a normal form rather than the recorded list, and which is where
--- its cost advantage would come from if this tree could see cost.
+-- Its multiset component carries NO soundness weight; the soundness proof
+-- routes entirely through the boundary components. What it carries is
+-- order-insensitivity (`walk-nf-permutation-invariant`), which is what makes it
+-- a normal form rather than the recorded list, and which is where its cost
+-- advantage would come from if this tree could see cost.
 ------------------------------------------------------------------------------
 
 module Gandr.Metatheory.Certificate.Tractability where
@@ -154,19 +179,25 @@ module Reasons {ℓ} (S : ReplaySystem ℓ) where
   Fragment = Certificate → Set ℓ
 
   ----------------------------------------------------------------------------
-  -- Reason 01 — a convergent fragment, decided by normal-form comparison.
+  -- A sound positive prefilter over a fragment.
   ----------------------------------------------------------------------------
 
-  -- The claim: on `F`, a canonical form exists whose comparison is decidable
-  -- and SOUND for replay-equivalence.
+  -- On `F`, a comparison that is decidable and SOUND for replay-equivalence —
+  -- so a positive answer may be taken, and a negative answer decides nothing.
+  --
+  -- **This is not a claim about `F`.** It was drafted as the
+  -- convergent-fragment tractability reason and is not one: `boundary-prefilter`
+  -- inhabits it for every fragment inside validity. The record is kept because
+  -- the shape is the right one for a guarded fast path — the guard plus the
+  -- soundness certificate the design record asks for — and renamed to what it
+  -- actually is.
   --
   -- `valid` is a field rather than a consequence, and it is the field that
   -- makes `sound` provable at all. A normal form is a function of a certificate
   -- and can never establish that the certificate replays, so a fragment outside
-  -- validity has no sound normal-form comparison — which is the same wall the
-  -- second incomparability direction in `Properties` describes, met from the
-  -- other side.
-  record NormalFormComparison (F : Fragment) : Set (suc ℓ) where
+  -- validity has no sound comparison of this shape — the universal direction of
+  -- `Properties` met from the other side.
+  record SoundPrefilter (F : Fragment) : Set (suc ℓ) where
     field
       -- the canonical form
       Nf : Set ℓ
@@ -197,10 +228,10 @@ module Reasons {ℓ} (S : ReplaySystem ℓ) where
     fast-path {a} {b} fa fb with nf a ≟ᶠ nf b
     ... | yes p = yes (sound fa fb p)
     ... | no _ = a ≈? b
-  open NormalFormComparison public
+  open SoundPrefilter public
 
   ----------------------------------------------------------------------------
-  -- Reason 02 — the general band, where the certificate is the currency.
+  -- The general band, where the certificate is the currency.
   ----------------------------------------------------------------------------
 
   -- No canonical form; the per-instance witness is the only currency, and
@@ -210,9 +241,7 @@ module Reasons {ℓ} (S : ReplaySystem ℓ) where
       valid : ∀ {c} → F c → Replays c
       decide : ∀ {a b} → F a → F b → Dec (a ≈ b)
 
-  -- And it is inhabited for every fragment inside validity, unconditionally.
-  -- So reason 02 is a floor rather than a claim: what a classification by
-  -- reason records is whether a fragment has escaped it.
+  -- Inhabited for every fragment inside validity, unconditionally.
   carried : ∀ {F}
     → (∀ {c} → F c → Replays c)
     → CarriedWitness F
@@ -220,17 +249,61 @@ module Reasons {ℓ} (S : ReplaySystem ℓ) where
   carried v .CarriedWitness.decide {a} {b} _ _ = a ≈? b
 
   ----------------------------------------------------------------------------
-  -- What separates the two reasons.
+  -- The prefilter record is a floor too, and the trivial one already decides.
   ----------------------------------------------------------------------------
 
-  -- A normal-form witness is INCOMPLETE at a pair when the pair is one
-  -- certificate that the normal form separates. Named so the incompleteness of
-  -- the first inhabitant is a stated property rather than an omission.
-  Incomplete : ∀ {F} → NormalFormComparison F → Certificate → Certificate → Set ℓ
+  -- **THE NARROWING, AS A CONSTRUCTION.** Take the normal form to be the
+  -- boundary and the equality to be the system's own. Soundness is then the
+  -- boundary-kernel result, and it needs nothing about `F` beyond validity — so
+  -- `SoundPrefilter` is inhabited exactly as unconditionally as `CarriedWitness`
+  -- and its existence is not a claim about a fragment.
+  boundary-prefilter : ∀ {F}
+    → (∀ {c} → F c → Replays c)
+    → SoundPrefilter F
+  boundary-prefilter v = record
+    { Nf = Term × Term
+    ; _≟ᶠ_ = _≟ᵇ_
+    ; nf = boundary
+    ; valid = v
+    ; sound = λ fa fb p → replay-equivalent (cong proj₁ p) (cong proj₂ p) (v fa) (v fb)
+    }
+    where
+      _≟ᵇ_ : DecidableEquality (Term × Term)
+      _≟ᵇ_ (p , q) (p′ , q′) =
+        map′
+          (λ { (refl , refl) → refl })
+          (λ { refl → refl , refl })
+          (_≟ᵀ_ p p′ ×? _≟ᵀ_ q q′)
+
+  -- And it is COMPLETE on any fragment inside validity: it answers yes on
+  -- exactly the replay-equivalent pairs. So the trivial prefilter is the oracle
+  -- wearing this record's shape, and the record cannot tell them apart.
+  boundary-prefilter-complete : ∀ {a b}
+    → a ≈ b
+    → boundary a ≡ boundary b
+  boundary-prefilter-complete = ≈-boundary
+
+  -- **COVERAGE IS BOUNDED BY THE TRIVIAL PREFILTER.** Every sound prefilter's
+  -- yes-set sits inside the boundary prefilter's, by `nf-determines-boundary`;
+  -- the boundary prefilter's yes-set is already all of replay-equivalence on
+  -- its fragment, by the line above. So no sound prefilter answers yes more
+  -- often than the trivial one, and a finer normal form answers yes strictly
+  -- less often. A prefilter can buy cost and can only lose coverage.
+  prefilter-coverage-bounded : ∀ {F} (W : SoundPrefilter F) {a b}
+    → F a
+    → F b
+    → W .nf a ≡ W .nf b
+    → boundary a ≡ boundary b
+  prefilter-coverage-bounded W = nf-determines-boundary W
+
+  -- A prefilter is INCOMPLETE at a pair when the pair is one certificate that
+  -- it separates. Named so that the coverage lost by refining a normal form is
+  -- a stated property rather than an omission.
+  Incomplete : ∀ {F} → SoundPrefilter F → Certificate → Certificate → Set ℓ
   Incomplete W a b = (a ≈ b) × ¬ (W .nf a ≡ W .nf b)
 
 ------------------------------------------------------------------------------
--- The first inhabitant.
+-- The multiset prefilter.
 ------------------------------------------------------------------------------
 
 -- Over `Examples.walk`, on the fragment of certificates that replay: the
@@ -270,7 +343,7 @@ module Walk where
   -- THE WITNESS. Soundness routes through the boundary components and through
   -- nothing else — the multiset component is never consulted by this proof,
   -- which is the honest statement of what it does and does not buy.
-  walk-nf : NormalFormComparison Replays
+  walk-nf : SoundPrefilter Replays
   walk-nf = record
     { Nf = Nf₀
     ; _≟ᶠ_ = _≟₀_
@@ -323,3 +396,11 @@ module Walk where
   -- The general band is available on the same fragment, unconditionally.
   walk-carried : CarriedWitness Replays
   walk-carried = carried (λ v → v)
+
+  -- And so is the trivial prefilter, which is the narrowing made concrete at
+  -- this system: it inhabits the same record `walk-nf` does, it DECIDES on this
+  -- fragment, and `walk-nf-incomplete` is a pair it answers and `walk-nf` does
+  -- not. Refining the normal form bought nothing this tree can see and lost a
+  -- pair it can.
+  walk-boundary : SoundPrefilter Replays
+  walk-boundary = boundary-prefilter (λ v → v)
