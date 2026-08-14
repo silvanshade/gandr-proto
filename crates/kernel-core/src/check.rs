@@ -236,6 +236,7 @@ enum TypeLevelFrame
 /// - witness: `check::tests::arrow_level_is_the_join`
 fn type_level(
     arena: &TermArena,
+    entries: &[AdmittedDeclaration],
     levels: &LevelContext,
     root: TypeLevelGoal,
 ) -> Result<Level, KernelError>
@@ -252,6 +253,12 @@ fn type_level(
                         levels.check_level_scope(level)?;
                         level.succ()?
                     },
+                    // A sealed atom forms at the level its own declaration's
+                    // kind fixes. The lookup is the whole rule: nothing is
+                    // inferred, nothing unfolds, and an index that does not
+                    // resolve to an abstract-type declaration is rejected here
+                    // rather than trusted.
+                    | ValueType::Abstract(atom) => abstract_atom_level(arena, entries, atom)?,
                     | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
                         frames.push(TypeLevelFrame::MaxSecondValue(second));
                         goal = TypeLevelGoal::Value(first);
@@ -309,6 +316,77 @@ fn type_level(
                 },
             }
         }
+    }
+}
+
+/// The universe level of a sealed abstract type, read off its declaration's
+/// kind.
+///
+/// This is the **whole** formation rule for
+/// [`ValueType::Abstract`](crate::types::ValueType::Abstract), and its shape is
+/// the point: a lookup, not an inference. The kernel resolves the position,
+/// requires the declaration it finds to be an abstract type, and reads the
+/// level out of a kind node admission already pinned to a universe. There is no
+/// branch that consults the atom's *representation*, because no representation
+/// is recorded — which is what "an atom with no unfolding rule" means
+/// operationally.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Ok(level)` exactly when `atom` names an already-admitted
+///   [`DeclarationContent::AbstractType`] whose kind resolves to a
+///   [`ValueType::Universe`](crate::types::ValueType::Universe).
+/// - provides: the atom's type-formation level for [`type_level`].
+/// - fails: [`KernelError::NotAnAbstractType`] for an out-of-range position, a
+///   forward reference, or a `Def`/`Axiom` at that position;
+///   [`KernelError::AbstractTypeKindNotUniverse`] when the kind is not a
+///   universe (unreachable for a declaration this environment admitted, since
+///   [`check_declaration`] pins it — surfaced rather than trusted so a defect
+///   rejects instead of fabricating a level); [`KernelError::ArenaFault`] on a
+///   dangling kind id.
+/// - panics: none.
+///
+/// # Errors
+/// As `- fails:`.
+///
+/// # Adequacy
+/// - hypothesis: L2 — an atom typed at its declared universe is pinned by the
+///   admission witness; the L3 residues are the three refusal arms, each pinned
+///   by its own negative witness.
+/// - witness: `check::tests::an_abstract_type_forms_at_its_declared_universe`
+/// - witness: `check::tests::an_atom_naming_a_definition_is_not_an_abstract_type`
+/// - witness: `check::tests::a_forward_atom_reference_is_not_an_abstract_type`
+#[inline]
+fn abstract_atom_level(
+    arena: &TermArena,
+    entries: &[AdmittedDeclaration],
+    atom: crate::term::ConstantIndex,
+) -> Result<Level, KernelError>
+{
+    let entry = entries
+        .get(usize::from(atom))
+        .ok_or(KernelError::NotAnAbstractType { index: atom })?;
+    let DeclarationContent::AbstractType { kind } = *entry.content()
+    else {
+        return Err(KernelError::NotAnAbstractType { index: atom });
+    };
+    let kind_node = arena.value_type(kind).ok_or(KernelError::ArenaFault)?;
+    match *kind_node {
+        | ValueType::Universe(ref level) => Ok(level.clone()),
+        | _ => Err(abstract_kind_not_universe(arena, kind)),
+    }
+}
+
+/// An abstract type's kind was not a universe: snapshot the offending kind.
+#[inline]
+fn abstract_kind_not_universe(
+    arena: &TermArena,
+    kind: ValueTypeId,
+) -> KernelError
+{
+    let (snapshot, root) = arena.snapshot_value_type(kind);
+    KernelError::AbstractTypeKindNotUniverse {
+        actual: alloc::boxed::Box::new(ValueTypeSnapshot::new(snapshot, root)),
     }
 }
 
@@ -779,7 +857,8 @@ fn run(
                 },
                 | Frame::SynthLift(target) => {
                     let body_type = produced_value_type(produced)?;
-                    let body_level = type_level(arena, levels, TypeLevelGoal::Value(body_type))?;
+                    let body_level =
+                        type_level(arena, entries, levels, TypeLevelGoal::Value(body_type))?;
                     levels.check_level_scope(&target)?;
                     levels.check_universe_below(&body_level, &target)?;
                     produced = Produced::ValueType(arena.value_type_lift(body_type, target));
@@ -977,12 +1056,132 @@ fn run(
 #[inline]
 fn check_value_type(
     arena: &TermArena,
+    entries: &[AdmittedDeclaration],
     levels: &LevelContext,
     declared: ValueTypeId,
 ) -> Result<(), KernelError>
 {
-    let _level = type_level(arena, levels, TypeLevelGoal::Value(declared))?;
+    let _level = type_level(arena, entries, levels, TypeLevelGoal::Value(declared))?;
     Ok(())
+}
+
+/// Check a declaration's R3 sealing provenance against its declared type.
+///
+/// The slot claims which atoms a sealing projection rebound; this re-derives
+/// that claim rather than accepting it. Two obligations, and both are about
+/// making the slot **falsifiable**:
+///
+/// * every claimed atom **occurs in the declared type**, so the recorded extent
+///   of the projection is observable in what the projection produced;
+/// * the entries are **strictly ascending**, so the slot is a set with one
+///   spelling and a repeat cannot inflate an extent.
+///
+/// Note what is deliberately *not* checked: that sealing happened, that a
+/// signature was matched, or that the elaborator did anything in particular.
+/// Those are claims about a history the kernel did not witness and cannot
+/// re-derive — precisely the class the zero-inference invariant refuses — and
+/// the slot is defined so that none of them is needed.
+///
+/// # Contract
+/// - requires: `declared` resolves in `arena`; the atoms in `provenance` are
+///   resolved against `entries` by the caller's type-formation pass, which runs
+///   first.
+/// - ensures: `Ok(())` exactly when the provenance is strictly ascending and
+///   every entry occurs as a [`ValueType::Abstract`] node reachable from
+///   `declared`.
+/// - provides: the choke point's sealing-provenance gate.
+/// - fails: [`KernelError::SealingProvenanceNotCanonical`],
+///   [`KernelError::SealingProvenanceNotProjected`].
+/// - panics: none.
+///
+/// # Errors
+/// As `- fails:`.
+///
+/// # Adequacy
+/// - hypothesis: L2 — a sealed member whose provenance matches its type admits;
+///   the L3 residues are the two refusal arms, each pinned by a negative
+///   witness.
+/// - witness: `check::tests::sealing_provenance_must_occur_in_the_declared_type`
+/// - witness: `check::tests::sealing_provenance_must_be_strictly_ascending`
+fn check_sealing_provenance(
+    arena: &TermArena,
+    declared: ValueTypeId,
+    provenance: &[crate::term::ConstantIndex],
+) -> Result<(), KernelError>
+{
+    if provenance.is_empty() {
+        return Ok(());
+    }
+    let mut previous: Option<crate::term::ConstantIndex> = None;
+    for &atom in provenance {
+        if let Some(last) = previous
+            && usize::from(atom) <= usize::from(last)
+        {
+            return Err(KernelError::SealingProvenanceNotCanonical { atom });
+        }
+        previous = Some(atom);
+    }
+    let projected = projected_atoms(arena, declared);
+    for &atom in provenance {
+        if !projected.contains(&atom) {
+            return Err(KernelError::SealingProvenanceNotProjected { atom });
+        }
+    }
+    Ok(())
+}
+
+/// The atoms a value type projects onto: every
+/// [`ValueType::Abstract`](crate::types::ValueType::Abstract) reachable from
+/// `root`.
+///
+/// The walk is iterative over an explicit worklist, so it is total on any type
+/// depth; a dangling id contributes nothing (fail-closed — an unreachable atom
+/// stays unclaimed, so a provenance entry resting on one is refused).
+fn projected_atoms(
+    arena: &TermArena,
+    root: ValueTypeId,
+) -> alloc::collections::BTreeSet<crate::term::ConstantIndex>
+{
+    let mut found = alloc::collections::BTreeSet::new();
+    let mut value_types: Vec<ValueTypeId> = Vec::new();
+    let mut comp_types: Vec<CompTypeId> = Vec::new();
+    value_types.push(root);
+    loop {
+        while let Some(id) = value_types.pop() {
+            let Some(value_type) = arena.value_type(id)
+            else {
+                continue;
+            };
+            match *value_type {
+                | ValueType::Abstract(atom) => {
+                    let _fresh = found.insert(atom);
+                },
+                | ValueType::Base(_) | ValueType::Unit | ValueType::Universe(_) => {},
+                | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                    value_types.push(first);
+                    value_types.push(second);
+                },
+                | ValueType::Thunk(body) => comp_types.push(body),
+                | ValueType::Lift { inner, .. } => value_types.push(inner),
+            }
+        }
+        let Some(id) = comp_types.pop()
+        else {
+            break;
+        };
+        let Some(comp_type) = arena.comp_type(id)
+        else {
+            continue;
+        };
+        match *comp_type {
+            | CompType::Returner(result) => value_types.push(result),
+            | CompType::Arrow { domain, codomain } => {
+                value_types.push(domain);
+                comp_types.push(codomain);
+            },
+        }
+    }
+    found
 }
 
 /// Check a declaration's content: its declared type is well-formed and, for a
@@ -1016,7 +1215,8 @@ pub fn check_declaration(
     declaration: &Declaration,
 ) -> Result<(), KernelError>
 {
-    check_value_type(arena, levels, declaration.declared_id())?;
+    check_value_type(arena, entries, levels, declaration.declared_id())?;
+    check_sealing_provenance(arena, declaration.declared_id(), declaration.provenance())?;
     match *declaration.content() {
         | DeclarationContent::Def { declared, body } => {
             let context: Vec<ValueTypeId> = Vec::new();
@@ -1030,6 +1230,17 @@ pub fn check_declaration(
             Ok(())
         },
         | DeclarationContent::Axiom { .. } => Ok(()),
+        // A sealed atom's whole admission obligation is that its kind is a
+        // universe. There is no body to check and no inhabitant claimed, so the
+        // kernel takes on nothing further — the property the atom route was
+        // chosen for.
+        | DeclarationContent::AbstractType { kind } => {
+            let kind_node = arena.value_type(kind).ok_or(KernelError::ArenaFault)?;
+            match *kind_node {
+                | ValueType::Universe(_) => Ok(()),
+                | _ => Err(abstract_kind_not_universe(arena, kind)),
+            }
+        },
     }
 }
 
@@ -1328,7 +1539,13 @@ mod tests
         let mut arena = TermArena::new();
         let levels = level_context(LevelParamCount::from(0_u32));
         let universe = arena.value_type_universe(Level::constant(LevelConstant::from(0_u64)));
-        let level = type_level(&arena, &levels, TypeLevelGoal::Value(universe)).unwrap();
+        let level = type_level(
+            &arena,
+            &no_entries(),
+            &levels,
+            TypeLevelGoal::Value(universe),
+        )
+        .unwrap();
         assert_eq!(
             level,
             Level::constant(LevelConstant::from(1_u64)),
@@ -1345,7 +1562,7 @@ mod tests
         let inner = arena.value_type_unit();
         let lifted = arena.value_type_lift(inner, Level::constant(LevelConstant::from(1_u64)));
         assert_eq!(
-            type_level(&arena, &levels, TypeLevelGoal::Value(lifted)).unwrap(),
+            type_level(&arena, &no_entries(), &levels, TypeLevelGoal::Value(lifted)).unwrap(),
             Level::constant(LevelConstant::from(1_u64)),
             "lifting Unit to level 1 forms at level 1"
         );
@@ -1354,7 +1571,12 @@ mod tests
         let degenerate = arena.value_type_lift(inner2, Level::constant(LevelConstant::from(0_u64)));
         assert!(
             matches!(
-                type_level(&arena, &levels, TypeLevelGoal::Value(degenerate)),
+                type_level(
+                    &arena,
+                    &no_entries(),
+                    &levels,
+                    TypeLevelGoal::Value(degenerate)
+                ),
                 Err(KernelError::UniverseViolation(_))
             ),
             "a lift that does not strictly raise the level is rejected"
@@ -1372,7 +1594,7 @@ mod tests
         let returner = arena.comp_type_returner(result);
         let arrow = arena.comp_type_arrow(domain, returner);
         assert_eq!(
-            type_level(&arena, &levels, TypeLevelGoal::Comp(arrow)).unwrap(),
+            type_level(&arena, &no_entries(), &levels, TypeLevelGoal::Comp(arrow)).unwrap(),
             Level::constant(LevelConstant::from(3_u64)),
             "the arrow forms at the join of its parts' levels"
         );

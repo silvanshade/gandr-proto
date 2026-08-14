@@ -45,6 +45,8 @@ pub enum ValueTypeSpec
     Sum(Box<Self>, Box<Self>),
     Thunk(Box<CompTypeSpec>),
     Lift(Box<Self>, Level),
+    /// A sealed abstract type, by the admission position of its declaration.
+    Abstract(usize),
 }
 
 /// A description of a computation type.
@@ -176,6 +178,9 @@ fn materialize_type<'spec>(
                 | &ValueTypeSpec::Unit => TypeOut::Value(arena.value_type_unit()),
                 | &ValueTypeSpec::Universe(ref level) => {
                     TypeOut::Value(arena.value_type_universe(level.clone()))
+                },
+                | &ValueTypeSpec::Abstract(atom) => {
+                    TypeOut::Value(arena.value_type_abstract(ConstantIndex::from(atom)))
                 },
                 | &ValueTypeSpec::Product(ref first, ref second) => {
                     frames.push(TypeFrame::ProductSecond(second));
@@ -540,6 +545,40 @@ pub fn stage_def(
     let declared = materialize_value_type(builder.arena(), declared);
     let body = materialize_value(builder.arena(), body);
     builder.def(levels, declared, body)
+}
+
+/// Stage a sealed `Def` declaration carrying the R3 sealing-provenance atoms.
+#[inline]
+pub fn stage_sealed_def(
+    environment: &mut Environment,
+    levels: LevelSignature,
+    declared: &ValueTypeSpec,
+    body: &ValueSpec,
+    provenance: &[usize],
+) -> Declaration
+{
+    let mut builder = environment.stage();
+    let declared = materialize_value_type(builder.arena(), declared);
+    let body = materialize_value(builder.arena(), body);
+    let atoms = provenance
+        .iter()
+        .map(|&atom| ConstantIndex::from(atom))
+        .collect();
+    builder.sealed_def(levels, declared, body, atoms)
+}
+
+/// Stage an `AbstractType` declaration — one minted atom — at the universe kind
+/// `level`.
+#[inline]
+pub fn stage_abstract_type(
+    environment: &mut Environment,
+    levels: LevelSignature,
+    level: Level,
+) -> Declaration
+{
+    let mut builder = environment.stage();
+    let kind = builder.arena().value_type_universe(level);
+    builder.abstract_type(levels, kind)
 }
 
 /// Stage an `Axiom` declaration, materializing its declared type into the

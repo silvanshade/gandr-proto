@@ -20,10 +20,12 @@ mod tests
 {
     use gandr_kernel_core::AdmissionMark;
     use gandr_kernel_core::BaseType;
+    use gandr_kernel_core::ConstantIndex;
     use gandr_kernel_core::DeBruijnIndex;
     use gandr_kernel_core::DecodeError;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::IntegerLiteral;
+    use gandr_kernel_core::KernelError;
     use gandr_kernel_core::LevelParamCount;
     use gandr_kernel_core::LevelSignature;
     use gandr_kernel_core::Literal;
@@ -302,6 +304,201 @@ mod tests
         }
     }
 
+    // ----- Sealing: the minted-atom table and the freshness property. -----
+
+    /// A sealed environment: one minted atom, then a member typed at it.
+    ///
+    /// Declaration 0 is the atom `t` at universe zero; declaration 1 is the
+    /// identity `U (t -> F t)`, whose sealing provenance records that its type
+    /// was projected onto `t`. Nothing in it mentions a representation, which
+    /// is the point — a sealed member reaches the kernel already at the
+    /// atom.
+    fn sealed_environment() -> Environment
+    {
+        let mut environment = Environment::new();
+        let atom = common::stage_abstract_type(
+            &mut environment,
+            LevelSignature::monomorphic(),
+            Level::constant(LevelConstant::from(0_u64)),
+        );
+        environment
+            .add_decl(atom)
+            .expect("an abstract type at a universe kind admits");
+        let member = common::stage_sealed_def(
+            &mut environment,
+            LevelSignature::monomorphic(),
+            &ValueTypeSpec::Thunk(Box::new(CompTypeSpec::Arrow(
+                Box::new(ValueTypeSpec::Abstract(0)),
+                Box::new(CompTypeSpec::Returner(Box::new(ValueTypeSpec::Abstract(0)))),
+            ))),
+            &ValueSpec::Thunk(Box::new(ComputationSpec::Lambda(Box::new(
+                ComputationSpec::Return(Box::new(ValueSpec::Variable(0))),
+            )))),
+            &[0],
+        );
+        environment
+            .add_decl(member)
+            .expect("the identity at a sealed atom admits");
+        environment
+    }
+
+    /// The header's minted-atom table, and the offset its first entry sits at.
+    ///
+    /// The header is magic, version, the table (count then entries), and the
+    /// declaration count; for the one-atom fixture the count and the single
+    /// entry are one byte each, so the entry is at offset 7.
+    const MINTED_ATOM_TABLE_COUNT_OFFSET: usize = 6;
+    /// The offset of the first minted-atom entry in the one-atom fixture.
+    const MINTED_ATOM_FIRST_ENTRY_OFFSET: usize = 7;
+
+    /// A sealed artifact round-trips, and its atoms come back as atoms.
+    ///
+    /// The byte-identity assertion is the load-bearing half: it says the
+    /// recovered environment re-serializes to the *same* minted-atom table, so
+    /// replay re-minted every atom to the position the artifact recorded. That
+    /// is deterministic re-minting, observed rather than assumed.
+    #[test]
+    fn a_sealed_artifact_round_trips_and_re_mints_deterministically()
+    {
+        let environment = sealed_environment();
+        let bytes = write(&environment);
+        let recovered = read(bytes.as_ref().into()).expect("a genuine sealed artifact must read");
+        assert_eq!(
+            write(&recovered),
+            bytes,
+            "replay re-mints every atom to its recorded position (the table re-serializes identically)"
+        );
+        assert_eq!(
+            1, bytes[MINTED_ATOM_TABLE_COUNT_OFFSET],
+            "the header records exactly one minted atom"
+        );
+        assert_eq!(
+            0, bytes[MINTED_ATOM_FIRST_ENTRY_OFFSET],
+            "and it sits at admission position zero"
+        );
+    }
+
+    /// **Distinctness.** A table repeating an atom is refused, so two atoms can
+    /// never be spelled at one position — the aliasing hazard, caught rather
+    /// than trusted.
+    #[test]
+    fn a_minted_atom_table_with_a_repeat_is_refused()
+    {
+        let mut bytes = Vec::from(write(&sealed_environment()));
+        bytes[MINTED_ATOM_TABLE_COUNT_OFFSET] = 2;
+        bytes.insert(MINTED_ATOM_FIRST_ENTRY_OFFSET, 0);
+        assert_eq!(
+            DecodeError::ReservedSlotOccupied {
+                slot: ReservedSlot::MintedAtomTable,
+            },
+            decode(bytes.as_slice().into()).unwrap_err(),
+            "a minted-atom table repeating a position is refused"
+        );
+    }
+
+    /// **Accounting.** A table omitting an atom the declarations do contain is
+    /// refused, so no atom is smuggled past it.
+    #[test]
+    fn a_minted_atom_table_omitting_an_atom_is_refused()
+    {
+        let mut bytes = Vec::from(write(&sealed_environment()));
+        bytes[MINTED_ATOM_TABLE_COUNT_OFFSET] = 0;
+        let _entry = bytes.remove(MINTED_ATOM_FIRST_ENTRY_OFFSET);
+        assert_eq!(
+            DecodeError::ReservedSlotOccupied {
+                slot: ReservedSlot::MintedAtomTable,
+            },
+            decode(bytes.as_slice().into()).unwrap_err(),
+            "a minted-atom table omitting an atom is refused"
+        );
+    }
+
+    /// **No forgery.** A table naming a position that holds an ordinary
+    /// definition is refused, so the header cannot conjure an atom the
+    /// declarations do not contain.
+    #[test]
+    fn a_minted_atom_table_naming_a_definition_is_refused()
+    {
+        let mut bytes = Vec::from(write(&sealed_environment()));
+        bytes[MINTED_ATOM_FIRST_ENTRY_OFFSET] = 1; // position 1 is the member `Def`
+        assert_eq!(
+            DecodeError::ReservedSlotOccupied {
+                slot: ReservedSlot::MintedAtomTable,
+            },
+            decode(bytes.as_slice().into()).unwrap_err(),
+            "a minted-atom table naming a definition is refused"
+        );
+    }
+
+    /// **The forged atom dies at the choke point.** Rewriting a sealed artifact
+    /// so its atom is an ordinary axiom — and repairing the table to match, so
+    /// the format plane is satisfied — still fails to replay: the member typed
+    /// at that position no longer names an abstract type.
+    ///
+    /// This is the property that makes opacity re-derived rather than imported.
+    /// The artifact is internally consistent and the reader accepts its
+    /// *bytes*; it is the kernel that refuses, because being an atom is
+    /// resolved against the environment rather than asserted by the
+    /// reference.
+    #[test]
+    fn an_atom_downgraded_to_an_axiom_fails_to_replay()
+    {
+        let segmented = write_segmented(&sealed_environment());
+        let header_len = segmented.header().as_ref().len();
+        let mut bytes = Vec::from(segmented.bytes().as_ref());
+        // The atom's segment leads the declarations: [admission, kind, ...].
+        assert_eq!(
+            2,
+            bytes[header_len + 1],
+            "the first segment declares the abstract-type kind"
+        );
+        bytes[header_len + 1] = WIRE_KIND_AXIOM;
+        // Repair the table so the refusal cannot come from the format plane.
+        bytes[MINTED_ATOM_TABLE_COUNT_OFFSET] = 0;
+        let _entry = bytes.remove(MINTED_ATOM_FIRST_ENTRY_OFFSET);
+        assert!(
+            decode(bytes.as_slice().into()).is_ok(),
+            "the rewritten artifact is well-formed on the format plane"
+        );
+        assert!(
+            matches!(read(bytes.as_slice().into()), Err(ReadError::Admit(_))),
+            "but the member typed at the downgraded position does not re-admit"
+        );
+    }
+
+    /// Sealing provenance survives the round trip, and a rewritten provenance
+    /// is refused at replay rather than silently believed.
+    #[test]
+    fn sealing_provenance_round_trips_and_cannot_be_rewritten()
+    {
+        let environment = sealed_environment();
+        let bytes = write(&environment);
+        let recovered = read(bytes.as_ref().into()).expect("the sealed artifact reads");
+        assert_eq!(
+            write(&recovered),
+            bytes,
+            "the recovered environment re-serializes its provenance identically"
+        );
+        // The member segment ends `… | erasure 0 | modes 0 | provenance 1, 0 |
+        // directedness 0`, so the provenance entry is the artifact's
+        // second-to-last byte. Re-point it at position 1 — the member itself —
+        // which the member's own declared type does not project onto.
+        let mut rewritten = Vec::from(bytes.as_ref());
+        let entry = rewritten.len() - 2;
+        assert_eq!(
+            0, rewritten[entry],
+            "the provenance entry names the atom at position zero"
+        );
+        rewritten[entry] = 1;
+        assert_eq!(
+            ReadError::Admit(KernelError::SealingProvenanceNotProjected {
+                atom: ConstantIndex::from(1_usize),
+            }),
+            read(rewritten.as_slice().into()).unwrap_err(),
+            "a provenance rewritten to an unprojected atom is refused at the choke point"
+        );
+    }
+
     #[test]
     fn write_segmented_matches_write()
     {
@@ -534,11 +731,13 @@ mod tests
 
     // ----- Reserved sections (R1–R4). -----
 
+    /// R1 reserved four declaration kinds, and the sealing rung made
+    /// `AbstractType` (byte 2) live — so it is decoded rather than refused and
+    /// is deliberately absent here. The other three are still reserved.
     #[test]
-    fn each_reserved_declaration_kind_is_rejected()
+    fn each_still_reserved_declaration_kind_is_rejected()
     {
         let expectations = [
-            (2_u8, ReservedKind::AbstractType),
             (3_u8, ReservedKind::ModuleSig),
             (4_u8, ReservedKind::ModuleDef),
             (5_u8, ReservedKind::FunctorDef),
@@ -555,17 +754,24 @@ mod tests
         }
     }
 
+    /// An artifact declaring an atom it does not contain is refused.
+    ///
+    /// This is the R4 table's refutation in its simplest form: the header
+    /// claims one minted atom, the (empty) declaration sequence supplies
+    /// none, and the reader believes the declarations rather than the
+    /// claim.
     #[test]
-    fn a_non_empty_minted_atom_table_is_rejected()
+    fn a_minted_atom_table_claiming_an_absent_atom_is_rejected()
     {
         let mut bytes = v1_header(WireValue(0));
         bytes[6] = 1; // the R4 minted-atom table count
+        bytes.insert(7, 0); // the claimed atom: admission position 0
         assert_eq!(
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::MintedAtomTable,
             },
             decode(bytes.as_slice().into()).unwrap_err(),
-            "a non-empty reserved minted-atom table is rejected (R4)"
+            "a minted-atom table naming an atom the declarations do not contain is refused (R4)"
         );
     }
 

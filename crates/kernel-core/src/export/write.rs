@@ -46,6 +46,7 @@ use super::BASE_STRING;
 use super::EncodedArtifact;
 use super::FORMAT_VERSION_V1;
 use super::GlobalIndex;
+use super::KIND_ABSTRACT_TYPE;
 use super::KIND_AXIOM;
 use super::KIND_DEF;
 use super::LITERAL_INTEGER;
@@ -68,6 +69,7 @@ use super::NODE_V_PAIR;
 use super::NODE_V_THUNK;
 use super::NODE_V_UNIT;
 use super::NODE_V_VARIABLE;
+use super::NODE_VT_ABSTRACT;
 use super::NODE_VT_BASE;
 use super::NODE_VT_LIFT;
 use super::NODE_VT_PRODUCT;
@@ -99,6 +101,7 @@ use crate::decl::LevelSignature;
 use crate::env::Admission;
 use crate::env::Environment;
 use crate::term::Computation;
+use crate::term::ConstantIndex;
 use crate::term::Side;
 use crate::term::Value;
 use crate::types::CompType;
@@ -223,8 +226,8 @@ fn encode_artifact_framed(
     let mut out = EncodedArtifact(Vec::new());
     out.0.extend_from_slice(&MAGIC);
     out.0.extend_from_slice(&FORMAT_VERSION_V1.to_be_bytes());
-    // R4: the reserved minted-atom table, admission-ordered and empty at v1.
-    put_uvarint(&mut out, WireU64(0));
+    // R4: the minted-atom table, admission-ordered.
+    encode_minted_atom_table(&mut out, declarations);
     put_uvarint(&mut out, usize_to_u64(WireUsize(declarations.len())));
     let header_len = out.0.len();
     let mut segment_ends: Vec<usize> = Vec::with_capacity(declarations.len());
@@ -358,7 +361,10 @@ fn node_children(
         | Node::ValueType(id) => {
             if let Some(value_type) = arena.value_type(id) {
                 match value_type {
-                    | &ValueType::Base(_) | &ValueType::Unit | &ValueType::Universe(_) => {},
+                    | &ValueType::Base(_)
+                    | &ValueType::Unit
+                    | &ValueType::Universe(_)
+                    | &ValueType::Abstract(_) => {},
                     | &ValueType::Product(ref first, ref second)
                     | &ValueType::Sum(ref first, ref second) => {
                         children.push(Node::ValueType(*first));
@@ -407,6 +413,10 @@ fn encode_entry(
             | Some(&ValueType::Universe(ref level)) => {
                 out.0.push(NODE_VT_UNIVERSE);
                 encode_level(&mut out, level);
+            },
+            | Some(&ValueType::Abstract(atom)) => {
+                out.0.push(NODE_VT_ABSTRACT);
+                put_uvarint(&mut out, usize_to_u64(WireUsize(usize::from(atom))));
             },
             | Some(&ValueType::Product(..)) => out.0.push(NODE_VT_PRODUCT),
             | Some(&ValueType::Sum(..)) => out.0.push(NODE_VT_SUM),
@@ -552,6 +562,7 @@ fn encode_declaration(
     out.0.push(match *content {
         | DeclarationContent::Def { .. } => KIND_DEF,
         | DeclarationContent::Axiom { .. } => KIND_AXIOM,
+        | DeclarationContent::AbstractType { .. } => KIND_ABSTRACT_TYPE,
     });
     // R2: the structured name, empty (zero segments) at v1.
     put_uvarint(out, WireU64(0));
@@ -564,7 +575,11 @@ fn encode_declaration(
             let body = intern(arena, interner, &mut segment, Node::Value(body));
             (declared, Some(body))
         },
-        | DeclarationContent::Axiom { declared } => {
+        // An abstract type writes exactly like an axiom: one root, its kind, and
+        // no body. That is the shape of "an atom with no unfolding rule" on the
+        // wire — there is no representation field to omit, so none can leak.
+        | DeclarationContent::Axiom { declared }
+        | DeclarationContent::AbstractType { kind: declared } => {
             let declared = intern(arena, interner, &mut segment, Node::ValueType(declared));
             (declared, None)
         },
@@ -577,12 +592,68 @@ fn encode_declaration(
     put_uvarint(out, WireU64(u64::from(root_declared.0)));
     if let Some(root_body) = root_body {
         put_uvarint(out, WireU64(u64::from(root_body.0)));
-        // R3: four per-Def annotation slots, empty at v1.
+        // R3: four per-Def annotation slots. Erasure, modes/grades, and
+        // directedness/variance stay reserved and empty; the third is the
+        // sealing-provenance slot, and it carries the atoms this declaration's
+        // projection rebound. The reader re-derives them from the declared type
+        // rather than believing them.
         put_uvarint(out, WireU64(0));
         put_uvarint(out, WireU64(0));
-        put_uvarint(out, WireU64(0));
+        encode_sealing_provenance(out, declaration.provenance());
         put_uvarint(out, WireU64(0));
     }
+}
+
+/// Encode the R3 sealing-provenance slot: the atoms a declaration's projection
+/// rebound, as a count followed by ascending admission indices.
+///
+/// An unsealed declaration writes a zero count, which is byte-identical to what
+/// the slot carried while it was reserved — so every artifact that was
+/// canonical before sealing landed is still canonical.
+fn encode_sealing_provenance(
+    out: &mut EncodedArtifact,
+    provenance: &[ConstantIndex],
+)
+{
+    put_uvarint(out, usize_to_u64(WireUsize(provenance.len())));
+    for &atom in provenance {
+        put_uvarint(out, usize_to_u64(WireUsize(usize::from(atom))));
+    }
+}
+
+/// Encode the R4 minted-atom table: the admission positions of every sealed
+/// abstract type in the artifact, ascending.
+///
+/// The table is deliberately **derivable** from the declarations that follow
+/// it. That is not redundancy for its own sake: a table the reader can
+/// recompute is a table the reader can *refute*, and refutability is the whole
+/// difference between freshness as a checked property and freshness as
+/// something the producer asserts. See the module documentation for the three
+/// properties the cross-check establishes and the one (cross-process
+/// uniqueness) it does not.
+fn encode_minted_atom_table(
+    out: &mut EncodedArtifact,
+    declarations: &[(AdmissionMark, &Declaration)],
+)
+{
+    let atoms = minted_atoms(declarations);
+    put_uvarint(out, usize_to_u64(WireUsize(atoms.len())));
+    for atom in atoms {
+        put_uvarint(out, usize_to_u64(WireUsize(atom)));
+    }
+}
+
+/// The admission positions of the abstract-type declarations in a declaration
+/// sequence, ascending — the canonical content of the R4 minted-atom table.
+pub(super) fn minted_atoms(declarations: &[(AdmissionMark, &Declaration)]) -> Vec<usize>
+{
+    declarations
+        .iter()
+        .enumerate()
+        .filter_map(|(position, &(_mark, declaration))| {
+            declaration.content().is_abstract_type().then_some(position)
+        })
+        .collect()
 }
 
 /// Encode a declaration's prenex level signature: parameter count and declared

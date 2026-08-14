@@ -1,18 +1,21 @@
 //! The closed declaration vocabulary ([`Declaration`]): `Def` (a typed
-//! definition) and `Axiom` (a tracked typed hole), each carrying its own
-//! prenex [`LevelSignature`].
+//! definition), `Axiom` (a tracked typed hole), and `AbstractType` (a sealed
+//! nominal atom), each carrying its own prenex [`LevelSignature`].
 //!
-//! Growth is deliberate and closed: at S1 the vocabulary is exactly these two.
-//! Datatype declarations arrive later as levitated description codes (S2),
-//! never as a raw-inductive kind (K4).
+//! Growth is deliberate and closed: at S1 the vocabulary is exactly these
+//! three. `AbstractType` is the sealing rung's one addition, and it is a
+//! *declaration* kind rather than a type former, so the frozen value-type
+//! grammar gains no quantifier. Datatype declarations arrive later as levitated
+//! description codes (S2), never as a raw-inductive kind (K4).
 //!
 //! **Declarations are value-polarity at the boundary** (a design decision for
 //! the S1 slice): a `Def` pairs a declared *value* type with a *value* body,
-//! and an `Axiom` a declared value type. A computation definition `f : A → C`
-//! enters as a thunk — declared type `U (A → C)`, body `thunk (λ. …)` — and is
-//! used through `force`. This keeps the declaration vocabulary single-polarity
-//! (one `add_decl` shape, no polarity-mismatch error) and matches CBPV's
-//! treatment of top-level bindings as thunkable values.
+//! an `Axiom` a declared value type, and an `AbstractType` a universe kind. A
+//! computation definition `f : A → C` enters as a thunk — declared type `U (A →
+//! C)`, body `thunk (λ. …)` — and is used through `force`. This keeps the
+//! declaration vocabulary single-polarity (one `add_decl` shape, no
+//! polarity-mismatch error) and matches CBPV's treatment of top-level bindings
+//! as thunkable values.
 //!
 //! # Arena content and the builder (D1(C))
 //!
@@ -33,6 +36,7 @@ use crate::arena::TermArena;
 use crate::arena::ValueId;
 use crate::arena::ValueTypeId;
 use crate::levels::LevelParamCount;
+use crate::term::ConstantIndex;
 
 /// A declaration's prenex level interface: its parameter count and its
 /// declared landmark constraints (the declaration is generalized over these
@@ -116,34 +120,87 @@ pub enum DeclarationContent
         /// The declared value type's root id.
         declared: ValueTypeId,
     },
+    /// A **sealed abstract type**: a minted nominal atom, declared at a
+    /// universe kind and with no unfolding rule.
+    ///
+    /// It is neither a definition nor a hole, and the distinction is the point.
+    /// A [`Def`](Self::Def) carries a body the kernel must verify; an
+    /// [`Axiom`](Self::Axiom) *claims an inhabitant* and is therefore tracked
+    /// by the audit. An abstract type claims no inhabitant — it introduces an
+    /// uninterpreted type constant, a conservative extension — so it is
+    /// **not** audited as an axiom, and admitting one leaves the kernel with
+    /// no obligation it did not already discharge at admission.
+    ///
+    /// `kind` must be a [`ValueType::Universe`](crate::ValueType::Universe)
+    /// node; the choke point rejects anything else
+    /// ([`KernelError::AbstractTypeKindNotUniverse`]), so every
+    /// [`ValueType::Abstract`](crate::ValueType::Abstract) naming this
+    /// declaration reads its universe level off a node whose shape was already
+    /// checked rather than inferring one.
+    ///
+    /// [`KernelError::AbstractTypeKindNotUniverse`]: crate::KernelError::AbstractTypeKindNotUniverse
+    AbstractType
+    {
+        /// The atom's kind: a universe value-type root id.
+        kind: ValueTypeId,
+    },
 }
 
 impl DeclarationContent
 {
-    /// The declared value-type root id, common to both a definition and an
-    /// axiom.
+    /// The declared value-type root id — the declared type of a definition or
+    /// an axiom, and the *kind* of an abstract type.
+    ///
+    /// The three share one accessor because they share one well-formedness
+    /// obligation: whatever the root is, it must form. What differs is what
+    /// admission additionally demands of it, and that stays in
+    /// [`crate::check`].
     #[inline]
     #[must_use]
     pub const fn declared_id(&self) -> ValueTypeId
     {
         match *self {
-            | Self::Def { declared, .. } | Self::Axiom { declared } => declared,
+            | Self::Def { declared, .. }
+            | Self::Axiom { declared }
+            | Self::AbstractType { kind: declared } => declared,
         }
+    }
+
+    /// Whether this content is a sealed abstract type — the minted-atom
+    /// table's membership predicate.
+    #[inline]
+    #[must_use]
+    pub const fn is_abstract_type(&self) -> bool
+    {
+        matches!(*self, Self::AbstractType { .. })
     }
 }
 
 /// A declaration entering the kernel through the choke point: a level
-/// signature, its content roots, and the arena watermark its content begins at.
+/// signature, its content roots, the arena watermark its content begins at,
+/// and its sealing provenance.
 #[derive(Clone, Debug)]
 pub struct Declaration
 {
     /// The prenex level interface.
     levels: LevelSignature,
-    /// The definition or axiom content (root ids into the environment arena).
+    /// The definition, axiom, or abstract-type content (root ids into the
+    /// environment arena).
     content: DeclarationContent,
     /// The arena watermark at which this declaration's content began — the
     /// pre-admission mark the choke point truncates to on rejection.
     content_start: ArenaWatermark,
+    /// The R3 sealing-provenance slot: the atoms this declaration's sealing
+    /// projection rebound, ascending and duplicate-free.
+    ///
+    /// **It records the projection, never the event.** "This module was sealed"
+    /// is a claim about the elaborator's history and the kernel would have to
+    /// take it on faith; "this declaration's type was projected onto atoms
+    /// `ā`" is a claim about *this declaration's type*, and the choke point
+    /// re-derives it by walking that type ([`crate::check`]). Empty for a
+    /// declaration no projection touched, which is every declaration the
+    /// module layer did not seal.
+    provenance: Vec<ConstantIndex>,
 }
 
 impl Declaration
@@ -178,6 +235,15 @@ impl Declaration
     pub(crate) const fn content_start(&self) -> ArenaWatermark
     {
         self.content_start
+    }
+
+    /// The R3 sealing provenance: the atoms this declaration's projection
+    /// rebound, ascending.
+    #[inline]
+    #[must_use]
+    pub fn provenance(&self) -> &[ConstantIndex]
+    {
+        &self.provenance
     }
 }
 
@@ -240,6 +306,38 @@ impl<'arena> DeclarationBuilder<'arena>
             levels,
             content: DeclarationContent::Def { declared, body },
             content_start: self.content_start,
+            provenance: Vec::new(),
+        }
+    }
+
+    /// Finalize a definition carrying sealing provenance: the atoms the
+    /// projection that produced its declared type rebound.
+    ///
+    /// # Contract
+    /// - requires: nothing — a malformed `provenance` is a *rejection* at the
+    ///   choke point, never a construction error, because the kernel grants the
+    ///   producer no credence about what it sealed.
+    /// - ensures: a [`Declaration`] whose provenance slot carries `provenance`
+    ///   verbatim, so admission checks exactly what the artifact would carry.
+    /// - provides: the sealed-member construction surface the module layer's
+    ///   flattening export uses.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn sealed_def(
+        self,
+        levels: LevelSignature,
+        declared: ValueTypeId,
+        body: ValueId,
+        provenance: Vec<ConstantIndex>,
+    ) -> Declaration
+    {
+        Declaration {
+            levels,
+            content: DeclarationContent::Def { declared, body },
+            content_start: self.content_start,
+            provenance,
         }
     }
 
@@ -256,6 +354,38 @@ impl<'arena> DeclarationBuilder<'arena>
             levels,
             content: DeclarationContent::Axiom { declared },
             content_start: self.content_start,
+            provenance: Vec::new(),
+        }
+    }
+
+    /// Finalize a sealed abstract type at an already-minted universe kind.
+    ///
+    /// # Contract
+    /// - requires: nothing — a non-universe `kind` is a rejection at the choke
+    ///   point ([`KernelError::AbstractTypeKindNotUniverse`]), not a
+    ///   construction error.
+    /// - ensures: a [`Declaration`] whose content is
+    ///   [`DeclarationContent::AbstractType`] and whose provenance is empty (an
+    ///   atom is what a projection *produces*, so it carries no projection of
+    ///   its own).
+    /// - provides: the atom-minting construction surface.
+    /// - fails: never.
+    /// - panics: none.
+    ///
+    /// [`KernelError::AbstractTypeKindNotUniverse`]: crate::KernelError::AbstractTypeKindNotUniverse
+    #[inline]
+    #[must_use]
+    pub fn abstract_type(
+        self,
+        levels: LevelSignature,
+        kind: ValueTypeId,
+    ) -> Declaration
+    {
+        Declaration {
+            levels,
+            content: DeclarationContent::AbstractType { kind },
+            content_start: self.content_start,
+            provenance: Vec::new(),
         }
     }
 }

@@ -107,6 +107,16 @@ impl AdmittedDeclaration
     {
         self.declaration.declared_id()
     }
+
+    /// The admitted declaration's content — what an abstract-type reference is
+    /// resolved against, so an atom's claim to be one is checked rather than
+    /// believed.
+    #[inline]
+    #[must_use]
+    pub(crate) const fn content(&self) -> &DeclarationContent
+    {
+        self.declaration.content()
+    }
 }
 
 /// The transitive audit of a declaration: the axioms and unchecked admissions
@@ -479,6 +489,9 @@ fn collect_constants(
 #[cfg(test)]
 mod tests
 {
+    use gandr_kernel_strata::Level;
+    use gandr_kernel_strata::LevelConstant;
+
     use super::Environment;
     use crate::base::BaseType;
     use crate::decl::LevelSignature;
@@ -595,6 +608,207 @@ mod tests
         assert!(
             report.unchecked_admissions().is_empty(),
             "a checked def rests on no unchecked admission"
+        );
+    }
+
+    // ----- Sealed abstract types: the kernel handshake. -----
+
+    /// Admit one sealed atom at universe level zero, returning its position.
+    fn admit_atom(environment: &mut Environment) -> super::CheckedId
+    {
+        let mut builder = environment.stage();
+        let kind = builder
+            .arena()
+            .value_type_universe(Level::constant(LevelConstant::from(0_u64)));
+        let atom = builder.abstract_type(LevelSignature::monomorphic(), kind);
+        environment
+            .add_decl(atom)
+            .expect("an abstract type at a universe kind admits")
+    }
+
+    /// A sealed atom admits, and the kernel takes on **no** obligation for it:
+    /// it is not an axiom, so nothing typed at it is reported as resting on
+    /// one.
+    ///
+    /// The distinction is the whole reason the atom route was chosen over an
+    /// existential. An axiom claims an inhabitant and the audit must surface
+    /// it; an atom introduces an uninterpreted type constant, which is a
+    /// conservative extension and claims nothing.
+    #[test]
+    fn a_sealed_atom_is_not_an_axiom_and_adds_no_obligation()
+    {
+        let mut environment = Environment::new();
+        let atom = admit_atom(&mut environment);
+        let report = environment.audit(atom);
+        assert!(
+            report.axioms().is_empty(),
+            "a sealed atom is not an axiom: it claims no inhabitant"
+        );
+        assert!(
+            report.unchecked_admissions().is_empty(),
+            "and it crossed the checked choke point"
+        );
+    }
+
+    /// A sealed member's body is **certified** against its atom: the identity
+    /// `U (t → F t)` checks without the kernel ever unfolding `t`.
+    #[test]
+    fn a_sealed_member_checks_at_its_atom()
+    {
+        let mut environment = Environment::new();
+        let atom = admit_atom(&mut environment);
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let opaque = arena.value_type_abstract(atom.position());
+        let returner = arena.comp_type_returner(opaque);
+        let arrow = arena.comp_type_arrow(opaque, returner);
+        let declared = arena.value_type_thunk(arrow);
+        let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let ret = arena.computation_return(variable);
+        let lambda = arena.computation_lambda(ret);
+        let body = arena.value_thunk(lambda);
+        let member =
+            builder.sealed_def(LevelSignature::monomorphic(), declared, body, alloc::vec![
+                atom.position()
+            ]);
+        assert!(
+            environment.add_decl(member).is_ok(),
+            "the identity at a sealed atom checks, with the atom never unfolded"
+        );
+    }
+
+    /// **The abstraction-leak refutation.** A declaration claiming to inhabit a
+    /// sealed atom with a value of the representation is refused.
+    ///
+    /// Nothing here is special-cased for sealing: the atom simply has no
+    /// conversion arm relating it to `Unit`, so the ordinary mode-switch
+    /// conversion refuses. Opacity falls out of the closed vocabulary rather
+    /// than out of a guard someone remembered to write.
+    #[test]
+    fn a_value_of_the_representation_does_not_inhabit_the_atom()
+    {
+        let mut environment = Environment::new();
+        let atom = admit_atom(&mut environment);
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_abstract(atom.position());
+        let body = arena.value_unit();
+        let leak = builder.def(LevelSignature::monomorphic(), declared, body);
+        assert!(
+            matches!(
+                environment.add_decl(leak),
+                Err(KernelError::ValueTypeMismatch(_))
+            ),
+            "unit does not inhabit a sealed atom: the representation cannot leak through"
+        );
+    }
+
+    /// An atom reference naming an ordinary definition is refused: being an
+    /// atom is resolved against the environment, never asserted by the
+    /// reference.
+    #[test]
+    fn an_atom_naming_a_definition_is_refused()
+    {
+        let mut environment = Environment::new();
+        let definition = admit_identity(&mut environment).unwrap();
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let forged = arena.value_type_abstract(definition.position());
+        let declaration = builder.axiom(LevelSignature::monomorphic(), forged);
+        assert_eq!(
+            environment.add_decl(declaration),
+            Err(KernelError::NotAnAbstractType {
+                index: definition.position(),
+            }),
+            "an atom may not name a definition"
+        );
+    }
+
+    /// An atom reference to a position not yet admitted — including its own —
+    /// is refused, so no atom can be self-referential or forward.
+    #[test]
+    fn a_forward_atom_reference_is_refused()
+    {
+        let mut environment = Environment::new();
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let forged = arena.value_type_abstract(ConstantIndex::from(0_usize));
+        let declaration = builder.axiom(LevelSignature::monomorphic(), forged);
+        assert_eq!(
+            environment.add_decl(declaration),
+            Err(KernelError::NotAnAbstractType {
+                index: ConstantIndex::from(0_usize),
+            }),
+            "an atom may not name the declaration currently being admitted"
+        );
+    }
+
+    /// An abstract type whose kind is not a universe is refused, so every
+    /// atom's level is a lookup rather than an inference.
+    #[test]
+    fn an_atom_kind_must_be_a_universe()
+    {
+        let mut environment = Environment::new();
+        let mut builder = environment.stage();
+        let kind = builder.arena().value_type_unit();
+        let declaration = builder.abstract_type(LevelSignature::monomorphic(), kind);
+        assert!(
+            matches!(
+                environment.add_decl(declaration),
+                Err(KernelError::AbstractTypeKindNotUniverse { .. })
+            ),
+            "an atom's kind must be a universe"
+        );
+    }
+
+    /// Sealing provenance is **re-derived**: an atom claimed but not projected
+    /// onto is refused, so the slot cannot record a projection that left no
+    /// trace in the type.
+    #[test]
+    fn sealing_provenance_must_occur_in_the_declared_type()
+    {
+        let mut environment = Environment::new();
+        let atom = admit_atom(&mut environment);
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_unit();
+        let overclaimed =
+            builder.sealed_def(LevelSignature::monomorphic(), declared, body, alloc::vec![
+                atom.position()
+            ]);
+        assert_eq!(
+            environment.add_decl(overclaimed),
+            Err(KernelError::SealingProvenanceNotProjected {
+                atom: atom.position(),
+            }),
+            "provenance naming an atom absent from the declared type is refused"
+        );
+    }
+
+    /// Sealing provenance must be strictly ascending, so a repeat cannot
+    /// inflate a projection's apparent extent and one provenance has one
+    /// spelling.
+    #[test]
+    fn sealing_provenance_must_be_strictly_ascending()
+    {
+        let mut environment = Environment::new();
+        let atom = admit_atom(&mut environment);
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_abstract(atom.position());
+        let body = arena.value_unit();
+        let repeated =
+            builder.sealed_def(LevelSignature::monomorphic(), declared, body, alloc::vec![
+                atom.position(),
+                atom.position()
+            ]);
+        assert_eq!(
+            environment.add_decl(repeated),
+            Err(KernelError::SealingProvenanceNotCanonical {
+                atom: atom.position(),
+            }),
+            "a repeated provenance entry is refused"
         );
     }
 

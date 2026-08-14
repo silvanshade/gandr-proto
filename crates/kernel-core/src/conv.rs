@@ -330,6 +330,18 @@ fn converge_types(
                             return Convertibility::Distinct;
                         }
                     },
+                    // Sealed abstract types: **nominal, and this is the whole
+                    // rule**. Two atoms convert exactly when they name the same
+                    // abstract-type declaration; there is deliberately no arm
+                    // that relates an atom to a structural type, so opacity is
+                    // a consequence of the closed match rather than a fact the
+                    // producer asserts. Distinct sealings of structurally
+                    // identical implementations therefore stay distinct types.
+                    | (&ValueType::Abstract(one_atom), &ValueType::Abstract(other_atom)) => {
+                        if one_atom != other_atom {
+                            return Convertibility::Distinct;
+                        }
+                    },
                     | (
                         &ValueType::Lift {
                             inner: ref one_inner,
@@ -536,6 +548,7 @@ mod tests
     use crate::base::Literal;
     use crate::base::Magnitude;
     use crate::base::Sign;
+    use crate::term::ConstantIndex;
     use crate::term::DeBruijnIndex;
     use crate::term::Side;
 
@@ -576,6 +589,69 @@ mod tests
             convertible_value_types(&arena, universe0, universe1),
             "universes at distinct levels do not convert"
         );
+    }
+
+    /// Two atoms minted by two sealings do not convert, however alike their
+    /// implementations were.
+    ///
+    /// This is generativity at the conversion wall: nothing about how a sealed
+    /// module was built reaches here, so two sealings of the *same*
+    /// implementation still yield types the kernel keeps apart.
+    #[test]
+    fn distinct_sealed_atoms_do_not_convert()
+    {
+        let mut arena = TermArena::new();
+        let first = arena.value_type_abstract(ConstantIndex::from(0_usize));
+        let second = arena.value_type_abstract(ConstantIndex::from(1_usize));
+        assert_eq!(
+            Convertibility::Distinct,
+            convertible_value_types(&arena, first, second),
+            "atoms naming different declarations do not convert (generativity)"
+        );
+    }
+
+    /// One atom converts with itself through two separately-minted nodes — the
+    /// rule is the *position*, not the arena id.
+    #[test]
+    fn one_sealed_atom_converts_with_itself()
+    {
+        let mut arena = TermArena::new();
+        let one = arena.value_type_abstract(ConstantIndex::from(3_usize));
+        let other = arena.value_type_abstract(ConstantIndex::from(3_usize));
+        assert_ne!(one, other, "the two nodes are distinct arena ids");
+        assert_eq!(
+            Convertibility::Convertible,
+            convertible_value_types(&arena, one, other),
+            "two references to one atom convert"
+        );
+    }
+
+    /// **The abstraction-leak refutation.** An atom does not convert with the
+    /// type a sealed module might have implemented it by, in either direction.
+    ///
+    /// There is no unfolding rule to try, so this is not a check that failed to
+    /// find a representation — it is that the conversion vocabulary has no arm
+    /// relating an atom to a structural type at all. A client that guesses the
+    /// representation gets a type error, not a proof.
+    #[test]
+    fn a_sealed_atom_never_converts_with_a_representation()
+    {
+        let mut arena = TermArena::new();
+        let atom = arena.value_type_abstract(ConstantIndex::from(0_usize));
+        let integer = arena.value_type_base(BaseType::Integer);
+        let unit = arena.value_type_unit();
+        for representation in [integer, unit] {
+            assert_eq!(
+                Convertibility::Distinct,
+                convertible_value_types(&arena, atom, representation),
+                "an atom does not convert with a candidate representation"
+            );
+            assert_eq!(
+                Convertibility::Distinct,
+                convertible_value_types(&arena, representation, atom),
+                "nor does a candidate representation convert with the atom"
+            );
+        }
     }
 
     #[test]

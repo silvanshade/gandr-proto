@@ -57,22 +57,56 @@
 //! bounded by [`MAX_DECODED_LEVEL_OFFSET`]. The same scan yields the
 //! deterministic [`DecodeMetrics`] the export exit gate records.
 //!
-//! # The seven ratified reservations (format-plane, zero S1 typing consequence)
+//! # The ratified reservations, and which of them the sealing rung filled
 //!
 //! * **R1 — reserved declaration kinds.** `AbstractType` / `ModuleSig` /
-//!   `ModuleDef` / `FunctorDef` have concrete reserved kind tags the writer
-//!   never emits; the reader rejects them as a distinct
-//!   [`DecodeError::ReservedDeclarationKind`] (more honest than a generic bad
-//!   tag).
+//!   `ModuleDef` / `FunctorDef` have concrete reserved kind tags.
+//!   **`AbstractType` is now live**: the writer emits it for a
+//!   [`DeclarationContent::AbstractType`](crate::DeclarationContent::AbstractType)
+//!   and the reader admits it. The other three stay reserved, and the reader
+//!   still rejects them as a distinct [`DecodeError::ReservedDeclarationKind`]
+//!   (more honest than a generic bad tag).
 //! * **R2 — structured names.** A name is a sequence of segments, never a flat
 //!   dotted string. S1 declarations carry no name, so the per-declaration name
 //!   record is a segment count pinned to zero at v1; a non-empty name is
-//!   rejected as [`DecodeError::ReservedSlotOccupied`].
+//!   rejected as [`DecodeError::ReservedSlotOccupied`]. **Still reserved.**
 //! * **R3 — four per-`Def` annotation slots** (erasure, modes/grades,
-//!   sealing-provenance, directedness/variance) are present from birth and
-//!   empty at v1; a non-empty slot is rejected as unimplemented.
-//! * **R4 — reserved minted-atom table**, admission-ordered and empty at v1; a
-//!   non-empty table is rejected.
+//!   sealing-provenance, directedness/variance). **The sealing-provenance slot
+//!   is now live**; erasure, modes/grades, and directedness/variance stay empty
+//!   and are rejected when occupied.
+//! * **R4 — the minted-atom table**, admission-ordered. **Now live**, and it is
+//!   what makes atom freshness a checked property rather than an imported claim
+//!   — see the section below.
+//!
+//! # Freshness is checked here, and this is exactly what is checked
+//!
+//! An artifact minting sealed abstract types carries, in its header, the
+//! admission positions of every one of them. Both the writer and the reader
+//! treat that table as **redundant and therefore falsifiable**: the reader
+//! decodes the declaration sequence independently and re-derives the table from
+//! it, refusing any artifact where the two disagree. Three properties follow,
+//! and all three are decidable from the bytes alone:
+//!
+//! * **distinctness** — the table is strictly ascending, so no two atoms can
+//!   occupy one position and an aliased pair cannot be spelled;
+//! * **accounting** — every abstract-type declaration appears, so an atom
+//!   cannot be smuggled past the table;
+//! * **no forgery** — every entry names a declaration that really is an
+//!   abstract type, so the table cannot conjure an atom the declarations do not
+//!   contain.
+//!
+//! Re-minting on replay is deterministic because an atom's kernel identity *is*
+//! its admission position, and replay re-admits in admission order. So "these
+//! atoms are fresh" is re-derived, never believed — which is the property the
+//! atom route was chosen for, and the one an existential presentation offers no
+//! analogue of, because it offers nothing to check.
+//!
+//! **What this does not establish**, stated because the gap is easy to miss:
+//! this is freshness *within one artifact*. Two independently produced
+//! artifacts can both mint an atom at position 0, so cross-process global
+//! uniqueness is a different property that this table does not carry and does
+//! not claim. It belongs with the package boundary, where sealed values first
+//! cross one.
 
 mod read;
 mod write;
@@ -283,6 +317,17 @@ pub const NODE_C_FORCE: u8 = 0x15;
 /// Node tag: a case computation (children: value scrutinee, computation,
 /// computation).
 pub const NODE_C_CASE: u8 = 0x16;
+/// Node tag: a sealed abstract type (payload: the admission index of its
+/// abstract-type declaration, as a uvarint; no children).
+///
+/// **Newly assigned, not reassigned.** `0x00..=0x16` keep the meanings v1
+/// froze, byte for byte; `0x17` was unassigned and is now the sealed atom. A
+/// reader built before this assignment meets `0x17` and refuses
+/// [`DecodeError::UnknownTag`] at [`TagSite::Node`] — a precise named refusal
+/// from the rejection triple, never a mis-parse — which is why the assignment
+/// is additive rather than a version bump. See the sealing decision record for
+/// why v1 held.
+pub const NODE_VT_ABSTRACT: u8 = 0x17;
 
 /// A declaration's admission mark as it rides in the artifact (E6): a single
 /// checked/unchecked bit, never a trust lattice (K3).
@@ -816,13 +861,18 @@ impl ExactSizeIterator for Segments<'_>
 {
 }
 
-/// One of the four R1 reserved declaration kinds — a shape the writer never
-/// emits and the reader rejects distinctly.
+/// One of the R1 reserved declaration kinds still awaiting its rung — a shape
+/// the writer never emits and the reader rejects distinctly.
+///
+/// R1 reserved four kinds and **`AbstractType` is no longer among them**: the
+/// sealing rung made it live, so it is written and decoded like `Def` and
+/// `Axiom` rather than refused. Its variant is gone rather than
+/// retained-unused, because a vocabulary of reserved kinds that lists a live
+/// one misdescribes what the reader does; matches on this enum are total by
+/// policy, so the removal is compile-visible at every site.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReservedKind
 {
-    /// A reserved abstract-type declaration kind.
-    AbstractType,
     /// A reserved module-signature declaration kind.
     ModuleSig,
     /// A reserved module-definition declaration kind.
@@ -840,7 +890,6 @@ impl fmt::Display for ReservedKind
     ) -> fmt::Result
     {
         f.write_str(match *self {
-            | Self::AbstractType => "AbstractType",
             | Self::ModuleSig => "ModuleSig",
             | Self::ModuleDef => "ModuleDef",
             | Self::FunctorDef => "FunctorDef",

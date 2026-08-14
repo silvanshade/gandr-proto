@@ -519,6 +519,22 @@ impl TermArena
         self.alloc_value_type(ValueType::Universe(level))
     }
 
+    /// Mint a reference to a sealed abstract type by its declaration's
+    /// admission position.
+    ///
+    /// Minting does not check the position: formation
+    /// ([`crate::check`]) is what requires it to name an admitted
+    /// abstract-type declaration, so an unadmitted position is a rejection at
+    /// the choke point rather than an unrepresentable node here.
+    #[inline]
+    pub fn value_type_abstract(
+        &mut self,
+        atom: ConstantIndex,
+    ) -> ValueTypeId
+    {
+        self.alloc_value_type(ValueType::Abstract(atom))
+    }
+
     /// Mint a value-type lift over an already-allocated inner value type.
     #[inline]
     pub fn value_type_lift(
@@ -635,7 +651,10 @@ impl TermArena
             | AnyId::ValueType(id) => {
                 if let Some(value_type) = self.value_type(id) {
                     match *value_type {
-                        | ValueType::Base(_) | ValueType::Unit | ValueType::Universe(_) => {},
+                        | ValueType::Base(_)
+                        | ValueType::Unit
+                        | ValueType::Universe(_)
+                        | ValueType::Abstract(_) => {},
                         | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
                             children.push(AnyId::ValueType(first));
                             children.push(AnyId::ValueType(second));
@@ -820,6 +839,7 @@ fn reify_assemble(
                 | Some(&ValueType::Universe(ref level)) => {
                     destination.value_type_universe(level.clone())
                 },
+                | Some(&ValueType::Abstract(atom)) => destination.value_type_abstract(atom),
                 | Some(&ValueType::Product(first, second)) => {
                     let first = value_type_of(memo, destination, AnyId::ValueType(first));
                     let second = value_type_of(memo, destination, AnyId::ValueType(second));

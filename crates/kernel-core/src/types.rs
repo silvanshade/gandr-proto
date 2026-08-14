@@ -35,6 +35,7 @@ use gandr_kernel_strata::Level;
 use crate::arena::CompTypeId;
 use crate::arena::ValueTypeId;
 use crate::base::BaseType;
+use crate::term::ConstantIndex;
 
 /// A value type: the positive fragment of the S1 type vocabulary.
 ///
@@ -71,6 +72,42 @@ pub enum ValueType
         /// The target universe level (the lifted type's level).
         target: Level,
     },
+    /// A **sealed abstract type**: the minted nominal atom a sealing projection
+    /// introduced, named by the admission position of its
+    /// [`DeclarationContent::AbstractType`] declaration.
+    ///
+    /// This is the one type-level reference form the S1 grammar admits, and it
+    /// is deliberately the *only* one: the kernel names an atom, never a
+    /// definition, so no type-level unfolding rule exists to be written.
+    ///
+    /// # Opacity is re-derived, never imported
+    ///
+    /// The kernel is told nothing about sealing. What it checks is structural
+    /// and local: the referenced position names an admitted declaration whose
+    /// content is [`AbstractType`](crate::DeclarationContent::AbstractType)
+    /// (formation, [`crate::check`]), and two atoms convert exactly when their
+    /// positions are equal ([`crate::conv`]). **There is no arm anywhere that
+    /// replaces an atom by a representation**, so "this atom has no unfolding
+    /// rule" is a fact the kernel re-derives from its own closed match rather
+    /// than a claim the elaborator makes. An elaborator that lied about having
+    /// sealed something cannot make the kernel unfold an atom, because no code
+    /// path unfolds one.
+    ///
+    /// # No inference obligation
+    ///
+    /// The atom carries no body, no representation, and no side condition. Its
+    /// universe level is read from its declaration's kind (which admission
+    /// pinned to a [`Universe`](ValueType::Universe)), so type formation stays
+    /// a lookup rather than an inference, and a fresh atom is a conservative
+    /// extension: it claims no inhabitant, so it is **not** an axiom and never
+    /// enters an [`AxiomReport`](crate::AxiomReport).
+    ///
+    /// [`DeclarationContent::AbstractType`]: crate::DeclarationContent::AbstractType
+    Abstract(
+        /// The admission position of the abstract-type declaration this atom
+        /// names.
+        ConstantIndex,
+    ),
 }
 
 /// A computation type: the negative fragment of the S1 type vocabulary.

@@ -95,6 +95,7 @@ use super::NODE_V_PAIR;
 use super::NODE_V_THUNK;
 use super::NODE_V_UNIT;
 use super::NODE_V_VARIABLE;
+use super::NODE_VT_ABSTRACT;
 use super::NODE_VT_BASE;
 use super::NODE_VT_LIFT;
 use super::NODE_VT_PRODUCT;
@@ -205,18 +206,60 @@ impl Table
     }
 }
 
+/// Which of the live declaration kinds a decoded segment carried.
+///
+/// `root_body` alone no longer distinguishes them: an axiom and an abstract
+/// type both decode to a single root and no body, and conflating the two would
+/// silently turn every atom back into a hole on replay — inverting exactly the
+/// distinction the sealing rung exists to draw.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum DeclKind
+{
+    /// A typed definition.
+    Def,
+    /// A tracked typed hole.
+    Axiom,
+    /// A sealed abstract type.
+    AbstractType,
+}
+
+impl DeclKind
+{
+    /// The kind a decoded kind byte names.
+    ///
+    /// A byte outside the live set cannot reach here — `decode_declaration`
+    /// rejects reserved and unknown kinds before building a
+    /// [`DeclMeta`] — and the fallback is the conservative one: a `Def` root
+    /// pair is what the caller then requires, so a wiring defect fails to
+    /// resolve rather than fabricating an atom.
+    #[inline]
+    const fn of(byte: u8) -> Self
+    {
+        match byte {
+            | KIND_AXIOM => Self::Axiom,
+            | KIND_ABSTRACT_TYPE => Self::AbstractType,
+            | _ => Self::Def,
+        }
+    }
+}
+
 /// Per-declaration metadata gathered during decode, resolved to declarations
 /// after the arena is built.
 struct DeclMeta
 {
     /// The admission mark (E6).
     mark: AdmissionMark,
+    /// Which declaration kind the segment carried.
+    kind: DeclKind,
     /// The prenex level signature.
     levels: LevelSignature,
-    /// The declared value type's global table index.
+    /// The declared value type's global table index (an abstract type's
+    /// *kind*).
     root_declared: GlobalIndex,
     /// The body value's global table index (`Def` only).
     root_body: Option<GlobalIndex>,
+    /// The R3 sealing-provenance slot's atoms (`Def` only; empty otherwise).
+    provenance: Vec<ConstantIndex>,
 }
 
 /// Decode a byte artifact into its admission-ordered declaration sequence,
@@ -265,7 +308,7 @@ pub fn decode(bytes: ArtifactImage<'_>) -> Result<DecodedArtifact, DecodeError>
     let mut reader = ByteReader::new(bytes);
     reader.expect_magic()?;
     reader.expect_version()?;
-    reader.expect_empty_minted_atom_table()?;
+    let minted_atoms = reader.read_minted_atom_table()?;
     let count = reader.read_uvarint()?;
     let count = count.0;
     let mut table = Table::new();
@@ -281,6 +324,7 @@ pub fn decode(bytes: ArtifactImage<'_>) -> Result<DecodedArtifact, DecodeError>
             site: MalformedSite::TrailingBytes,
         });
     }
+    check_minted_atom_table(&minted_atoms, &metas)?;
     let metrics = budget_report(&table, &metas);
     check_budget(&metrics)?;
     let declarations = build_declarations(&mut table, &metas);
@@ -410,6 +454,69 @@ fn value_id_at(
     }
 }
 
+/// Refute the R4 minted-atom table against the declarations decoded beside it —
+/// the artifact's freshness gate.
+///
+/// The table is a claim the header makes about the segments; this is where that
+/// claim is checked rather than believed. The re-derivation is the whole
+/// mechanism: collect the admission positions of the abstract-type declarations
+/// from the independently decoded sequence, and require the table to be exactly
+/// that. One equality decides all three properties at once —
+///
+/// * **distinctness**, because the re-derived sequence is strictly ascending by
+///   construction, so a table with a repeat cannot equal it and two atoms can
+///   never share a position;
+/// * **accounting**, because an abstract-type declaration missing from the
+///   table makes the lengths differ, so no atom is smuggled past it;
+/// * **no forgery**, because an entry naming a `Def` or `Axiom` — or naming
+///   nothing at all — is not in the re-derived sequence.
+///
+/// Re-minting on replay is deterministic because an atom's identity **is** its
+/// admission position and replay re-admits in admission order; so this equality
+/// is exactly "the atoms re-mint to what the artifact recorded". What it does
+/// not establish is uniqueness *across* artifacts, which is a different
+/// property and is not claimed anywhere here.
+///
+/// # Contract
+/// - requires: `metas` is the artifact's decoded declaration sequence, in
+///   admission order.
+/// - ensures: `Ok(())` exactly when `table` equals the ascending positions of
+///   the abstract-type declarations in `metas`.
+/// - provides: the freshness gate, decided from the bytes alone and before
+///   replay.
+/// - fails: [`DecodeError::ReservedSlotOccupied`] at
+///   [`ReservedSlot::MintedAtomTable`] on any disagreement — the slot's own
+///   refusal, kept so an artifact whose table is wrong is refused by name
+///   rather than by a generic structural error.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — a well-formed sealed artifact round-trips; the L3
+///   residues are the three refutations, pinned by hand-mutated tables.
+/// - witness: `export::tests::a_sealed_artifact_round_trips_with_its_atom_table`
+/// - witness: `export::tests::a_minted_atom_table_with_a_repeat_is_refused`
+/// - witness: `export::tests::a_minted_atom_table_omitting_an_atom_is_refused`
+/// - witness: `export::tests::a_minted_atom_table_naming_a_definition_is_refused`
+fn check_minted_atom_table(
+    table: &[usize],
+    metas: &[DeclMeta],
+) -> Result<(), DecodeError>
+{
+    let rederived: Vec<usize> = metas
+        .iter()
+        .enumerate()
+        .filter_map(|(position, meta)| (meta.kind == DeclKind::AbstractType).then_some(position))
+        .collect();
+    if table == rederived.as_slice() {
+        Ok(())
+    }
+    else {
+        Err(DecodeError::ReservedSlotOccupied {
+            slot: ReservedSlot::MintedAtomTable,
+        })
+    }
+}
+
 /// Resolve each declaration's global roots to arena ids and build the decoded
 /// declaration sequence.
 ///
@@ -434,12 +541,16 @@ fn build_declarations(
         let body_id = meta.root_body.map(|root| value_id_at(&table.nodes, root));
         let mut builder = DeclarationBuilder::new(&mut table.arena);
         let declared = declared_id.unwrap_or_else(|| builder.arena().value_type_unit());
-        let declaration = match body_id {
-            | Some(body_id) => {
+        let declaration = match (meta.kind, body_id) {
+            | (DeclKind::Def, Some(body_id)) => {
                 let body = body_id.unwrap_or_else(|| builder.arena().value_unit());
-                builder.def(meta.levels.clone(), declared, body)
+                builder.sealed_def(meta.levels.clone(), declared, body, meta.provenance.clone())
             },
-            | None => builder.axiom(meta.levels.clone(), declared),
+            | (DeclKind::AbstractType, _) => builder.abstract_type(meta.levels.clone(), declared),
+            // A `Def` whose body root failed to resolve degrades to an axiom
+            // rather than fabricating a body — the same fail-safe the unit-leaf
+            // fallbacks above take, and unreachable after decode's checks.
+            | (DeclKind::Def | DeclKind::Axiom, _) => builder.axiom(meta.levels.clone(), declared),
         };
         declarations.push(DecodedDeclaration::new(meta.mark, declaration));
     }
@@ -489,11 +600,20 @@ pub fn read(bytes: ArtifactImage<'_>) -> Result<Environment, ReadError>
         let recovered = match *declaration.content() {
             | DeclarationContent::Def { declared, body } => {
                 let (declared, body) = decode_arena.import_def(builder.arena(), declared, body);
-                builder.def(signature, declared, body)
+                builder.sealed_def(signature, declared, body, declaration.provenance().to_vec())
             },
             | DeclarationContent::Axiom { declared } => {
                 let declared = decode_arena.import_axiom(builder.arena(), declared);
                 builder.axiom(signature, declared)
+            },
+            // Replay re-mints the atom by re-admitting it in the same admission
+            // order, so its identity — its position — comes out identical
+            // without the artifact having to name it. That is what makes
+            // deterministic re-minting a property of the replay rather than a
+            // number the producer supplied.
+            | DeclarationContent::AbstractType { kind } => {
+                let kind = decode_arena.import_axiom(builder.arena(), kind);
+                builder.abstract_type(signature, kind)
             },
         };
         match mark {
@@ -601,19 +721,28 @@ impl<'bytes> ByteReader<'bytes>
         }
     }
 
-    /// Verify the reserved minted-atom table is empty (R4).
+    /// Read the R4 minted-atom table: a count followed by that many admission
+    /// positions.
+    ///
+    /// Only the integers are read here. The table's *truth* — that it is
+    /// strictly ascending and lists exactly the artifact's abstract-type
+    /// declarations — is decided in [`check_minted_atom_table`] once the
+    /// declarations have been decoded independently, because a claim checked
+    /// against nothing is not checked. No capacity is reserved from the
+    /// declared count, so an adversarial count costs one truncation rather than
+    /// an allocation.
     #[inline]
-    fn expect_empty_minted_atom_table(&mut self) -> Result<(), DecodeError>
+    fn read_minted_atom_table(&mut self) -> Result<Vec<usize>, DecodeError>
     {
         let count = self.read_uvarint()?;
-        if count.0 == 0_u64 {
-            Ok(())
+        let mut atoms: Vec<usize> = Vec::new();
+        let mut remaining = count.0;
+        while remaining > 0_u64 {
+            let atom = self.read_usize()?;
+            atoms.push(atom.0);
+            remaining = remaining.wrapping_sub(1_u64);
         }
-        else {
-            Err(DecodeError::ReservedSlotOccupied {
-                slot: ReservedSlot::MintedAtomTable,
-            })
-        }
+        Ok(atoms)
     }
 
     /// Read a canonical (minimal) unsigned LEB128 varint.
@@ -716,13 +845,16 @@ fn decode_declaration(
         remaining = remaining.wrapping_sub(1_u64);
     }
     let root_declared = decode_root(reader, table, Family::ValueType)?;
+    let mut provenance: Vec<ConstantIndex> = Vec::new();
     let root_body = match kind.0 {
         | KIND_DEF => {
             let body = decode_root(reader, table, Family::Value)?;
-            decode_empty_def_slots(reader)?;
+            provenance = decode_def_slots(reader)?;
             Some(body)
         },
-        | KIND_AXIOM => None,
+        // An abstract type carries a kind root and stops, exactly like an
+        // axiom: no body, and therefore no per-`Def` annotation slots.
+        | KIND_AXIOM | KIND_ABSTRACT_TYPE => None,
         | other => {
             return Err(DecodeError::UnknownTag {
                 site: TagSite::DeclarationKind,
@@ -732,9 +864,11 @@ fn decode_declaration(
     };
     Ok(DeclMeta {
         mark,
+        kind: DeclKind::of(kind.0),
         levels,
         root_declared,
         root_body,
+        provenance,
     })
 }
 
@@ -811,6 +945,14 @@ fn decode_entry(
         | NODE_VT_UNIVERSE => {
             let level = decode_level(reader)?;
             let id = table.arena.value_type_universe(level);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_ABSTRACT => {
+            // The payload is an admission position, not a table index: an atom
+            // names a *declaration*, so its resolution is the choke point's job
+            // on replay, not the parser's. Decode only bounds the integer.
+            let atom = reader.read_usize()?;
+            let id = table.arena.value_type_abstract(ConstantIndex::from(atom.0));
             (DecodedNode::ValueType(id), Family::ValueType)
         },
         | NODE_VT_PRODUCT => {
@@ -1071,7 +1213,9 @@ fn decode_admission(reader: &mut ByteReader<'_>) -> Result<AdmissionMark, Decode
 fn reject_reserved_kind(kind: WireByte) -> Result<(), DecodeError>
 {
     let reserved = match kind.0 {
-        | KIND_ABSTRACT_TYPE => ReservedKind::AbstractType,
+        // `KIND_ABSTRACT_TYPE` is deliberately absent: R1 reserved four kinds
+        // and the sealing rung made this one live, so it is decoded rather than
+        // refused. The other three stay reserved.
         | KIND_MODULE_SIG => ReservedKind::ModuleSig,
         | KIND_MODULE_DEF => ReservedKind::ModuleDef,
         | KIND_FUNCTOR_DEF => ReservedKind::FunctorDef,
@@ -1095,23 +1239,60 @@ fn decode_empty_name(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
     }
 }
 
-/// Decode the four per-Def annotation slots, requiring each empty at v1 (R3).
+/// Decode the four per-`Def` annotation slots (R3), yielding the
+/// sealing-provenance atoms.
+///
+/// Three of the four stay reserved and are rejected when occupied; the third is
+/// live and carries the atoms this declaration's projection rebound. The atoms
+/// are only *read* here — whether they are ascending, and whether each occurs
+/// in the declared type, is decided at the choke point on replay
+/// ([`crate::check`]), because those are typing facts and this is the format
+/// plane.
 #[inline]
-fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
+fn decode_def_slots(reader: &mut ByteReader<'_>) -> Result<Vec<ConstantIndex>, DecodeError>
 {
-    let slots = [
-        ReservedSlot::ErasureAnnotation,
-        ReservedSlot::ModeGradeAnnotation,
-        ReservedSlot::SealingProvenance,
-        ReservedSlot::DirectednessVariance,
-    ];
-    for slot in slots {
-        let count = reader.read_uvarint()?;
-        if count.0 != 0_u64 {
-            return Err(DecodeError::ReservedSlotOccupied { slot });
-        }
+    expect_empty_slot(reader, ReservedSlot::ErasureAnnotation)?;
+    expect_empty_slot(reader, ReservedSlot::ModeGradeAnnotation)?;
+    let provenance = decode_sealing_provenance(reader)?;
+    expect_empty_slot(reader, ReservedSlot::DirectednessVariance)?;
+    Ok(provenance)
+}
+
+/// Require one still-reserved R3 annotation slot to be empty.
+#[inline]
+fn expect_empty_slot(
+    reader: &mut ByteReader<'_>,
+    slot: ReservedSlot,
+) -> Result<(), DecodeError>
+{
+    let count = reader.read_uvarint()?;
+    if count.0 == 0_u64 {
+        Ok(())
     }
-    Ok(())
+    else {
+        Err(DecodeError::ReservedSlotOccupied { slot })
+    }
+}
+
+/// Decode the R3 sealing-provenance slot: a count followed by that many
+/// admission positions.
+///
+/// No capacity is reserved from the declared count, so an adversarial count
+/// costs one truncation rather than an allocation (the reader's totality
+/// posture).
+#[inline]
+fn decode_sealing_provenance(reader: &mut ByteReader<'_>)
+-> Result<Vec<ConstantIndex>, DecodeError>
+{
+    let count = reader.read_uvarint()?;
+    let mut atoms: Vec<ConstantIndex> = Vec::new();
+    let mut remaining = count.0;
+    while remaining > 0_u64 {
+        let atom = reader.read_usize()?;
+        atoms.push(ConstantIndex::from(atom.0));
+        remaining = remaining.wrapping_sub(1_u64);
+    }
+    Ok(atoms)
 }
 
 /// Decode a prenex level signature: parameter count and landmark constraints,
@@ -1346,7 +1527,9 @@ mod tests
             .expect("one declaration decodes");
         let body_id = match *decoded.declaration().content() {
             | DeclarationContent::Def { body, .. } => body,
-            | DeclarationContent::Axiom { .. } => panic!("a Def was decoded"),
+            | DeclarationContent::Axiom { .. } | DeclarationContent::AbstractType { .. } => {
+                panic!("a Def was decoded")
+            },
         };
         match artifact.arena().value(body_id) {
             | Some(&Value::Pair(first, second)) => assert_eq!(
@@ -1385,7 +1568,9 @@ mod tests
         let body_of = |declaration: &DecodedDeclaration| match *declaration.declaration().content()
         {
             | DeclarationContent::Def { body, .. } => body,
-            | DeclarationContent::Axiom { .. } => panic!("a Def was decoded"),
+            | DeclarationContent::Axiom { .. } | DeclarationContent::AbstractType { .. } => {
+                panic!("a Def was decoded")
+            },
         };
         let unit_entry = body_of(decls.first().expect("the first declaration decodes"));
         let pair_entry = body_of(decls.get(1).expect("the second declaration decodes"));

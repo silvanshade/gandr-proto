@@ -440,6 +440,51 @@ pub enum KernelError
     /// rather than trusted, so a resolution defect rejects the declaration
     /// (fail-closed) instead of proceeding on a fabricated node.
     ArenaFault,
+    /// An abstract-type declaration's kind was not a universe. The kind is what
+    /// every reference to the atom reads its level from, so admitting a
+    /// non-universe kind would leave type formation with a level to *infer*
+    /// rather than to look up — exactly the obligation the atom route exists to
+    /// avoid.
+    AbstractTypeKindNotUniverse
+    {
+        /// A snapshot of the kind actually declared.
+        actual: Box<ValueTypeSnapshot>,
+    },
+    /// A [`ValueType::Abstract`](crate::ValueType::Abstract) named a position
+    /// that is not an admitted abstract-type declaration: out of range, a
+    /// forward reference, or a `Def`/`Axiom` masquerading as an atom.
+    ///
+    /// This is where a forged atom dies. Nothing in the artifact says "I am an
+    /// atom"; the kernel resolves the position and requires the declaration it
+    /// finds to be one.
+    NotAnAbstractType
+    {
+        /// The position the reference named.
+        index: crate::term::ConstantIndex,
+    },
+    /// A declaration's sealing-provenance slot named an atom that does **not**
+    /// occur in its declared type.
+    ///
+    /// The slot records which projection was applied, and the projection's
+    /// extent is observable in the type it produced. A provenance entry with no
+    /// occurrence is therefore an unfalsifiable claim about the elaborator's
+    /// history, which the zero-inference invariant refuses.
+    SealingProvenanceNotProjected
+    {
+        /// The atom claimed but not projected onto.
+        atom: crate::term::ConstantIndex,
+    },
+    /// A declaration's sealing-provenance slot was not strictly ascending —
+    /// unsorted, or naming the same atom twice.
+    ///
+    /// Canonical order is what makes the slot a *set* of atoms with one
+    /// spelling, so a duplicate cannot inflate a projection's apparent extent
+    /// and two byte-distinct artifacts cannot record the same provenance.
+    SealingProvenanceNotCanonical
+    {
+        /// The entry that did not strictly exceed its predecessor.
+        atom: crate::term::ConstantIndex,
+    },
 }
 
 impl From<LevelError> for KernelError
@@ -530,6 +575,30 @@ impl fmt::Display for KernelError
             },
             | Self::ArenaFault => {
                 f.write_str("an arena id resolved to no node: a resolution fault, surfaced not trusted")
+            },
+            | Self::AbstractTypeKindNotUniverse { .. } => {
+                f.write_str("an abstract type's kind is not a universe")
+            },
+            | Self::NotAnAbstractType { index } => {
+                write!(
+                    f,
+                    "abstract-type reference {} names no admitted abstract-type declaration",
+                    usize::from(index)
+                )
+            },
+            | Self::SealingProvenanceNotProjected { atom } => {
+                write!(
+                    f,
+                    "sealing provenance names atom {} which does not occur in the declared type",
+                    usize::from(atom)
+                )
+            },
+            | Self::SealingProvenanceNotCanonical { atom } => {
+                write!(
+                    f,
+                    "sealing provenance is not strictly ascending at atom {}",
+                    usize::from(atom)
+                )
             },
         }
     }
