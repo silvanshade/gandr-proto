@@ -32,6 +32,7 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use crate::arena::CompTypeId;
 use crate::arena::TermArena;
 use crate::arena::ValueId;
 use crate::arena::ValueTypeId;
@@ -44,6 +45,8 @@ use crate::levels::LevelContext;
 use crate::term::Computation;
 use crate::term::ConstantIndex;
 use crate::term::Value;
+use crate::types::CompType;
+use crate::types::ValueType;
 
 /// An unforgeable handle to a declaration admitted into an [`Environment`].
 ///
@@ -390,6 +393,14 @@ impl Environment
 
     /// Precompute the transitive set of axioms and unchecked admissions a
     /// declaration rests on.
+    ///
+    /// **A declaration depends on what its declared type names as well as on
+    /// what its body names**, and the two are separate arenas to walk. Until
+    /// [`ValueType::Abstract`] there was no such thing as a type-level
+    /// constant reference, so scanning bodies alone was complete; a sealed
+    /// atom is the first type-level edge, and formation resting on one is
+    /// exactly as load-bearing as a body resting on an axiom. Every arm's
+    /// declared root is scanned, including an abstract type's own kind.
     fn transitive_rest(
         &self,
         content: &DeclarationContent,
@@ -397,13 +408,15 @@ impl Environment
         admission: Admission,
     ) -> BTreeSet<ConstantIndex>
     {
-        let mut set = BTreeSet::new();
+        let mut direct = collect_type_constants(&self.arena, content.declared_id());
         if let DeclarationContent::Def { body, .. } = *content {
-            for referenced in collect_constants(&self.arena, body) {
-                if let Some(entry) = self.entries.get(usize::from(referenced)) {
-                    for &ancestor in &entry.rested_on {
-                        let _fresh = set.insert(ancestor);
-                    }
+            direct.append(&mut collect_constants(&self.arena, body));
+        }
+        let mut set = BTreeSet::new();
+        for referenced in direct {
+            if let Some(entry) = self.entries.get(usize::from(referenced)) {
+                for &ancestor in &entry.rested_on {
+                    let _fresh = set.insert(ancestor);
                 }
             }
         }
@@ -480,6 +493,69 @@ fn collect_constants(
                 values.push(scrutinee);
                 computations.push(on_left);
                 computations.push(on_right);
+            },
+        }
+    }
+    found
+}
+
+/// Collect the constant references a value type mentions, iteratively over the
+/// arena.
+///
+/// The type graph carries exactly one reference form —
+/// [`ValueType::Abstract`], a sealed atom naming its declaration's admission
+/// position — and it reaches through products, sums, lifts, and the thunked
+/// computation types, so the walk is the whole type rather than its head.
+///
+/// # Contract
+/// - requires: `root` resolves in `arena`.
+/// - ensures: exactly the set of [`ConstantIndex`]es reachable in the type (a
+///   dangling id contributes nothing — fail-closed).
+/// - provides: the type-level half of the audit graph's direct-dependency
+///   edges, which formation rests on.
+/// - fails: never.
+/// - panics: none.
+fn collect_type_constants(
+    arena: &TermArena,
+    root: ValueTypeId,
+) -> BTreeSet<ConstantIndex>
+{
+    let mut found = BTreeSet::new();
+    let mut value_types: Vec<ValueTypeId> = Vec::new();
+    let mut comp_types: Vec<CompTypeId> = Vec::new();
+    value_types.push(root);
+    loop {
+        while let Some(id) = value_types.pop() {
+            let Some(value_type) = arena.value_type(id)
+            else {
+                continue;
+            };
+            match *value_type {
+                | ValueType::Abstract(index) => {
+                    let _fresh = found.insert(index);
+                },
+                | ValueType::Base(_) | ValueType::Unit | ValueType::Universe(_) => {},
+                | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                    value_types.push(first);
+                    value_types.push(second);
+                },
+                | ValueType::Lift { inner, .. } => value_types.push(inner),
+                | ValueType::Thunk(body) => comp_types.push(body),
+            }
+        }
+        let Some(id) = comp_types.pop()
+        else {
+            break;
+        };
+        let Some(comp_type) = arena.comp_type(id)
+        else {
+            continue;
+        };
+        match *comp_type {
+            | CompType::Returner(value_type) => value_types.push(value_type),
+            | CompType::Arrow { domain, codomain } => {
+                value_types.push(domain);
+                comp_types.push(codomain);
             },
         }
     }
@@ -855,6 +931,38 @@ mod tests
             report.unchecked_admissions(),
             &[bypassed.position()],
             "the dependent def rests on the unchecked admission"
+        );
+    }
+
+    /// The audit follows a dependency that runs through the *declared type*,
+    /// not only one that runs through a body.
+    ///
+    /// A sealed atom admitted by the warned bypass, then an axiom whose
+    /// declared type is that atom: the axiom's formation rests on unchecked
+    /// content while its body — it has none — rests on nothing. An audit that
+    /// scanned bodies alone would report the axiom's own position and omit the
+    /// atom's, which is the whole trust question the report exists to answer.
+    #[test]
+    fn audit_follows_the_declared_type_to_an_unchecked_atom()
+    {
+        let mut environment = Environment::new();
+        let mut builder = environment.stage();
+        let kind = builder
+            .arena()
+            .value_type_universe(Level::constant(LevelConstant::from(0_u64)));
+        let sealed = builder.abstract_type(LevelSignature::monomorphic(), kind);
+        let sealed = environment.add_decl_unchecked(sealed);
+
+        let mut builder = environment.stage();
+        let declared = builder.arena().value_type_abstract(sealed.position());
+        let axiom = builder.axiom(LevelSignature::monomorphic(), declared);
+        let axiom = environment.add_decl(axiom).unwrap();
+
+        let report = environment.audit(axiom);
+        assert_eq!(
+            report.unchecked_admissions(),
+            &[sealed.position()],
+            "formation rests on the unchecked atom, so the audit reports it"
         );
     }
 }
