@@ -44,6 +44,48 @@
 //! remove the gate"). A single cell is never gated — with no seam there are no
 //! edges, so cell *application* (as opposed to certificate *composition*) is
 //! untouched.
+//!
+//! # The verdict is not a certificate invariant
+//!
+//! **[`compose_directed`]'s verdict is a function of the two certificates'
+//! recorded cell *support*, the hole names of `a.joins_at`, and the store — and
+//! of nothing else.** Positions, step order and repetition never reach it:
+//! [`participating_cells`] deduplicates, and no position is read anywhere in
+//! the build. Two derivations recording the same cells are one input.
+//!
+//! **A cell support is not certificate data.** Certificate identity is
+//! [`crate::tracelet::replay_equivalent`] — a peak, a join, and two replays —
+//! which forgets the recorded derivation entirely. So two presentations of one
+//! certificate can carry different supports, and **the verdict can differ
+//! between them**. That is measured rather than feared:
+//! `composition::tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity`
+//! composes one certificate's two-step presentation and its fused presentation
+//! against one partner, gets `Err` and `Ok`, and replays the composite the
+//! `Ok` admitted.
+//!
+//! **What the non-invariance can cost is availability, never soundness**, and
+//! the asymmetry is structural rather than lucky. The `Ok` branch returns the
+//! graft, whose boundary is `a`'s peak and `b`'s join — both of them data
+//! replay-equivalence compares — so **the composite is a certificate invariant
+//! even where the verdict is not**, and two admitted presentations compose to
+//! one certificate. The gate is a sufficient check by construction; what a
+//! presentation changes is *how* conservative it is on that instance.
+//!
+//! **So the operation is well defined on the cell-support quotient and not on
+//! the replay quotient, and the implementation carries the finer identity
+//! rather than hiding the coarser one.** The two alternatives are worse and
+//! were considered: *refusing* a composition whose presentations disagree would
+//! decline the compositions the lane exists to admit, and *canonicalizing* has
+//! nothing to canonicalize to, because a replay-equivalence class has no
+//! canonical derivation — the tracelet normal form canonicalizes **within** a
+//! cell support (it preserves the primitive multiset) and so cannot bridge two
+//! supports.
+//!
+//! **One consequence for anyone reading a verdict as a property of a
+//! certificate: it is not one.** A decline is a fact about the derivation in
+//! hand. Re-deriving the same boundary another way may compose where this one
+//! declined, and that is a legitimate response to an obstruction rather than a
+//! contradiction.
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
@@ -98,11 +140,21 @@ pub struct CompositionObstruction<A: CellAlphabet = SequentAlphabet>
 ///   and whose `joins_at` is `b.joins_at`.
 /// - panics: none.
 ///
+/// # Certificate identity
+/// **Unaffected by the directed lane's non-invariance, and checked rather than
+/// inherited.** This function never consults a recorded cell; it grafts, and
+/// the graft's boundary is `a`'s peak and `b`'s join, which are exactly what
+/// [`crate::tracelet::replay_equivalent`] compares. So two presentations of one
+/// certificate compose to two presentations of one certificate, and the
+/// operation **descends to the replay quotient** — which is what the directed
+/// lane's verdict does not do (see the module header).
+///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the linear ground chain fixture composes two
 ///   real fused certificates and the composite replays over the store; the
 ///   paths are the concatenation.
 /// - witness: `composition::tests::invertible_composition_of_a_ground_chain_replays`
+/// - witness: `composition::tests::invertible_composition_is_well_defined_on_the_replay_quotient`
 #[inline]
 #[must_use]
 pub fn compose_invertible<A>(
@@ -138,6 +190,14 @@ where
 /// Returns [`CompositionObstruction`] when the composed seam variable-flow
 /// graph contains a directed cycle.
 ///
+/// # Certificate identity
+/// **The verdict is not a certificate invariant** — it reads the recorded cell
+/// support, which [`crate::tracelet::replay_equivalent`] forgets. The module
+/// header states what that costs and why it is carried rather than repaired
+/// here; the short form is that a decline is a fact about the derivation in
+/// hand, the `Ok` branch's composite is an invariant even so, and the operation
+/// is well defined on the cell-support quotient and not on the replay quotient.
+///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
 ///   function to `Err` and validates the returned cycle is a closed walk of
@@ -145,6 +205,8 @@ where
 ///   `r`; the linear ground chain drives it to `Ok` and the composite replays.
 /// - witness: `composition::tests::directed_composition_declines_a_mixed_variance_cycle`
 /// - witness: `composition::tests::directed_composition_of_a_ground_chain_replays`
+/// - witness: `composition::tests::the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`
+/// - witness: `composition::tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity`
 #[inline]
 pub fn compose_directed<A>(
     a: &Tracelet<A>,

@@ -25,10 +25,39 @@
 //!   **`fanout-family.gandr`**: a non-linear seam is a family of overlaps,
 //!   never a single fused rule (the canonicity honesty of §4.1, §7.4).
 //!
+//! # What the gate's verdict is, and is not, an invariant of
+//!
+//! Four fixtures answer one question — which identity on certificates the
+//! acyclicity verdict respects — and they are read together:
+//!
+//! - [`the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`]
+//!   is the **positive** half: reordering a leg or recording a cell twice
+//!   leaves the verdict alone, because the gate's whole input is the recorded
+//!   cell support, the recorded join's hole names, and the store.
+//! - [`the_acyclicity_verdict_is_not_invariant_under_certificate_identity`] is
+//!   the **counterexample**: a cell support is not certificate data, so two
+//!   presentations of one certificate can reach the gate as two inputs, and
+//!   here they reach `Err` and `Ok` — with the admitted composite replaying.
+//! - [`a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation`]
+//!   is why that divergence needs a partner chosen for it. The gate reads its
+//!   two flow flags off **both** sides' endpoints together, so one mixed seam
+//!   hole anywhere decides the verdict and every presentation then agrees —
+//!   which looks like invariance and is not.
+//! - [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]
+//!   and [`invertible_composition_is_well_defined_on_the_replay_quotient`]
+//!   bound the damage: the graft's boundary is data replay-equivalence already
+//!   compares, so what is presentation-dependent is the decision and never the
+//!   thing decided.
+//!
 //! [`directed_composition_declines_a_mixed_variance_cycle`]: tests::directed_composition_declines_a_mixed_variance_cycle
 //! [`invertible_composition_of_a_ground_chain_replays`]: tests::invertible_composition_of_a_ground_chain_replays
 //! [`directed_composition_of_a_ground_chain_replays`]: tests::directed_composition_of_a_ground_chain_replays
 //! [`fanout_family_is_a_multi_sum_not_a_single_rule`]: tests::fanout_family_is_a_multi_sum_not_a_single_rule
+//! [`the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`]: tests::the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer
+//! [`the_acyclicity_verdict_is_not_invariant_under_certificate_identity`]: tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity
+//! [`a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation`]: tests::a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation
+//! [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]: tests::the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not
+//! [`invertible_composition_is_well_defined_on_the_replay_quotient`]: tests::invertible_composition_is_well_defined_on_the_replay_quotient
 
 #[cfg(test)]
 mod tests
@@ -50,6 +79,9 @@ mod tests
     use gandr_theory_computads::compose_invertible;
     use gandr_theory_computads::derive_fused;
     use gandr_theory_computads::enumerate_overlaps;
+    use gandr_theory_computads::replay_equivalent;
+
+    extern crate alloc;
 
     /// Nullary constructor name used by fixture-building helpers.
     #[repr(transparent)]
@@ -226,6 +258,372 @@ mod tests
             cycle_cells.len() >= 2,
             "the loop passes through the seam between two distinct cells"
         );
+    }
+
+    #[test]
+    fn the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer()
+    {
+        // The gate's whole input, positively: the set of cells the two
+        // certificates fire, the hole names of the recorded join, and the
+        // store. Two presentations that record the same CELLS in a different
+        // order, or record one of them twice, are one input to the gate — so
+        // the verdict cannot move, whatever else changed about the derivation.
+        let (store, a, b) = mixed_pair();
+        let baseline = compose_directed(&a, &b, &store);
+        let mut reversed = a.clone();
+        reversed.path_a.reverse();
+        let mut repeated = a.clone();
+        repeated.path_a.extend(a.path_a.iter().cloned());
+        for (label, variant) in [("a reversed leg", &reversed), ("a repeated leg", &repeated)] {
+            assert_eq!(
+                cell_support(&a),
+                cell_support(variant),
+                "{label} records the same cells, which is the hypothesis"
+            );
+            assert_eq!(
+                baseline.is_ok(),
+                compose_directed(variant, &b, &store).is_ok(),
+                "{label} is the same input to the gate, so the verdict cannot move"
+            );
+        }
+        // The *support* is what the verdict reads; the recorded order still
+        // reaches the graph, as the order its nodes are interned in. That
+        // orders the reported cycle and never whether there is one.
+        assert_ne!(
+            participating(&a),
+            participating(&reversed),
+            "a reversed leg does reorder the cells the graph interns"
+        );
+    }
+
+    #[test]
+    fn the_acyclicity_verdict_is_not_invariant_under_certificate_identity()
+    {
+        // THE COUNTEREXAMPLE. `replay_equivalent` is a boundary and two
+        // replays, so it forgets which cells a derivation recorded; the gate
+        // builds its flow graph over exactly those cells. Two presentations of
+        // ONE certificate therefore reach the gate as two different inputs, and
+        // here they reach two different verdicts.
+        //
+        // The two presentations are the ones `derive_fused` hands over
+        // unaltered: its `path_a` is the two-step derivation and its `path_b`
+        // is the single fused step, and taking each as both legs gives two
+        // certificates over one boundary. The two-step form records the
+        // mixed-variance `v` cell, whose seam hole flows both ways; the fused
+        // form records only the fused cell, which wears the join's producer
+        // hole and its consumer hole under DIFFERENT names and so flows one way
+        // each.
+        let (mut store, fused_derivation) = mixed_certificate();
+        let two_step = presentation(&fused_derivation, &fused_derivation.path_a);
+        let single_step = presentation(&fused_derivation, &fused_derivation.path_b);
+        assert!(
+            bool::from(replay_equivalent(&two_step, &single_step, &store)),
+            "the two presentations are ONE certificate: one boundary, both replay"
+        );
+        assert_ne!(
+            cell_support(&two_step),
+            cell_support(&single_step),
+            "and they record different cells, which is what the identity forgets"
+        );
+
+        // The mechanism, pinned rather than described: every hole of every cell
+        // the fused presentation records is single-polarity, and the two-step
+        // presentation records a `Mixed` one. Unification renames the peak's
+        // producer and consumer apart, so the fused cell — whose faces are the
+        // peak and the join — cannot wear one name at both polarities, while
+        // the step cells the derivation went through were written to.
+        assert!(
+            variances(&single_step, &store)
+                .iter()
+                .all(|variance| *variance != CellVariance::Mixed),
+            "the fused presentation records no mixed hole anywhere"
+        );
+        assert!(
+            variances(&two_step, &store).contains(&CellVariance::Mixed),
+            "and the two-step presentation records one"
+        );
+
+        // The partner carries the join's two holes at ONE polarity each, so it
+        // contributes no backward flow of its own and the verdict is left to
+        // say what the presentation put in front of it.
+        let onward = onward_certificate(&mut store, &fused_derivation);
+
+        let declined = compose_directed(&two_step, &onward, &store)
+            .expect_err("the two-step presentation records a mixed seam hole, which loops");
+        let recorded = participating(&two_step);
+        assert!(
+            declined.cycle.iter().any(|node| recorded.contains(&node.0)),
+            "the cycle runs through a cell only that presentation records"
+        );
+        let admitted = compose_directed(&single_step, &onward, &store)
+            .expect("the fused presentation records no mixed seam hole, so nothing loops");
+        assert!(
+            bool::from(admitted.replay(&store)),
+            "and the composite it admits is a real certificate — it replays"
+        );
+    }
+
+    #[test]
+    fn a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation()
+    {
+        // Why the divergence above needs a partner chosen for it, and why
+        // three replay-equivalent presentations were once measured agreeing.
+        // The gate reads the forward and backward flags off the union of BOTH
+        // sides' endpoints, so one mixed seam hole anywhere in either
+        // certificate closes the loop and the other side's presentation stops
+        // mattering. Against a partner that carries one, every presentation
+        // declines — which looks like invariance and is not.
+        let (store, a, b) = mixed_pair();
+        let two_step = presentation(&a, &a.path_a);
+        let single_step = presentation(&a, &a.path_b);
+        for (label, presented) in [
+            ("the two-step form", &two_step),
+            ("the fused form", &single_step),
+        ] {
+            assert!(
+                compose_directed(presented, &b, &store).is_err(),
+                "{label} declines against a partner whose own seam hole is mixed"
+            );
+        }
+        assert_ne!(
+            participating(&two_step),
+            participating(&single_step),
+            "even though the two presentations put different cells in front of the gate"
+        );
+    }
+
+    #[test]
+    fn the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not()
+    {
+        // The other half, and it bounds the damage. What the gate returns on
+        // its `Ok` branch is the graft, whose boundary is the left peak and the
+        // right join — both of them data `replay_equivalent` compares — so two
+        // presentations that are BOTH admitted compose to one certificate.
+        // The non-invariance is confined to the decision, and can therefore
+        // cost availability and never soundness: the gate is a sufficient
+        // loop-freeness check by construction, and which presentation it is
+        // shown decides how conservative it is.
+        let (mut store, fused_derivation) = mixed_certificate();
+        let single_step = presentation(&fused_derivation, &fused_derivation.path_b);
+        let doubled = {
+            let mut doubled = single_step.clone();
+            doubled.path_a.extend(single_step.path_a.iter().cloned());
+            doubled.path_b.extend(single_step.path_b.iter().cloned());
+            doubled
+        };
+        let onward = onward_certificate(&mut store, &fused_derivation);
+        let left = compose_directed(&single_step, &onward, &store).expect("admitted");
+        // A doubled leg does not replay — running the fused step twice leaves
+        // the join — so the comparison is on the boundary the graft records
+        // rather than on a second replay.
+        assert_eq!(
+            left.overlap.peak, doubled.overlap.peak,
+            "both presentations graft onto the same peak"
+        );
+        assert_eq!(
+            left.joins_at, onward.joins_at,
+            "and both reach the partner's join, which is the graft's whole boundary"
+        );
+    }
+
+    #[test]
+    fn invertible_composition_is_well_defined_on_the_replay_quotient()
+    {
+        // The invertible lane is unaffected, checked rather than inherited.
+        // `compose_invertible` never consults a recorded cell: it grafts, and
+        // the graft's boundary is `a`'s peak and `b`'s join, which are exactly
+        // what `replay_equivalent` compares. So two presentations of one
+        // certificate compose to two presentations of one certificate — the
+        // operation descends to the quotient, which is what the directed lane's
+        // verdict fails to do.
+        let (mut store, fused_derivation) = mixed_certificate();
+        let two_step = presentation(&fused_derivation, &fused_derivation.path_a);
+        let single_step = presentation(&fused_derivation, &fused_derivation.path_b);
+        assert!(
+            bool::from(replay_equivalent(&two_step, &single_step, &store)),
+            "the hypothesis: two presentations of one certificate"
+        );
+        let onward = onward_certificate(&mut store, &fused_derivation);
+        let from_two_step = compose_invertible(&two_step, &onward);
+        let from_single_step = compose_invertible(&single_step, &onward);
+        assert!(
+            bool::from(from_two_step.replay(&store)) && bool::from(from_single_step.replay(&store)),
+            "the graft of two replaying certificates replays, on either presentation"
+        );
+        assert!(
+            bool::from(replay_equivalent(&from_two_step, &from_single_step, &store)),
+            "and the two composites are one certificate — the lane descends to the quotient"
+        );
+        assert_ne!(
+            from_two_step.path_a, from_single_step.path_a,
+            "while the recorded derivations still differ, which is the point of the quotient"
+        );
+    }
+
+    /// The variance of every hole of every cell a certificate records.
+    fn variances(
+        tracelet: &Tracelet,
+        store: &CellStore,
+    ) -> alloc::vec::Vec<CellVariance>
+    {
+        let mut out = alloc::vec::Vec::new();
+        for cell in participating(tracelet) {
+            let Some(entry) = store.get(cell)
+            else {
+                continue;
+            };
+            out.extend(entry.meta.vars.iter().map(|var| var.variance));
+        }
+        out
+    }
+
+    /// The distinct cells a certificate fires, ordered — the **support** the
+    /// gate's flow graph is built over, as a set rather than as the recorded
+    /// sequence [`participating`] returns.
+    fn cell_support(tracelet: &Tracelet) -> alloc::vec::Vec<CellId>
+    {
+        let mut cells = participating(tracelet);
+        cells.sort_unstable();
+        cells
+    }
+
+    /// The mixed-variance pair: two certificates sharing a mixed-variance seam
+    /// hole, each derived from its own composition overlap.
+    fn mixed_pair() -> (CellStore, Tracelet, Tracelet)
+    {
+        let mut store = CellStore::new();
+        let u1 = store.insert(mixed_step(
+            FixtureHoleName("r"),
+            OperationName("dn1"),
+            OperationName("mid1"),
+        ));
+        let v1 = store.insert(mixed_step(
+            FixtureHoleName("s"),
+            OperationName("mid1"),
+            OperationName("up1"),
+        ));
+        let u2 = store.insert(mixed_step(
+            FixtureHoleName("r"),
+            OperationName("dn2"),
+            OperationName("mid2"),
+        ));
+        let v2 = store.insert(mixed_step(
+            FixtureHoleName("s"),
+            OperationName("mid2"),
+            OperationName("up2"),
+        ));
+        let a = fused(&mut store, u1, v1);
+        let b = fused(&mut store, u2, v2);
+        (store, a, b)
+    }
+
+    /// The left half of [`mixed_pair`] alone, with its store still open so a
+    /// partner can be added to it.
+    fn mixed_certificate() -> (CellStore, Tracelet)
+    {
+        let mut store = CellStore::new();
+        let u1 = store.insert(mixed_step(
+            FixtureHoleName("r"),
+            OperationName("dn1"),
+            OperationName("mid1"),
+        ));
+        let v1 = store.insert(mixed_step(
+            FixtureHoleName("s"),
+            OperationName("mid1"),
+            OperationName("up1"),
+        ));
+        let a = fused(&mut store, u1, v1);
+        (store, a)
+    }
+
+    /// One presentation of `certificate`: the same boundary, with `leg`
+    /// recorded as both paths.
+    ///
+    /// Every presentation of a certificate that replays is
+    /// [`replay_equivalent`] to every other, which is the identity criterion
+    /// under test; what they differ in is which cells they record.
+    fn presentation(
+        certificate: &Tracelet,
+        leg: &[gandr_theory_computads::CellApp],
+    ) -> Tracelet
+    {
+        Tracelet {
+            overlap: certificate.overlap.clone(),
+            path_a: leg.to_vec(),
+            path_b: leg.to_vec(),
+            joins_at: certificate.joins_at.clone(),
+        }
+    }
+
+    /// A partner certificate for `certificate`'s join, recording one cell that
+    /// wears the join's two holes at **one polarity each**.
+    ///
+    /// The single-polarity choice is what makes it a fair probe: the gate reads
+    /// its forward and backward flags off both sides' endpoints together, so a
+    /// partner carrying a mixed hole of its own would decide the verdict before
+    /// the left presentation was consulted.
+    ///
+    /// Its overlap is a carrier for the recorded peak: the gate and replay both
+    /// read `overlap.peak`, and what this fixture is about is the boundary a
+    /// certificate records rather than the critical pair that produced it.
+    fn onward_certificate(
+        store: &mut CellStore,
+        certificate: &Tracelet,
+    ) -> Tracelet
+    {
+        let cell = store.insert(split_step(
+            FixtureHoleName("s"),
+            FixtureHoleName("s'"),
+            OperationName("up1"),
+            OperationName("up3"),
+        ));
+        let mut overlap = certificate.overlap.clone();
+        overlap.peak = certificate.joins_at.clone();
+        let step = gandr_theory_computads::CellApp {
+            cell,
+            at: gandr_theory_computads::Pos::root(),
+        };
+        Tracelet {
+            overlap,
+            path_a: alloc::vec![step.clone()],
+            path_b: alloc::vec![step],
+            joins_at: CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::meta("s"),
+                ConsPat::op("up3", [], ConsPat::meta("s'")),
+            ),
+        }
+    }
+
+    /// A **split**-variance step cell `⟨p | in(; c)⟩ ~> ⟨p | out(; c)⟩`: the
+    /// producer and the consumer wear different names, so `p` is
+    /// [`CellVariance::Producer`] and `c` is [`CellVariance::Consumer`] and
+    /// neither is `Mixed`.
+    ///
+    /// It is strictly more general than [`mixed_step`], which forces the two
+    /// positions to share one name — and a derivation may record either, which
+    /// is what the gate turns out to be sensitive to.
+    fn split_step(
+        producer: FixtureHoleName<'_>,
+        consumer: FixtureHoleName<'_>,
+        in_op: OperationName<'_>,
+        out_op: OperationName<'_>,
+    ) -> Cell
+    {
+        Cell::new(
+            CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::meta(producer.0),
+                ConsPat::op(in_op.0, [], ConsPat::meta(consumer.0)),
+            ),
+            CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::meta(producer.0),
+                ConsPat::op(out_op.0, [], ConsPat::meta(consumer.0)),
+            ),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        )
     }
 
     /// A mixed-variance step cell `⟨r | in(; r)⟩ ~> ⟨r | out(; r)⟩`: the name
