@@ -32,7 +32,9 @@ Two consequences bind directly on implementation:
 ## The staged path
 
 Four steps, ordered.
-The ordering between `share-adopt-rung-03` and `share-adopt-rung-04` is the constraint; the rest is convenience.
+**`share-adopt-rung-03` before `share-adopt-rung-04` is forced, not preferred**, by the argument above: conversion is in-kernel, so a strategy is trusted surface, and every theorem that would certify this one is simply-typed.
+A reader who takes the ordering as a preference will reorder it, and reordering it puts an uncertified strategy inside the trusted base.
+The rest of the ordering is convenience.
 
 ### share-adopt-rung-01 — sharing syntax in the value domain
 
@@ -148,6 +150,9 @@ Its trigger is transport**, and nothing in the four steps above waits on it.
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `0x18..=0x1B` | the sharing former, **one per family** — value, computation, value type, computation type — so polarity stays recoverable from the tag alone, which the child-checking discipline requires |
 | `0x1C..=0x1F` | held: an explicit-weakening form if erasure ever becomes explicit, and second-generation sharing variants                                                                                  |
+
+**Distributors and phantom-abstractions consume no tags at all, and that is what keeps this reservation small.** Both are reduction artifacts: a phantom-abstraction becomes an ordinary abstraction when its distributor is eliminated, and a term in sharing normal form — which is what a stored term is — carries neither.
+**Only the sharing former is ever serialized**, so the whole duplication machinery costs four tags rather than a family of them.
 
 The price, if the trigger fires:
 
