@@ -70,6 +70,9 @@ Work routinely finishes while its branch and worktree linger, and nobody can lat
 The finishing session disposes of what it created, in the same session the work concludes:
 
 1. **Integrate or record.** Deliverable branches merge to `main` once approved; a branch that deliberately does not merge gets its supersession/decline rationale recorded (tracker comment or doc) before deletion.
+   Before integration, the worker handoff names the owning bead, source branch, ordered commit subjects, and verification.
+   After integration, the integrator records the destination ref, repeats that tuple, notes any subject rewrite, and gives the observation path.
+   A local commit SHA is not the landing identity; [the tracker contract](tracker.md#landings-are-named-without-mutable-commit-shas) owns the bounded exceptions.
 2. **Remove the worktree** with a plain `git worktree remove` / `wt remove` — never `--force` on the first attempt: a refusal means uncommitted state, which is triaged (commit, salvage to a bead, or deliberately discard with the rationale written down), not clobbered.
 3. **Delete the branch** with `git branch -d`; `-D` only for a branch whose content is formally superseded, with the rationale recorded where the supersession was decided.
 4. **If disposal cannot happen yet** (awaiting review, unmerged residue, blocked integration), **file a residual bead** naming the branch/worktree, its exact state, and the condition under which it becomes safe to remove.

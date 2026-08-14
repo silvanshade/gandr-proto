@@ -64,7 +64,7 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   A lead not promoted to a decision by the next triage sweep is deleted — it can be re-asked if it ever matters again.
 - **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; deferred topic beads reviewed for reactivation.
 - **Closed beads are never purged** (owner ruling, 2026-08-07, retiring the former purge-after-~2-weeks clause).
-  Closeout comments, question/answer identifiers, and commit-hash maps are cited from documents and other beads, and a purge orphans every citation; the accumulation problem the purge aimed at belongs to the pruning of _open_ beads above.
+  Closeout comments, question/answer identifiers, and historical integration records are cited from documents and other beads, and a purge orphans every citation; the accumulation problem the purge aimed at belongs to the pruning of _open_ beads above.
 - **Epics need children or a close date.** An epic with no active children is either done (close it) or a label (fold it into a topic bead).
 
 ## Conventions
@@ -133,6 +133,23 @@ Two boundaries keep it that way.
   `bd show` renders descriptions and comments inside its own fixed-width box and re-wraps every source line to that width, so text authored with hard line breaks at any other width double-wraps into stranded one-word fragments and becomes unreadable — the failure was observed across an entire bead's comment stream before the cause was found.
   Write one line per paragraph and one line per list item, however long, with blank lines between blocks, and let the renderer do all the wrapping; this applies equally to text passed inline and via `--file`, and worker briefs must carry the rule.
   A wide markdown table is unreadable in that box regardless of wrapping — in tracker text prefer one line per row (`row — verdict — grade` style) and keep real tables in corpus documents.
+
+### Landings are named without mutable commit SHAs
+
+**A local commit SHA is never the durable identity or proof of a landing in a bead.** This applies to standing fields, comments, close reasons, fold reports, handoffs, and review records.
+A worker handoff records the repository, owning bead, source branch, ordered commit subjects, and verification.
+After landing, the integrator records the destination ref, repeats that tuple, notes any subject rewrite, and says how to observe the result.
+The branch may then be deleted; the record survives a rebase, re-sign, or history rewrite.
+
+A SHA may appear only as an explicitly time-bounded operational handle or when the SHA itself is the forensic subject.
+State whether it is pre-integration, post-integration, or a snapshot, and carry the durable identity beside it.
+It never substitutes for target-ref reachability or an observable artifact.
+Object lookup alone is not validation: a discarded pre-rebase object often remains readable until reflog expiry or garbage collection.
+Any checker tests reachability from a live branch or tag, not merely whether the object resolves.
+
+Existing comments are append-only.
+Correct a historical hash map with a new comment when a reader would otherwise rely on it; do not rewrite the old comment or build prose-rewrite machinery around it.
+Machine-owned tables may track old-to-new mappings only when the same mechanism updates and validates them.
 
 ## Decisions: act by default, escalate at the bright line
 

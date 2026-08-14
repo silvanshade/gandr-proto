@@ -14,7 +14,7 @@ There are two deliberate exceptions, both restated here because they bind on eve
 
 ## Unambiguous reference — identifiers and citations
 
-**Both rules below bind in every context, not only in the specification corpus**: tracked documents, code comments and rustdoc, commit messages, tracker items, review artifacts, plans, notes, and chat.
+**The rules below bind in every context, not only in the specification corpus**: tracked documents, code comments and rustdoc, commit messages, tracker items, review artifacts, plans, notes, and chat.
 
 The reason is one reason, and it is about what happens to text _after_ it is written.
 Documents come to cite other documents; fragments get quoted, excerpted, summarized, and carried into contexts their author never saw.
@@ -33,6 +33,15 @@ Retired schemes are the sole exception and stay exactly as they are — the conc
 **This repository holds no reference register of its own.** The Hayagriva register left with the specification corpus, so a bare key cited here resolves only for a reader who has that corpus; in this tree, prefer the full title with its stable identifier, and use a key only where the surrounding text already cites the corpus.
 "The tagless-final paper", "the leading implementation", "a published mechanization", and a bare author-year with no register entry are each unusable by the next reader and unverifiable by the next reviewer.
 A claim resting on an unverified locator says so at the claim.
+
+**A local commit SHA is an operational handle, not a durable reference.** This repository lands by rebasing and may rewrite history again.
+A pre-integration SHA names discarded history as soon as the branch lands; a post-integration SHA survives only until the next rewrite.
+When durable prose identifies a landing, it uses the repository, owning bead, source branch name, ordered commit subjects, destination ref, and an observable artifact or verification path.
+A SHA may accompany that identity only when its bounded lifetime is explicit; it is never the sole or primary proof that work landed.
+
+SHAs remain legitimate in live Git operations and in machine-owned maps, locks, or pins whose owner rewrites or validates them with the history.
+They also remain legitimate when the SHA itself is forensic evidence, provided the record carries the durable identity beside it.
+External repository pins and content digests are a different class: the mechanism consuming them, rather than prose, owns their validity.
 
 The full statement of the identifier rule, with the anchoring and linking conventions, is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"Identifiers are informative, prefixed, and linkable — never a bare letter and a number"; the corpus's citation convention is `spec:README.md`.
 
