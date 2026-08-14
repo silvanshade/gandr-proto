@@ -1932,6 +1932,20 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   -- circle branch drops the closed source's strand and rebuilds NONE, the
   -- deleted strand reappearing as the `1` in `Closed.loops`. Minus one on
   -- every path.
+  --
+  -- ONE SCOPE SENTENCE, AIMED AT A FUTURE READER RATHER THAN AT THIS PROOF.
+  -- The published contracting-coface family has two generators and they are
+  -- different MAPS, not two accountings of one: the loop-adding one is an edge
+  -- INCLUSION, its source lacking a loop its target has, and the leg-fusing one
+  -- is an edge QUOTIENT, two legs becoming one edge. **This closure is always
+  -- the fusing one** — including where the two legs hang off the same vertex
+  -- and the fused edge is a loop — so the theorem is true of everything the
+  -- closure can do and needs no case split. The loop-adding generator is not
+  -- expressible as this closure at all: adding an edge is not something a
+  -- wiring closure does, and the nodeless loop it would add has no term here
+  -- (`no-circle` above, checked). The sentence is worth having because a site
+  -- presentation that imported the published family wholesale would bring that
+  -- generator with it, and the theorem is false of that map.
 
   -- the edge count of what a removal left, which is the one number its two
   -- branches have in common — the matchings themselves do not, since they span
