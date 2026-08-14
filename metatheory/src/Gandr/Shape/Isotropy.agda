@@ -36,12 +36,36 @@
 -- lines: injectivity turns `f (θ e) = f e` into `θ e = e`, and edge
 -- determination turns that into `θ ≐ id`.
 --
--- `collapse-witnesses-iv′-fails` is the other half, and it is why the
--- hypothesis is stated rather than assumed away: two parallel through-wires
--- admit a non-identity automorphism swapping them, and the map collapsing both
--- onto the single wire of `edge` is fixed by it. So AXIOM (iv′) IS FALSE FOR
--- `GMap` AT LARGE. It is a property of a subcategory, and gandr has not yet
--- carved one out — which is the finding, not the failure.
+-- The other half is why the hypothesis is stated rather than assumed away: two
+-- parallel through-wires admit a non-identity automorphism swapping them, and
+-- the map collapsing both onto the single wire of `edge` is fixed by it. It is
+-- a property of a subcategory, and gandr has not yet carved one out — which is
+-- the finding, not the failure.
+--
+-- ── THE OTHER HALF IS TWO STATEMENTS, AND THE ASYMMETRY IS DELIBERATE ───────
+-- This section carried ONE refutation until 2026-08-14, and its type quantified
+-- `θ` over ENDOMORPHISMS while the header above states the axiom with `θ`
+-- INVERTIBLE. So the header carried a premise no theorem carried, in the
+-- direction that makes the result look stronger than it was: what was refuted
+-- was unrestricted cancellation, not the axiom. There are now two theorems.
+--
+--   `collapse-witnesses-cancellation-fails` — endomorphisms, no invertibility.
+--   `collapse-witnesses-axiom-fails`        — automorphisms, invertibility
+--                                             witnessed by `swap-invertible`.
+--
+-- `iv′` and the second of those are NOT exact complements, and that is the
+-- point rather than an oversight. `iv′` deliberately drops invertibility, which
+-- is a genuine strengthening — it proves the same conclusion from a weaker
+-- hypothesis, and the argument never reaches for an inverse. Pairing it with a
+-- refutation that DOES assume invertibility says something stronger than a
+-- matched pair would: `EdgeMono` is necessary even when `θ` is restricted to
+-- automorphisms.
+--
+-- Stating the axiom's form at all required composition of `GMap`s, which this
+-- map layer did not have — so an inverse was not merely unconstructed here, it
+-- was inexpressible. `gcomp`, its two unit laws, and `Invertible` are that gap
+-- closed. The unit laws cost no hypotheses, because `_≐_` compares actions
+-- rather than tables.
 --
 -- ── WHAT THIS DOES NOT SETTLE, STATED SO IT IS NOT OVER-READ ────────────────
 -- `GMap` is NOT the site's morphism class. The published Γ⁺ contains the
@@ -51,6 +75,34 @@
 -- transporting it to the site needs the site's own presentation, which does not
 -- exist. What would close it: a morphism class in which an end may change kind,
 -- and its degree-raising subcategory.
+--
+-- ── AND ONE ESCAPE THAT LOOKED AVAILABLE IS NOT ─────────────────────────────
+-- An earlier reading of this section argued that the counterexample is void for
+-- a generalized Reedy structure on an independent ground: the axiom quantifies
+-- its map over the degree-RAISING subcategory, and `collapse-wires` lowers the
+-- vertex-and-edge count, so a degree function would exclude it. That argument
+-- does not survive the degree function the grading in flight actually uses.
+--
+-- That degree is the vertex count plus the INTERNAL-edge count, where an
+-- internal edge is one with a vertex at BOTH ends. A wiring has no vertices at
+-- all, so no edge of one is internal: `two-wires` and `edge` are both at degree
+-- ZERO, and `collapse-wires` is degree-PRESERVING rather than degree-lowering.
+-- The escape fails and the counterexample stays in scope, which is why the
+-- invertibility premise above had to be witnessed rather than argued around.
+-- `deg-two-wires` and `collapse-preserves-degree` at the end of this module
+-- check that here, by `refl`, rather than leaving it to the reading.
+--
+-- The general fact is stronger than the instance and belongs beside it: the
+-- ENTIRE zero-vertex stratum sits at degree zero identically, so no choice of
+-- interface rescues the lowering direction anywhere in the wiring fragment.
+--
+-- What that does NOT establish, and the distinction is the whole of the
+-- preceding paragraph applied to itself: a generalized Reedy structure needs
+-- non-invertible maps to move the degree strictly, and an infinite stratum at
+-- one degree containing a non-invertible map would falsify that — IF the maps
+-- in question were the site's. They are not. There is no counterexample here to
+-- any statement about the site, and no proof of one either, because the site
+-- has no morphism class defined to quantify over.
 ------------------------------------------------------------------------------
 
 module Gandr.Shape.Isotropy where
@@ -79,13 +131,19 @@ open import Gandr.Shape.Decidable
   using (onE)
   using (onI)
   using (onO)
+  using (actV)
   using (actE)
+  using (actI)
+  using (actO)
   using (onE-end₀)
   using (onE-end₁)
   using (Grounded)
   using (_≐_)
+  using (atV)
   using (atE)
   using (edge-determined)
+open import Gandr.Shape.Degree
+  using (deg)
 
 open import Data.List.Base
   using (List)
@@ -144,6 +202,39 @@ module _ {a} {A : Set a} where
     trans (app-mapTab there (idTab xs) i) (cong there (app-idTab xs i))
 
 ------------------------------------------------------------------------------
+-- FUSING TWO ACTIONS ACROSS AN END. An end is a three-way sum, and every
+-- incidence obligation states its equation through `smap actV (smap actI actO)`.
+-- Composing two maps therefore has to push one such triple past another and
+-- land on a THIRD, and the third is not the composite of the two functions but
+-- the action read off the composite's own tables — equal to it pointwise and
+-- not definitionally, since `mapTab` computes and `app` recurses.
+--
+-- So the two steps that would otherwise be separate — functoriality of `smap`,
+-- and rewriting along the pointwise agreement — are one lemma, taking the three
+-- agreements and doing the case split once.
+------------------------------------------------------------------------------
+
+module _
+  {a b c a′ b′ c′ a″ b″ c″}
+  {A : Set a} {B : Set b} {C : Set c}
+  {A′ : Set a′} {B′ : Set b′} {C′ : Set c′}
+  {A″ : Set a″} {B″ : Set b″} {C″ : Set c″}
+  where
+
+  smap-fuse
+    : {u₁ : A′ → A″} {u₂ : B′ → B″} {u₃ : C′ → C″}
+    → {v₁ : A → A′} {v₂ : B → B′} {v₃ : C → C′}
+    → {w₁ : A → A″} {w₂ : B → B″} {w₃ : C → C″}
+    → ((x : A) → u₁ (v₁ x) ≡ w₁ x)
+    → ((y : B) → u₂ (v₂ y) ≡ w₂ y)
+    → ((z : C) → u₃ (v₃ z) ≡ w₃ z)
+    → (x : A ⊎ (B ⊎ C))
+    → smap u₁ (smap u₂ u₃) (smap v₁ (smap v₂ v₃) x) ≡ smap w₁ (smap w₂ w₃) x
+  smap-fuse p q r (inj₁ x) = cong inj₁ (p x)
+  smap-fuse p q r (inj₂ (inj₁ y)) = cong (λ z → inj₂ (inj₁ z)) (q y)
+  smap-fuse p q r (inj₂ (inj₂ z)) = cong (λ z′ → inj₂ (inj₂ z′)) (r z)
+
+------------------------------------------------------------------------------
 -- THE IDENTITY MAP. Needed because the axiom's conclusion is an equation with
 -- the identity on one side, and `_≐_` compares maps rather than actions.
 ------------------------------------------------------------------------------
@@ -175,6 +266,115 @@ module _ {ℓ} {Ob : Set ℓ} where
     trans (cong (end₀ S) (app-idTab (edges S) e)) (sym (smap-id (end₀ S e)))
   gid S .onE-end₁ e =
     trans (cong (end₁ S) (app-idTab (edges S) e)) (sym (smap-id (end₁ S e)))
+
+------------------------------------------------------------------------------
+-- COMPOSITION, AND WHY IT HAD TO BE BUILT HERE.
+--
+-- The axiom quantifies its automorphism over INVERTIBLE maps, and invertibility
+-- is not a property one can state of a `GMap` in this tree: there was no
+-- composition of maps anywhere in the map layer, so an inverse had nothing to
+-- be an inverse with respect to. It was not unconstructed, it was
+-- INEXPRESSIBLE — which is why the refutation below could only ever have been
+-- about endomorphisms until this section existed.
+--
+-- Composition is post-composition on all four tables, which is exactly what
+-- `mapTab` is. The work is entirely in the two incidence obligations, and
+-- `smap-fuse` is where it goes.
+------------------------------------------------------------------------------
+
+module _ {ℓ} {Ob : Set ℓ} where
+
+  module _
+    {Γ Δ Γ′ Δ′ Γ″ Δ″}
+    {S : Shape Ob Γ Δ} {T : Shape Ob Γ′ Δ′} {U : Shape Ob Γ″ Δ″}
+    (g : GMap T U) (f : GMap S T)
+    where
+
+    private
+      -- The composite's own action on an end agrees with the two actions
+      -- applied in turn — pointwise, by `app-mapTab` at each of the three
+      -- kinds, and the case split is `smap-fuse`'s.
+      fuse
+        : (x : Vtx S ⊎ (Ix Γ ⊎ Ix Δ))
+        → smap (actV g) (smap (actI g) (actO g))
+            (smap (actV f) (smap (actI f) (actO f)) x)
+          ≡ smap
+              (app (mapTab (actV g) (onV f)))
+              (smap
+                (app (mapTab (actI g) (onI f)))
+                (app (mapTab (actO g) (onO f))))
+              x
+      fuse =
+        smap-fuse
+          (λ v → sym (app-mapTab (actV g) (onV f) v))
+          (λ i → sym (app-mapTab (actI g) (onI f) i))
+          (λ o → sym (app-mapTab (actO g) (onO f) o))
+
+    -- Composition of maps of shapes.
+    gcomp : GMap S U
+    gcomp .onV = mapTab (actV g) (onV f)
+    gcomp .onE = mapTab (actE g) (onE f)
+    gcomp .onI = mapTab (actI g) (onI f)
+    gcomp .onO = mapTab (actO g) (onO f)
+    -- Both obligations are the same four steps: factor the composite's edge
+    -- action, spend the outer map's incidence, spend the inner map's under a
+    -- congruence, and fuse the two action triples into the composite's own.
+    gcomp .onE-end₀ e =
+      trans
+        (cong (end₀ U) (app-mapTab (actE g) (onE f) e))
+        (trans
+          (onE-end₀ g (actE f e))
+          (trans
+            (cong (smap (actV g) (smap (actI g) (actO g))) (onE-end₀ f e))
+            (fuse (end₀ S e))))
+    gcomp .onE-end₁ e =
+      trans
+        (cong (end₁ U) (app-mapTab (actE g) (onE f) e))
+        (trans
+          (onE-end₁ g (actE f e))
+          (trans
+            (cong (smap (actV g) (smap (actI g) (actO g))) (onE-end₁ f e))
+            (fuse (end₁ S e))))
+
+  -- THE IDENTITY IS A UNIT ON BOTH SIDES, and at no cost in hypotheses. The
+  -- unit laws for the WIRING layer's composition need set-ness of the colours,
+  -- because they compare witnesses; these compare ACTIONS, since `_≐_` is
+  -- pointwise, so nothing has to be decided about the objects.
+  module _
+    {Γ Δ Γ′ Δ′} {S : Shape Ob Γ Δ} {T : Shape Ob Γ′ Δ′}
+    (f : GMap S T)
+    where
+
+    gcomp-idnˡ : gcomp (gid T) f ≐ f
+    gcomp-idnˡ .atV v =
+      trans (app-mapTab (actV (gid T)) (onV f) v) (app-idTab (verts T) (actV f v))
+    gcomp-idnˡ .atE e =
+      trans (app-mapTab (actE (gid T)) (onE f) e) (app-idTab (edges T) (actE f e))
+
+    gcomp-idnʳ : gcomp f (gid S) ≐ f
+    gcomp-idnʳ .atV v =
+      trans
+        (app-mapTab (actV f) (idTab (verts S)) v)
+        (cong (actV f) (app-idTab (verts S) v))
+    gcomp-idnʳ .atE e =
+      trans
+        (app-mapTab (actE f) (idTab (edges S)) e)
+        (cong (actE f) (app-idTab (edges S) e))
+
+  -- INVERTIBILITY, the premise the axiom states and this module could not.
+  -- Two-sided, up to `_≐_` rather than on the nose, which is the equality every
+  -- other statement here uses.
+  record Invertible
+    {Γ Δ Γ′ Δ′} {S : Shape Ob Γ Δ} {T : Shape Ob Γ′ Δ′}
+    (f : GMap S T)
+    : Set ℓ
+    where
+    field
+      inv : GMap T S
+      invˡ : gcomp inv f ≐ gid S
+      invʳ : gcomp f inv ≐ gid T
+
+  open Invertible public
 
 ------------------------------------------------------------------------------
 -- THE AXIOM, AND THE HYPOTHESIS IT NEEDS.
@@ -274,17 +474,59 @@ swap-not-id : ¬ (swap-wires ≐ gid two-wires)
 swap-not-id p with p .atE here
 ... | ()
 
--- SO AXIOM (iv′) FAILS FOR `GMap` AT LARGE: a map, an automorphism of its
--- source fixing it, and the automorphism is not the identity. Drop `EdgeMono`
--- from `iv′` and the conclusion is false.
+-- AND THE SWAP IS AN AUTOMORPHISM, which is the premise the axiom states and
+-- which nothing here could express before `gcomp` did. A transposition is its
+-- own inverse, so the same map serves as the inverse and both round trips are
+-- one case split with nothing in the cases: the vertex clause is absurd because
+-- a wiring has no vertices, and the two edge clauses compute.
+swap-invertible : Invertible swap-wires
+swap-invertible .inv = swap-wires
+swap-invertible .invˡ .atV ()
+swap-invertible .invˡ .atE here = refl
+swap-invertible .invˡ .atE (there here) = refl
+swap-invertible .invʳ .atV ()
+swap-invertible .invʳ .atE here = refl
+swap-invertible .invʳ .atE (there here) = refl
+
+-- SO UNRESTRICTED CANCELLATION FAILS FOR `GMap` AT LARGE: a map, an
+-- ENDOMORPHISM of its source fixing it, and the endomorphism is not the
+-- identity. Drop `EdgeMono` from `iv′` and the conclusion is false.
 --
--- What the witness also shows, and what makes it more than a counterexample:
--- the offending map LOWERS the vertex-and-edge count, so a degree function
--- would place it outside any degree-raising subcategory. The axiom is therefore
--- not about this map layer at all — it is about a subcategory the degree
--- function has to carve out first, which inverts the order the two obligations
--- are usually named in.
-collapse-witnesses-iv′-fails
-  : ¬ ((e : Edg two-wires) → actE collapse-wires (actE swap-wires e) ≡ actE collapse-wires e
+-- The hypothesis is quantified the way `iv′` quantifies it — fixedness at EVERY
+-- edge, inside the implication. An earlier form of this theorem put the edge
+-- outside, which negates a strictly stronger statement and therefore says less
+-- about `iv′` than it appeared to; `collapse-fixed` supplies the ∀-form
+-- outright, so the honest statement was always available at the same cost.
+collapse-witnesses-cancellation-fails
+  : ¬ (((e : Edg two-wires)
+        → actE collapse-wires (actE swap-wires e) ≡ actE collapse-wires e)
        → swap-wires ≐ gid two-wires)
-collapse-witnesses-iv′-fails h = swap-not-id (h here (collapse-fixed here))
+collapse-witnesses-cancellation-fails h = swap-not-id (h collapse-fixed)
+
+-- AND THE AXIOM ITSELF FAILS — the statement WITH the invertibility premise,
+-- which is what the module header has always said the axiom is and what no
+-- theorem here used to carry. This is the one that bears on a generalized Reedy
+-- structure; the theorem above bears on unrestricted cancellation, which is a
+-- different and stronger statement.
+collapse-witnesses-axiom-fails
+  : ¬ ((θ : GMap two-wires two-wires)
+       → Invertible θ
+       → ((e : Edg two-wires)
+          → actE collapse-wires (actE θ e) ≡ actE collapse-wires e)
+       → θ ≐ gid two-wires)
+collapse-witnesses-axiom-fails h =
+  swap-not-id (h swap-wires swap-invertible collapse-fixed)
+
+-- AND THE ONE ESCAPE THE HEADER DISCUSSES IS CLOSED HERE RATHER THAN ARGUED.
+-- `deg` counts vertices plus INTERNAL edges, and `inner?` calls a wire internal
+-- only when both of its ends are at vertices. A wiring has no vertices, so it
+-- has no internal edges and no vertices to count: both shapes of the
+-- counterexample sit at degree zero, and the collapse neither raises nor lowers
+-- it. So the counterexample cannot be excluded from the axiom's scope by a
+-- degree-raising restriction, and the invertibility witness above is
+-- load-bearing rather than tidying.
+deg-two-wires : deg two-wires ≡ 0
+deg-two-wires = refl
+
+collapse-preserves-degree : deg two-wires ≡ deg edge
+collapse-preserves-degree = refl
