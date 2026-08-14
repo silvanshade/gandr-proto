@@ -579,9 +579,17 @@ impl Token
 /// not a prefix of it, so the two never compete. The `--` inside `-->` is not
 /// a comment lead in this language — the repo comments with `//` and `/* … */`
 /// — so no comment convention is disturbed.
+///
+/// **`:>` is the opaque-ascription tile** (the sealing rung): `module M :> #{ …
+/// }` against transparent `module M : #{ … }`, the ML-family spelling. It
+/// extends the live single tile `:`, so it sits in this table for the maximal
+/// munch, and the two forms differ on their **first token** — which is what
+/// keeps the discrimination lookahead-free. Nothing already written can change
+/// meaning: `:` is only ever followed by a type or a signature, and neither can
+/// begin with `>`, so no existing byte sequence re-munches.
 const MULTI_PUNCT: &[&str] = &[
     "-->", "<->", "==>", "<=>", "/\\", "~>", "->", "<-", "=>", "==", "!=", "<=", ">=", "++", "&&",
-    "||", "|&", "<>", "<&", ">&", ">>", "@[",
+    "||", "|&", "<>", "<&", ">&", ">>", "@[", ":>",
 ];
 
 /// UTF-8 bytes for U+00A0 NO-BREAK SPACE.

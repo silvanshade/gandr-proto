@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xe1a2_a77d_da69_7b6c);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xb0b5_edc0_6cc3_d277);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -114,7 +114,7 @@ mod contracts
     /// alternations rather than adding rules of their own. The sign member
     /// terminator adds one: the `;` tile after the inlined member family
     /// (gandr-ng9.14).
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1864);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1896);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -127,7 +127,7 @@ mod contracts
         ("!=", 1),
         ("\"", 16),
         ("#!{", 1),
-        ("#{", 5),
+        ("#{", 7),
         ("$", 3),
         ("${", 3),
         ("&", 3),
@@ -139,7 +139,7 @@ mod contracts
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 71),
+        (",", 73),
         ("-", 2),
         ("-->", 15),
         ("->", 9),
@@ -147,7 +147,8 @@ mod contracts
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 134),
+        (":", 138),
+        (":>", 2),
         (";", 201),
         ("<", 4),
         ("<&", 1),
@@ -224,7 +225,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 281),
+        ("identifier", 285),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -270,8 +271,8 @@ mod contracts
         ("tail", 1),
         ("thunk", 1),
         ("true", 3),
-        ("type", 1),
-        ("type_identifier", 8),
+        ("type", 9),
+        ("type_identifier", 16),
         ("type_variable", 9),
         ("typed_number", 3),
         ("u32", 1),
@@ -284,7 +285,7 @@ mod contracts
         ("|", 4),
         ("|&", 1),
         ("||", 2),
-        ("}", 45),
+        ("}", 47),
         ("~>", 4),
         ("ω", 16),
     ];
@@ -703,6 +704,14 @@ mod contracts
         // a `sign` member and a parameter-telescope binder join the datatype
         // declaration. `sign` and `sort` each stay single-mold. The nested
         // member makes `module` cross from one reachable mold to two.
+        //
+        // The sealing rung adds two. `:>` arrives multi-mold outright, being
+        // admissible at both the outer and the nested module ascription; and
+        // `type` crosses from single- to multi-mold, having led only the
+        // `extern` block's inline type member and now leading an abstract type
+        // component in every module signature. Both are the same fact seen
+        // twice: a signature is one form admitted at two sites under two
+        // ascriptions.
         let pbg = built_in()?;
         let index = walk_index(&pbg)?;
         let reachable = reachable_molds(&pbg, &index);
@@ -715,7 +724,7 @@ mod contracts
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
         assert_eq!(
-            73,
+            75,
             multi,
             "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0

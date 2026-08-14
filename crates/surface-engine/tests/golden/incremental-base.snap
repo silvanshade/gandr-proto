@@ -63,18 +63,18 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #52ee5de4026b3539 [DefFunctionSugar]
-[0, 0] => 0..53 #52ee5de4026b3539 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #e2ff2d25ab367444 [BindHoist]
-[0, 0, 0, 0] => 45..50 #6427529aac9c52ba [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #6427529aac9c52ba [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #718f08580cc70e02 [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #718f08580cc70e02 [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #0474730843a31501
-[0, 0, 0, 0, 1] => 49..50 #3704f6f4ea8df0aa
-[0, 0, 0, 1] => 40..51 #e2ff2d25ab367444
-[0, 0, 0, 1, 0] => 44..51 #0c50791fdb14fc1b [BindHoist]
-[1] => 54..67 #4915519cdf491649
-[1, 0] => 54..59 #4d89f853df8e7f02 [ForceSugar]
-[1, 0, 0] => 54..59 #4d89f853df8e7f02
-[1, 1] => 60..66 #30a6e6e411b5adc6
+[0] => 0..53 #0538f2a5522e4ed6 [DefFunctionSugar]
+[0, 0] => 0..53 #0538f2a5522e4ed6 [DefFunctionSugar]
+[0, 0, 0] => 40..51 #9acc26d96e95948a [BindHoist]
+[0, 0, 0, 0] => 45..50 #c417593414c41929 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #c417593414c41929 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #076b2da7b6b3eda2 [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #076b2da7b6b3eda2 [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #9a509857ed8ff4a1
+[0, 0, 0, 0, 1] => 49..50 #cce11c44947ad04a
+[0, 0, 0, 1] => 40..51 #9acc26d96e95948a
+[0, 0, 0, 1, 0] => 44..51 #efee2912597f2c3f [BindHoist]
+[1] => 54..67 #30e18cf814c2a6fc
+[1, 0] => 54..59 #095f5fab74a5dea2 [ForceSugar]
+[1, 0, 0] => 54..59 #095f5fab74a5dea2
+[1, 1] => 60..66 #ca15ade2e345c9e6

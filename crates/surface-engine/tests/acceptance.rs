@@ -1501,6 +1501,36 @@ mod tests
                 "total recovery must expose a missing-definition hole: {goals:?}"
             );
         }
+        /// An opaque ascription is declined by name rather than read as a
+        /// transparent one.
+        ///
+        /// This is the load-bearing half of landing the syntax before its
+        /// elaboration. Silently treating `:>` as `:` would leave every
+        /// component's identity exposed while the source says the module is
+        /// sealed — an abstraction leak with no symptom, and worse than not
+        /// admitting the form at all. The named decline is what keeps the gap
+        /// visible; total mode recovers it as an unsupported-form hole rather
+        /// than as a sealed module.
+        #[test]
+        fn opaque_module_ascription_is_declined_not_read_as_transparent()
+        {
+            let error = lower_err("module M :> #{ visible: Integer } { def visible = 2; }");
+            assert!(
+                matches!(error, LowerError::OpaqueAscriptionUnelaborated { .. }),
+                "an opaque ascription must decline by name: {error:?}"
+            );
+
+            let recovered =
+                lower_source_total("module M :> #{ visible: Integer } { def visible = 2; }".into())
+                    .expect("total lowering must recover an opaque ascription");
+            let goals = goals_report(&recovered, &prelude_ctx());
+            assert!(
+                goals
+                    .iter()
+                    .any(|goal| matches!(goal.note, Some(HoleNote::UnsupportedForm { .. }))),
+                "total recovery must expose the decline as a hole, never a sealed module: {goals:?}"
+            );
+        }
         /// Duplicate module member definitions are rejected instead of silently
         /// overwriting a record field.
         #[test]

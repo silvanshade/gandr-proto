@@ -143,6 +143,43 @@ fn nested_module_members_mold_zero_obligation() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// The opaque ascription `:>` parses cleanly, with an abstract type component
+/// beside an ordinary value component.
+///
+/// This is the parse-gated witness the sealing surface lands first: the form is
+/// admitted by the grammar before anything elaborates it, so the syntax and its
+/// meaning arrive as separate, separately-reviewable changes.
+#[test]
+fn an_opaque_module_ascription_parses_cleanly() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let src = "module Counter :> #{ type T, zero : T } { def zero = 0; }";
+    let result = parse(pbg, SourceSlice::from(src))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "an opaque ascription with an abstract type component is in the clean grammar"
+    );
+    Ok(())
+}
+
+/// The two ascriptions differ on their **first token** and nothing else, so a
+/// transparent signature carrying the same components also parses cleanly.
+///
+/// The pair is what shows the discrimination is lookahead-free: one tile
+/// decides it, at a fixed position, with the same body either way.
+#[test]
+fn a_transparent_ascription_admits_the_same_signature() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let src = "module Counter : #{ type T, zero : T } { def zero = 0; }";
+    let result = parse(pbg, SourceSlice::from(src))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "the same signature is admitted under transparent ascription"
+    );
+    Ok(())
+}
+
 #[test]
 fn deeper_nested_module_uses_ordinary_recovery() -> Result<(), Box<dyn Error>>
 {

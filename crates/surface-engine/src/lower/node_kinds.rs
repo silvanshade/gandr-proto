@@ -164,6 +164,14 @@ pub const PRIMITIVE_TYPE: SyntaxKind = SyntaxKind("primitive_type");
 pub const TYPE_IDENTIFIER: SyntaxKind = SyntaxKind("type_identifier");
 pub const TYPE_APPLICATION: SyntaxKind = SyntaxKind("type_application");
 pub const RECORD_TYPE: SyntaxKind = SyntaxKind("record_type");
+/// A module's **opaque** signature ascription — the `#{ … }` after `:>`.
+///
+/// It carries the same fields as a transparent ascription and is deliberately a
+/// *different kind*, because the two mean different things and reading one as
+/// the other is the abstraction leak sealing exists to prevent. A signature
+/// silently treated as transparent would leave every component's identity
+/// exposed while the source says it is sealed — a failure with no symptom.
+pub const OPAQUE_SIGNATURE: SyntaxKind = SyntaxKind("opaque_signature");
 pub const RECORD_TYPE_FIELD: SyntaxKind = SyntaxKind("record_type_field");
 pub const F_TYPE: SyntaxKind = SyntaxKind("f_type");
 pub const U_TYPE: SyntaxKind = SyntaxKind("u_type");

@@ -108,8 +108,10 @@ mod label
     pub const RUN: TileSpelling = TileSpelling("run");
     /// Value/field binder tile.
     pub const EQUALS: TileSpelling = TileSpelling("=");
-    /// Signature ascription tile.
+    /// Transparent signature ascription tile.
     pub const COLON: TileSpelling = TileSpelling(":");
+    /// Opaque (sealing) signature ascription tile.
+    pub const COLON_ANGLE: TileSpelling = TileSpelling(":>");
     /// Import-alias separator tile.
     pub const AS: TileSpelling = TileSpelling("as");
     /// Statement / item terminator.
@@ -2195,7 +2197,8 @@ impl<'tree> SynNode<'tree>
         )
     }
 
-    /// The optional transparent record-type ascription of a module declaration.
+    /// The optional signature ascription of a module declaration, transparent
+    /// or opaque.
     ///
     /// # Contract
     /// - ensures: returns exactly the balanced `#{ ... }` after the module name
@@ -2216,12 +2219,16 @@ impl<'tree> SynNode<'tree>
         let module_index =
             self.find_tile((&sig).into(), window.start, window.limit, label::MODULE)?;
         let after_name = module_index.0.saturating_add(2);
-        if after_name >= window.limit.0
-            || sig
-                .get(after_name)
-                .and_then(|&node| self.tree.tile_label(node))
-                != Some(label::COLON)
-        {
+        if after_name >= window.limit.0 {
+            return None;
+        }
+        // Either ascription tile opens the same signature: `:` transparent, `:>`
+        // opaque. The tile is the *only* difference at this position, which is
+        // what keeps the discrimination lookahead-free.
+        let ascription_tile = sig
+            .get(after_name)
+            .and_then(|&node| self.tree.tile_label(node));
+        if ascription_tile != Some(label::COLON) && ascription_tile != Some(label::COLON_ANGLE) {
             return None;
         }
         let open = self.find_tile(
@@ -2231,12 +2238,21 @@ impl<'tree> SynNode<'tree>
             label::HASH_BRACE,
         )?;
         let close = self.matching_close((&sig).into(), open, label::HASH_BRACE, label::RBRACE)?;
+        // The kind carries the ascription tile's meaning forward, so a consumer
+        // cannot read a sealed signature as a transparent one by looking only at
+        // the braces.
+        let kind = if ascription_tile == Some(label::COLON_ANGLE) {
+            node_kinds::OPAQUE_SIGNATURE
+        }
+        else {
+            node_kinds::RECORD_TYPE
+        };
         (close.0 < window.limit.0).then(|| {
             self.run(
                 container,
                 open,
                 SignificantIndex(close.0.saturating_add(1)),
-                node_kinds::RECORD_TYPE,
+                kind,
             )
         })
     }
@@ -2261,11 +2277,12 @@ impl<'tree> SynNode<'tree>
         let module_index =
             self.find_tile((&sig).into(), window.start, window.limit, label::MODULE)?;
         let after_name = module_index.0.saturating_add(2);
+        let ascription_tile = sig
+            .get(after_name)
+            .and_then(|&node| self.tree.tile_label(node));
         let body_search_start = if after_name < window.limit.0
-            && sig
-                .get(after_name)
-                .and_then(|&node| self.tree.tile_label(node))
-                == Some(label::COLON)
+            && (ascription_tile == Some(label::COLON)
+                || ascription_tile == Some(label::COLON_ANGLE))
         {
             let ascription_open = self.find_tile(
                 (&sig).into(),

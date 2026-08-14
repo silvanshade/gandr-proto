@@ -266,7 +266,7 @@ fn declarations(
         seq([
             t(TileLabel("module")),
             t(TileLabel("type_identifier")),
-            opt(seq([t(TileLabel(":")), record_type_ascription()])),
+            opt(module_ascription_tail()),
             t(TileLabel("{")),
             repeat(module_member()),
             t(TileLabel("}")),
@@ -357,20 +357,49 @@ fn def_family() -> Regex
     ])
 }
 
-/// Build the transparent record-type ascription after a module name.
-fn record_type_ascription() -> Regex
+/// Build a module declaration's optional ascription tail, transparent or
+/// opaque.
+///
+/// The two forms share their signature and differ **only on the tile that opens
+/// the tail** — `:` for transparent ascription, `:>` for opaque — so the choice
+/// is made at one token with no lookahead, which is the constraint the
+/// signature surface is under. The body is one signature either way: sealing
+/// changes what the ascription *does*, never what it is written against.
+fn module_ascription_tail() -> Regex
+{
+    alt([
+        seq([t(TileLabel(":")), module_signature()]),
+        seq([t(TileLabel(":>")), module_signature()]),
+    ])
+}
+
+/// Build a module signature: the record-shaped ascription body, whose fields
+/// are value components and abstract type components.
+fn module_signature() -> Regex
 {
     seq([
         t(TileLabel("#{")),
-        opt(comma1(record_type_ascription_field())),
+        opt(comma1(module_signature_field())),
         t(TileLabel("}")),
     ])
 }
 
-/// Build one field of a module's transparent record-type ascription.
-fn record_type_ascription_field() -> Regex
+/// Build one field of a module signature.
+///
+/// A value component `ℓ : T`, or an **abstract type component** `type T`. The
+/// two are first-token-discriminated by the `type` keyword — already a tile in
+/// this grammar, from the `extern` block's inline type members — so admitting
+/// them in one comma list costs no lookahead.
+///
+/// An abstract type component is what opaque ascription mints an atom for, so
+/// the form exists on both ascriptions and means different things: under `:`
+/// the component is a transparent name, and under `:>` it is sealed.
+fn module_signature_field() -> Regex
 {
-    seq([t(TileLabel("identifier")), t(TileLabel(":")), h(Sort::Type)])
+    alt([
+        seq([t(TileLabel("identifier")), t(TileLabel(":")), h(Sort::Type)]),
+        seq([t(TileLabel("type")), t(TileLabel("type_identifier"))]),
+    ])
 }
 
 /// Build the `def rec` recursive tail: `rec id (params) -> T? { body }`.
@@ -1815,7 +1844,7 @@ fn nested_module_member() -> Regex
     seq([
         t(TileLabel("module")),
         t(TileLabel("identifier")),
-        opt(seq([t(TileLabel(":")), record_type_ascription()])),
+        opt(module_ascription_tail()),
         t(TileLabel("{")),
         repeat(module_definition_member()),
         t(TileLabel("}")),

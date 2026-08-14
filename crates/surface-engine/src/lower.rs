@@ -371,6 +371,22 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// A module's **opaque** ascription `:>`, whose sealing is not yet
+    /// elaborated.
+    ///
+    /// The syntax parses and this rung declines it by name, which is the
+    /// deliberate half: reading `:>` as `:` would leave every component's
+    /// identity exposed while the source says the module is sealed — an
+    /// abstraction leak with no symptom, and strictly worse than not parsing
+    /// the form at all. The named decline is what makes the gap visible
+    /// instead.
+    #[error("opaque module ascription `:>` is not yet elaborated at bytes {byte_range:?}")]
+    OpaqueAscriptionUnelaborated
+    {
+        /// The ascription's byte range.
+        byte_range: SourceRange,
+    },
+
     /// A type of the wrong polarity for its position (e.g. `F` applied to a
     /// computation type, or a computation-sorted ascription on a value
     /// annotation).
@@ -4821,6 +4837,11 @@ impl Lowerer<'_>
     ) -> LowerResult<Option<Ty>>
     {
         match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
+            | Some(ascription_node) if ascription_node.kind() == node_kinds::OPAQUE_SIGNATURE => {
+                Err(LowerError::OpaqueAscriptionUnelaborated {
+                    byte_range: ascription_node.byte_range(),
+                })
+            },
             | Some(ascription_node) => {
                 let ty = self.lower_type_node(ascription_node)?;
                 let ty = self.module_record_ascription(ty, ascription_node)?;
@@ -5879,6 +5900,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::EmptyBlock { ref byte_range }
         | LowerError::DanglingSignature { ref byte_range, .. }
         | LowerError::DuplicateModuleMember { ref byte_range, .. }
+        | LowerError::OpaqueAscriptionUnelaborated { ref byte_range }
         | LowerError::TypeSortMismatch { ref byte_range, .. }
         | LowerError::UnknownObservation { ref byte_range, .. }
         | LowerError::DuplicateObservation { ref byte_range, .. }
@@ -5908,6 +5930,9 @@ fn note_of(error: &LowerError) -> HoleNote
         },
         | LowerError::UnmarkedRecursiveReference { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::IDENTIFIER,
+        },
+        | LowerError::OpaqueAscriptionUnelaborated { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::OPAQUE_SIGNATURE,
         },
         | LowerError::MarkedReferenceOutsideRecursiveScope { .. }
         | LowerError::ReservedNamedMeasure { .. }
