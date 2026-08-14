@@ -90,15 +90,15 @@
 //! The gate is a sufficient check by construction; what a presentation changes
 //! is *how* conservative it is on that instance.
 //!
-//! **So the operation is well defined on the cell-support quotient and not on
-//! the replay quotient, and the implementation carries the recorded derivation
-//! rather than quotienting it away.** The two alternatives are worse and
-//! were considered: *refusing* a composition whose presentations disagree would
-//! decline the compositions the lane exists to admit, and *canonicalizing* has
-//! nothing to canonicalize to, because a replay-equivalence class has no
-//! canonical derivation — the tracelet normal form canonicalizes **within** a
-//! cell support (it preserves the primitive multiset) and so cannot bridge two
-//! supports.
+//! **So the operation is well defined on the cell-support-at-a-fixed-boundary
+//! quotient and not on the replay quotient, and the implementation carries the
+//! recorded derivation rather than quotienting it away.** The two alternatives
+//! are worse and were considered: *refusing* a composition whose presentations
+//! disagree would decline the compositions the lane exists to admit, and
+//! *canonicalizing* has nothing to canonicalize to, because a
+//! replay-equivalence class has no canonical derivation — the tracelet normal
+//! form canonicalizes **within** a cell support (it preserves the primitive
+//! multiset) and so cannot bridge two supports.
 //!
 //! **One consequence for anyone reading a verdict as a property of a
 //! certificate: it is not one.** A decline is a fact about the derivation in
@@ -215,7 +215,8 @@ where
 /// header states what that costs and why it is carried rather than repaired
 /// here; the short form is that a decline is a fact about the derivation in
 /// hand, the `Ok` branch's composite is an invariant even so, and the operation
-/// is well defined on the cell-support quotient and not on the replay quotient.
+/// is well defined on the cell-support-at-a-fixed-boundary quotient and not on
+/// the replay quotient.
 ///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
