@@ -57,6 +57,10 @@
 //! bounded by [`MAX_DECODED_LEVEL_OFFSET`]. The same scan yields the
 //! deterministic [`DecodeMetrics`] the export exit gate records.
 //!
+//! **When a change to this format bumps the version and when it holds** is
+//! recorded at [`FORMAT_VERSION_V1`], under `format-decision-01`. Read it
+//! before changing a tag byte, a kind byte, or a reserved slot.
+//!
 //! # The ratified reservations, and which of them the sealing rung filled
 //!
 //! * **R1 — reserved declaration kinds.** `AbstractType` / `ModuleSig` /
@@ -131,6 +135,46 @@ pub const MAGIC: [u8; 4] = *b"GKX1";
 /// E5: a real bump from v0 — a v0 `version = 0` artifact is refused
 /// `UnsupportedVersion { found: 0 }`, exercising the refusal machinery against
 /// a real predecessor; the old v0 goldens are repurposed as refusal fixtures.
+///
+/// # `format-decision-01` — additive growth holds at v1; a reassignment bumps
+///
+/// **The sealing rung extended this format without bumping the version, and
+/// that was deliberate.** The decision is recorded here rather than in a note
+/// somewhere, because this constant is what a later seat reads when it is about
+/// to change one — and reflexively bumping is the cheap-looking mistake.
+///
+/// The rule the rung settled on, which is the thing to carry forward:
+///
+/// | change                                                | version |
+/// | ----------------------------------------------------- | ------- |
+/// | assign a previously **unassigned** tag or kind byte    | hold    |
+/// | fill a **reserved** slot that framed itself from birth | hold    |
+/// | **reassign** an existing byte, or change a field's shape, ordering, or width | **bump** |
+///
+/// **Why holding is safe for the first two, and it is a property of the reader
+/// rather than a convention.** The reader is a closed-vocabulary parser over a
+/// rejection triple, so a byte it does not know is a *named refusal at a named
+/// site* — `UnknownTag { site: Node, tag: 0x17 }` — never a mis-parse and never
+/// a silent misreading. A reserved slot is framed identically whether it is
+/// empty or full, so filling one moves no other field. In both cases an older
+/// reader meeting a newer artifact stops with an accurate reason, which is
+/// exactly the guarantee `UnsupportedVersion` would have bought, obtained
+/// structurally instead.
+///
+/// **Why bumping is required for the third.** Reassigning a byte or moving a
+/// field makes an older reader parse *successfully* and *wrongly* — the failure
+/// mode the version field exists to prevent, and the only one it can prevent.
+///
+/// **Why the cost matters here specifically.** A bump refuses every artifact
+/// written before it, so it re-blesses every golden and invalidates every
+/// stored export. Spending that on an additive change buys nothing the refusal
+/// triple does not already give, and it spends the one signal that should stay
+/// meaningful for the case that genuinely needs it.
+///
+/// The sealing rung took `NODE_VT_ABSTRACT` (`0x17`, previously unassigned) and
+/// filled the R1 abstract-type kind, the R3 sealing-provenance slot, and the R4
+/// minted-atom table. Every byte assignment `0x00..=0x16` means what v1 froze
+/// it to mean.
 pub const FORMAT_VERSION_V1: u16 = 1;
 
 /// The decode-time cap on the expanded (tree) size of a declaration root — the
