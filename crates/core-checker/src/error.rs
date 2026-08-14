@@ -17,7 +17,7 @@ use crate::grade::Grade;
 use crate::syntax::Term;
 use crate::types::Ty;
 
-/// Result type for `gandr-core` typing operations.
+/// Result type for this crate's typing operations.
 pub type GandrCoreResult<T> = Result<T, TypeError>;
 
 /// Hints and shape descriptions shared verbatim by the recursive checker and

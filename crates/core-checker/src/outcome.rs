@@ -132,8 +132,8 @@ pub enum Eval
 /// the test fragment produces.
 ///
 /// **Single source of truth.** This is the one budget constant the whole
-/// workspace shares: the L machine (`gandr-core-sequent`) and the `gandr-shell`
-/// / `gandr-ffi` drivers all run the same budget so their step-count nets stay
-/// at parity under the shared bound. Keeping one public constant de-duplicates
-/// the driver mirrors (the sequent-machines design's §9).
+/// workspace shares. The L machine (`gandr-core-sequent`) is its only reader,
+/// and every host driver above it inherits the same bound by running through
+/// that machine rather than by mirroring the constant — which is what keeps the
+/// step-count nets at parity (the sequent-machines design's §9).
 pub const STEP_BUDGET: u64 = 1_000_000;

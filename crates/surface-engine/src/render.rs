@@ -1,12 +1,15 @@
 //! Shared type renderers from semantic values to presentation strings.
 //!
-//! The type-rendering trio is the shared machine-state → presentation
-//! projection used by the REPL and LSP, kept outside the core (no core
-//! `Display`; the `use_debug` lint forbids `Debug` in user-facing output).
+//! The type-rendering trio is the machine-state → presentation projection,
+//! kept outside the core (no core `Display`; the `use_debug` lint forbids
+//! `Debug` in user-facing output).
 //!
-//! This duplication of the REPL bin's renderer remains sanctioned-temporary:
-//! the shared pretty-printer family, designed and not built, replaces both
-//! copies.
+//! It is the tree's single spelling of these types, and there is no second copy
+//! to reconcile with: the REPL and language-server faces it was written to be
+//! shared by are deferred and have no crate here, and its one in-tree caller is
+//! [`crate::diag`], which delegates to [`ty`] rather than re-deriving a
+//! spelling. The shared pretty-printer family the design calls for is not
+//! built; until it is, a face consumes this module.
 
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;

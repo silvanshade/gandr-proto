@@ -16,8 +16,11 @@
 //!   `handle` / `resume` / `reset` / `shift` — anchored by the frozen outcome
 //!   snapshots through the `L-run ∘ 𝓕 ≡ run` [`differential`] (§9).
 //!
-//! What remains is the phase-**L2** fusion engine (2-cells on command seams)
-//! and the listed L1 readback residuals (the un-focusing `𝓕⁻¹`, §7a).
+//! The phases beyond L1 are not this crate's: the **L2** fusion engine —
+//! 2-cells on command seams — is `gandr-theory-computads`, reading this crate's
+//! public IL. The un-focusing readback `𝓕⁻¹` (§7a) is built here, in
+//! [`unfocus`]; what it does not recover is a reified stack, which stays opaque
+//! by construction.
 //!
 //! # L0 — the command IL and the focusing translation
 //!

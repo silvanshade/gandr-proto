@@ -18,7 +18,7 @@
 //!   surface tree is **firewalled from execution**: this harness
 //!   ([`check_case`], the corpus walker) runs the model and pathological trees
 //!   only, so surface fixtures never lower or evaluate. Their gate is the PBG
-//!   parser's zero-obligation corpus sweep (`gandr-parser`
+//!   parser's zero-obligation corpus sweep (`gandr-surface-parser`
 //!   `acceptance::corpus_molds_to_zero_obligations`), which reads all three
 //!   trees; the surface tree carries no `//@` directives. A surface fixture
 //!   that is deliberately ill-formed **after** parsing — the shared-port

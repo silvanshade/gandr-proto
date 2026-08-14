@@ -7,7 +7,8 @@ It routes into the authoritative docs instead of restating them; where two docs 
 - How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
 - What the design is: the specification corpus, `spec:README.md` and the four track documents under it.
   **It is not in this repository** — it is held in the maintainer's private research workspace, and this tree cites it by the `spec:` alias rather than by path.
-- Why it was decided: the approved [PLAN.html](PLAN.html) and the beads tracker (the per-file `docs/adr/` log is deferred, [docs/workflow/docs.md](docs/workflow/docs.md)).
+- Why it was decided: [docs/decisions/](docs/decisions/README.md) — one file per decision, named for its outcome — and the beads tracker.
+  [PLAN.html](PLAN.html) is the 2026-07 reboot roadmap and is read as a historical record, not as a current schedule.
 
 ## The system in one paragraph
 
@@ -20,8 +21,8 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 
 | Path                                     | Holds                                                                                                            |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `crates/`                                | the Rust workspace (25 members; domains and layering below)                                                      |
-| `crates/*/docs/`                         | per-crate lean doc tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present — off the corpus main-path |
+| `crates/`                                | the Rust workspace; the domains, the member count and its counting convention are below                          |
+| `docs/decisions/`                        | the decision records: one file per decision, named for its outcome                                               |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
 | `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
@@ -29,10 +30,10 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                                  |
 | `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                       |
 | `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
-| [PLAN.html](PLAN.html)                   | the approved build-out plan                                                                                      |
-| [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog (the per-crate `docs/` tier is retiring)                                          |
+| [PLAN.html](PLAN.html)                   | the 2026-07 reboot roadmap, kept as a historical record                                                          |
+| [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog; the per-crate `docs/` tier it replaced is gone                                   |
 
-Referenced by guidance but not yet landed: `docs/adr/`, `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
+Referenced by guidance but not landed: `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
 
 ## Domains
 
@@ -52,8 +53,8 @@ Counting convention: a member is an active entry in the root `Cargo.toml` `works
 
 ## Package layering
 
-`A → B` means _A depends on B_.
-Tier N crates depend only on tiers below N.
+`A → B` means _A has a library dependency on B_ — a `[dependencies]` edge, the only kind that reaches a consumer of A. Tier N crates depend only on tiers below N.
+`[dev-dependencies]` are listed separately below the tiers, because they bind only a crate's own test targets: they do not compose, do not propagate to consumers, and may point up the tiers without breaking the ordering.
 
 ```text
 tier 0   kernel-strata · storage-chunker · surface-syntax · surface-render-remote
@@ -65,15 +66,15 @@ tier 2   core-checker → kernel-core, theory-nominal-automata
          storage-artifact → kernel-core, storage-chunker, storage-prolly-trees
          surface-parser → surface-grammar, surface-syntax
 tier 3   core-incremental → core-checker, theory-orders
-         core-sequent → core-checker, kernel-core, kernel-strata, storage-artifact, storage-prolly-trees
+         core-sequent → core-checker
          theory-levitation → core-checker
 tier 4   theory-computads → core-sequent, theory-graphs, theory-levitation
          runtime-effects → core-checker, core-sequent
 tier 5   theory-circuit-algebras → theory-computads
-         theory-virtual-doctrines → core-sequent, theory-computads, theory-levitation
+         theory-virtual-doctrines → theory-computads, theory-levitation
          surface-engine → core-checker, core-incremental, core-sequent, kernel-core,
          runtime-effects, surface-grammar, surface-parser, surface-syntax,
-         theory-levitation, theory-nominal-automata, theory-recursion
+         theory-computads, theory-levitation, theory-nominal-automata, theory-recursion
 tier 6   surface-corpus → core-checker, core-sequent, runtime-effects, surface-engine, theory-levitation
 off-tier workflow-gates, workflow-dylint — tooling; depend on no workspace crate
          (the doc-class tool workflow-docs is parked: commented out of the workspace, no tier)
@@ -81,14 +82,26 @@ off-tier workflow-gates, workflow-dylint — tooling; depend on no workspace cra
          REPL/tui/lsp/mcp/fmt/build faces land with the crates they wrap
 ```
 
+The cross-tier `[dev-dependencies]`, which are where several crates are exercised from and nowhere else:
+
+| test target's crate        | dev-depends on                                                                     | what it drives                                                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `core-sequent`             | kernel-core, kernel-strata, storage-artifact, storage-prolly-trees, surface-engine | the kernel export gate — bridge → `add_decl` → export → decode → replay — plus the corpus differentials that need a real front end |
+| `theory-circuit-algebras`  | core-sequent                                                                       | fixtures whose cuts carry the command IL's polarity, which the crate never names in shipping code                                  |
+| `theory-virtual-doctrines` | core-sequent                                                                       | the same, for the reflected judgment layer's fixtures                                                                              |
+| `surface-grammar`          | surface-parser                                                                     | the deliberate cycle-break: the parser depends on the grammar, so the reverse edge is dev-only and drives the acceptance contracts |
+| `surface-engine`           | core-checker                                                                       | already a library dependency; the dev entry adds the checker's feature-gated proptest generators                                   |
+
 The rules the graph enforces:
 
 1. **The kernel trusts only itself.** `kernel-core` depends on `kernel-strata` and nothing else; no `kernel-*` crate may gain a dependency outside the domain.
 2. **Dependencies point inward.** Leaves stay leaves; no library crate may depend on `surface-driver` or on any `workflow-*` tooling crate (they sit off-tier by construction).
 3. **Theory substrate is self-contained.** The `theory-*` leaves (graphs, orders, nominal-automata, recursion) have zero workspace dependencies; the higher theory (levitation, computads, circuit-algebras, virtual-doctrines) stacks over `core-*` — directly, or through another `theory-*` crate, as `circuit-algebras` does — and takes no direct dependency on `storage-*`, `runtime-*`, or `surface-*`.
-   The reading is the direct one on both halves: `core-sequent` links `storage-*` for persistence (rule 4), so every crate above it reaches storage transitively and the rule constrains the edges a `theory-*` manifest may declare.
+   The reading is the direct one on both halves, and the rule constrains the edges a `theory-*` manifest may declare.
+   No crate above `core-sequent` reaches storage: `core-sequent` links `storage-*` from its tests only, and a dev edge does not propagate.
    `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches completion by being supplied at the engine's instantiation site, and the reverse **library** edge is a dependency cycle the resolver rejects (a `[dev-dependencies]` cycle Cargo does admit, so a test-only edge is refused by this rule rather than by the resolver) (`spec:implementation/circuit-terms.md`, `circuit-terms-question-12`).
-4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery; the kernel never links them (`core-sequent` does, for persistence).
+4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery, and the kernel never links them.
+   Nothing else links them either: the tier's only edge out of itself is `core-sequent`'s dev dependency for the kernel export gate, so the whole tier is built and exercised without a shipping consumer.
 5. **`fuzz/` is a separate workspace.** It path-deps ports-in-flight and keeps its own lint posture; the main workspace excludes it.
 
 ## Load-bearing invariants
@@ -103,8 +116,8 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
    Sources: [Cargo.toml](Cargo.toml), [docs/workflow/rust.md](docs/workflow/rust.md).
 4. **Project-local Dylint contracts gate merges.** The recursion/termination contract (and its documented relaxations) runs on the merge wall between Clippy and the test suite.
    Sources: [docs/workflow/ci.md](docs/workflow/ci.md), [crates/workflow-dylint/](crates/workflow-dylint/).
-5. **The specification corpus is cited, not free-form.** Every external work is cited by a key that resolves in `spec:bibliography.yml`, and the bibliography holds no entry the corpus never cites.
-   Source: `spec:README.md`, [docs/workflow/specs.md](docs/workflow/specs.md).
+5. **This repository holds no reference register, so a citation carries its own locator.** Every external work is cited at the claim with its full title, its authors, its year, and a stable identifier; the `spec:bibliography.yml` register belongs to the corpus and left with it.
+   Source: [docs/decisions/README.md](docs/decisions/README.md), [docs/workflow/specs.md](docs/workflow/specs.md).
 6. **The design corpus is no longer in this repository.** It left with its BLAKE3 registry, and the `docs:manifest-drift` and `docs:reference-integrity` gates retired with it — there is nothing in this tree for them to register or resolve.
    The corpus is cited by the `spec:` alias and remains the authority on the design; what this repository relies on is restated here.
 7. **Fidelity beats formatters.** A formatter or linter is relaxed or scoped, never satisfied at the cost of artifact fidelity.
@@ -117,7 +130,7 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 | Question                     | Authoritative source                                                                                        |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | What is the language design? | `spec:README.md` — the four track documents, held outside this repository                                   |
-| Why was it decided?          | [PLAN.html](PLAN.html) + the beads tracker, until `docs/adr/` is re-introduced                              |
-| What is a crate's status?    | `crates/<crate>/docs/` (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present, else its `Cargo.toml` |
+| Why was it decided?          | [docs/decisions/](docs/decisions/README.md) + the beads tracker                                             |
+| What is a crate's status?    | its `Cargo.toml` description and its crate-root rustdoc — the per-crate `docs/` tier is gone                |
 | How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                               |
 | What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace    |
