@@ -63,17 +63,36 @@
 //! against one partner, gets `Err` and `Ok`, and replays the composite the
 //! `Ok` admitted.
 //!
+//! **The exact class is cell-support equality _at a fixed boundary_**, and the
+//! restriction is not decoration: the build reads
+//! [`participating_cells`] on **both** sides *and* the seam holes of
+//! `a.joins_at`, so equal supports alone do not fix the verdict. The two
+//! coincide only when the comparison is between presentations of one
+//! certificate, where replay-equivalence holds the boundary fixed by its own
+//! definition — which is the setting this was measured in.
+//!
+//! **That relation is _incomparable_ with replay-equivalence, not coarser than
+//! it.** Neither implies the other, and both failures are exhibited in the
+//! fixtures: `the_acyclicity_verdict_is_not_invariant_under_certificate_identity`
+//! shows two replay-equivalent certificates with different supports, and a
+//! presentation with a repeated step has one certificate's support without
+//! replaying at all. Reading the relations as a chain with cell support at the
+//! coarse end contradicts the finding above — were replay-equivalence to imply
+//! cell-support equality, the verdict *would* be a certificate invariant.
+//!
 //! **What the non-invariance can cost is availability, never soundness**, and
 //! the asymmetry is structural rather than lucky. The `Ok` branch returns the
 //! graft, whose boundary is `a`'s peak and `b`'s join — both of them data
 //! replay-equivalence compares — so **the composite is a certificate invariant
 //! even where the verdict is not**, and two admitted presentations compose to
-//! one certificate. The gate is a sufficient check by construction; what a
-//! presentation changes is *how* conservative it is on that instance.
+//! one certificate. That is measured too, against a partner that admits both:
+//! `composition::tests::the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`.
+//! The gate is a sufficient check by construction; what a presentation changes
+//! is *how* conservative it is on that instance.
 //!
 //! **So the operation is well defined on the cell-support quotient and not on
-//! the replay quotient, and the implementation carries the finer identity
-//! rather than hiding the coarser one.** The two alternatives are worse and
+//! the replay quotient, and the implementation carries the recorded derivation
+//! rather than quotienting it away.** The two alternatives are worse and
 //! were considered: *refusing* a composition whose presentations disagree would
 //! decline the compositions the lane exists to admit, and *canonicalizing* has
 //! nothing to canonicalize to, because a replay-equivalence class has no
@@ -207,6 +226,7 @@ where
 /// - witness: `composition::tests::directed_composition_of_a_ground_chain_replays`
 /// - witness: `composition::tests::the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`
 /// - witness: `composition::tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity`
+/// - witness: `composition::tests::the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`
 #[inline]
 pub fn compose_directed<A>(
     a: &Tracelet<A>,
