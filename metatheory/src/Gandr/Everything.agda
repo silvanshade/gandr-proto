@@ -25,6 +25,11 @@ import Gandr.Category.Functor
 import Gandr.Category.Instances
 import Gandr.Category.Reasoning
 import Gandr.Graph
+import Gandr.Metatheory.Certificate.Base
+import Gandr.Metatheory.Certificate.Composition
+import Gandr.Metatheory.Certificate.Examples
+import Gandr.Metatheory.Certificate.Properties
+import Gandr.Metatheory.Certificate.Tractability
 import Gandr.Profunctor
 import Gandr.Profunctor.Yoneda
 import Gandr.Rigid
