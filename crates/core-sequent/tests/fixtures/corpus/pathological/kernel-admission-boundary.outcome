@@ -1,0 +1,10 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/kernel-admission-boundary.gandr
+; sexp-b3sum: a428ef480509821391a41500beb862edfb43e088135054dd05dcfe57ebafdba5
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 5
+Ret(Str("the value zone"))
+Ret(Pair(Var("greeting"), Var("greeting")))
+Ret(Thunk(Omega, Abs("x", None, Ret(Var("x")))))
+Ret(Num(U32(1)))
+Ret(Var("greeting"))

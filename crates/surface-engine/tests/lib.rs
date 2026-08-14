@@ -35,6 +35,8 @@ mod goals_extra;
 #[cfg(test)]
 mod incremental;
 #[cfg(test)]
+mod kernel;
+#[cfg(test)]
 mod namespace;
 #[cfg(test)]
 mod origin_identity;

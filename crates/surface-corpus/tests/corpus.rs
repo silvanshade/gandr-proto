@@ -74,9 +74,9 @@ mod tests
     }
 
     /// The frozen numbered/root corpus remains exactly 29 model programs and
-    /// 27 pathological programs; feature subtrees are independently registered.
+    /// 28 pathological programs; feature subtrees are independently registered.
     #[test]
-    fn frozen_root_fixture_cardinality_is_29_and_27()
+    fn frozen_root_fixture_cardinality_is_29_and_28()
     {
         assert_eq!(
             29,
@@ -84,7 +84,7 @@ mod tests
             "frozen model root"
         );
         assert_eq!(
-            27,
+            28,
             direct_gandr_files(&crate_root().join(PATHOLOGICAL_DIR)).len(),
             "frozen pathological root"
         );

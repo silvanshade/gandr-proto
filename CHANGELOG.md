@@ -4,6 +4,16 @@ Notable changes to the gandr workspace, newest first.
 This is the single workspace changelog; the per-crate `docs/` directories it replaces are leaving the tree, and their salvageable history is preserved here.
 Entries dated before 2026-07-21 record the relevant tier's lineage before its absorption into this tree.
 
+## 2026-08-14
+
+- **surface-engine**: the kernel bridge acquires a shipping consumer — the interactive session now offers every typed definition to the certified kernel's `add_decl` choke point through `gandr-core-checker`'s elaborator-side bridge, accumulating the definitions that lower into the closed S1 vocabulary as one kernel environment (`kernel::KernelAdmissions`, reachable as `Session::kernel`).
+  Each submission reports one `kernel::KernelVerdict` per item beside its outcome: admitted with its admission index, outside S1 with the form the bridge refused, refused by the kernel's own re-derivation, or withheld with the reason it was never offered.
+  A session is the first consumer that populates the bridge's naming environment, so `def a = 3; def b = a;` reaches the kernel as two declarations with the second referring to the first through a kernel constant — a path no single-item harness can exercise, because its naming environment is always empty.
+  The crossing is observation only: typing, binding, evaluation, and diagnostics are unchanged, and only an admitted verdict says anything about the program, since S1 is a standing subset that grows.
+  An admitting definition is lowered twice — once into a throwaway arena to decide, once into the environment to keep — because staged content has no discard path, so a definition that fails halfway would otherwise leave orphan nodes in the environment the artifact writer walks.
+- **surface-corpus**: the crossing became observable from the executable corpus — two new harness directives, `expect-kernel-admitted: name` and `expect-kernel-outside-s1: name`, pin which definitions the certified kernel carries and which it does not, and the `kernel-admission-boundary` pathological witness asserts both sides on one program rather than asserting one and describing the other.
+  The witness includes a definition whose body names an earlier definition, so the corpus exercises the cross-declaration constant path as well as the single-declaration one.
+
 ## 2026-08-13
 
 - **surface-engine / core-incremental**: the interactive session now retains its ordered item program and checkpoint set, resumes each appended submission through `gandr-core-incremental`, and derives item outcomes from the resumed typings instead of re-running the interim session-local typing path.

@@ -56,6 +56,26 @@
 //! reduce to `ret` of a value — for example, a handler-less effect that reaches
 //! defined blame or another non-value outcome — honestly as a type-only
 //! definition, never as a stored value.
+//!
+//! # The kernel crossing
+//!
+//! A session also carries a [`KernelAdmissions`] ledger and offers every typed
+//! definition to it in source order, so the surface language's own `def` items
+//! are what drives [`gandr_core_checker::kernel_bridge`] and the kernel's
+//! `add_decl` choke point. The ledger is where the definitions that lower into
+//! the closed S1 vocabulary accumulate as a kernel environment, and each
+//! submission reports one [`KernelVerdict`] per item beside its
+//! [`ItemOutcome`].
+//!
+//! **The crossing is observation, never authority.** Typing comes from the
+//! resumed checkpoints and evaluation from the L machine, exactly as before: no
+//! verdict feeds back into either, and a definition the kernel declines is
+//! bound, evaluated, and reported precisely as it was. The kernel sits
+//! downstream of the session, so what the ledger makes of a submission cannot
+//! change that submission.
+//!
+//! [`KernelAdmissions`]: crate::kernel::KernelAdmissions
+//! [`KernelVerdict`]: crate::kernel::KernelVerdict
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -86,6 +106,10 @@ use crate::diag;
 use crate::ffi::ForeignModule;
 use crate::lower::ImportDeclaration;
 use crate::lower::ImportIndex;
+use crate::kernel::DefinitionOffer;
+use crate::kernel::KernelAdmissions;
+use crate::kernel::KernelVerdict;
+use crate::kernel::WithheldReason;
 use crate::lower::LowerError;
 use crate::lower::lower_source_total_seeded;
 use crate::namespace::NamePath;
@@ -143,7 +167,8 @@ pub enum ItemOutcome
 /// The structured result of one [`Session::submit`].
 ///
 /// Pairs the [`diag::Report`] (diagnostics and hole goals, rendered by the
-/// front-end) with one [`ItemOutcome`] per lowered item, in source order.
+/// front-end) with one [`ItemOutcome`] per lowered item, in source order, and
+/// one [`KernelVerdict`] per item beside it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Submission
 {
@@ -153,6 +178,10 @@ pub struct Submission
     /// One outcome per lowered item, in source order (aligned with
     /// `report` by item index).
     pub outcomes: Vec<ItemOutcome>,
+    /// What the kernel made of each lowered item, in the same source order and
+    /// index-aligned with `outcomes`. Every item has an entry: one the kernel
+    /// never saw carries [`KernelVerdict::Withheld`] naming why.
+    pub kernel: Vec<KernelVerdict>,
 }
 
 /// A REPL session: item-granular typing checkpoints and the definition values
@@ -190,6 +219,9 @@ pub struct Session
     /// The persistent visible import namespace. Its bindings index
     /// [`Self::imports`].
     import_scope: Scope<ImportIndex, SourceRange>,
+    /// The kernel environment the session's S1-eligible definitions accumulate
+    /// in, and the naming environment that resolves one to another.
+    kernel: KernelAdmissions,
 }
 
 impl Session
@@ -217,7 +249,21 @@ impl Session
             data: BTreeMap::new(),
             imports: Vec::new(),
             import_scope: Scope::new(),
+            kernel: KernelAdmissions::new(),
         }
+    }
+
+    /// The kernel admissions this session has accumulated.
+    ///
+    /// # Contract
+    /// - ensures: returns the ledger holding the kernel environment every
+    ///   [`KernelVerdict::Admitted`] definition entered, in admission order.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn kernel(&self) -> &KernelAdmissions
+    {
+        &self.kernel
     }
 
     /// The declared constructor name for a value `Ctor { id, tag, … }` — the
@@ -284,13 +330,16 @@ impl Session
     /// Lowers, reports, incrementally types, and evaluates one line of source.
     ///
     /// # Contract
-    /// - ensures: on success returns one [`ItemOutcome`] per newly lowered
-    ///   item, in source order, and retains one validated checkpoint per item
-    ///   seen across the whole session; value-typed definitions enter the
-    ///   diagnostic and evaluation environments before later items are
-    ///   processed.
+    /// - ensures: on success returns one [`ItemOutcome`] and one
+    ///   [`KernelVerdict`] per newly lowered item, in source order, and retains
+    ///   one validated checkpoint per item seen across the whole session;
+    ///   value-typed definitions enter the diagnostic and evaluation
+    ///   environments before later items are processed, and every typed
+    ///   definition is offered to the session's kernel ledger after its own
+    ///   outcome is produced.
     /// - provides: the smallest end-to-end interactive slice (read → lower →
-    ///   report → validated resume → eval → result).
+    ///   report → validated resume → eval → result), and the engine's crossing
+    ///   from checked core into the certified kernel.
     /// - fails: only the infrastructure lowering failures
     ///   ([`LowerError::ParserUnavailable`] / [`LowerError::ParseFailed`]);
     ///   every parseable input lowers totally, with out-of-fragment regions
@@ -310,6 +359,8 @@ impl Session
     ///   checkpoints, and a return to detached per-item typing.
     /// - witness: `tests::session::checkpointed_session_matches_from_scratch`
     /// - witness: `gandr_core_incremental::tests::incremental`
+    /// - witness: `tests::kernel::every_item_carries_exactly_one_verdict`
+    /// - witness: `tests::kernel::a_later_definition_refers_to_an_earlier_one`
     #[inline]
     pub fn submit<'source, S>(
         &mut self,
@@ -334,17 +385,25 @@ impl Session
         let resumed = resume_with(&self.checkpoints, &edited, &self.base_ctx);
 
         let mut outcomes = Vec::with_capacity(lowered.items.len());
+        let mut verdicts = Vec::with_capacity(lowered.items.len());
         for (item, typing) in lowered
             .items
             .iter()
             .zip(resumed.typings().skip(prior_item_count))
         {
-            outcomes.push(self.process_item(item, typing));
+            let (outcome, verdict) = self.process_item(item, typing);
+            outcomes.push(outcome);
+            verdicts.push(verdict);
         }
         debug_assert_eq!(
             outcomes.len(),
             lowered.items.len(),
             "resume yields one typing and outcome per appended item"
+        );
+        debug_assert_eq!(
+            verdicts.len(),
+            outcomes.len(),
+            "every item's outcome is paired with exactly one kernel verdict"
         );
         self.program = edited;
         self.checkpoints = resumed.into_checkpoints();
@@ -362,33 +421,62 @@ impl Session
         for module in lowered.foreign {
             self.foreign.insert(module.name.clone(), module);
         }
-        Ok(Submission { report, outcomes })
+        Ok(Submission {
+            report,
+            outcomes,
+            kernel: verdicts,
+        })
     }
 
-    /// Projects one engine-owned typing into the session's evaluation outcome.
+    /// Projects one engine-owned typing into the session's evaluation outcome
+    /// and the kernel's verdict on the same item.
+    ///
+    /// The two are independent: the outcome is produced first and the kernel is
+    /// offered afterwards, so nothing the kernel decides can reach the typing,
+    /// the binding, or the evaluation of the item it decided about.
     fn process_item(
         &mut self,
         item: &Item,
         typing: &ItemTyping,
-    ) -> ItemOutcome
+    ) -> (ItemOutcome, KernelVerdict)
     {
         match *typing {
             | ItemTyping::Definition {
                 ref name,
                 ref ty,
                 bound,
-            } => self.define(name, item, ty.clone(), bound.into()),
-            | ItemTyping::Expression { ref ty } => ItemOutcome::Expression {
-                value: run_comp_with_prelude(
-                    &eval_chain(&self.defs, &item.term),
-                    self.prelude.as_bindings(),
-                ),
-                ty: ty.clone(),
+            } => {
+                let outcome = self.define(name, item, ty.clone(), bound.into());
+                let verdict = self.kernel.offer(DefinitionOffer {
+                    name: DefinitionName::from(name),
+                    term: &item.term,
+                    ty,
+                });
+                (outcome, verdict)
             },
-            | ItemTyping::TypeError { ref error } => ItemOutcome::TypeError {
-                error: error.clone(),
-            },
-            | ItemTyping::Holey => ItemOutcome::Holey,
+            | ItemTyping::Expression { ref ty } => (
+                ItemOutcome::Expression {
+                    value: run_comp_with_prelude(
+                        &eval_chain(&self.defs, &item.term),
+                        self.prelude.as_bindings(),
+                    ),
+                    ty: ty.clone(),
+                },
+                KernelVerdict::Withheld {
+                    reason: WithheldReason::Expression,
+                },
+            ),
+            | ItemTyping::TypeError { ref error } => (
+                ItemOutcome::TypeError {
+                    error: error.clone(),
+                },
+                KernelVerdict::Withheld {
+                    reason: WithheldReason::Untyped,
+                },
+            ),
+            | ItemTyping::Holey => (ItemOutcome::Holey, KernelVerdict::Withheld {
+                reason: WithheldReason::Holey,
+            }),
         }
     }
 

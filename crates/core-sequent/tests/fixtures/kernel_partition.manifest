@@ -1,16 +1,16 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 160
-; corpus-fixtures-b3sum: ea1e02de3a338879dcbec354d7d5b3eb8251c4aeffd6cde57cda76347c100f4b
+; items: 165
+; corpus-fixtures-b3sum: a0879d13dfa301131de60794ad716aca125d4fdae265df32ba5e89b247d39436
 ; class declared-data: 8
 ; class effects-control: 11
-; class eligible: 21
+; class eligible: 22
 ; class hole-unknown: 11
 ; class identity: 9
-; class machine-numeric: 1
+; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 2
-; class open-free-name: 62
+; class not-typeable: 3
+; class open-free-name: 64
 ; class structural-stock: 28
 ; columns: <source>\t<item-index>\t<class>
 model/01-first-computation.gandr	0	eligible
@@ -140,6 +140,11 @@ pathological/host-module-unknown-member.gandr	0	hole-unknown
 pathological/host-module-wrong-arity.gandr	0	hole-unknown
 pathological/identity/k-derivation.gandr	0	hole-unknown
 pathological/ill-typed-ascription.gandr	0	not-typeable
+pathological/kernel-admission-boundary.gandr	0	eligible
+pathological/kernel-admission-boundary.gandr	1	open-free-name
+pathological/kernel-admission-boundary.gandr	2	not-typeable
+pathological/kernel-admission-boundary.gandr	3	machine-numeric
+pathological/kernel-admission-boundary.gandr	4	open-free-name
 pathological/large-list-append-vs-set.gandr	0	structural-stock
 pathological/large-list-append-vs-set.gandr	1	open-free-name
 pathological/large-list-append-vs-set.gandr	2	open-free-name

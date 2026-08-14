@@ -691,6 +691,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-incremental",
  "gandr-core-sequent",
+ "gandr-kernel-core",
  "gandr-runtime-effects",
  "gandr-surface-grammar",
  "gandr-surface-parser",

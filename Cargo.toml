@@ -171,6 +171,7 @@ path = "crates/core-sequent"
 # - gandr-core-checker
 # - gandr-core-sequent (dev)
 # - gandr-storage-artifact
+# - gandr-surface-engine
 [workspace.dependencies.gandr-kernel-core]
 path = "crates/kernel-core"
 

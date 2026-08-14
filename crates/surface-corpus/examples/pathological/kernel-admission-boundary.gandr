@@ -1,0 +1,40 @@
+// Pathological witness: the certified kernel's admission boundary is narrower
+// than the checked language's, and this pins both sides of it.
+//
+// The session offers every typed definition to the kernel through the
+// elaborator-side bridge, and the kernel re-derives each one at its own choke
+// point before admitting it. What crosses is the closed S1 vocabulary: the base
+// atoms `Integer` / `String` / `Numeric`, products, sums, unit, thunks, and
+// returners. What does not cross has not been rejected — S1 is a standing
+// subset that grows, so a form outside it is a form the certified vocabulary
+// has not reached yet, and the definition types, binds, and evaluates exactly
+// as it would if the kernel were not there at all.
+//
+// `pair` is the case worth having a witness for: its body names `greeting`, so
+// it can only cross by resolving that name to the admission index `greeting`
+// entered at. A single-definition program never exercises that path.
+//
+// `wide` is the other side. A machine-numeric atom is outside the S1 base
+// stock, so it stays a perfectly ordinary bound definition that the kernel does
+// not carry — asserted rather than described, because a boundary nobody checks
+// is a boundary that moves silently.
+
+//@ expect: clean
+//@ expect-kernel-admitted: greeting
+//@ expect-kernel-admitted: pair
+//@ expect-kernel-admitted: identity
+//@ expect-kernel-outside-s1: wide
+//@ expect-def: wide
+//@ expect-last-value: "the value zone"
+
+def greeting = "the value zone";
+
+def pair = (greeting, greeting);
+
+def identity(x: Integer) -> F Integer {
+  ret x
+}
+
+def wide = 1u32;
+
+ret greeting

@@ -54,6 +54,8 @@
 //! | `expect` | `clean` / `goal` / `lowers` | whole-run expectation |
 //! | `expect-last-value` | rendered value | the last expression item returns this value |
 //! | `expect-def` | name | a definition of `name` entered scope |
+//! | `expect-kernel-admitted` | name | the definition of `name` crossed the certified kernel's choke point |
+//! | `expect-kernel-outside-s1` | name | the definition of `name` has no image in the kernel's closed S1 vocabulary |
 //! | `expect-diagnostic` | substring | some diagnostic message contains it |
 //! | `expect-diagnostics-all` | substring | at least one diagnostic, and EVERY diagnostic message contains it |
 //! | `expect-attribute` | schema name | a `Report.attributes` row has this schema (§5 projection) |
@@ -118,6 +120,7 @@ use gandr_surface_engine::desc_cells::DescCells;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
 use gandr_surface_engine::desc_elab::ElabDiagnostic;
 use gandr_surface_engine::desc_elab::elaborate_data_descs;
+use gandr_surface_engine::kernel::KernelVerdict;
 use gandr_surface_engine::lower::lower_source;
 use gandr_surface_engine::lower::node_kinds;
 use gandr_surface_engine::run::RunError as ShellRunError;
@@ -268,6 +271,23 @@ pub enum Expect
     ),
     /// `expect-def: name` — a definition of `name` typed and entered scope.
     Def(
+        /// The defined name.
+        String,
+    ),
+    /// `expect-kernel-admitted: name` — the definition of `name` lowered into
+    /// the kernel's closed S1 vocabulary and was admitted through
+    /// `Environment::add_decl`, so the example witnesses the engine's crossing
+    /// from checked core into the certified kernel rather than only its typing.
+    KernelAdmitted(
+        /// The defined name.
+        String,
+    ),
+    /// `expect-kernel-outside-s1: name` — the definition of `name` typed, and
+    /// the kernel bridge found no image for it in the closed S1 vocabulary. The
+    /// complement of [`Expect::KernelAdmitted`], so an example can pin the
+    /// admission boundary from both sides rather than asserting one side and
+    /// describing the other.
+    KernelOutsideS1(
         /// The defined name.
         String,
     ),
@@ -512,6 +532,12 @@ where
             },
             | "expect-last-value" => expects.push(Expect::LastValue(value.to_owned())),
             | "expect-def" => expects.push(Expect::Def(value.to_owned())),
+            | "expect-kernel-admitted" => {
+                expects.push(Expect::KernelAdmitted(value.to_owned()));
+            },
+            | "expect-kernel-outside-s1" => {
+                expects.push(Expect::KernelOutsideS1(value.to_owned()));
+            },
             | "expect-diagnostic" => expects.push(Expect::Diagnostic(value.to_owned())),
             | "expect-diagnostics-all" => expects.push(Expect::DiagnosticsAll(value.to_owned())),
             | "expect-attribute" => expects.push(Expect::Attribute(value.to_owned())),
@@ -583,6 +609,9 @@ struct SessionRun
     /// The schema name of every projected `Report.attributes` row, in
     /// submission order (the entity-attribute projection, §5).
     attributes: Vec<String>,
+    /// The kernel's verdict on every item, in submission order and
+    /// index-aligned with `outcomes`.
+    kernel: Vec<KernelVerdict>,
 }
 
 /// Runs a session-mode example: the file's items are submitted in order to a
@@ -606,6 +635,7 @@ fn check_session(
         goals: 0,
         outcomes: Vec::new(),
         attributes: Vec::new(),
+        kernel: Vec::new(),
     };
     for item in &items {
         match session.submit(item) {
@@ -618,6 +648,7 @@ fn check_session(
                     run.attributes.push(attribute.schema.clone());
                 }
                 run.outcomes.extend(submission.outcomes.iter().cloned());
+                run.kernel.extend(submission.kernel.iter().cloned());
             },
             | Err(error) => return vec![format!("infrastructure lowering failed: {error}")],
         }
@@ -745,6 +776,12 @@ fn session_failure(
                 Some(format!("expected a bound definition of `{name}`"))
             }
         },
+        | Expect::KernelAdmitted(ref name) => {
+            kernel_verdict_failure(run, DefinedName(name), KernelExpectation::Admitted)
+        },
+        | Expect::KernelOutsideS1(ref name) => {
+            kernel_verdict_failure(run, DefinedName(name), KernelExpectation::OutsideS1)
+        },
         | Expect::Diagnostic(ref needle) => {
             let found = run
                 .diagnostics
@@ -827,6 +864,93 @@ fn session_failure(
         | Expect::DescComposites(_)
         | Expect::DescUnitConsumers => Some("directive is not valid in session mode".to_owned()),
     }
+}
+
+/// A defined name an expectation names.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct DefinedName<'name>(&'name str);
+
+/// Which side of the kernel's admission boundary an expectation names.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum KernelExpectation
+{
+    /// The definition crossed the choke point.
+    Admitted,
+    /// The definition has no S1 image.
+    OutsideS1,
+}
+
+impl KernelExpectation
+{
+    /// How the expectation reads in a failure message.
+    #[inline]
+    fn wording(self) -> HarnessLabel
+    {
+        match self {
+            | Self::Admitted => HarnessLabel("admitted by the kernel"),
+            | Self::OutsideS1 => HarnessLabel("outside the kernel's S1 vocabulary"),
+        }
+    }
+}
+
+/// The `expect-kernel-admitted` / `expect-kernel-outside-s1` predicate: the
+/// item defining `name` got the verdict `expectation` names.
+///
+/// The verdicts are index-aligned with the outcomes, so the definition is found
+/// among the outcomes and its verdict read at the same index. A name defined
+/// more than once holds when any of its items got that verdict, which matches
+/// how [`Expect::Def`] reads a redefinition.
+///
+/// # Contract
+/// - requires: `run.kernel` is index-aligned with `run.outcomes`, which
+///   [`check_session`] maintains by extending both from the same submission.
+/// - ensures: [`None`] exactly when some item defining `name` got the expected
+///   verdict.
+/// - fails: returns a message naming what the kernel did instead, so an example
+///   whose boundary moves says how rather than only that it moved.
+/// - panics: none.
+fn kernel_verdict_failure(
+    run: &SessionRun,
+    name: DefinedName<'_>,
+    expectation: KernelExpectation,
+) -> Option<String>
+{
+    let mut seen: Vec<&KernelVerdict> = Vec::new();
+    for (outcome, verdict) in run.outcomes.iter().zip(run.kernel.iter()) {
+        let ItemOutcome::Definition {
+            name: ref defined, ..
+        } = *outcome
+        else {
+            continue;
+        };
+        if defined != name.0 {
+            continue;
+        }
+        let holds = match expectation {
+            | KernelExpectation::Admitted => {
+                matches!(*verdict, KernelVerdict::Admitted { .. })
+            },
+            | KernelExpectation::OutsideS1 => {
+                matches!(*verdict, KernelVerdict::OutsideS1 { .. })
+            },
+        };
+        if holds {
+            return None;
+        }
+        seen.push(verdict);
+    }
+    let wording = expectation.wording().0;
+    if seen.is_empty() {
+        return Some(format!(
+            "expected the definition of `{}` to be {wording}; no item defines it",
+            name.0
+        ));
+    }
+    Some(format!(
+        "expected the definition of `{}` to be {wording}; got {seen:?}",
+        name.0
+    ))
 }
 
 /// The `expect: clean` predicate: no diagnostics, no goals, every definition
@@ -2049,6 +2173,27 @@ mod tests
             session_failure(&definition, &Expect::Def("nope".to_owned())),
             "bound definition of `nope`",
         );
+        assert_pass(session_failure(
+            &definition,
+            &Expect::KernelAdmitted("d".to_owned()),
+        ));
+        assert_fail(
+            session_failure(&definition, &Expect::KernelAdmitted("nope".to_owned())),
+            "no item defines it",
+        );
+        let outside = session_run(&["def wide = 1u32;"]);
+        assert_fail(
+            session_failure(&outside, &Expect::KernelAdmitted("wide".to_owned())),
+            "OutsideS1",
+        );
+        assert_pass(session_failure(
+            &outside,
+            &Expect::KernelOutsideS1("wide".to_owned()),
+        ));
+        assert_fail(
+            session_failure(&definition, &Expect::KernelOutsideS1("d".to_owned())),
+            "Admitted",
+        );
         assert_fail(
             session_failure(&definition, &Expect::LastValue("x".to_owned())),
             "none found",
@@ -2132,6 +2277,7 @@ mod tests
             goals: 0,
             outcomes: vec![first_outcome(&session_run(&["{ }"]))],
             attributes: Vec::new(),
+            kernel: Vec::new(),
         };
         assert_fail(clean_failure(&synthetic), "holey");
     }
@@ -2263,6 +2409,7 @@ mod tests
             goals: 0,
             outcomes: Vec::new(),
             attributes: Vec::new(),
+            kernel: Vec::new(),
         };
         for item in items {
             let item = PipelineSource::from(item.as_ref());
@@ -2276,6 +2423,7 @@ mod tests
                         run.attributes.push(attribute.schema.clone());
                     }
                     run.outcomes.extend(submission.outcomes.iter().cloned());
+                    run.kernel.extend(submission.kernel.iter().cloned());
                 },
                 | Err(error) => {
                     panic!("submitting `{}` failed: {error}", item.as_ref());

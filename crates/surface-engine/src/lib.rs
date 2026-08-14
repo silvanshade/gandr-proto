@@ -39,6 +39,15 @@
 //!   projects nothing else. `tests/incremental` resumes over real source
 //!   through the seam against the surface prelude, the differential gate's
 //!   front-end half.
+//! - **Kernel admission** ([`kernel`]): the engine's crossing from checked core
+//!   into the certified kernel. A [`session::Session`] offers every typed
+//!   definition to [`gandr_core_checker::kernel_bridge`] and the kernel's
+//!   `add_decl` choke point, accumulating the definitions that lower into the
+//!   closed S1 vocabulary as one [`kernel::KernelAdmissions`] environment and
+//!   reporting one [`kernel::KernelVerdict`] per item. A session is the first
+//!   consumer to populate the bridge's naming environment, so one definition
+//!   can reach another through a kernel constant. The crossing observes and
+//!   never decides: typing and evaluation are complete without it.
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the "edit-action" the incremental-typing and
 //!   structure-editor literature both consume but leave out of scope
@@ -118,6 +127,7 @@ pub mod goals;
 )]
 pub mod host;
 pub mod item_source;
+pub mod kernel;
 pub mod link;
 pub mod lower;
 pub mod namespace;
