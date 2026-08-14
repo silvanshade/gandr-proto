@@ -58,6 +58,10 @@ open import Data.Maybe.Base
 open import Data.Product.Base
   using (_×_)
   using (_,_)
+open import Data.Sum.Base
+  using (_⊎_)
+  using (inj₁)
+  using (inj₂)
 open import Data.Nat.Base
   using (ℕ)
   using (zero)
@@ -175,6 +179,32 @@ recorded-path-incomparable :
   ¬ (∀ {x y} → x ≈ y → Kernel pathᵃ x y)
   × ¬ (∀ {x y} → Kernel pathᵃ x y → x ≈ y)
 recorded-path-incomparable = ≈-not-⊆-recorded-path , recorded-path-not-⊆-≈
+
+------------------------------------------------------------------------------
+-- Both cases of the trichotomy, paid for and realized.
+------------------------------------------------------------------------------
+
+-- `Classified` is a datum rather than a theorem, so it has to be supplied per
+-- observation. These are the two payments this tree makes, and they land on
+-- opposite sides — which is what stops `classified-trichotomy` from being a
+-- statement whose disjunction is always the same branch.
+boundary-classified : Classified boundary
+boundary-classified = inj₁ boundary-invariant
+
+recorded-path-classified : Classified pathᵃ
+recorded-path-classified = inj₂ (climb , detour , presentations , paths-differ)
+
+-- And the trichotomy applied at each. The boundary lands left — its kernel
+-- strictly contains replay-equivalence — and the recorded leg lands right,
+-- incomparable. Both conjuncts' right-hand side is the universal direction, so
+-- neither case escapes it.
+boundary-case :
+  (Invariant boundary × ¬ Sound boundary) ⊎ (¬ Invariant boundary × ¬ Sound boundary)
+boundary-case = classified-trichotomy boundary stuck-invalid boundary-classified
+
+recorded-path-case :
+  (Invariant pathᵃ × ¬ Sound pathᵃ) ⊎ (¬ Invariant pathᵃ × ¬ Sound pathᵃ)
+recorded-path-case = classified-trichotomy pathᵃ stuck-invalid recorded-path-classified
 
 ------------------------------------------------------------------------------
 -- The invertible instance, and a groupoid pin.

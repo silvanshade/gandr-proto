@@ -23,19 +23,42 @@
 --
 -- **`boundary-invariant` is the standing counterexample to reading the second
 -- direction as universal**: the boundary is an observation, and
--- replay-equivalence sits inside its kernel outright. So the true universal
--- statement is weaker than incomparability, and still worth having —
--- **every observation's kernel either strictly contains replay-equivalence or
--- is incomparable with it, and none is contained in it.** Incomparability is
--- the case where the observation reads something the identity forgets; the
--- boundary is the case where it does not.
+-- replay-equivalence sits inside its kernel outright.
 --
--- An earlier revision of this header claimed incomparability for EVERY
--- observation. `boundary-invariant`, a hundred lines below it, refutes that —
--- and the same file's `kernel-⊆-≈-on-valid` says which observations are the
--- exception. Recorded rather than quietly rewritten, because a file whose
--- header contradicts its own lemma is the failure this tree keeps its claims in
--- types to prevent.
+-- ── EXACTLY WHAT IS PROVED, AND THE EXHAUSTIVE FORM IS NOT ──────────────────
+-- Three statements, and the shape of each is the point:
+--
+--   1. **Universal** — `kernel-not-⊆-≈`: no observation's kernel is contained
+--      in replay-equivalence, given one certificate that fails to replay.
+--   2. **Conditional on invariance** — an `Invariant` observation has
+--      replay-equivalence inside its kernel, and STRICTLY, by (1).
+--      `boundary-invariant` is one.
+--   3. **Conditional on a separating pair** — `≈-not-⊆-kernel`: an explicit
+--      replay-equivalent pair the observation separates gives `¬ Invariant f`,
+--      hence incomparability with (1). `Examples` supplies one.
+--
+-- **What is NOT proved is that (2) and (3) are exhaustive.** Nothing here
+-- decides `Invariant f` for an arbitrary `f`, and nothing extracts a separating
+-- pair from a proof that `f` is not invariant. The first needs excluded middle
+-- at that proposition; the second needs `¬∀ → ∃¬`. A `--safe` module with no
+-- postulates carries neither, so **"every observation either … or …" is a
+-- classical gloss on this file and not a theorem of it.**
+--
+-- `Classified` below is what closes that gap constructively, and it closes it
+-- by ASKING rather than proving: a classified observation is one where the two
+-- cases have been separated by hand. `classified-trichotomy` is then a genuine
+-- theorem, and both observations this tree cares about are classified. The cost
+-- is exactly that the classification is a per-observation datum — `Invariant f`
+-- quantifies over all pairs of certificates, so there is no decision procedure
+-- to appeal to in general, and each observation pays for its own case.
+--
+-- Two earlier revisions of this header overstated this, in the same direction
+-- both times: first claiming incomparability for every observation, which
+-- `boundary-invariant` refutes; then claiming the exhaustive trichotomy, which
+-- is classically true and is not what the types below say. Recorded rather than
+-- quietly rewritten, because a file whose header outruns its own lemmas is the
+-- failure this tree keeps its claims in types to prevent — and it took two
+-- rounds of that to notice the second one.
 --
 -- ── WHAT IS INSTANTIATED, AND WHAT ONLY FOLLOWS ─────────────────────────────
 -- `Examples` instantiates both directions for ONE observation: the recorded
@@ -81,9 +104,14 @@ open import Gandr.Metatheory.Certificate.Base
 
 open import Data.Product.Base
   using (Σ)
+  using (_×_)
   using (_,_)
   using (proj₁)
   using (proj₂)
+open import Data.Sum.Base
+  using (_⊎_)
+  using (inj₁)
+  using (inj₂)
 open import Level
   using (Level)
   using (_⊔_)
@@ -216,6 +244,41 @@ module Facts {ℓ} (S : ReplaySystem ℓ) where
     → ¬ Sound f
     -- and the counterexample is `c` against itself
   kernel-not-⊆-≈ f invalid contained = ≈-not-refl invalid (contained (kernel-refl f))
+
+  ----------------------------------------------------------------------------
+  -- The exhaustive form, and the datum it has to be paid for with.
+  ----------------------------------------------------------------------------
+
+  -- A CLASSIFIED observation is one whose case has been settled by hand: either
+  -- it is invariant, or a replay-equivalent pair it separates is exhibited.
+  --
+  -- This is a datum, not a theorem, and that is the honest content. Deciding it
+  -- in general would need `Invariant f` decidable, and `Invariant f` quantifies
+  -- over all pairs of certificates — so there is no procedure to appeal to, and
+  -- each observation pays for its own case. What the type buys is that the
+  -- payment is visible: a consumer of `classified-trichotomy` can see it was
+  -- made rather than assumed.
+  Classified : ∀ {ℓ′} {X : Set ℓ′}
+    → (Certificate → X)
+    → Set (ℓ ⊔ ℓ′)
+  Classified f =
+    Invariant f
+      ⊎ Σ Certificate (λ a → Σ Certificate (λ b → (a ≈ b) × ¬ (f a ≡ f b)))
+
+  -- THE TRICHOTOMY, for classified observations and for no others: the kernel
+  -- either strictly contains replay-equivalence or is incomparable with it, and
+  -- the right-hand conjunct of both cases is the universal direction.
+  --
+  -- Read the hypothesis as the statement's scope rather than as bookkeeping.
+  -- Dropping it gives the sentence this file twice claimed and never proved.
+  classified-trichotomy : ∀ {ℓ′} {X : Set ℓ′} (f : Certificate → X) {c}
+    → ¬ Replays c
+    → Classified f
+    → (Invariant f × ¬ Sound f) ⊎ (¬ Invariant f × ¬ Sound f)
+  classified-trichotomy f invalid (inj₁ inv) =
+    inj₁ (inv , kernel-not-⊆-≈ f invalid)
+  classified-trichotomy f invalid (inj₂ (a , b , a≈b , separated)) =
+    inj₂ (≈-not-⊆-kernel f a≈b separated , kernel-not-⊆-≈ f invalid)
 
   ----------------------------------------------------------------------------
   -- Where containment does hold: the valid subtype, and only through the
