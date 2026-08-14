@@ -26,6 +26,14 @@ regex = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
+# The level algebra, for tests that build a universe kind. `gandr-kernel-core`
+# exposes `Level` through its public API (`ValueType::Universe`,
+# `TermArena::value_type_universe`) without re-exporting it, so a caller naming
+# one depends on the strata crate directly — the same posture the kernel's own
+# test suite takes. The sealing rung needs it because an abstract type is
+# declared AT a universe kind; the pass that flattens sealed modules into kernel
+# declarations will need it as a regular dependency for the same reason.
+gandr-kernel-strata.workspace = true
 # proptest is also an optional regular dep (for the feature-gated `strategies`
 # module): this dev-dep makes it available to the crate's own `#[cfg(test)]`
 # conformance suite under a bare `cargo test` (feature off), while the optional

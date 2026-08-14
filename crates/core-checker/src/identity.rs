@@ -338,7 +338,13 @@ fn subst_type(
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Unknown
-                | ValueType::Universe => {
+                | ValueType::Universe
+                // A sealed atom is a leaf with no children to substitute into:
+                // it carries an identity and nothing else, so substitution
+                // passes it through unchanged. That is the same shape opacity
+                // takes everywhere — an absence of structure rather than a
+                // guard against reaching it.
+                | ValueType::Sealed(_) => {
                     values.push(ty.clone());
                 },
                 | ValueType::Prod(ref fst, ref snd) => {

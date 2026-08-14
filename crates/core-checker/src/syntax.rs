@@ -36,6 +36,7 @@ use crate::grade::Grade;
 use crate::prim::NativePrim;
 use crate::types::CompType;
 use crate::types::DataId;
+use crate::types::SealId;
 use crate::types::ValueType;
 
 /// A stable, typed identifier for a node in an arena-backed IR carrier.
@@ -304,6 +305,12 @@ pub enum ValueTypeNode
     /// The predicative code universe `Type` (ADR-81), the flat mirror of
     /// [`crate::types::ValueType::Universe`].
     Universe,
+    /// A sealed abstract type, the flat mirror of
+    /// [`crate::types::ValueType::Sealed`].
+    ///
+    /// A leaf, like its structural counterpart: the identity is the whole node,
+    /// because there is no representation recorded to give it a child.
+    Sealed(SealId),
     /// The dependent pair `Σ(binder : fst). snd` (ADR-81), the flat mirror of
     /// [`crate::types::ValueType::Sigma`]. The `binder` is an owned attribute
     /// (a value-variable name); the head and tail are type-arena ids.
@@ -3234,6 +3241,13 @@ impl FlatArena
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
             },
+            | ValueType::Sealed(ref seal) => {
+                let id = self
+                    .value_types
+                    .alloc(ValueTypeNode::Sealed(seal.clone()))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::ValueType(id));
+            },
             | ValueType::Sigma {
                 ref fst,
                 ref binder,
@@ -4321,6 +4335,9 @@ impl FlatArena
             },
             | ValueTypeNode::Universe => {
                 results.push(StructuralRoot::ValueType(ValueType::Universe));
+            },
+            | ValueTypeNode::Sealed(ref seal) => {
+                results.push(StructuralRoot::ValueType(ValueType::Sealed(seal.clone())));
             },
             | ValueTypeNode::Sigma {
                 fst,

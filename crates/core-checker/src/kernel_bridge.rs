@@ -80,6 +80,7 @@ use crate::syntax::Comp;
 use crate::syntax::Side as CoreSide;
 use crate::syntax::Value;
 use crate::types::CompType;
+use crate::types::SealId;
 use crate::types::ValueType;
 
 /// Why a core form has no image in the closed S1 vocabulary.
@@ -105,6 +106,19 @@ pub enum BridgeRejection
     /// A computation-position typed hole `?u`.
     #[error("a computation hole has no S1 image (S1 is a closed, hole-free vocabulary)")]
     ComputationHole,
+    /// A sealed abstract type whose atom the [`BridgeContext`] does not bind.
+    ///
+    /// The atom is perfectly representable at S1 — the rejection is about the
+    /// *binding*, not the former. Only the pass that flattens a sealed module
+    /// into kernel declarations knows which admission position an atom landed
+    /// at, so lowering one without that binding would mean inventing a
+    /// position: an abstraction leak the kernel would then certify.
+    #[error(
+        "the sealed atom `{}.{}` is bound to no admitted abstract-type declaration",
+        .0.declaration(),
+        .0.component()
+    )]
+    UnboundSeal(SealId),
     /// The unknown value type `?` (the Hazelnut hole type).
     #[error("the unknown value type `?` has no S1 image")]
     UnknownValueType,
@@ -269,6 +283,7 @@ impl BridgeRejection
                 BridgeExclusionClass("identity")
             },
             | Self::UniverseType => BridgeExclusionClass("universe"),
+            | Self::UnboundSeal(_) => BridgeExclusionClass("unbound-seal"),
             | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => {
                 BridgeExclusionClass("machine-numeric")
             },
@@ -299,12 +314,26 @@ struct BridgeInteger(i64);
 /// elaboration populates it so a later declaration references an earlier one
 /// through a [`Value::Constant`](gandr_kernel_core) admission index (the
 /// append-only environment's cross-declaration reference form).
-#[repr(transparent)]
 #[derive(Clone, Debug, Default)]
 pub struct BridgeContext
 {
     /// Free name → the admission index of the declaration it resolves to.
     constants: BTreeMap<String, ConstantIndex>,
+    /// Sealed atom → the admission index of its abstract-type declaration.
+    ///
+    /// The two halves of a seal's identity are **not** the same object, and the
+    /// map is where they meet. Elaborator-side an atom is a
+    /// [`SealId`] — a minting serial and its site, chosen while
+    /// elaborating; kernel-side it is an *admission position*, chosen by the
+    /// order the flattening export admits declarations in. Only the pass that
+    /// performs that export knows both, so it supplies the binding here rather
+    /// than the bridge guessing one.
+    ///
+    /// A sealed type whose atom is unbound is [`BridgeRejection::UnboundSeal`],
+    /// never a fabricated position: an atom lowered to the wrong declaration
+    /// would be an *abstraction leak the kernel would then certify*, which is
+    /// the one failure a bridge rejection is cheap enough to prevent outright.
+    seals: BTreeMap<SealId, ConstantIndex>,
 }
 
 impl BridgeContext
@@ -331,6 +360,34 @@ impl BridgeContext
     {
         let _prior = self.constants.insert(name.into(), index);
         self
+    }
+
+    /// Bind a sealed atom to the admission index of its abstract-type
+    /// declaration (builder style).
+    ///
+    /// The flattening export calls this once per atom it admits, so the bridge
+    /// resolves a sealed type by lookup rather than by construction.
+    #[inline]
+    #[must_use]
+    pub fn with_seal(
+        mut self,
+        seal: SealId,
+        index: ConstantIndex,
+    ) -> Self
+    {
+        let _prior = self.seals.insert(seal, index);
+        self
+    }
+
+    /// The admission index a sealed atom resolves to, if it is bound.
+    #[inline]
+    #[must_use]
+    pub fn seal(
+        &self,
+        seal: &SealId,
+    ) -> Option<ConstantIndex>
+    {
+        self.seals.get(seal).copied()
     }
 
     /// The admission index a free name resolves to, if any.
@@ -444,11 +501,12 @@ fn produced_comp_type(
 /// - witness: `tests::list_type_is_rejected`
 #[inline]
 pub fn lower_value_type(
+    context: &BridgeContext,
     arena: &mut TermArena,
     value_type: &ValueType,
 ) -> Result<ValueTypeId, BridgeRejection>
 {
-    let out = lower_type(arena, TypeGoal::Value(value_type))?;
+    let out = lower_type(context, arena, TypeGoal::Value(value_type))?;
     Ok(produced_value_type(arena, out))
 }
 
@@ -478,11 +536,12 @@ pub fn lower_value_type(
 /// - witness: `tests::effectful_returner_is_rejected`
 #[inline]
 pub fn lower_comp_type(
+    context: &BridgeContext,
     arena: &mut TermArena,
     comp_type: &CompType,
 ) -> Result<CompTypeId, BridgeRejection>
 {
-    let out = lower_type(arena, TypeGoal::Comp(comp_type))?;
+    let out = lower_type(context, arena, TypeGoal::Comp(comp_type))?;
     Ok(produced_comp_type(arena, out))
 }
 
@@ -497,6 +556,7 @@ pub fn lower_comp_type(
 /// - fails: the first [`BridgeRejection`] a former surfaces.
 /// - panics: none.
 fn lower_type<'core>(
+    context: &BridgeContext,
     arena: &mut TermArena,
     root: TypeGoal<'core>,
 ) -> Result<TypeOut, BridgeRejection>
@@ -532,6 +592,12 @@ fn lower_type<'core>(
                 | ValueType::Path { .. } => return Err(BridgeRejection::PathType),
                 | ValueType::Data { .. } => return Err(BridgeRejection::DataType),
                 | ValueType::Universe => return Err(BridgeRejection::UniverseType),
+                | ValueType::Sealed(ref seal) => match context.seal(seal) {
+                    | Some(index) => TypeOut::Value(arena.value_type_abstract(index)),
+                    | None => {
+                        return Err(BridgeRejection::UnboundSeal(seal.clone()));
+                    },
+                },
                 | ValueType::Sigma { .. } => return Err(BridgeRejection::SigmaType),
                 | ValueType::Unknown => return Err(BridgeRejection::UnknownValueType),
             },
@@ -1149,7 +1215,7 @@ pub fn lower_value_definition(
     declared: &ValueType,
 ) -> Result<(ValueTypeId, ValueId), BridgeRejection>
 {
-    let declared_id = lower_value_type(arena, declared)?;
+    let declared_id = lower_value_type(context, arena, declared)?;
     let body_id = lower_value(context, arena, value)?;
     Ok((declared_id, body_id))
 }
@@ -1187,7 +1253,7 @@ pub fn lower_computation_definition(
     declared: &CompType,
 ) -> Result<(ValueTypeId, ValueId), BridgeRejection>
 {
-    let comp_type = lower_comp_type(arena, declared)?;
+    let comp_type = lower_comp_type(context, arena, declared)?;
     let declared_id = arena.value_type_thunk(comp_type);
     let computation = lower_comp(context, arena, comp)?;
     let body_id = arena.value_thunk(computation);

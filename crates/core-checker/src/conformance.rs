@@ -233,7 +233,13 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
             | StaticGoal::Value(ty) => match *ty {
                 // The code universe carries no children, so it is trivially
                 // static (ADR-81), joining the leaf atoms and unit.
-                | ValueType::Atom(_) | ValueType::Unit | ValueType::Universe => {},
+                // A sealed atom joins them for the same reason and one more:
+                // it has no children at all, so there is nowhere for an
+                // `Unknown` to hide inside one.
+                | ValueType::Atom(_)
+                | ValueType::Unit
+                | ValueType::Universe
+                | ValueType::Sealed(_) => {},
                 // Products, sums, and dependent pairs decompose the same way:
                 // static iff both components are. The dependent pair's binder
                 // is a name, carrying no type-level `Unknown` (ADR-81).
@@ -5240,6 +5246,9 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     outputs.push(RebuildOutput::Value(ValueType::Atom(name.clone())));
                 },
                 | ValueType::Unit => outputs.push(RebuildOutput::Value(ValueType::Unit)),
+                | ValueType::Sealed(ref seal) => {
+                    outputs.push(RebuildOutput::Value(ValueType::Sealed(seal.clone())));
+                },
                 | ValueType::Prod(ref fst, ref snd) => {
                     steps.push(RebuildStep::Frame(RebuildFrame::ValueProd));
                     steps.push(RebuildStep::Value(snd));

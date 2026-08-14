@@ -17,6 +17,8 @@ use gandr_kernel_core::LevelSignature;
 use gandr_kernel_core::TermArena;
 use gandr_kernel_core::read;
 use gandr_kernel_core::write;
+use gandr_kernel_strata::Level;
+use gandr_kernel_strata::LevelConstant;
 
 use super::BridgeContext;
 use super::BridgeRejection;
@@ -32,6 +34,7 @@ use crate::syntax::Comp;
 use crate::syntax::Value;
 use crate::types::CompType;
 use crate::types::DataId;
+use crate::types::SealId;
 use crate::types::ValueType;
 
 /// An empty naming environment (the closed-program case).
@@ -84,7 +87,7 @@ fn returner_type_lowers()
     let mut arena = TermArena::new();
     let comp_type = CompType::returner(ValueType::integer());
     assert!(
-        lower_comp_type(&mut arena, &comp_type).is_ok(),
+        lower_comp_type(&BridgeContext::new(), &mut arena, &comp_type).is_ok(),
         "the pure returner F Integer lowers"
     );
 }
@@ -95,7 +98,7 @@ fn product_type_lowers()
     let mut arena = TermArena::new();
     let value_type = ValueType::prod(ValueType::integer(), ValueType::string());
     assert!(
-        lower_value_type(&mut arena, &value_type).is_ok(),
+        lower_value_type(&BridgeContext::new(), &mut arena, &value_type).is_ok(),
         "the product Integer × String lowers"
     );
 }
@@ -273,12 +276,12 @@ fn hole_unknown_class_rejects_exactly()
     );
     assert_eq!(
         Err(BridgeRejection::UnknownValueType),
-        lower_value_type(&mut arena, &ValueType::Unknown),
+        lower_value_type(&BridgeContext::new(), &mut arena, &ValueType::Unknown),
         "the unknown value type rejects exactly"
     );
     assert_eq!(
         Err(BridgeRejection::UnknownComputationType),
-        lower_comp_type(&mut arena, &CompType::Unknown),
+        lower_comp_type(&BridgeContext::new(), &mut arena, &CompType::Unknown),
         "the unknown computation type rejects exactly"
     );
 }
@@ -359,7 +362,7 @@ fn sigma_split_class_rejects_exactly()
     let sigma = ValueType::sigma(ValueType::Unit, "x", ValueType::Unit);
     assert_eq!(
         Err(BridgeRejection::SigmaType),
-        lower_value_type(&mut arena, &sigma),
+        lower_value_type(&BridgeContext::new(), &mut arena, &sigma),
         "a dependent-pair type rejects with the exact SigmaType variant"
     );
 }
@@ -382,8 +385,58 @@ fn universe_class_rejects_exactly()
     let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::UniverseType),
-        lower_value_type(&mut arena, &ValueType::Universe),
+        lower_value_type(&BridgeContext::new(), &mut arena, &ValueType::Universe),
         "the un-levelled code universe rejects with the exact UniverseType variant"
+    );
+}
+
+/// A sealed atom lowers to the kernel's abstract-type reference when the
+/// context binds it, and the kernel then admits a member typed at it.
+///
+/// This is the seam the whole rung exists to close: an elaborator-side identity
+/// (a minting serial and its site) becomes a kernel-side one (an admission
+/// position), and the kernel re-derives opacity from the position alone.
+#[test]
+fn a_bound_sealed_atom_lowers_to_the_kernel_atom()
+{
+    let seal = SealId::new(0_u64, "Counter", "t");
+    let mut environment = Environment::new();
+    // Admit the atom itself, kernel-native, and bind the seal to its position.
+    let mut builder = environment.stage();
+    let kind = builder
+        .arena()
+        .value_type_universe(Level::constant(LevelConstant::from(0_u64)));
+    let declaration = builder.abstract_type(LevelSignature::monomorphic(), kind);
+    let atom = environment
+        .add_decl(declaration)
+        .expect("the abstract type admits");
+    let context = BridgeContext::new().with_seal(seal.clone(), atom.position());
+
+    // A member declared at the atom: `axiom : t`.
+    let mut builder = environment.stage();
+    let declared = lower_value_type(&context, builder.arena(), &ValueType::Sealed(seal))
+        .expect("a bound sealed atom lowers");
+    let member = builder.axiom(LevelSignature::monomorphic(), declared);
+    assert!(
+        environment.add_decl(member).is_ok(),
+        "the kernel admits a declaration typed at the lowered atom"
+    );
+}
+
+/// An unbound sealed atom is refused rather than lowered to a guessed position.
+///
+/// Inventing a position here would be worse than failing: it would name *some*
+/// admitted declaration, and the kernel would then certify a member at the
+/// wrong abstraction — a leak with a proof attached.
+#[test]
+fn an_unbound_sealed_atom_is_refused()
+{
+    let mut arena = TermArena::new();
+    let seal = SealId::new(3_u64, "Counter", "t");
+    assert_eq!(
+        Err(BridgeRejection::UnboundSeal(seal.clone())),
+        lower_value_type(&BridgeContext::new(), &mut arena, &ValueType::Sealed(seal)),
+        "a sealed atom with no binding is refused, never lowered to a guess"
     );
 }
 
@@ -398,7 +451,7 @@ fn machine_numeric_class_rejects_exactly()
     );
     assert_eq!(
         Err(BridgeRejection::UnsupportedBaseAtom(String::from("u64"))),
-        lower_value_type(&mut arena, &ValueType::atom("u64")),
+        lower_value_type(&BridgeContext::new(), &mut arena, &ValueType::atom("u64")),
         "a machine-numeric atom rejects with the exact UnsupportedBaseAtom variant"
     );
 }

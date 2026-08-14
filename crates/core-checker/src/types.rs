@@ -84,6 +84,97 @@ impl DataId
     }
 }
 
+/// The **core-local nominal identity of a sealed abstract type**: the fresh
+/// atom one opaque ascription mints for one abstract type component.
+///
+/// It is [`DataId`]'s sibling and deliberately so — the declared-data handle
+/// already compares a minted id *before* its structural carrier, and that is
+/// abstract-type behaviour. The difference is what each one carries: a `DataId`
+/// names a type whose carrier lives in a decl table, and a `SealId` names a
+/// type that **has no carrier recorded anywhere**. There is nothing to look up,
+/// which is what opacity is.
+///
+/// # Identity is the site, and that is what makes freshness checkable
+///
+/// A seal's identity is its **site** — which declaration sealed it, and which
+/// abstract type component of the signature it stands for — plus the monotone
+/// `serial` minting assigned. The site is what makes re-minting
+/// *deterministic*: elaborating the same program again meets the same sites in
+/// the same order and mints the same serials, so "these atoms are fresh" is a
+/// claim [`SealTable`](crate::seal::SealTable) can re-derive rather than one
+/// the elaborator asserts.
+///
+/// Two seals of the same component in two declarations are distinct, and two
+/// seals of the same declaration's component are the *same* — which is exactly
+/// declaration-granular sealing seen from the identity side.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SealId
+{
+    /// The monotone serial assigned in minting order within one elaboration.
+    serial: TypeSerial,
+    /// The declaration whose opaque ascription minted this atom.
+    declaration: String,
+    /// The abstract type component of that signature this atom stands for.
+    component: String,
+}
+
+impl SealId
+{
+    /// Mint a sealed-atom identity at `serial` for `component` of
+    /// `declaration`.
+    ///
+    /// # Contract
+    /// - requires: nothing; uniqueness is
+    ///   [`SealTable`](crate::seal::SealTable)'s obligation, not this
+    ///   constructor's.
+    /// - ensures: preserves all three fields exactly; two ids are equal iff all
+    ///   three are.
+    /// - provides: the identity an opaque ascription binds an abstract type
+    ///   component to.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn new<S>(
+        serial: S,
+        declaration: &str,
+        component: &str,
+    ) -> Self
+    where
+        S: Into<TypeSerial>,
+    {
+        Self {
+            serial: serial.into(),
+            declaration: declaration.to_owned(),
+            component: component.to_owned(),
+        }
+    }
+
+    /// The minting-order serial.
+    #[inline]
+    #[must_use]
+    pub fn serial(&self) -> TypeSerial
+    {
+        self.serial
+    }
+
+    /// The declaration whose opaque ascription minted this atom.
+    #[inline]
+    #[must_use]
+    pub fn declaration(&self) -> &str
+    {
+        self.declaration.as_str()
+    }
+
+    /// The abstract type component this atom stands for.
+    #[inline]
+    #[must_use]
+    pub fn component(&self) -> &str
+    {
+        self.component.as_str()
+    }
+}
+
 /// A value (positive) type `A`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ValueType
@@ -309,6 +400,32 @@ pub enum ValueType
         /// The dependent tail type `B`, which may mention `binder`.
         snd: Rc<Self>,
     },
+    /// A **sealed abstract type** `Sealed(a)` — the fresh nominal atom an
+    /// opaque ascription mints for one abstract type component.
+    ///
+    /// The one positive former with **no structure at all**, and that absence
+    /// is the content. [`Data`](ValueType::Data) is nominal *over* a
+    /// carrier the decl table holds; a seal is nominal over nothing,
+    /// because a client that could reach the representation is a client the
+    /// seal failed against.
+    ///
+    /// **Opacity is a property of what is not here.** No field records a
+    /// representation, so no code path can unfold one, and a leak is not a
+    /// check that has to succeed — it is a value that cannot be written.
+    /// Subtyping compares the [`SealId`] and relates a seal to nothing
+    /// else, not even to the type it was sealed from ([`crate::subtype`]):
+    /// sealing is *generative*, so two ascriptions of structurally
+    /// identical implementations yield types that do not interchange,
+    /// exactly as two `data` declarations do.
+    ///
+    /// It has no introduction and no eliminator of its own. Values of a sealed
+    /// type are the values the sealed module exports, at the types the
+    /// signature gave them — which is why sealing needs no new term forms
+    /// and adds none.
+    Sealed(
+        /// The atom's minted nominal identity.
+        SealId,
+    ),
     /// The unknown (hole) type `?` of value sort (A2.2 holes extension;
     /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5 — the Hazelnut hole
     /// type).

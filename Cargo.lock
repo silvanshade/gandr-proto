@@ -593,6 +593,7 @@ name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
  "gandr-kernel-core",
+ "gandr-kernel-strata",
  "gandr-theory-nominal-automata",
  "no-panic",
  "proptest",

@@ -34,6 +34,16 @@ pub enum GandrSort
     /// holes with different identifiers type identically (ADR-41 D3). The
     /// Ψ+σ-bearing object is the CMTT staging node, not an atom.
     HoleAddr,
+    /// **Atom-role.** A sealed abstract type's identity: the fresh name an
+    /// opaque ascription mints for one abstract type component.
+    ///
+    /// It is a name and never an unknown, which is the load-bearing half. A
+    /// sealed type is not a type the checker is waiting to learn — it is one
+    /// there is nothing further to learn about, so it must never enter a
+    /// solver substitution's domain. Putting it on the atom side of
+    /// [`Sort::is_unifiable`] is what makes that structural rather than a
+    /// convention someone has to remember.
+    SealAtom,
     /// **Variable-role (reserved).** A solver type-variable: a unification
     /// unknown that a substitution binds. No consumer in v0 — the solver is not
     /// yet built; the sort is reserved so the boundary is documented from day
@@ -51,7 +61,9 @@ impl Sort for GandrSort
     fn is_unifiable(&self) -> Unifiability
     {
         match *self {
-            | Self::ContKey | Self::TmpHoist | Self::HoleAddr => Unifiability::ATOM_ROLE,
+            | Self::ContKey | Self::TmpHoist | Self::HoleAddr | Self::SealAtom => {
+                Unifiability::ATOM_ROLE
+            },
             | Self::TyVar | Self::GradeVar => Unifiability::VARIABLE_ROLE,
         }
     }

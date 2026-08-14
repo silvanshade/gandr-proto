@@ -319,6 +319,18 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                     | (&ValueType::Atom(ref lhs), &ValueType::Atom(ref rhs)) if lhs == rhs => {},
                     | (&ValueType::Unit, &ValueType::Unit)
                     | (&ValueType::Universe, &ValueType::Universe) => {},
+                    // A sealed atom relates to itself by identity and to nothing
+                    // else — the same nominal-before-structural discipline
+                    // `Data` takes, minus the carrier. The catch-all below is
+                    // what refuses a seal against its representation, so opacity
+                    // needs no arm of its own; this arm exists only so two
+                    // *references* to one atom relate, which pointer equality
+                    // alone would miss.
+                    | (&ValueType::Sealed(ref lhs), &ValueType::Sealed(ref rhs)) => {
+                        if lhs != rhs {
+                            return false.into();
+                        }
+                    },
                     | (
                         &ValueType::Prod(ref lo_fst, ref lo_snd),
                         &ValueType::Prod(ref hi_fst, ref hi_snd),
@@ -495,6 +507,7 @@ mod tests
     use alloc::rc::Rc;
 
     use super::value_subtype;
+    use crate::types::SealId;
     use crate::types::ValueType;
 
     /// The top-level reflexive entry `value_subtype(&x, &x)` short-circuits
@@ -504,6 +517,51 @@ mod tests
     {
         let value_type = ValueType::atom("Foo");
         assert!(bool::from(value_subtype(&value_type, &value_type)));
+    }
+
+    /// **The abstraction-leak refutation at the checked core.** A sealed atom
+    /// relates to no structural type, in either direction, so a client cannot
+    /// substitute the representation for the abstraction or the reverse.
+    ///
+    /// There is no unfolding to try: the seal carries no carrier, so this is a
+    /// relation that cannot be established rather than one that failed.
+    #[test]
+    fn a_sealed_atom_relates_to_no_representation()
+    {
+        let sealed = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
+        for representation in [ValueType::atom("Integer"), ValueType::Unit] {
+            assert!(
+                !bool::from(value_subtype(&sealed, &representation)),
+                "a sealed atom is not a subtype of a candidate representation"
+            );
+            assert!(
+                !bool::from(value_subtype(&representation, &sealed)),
+                "nor is a candidate representation a subtype of the sealed atom"
+            );
+        }
+    }
+
+    /// Two sealings stay apart, and one seal relates to itself across distinct
+    /// allocations — generativity, decided on the minted identity rather than
+    /// on the address.
+    #[test]
+    fn sealed_atoms_relate_by_identity_alone()
+    {
+        let counter = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
+        let gauge = ValueType::Sealed(SealId::new(1_u64, "Gauge", "t"));
+        assert!(
+            !bool::from(value_subtype(&counter, &gauge)),
+            "two sealings do not interchange, however alike their implementations"
+        );
+        let same = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
+        assert!(
+            !core::ptr::eq(&raw const counter, &raw const same),
+            "the two references are distinct allocations"
+        );
+        assert!(
+            bool::from(value_subtype(&counter, &same)),
+            "one atom relates to itself through two references"
+        );
     }
 
     /// Two clones of the SAME `Rc` deref to a common address, so the

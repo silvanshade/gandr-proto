@@ -63,6 +63,7 @@ pub mod mark;
 pub mod nominal;
 pub mod outcome;
 pub mod prim;
+pub mod seal;
 pub mod stack;
 pub mod subst;
 pub mod subtype;
