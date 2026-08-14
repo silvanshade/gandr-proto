@@ -9,6 +9,8 @@ mod composition;
 #[cfg(test)]
 mod differential;
 #[cfg(test)]
+mod flow;
+#[cfg(test)]
 mod footprint;
 #[cfg(test)]
 mod linearity;

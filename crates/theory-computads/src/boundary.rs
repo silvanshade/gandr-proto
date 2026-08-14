@@ -127,6 +127,26 @@ copy_wrapper!(
     "Number of input ports a declared operation reads."
 );
 copy_wrapper!(
+    FlowEquality,
+    bool,
+    "Whether two atom-occurrence flows are the same flow."
+);
+copy_wrapper!(
+    FlowVertexIndex,
+    usize,
+    "Index of a cell-application event among an atom-occurrence flow's vertices."
+);
+copy_wrapper!(
+    FlowPortIndex,
+    usize,
+    "Index of one atom incidence among a flow vertex's upper or lower edges."
+);
+copy_wrapper!(
+    PeakOccurrenceIndex,
+    usize,
+    "Index of an atom occurrence in the enumerated addresses of a derivation's peak."
+);
+copy_wrapper!(
     GroundPatternStatus,
     bool,
     "Whether a command pattern contains no metavariables."

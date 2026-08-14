@@ -180,6 +180,11 @@ const CONTENT_PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
 /// purpose.
 const PRIMITIVE_DOMAIN: &[u8] = b"gandr.tracelet.primitive.v1";
 
+/// The domain separator mixed in before a **cell's** content, so a
+/// position-free cell address cannot collide with a primitive address taken
+/// over the same cell at the root position.
+const CELL_DOMAIN: &[u8] = b"gandr.tracelet.cell.v1";
+
 /// A **content address** of a primitive certificate — a 128-bit digest over the
 /// resolved cell's content and the position it fires at.
 ///
@@ -388,6 +393,44 @@ where
     core::hash::Hasher::write(&mut hasher, PRIMITIVE_DOMAIN);
     core::hash::Hash::hash(cell, &mut hasher);
     core::hash::Hash::hash(at, &mut hasher);
+    hasher.digest()
+}
+
+/// A **position-free content address** of a cell — the same digest as
+/// [`prim_address`] over the resolved cell's content alone.
+///
+/// It exists for [`crate::flow`], whose vertex labels must name the cell and
+/// **not** where it fired: a flow forgets the arrangement, and
+/// [`prim_address`] digests the position, so labelling a flow vertex with a
+/// primitive address would re-import exactly what the projection discards. The
+/// two addresses are domain-separated, so the same cell answers different
+/// values here and at [`prim_address`] with the root position.
+///
+/// # Contract
+/// - ensures: equal for two cells with equal content, and independent of any
+///   position; a digest over distinct content collides only by accident, and
+///   the same non-identity caveat [`prim_address`] carries applies verbatim —
+///   this is an index and an ordering device, never an identity witness.
+/// - panics: none.
+/// - intension: the digest is stable for one build of one target and no
+///   further, for the reason [`prim_address`] states; nothing may persist or
+///   transport one.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — the decision surface is "same content, same
+///   address; different content, different address, and never the position",
+///   separated by a cell pair differing only in its right-hand side and by one
+///   cell whose address is taken twice against two unequal positions.
+/// - witness: `flow::tests::the_cell_address_forgets_the_position`
+#[inline]
+#[must_use]
+pub fn cell_address<A>(cell: &Cell<A>) -> PrimId
+where
+    A: CellAlphabet,
+{
+    let mut hasher = ContentHasher::new();
+    core::hash::Hasher::write(&mut hasher, CELL_DOMAIN);
+    core::hash::Hash::hash(cell, &mut hasher);
     hasher.digest()
 }
 

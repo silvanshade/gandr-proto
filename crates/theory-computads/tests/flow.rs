@@ -1,0 +1,442 @@
+//! **Atom-occurrence flow** differential fixtures — where the projection
+//! agrees with its two neighbours and where it does not.
+//!
+//! # Why these live here, and on the toy alphabet
+//!
+//! The projection's resolution is the alphabet's address vocabulary, and a
+//! sequent command pattern has exactly one command position: over
+//! `SequentAlphabet` every term is one atom occurrence and no two applications
+//! can sit at incomparable positions, so the permutation-tile class is empty
+//! there. The toy alphabet nests commands, so it is the one alphabet in the
+//! tree where a tile exists to be projected. The sequent-side degeneration and
+//! the two refusals are pinned in the module's own unit tests.
+//!
+//! # What the suite measures
+//!
+//! The three relations on certificate data are strictly nested, and each
+//! strictness has a fixture here rather than an argument:
+//!
+//! - [`the_two_legs_of_a_permutation_tile_have_one_flow`] and
+//!   [`disjoint_steps_share_no_thread`] are the positive half: on the tile
+//!   class the two sequentializations project to one flow, and they do so
+//!   because neither step touches an occurrence the other created.
+//! - [`the_shift_guard_refuses_a_pair_the_projection_identifies`] is the first
+//!   strictness — **shift equivalence is strictly inside flow equality**. The
+//!   guard asks [`overlaps_between`], a question about the *alphabet*, and
+//!   refuses a pair whose cells could interfere somewhere; the projection reads
+//!   the *instance*, where two disjoint match images share no occurrence, and
+//!   identifies it.
+//! - [`flow_equality_is_strictly_finer_than_replay_equivalence`] and
+//!   [`replay_equivalent_certificates_can_carry_different_flows`] are the
+//!   second — **flow equality is strictly inside replay-equivalence**.
+//!   [`replay_equivalent`] compares a boundary and asks each side to replay,
+//!   ignoring the recorded paths outright, so no relation reading the paths can
+//!   coincide with it.
+//!
+//! [`the_two_legs_of_a_permutation_tile_have_one_flow`]: tests::the_two_legs_of_a_permutation_tile_have_one_flow
+//! [`disjoint_steps_share_no_thread`]: tests::disjoint_steps_share_no_thread
+//! [`the_shift_guard_refuses_a_pair_the_projection_identifies`]: tests::the_shift_guard_refuses_a_pair_the_projection_identifies
+//! [`flow_equality_is_strictly_finer_than_replay_equivalence`]: tests::flow_equality_is_strictly_finer_than_replay_equivalence
+//! [`replay_equivalent_certificates_can_carry_different_flows`]: tests::replay_equivalent_certificates_can_carry_different_flows
+//! [`overlaps_between`]: gandr_theory_computads::overlaps_between
+//! [`replay_equivalent`]: gandr_theory_computads::replay_equivalent
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::vec::Vec;
+
+    use gandr_theory_computads::Cell;
+    use gandr_theory_computads::CellApp;
+    use gandr_theory_computads::CellId;
+    use gandr_theory_computads::CellStore;
+    use gandr_theory_computads::ConvexityDischarge;
+    use gandr_theory_computads::FlowEnd;
+    use gandr_theory_computads::OverlapKind;
+    use gandr_theory_computads::Tracelet;
+    use gandr_theory_computads::cell_address;
+    use gandr_theory_computads::derive_fused;
+    use gandr_theory_computads::derive_shift_equivalence;
+    use gandr_theory_computads::enumerate_overlaps;
+    use gandr_theory_computads::flows_equal;
+    use gandr_theory_computads::legs_flow_equal;
+    use gandr_theory_computads::project_flow;
+    use gandr_theory_computads::replay_equivalent;
+    use gandr_theory_computads::tracelets_flow_equal;
+
+    use crate::toy_alphabet::Toy;
+    use crate::toy_alphabet::ToyAlphabet;
+    use crate::toy_alphabet::ToyNameRef;
+    use crate::toy_alphabet::ToyPos;
+    use crate::toy_alphabet::toy_cell;
+
+    extern crate alloc;
+
+    /// A toy position from child indices.
+    fn at<Steps>(steps: Steps) -> ToyPos
+    where
+        Steps: IntoIterator<Item = usize>,
+    {
+        ToyPos(steps.into_iter().collect::<Vec<_>>().into_boxed_slice())
+    }
+
+    /// (f): `Succ(Zero) ~> Zero` — the rule the left redex node carries.
+    fn f_cell() -> Cell<ToyAlphabet>
+    {
+        toy_cell(Toy::succ(Toy::Zero), Toy::Zero)
+    }
+
+    /// (g): `Succ(Succ(Zero)) ~> Zero` — the rule the right redex node carries.
+    fn g_cell() -> Cell<ToyAlphabet>
+    {
+        toy_cell(Toy::succ(Toy::succ(Toy::Zero)), Toy::Zero)
+    }
+
+    /// (add-Z): `Add(Zero, x) ~> x`.
+    fn add_z() -> Cell<ToyAlphabet>
+    {
+        toy_cell(
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("x"))),
+            Toy::var(ToyNameRef("x")),
+        )
+    }
+
+    /// (add-S): `Add(Succ(m), n) ~> Succ(Add(m, n))`.
+    fn add_s() -> Cell<ToyAlphabet>
+    {
+        toy_cell(
+            Toy::add(
+                Toy::succ(Toy::var(ToyNameRef("m"))),
+                Toy::var(ToyNameRef("n")),
+            ),
+            Toy::succ(Toy::add(
+                Toy::var(ToyNameRef("m")),
+                Toy::var(ToyNameRef("n")),
+            )),
+        )
+    }
+
+    /// The `cong2` store and its two rule identifiers.
+    fn cong2_store() -> (CellStore<ToyAlphabet>, CellId, CellId)
+    {
+        let mut store = CellStore::new();
+        let f = store.insert(f_cell());
+        let g = store.insert(g_cell());
+        (store, f, g)
+    }
+
+    /// The `cong2` body — two redex nodes whiskered into one `add` frame.
+    fn cong2_body() -> Toy
+    {
+        Toy::add(Toy::succ(Toy::Zero), Toy::succ(Toy::succ(Toy::Zero)))
+    }
+
+    /// The two applications the `cong2` body whiskers, in block order.
+    fn cong2_pair(
+        f: CellId,
+        g: CellId,
+    ) -> (CellApp<ToyAlphabet>, CellApp<ToyAlphabet>)
+    {
+        (
+            CellApp {
+                cell: f,
+                at: at([0]),
+            },
+            CellApp {
+                cell: g,
+                at: at([1]),
+            },
+        )
+    }
+
+    #[test]
+    fn the_two_legs_of_a_permutation_tile_have_one_flow()
+    {
+        // The permutation tile: one peak, two sequentializations of one pair of
+        // independent steps, one composite. The two legs record the same events
+        // in opposite orders, and the projection identifies them — which is
+        // what makes flow equality a witness for the shift quotient rather than
+        // a restatement of the recorded order.
+        let (store, f, g) = cong2_store();
+        let peak = cong2_body();
+        let (first, second) = cong2_pair(f, g);
+        let witness = derive_shift_equivalence(&store, &peak, &first, &second)
+            .expect("the cong2 pair earns its shift witness");
+        let forward = project_flow(&store, &peak, &witness.first_then_second())
+            .expect("f then g is a derivation of the peak");
+        let backward = project_flow(&store, &peak, &witness.second_then_first())
+            .expect("g then f is a derivation of the peak");
+        assert!(
+            bool::from(flows_equal(&forward, &backward)),
+            "the two sequentializations of a permutation tile project to one flow"
+        );
+        assert_eq!(
+            ConvexityDischarge::LeftConnectedOverAcyclicTarget,
+            forward.convexity,
+            "and the flow carries the fence its soundness rests on, as the shift witness does"
+        );
+    }
+
+    #[test]
+    fn disjoint_steps_share_no_thread()
+    {
+        // Why the tile's two legs agree: neither step consumes an occurrence
+        // the other created, so no thread runs from one vertex to the other and
+        // the causal order is empty. This is the projection's independence
+        // relation, read off the instance.
+        let (store, f, g) = cong2_store();
+        let peak = cong2_body();
+        let (first, second) = cong2_pair(f, g);
+        let flow = project_flow(&store, &peak, &alloc::vec![first, second])
+            .expect("f then g is a derivation of the peak");
+        assert_eq!(2, flow.labels.len(), "two cell applications, two vertices");
+        assert!(
+            !flow.threads.iter().any(|thread| matches!(
+                (thread.up, thread.lo),
+                (FlowEnd::Vertex { .. }, FlowEnd::Vertex { .. })
+            )),
+            "no occurrence created by one step is consumed by the other"
+        );
+        assert!(
+            flow.threads.iter().any(|thread| matches!(
+                (thread.up, thread.lo),
+                (FlowEnd::Peak { .. }, FlowEnd::Join)
+            )),
+            "and the frame node neither step touches threads straight through"
+        );
+    }
+
+    #[test]
+    fn the_shift_guard_refuses_a_pair_the_projection_identifies()
+    {
+        // THE FIRST STRICTNESS. This is `tests/shift.rs`'s
+        // `an_overlapping_toy_pair_at_disjoint_positions_is_refused` fixture,
+        // read from the projection's side: two applications at disjoint
+        // positions whose two orders reach one term, refused the shift witness
+        // because the CELLS overlap — a question about the alphabet, asked
+        // whatever this instance did. The projection asks the instance instead,
+        // finds two disjoint match images sharing no occurrence, and licenses
+        // the pair the guard refuses. Shift equivalence is therefore strictly
+        // inside flow equality.
+        let mut store = CellStore::new();
+        let z = store.insert(add_z());
+        let s = store.insert(add_s());
+        let peak = Toy::add(
+            Toy::add(Toy::Zero, Toy::succ(Toy::Zero)),
+            Toy::add(Toy::succ(Toy::Zero), Toy::Zero),
+        );
+        let first = CellApp {
+            cell: z,
+            at: at([0]),
+        };
+        let second = CellApp {
+            cell: s,
+            at: at([1]),
+        };
+        assert!(
+            derive_shift_equivalence(&store, &peak, &first, &second).is_err(),
+            "the guard refuses the pair on its overlap conjunct"
+        );
+        let forward = project_flow(&store, &peak, &alloc::vec![first.clone(), second.clone()])
+            .expect("add-Z then add-S is a derivation of the peak");
+        let backward = project_flow(&store, &peak, &alloc::vec![second, first])
+            .expect("add-S then add-Z is a derivation of the peak");
+        assert!(
+            bool::from(flows_equal(&forward, &backward)),
+            "and the projection identifies the two orders the guard would not"
+        );
+    }
+
+    #[test]
+    fn flow_equality_is_strictly_finer_than_replay_equivalence()
+    {
+        // THE SECOND STRICTNESS, at one certificate. `derive_fused` builds one
+        // boundary whose `path_a` is the two-step derivation and whose `path_b`
+        // is the single fused step. It replays — that is the L2 gate's own
+        // `fused ≡ two-step` contract — and its two legs carry different vertex
+        // label multisets, so no re-indexing makes their flows agree.
+        let (mut store, composition) = fusion_fixture();
+        let (_fused, tracelet) =
+            derive_fused(&composition, &mut store).expect("the fused cell derives");
+        assert!(
+            bool::from(tracelet.replay(&store)),
+            "the certificate replays: both legs reach the recorded join"
+        );
+        assert!(
+            !bool::from(legs_flow_equal(&tracelet, &store).expect("both legs project")),
+            "and its two legs have different flows — one boundary, two flows"
+        );
+    }
+
+    #[test]
+    fn replay_equivalent_certificates_can_carry_different_flows()
+    {
+        // THE SECOND STRICTNESS, between two certificates, which is the form
+        // the arc's question was asked in. Two structurally distinct
+        // derivations of one boundary are one certificate under replay
+        // identity — `tracelet.rs`'s
+        // `distinct_derivations_of_one_boundary_are_replay_equivalent` is the
+        // same pair. Their flows differ, because one leg is two steps and the
+        // other is one.
+        let (mut store, composition) = fusion_fixture();
+        let (_fused, fused_derivation) =
+            derive_fused(&composition, &mut store).expect("the fused cell derives");
+        let two_step_derivation = Tracelet {
+            overlap: fused_derivation.overlap.clone(),
+            path_a: fused_derivation.path_a.clone(),
+            path_b: fused_derivation.path_a.clone(),
+            joins_at: fused_derivation.joins_at.clone(),
+        };
+        assert!(
+            bool::from(replay_equivalent(
+                &fused_derivation,
+                &two_step_derivation,
+                &store
+            )),
+            "the two are one certificate under replay identity"
+        );
+        assert!(
+            !bool::from(
+                tracelets_flow_equal(&fused_derivation, &two_step_derivation, &store)
+                    .expect("both certificates project")
+            ),
+            "and two flows under the projection — so the two relations do not coincide"
+        );
+    }
+
+    #[test]
+    fn a_certificate_has_its_own_flow()
+    {
+        let (mut store, composition) = fusion_fixture();
+        let (_fused, tracelet) =
+            derive_fused(&composition, &mut store).expect("the fused cell derives");
+        assert!(
+            bool::from(
+                tracelets_flow_equal(&tracelet, &tracelet, &store)
+                    .expect("the certificate projects")
+            ),
+            "the relation is reflexive on a certificate whose legs project"
+        );
+    }
+
+    #[test]
+    fn a_single_step_leg_threads_the_whole_term_through_one_vertex()
+    {
+        // A ground rule whose match image is the whole term: every occurrence
+        // is consumed at the one vertex, and every occurrence of the result is
+        // created there and reaches the conclusion. No thread bypasses the
+        // vertex, because there is no frame.
+        let (store, f, _g) = cong2_store();
+        let peak = Toy::succ(Toy::Zero);
+        let flow = project_flow(&store, &peak, &alloc::vec![CellApp {
+            cell: f,
+            at: at([]),
+        }])
+        .expect("f fires at the root of Succ(Zero)");
+        assert_eq!(1, flow.labels.len(), "one vertex");
+        assert!(
+            flow.threads.iter().all(|thread| matches!(
+                thread.up,
+                FlowEnd::Peak { .. } | FlowEnd::Vertex { .. }
+            ) && matches!(
+                thread.lo,
+                FlowEnd::Vertex { .. } | FlowEnd::Join
+            )),
+            "every thread has an end at the vertex or at a boundary"
+        );
+        assert!(
+            !flow.threads.iter().any(|thread| matches!(
+                (thread.up, thread.lo),
+                (FlowEnd::Peak { .. }, FlowEnd::Join)
+            )),
+            "and none bypasses it, because the redex covers the whole term"
+        );
+    }
+
+    #[test]
+    fn a_consumed_creation_is_one_thread_between_two_vertices()
+    {
+        // The dependent case: add-S at the root creates a `Succ` node with an
+        // `Add` beneath it, and add-Z then consumes that `Add`. The occurrence
+        // the first step created is the one the second destroys, so exactly the
+        // thread that carries the dependence runs from vertex to vertex.
+        let mut store = CellStore::new();
+        let z = store.insert(add_z());
+        let s = store.insert(add_s());
+        let peak = Toy::add(Toy::succ(Toy::Zero), Toy::Zero);
+        let flow = project_flow(&store, &peak, &alloc::vec![
+            CellApp {
+                cell: s,
+                at: at([]),
+            },
+            CellApp {
+                cell: z,
+                at: at([0]),
+            },
+        ])
+        .expect("add-S then add-Z is a derivation of the peak");
+        assert_eq!(2, flow.labels.len(), "two vertices");
+        assert!(
+            flow.threads.iter().any(|thread| matches!(
+                (thread.up, thread.lo),
+                (FlowEnd::Vertex { .. }, FlowEnd::Vertex { .. })
+            )),
+            "the created-and-then-consumed occurrence is a vertex-to-vertex thread"
+        );
+    }
+
+    #[test]
+    fn the_projection_forgets_where_a_cell_fired()
+    {
+        // The definition's load-bearing choice, exercised: a vertex is labelled
+        // by the CELL and not by where it fired. Two legs that fire one cell at
+        // two different positions carry the same label, and what tells them
+        // apart is which occurrences their threads touch — which is the
+        // source's own arrangement of the data.
+        let (store, f, _g) = cong2_store();
+        let peak = Toy::add(Toy::succ(Toy::Zero), Toy::succ(Toy::Zero));
+        let left = project_flow(&store, &peak, &alloc::vec![CellApp {
+            cell: f,
+            at: at([0]),
+        }])
+        .expect("f fires at the left argument");
+        let right = project_flow(&store, &peak, &alloc::vec![CellApp {
+            cell: f,
+            at: at([1]),
+        }])
+        .expect("f fires at the right argument");
+        let label = cell_address(store.get(f).expect("f is stored"));
+        assert_eq!(
+            alloc::vec![label],
+            left.labels,
+            "the vertex names the cell, not the position"
+        );
+        assert_eq!(left.labels, right.labels, "and the two legs agree on it");
+        assert!(
+            !bool::from(flows_equal(&left, &right)),
+            "while the threads still tell the two firings apart, at the peak boundary"
+        );
+    }
+
+    /// The toy composition overlap `derive_fused` is exercised on, with its
+    /// store.
+    ///
+    /// `add-S`'s right-hand side subterm `Add(m, n)` unifies with `add-Z`'s
+    /// left-hand side, so the pair composes at a seam.
+    fn fusion_fixture() -> (
+        CellStore<ToyAlphabet>,
+        gandr_theory_computads::Overlap<ToyAlphabet>,
+    )
+    {
+        let mut store = CellStore::new();
+        let z = store.insert(add_z());
+        let s = store.insert(add_s());
+        let composition = enumerate_overlaps(&store)
+            .into_iter()
+            .find(|overlap| {
+                overlap.kind == OverlapKind::Composition && overlap.left == s && overlap.right == z
+            })
+            .expect("the composition overlap exists");
+        (store, composition)
+    }
+}
