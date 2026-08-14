@@ -7,7 +7,7 @@ It routes into the authoritative docs instead of restating them; where two docs 
 - How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
 - What the design is: the specification corpus, `spec:README.md` and the four track documents under it.
   **It is not in this repository** — it is held in the maintainer's private research workspace, and this tree cites it by the `spec:` alias rather than by path.
-- Why it was decided: [docs/decisions/](docs/decisions/README.md) — one file per decision, named for its outcome — and the beads tracker.
+- Why it was decided: the project's pages in the maintainer's private research workspace and the beads tracker.
   [PLAN.html](PLAN.html) is the 2026-07 reboot roadmap and is read as a historical record, not as a current schedule.
 
 ## The system in one paragraph
@@ -22,7 +22,6 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | Path                                     | Holds                                                                                                            |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `crates/`                                | the Rust workspace; the domains, the member count and its counting convention are below                          |
-| `docs/decisions/`                        | the decision records: one file per decision, named for its outcome                                               |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
 | `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
@@ -117,7 +116,7 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 4. **Project-local Dylint contracts gate merges.** The recursion/termination contract (and its documented relaxations) runs on the merge wall between Clippy and the test suite.
    Sources: [docs/workflow/ci.md](docs/workflow/ci.md), [crates/workflow-dylint/](crates/workflow-dylint/).
 5. **This repository holds no reference register, so a citation carries its own locator.** Every external work is cited at the claim with its full title, its authors, its year, and a stable identifier; the `spec:bibliography.yml` register belongs to the corpus and left with it.
-   Source: [docs/decisions/README.md](docs/decisions/README.md), [docs/workflow/specs.md](docs/workflow/specs.md).
+   Sources: [docs/workflow/docs.md](docs/workflow/docs.md), [docs/workflow/specs.md](docs/workflow/specs.md).
 6. **The design corpus is no longer in this repository.** It left with its BLAKE3 registry, and the `docs:manifest-drift` and `docs:reference-integrity` gates retired with it — there is nothing in this tree for them to register or resolve.
    The corpus is cited by the `spec:` alias and remains the authority on the design; what this repository relies on is restated here.
 7. **Fidelity beats formatters.** A formatter or linter is relaxed or scoped, never satisfied at the cost of artifact fidelity.
@@ -127,10 +126,10 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 
 ## Routing
 
-| Question                     | Authoritative source                                                                                        |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| What is the language design? | `spec:README.md` — the four track documents, held outside this repository                                   |
-| Why was it decided?          | [docs/decisions/](docs/decisions/README.md) + the beads tracker                                             |
-| What is a crate's status?    | its `Cargo.toml` description and its crate-root rustdoc — the per-crate `docs/` tier is gone                |
-| How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                               |
-| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace    |
+| Question                     | Authoritative source                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| What is the language design? | `spec:README.md` — the four track documents, held outside this repository                                |
+| Why was it decided?          | the project's pages in the maintainer's private research workspace + the beads tracker                   |
+| What is a crate's status?    | its `Cargo.toml` description and its crate-root rustdoc — the per-crate `docs/` tier is gone             |
+| How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                            |
+| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace |

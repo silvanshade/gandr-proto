@@ -61,11 +61,13 @@ The proposal-lifecycle model below (proposal files as document classes, manual a
 
 ### Cite with a resolvable locator
 
-Every external-literature citation in a notes, analysis, or spec doc records a **resolvable locator** — a DOI, arXiv id, or stable URL — at first mention.
-Name-only citations are the recorded hazard that forced `gandr-fcw.10`'s bulk re-verification of the register; a locator at first citation is what keeps a claim checkable without archaeology.
-A bibliography is the canonical home for those locators: a doc cites the key and the bibliography carries the DOI/arXiv/URL.
-For the design corpus and the XML classes that is `spec:bibliography.yml`.
-The consolidated literature register that used to stand behind it left with the research corpus; it was a second register over the same works, and a citation that resolved only there resolves through the maintainer's private research workspace now.
+Every external-work citation in this repository is **complete at the claim**: the full title, its authors, its year, and a stable identifier such as a DOI, arXiv id, ISBN, or stable URL.
+This repository holds no reference register, so a citation here carries its own locator.
+The `spec:bibliography.yml` register left with the specification corpus and governs citations in that external corpus; no citation in this tree depends on it to resolve.
+
+### Rewrite documents in place
+
+**A document is rewritten, never amended.** New knowledge rewrites the sentence it changes; git holds what the document said before.
 
 ### Wyrd ADRs are source material, never citable authorities
 
