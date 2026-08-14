@@ -304,12 +304,16 @@ pub const RELATION_LEQ: u8 = 0;
 /// Landmark-constraint-relation byte: `left = right`.
 pub const RELATION_EQ: u8 = 1;
 
-// Unified subterm-table node tags (v1): one disjoint enumeration over all four
-// families, contiguous `0x00..=0x16`, banded by family in the massive-term
-// design §4.5 table order. **This byte assignment is a frozen wire commitment
-// under v1** (future formers extend the enumeration under a later version,
-// which E5 makes safe). Polarity is recoverable from the tag alone, replacing
-// v0's `expect_value_term`/`expect_comp_term` with a table-lookup
+// Unified subterm-table node tags: one disjoint enumeration over all four
+// families, contiguous `0x00..=0x17`, banded by family in the massive-term
+// design §4.5 table order. **Each byte's meaning is a frozen wire commitment**
+// — but assigning a byte that was never assigned is not a change to one, so it
+// holds the version rather than bumping it, and only reassigning a byte or
+// reshaping a field bumps. That rule, the reader property that makes it safe,
+// and the cost of getting it wrong are the decision record carried on
+// `FORMAT_VERSION_V1`; do not restate them here. `0x17` is the assignment the
+// sealing rung made under it. Polarity is recoverable from the tag alone,
+// replacing v0's `expect_value_term`/`expect_comp_term` with a table-lookup
 // child-polarity check.
 
 /// Node tag: value-type base atom (payload: base-type byte).
