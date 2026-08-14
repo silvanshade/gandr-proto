@@ -32,9 +32,13 @@
 -- cuts both ways — see the closing section.
 --
 -- ── THE RESULT, AND THE HYPOTHESIS IT CANNOT DROP ───────────────────────────
--- `iv′` proves the axiom for maps whose edge action is injective, in three
--- lines: injectivity turns `f (θ e) = f e` into `θ e = e`, and edge
--- determination turns that into `θ ≐ id`.
+-- `iv′` proves the cancellation statement for maps whose edge action is
+-- injective, in three lines: injectivity turns `f (θ e) = f e` into `θ e = e`,
+-- and edge determination turns that into `θ ≐ id`. It holds over ALL such
+-- carrier maps rather than over a degree-raising class, so it covers whatever
+-- the axiom would ask for and more — which is the safe direction for a positive
+-- result to overshoot in, and the opposite of the direction the refutations had
+-- to be narrowed in.
 --
 -- The other half is why the hypothesis is stated rather than assumed away: two
 -- parallel through-wires admit a non-identity automorphism swapping them, and
@@ -47,11 +51,15 @@
 -- `θ` over ENDOMORPHISMS while the header above states the axiom with `θ`
 -- INVERTIBLE. So the header carried a premise no theorem carried, in the
 -- direction that makes the result look stronger than it was: what was refuted
--- was unrestricted cancellation, not the axiom. There are now two theorems.
+-- was unrestricted cancellation, not the axiom. There are now two theorems, and
+-- BOTH are about cancellation — neither is about the generalized Reedy axiom,
+-- for the reason the degree section below gives.
 --
---   `collapse-witnesses-cancellation-fails` — endomorphisms, no invertibility.
---   `collapse-witnesses-axiom-fails`        — automorphisms, invertibility
---                                             witnessed by `swap-invertible`.
+--   `collapse-witnesses-cancellation-fails`            — endomorphisms, no
+--                                                        invertibility premise.
+--   `collapse-witnesses-invertible-cancellation-fails` — automorphisms, with
+--                                                        invertibility witnessed
+--                                                        by `swap-invertible`.
 --
 -- `iv′` and the second of those are NOT exact complements, and that is the
 -- point rather than an oversight. `iv′` deliberately drops invertibility, which
@@ -516,18 +524,30 @@ collapse-witnesses-cancellation-fails
        → swap-wires ≐ gid two-wires)
 collapse-witnesses-cancellation-fails h = swap-not-id (h collapse-fixed)
 
--- AND THE AXIOM ITSELF FAILS — the statement WITH the invertibility premise,
--- which is what the module header has always said the axiom is and what no
--- theorem here used to carry. This is the one that bears on a generalized Reedy
--- structure; the theorem above bears on unrestricted cancellation, which is a
--- different and stronger statement.
-collapse-witnesses-axiom-fails
+-- AND CANCELLATION FAILS FOR INVERTIBLE `θ` TOO — the statement with the
+-- invertibility premise, which is what the module header has always said the
+-- axiom is and what no theorem here used to carry. Restricting `θ` to
+-- automorphisms does not rescue it.
+--
+-- THE NAME IS WHAT IT IS BECAUSE OF WHAT IT IS NOT. An earlier revision called
+-- this `collapse-witnesses-axiom-fails`, and that asserted more than the type
+-- does. The generalized Reedy axiom quantifies its MAP over the degree-raising
+-- class, and `collapse-preserves-degree` below shows `collapse-wires` cannot
+-- inhabit that class — a non-invertible member has to raise strictly. So this
+-- refutes the axiom-shaped law only once it is extended to ALL carrier maps,
+-- and it does not bear on the generalized Reedy axiom at all.
+--
+-- That is the third time on this branch that a theorem's name claimed more than
+-- its type while staying green, and the class is worth naming where it is fixed:
+-- the witness exists, the gate passes, and the name is the only thing that is
+-- wrong — so nothing mechanical catches it.
+collapse-witnesses-invertible-cancellation-fails
   : ¬ ((θ : GMap two-wires two-wires)
        → Invertible θ
        → ((e : Edg two-wires)
           → actE collapse-wires (actE θ e) ≡ actE collapse-wires e)
        → θ ≐ gid two-wires)
-collapse-witnesses-axiom-fails h =
+collapse-witnesses-invertible-cancellation-fails h =
   swap-not-id (h swap-wires swap-invertible collapse-fixed)
 
 -- THE DEGREE VALUES THE HEADER'S LAST SECTION TURNS ON, checked rather than
