@@ -264,6 +264,8 @@ open import Data.Nat
   using (_+_)
 open import Data.Nat.Properties
   using (suc-injective)
+  using (+-identityʳ)
+  using (+-suc)
   renaming (_≟_ to _≟ℕ_)
 open import Data.Product
   using (_×_)
@@ -1001,6 +1003,34 @@ module Refute where
 --
 -- An earlier revision of this table recorded `sub` and `pair` as owed.
 --
+-- ── AND THE CLOSURE NOW HAS LAWS OF ITS OWN, WHICH THE OWED THREE WILL SPEND
+-- Two of them, and each says one thing about the operation `Subst` is built
+-- from rather than about `Subst` itself:
+--
+--   * `close-wire-in` — THE CLOSURE INVERTS THE THREADING, and closing a wire
+--     at its own two ends is where the circle comes from: `close-in i j
+--     (wire-in i j S)` is `S` with one circle. `selfloop-counted` below runs
+--     one configuration of this; this is the statement. It takes no h-level
+--     hypothesis, and `append-canon` is why: the threading and the closure
+--     rebuild the same published block at DIFFERENT interfaces, so their two
+--     shifted positions agree only once the node's witnesses are canonical.
+--
+--   * `match-close-edges` — EVERY CLOSURE REMOVES EXACTLY ONE EDGE, uniformly
+--     across all three branches, with `close-in-edges` lifting it to the shape
+--     and `close-block-edges` and `close-cross-edges` to a whole port block:
+--     a block of `n` wires costs `n` edges. The vertex half of the same
+--     question is `verts-close-in`'s and its answer is nothing.
+--
+-- WHY THE SECOND IS STATED HERE RATHER THAN LEFT TO A CONSUMER. This operation
+-- JOINS TWO LEG ENDS and fuses the two strands they belonged to into one, so
+-- it is a contraction, and any grading of these shapes has to price it. The
+-- pair of facts — no vertex added, exactly one edge removed — is that price,
+-- and it is now a theorem rather than an inspection. `contract-two-wires` at
+-- the bottom of this file runs it on the smallest shape that has both
+-- branches. What the pair does NOT settle is anything about a morphism class:
+-- this module defines an operation on shapes, not a category of maps between
+-- them, and the tree has no presentation of the latter.
+--
 -- And the interpretation side of the OWED half is already built at the binary
 -- rung: `verts-graft`, `verts-merge`, `verts-lwhisk`, `verts-preplug`,
 -- `verts-wire-in`, `verts-cap-in` and `verts-wires-in` are the seven landed
@@ -1125,6 +1155,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using ([])
     using (_∷_)
     using (_++_)
+    using (length)
   open import Data.List.Properties
     using (++-identityʳ)
   open import Gandr.Shape.Graph
@@ -1156,6 +1187,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (Wire)
     using (flow)
     using (edges)
+    using (match-edges)
     -- and for the construction: the concatenation graph the published port
     -- blocks are threaded past
     using (append-graph)
@@ -1163,6 +1195,9 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     -- packaging needs: both for the representation map below
     using (swap-blocks)
     using (shape?)
+    -- and the canonicalization of a published block's witness, which is what
+    -- lets a law compare a rebuilt node against the one it started from
+    using (append-canon)
     -- the wiring constructors, renamed: `[]` and `_∷_` are the list
     -- constructors in this module
     renaming ([] to no-wire; _∷_ to _wired∷_)
@@ -1203,6 +1238,22 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (verts-merge)
     -- the grafting listing lemma, for the transposition below
     using (verts-graft)
+    -- the threading the closure inverts, with the two lookups' round trips and
+    -- the view verdict at a repeated position: what the closure's own laws are
+    -- proved from
+    using (wire-in)
+    using (match-remove-insert)
+    using (insert-view-refl)
+    -- and, for what the closure does to the EDGE listing: the two threadings
+    -- read on it, the measure the threading's own position supplies, and the
+    -- two lookups' recovery direction, which is what lets a proof rebuild the
+    -- matching a lookup consumed
+    using (Threaded)
+    using (match-insert-edges)
+    using (match-cap-edges)
+    using (insert-length)
+    using (match-remove-recover)
+    using (match-unhit-recover)
 
   -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
   -- the answer to whether the vertex family should be re-presented.
@@ -1779,6 +1830,256 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → sub (selfloop x , 0) (loop-plug x) ≡ (wires no-wire , 1)
   selfloop-counted x = refl
 
+  -- ── AND THE LAW THAT PIN IS AN INSTANCE OF ───────────────────────────────
+  --
+  -- `selfloop-counted` runs one configuration. These say what the closure does
+  -- to a threaded wire in general, which is the first thing any of the laws
+  -- below has to know: the closure INVERTS the threading, and closing a wire
+  -- at its own two ends is where the circle comes from.
+
+  -- At the wiring. `match-remove` hands back the sink the threaded wire ran
+  -- to, `insert-view` compares it against the sink being closed and finds the
+  -- same slot, and the circle case is what that verdict selects. Neither step
+  -- is an induction: both are lemmas the listing algebra already proved, which
+  -- is the concrete form of the closure not recursing.
+  match-close-insert
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → match-close i j (match-insert i j m) ≡ closed m 1
+  match-close-insert i j m =
+    trans
+      (cong (close-removal j) (match-remove-insert i j m))
+      (cong (λ v → close-hit refl v m) (insert-view-refl j))
+
+  -- and at the shape, where the only new content is the node step. `wire-in`
+  -- rebuilds each published block's witness over `append-graph` and so does
+  -- `close-in`, at DIFFERENT interfaces — the threading at the widened one and
+  -- the closure at the narrow one — so the two shifted positions agree only
+  -- once the node's own witnesses are known to be canonical. That is the whole
+  -- of what `append-canon` is spent on here, and it is why this law takes no
+  -- hypothesis where an earlier reading expected one.
+  close-wire-in
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (S : Shape Ob Γ Δ)
+    → close-in i j (wire-in i j S) ≡ (S , 1)
+  close-wire-in i j (wires m) =
+    cong
+      (λ c → wires (Closed.wiring c) , Closed.loops c)
+      (match-close-insert i j m)
+  close-wire-in {Γ} {Γˣ} {Δ} {Δˣ} i j (node A B p q S)
+    with append-canon p | append-canon q
+  ... | refl | refl =
+    cong
+      (λ z → node A B (append-graph B Γ) (append-graph A Δ) (proj₁ z) , proj₂ z)
+      (close-wire-in
+        (insert-shift (append-graph B Γ) (append-graph B Γˣ) i)
+        (insert-shift (append-graph A Δ) (append-graph A Δˣ) j)
+        S)
+
+  -- ── AND WHAT IT DOES TO THE EDGE LISTING ─────────────────────────────────
+  --
+  -- `verts-close-in` and its two block forms say the closure adds no VERTEX.
+  -- This says what it does to the EDGES, and the answer is the same in all
+  -- three of `match-close`'s branches: exactly one edge leaves, every time.
+  --
+  -- WHY IT IS WORTH STATING ON ITS OWN. This operation is a CONTRACTION — it
+  -- joins two leg ends and fuses the two strands they belonged to into one —
+  -- so any grading of the shapes has to say what it does to the degree, and
+  -- the vertex half of that answer is already `verts-close-in`'s: nothing. The
+  -- edge half is here, and it is uniform: the through branch drops the closed
+  -- source's strand and the strand hitting the closed sink and rebuilds ONE;
+  -- the cut branch does the same with a cap in place of the rebuild; and the
+  -- circle branch drops the closed source's strand and rebuilds NONE, the
+  -- deleted strand reappearing as the `1` in `Closed.loops`. Minus one on
+  -- every path.
+
+  -- the edge count of what a removal left, which is the one number its two
+  -- branches have in common — the matchings themselves do not, since they span
+  -- different interfaces
+  removal-edges
+    : ∀ {x : Ob} {Γ Θ : List Ob}
+    → Removal x Γ Θ
+    → ℕ
+  removal-edges (through spot body) = length (match-edges body)
+  removal-edges (capped ins body) = length (match-edges body)
+
+  -- a threading adds exactly one entry, which is what its recorded POSITION
+  -- says once the position is read as a measure rather than as an address
+  threaded-length
+    : ∀ {es fs : List (Wire Ob)}
+    → Threaded es fs
+    → length fs ≡ suc (length es)
+  threaded-length t = insert-length (Threaded.spot t)
+
+  -- THE REBUILD HALF, on both of the branches that consult the inverse lookup.
+  -- Each returns a wiring with one more edge than what `match-unhit` left, and
+  -- so did the matching it was read off — `match-unhit-recover` is what says
+  -- the second of those, by rebuilding that matching from the lookup's own
+  -- value. So the two counts agree and the closure's own step is free.
+  close-through-edges
+    : ∀ {x Γ C Δ Δ˘}
+    → (s : Insert Ob x C Δ)
+    → (j′ : Insert Ob x C Δ˘)
+    → (body : Match Ob Γ Δ˘)
+    → (u : Unhit x Γ C)
+    → match-unhit j′ body ≡ u
+    → length (match-edges (Closed.wiring (close-through s u)))
+      ≡ length (match-edges body)
+  close-through-edges s j′ body (unhit p t) eq =
+    trans
+      (threaded-length (match-insert-edges p s t))
+      (sym
+        (trans
+          (cong
+            (λ z → length (match-edges z))
+            (sym (match-unhit-recover j′ body (unhit p t) eq)))
+          (threaded-length (match-insert-edges p j′ t))))
+
+  close-cut-edges
+    : ∀ {x y Γ Γ′ Δ Δˣ}
+    → (c : Insert Ob y Γ′ Γ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (body : Match Ob Γ′ Δˣ)
+    → (u : Unhit x Γ′ Δ)
+    → match-unhit j body ≡ u
+    → length (match-edges (Closed.wiring (close-cut c u)))
+      ≡ length (match-edges body)
+  close-cut-edges c j body (unhit p t) eq =
+    trans
+      (threaded-length (match-cap-edges c p t))
+      (sym
+        (trans
+          (cong
+            (λ z → length (match-edges z))
+            (sym (match-unhit-recover j body (unhit p t) eq)))
+          (threaded-length (match-insert-edges p j t))))
+
+  -- so the whole rebuild — all three branches — leaves the removal's own count
+  -- untouched, the circle branch by returning that matching itself
+  close-hit-edges
+    : ∀ {x y Γ Δ Δˣ Δ˘}
+    → {spot : Insert Ob x Δ˘ Δˣ}
+    → {j : Insert Ob y Δ Δˣ}
+    → (e : x ≡ y)
+    → (v : InsertView spot j)
+    → (body : Match Ob Γ Δ˘)
+    → length (match-edges (Closed.wiring (close-hit e v body)))
+      ≡ length (match-edges body)
+  close-hit-edges e same body = refl
+  close-hit-edges refl (apart s j′) body =
+    close-through-edges s j′ body (match-unhit j′ body) refl
+
+  close-removal-edges
+    : ∀ {x Γ Δ Δˣ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (r : Removal x Γ Δˣ)
+    → length (match-edges (Closed.wiring (close-removal j r)))
+      ≡ removal-edges r
+  close-removal-edges j (through spot body) =
+    close-hit-edges refl (insert-view spot j) body
+  close-removal-edges j (capped c body) =
+    close-cut-edges c j body (match-unhit j body) refl
+
+  -- AND THE LOOKUP HALF IS WHERE THE EDGE GOES. `match-remove` is the only
+  -- step of the closure that loses one, and it loses one on both branches:
+  -- rebuilding its value threads a wire or a cut back in, and a threading adds
+  -- exactly one entry.
+  match-remove-edges
+    : ∀ {x Γ Γˣ Δ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (m : Match Ob Γˣ Δ)
+    → (r : Removal x Γ Δ)
+    → match-remove i m ≡ r
+    → suc (removal-edges r) ≡ length (match-edges m)
+  match-remove-edges i m (through spot body) eq =
+    trans
+      (sym (threaded-length (match-insert-edges i spot body)))
+      (cong
+        (λ z → length (match-edges z))
+        (match-remove-recover i m (through spot body) eq))
+  match-remove-edges i m (capped c body) eq =
+    trans
+      (sym (threaded-length (match-cap-edges i c body)))
+      (cong
+        (λ z → length (match-edges z))
+        (match-remove-recover i m (capped c body) eq))
+
+  -- THE STATEMENT, at the wiring: one closure, one edge.
+  match-close-edges
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γˣ Δˣ)
+    → suc (length (match-edges (Closed.wiring (match-close i j m))))
+      ≡ length (match-edges m)
+  match-close-edges i j m =
+    trans
+      (cong suc (close-removal-edges j (match-remove i m)))
+      (match-remove-edges i m (match-remove i m) refl)
+
+  -- and at the shape, where there is nothing to say: a node contributes no
+  -- edge, so the lift is its own induction with no side condition — the
+  -- witness rebuilding `close-wire-in` had to canonicalize never arises,
+  -- because the edge listing does not mention it.
+  close-in-edges
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → suc (length (edges (proj₁ (close-in i j S)))) ≡ length (edges S)
+  close-in-edges i j (wires m) = match-close-edges i j m
+  close-in-edges {Γ} {Δ} i j (node A B p q S) =
+    close-in-edges
+      (insert-shift (append-graph B Γ) p i)
+      (insert-shift (append-graph A Δ) q j)
+      S
+
+  -- ── AND THE BLOCK FORMS: A BLOCK OF `n` WIRES COSTS `n` EDGES ────────────
+  --
+  -- Which is the statement a grading actually consumes, since substitution
+  -- closes a whole port block at a time and never a single wire.
+
+  close-block-edges
+    : ∀ {Ξ Γ Γˣ Δ Δˣ}
+    → (p : Append Ob Ξ Γ Γˣ)
+    → (q : Append Ob Ξ Δ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → length (edges (proj₁ (close-block p q S))) + length Ξ
+      ≡ length (edges S)
+  close-block-edges nil nil S = +-identityʳ _
+  close-block-edges {Ξ} (cons p) (cons q) S =
+    trans
+      (+-suc _ _)
+      (trans
+        (cong suc (close-block-edges p q (proj₁ (close-in head head S))))
+        (close-in-edges head head S))
+
+  close-cross-edges
+    : ∀ {Ξ B Γ Γˣ Δ Δᵃ Δˣ}
+    → (p : Append Ob Ξ Γ Γˣ)
+    → (q : Append Ob Ξ Δ Δᵃ)
+    → (r : Append Ob B Δᵃ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → length (edges (Crossed.body (close-cross p q r S))) + length Ξ
+      ≡ length (edges S)
+  close-cross-edges nil nil r S = +-identityʳ _
+  close-cross-edges {Ξ} {B} (cons p) (cons q) r S =
+    trans
+      (+-suc _ _)
+      (trans
+        (cong
+          suc
+          (close-cross-edges
+            p
+            q
+            (append-graph B _)
+            (proj₁ (close-in head (insert-shift (append-graph B _) r head) S))))
+        (close-in-edges head (insert-shift (append-graph B _) r head) S))
+
   -- ── STEP FIVE: THE THREE LAWS, AND THE TWO OBLIGATIONS WITH THEM ────────
   --
   -- Stated as types, on the same terms as `Subst` and `Pairing` above: nothing
@@ -2248,12 +2549,14 @@ open import Gandr.Shape.Graph
   using (nil)
   using (cons)
   using (head)
+  using (tail)
   using (idn)
   using (verts)
   using (prof)
   using (edges)
   using (point)
   using (wheel)
+  using (flow)
   using (𝟙)
   using (𝟚)
   using (_≟ˢ_)
@@ -2277,6 +2580,7 @@ open Circuit {Ob = ⊤}
   using (swap)
   using (transpose)
   using (≈ˢ-step)
+  using (close-in)
 
 -- THE CLOSED PAIR: two closed components merged in either order. This is the
 -- swap of two whole components, which has no interface leg anywhere near it.
@@ -2361,3 +2665,39 @@ codes-decide
   : does (Circuit._≟ᶜ_ {Ob = ⊤} _≟⊤_ (open-pair , zero) (open-pair-swapped , zero))
     ≡ false
 codes-decide = refl
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- THE CLOSURE IS A CONTRACTION, AND HERE IT IS RUN.
+--
+-- `match-close-edges` above says every closure removes exactly one edge, on
+-- every branch. These two pin what that looks like on the smallest shape
+-- carrying both branches, and they are worth having because the operation
+-- JOINS TWO LEG ENDS — which is what a contracting map does, and what any
+-- grading of these shapes has to price.
+--
+-- The identity over a two-element interface has no vertex and two leg-to-leg
+-- wires. Closing the first source against the SECOND sink joins two leg ends
+-- whose far ends are legs again: one leg-to-leg wire survives and nothing
+-- closes. Closing it against the FIRST sink is that source's own sink, so the
+-- strand closes on itself and the circle is counted instead. One edge leaves
+-- on both paths.
+--
+-- WHAT THESE ARE EVIDENCE FOR, stated so they are not over-read. The result of
+-- the first contraction still has NO vertex and its surviving wire still runs
+-- leg to leg, so a degree summing a vertex count and a VERTEX-TO-VERTEX edge
+-- count assigns zero to both sides of it. Whether that matters is a question
+-- about a morphism class this module does not define and this tree does not
+-- have; what these two computations settle is only that the operation exists
+-- here, is not invertible, and has that effect on the listings.
+contract-two-wires : close-in head (tail head) (idn 𝟚) ≡ (idn 𝟙 , zero)
+contract-two-wires = refl
+
+contract-two-wires-loop : close-in head head (idn 𝟚) ≡ (idn 𝟙 , suc zero)
+contract-two-wires-loop = refl
+
+-- and the edge listings, read rather than inferred: two before, one after
+contract-two-wires-edges-before : edges (idn 𝟚) ≡ flow tt ∷ flow tt ∷ []
+contract-two-wires-edges-before = refl
+
+contract-two-wires-edges-after : edges (idn 𝟙) ≡ flow tt ∷ []
+contract-two-wires-edges-after = refl
