@@ -801,6 +801,34 @@ mod tests
     }
 
     #[test]
+    fn a_refused_multi_entry_import_leaves_the_visible_namespace_as_it_was()
+    {
+        let mut scope: Scope<Payload, ()> =
+            Scope::with_init_visible(namespace(&[entry("taken", Payload(1))]));
+        let before = scope.visible().clone();
+        let imported = namespace(&[entry("available", Payload(2)), entry("taken", Payload(3))]);
+        let mut handler = RejectingHandler;
+
+        let failure = scope
+            .import_subtree(&NamePath::root(), imported, &mut handler)
+            .expect_err("the existing `taken` binding must be refused");
+        assert_eq!(
+            failure,
+            ScopeError::Rejected(EventRejection::new(
+                EventKind::Shadow,
+                path("taken"),
+                RejectionReason::from("this policy forbids shadowing"),
+            )),
+            "the collision reaches the caller as the handler's structured rejection"
+        );
+        assert_eq!(
+            scope.visible(),
+            &before,
+            "the earlier `available` insertion must roll back with the later collision"
+        );
+    }
+
+    #[test]
     fn a_refused_modifier_leaves_the_visible_namespace_as_it_was()
     {
         let mut scope: Scope<Payload, ()> = Scope::new();

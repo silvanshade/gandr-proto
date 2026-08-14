@@ -467,6 +467,14 @@ pub enum LowerError
         /// The import declaration's source range.
         byte_range: SourceRange,
     },
+    /// The persistent import table cannot represent another source-order
+    /// declaration index.
+    #[error("too many import declarations at bytes {byte_range:?}")]
+    ImportIndexOverflow
+    {
+        /// The import declaration's source range.
+        byte_range: SourceRange,
+    },
 }
 
 impl From<ArenaBridgeError> for LowerError
@@ -642,8 +650,9 @@ pub struct Lowered
     /// source order (proposal-attributes.md §2); resolved and typed by the
     /// [`crate::attributes`] pass.
     pub attributes: Vec<RawAttr>,
-    /// The namespace scope built from this source's imports. Imports touch only
-    /// its visible namespace, so the export namespace remains empty.
+    /// The namespace scope after this source's imports have been merged with
+    /// the scope supplied to seeded lowering. Imports touch only its visible
+    /// namespace, so the export namespace remains empty.
     import_scope: Scope<ImportIndex, SourceRange>,
 }
 
@@ -771,6 +780,8 @@ pub fn lower_source_with(
         &BTreeMap::new(),
         &BTreeMap::new(),
         &BTreeMap::new(),
+        &Scope::new(),
+        ImportIndex(0),
     )
 }
 
@@ -806,6 +817,8 @@ pub fn lower_source_total_with_foreign(
         foreign,
         &BTreeMap::new(),
         &BTreeMap::new(),
+        &Scope::new(),
+        ImportIndex(0),
     )
 }
 
@@ -835,20 +848,32 @@ pub(crate) fn lower_source_total_seeded(
     foreign: &BTreeMap<String, ForeignModule>,
     codata: &BTreeMap<String, codata::CodataDecl>,
     data: &BTreeMap<String, data::DataDecl>,
+    import_scope: &Scope<ImportIndex, SourceRange>,
+    import_index_base: ImportIndex,
 ) -> LowerResult<Lowered>
 {
-    lower_source_seeded(source, Strictness::Total, foreign, codata, data)
+    lower_source_seeded(
+        source,
+        Strictness::Total,
+        foreign,
+        codata,
+        data,
+        import_scope,
+        import_index_base,
+    )
 }
 
-/// The shared lowering entry, seeded with a foreign-module and codata-block
-/// registry (empty for the standalone [`lower_source`] / [`lower_source_total`]
-/// entries).
+/// The shared lowering entry, seeded with foreign-module, declaration, and
+/// import-namespace registries (empty for the standalone [`lower_source`] /
+/// [`lower_source_total`] entries).
 fn lower_source_seeded(
     source: PipelineSource<'_>,
     strictness: Strictness,
     foreign: &BTreeMap<String, ForeignModule>,
     codata: &BTreeMap<String, codata::CodataDecl>,
     data: &BTreeMap<String, data::DataDecl>,
+    import_scope: &Scope<ImportIndex, SourceRange>,
+    import_index_base: ImportIndex,
 ) -> LowerResult<Lowered>
 {
     // The melder CST front-end, viewed through the `SynNode` adapter in place
@@ -901,6 +926,8 @@ fn lower_source_seeded(
         data: data.clone(),
         constructors,
         obligations,
+        import_scope: import_scope.clone(),
+        import_index_base,
     }
     .source_file(tree.root())
 }
@@ -1322,6 +1349,11 @@ struct Lowerer<'src>
     /// against the module declared earlier in the same source; a call selecting
     /// a member of one of these elaborates to a `perform` (§3.1).
     foreign: BTreeMap<String, ForeignModule>,
+    /// Namespace bindings accumulated by earlier sources, plus this source's
+    /// accepted imports as lowering proceeds.
+    import_scope: Scope<ImportIndex, SourceRange>,
+    /// Source-order index assigned to this source's first accepted import.
+    import_index_base: ImportIndex,
     /// The `codata` blocks declared in this source, keyed by codata type name
     /// (the codata-declaration contract). Built in a pre-pass at the start of
     /// [`Self::source_file`] (like [`Self::foreign`]) so a later copattern
@@ -4173,7 +4205,6 @@ impl Lowerer<'_>
         let mut foreign: Vec<ForeignModule> = Vec::new();
         let mut codata: BTreeMap<String, codata::CodataDecl> = BTreeMap::new();
         let mut imports: Vec<ImportDeclaration> = Vec::new();
-        let mut import_scope: Scope<ImportIndex, SourceRange> = Scope::new();
         let mut namespace_handler = ImportNamespaceHandler;
 
         // The whole file failed to parse as items when it yields no item node
@@ -4249,12 +4280,30 @@ impl Lowerer<'_>
             self.collect_data();
             for child in named_non_extra_children(root) {
                 if child.kind() == node_kinds::IMPORT_DECLARATION {
-                    match self.lower_import(
-                        child,
-                        ImportIndex(imports.len()),
-                        &mut import_scope,
-                        &mut namespace_handler,
-                    ) {
+                    let lowered = self
+                        .import_index_base
+                        .0
+                        .checked_add(imports.len())
+                        .map(ImportIndex)
+                        .ok_or_else(|| LowerError::ImportIndexOverflow {
+                            byte_range: child.byte_range(),
+                        })
+                        .and_then(|index| {
+                            let (declaration, qualified) =
+                                self.lower_import(child, index, &mut namespace_handler)?;
+                            self.import_scope
+                                .import_subtree(
+                                    &NamePath::root(),
+                                    qualified,
+                                    &mut namespace_handler,
+                                )
+                                .map_err(|error| LowerError::Namespace {
+                                    error,
+                                    byte_range: child.byte_range(),
+                                })?;
+                            Ok(declaration)
+                        });
+                    match lowered {
                         | Ok(declaration) => imports.push(declaration),
                         | Err(ref error) if bool::from(self.total()) => {
                             let hole = self.value_hole(child, error)?;
@@ -4395,7 +4444,7 @@ impl Lowerer<'_>
             data: core::mem::take(&mut self.data),
             origin: origin_map,
             attributes,
-            import_scope,
+            import_scope: core::mem::take(&mut self.import_scope),
         })
     }
 
@@ -4406,9 +4455,8 @@ impl Lowerer<'_>
         &self,
         node: SynNode<'_>,
         index: ImportIndex,
-        scope: &mut Scope<ImportIndex, SourceRange>,
         handler: &mut ImportNamespaceHandler,
-    ) -> LowerResult<ImportDeclaration>
+    ) -> LowerResult<(ImportDeclaration, Trie<ImportIndex, SourceRange>)>
     {
         let uri = self.quoted_string_field(node, node_kinds::FIELD_URI)?;
         let alias_node = required_field(node, node_kinds::FIELD_ALIAS)?;
@@ -4421,13 +4469,7 @@ impl Lowerer<'_>
                 error: ScopeError::from(error),
                 byte_range: node.byte_range(),
             })?;
-        scope
-            .import_subtree(&NamePath::root(), qualified, handler)
-            .map_err(|error| LowerError::Namespace {
-                error,
-                byte_range: node.byte_range(),
-            })?;
-        Ok(ImportDeclaration { uri, alias })
+        Ok((ImportDeclaration { uri, alias }, qualified))
     }
 
     /// Collects the leading `@[…]` attribute blocks of one item node into
@@ -5842,6 +5884,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::DuplicateObservation { ref byte_range, .. }
         | LowerError::MissingObservation { ref byte_range, .. }
         | LowerError::Namespace { ref byte_range, .. }
+        | LowerError::ImportIndexOverflow { ref byte_range }
         | LowerError::MalformedNode { ref byte_range, .. } => Some(byte_range.clone()),
         | LowerError::ParserUnavailable { .. }
         | LowerError::ParseFailed
@@ -5899,8 +5942,10 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::MissingObservation { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::COPATTERN_CLAUSE,
         },
-        | LowerError::Namespace { .. } => HoleNote::UnsupportedForm {
-            kind: node_kinds::IMPORT_DECLARATION,
+        | LowerError::Namespace { .. } | LowerError::ImportIndexOverflow { .. } => {
+            HoleNote::UnsupportedForm {
+                kind: node_kinds::IMPORT_DECLARATION,
+            }
         },
         | LowerError::ParserUnavailable { .. }
         | LowerError::ParseFailed
@@ -6159,6 +6204,8 @@ mod tests
             holes: Gensym::new(GandrSort::HoleAddr),
             strictness: Strictness::Strict,
             foreign: BTreeMap::new(),
+            import_scope: Scope::new(),
+            import_index_base: ImportIndex(0),
             codata: BTreeMap::new(),
             observations: BTreeSet::new(),
             data: BTreeMap::new(),

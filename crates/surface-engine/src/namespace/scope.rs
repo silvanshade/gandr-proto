@@ -266,7 +266,8 @@ where
     /// - ensures: the export namespace is unchanged, so an import is not a
     ///   re-export.
     /// - provides: the `import` operation.
-    /// - fails: propagates a handler rejection.
+    /// - fails: propagates a handler rejection, leaving both namespaces as they
+    ///   were.
     /// - panics: none.
     ///
     /// # Errors
@@ -283,6 +284,8 @@ where
     ///   `import_touches_only_the_visible_namespace`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `an_import_arrives_under_its_prefix`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_refused_multi_entry_import_leaves_the_visible_namespace_as_it_was`
     #[inline]
     pub fn import_subtree<Handler>(
         &mut self,
@@ -294,11 +297,11 @@ where
         Handler: NamespaceEventHandler<Data, Tag>,
     {
         let prefixed = subtree.into_prefixed(prefix);
-        self.current
-            .visible
-            .union_resolving(prefixed, &mut |path, collision| {
-                handler.shadow(path, collision)
-            })?;
+        let mut visible = self.current.visible.clone();
+        visible.union_resolving(prefixed, &mut |path, collision| {
+            handler.shadow(path, collision)
+        })?;
+        self.current.visible = visible;
         Ok(())
     }
 

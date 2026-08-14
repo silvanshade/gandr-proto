@@ -81,10 +81,15 @@ use crate::boundary::ConstructorName;
 use crate::boundary::DefinitionBindingFlag;
 use crate::boundary::DefinitionName;
 use crate::boundary::PipelineSource;
+use crate::boundary::SourceRange;
 use crate::diag;
 use crate::ffi::ForeignModule;
+use crate::lower::ImportDeclaration;
+use crate::lower::ImportIndex;
 use crate::lower::LowerError;
 use crate::lower::lower_source_total_seeded;
+use crate::namespace::NamePath;
+use crate::namespace::Scope;
 use crate::prelude::Prelude;
 use crate::prelude_ctx;
 use crate::prelude_env;
@@ -179,6 +184,12 @@ pub struct Session
     /// The `data`-declared datatype shapes accumulated across submissions,
     /// keyed by datatype name (declared-data design Decision 4).
     data: BTreeMap<String, crate::lower::data::DataDecl>,
+    /// Import declarations accumulated across submissions, in the same global
+    /// source order named by [`ImportIndex`].
+    imports: Vec<ImportDeclaration>,
+    /// The persistent visible import namespace. Its bindings index
+    /// [`Self::imports`].
+    import_scope: Scope<ImportIndex, SourceRange>,
 }
 
 impl Session
@@ -204,6 +215,8 @@ impl Session
             foreign: BTreeMap::new(),
             codata: BTreeMap::new(),
             data: BTreeMap::new(),
+            imports: Vec::new(),
+            import_scope: Scope::new(),
         }
     }
 
@@ -249,6 +262,25 @@ impl Session
         &self.ctx
     }
 
+    /// Resolves a persistent import path to the declaration that introduced
+    /// its binding.
+    ///
+    /// # Contract
+    /// - ensures: returns the declaration indexed by the visible namespace
+    ///   binding at `path`.
+    /// - ensures: returns `None` when `path` is unbound.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn resolve_import(
+        &self,
+        path: &NamePath,
+    ) -> Option<&ImportDeclaration>
+    {
+        let index = self.import_scope.resolve(path)?.data.0;
+        self.imports.get(index)
+    }
+
     /// Lowers, reports, incrementally types, and evaluates one line of source.
     ///
     /// # Contract
@@ -286,8 +318,14 @@ impl Session
     where
         S: Into<PipelineSource<'source>>,
     {
-        let source = source.into();
-        let lowered = lower_source_total_seeded(source, &self.foreign, &self.codata, &self.data)?;
+        let lowered = lower_source_total_seeded(
+            source.into(),
+            &self.foreign,
+            &self.codata,
+            &self.data,
+            &self.import_scope,
+            ImportIndex(self.imports.len()),
+        )?;
         let report = diag::report(&lowered, &self.ctx);
 
         let prior_item_count = self.program.items.len();
@@ -319,6 +357,8 @@ impl Session
         for (name, decl) in lowered.data() {
             self.data.insert(name.clone(), decl.clone());
         }
+        self.imports.extend(lowered.imports.iter().cloned());
+        self.import_scope = lowered.import_scope().clone();
         for module in lowered.foreign {
             self.foreign.insert(module.name.clone(), module);
         }

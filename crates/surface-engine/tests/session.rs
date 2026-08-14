@@ -23,6 +23,8 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
+    use gandr_surface_engine::namespace::DottedName;
+    use gandr_surface_engine::namespace::NamePath;
     use gandr_surface_engine::session::ItemOutcome;
     use gandr_surface_engine::session::Session;
     use gandr_surface_engine::session::Submission;
@@ -823,6 +825,73 @@ mod tests
             },
             | other => panic!("the foreign call should be an expression outcome, got {other:?}"),
         }
+    }
+
+    /// Import aliases persist as namespace bindings across submissions, and a
+    /// later collision is declined without replacing the original binding.
+    #[test]
+    fn import_namespace_carries_across_lines_and_resolves_source_declarations()
+    {
+        let mut session = Session::new();
+        let parse_path = NamePath::from(DottedName::from("parse"));
+        let list_path = NamePath::from(DottedName::from("list_ext"));
+        let missing_path = NamePath::from(DottedName::from("missing"));
+
+        let parse = session
+            .submit("import \"file:///lib/parse.gandr\" as parse ;")
+            .expect("the first import must lower");
+        assert!(
+            parse.outcomes.is_empty()
+                && parse.report.diagnostics.is_empty()
+                && parse.report.goals.is_empty(),
+            "an import is a clean declaration rather than a runnable item"
+        );
+
+        let list = session
+            .submit("import \"file:///lib/list.gandr\" as list_ext ;")
+            .expect("the second import must lower against the prior namespace");
+        assert!(
+            list.outcomes.is_empty()
+                && list.report.diagnostics.is_empty()
+                && list.report.goals.is_empty(),
+            "a distinct later alias extends the persistent namespace cleanly"
+        );
+
+        assert_eq!(
+            session
+                .resolve_import(&parse_path)
+                .map(|declaration| declaration.uri.as_str()),
+            Some("file:///lib/parse.gandr"),
+            "the first line's alias resolves to its retained declaration"
+        );
+        assert_eq!(
+            session
+                .resolve_import(&list_path)
+                .map(|declaration| declaration.uri.as_str()),
+            Some("file:///lib/list.gandr"),
+            "the second line's index resolves against the cumulative declaration table"
+        );
+        assert_eq!(
+            session.resolve_import(&missing_path),
+            None,
+            "an unbound path does not resolve"
+        );
+
+        let duplicate = session
+            .submit("import \"file:///lib/other.gandr\" as parse ;")
+            .expect("total session lowering turns the namespace rejection into a hole");
+        assert_eq!(
+            duplicate.outcomes,
+            Vec::from([ItemOutcome::Holey]),
+            "a later line cannot silently replace an existing import alias"
+        );
+        assert_eq!(
+            session
+                .resolve_import(&parse_path)
+                .map(|declaration| declaration.uri.as_str()),
+            Some("file:///lib/parse.gandr"),
+            "the rejected collision leaves the original declaration reachable"
+        );
     }
 
     /// Submits `source`, asserts it lowered to exactly one item, and returns
