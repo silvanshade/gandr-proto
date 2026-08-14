@@ -176,11 +176,42 @@
 //! The remedy is the one [`crate::normal_form::TraceletNf`] already took:
 //! **the certificate-level datum carries the boundary**, so
 //! [`TraceletFlow`] holds a peak and a join beside the two flows and
-//! [`tracelet_flow`] refuses a leg that lands anywhere else.
-//! [`Flow`] itself is untouched and stays alphabet-free — the alphabet
-//! parameter that the boundary brings sits on [`TraceletFlow`], one level up,
-//! because forgetting the arrangement is the projection's content and
-//! forgetting the endpoints was never part of it.
+//! [`tracelet_flow`] refuses a leg that lands anywhere else. Containment is
+//! then a consequence of what the datum **is** rather than a property of how
+//! it happens to be compared, and it survives any later change to the flow
+//! comparison itself.
+//!
+//! **The no-alphabet-parameter result above survives this intact, and a reader
+//! who meets a boundary here should not conclude otherwise.** [`Flow`] is
+//! untouched and still carries no alphabet parameter; the parameter the
+//! boundary brings sits one level up, on [`TraceletFlow`]. Forgetting the
+//! formula-level arrangement is the projection's content, forgetting the
+//! endpoints never was, and conflating the two is exactly what produced the
+//! defect.
+//!
+//! # One discipline, in two places: refuse where a choice would be arbitrary
+//!
+//! This module declines to answer twice, for one reason, and the repetition is
+//! what makes it a discipline rather than two local decisions.
+//!
+//! - [`Flow::canonical`] gives **no** canonical form to a flow whose vertices
+//!   share a re-indexing key, rather than ordering them arbitrarily.
+//! - The convexity fence gives **no** identification on a carrier answering
+//!   [`ConvexityDischarge::ReCheckRequired`], rather than re-deriving the
+//!   question with the structure that would settle it already discarded.
+//!
+//! **The rule both follow: an identification not made is always sound, and one
+//! made wrongly is not.** So a negative from this layer means "not identified
+//! here" and never "distinct", and a third refusal met later reads the same
+//! way.
+//!
+//! It is also why a hazard the source line carries does not reach these
+//! relations. Cycle removal in that literature is **non-confluent** — the
+//! transformation has no canonical result — so an identity defined by
+//! quotienting under it inherits a choice of representative. None of the
+//! relations here is defined that way: each is an explicit predicate on
+//! recorded data, and at the one place a representative choice would have been
+//! needed, the canonical form's ties, this module declines to make one.
 //!
 //! # Cost
 //!
