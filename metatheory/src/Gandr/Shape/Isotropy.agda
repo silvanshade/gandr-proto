@@ -76,33 +76,46 @@
 -- exist. What would close it: a morphism class in which an end may change kind,
 -- and its degree-raising subcategory.
 --
--- ── AND ONE ESCAPE THAT LOOKED AVAILABLE IS NOT ─────────────────────────────
+-- ── WHAT THE DEGREE WITNESSES DO AND DO NOT SETTLE ──────────────────────────
 -- An earlier reading of this section argued that the counterexample is void for
 -- a generalized Reedy structure on an independent ground: the axiom quantifies
--- its map over the degree-RAISING subcategory, and `collapse-wires` lowers the
--- vertex-and-edge count, so a degree function would exclude it. That argument
--- does not survive the degree function the grading in flight actually uses.
+-- its map over the degree-RAISING subcategory, and `collapse-wires` was said to
+-- LOWER the vertex-and-edge count, so a degree function would exclude it.
 --
--- That degree is the vertex count plus the INTERNAL-edge count, where an
--- internal edge is one with a vertex at BOTH ends. A wiring has no vertices at
--- all, so no edge of one is internal: `two-wires` and `edge` are both at degree
--- ZERO, and `collapse-wires` is degree-PRESERVING rather than degree-lowering.
--- The escape fails and the counterexample stays in scope, which is why the
--- invertibility premise above had to be witnessed rather than argued around.
--- `deg-two-wires` and `collapse-preserves-degree` at the end of this module
--- check that here, by `refl`, rather than leaving it to the reading.
+-- The count is not what that argument assumed. The degree is the vertex count
+-- plus the INTERNAL-edge count, and an internal edge is one with a vertex at
+-- BOTH ends; a wiring has no vertices at all, so no edge of one is internal.
+-- `two-wires` and `edge` therefore both sit at degree ZERO, and `collapse-wires`
+-- is degree-PRESERVING rather than degree-lowering. `deg-two-wires` and
+-- `collapse-preserves-degree` below check that by `refl`.
 --
--- The general fact is stronger than the instance and belongs beside it: the
--- ENTIRE zero-vertex stratum sits at degree zero identically, so no choice of
--- interface rescues the lowering direction anywhere in the wiring fragment.
+-- THE CONCLUSION SURVIVES THE CORRECTED REASON, and an intermediate revision of
+-- this header had that backwards. A non-invertible map in a degree-raising class
+-- must raise the degree STRICTLY, so degree-preserving excludes it exactly as
+-- degree-lowering would have. The original argument had the wrong reason and the
+-- right conclusion; the correction to it had the right reason and the wrong
+-- conclusion. **The invertibility witness above does not rest on any of this** —
+-- it rests on the header having stated a premise no theorem carried, which is a
+-- defect whatever the degree function does.
 --
--- What that does NOT establish, and the distinction is the whole of the
--- preceding paragraph applied to itself: a generalized Reedy structure needs
--- non-invertible maps to move the degree strictly, and an infinite stratum at
--- one degree containing a non-invertible map would falsify that — IF the maps
--- in question were the site's. They are not. There is no counterexample here to
--- any statement about the site, and no proof of one either, because the site
--- has no morphism class defined to quantify over.
+-- What the witnesses DO support is a constraint rather than a verdict, and that
+-- is the useful half: a non-invertible map preserving the degree sits in NEITHER
+-- the raising class nor the lowering one, while a Reedy structure requires every
+-- map to factor through them. So this pair is a condition any future
+-- factorization has to meet, not a refutation of any axiom. The general fact is
+-- stronger than the instance — the ENTIRE zero-vertex stratum sits at degree
+-- zero identically — so the constraint is not about one accidental pair.
+--
+-- AND THE CONSTRAINT BINDS THE SITE PRESENTATION RATHER THAN THIS CARRIER,
+-- which is where the section above leaves things too. Nothing here refutes any
+-- statement about the site and nothing here proves one, because the site has no
+-- morphism class to quantify over. The published setting never meets this pair,
+-- and the reason does not transfer: its objects are CONNECTED, so its only
+-- vertex-free objects are the exceptional edge and the nodeless loop, while
+-- `two-wires` is disconnected and is not an object of it at all. **A gandr site
+-- admitting disconnected wirings inherits no protection from that definition**,
+-- so connectivity — or a restriction of equal force — is a required axiom rather
+-- than a free rider.
 ------------------------------------------------------------------------------
 
 module Gandr.Shape.Isotropy where
@@ -517,14 +530,19 @@ collapse-witnesses-axiom-fails
 collapse-witnesses-axiom-fails h =
   swap-not-id (h swap-wires swap-invertible collapse-fixed)
 
--- AND THE ONE ESCAPE THE HEADER DISCUSSES IS CLOSED HERE RATHER THAN ARGUED.
--- `deg` counts vertices plus INTERNAL edges, and `inner?` calls a wire internal
--- only when both of its ends are at vertices. A wiring has no vertices, so it
--- has no internal edges and no vertices to count: both shapes of the
--- counterexample sit at degree zero, and the collapse neither raises nor lowers
--- it. So the counterexample cannot be excluded from the axiom's scope by a
--- degree-raising restriction, and the invertibility witness above is
--- load-bearing rather than tidying.
+-- THE DEGREE VALUES THE HEADER'S LAST SECTION TURNS ON, checked rather than
+-- argued. `deg` counts vertices plus INTERNAL edges, and `inner?` calls a wire
+-- internal only when both of its ends are at vertices; a wiring has no vertices,
+-- so it has neither. Both shapes of the counterexample sit at degree zero and
+-- the collapse preserves it.
+--
+-- Preserving is enough to keep the map out of a degree-raising class, since a
+-- non-invertible member of one has to raise STRICTLY. So these witnesses do not
+-- put the counterexample inside the axiom's scope, and they are not what makes
+-- the invertibility witness above worth having — that rests on the header having
+-- claimed a premise no theorem carried. What they do give is a constraint on any
+-- future factorization: this map is in neither class, and a Reedy structure
+-- needs every map to factor through them.
 deg-two-wires : deg two-wires ≡ 0
 deg-two-wires = refl
 

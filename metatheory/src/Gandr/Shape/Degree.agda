@@ -25,6 +25,14 @@
 -- manufacture a closed component — so the map that forces the exception has no
 -- codomain, and the exception is void.
 --
+--   REVERSAL CONDITION, because this leg expires rather than holding forever.
+--   "Cannot express" is a claim about `Shape`. The substrate ruling puts closed
+--   components ONE LEVEL UP — a code is a shape paired with its count of closed
+--   components — and says in terms that not-DERIVABLE and not-ADJOINABLE are
+--   different claims, with only the first among the downward consequences. **If
+--   the site is ever presented over CODES rather than over shapes, the nodeless
+--   loop returns and this exception un-voids.** Nothing else records that.
+--
 -- The EXCEPTIONAL EDGE is exceptional as the bottom of the degeneracy tower:
 -- the codegeneracy that substitutes it at a bivalent vertex is what it is the
 -- target of. **That codegeneracy is excluded from gandr's site by
@@ -41,6 +49,48 @@
 -- a constant offset cannot change which morphisms strictly raise the degree —
 -- so it changes nothing about the axioms and would only leave an unexplained
 -- number in the definition. `deg` here is `|Vt| + |Edge_i|`.
+--
+-- **That holds, and it holds more strongly than the paragraph above argues.**
+-- This definition PINS NOTHING, so every offset it could carry is uniform, and
+-- a uniform offset is inert by construction rather than by the exceptions being
+-- void. Sharper still, on the pair that turns out to matter: the exceptional
+-- edge and the two-wire identity have the same vertex count and the same
+-- internal-edge count, both zero, so NO uniform offset whatsoever separates
+-- them. Restoring the published `+ 1` would change nothing here.
+--
+-- ── BUT THE OFFSET AND THE PIN ARE A PAIR, AND ONLY ONE OF THEM IS INERT ────
+-- The published definition does two things at once, and dropping them together
+-- reads as dropping one. The PIN puts the exceptional edge at 0 while every
+-- general graph gets `|Vt| + |Edge_i| + 1` and therefore at least 1 — so the
+-- edge sits strictly BELOW the whole general range. The offset is only what
+-- makes room for the pin. **The separating work is the pin's.**
+--
+-- Here the edge sits AT the general range instead of below it, and it has
+-- company: `deg-empty` and `deg-edge` below are both 0, and so is the two-wire
+-- identity (`deg-two-wires`, in `Gandr.Shape.Isotropy`), which carries a
+-- non-invertible map onto `edge`. Extend the published function to that shape
+-- and it lands at 1, so the same map lowers there and no such pair arises.
+--
+-- ── AND BEHIND THE PIN IS CONNECTEDNESS, WHICH IS WHAT ACTUALLY TRANSFERS ───
+-- The published objects are CONNECTED, so a vertex-free one is the exceptional
+-- edge or the nodeless loop and nothing else: two pins EXHAUST that stratum.
+-- This carrier admits disconnection, so its vertex-free stratum is infinite and
+-- no finite set of pins could exhaust it. **A site presentation over this
+-- carrier admitting disconnected wirings inherits no protection from the
+-- published definition** — connectivity, or a restriction of equal force, is a
+-- required axiom rather than a free rider.
+--
+-- ── WHAT THAT IS, STATED SO IT IS NOT READ AS A REFUTATION ──────────────────
+-- It is a CONSTRAINT ON A FUTURE SITE PRESENTATION. It is not a defect in this
+-- degree function, which counts the right things, and it refutes no axiom: a
+-- non-invertible degree-PRESERVING map is excluded from a degree-raising class
+-- rather than falsifying its axiom, because a non-invertible member of that
+-- class has to raise STRICTLY. The published pathology differs in exactly this
+-- respect — its failing map is a COFACE, so it is in the raising class by
+-- construction and has nowhere to be excluded to. Nothing of that kind exists
+-- here, because there is no site and no coface. What the pair does establish is
+-- that a map in neither class exists, while a Reedy structure requires every map
+-- to factor through them.
 --
 -- ── WHAT IS PROVED ABOUT IT ─────────────────────────────────────────────────
 -- `deg-node` is the degree-raising direction that this carrier CAN state:
