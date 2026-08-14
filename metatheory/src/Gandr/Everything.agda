@@ -32,5 +32,6 @@ import Gandr.Setoid
 import Gandr.Shape.Decidable
 import Gandr.Shape.Graft
 import Gandr.Shape.Graph
+import Gandr.Shape.Isotropy
 import Gandr.Shape.Planarity
 import Gandr.Shape.Structure
