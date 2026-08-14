@@ -113,11 +113,7 @@ pub enum BridgeRejection
     /// into kernel declarations knows which admission position an atom landed
     /// at, so lowering one without that binding would mean inventing a
     /// position: an abstraction leak the kernel would then certify.
-    #[error(
-        "the sealed atom `{}.{}` is bound to no admitted abstract-type declaration",
-        .0.declaration(),
-        .0.component()
-    )]
+    #[error("the sealed atom `{}` is bound to no admitted abstract-type declaration", .0.site())]
     UnboundSeal(SealId),
     /// The unknown value type `?` (the Hazelnut hole type).
     #[error("the unknown value type `?` has no S1 image")]

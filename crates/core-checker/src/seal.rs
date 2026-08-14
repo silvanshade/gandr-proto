@@ -45,74 +45,13 @@
 //! sealed value first crosses a process at all.
 
 use alloc::collections::BTreeMap;
-use alloc::string::String;
+use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::fmt;
 
 use crate::boundary::TypeSerial;
 use crate::types::SealId;
-
-/// Where one sealing happened: the declaration whose opaque ascription ran, and
-/// the abstract type component it sealed.
-///
-/// The pair is the minting key, so it is also the thing a replay re-derives. It
-/// is deliberately made of **source-level names** rather than positions: a
-/// position would change under an edit that does not change what was sealed,
-/// and a re-minting check that is sensitive to unrelated edits refutes the
-/// wrong thing.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct SealSite
-{
-    /// The module declaration whose opaque ascription minted the atom.
-    declaration: String,
-    /// The abstract type component of the signature the atom stands for.
-    component: String,
-}
-
-impl SealSite
-{
-    /// The site at `component` of `declaration`.
-    #[inline]
-    #[must_use]
-    pub fn new(
-        declaration: &str,
-        component: &str,
-    ) -> Self
-    {
-        Self {
-            declaration: declaration.to_owned(),
-            component: component.to_owned(),
-        }
-    }
-
-    /// The declaration whose ascription minted here.
-    #[inline]
-    #[must_use]
-    pub fn declaration(&self) -> &str
-    {
-        self.declaration.as_str()
-    }
-
-    /// The abstract type component sealed here.
-    #[inline]
-    #[must_use]
-    pub fn component(&self) -> &str
-    {
-        self.component.as_str()
-    }
-}
-
-impl fmt::Display for SealSite
-{
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result
-    {
-        write!(f, "{}.{}", self.declaration, self.component)
-    }
-}
+pub use crate::types::SealSite;
 
 /// Why a minting or a re-minting check failed.
 ///
@@ -201,8 +140,9 @@ impl core::error::Error for SealError
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SealTable
 {
-    /// The sites minted, in minting order; the index is the serial.
-    order: Vec<SealSite>,
+    /// The sites minted, in minting order; the index is the serial. Each is
+    /// shared with the [`SealId`] minted for it, so a site is stored once.
+    order: Vec<Rc<SealSite>>,
     /// Site → the serial minted for it, for the duplicate refusal.
     minted: BTreeMap<SealSite, TypeSerial>,
 }
@@ -247,10 +187,11 @@ impl SealTable
         if self.minted.contains_key(&site) {
             return Err(SealError::SiteAlreadyMinted { site });
         }
-        let serial = TypeSerial::from(self.order.len() as u64);
-        let id = SealId::new(serial, site.declaration(), site.component());
-        let _prior = self.minted.insert(site.clone(), serial);
-        self.order.push(site);
+        let serial = TypeSerial::from(u64::try_from(self.order.len()).unwrap_or(u64::MAX));
+        let shared = Rc::new(site);
+        let id = SealId::at_site(serial, Rc::clone(&shared));
+        let _prior = self.minted.insert(shared.as_ref().clone(), serial);
+        self.order.push(shared);
         Ok(id)
     }
 
@@ -262,25 +203,9 @@ impl SealTable
     /// because a site is named by the declaration that produced it.
     #[inline]
     #[must_use]
-    pub fn sites(&self) -> &[SealSite]
+    pub fn sites(&self) -> &[Rc<SealSite>]
     {
         &self.order
-    }
-
-    /// The number of atoms minted.
-    #[inline]
-    #[must_use]
-    pub fn len(&self) -> usize
-    {
-        self.order.len()
-    }
-
-    /// Whether nothing has been minted.
-    #[inline]
-    #[must_use]
-    pub fn is_empty(&self) -> bool
-    {
-        self.order.is_empty()
     }
 
     /// The identity a site was minted at, if it was minted.
@@ -329,6 +254,7 @@ impl SealTable
     /// - witness: `seal::tests::re_minting_the_same_sites_verifies`
     /// - witness: `seal::tests::a_reordered_record_is_refused`
     /// - witness: `seal::tests::a_truncated_record_is_refused`
+    #[inline]
     pub fn verify_reminting(
         &self,
         recorded: &[SealSite],
@@ -343,9 +269,9 @@ impl SealTable
         for (position, (recorded_site, minted_site)) in
             recorded.iter().zip(self.order.iter()).enumerate()
         {
-            if recorded_site != minted_site {
+            if recorded_site != minted_site.as_ref() {
                 return Err(SealError::RemintingDiverged {
-                    serial: TypeSerial::from(position as u64),
+                    serial: TypeSerial::from(u64::try_from(position).unwrap_or(u64::MAX)),
                 });
             }
         }
@@ -357,6 +283,7 @@ impl SealTable
 mod tests
 {
     use alloc::vec;
+    use alloc::vec::Vec;
 
     use super::SealError;
     use super::SealSite;
@@ -387,9 +314,14 @@ mod tests
             "serials follow minting order"
         );
         assert_ne!(first, second, "two components mint two distinct atoms");
+        let recorded: Vec<SealSite> = table
+            .sites()
+            .iter()
+            .map(|site| site.as_ref().clone())
+            .collect();
         assert_eq!(
-            &[first_site, second_site],
-            table.sites(),
+            vec![first_site, second_site],
+            recorded,
             "the table records the minting order"
         );
     }
@@ -408,7 +340,11 @@ mod tests
             table.mint(site),
             "one component may be sealed once"
         );
-        assert_eq!(1, table.len(), "the refused mint left the table unchanged");
+        assert_eq!(
+            1,
+            table.sites().len(),
+            "the refused mint left the table unchanged"
+        );
     }
 
     /// Two declarations sealing the same component name mint distinct atoms —
@@ -439,9 +375,14 @@ mod tests
         for site in sites {
             let _id = second_run.mint(site).unwrap();
         }
+        let recorded: Vec<SealSite> = first_run
+            .sites()
+            .iter()
+            .map(|site| site.as_ref().clone())
+            .collect();
         assert_eq!(
             Ok(()),
-            second_run.verify_reminting(first_run.sites()),
+            second_run.verify_reminting(&recorded),
             "re-minting one program reproduces its recorded atoms"
         );
     }
@@ -477,7 +418,7 @@ mod tests
                 recorded: 1,
                 minted: 2,
             }),
-            table.verify_reminting(&vec![first]),
+            table.verify_reminting(&[first]),
             "a record short of the minting is refused"
         );
     }

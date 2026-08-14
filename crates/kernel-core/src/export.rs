@@ -552,6 +552,35 @@ impl fmt::Display for ExpandedWork
     }
 }
 
+/// The admission position of one minted atom, as the R4 table records it.
+///
+/// A bare index would be the wrong type here even though the representation is
+/// the same integer: the table's entries are *positions in an admission
+/// sequence*, and the reader compares them against positions it re-derived. The
+/// wrapper is what stops one being crossed with a table index or a byte offset
+/// at a signature.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MintedAtom(usize);
+
+impl From<usize> for MintedAtom
+{
+    #[inline]
+    fn from(position: usize) -> Self
+    {
+        Self(position)
+    }
+}
+
+impl From<MintedAtom> for usize
+{
+    #[inline]
+    fn from(atom: MintedAtom) -> Self
+    {
+        atom.0
+    }
+}
+
 /// Global index of one entry in the artifact subterm table.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

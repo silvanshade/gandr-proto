@@ -334,7 +334,7 @@ mod tests
             &ValueSpec::Thunk(Box::new(ComputationSpec::Lambda(Box::new(
                 ComputationSpec::Return(Box::new(ValueSpec::Variable(0))),
             )))),
-            &[0],
+            &[ConstantIndex::from(0_usize)],
         );
         environment
             .add_decl(member)

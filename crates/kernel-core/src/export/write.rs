@@ -53,6 +53,7 @@ use super::LITERAL_INTEGER;
 use super::LITERAL_NUMERIC;
 use super::LITERAL_TEXT;
 use super::MAGIC;
+use super::MintedAtom;
 use super::NODE_C_APPLICATION;
 use super::NODE_C_BIND;
 use super::NODE_C_CASE;
@@ -639,19 +640,23 @@ fn encode_minted_atom_table(
     let atoms = minted_atoms(declarations);
     put_uvarint(out, usize_to_u64(WireUsize(atoms.len())));
     for atom in atoms {
-        put_uvarint(out, usize_to_u64(WireUsize(atom)));
+        put_uvarint(out, usize_to_u64(WireUsize(usize::from(atom))));
     }
 }
 
 /// The admission positions of the abstract-type declarations in a declaration
 /// sequence, ascending — the canonical content of the R4 minted-atom table.
-pub(super) fn minted_atoms(declarations: &[(AdmissionMark, &Declaration)]) -> Vec<usize>
+pub(super) fn minted_atoms(declarations: &[(AdmissionMark, &Declaration)]) -> Vec<MintedAtom>
 {
     declarations
         .iter()
         .enumerate()
         .filter_map(|(position, &(_mark, declaration))| {
-            declaration.content().is_abstract_type().then_some(position)
+            matches!(
+                *declaration.content(),
+                DeclarationContent::AbstractType { .. }
+            )
+            .then_some(MintedAtom::from(position))
         })
         .collect()
 }

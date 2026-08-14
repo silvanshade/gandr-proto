@@ -338,6 +338,14 @@ impl ShortCircuitFlag
 
 str_wrapper!(DataTypeName, "Borrowed declared datatype name.");
 str_wrapper!(TypeAtomName, "Borrowed core type atom name.");
+str_wrapper!(
+    SealDeclarationName,
+    "Borrowed name of the declaration whose opaque ascription minted a sealed atom."
+);
+str_wrapper!(
+    SealComponentName,
+    "Borrowed label of the abstract type component a sealed atom stands for."
+);
 
 str_wrapper!(BinderName, "Borrowed source or generated binder name.");
 str_wrapper!(ContinuationName, "Borrowed continuation binder name.");

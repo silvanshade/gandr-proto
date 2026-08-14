@@ -79,6 +79,7 @@ use super::MAX_DECODED_LEVEL_OFFSET;
 use super::MAX_EXPANDED_TERM_WORK;
 use super::MAX_TABLE_ENTRIES;
 use super::MalformedSite;
+use super::MintedAtom;
 use super::NODE_C_APPLICATION;
 use super::NODE_C_BIND;
 use super::NODE_C_CASE;
@@ -233,9 +234,9 @@ impl DeclKind
     /// pair is what the caller then requires, so a wiring defect fails to
     /// resolve rather than fabricating an atom.
     #[inline]
-    const fn of(byte: u8) -> Self
+    const fn of(byte: WireByte) -> Self
     {
-        match byte {
+        match byte.0 {
             | KIND_AXIOM => Self::Axiom,
             | KIND_ABSTRACT_TYPE => Self::AbstractType,
             | _ => Self::Def,
@@ -498,14 +499,16 @@ fn value_id_at(
 /// - witness: `export::tests::a_minted_atom_table_omitting_an_atom_is_refused`
 /// - witness: `export::tests::a_minted_atom_table_naming_a_definition_is_refused`
 fn check_minted_atom_table(
-    table: &[usize],
+    table: &[MintedAtom],
     metas: &[DeclMeta],
 ) -> Result<(), DecodeError>
 {
-    let rederived: Vec<usize> = metas
+    let rederived: Vec<MintedAtom> = metas
         .iter()
         .enumerate()
-        .filter_map(|(position, meta)| (meta.kind == DeclKind::AbstractType).then_some(position))
+        .filter_map(|(position, meta)| {
+            (meta.kind == DeclKind::AbstractType).then_some(MintedAtom::from(position))
+        })
         .collect();
     if table == rederived.as_slice() {
         Ok(())
@@ -732,14 +735,14 @@ impl<'bytes> ByteReader<'bytes>
     /// declared count, so an adversarial count costs one truncation rather than
     /// an allocation.
     #[inline]
-    fn read_minted_atom_table(&mut self) -> Result<Vec<usize>, DecodeError>
+    fn read_minted_atom_table(&mut self) -> Result<Vec<MintedAtom>, DecodeError>
     {
         let count = self.read_uvarint()?;
-        let mut atoms: Vec<usize> = Vec::new();
+        let mut atoms: Vec<MintedAtom> = Vec::new();
         let mut remaining = count.0;
         while remaining > 0_u64 {
             let atom = self.read_usize()?;
-            atoms.push(atom.0);
+            atoms.push(MintedAtom::from(atom.0));
             remaining = remaining.wrapping_sub(1_u64);
         }
         Ok(atoms)
@@ -864,7 +867,7 @@ fn decode_declaration(
     };
     Ok(DeclMeta {
         mark,
-        kind: DeclKind::of(kind.0),
+        kind: DeclKind::of(kind),
         levels,
         root_declared,
         root_body,

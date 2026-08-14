@@ -165,15 +165,6 @@ impl DeclarationContent
             | Self::AbstractType { kind: declared } => declared,
         }
     }
-
-    /// Whether this content is a sealed abstract type — the minted-atom
-    /// table's membership predicate.
-    #[inline]
-    #[must_use]
-    pub const fn is_abstract_type(&self) -> bool
-    {
-        matches!(*self, Self::AbstractType { .. })
-    }
 }
 
 /// A declaration entering the kernel through the choke point: a level

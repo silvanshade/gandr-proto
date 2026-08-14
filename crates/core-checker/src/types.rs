@@ -8,9 +8,12 @@
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
+use core::fmt;
 
 use crate::boundary::BinderName;
 use crate::boundary::DataTypeName;
+use crate::boundary::SealComponentName;
+use crate::boundary::SealDeclarationName;
 use crate::boundary::TypeAtomName;
 use crate::boundary::TypeSerial;
 use crate::effect::EffectRow;
@@ -84,6 +87,71 @@ impl DataId
     }
 }
 
+/// Where one sealing happened: the declaration whose opaque ascription ran, and
+/// the abstract type component it sealed.
+///
+/// The pair is the minting key, so it is also the thing a replay re-derives. It
+/// is deliberately made of **source-level names** rather than positions: a
+/// position would change under an edit that does not change what was sealed,
+/// and a re-minting check that is sensitive to unrelated edits refutes the
+/// wrong thing.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SealSite
+{
+    /// The module declaration whose opaque ascription minted the atom.
+    declaration: String,
+    /// The abstract type component of the signature the atom stands for.
+    component: String,
+}
+
+impl SealSite
+{
+    /// The site at `component` of `declaration`.
+    #[inline]
+    #[must_use]
+    pub fn new<'source, D, C>(
+        declaration: D,
+        component: C,
+    ) -> Self
+    where
+        D: Into<SealDeclarationName<'source>>,
+        C: Into<SealComponentName<'source>>,
+    {
+        Self {
+            declaration: declaration.into().as_ref().to_owned(),
+            component: component.into().as_ref().to_owned(),
+        }
+    }
+
+    /// The declaration whose ascription minted here.
+    #[inline]
+    #[must_use]
+    pub fn declaration(&self) -> SealDeclarationName<'_>
+    {
+        SealDeclarationName::from(self.declaration.as_str())
+    }
+
+    /// The abstract type component sealed here.
+    #[inline]
+    #[must_use]
+    pub fn component(&self) -> SealComponentName<'_>
+    {
+        SealComponentName::from(self.component.as_str())
+    }
+}
+
+impl fmt::Display for SealSite
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        write!(f, "{}.{}", self.declaration, self.component)
+    }
+}
+
 /// The **core-local nominal identity of a sealed abstract type**: the fresh
 /// atom one opaque ascription mints for one abstract type component.
 ///
@@ -108,14 +176,20 @@ impl DataId
 /// seals of the same declaration's component are the *same* — which is exactly
 /// declaration-granular sealing seen from the identity side.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+/// # Why the site is shared rather than copied
+///
+/// A `SealId` rides inside [`ValueType::Sealed`], which is cloned along every
+/// type it appears in, and a value type is the widest-cloned object in the
+/// checker. Holding the site behind an [`Rc`] keeps the identity two words, so
+/// a sealed type costs no more to carry than an atom name — and keeps the value
+/// -type enum from widening, which would grow every `Result` the checker
+/// returns.
 pub struct SealId
 {
     /// The monotone serial assigned in minting order within one elaboration.
     serial: TypeSerial,
-    /// The declaration whose opaque ascription minted this atom.
-    declaration: String,
-    /// The abstract type component of that signature this atom stands for.
-    component: String,
+    /// Where this atom was minted, shared rather than copied.
+    site: Rc<SealSite>,
 }
 
 impl SealId
@@ -135,19 +209,44 @@ impl SealId
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn new<S>(
+    pub fn new<'source, S, D, C>(
         serial: S,
-        declaration: &str,
-        component: &str,
+        declaration: D,
+        component: C,
+    ) -> Self
+    where
+        S: Into<TypeSerial>,
+        D: Into<SealDeclarationName<'source>>,
+        C: Into<SealComponentName<'source>>,
+    {
+        Self {
+            serial: serial.into(),
+            site: Rc::new(SealSite::new(declaration, component)),
+        }
+    }
+
+    /// Pair a serial with an already-shared site.
+    #[inline]
+    #[must_use]
+    pub fn at_site<S>(
+        serial: S,
+        site: Rc<SealSite>,
     ) -> Self
     where
         S: Into<TypeSerial>,
     {
         Self {
             serial: serial.into(),
-            declaration: declaration.to_owned(),
-            component: component.to_owned(),
+            site,
         }
+    }
+
+    /// Where this atom was minted.
+    #[inline]
+    #[must_use]
+    pub fn site(&self) -> &SealSite
+    {
+        self.site.as_ref()
     }
 
     /// The minting-order serial.
@@ -161,17 +260,17 @@ impl SealId
     /// The declaration whose opaque ascription minted this atom.
     #[inline]
     #[must_use]
-    pub fn declaration(&self) -> &str
+    pub fn declaration(&self) -> SealDeclarationName<'_>
     {
-        self.declaration.as_str()
+        self.site.declaration()
     }
 
     /// The abstract type component this atom stands for.
     #[inline]
     #[must_use]
-    pub fn component(&self) -> &str
+    pub fn component(&self) -> SealComponentName<'_>
     {
-        self.component.as_str()
+        self.site.component()
     }
 }
 

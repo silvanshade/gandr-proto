@@ -323,7 +323,7 @@ fn type_level(
 /// kind.
 ///
 /// This is the **whole** formation rule for
-/// [`ValueType::Abstract`](crate::types::ValueType::Abstract), and its shape is
+/// [`ValueType::Abstract`], and its shape is
 /// the point: a lookup, not an inference. The kernel resolves the position,
 /// requires the declaration it finds to be an abstract type, and reads the
 /// level out of a kind node admission already pinned to a universe. There is no
@@ -335,7 +335,7 @@ fn type_level(
 /// - requires: nothing.
 /// - ensures: `Ok(level)` exactly when `atom` names an already-admitted
 ///   [`DeclarationContent::AbstractType`] whose kind resolves to a
-///   [`ValueType::Universe`](crate::types::ValueType::Universe).
+///   [`ValueType::Universe`].
 /// - provides: the atom's type-formation level for [`type_level`].
 /// - fails: [`KernelError::NotAnAbstractType`] for an out-of-range position, a
 ///   forward reference, or a `Def`/`Axiom` at that position;
@@ -1131,7 +1131,7 @@ fn check_sealing_provenance(
 }
 
 /// The atoms a value type projects onto: every
-/// [`ValueType::Abstract`](crate::types::ValueType::Abstract) reachable from
+/// [`ValueType::Abstract`] reachable from
 /// `root`.
 ///
 /// The walk is iterative over an explicit worklist, so it is total on any type

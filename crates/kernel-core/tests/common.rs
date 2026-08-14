@@ -554,16 +554,13 @@ pub fn stage_sealed_def(
     levels: LevelSignature,
     declared: &ValueTypeSpec,
     body: &ValueSpec,
-    provenance: &[usize],
+    provenance: &[ConstantIndex],
 ) -> Declaration
 {
     let mut builder = environment.stage();
     let declared = materialize_value_type(builder.arena(), declared);
     let body = materialize_value(builder.arena(), body);
-    let atoms = provenance
-        .iter()
-        .map(|&atom| ConstantIndex::from(atom))
-        .collect();
+    let atoms = provenance.to_vec();
     builder.sealed_def(levels, declared, body, atoms)
 }
 
