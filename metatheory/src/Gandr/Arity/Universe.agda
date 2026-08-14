@@ -1242,6 +1242,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     -- the view verdict at a repeated position: what the closure's own laws are
     -- proved from
     using (wire-in)
+    using (lwhisk)
     using (match-remove-insert)
     using (insert-view-refl)
     -- and, for what the closure does to the EDGE listing: the two threadings
@@ -1880,6 +1881,41 @@ module Circuit {ℓ} {Ob : Set ℓ} where
         (insert-shift (append-graph A Δ) (append-graph A Δˣ) j)
         S)
 
+  -- ── AND THE BLOCK FORM: THE TRACE OF THE IDENTITY IS THE CIRCLE ─────────
+  --
+  -- Whiskering a shape by a block of identity wires and then closing that
+  -- block returns the shape, with ONE CIRCLE PER WIRE. Every wire of the
+  -- whisker runs from its own new source to its own new sink and to nothing
+  -- else, so each closure takes the circle branch, and the count is the block's
+  -- length.
+  --
+  -- This is the source's own statement, at every arity rather than at one.
+  -- [@raynor-2025-functorial, Rmk 3.9] records that the trace of the identity
+  -- IS the circle — the object exhibiting that the open diagrams are closed
+  -- under composition and not under contraction — and here that is a theorem
+  -- about the built operations rather than a quotation: the closure is the
+  -- contraction, `lwhisk` is the identity block, and `Closed.loops` counts what
+  -- comes out. It is also why the count could not be discarded: a discarded
+  -- count would make the trace of every identity the unit at every arity, which
+  -- `selfloop-counted` refutes at one arity and this refutes at all of them.
+  close-block-lwhisk
+    : ∀ {Ξ Γ Γˣ Δ Δˣ}
+    → (p : Append Ob Ξ Γ Γˣ)
+    → (q : Append Ob Ξ Δ Δˣ)
+    → (S : Shape Ob Γ Δ)
+    → close-block p q (lwhisk p q S) ≡ (S , length Ξ)
+  close-block-lwhisk nil nil S = refl
+  close-block-lwhisk (cons p) (cons q) S =
+    trans
+      (cong
+        (λ z →
+            proj₁ (close-block p q (proj₁ z))
+          , proj₂ z + proj₂ (close-block p q (proj₁ z)))
+        (close-wire-in head head (lwhisk p q S)))
+      (cong
+        (λ z → proj₁ z , suc (proj₂ z))
+        (close-block-lwhisk p q S))
+
   -- ── AND WHAT IT DOES TO THE EDGE LISTING ─────────────────────────────────
   --
   -- `verts-close-in` and its two block forms say the closure adds no VERTEX.
@@ -2108,6 +2144,44 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   -- answer: it recorded that a route never comparing two witnesses at one
   -- triple would pay nothing, and that neither probe ruled one out. This is
   -- that route.
+  --
+  -- ── WHAT THE FIVE REDUCE TO, LOCATED RATHER THAN ESTIMATED ────────────────
+  -- The unit laws' route was traced to the point where it stops, and what
+  -- stops it is ONE missing instrument rather than a design decision. Recorded
+  -- here so the next pass starts from a named gap.
+  --
+  -- BOTH UNIT LAWS COMPUTE, at closed indices: `idr-wires`, `idr-corolla`,
+  -- `idr-chain` and `idl-chain` at the bottom of this file hold by `refl`, at a
+  -- wiring, at one vertex and at two. So neither statement is waiting on a
+  -- design decision and neither is false; what a general proof owes is the
+  -- profile-by-profile bookkeeping that reduction does for free at closed
+  -- lists.
+  --
+  -- `Idr` REDUCES TO ONE STATEMENT ABOUT `plug`, namely that plugging the unit
+  -- code at a vertex returns that vertex: `plug p q (corolla A B) S` is
+  -- `(node A B p q S , 0)`. The outer induction on `X` is then immediate, and
+  -- the node's two witnesses are canonicalized by `append-canon` exactly as in
+  -- `close-wire-in`. Unfolding that statement leaves `close-block` and
+  -- `close-cross` applied to `merge`'s value at a corolla, which is one node
+  -- over `wires-in` of the corolla's own block swap into `S`.
+  --
+  -- SO THE GAP IS THE APART CASE OF THE SAME LAW `close-wire-in` PROVES. That
+  -- law says what closing a threaded wire does AT ITS OWN two positions; what a
+  -- block iteration needs is what closing does at positions the threading did
+  -- not take — the shape-level counterpart of `match-remove-insert-apart` and
+  -- `match-unhit-insert-apart`, which the listing algebra already has at the
+  -- wiring. With it, `close-block`'s and `close-cross`'s iterations can be
+  -- pushed past `wires-in`'s one at a time, which is the same technique both
+  -- operations are already built by.
+  --
+  -- `close-block-lwhisk` above is the same shape of statement in the case where
+  -- the positions DO coincide, and it goes through in four lines on top of
+  -- `close-wire-in` — which is the evidence that the missing instrument is an
+  -- instrument and not a wall.
+  --
+  -- `Agreement` and `Assoc` need that instrument too and are not reduced
+  -- further here; `CountLaw` is associativity's second projection and follows
+  -- whatever route `Assoc` takes.
 
   -- the unit CODE, as the interface asks for it: the corolla with no circle
   -- beside it. `unit` above is the SHAPE, and predates the count
@@ -2557,6 +2631,9 @@ open import Gandr.Shape.Graph
   using (point)
   using (wheel)
   using (flow)
+  using (corolla)
+  using (hit)
+  using (miss)
   using (𝟙)
   using (𝟚)
   using (_≟ˢ_)
@@ -2567,6 +2644,7 @@ open import Gandr.Shape.Graph
   using ([])
 open import Gandr.Shape.Graft
   using (merge)
+  using (graft)
 open import Data.List
   using (_∷_)
   using ([])
@@ -2581,6 +2659,8 @@ open Circuit {Ob = ⊤}
   using (transpose)
   using (≈ˢ-step)
   using (close-in)
+  using (sub)
+  using (unitᶜ)
 
 -- THE CLOSED PAIR: two closed components merged in either order. This is the
 -- swap of two whole components, which has no interface leg anywhere near it.
@@ -2701,3 +2781,47 @@ contract-two-wires-edges-before = refl
 
 contract-two-wires-edges-after : edges (idn 𝟙) ≡ flow tt ∷ []
 contract-two-wires-edges-after = refl
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- THE TWO UNIT LAWS, RUN AT CONCRETE DATA.
+--
+-- `Idl`, `Idr`, `Assoc`, `CountLaw` and `Agreement` are stated above and none
+-- of them is inhabited. That is a statement about what has been PROVED and it
+-- is silent about whether the construction computes the right answer, which is
+-- exactly the failure the lane's done-rule names: a green gate is not proof of
+-- meaning, and five uninhabited types are green whatever the former does.
+--
+-- These run both unit laws at closed indices, where every witness comparison a
+-- general proof has to make computes away. A former that type-checked while
+-- plugging the wrong operand, or while dropping or double-counting a circle,
+-- fails HERE rather than in a reader's head.
+--
+-- All four hold by `refl`, and that fixes what the general inductions are and
+-- are not owed. The statements are true and the operations compute them, so
+-- what an induction has to supply is the profile-by-profile bookkeeping that
+-- reduction does for free at closed lists — and nothing else. In particular
+-- neither law is waiting on a design decision.
+
+-- a two-vertex shape at the same interface, so a plug meets a node chain
+-- rather than a single vertex
+chain-two : Shape ⊤ 𝟚 𝟙
+chain-two = graft (corolla 𝟚 𝟙) (corolla 𝟙 𝟙)
+
+-- RIGHT UNIT: substituting the unit code at every position changes nothing,
+-- at a wiring (no position at all), at one vertex, and at two.
+idr-wires : sub (idn 𝟚 , zero) (λ {c} {d} _ → unitᶜ c d) ≡ (idn 𝟚 , zero)
+idr-wires = refl
+
+idr-corolla
+  : sub (corolla 𝟚 𝟙 , zero) (λ {c} {d} _ → unitᶜ c d) ≡ (corolla 𝟚 𝟙 , zero)
+idr-corolla = refl
+
+idr-chain : sub (chain-two , zero) (λ {c} {d} _ → unitᶜ c d) ≡ (chain-two , zero)
+idr-chain = refl
+
+-- LEFT UNIT: substituting a code at the unit's single position is that code,
+-- with the two-vertex operand so the plug's block iterations run past a chain
+idl-chain
+  : sub (unitᶜ 𝟚 𝟙) (λ { hit → chain-two , zero ; (miss ()) })
+    ≡ (chain-two , zero)
+idl-chain = refl
