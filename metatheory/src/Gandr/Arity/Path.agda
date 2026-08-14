@@ -69,16 +69,23 @@
 --     around it. The graph kit's cannot be. Its carrier's `node` carries
 --     `Append` witnesses, so the graph of grafting must existentially quantify
 --     the whiskered operand's witness, and two witnesses of the same grafting
---     may differ there. Identifying them is `append-uniq`, whose price is
---     `UIP Ob`. So a `mul-fun` landing in `_≡_` charges the law layer an
---     h-level condition in one instance and nothing in the other.
+--     may differ there. Identifying two ARBITRARY such witnesses is
+--     `append-uniq`, whose price is `UIP Ob`. So a `mul-fun` landing in `_≡_`
+--     charges the law layer an h-level condition in one instance and nothing
+--     in the other.
 --
--- The measurement that pins this down is in `Gandr.Shape.Graft`: stated on the
--- FUNCTION, that kit's unit laws cost exactly `UIP Ob` and are proved at that
--- price; stated on the GRAPH they would cost nothing, because the witness is
--- the existential the relation never commits to. Read together with the point
--- above, the h-level charge does not vanish — it MOVES. Function-side it lands
--- on the unit laws; graph-side it lands on functionality.
+-- THE MEASUREMENT THIS SECTION ONCE READ OFF THAT POINT IS WITHDRAWN, and the
+-- point itself stands. `Gandr.Shape.Graft`'s unit laws were stated on the
+-- FUNCTION and charged `UIP Ob`, and this section read the charge as the
+-- h-level condition MOVING rather than vanishing — function-side onto the unit
+-- laws, graph-side onto functionality. Those laws are now proved hypothesis-
+-- free through `Gandr.Shape.Graph.append-canon`, which compares a witness
+-- against the canonical one instead of comparing two arbitrary ones, so the
+-- function side of that contrast is empty: nothing is charged there to move.
+--
+-- What survives is the narrower fact, and it is the one the bullet above
+-- states: identifying two arbitrary witnesses at one triple costs set-ness,
+-- and a `mul-fun` at `_≡_` is a statement that genuinely has two of them.
 --
 -- What removes it from both is the heterogeneous comparison. `Same` below was
 -- introduced as the K-free way to compare paths with different endpoints; the

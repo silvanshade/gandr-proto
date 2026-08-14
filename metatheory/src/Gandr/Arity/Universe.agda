@@ -1785,20 +1785,28 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   -- here is postulated, and each statement is what the next pass starts from.
   -- NONE OF THE FIVE IS INHABITED IN THIS REVISION.
   --
-  -- ONE THING ABOUT THEIR COST IS MEASURED RATHER THAN GUESSED, and it is
-  -- worth having before the next pass starts. `close-in` rebuilds each node it
-  -- pushes past over `append-graph`, so a unit law has to say that the witness
-  -- it rebuilt with is the one the original node carried. Both natural
-  -- formulations of that ingredient — `(p : Append Ob B Γ (B ++ Γ)) → p ≡
-  -- append-graph B Γ`, and uniqueness of two witnesses at one triple — are
-  -- STUCK under `--without-K`, on a reflexive `List Ob` equation the `nil`
-  -- clause would have to delete. That is the forced-index deletion the design
-  -- doctrine describes, and it is the same h-level condition `graft-idnˡ` and
-  -- `graft-idnʳ` already take as `UIP (List Ob)` parameters.
+  -- THE INGREDIENT THEIR COST WAS MEASURED ON IS NOW SUPPLIED, AND IT IS FREE.
+  -- `close-in` rebuilds each node it pushes past over `append-graph`, so a unit
+  -- law has to say that the witness it rebuilt with is the one the original
+  -- node carried. An earlier revision of this paragraph recorded both natural
+  -- formulations of that ingredient as STUCK under `--without-K` — `(p : Append
+  -- Ob B Γ (B ++ Γ)) → p ≡ append-graph B Γ`, and uniqueness of two witnesses
+  -- at one triple — each on a reflexive `List Ob` equation the `nil` clause
+  -- would have to delete, and read the wall as the same h-level condition
+  -- `graft-idnˡ` and `graft-idnʳ` took as `UIP` parameters.
   --
-  -- What is NOT measured, and must not be read into the above: whether the
-  -- unit laws themselves need that condition. A route that never compares two
-  -- witnesses at one triple would not, and neither probe rules one out.
+  -- Both probes really are stuck and the wall is not. Both FIX the result
+  -- index, which is what leaves `nil` a deletion; packaging the index WITH the
+  -- witness leaves it a variable, and then `nil` solves. That is
+  -- `Gandr.Shape.Graph.append-canon`, and `node-canon` beside it is the form
+  -- the shape layer spends. The two carrier unit laws are now proved through it
+  -- and take no hypothesis at all, so the condition this paragraph predicted
+  -- for the laws below is not owed either.
+  --
+  -- What the earlier revision was careful about turned out to be the whole
+  -- answer: it recorded that a route never comparing two witnesses at one
+  -- triple would pay nothing, and that neither probe ruled one out. This is
+  -- that route.
 
   -- the unit CODE, as the interface asks for it: the corolla with no circle
   -- beside it. `unit` above is the SHAPE, and predates the count

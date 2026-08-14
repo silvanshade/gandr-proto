@@ -356,19 +356,24 @@
 -- do not then the difference is exactly a section-discipline obligation.
 --
 -- `graft-idnˡ` and `graft-idnʳ` — the derived unit is a two-sided unit, in
--- general, at the exact price of `UIP Ob` and nothing more. That price is the
--- second half of the finding above and it is measured rather than asserted:
--- `preplug` and `graft` rebuild each vertex's `Append` witness with
--- `append-graph`, so the two sides of each law are the same shape carrying
--- possibly-different witnesses at EQUAL indices. `append-fun` closes the
--- indices free; closing the witnesses is `append-uniq`, whose hypothesis is
--- set-ness of the colours. The listing-algebra unit lemmas underneath pay
--- nothing at all, so the charge is located precisely and is not diffuse.
+-- general, and at NO hypothesis. An earlier revision of this header charged
+-- both laws `UIP Ob`, and the charge is retired rather than relocated.
+--
+-- The obligation the charge was measured against is unchanged: `preplug` and
+-- `graft` rebuild each vertex's `Append` witness with `append-graph`, so the
+-- two sides of each law are the same shape carrying possibly-different
+-- witnesses. The old route closed that in two moves, `append-fun` for the
+-- indices and then `append-uniq` for the witnesses, and only the second cost
+-- anything — because it compares two ARBITRARY witnesses at one triple, which
+-- is what asks for set-ness. The route taken now closes it in one move that
+-- compares a witness against the CANONICAL one, `Gandr.Shape.Graph.append-canon`,
+-- and that comparison is free. The listing-algebra unit lemmas underneath still
+-- pay nothing, so the whole of both proofs is now hypothesis-free.
 --
 -- Both laws also hold by `refl` at the worked examples, where the indices are
--- closed lists and the witness comparison computes away. So the hypothesis is
--- buying that one comparison and the general statement is not stronger than the
--- concrete one in any other respect.
+-- closed lists and the witness comparison computes away — which is now a check
+-- that the operation computes what the law names, rather than the concrete half
+-- of a pair whose general half was bought.
 --
 -- Stated on the GRAPH instead, the same laws would pay nothing: the whiskered
 -- operand is an existential the relation never commits to, so the unit case
@@ -405,7 +410,7 @@ open import Gandr.Shape.Graph
   using (node)
   using (append-graph)
   using (append-fun)
-  using (append-uniq)
+  using (append-canon)
   using (idn-match)
   using (Ix)
   using (Wire)
@@ -463,9 +468,6 @@ open import Gandr.Shape.Graph
   using (_≟ˢ_)
   using (_≟⊤_)
 
-open import Axiom.UniquenessOfIdentityProofs
-  using (UIP)
-  using (module Decidable⇒UIP)
 open import Data.Empty
   using (⊥-elim)
 open import Data.Bool.Base
@@ -6479,40 +6481,49 @@ module _ {ℓ} {Ob : Set ℓ} where
   merge-idn (cons p) (cons q) T = cong (wire-in head head) (merge-idn p q T)
 
 -- ════════════════════════════════════════════════════════════════════════════
--- THE UNIT LAWS, AND THE EXACT PRICE OF STATING THEM ON THE FUNCTION.
+-- THE UNIT LAWS, AND WHAT THEY TURNED OUT NOT TO COST.
 --
 -- The derived unit is a two-sided unit for grafting — that is the claim the
 -- carrier's `idn` has to make good on, since `Gandr.Arity.Path`'s header named
 -- the unit's status as the one thing it expected NOT to generalize.
 --
--- Both laws hold, and they cost `UIP Ob` and nothing else. The reason is local
--- and worth naming: `preplug` and `graft` rebuild each vertex's `Append`
--- witness with `append-graph`, so the two sides of each law are the same shape
--- carrying possibly-different witnesses at EQUAL indices. `append-fun` closes
--- the indices with no hypothesis; closing the witnesses is `append-uniq`, whose
--- price is set-ness of the colours. Nothing else in either proof pays anything.
+-- BOTH LAWS ARE HYPOTHESIS-FREE, and an earlier revision of this section
+-- charged them `UIP Ob` and `UIP (List Ob)`. The charge was real against the
+-- route it was measured on and it is not real against the route taken here,
+-- which is worth stating precisely because the estimate was propagated.
 --
--- This is what the same laws stated on the graph of grafting would NOT pay:
--- there the witness is an existential the relation never commits to, so the
--- unit constructor picks the operand's own witness and the question does not
--- arise. That is the sharpest available statement of what the graph is for,
--- and it is a second reason beyond keeping defined functions out of indices.
+-- The obligation is unchanged: `preplug` and `graft` rebuild each vertex's
+-- `Append` witness with `append-graph`, so the two sides of each law are the
+-- same shape carrying possibly-different witnesses. The old route closed that
+-- gap in two moves — `append-fun` for the indices, free, then `append-uniq`
+-- for the witnesses, which compares two ARBITRARY witnesses at one triple and
+-- is where the h-level condition was spent. The new route closes it in ONE:
+-- `Gandr.Shape.Graph.append-canon` says a witness paired with its own index is
+-- `append-graph` paired with the concatenation, and matching that single
+-- equation solves both at once. Comparing two arbitrary witnesses is what
+-- costs set-ness; comparing one against the canonical one does not, and these
+-- laws only ever needed the second.
 --
--- The instantiation is at the worked examples below, where both laws hold by
--- `refl` — at concrete indices the witness comparison computes away, so the
--- hypothesis is doing exactly the work the general case needs and no more.
+-- `append-uniq` keeps its consumer — `Gandr.Shape.Graph.shape?` genuinely
+-- compares two arbitrary witnesses — so what is retired is the charge on these
+-- two laws, not the lemma.
+--
+-- This is still what the same laws stated on the graph of grafting would not
+-- pay: there the witness is an existential the relation never commits to, so
+-- the unit constructor picks the operand's own witness and the question does
+-- not arise. That reading survives; what it no longer contrasts with is a
+-- price.
 -- ════════════════════════════════════════════════════════════════════════════
 
-module _ {ℓ} {Ob : Set ℓ} (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob)) where
+module _ {ℓ} {Ob : Set ℓ} where
 
   graft-idnˡ
     : ∀ {Γ Θ}
     → (T : Shape Ob Γ Θ)
     → graft (idn Γ) T ≡ T
   graft-idnˡ (wires n) = cong wires (match-comp-idnˡ n)
-  graft-idnˡ {Γ} (node A B p q T) with append-fun p (append-graph B Γ)
-  ... | refl with append-uniq uipᵒ uipˡ p (append-graph B Γ)
-  ...   | refl =
+  graft-idnˡ {Γ} (node A B p q T) with append-canon p
+  ... | refl =
     cong
       (node A B (append-graph B Γ) q)
       (trans
@@ -6524,9 +6535,8 @@ module _ {ℓ} {Ob : Set ℓ} (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob)) where
     → (S : Shape Ob Γ Δ)
     → graft S (idn Δ) ≡ S
   graft-idnʳ (wires m) = cong wires (match-comp-idnʳ m)
-  graft-idnʳ {Δ} (node A B p q S) with append-fun q (append-graph A Δ)
-  ... | refl with append-uniq uipᵒ uipˡ q (append-graph A Δ)
-  ...   | refl =
+  graft-idnʳ {Δ} (node A B p q S) with append-canon q
+  ... | refl =
     cong
       (node A B p (append-graph A Δ))
       (trans
@@ -6597,9 +6607,11 @@ assoc-fuse-right
     ≡ head ∷ cap head []
 assoc-fuse-right = refl
 
--- The unit laws, at concrete data, hold by `refl`: the witness comparison the
--- general proof spends `UIP Ob` on computes away once the indices are closed
--- lists. So the hypothesis buys exactly that comparison and nothing else.
+-- The unit laws, at concrete data, hold by `refl`: at closed indices the
+-- witness comparison the general proof canonicalizes simply computes away. The
+-- general laws above no longer buy anything with a hypothesis, so these run as
+-- checks that the operation computes the composite the laws name rather than
+-- as the concrete half of a hypothesis-bearing pair.
 corolla-idnˡ : graft (idn 𝟚) (corolla 𝟚 𝟙) ≡ corolla 𝟚 𝟙
 corolla-idnˡ = refl
 
@@ -6613,20 +6625,15 @@ chain-idnˡ = refl
 chain-idnʳ : graft chain (idn 𝟙) ≡ chain
 chain-idnʳ = refl
 
--- AND THE GENERAL LAWS ARE DISCHARGED HERE, which is what stops the
--- `UIP`-parameterized module above from being green and vacuous: the unit type
--- has decidable equality, so Hedberg supplies both hypotheses.
-uipᵒ : UIP ⊤
-uipᵒ = Decidable⇒UIP.≡-irrelevant _≟⊤_
-
-uipˡ : UIP (List ⊤)
-uipˡ = Decidable⇒UIP.≡-irrelevant (list-dec _≟⊤_)
-
+-- AND THE GENERAL LAWS ARE INSTANTIATED HERE, at the colour set the rest of
+-- this section runs at. They take no hypothesis, so the instantiation says
+-- what it always said — the laws hold of EVERY shape at this interface, not
+-- only of the three written out above — without a `UIP` argument to supply.
 graft-unitˡ : (T : Shape ⊤ 𝟚 𝟙) → graft (idn 𝟚) T ≡ T
-graft-unitˡ = graft-idnˡ uipᵒ uipˡ
+graft-unitˡ = graft-idnˡ
 
 graft-unitʳ : (S : Shape ⊤ 𝟚 𝟙) → graft S (idn 𝟙) ≡ S
-graft-unitʳ = graft-idnʳ uipᵒ uipˡ
+graft-unitʳ = graft-idnʳ
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- GRAFTING IS TOTAL AND DOES NOT PRESERVE THE CELL PREDICATES. That is the

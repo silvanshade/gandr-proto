@@ -676,6 +676,55 @@ module _ {ℓ} {Ob : Set ℓ} where
   append-fun nil nil = refl
   append-fun (cons p) (cons q) = cong (_ ∷_) (append-fun p q)
 
+  -- CANONICITY. `append-fun` says the result index is determined by the two
+  -- inputs; this says the WITNESS is determined too, and it is `append-graph`.
+  --
+  -- WHY IT IS WANTED. Every operation that pushes past a published port block
+  -- REBUILDS that block's witness over `append-graph` — `wire-in`, `cap-in`,
+  -- `preplug`, `merge` and the arity kit's closure all do — so any law saying
+  -- such an operation returns the shape it started from has to compare a
+  -- rebuilt witness against the one the original `node` carried. Nothing
+  -- weaker than this reaches that comparison.
+  --
+  -- THE TWO FORMULATIONS THAT LOOK NATURAL ARE BOTH STUCK, for the reason
+  -- `append-fun`'s own comment names one line up. `(p : Append Ob xs ys (xs ++
+  -- ys)) → p ≡ append-graph xs ys` and uniqueness of two witnesses at one
+  -- triple each FIX the result index, so the `nil` clause — whose constructor
+  -- type repeats `ys` in two index positions — leaves the unifier a reflexive
+  -- `List Ob` equation to DELETE, which `--without-K` forbids.
+  --
+  -- PACKAGING THE INDEX WITH THE WITNESS IS THE THIRD FORMULATION, and it is
+  -- not stuck: the index stays a variable, so `nil` SOLVES it where the other
+  -- two would delete. The saving is the same one `append-fun` already takes,
+  -- applied one level up — and it is why the laws downstream of it need no
+  -- `UIP (List Ob)` parameter of the kind `graft-idnˡ` and `graft-idnʳ` take.
+  append-canon
+    : ∀ {xs ys zs}
+    → (p : Append Ob xs ys zs)
+    → _≡_ {A = Σ (List Ob) (Append Ob xs ys)}
+        (zs , p)
+        (xs ++ ys , append-graph xs ys)
+  append-canon nil = refl
+  append-canon {x ∷ xs} (cons p) =
+    cong (λ w → (x ∷ proj₁ w , cons (proj₂ w))) (append-canon p)
+
+  -- and the form the shape layer spends it in. A node is the node with both
+  -- witnesses canonical, over the same sub-shape read at the concatenated
+  -- interfaces — which is exactly the term every rebuilding operation
+  -- produces. The sub-shape is RETURNED rather than transported: matching the
+  -- two canonicity equations solves the two interface variables, so the shape
+  -- that comes back is the one that went in and nothing is coerced.
+  node-canon
+    : ∀ {Γ Δ Γ′ Δ′}
+    → (A B : List Ob)
+    → (p : Append Ob B Γ Γ′)
+    → (q : Append Ob A Δ Δ′)
+    → (S : Shape Ob Γ′ Δ′)
+    → Σ (Shape Ob (B ++ Γ) (A ++ Δ))
+        (λ S′ → node A B p q S ≡ node A B (append-graph B Γ) (append-graph A Δ) S′)
+  node-canon A B p q S with append-canon p | append-canon q
+  ... | refl | refl = S , refl
+
   -- The identity matching: each source onto the sink beside it.
   idn-match
     : (Γ : List Ob)

@@ -30,8 +30,10 @@ House policy on external research artifacts applies unchanged: read and cite, ne
 **Implement the remaining pieces and the suggested lemmas as they occur.** Recording an owed lemma at its site and moving on is no longer the default.
 
 **Where a piece will not fully close, discharge what closes and make the rest parameters of a module** — so what is being assumed, and what is left to prove, appears in a signature rather than in a comment.
-The form already exists in this tree: `Gandr.Shape.Graft`'s unit laws sit in `module _ (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob))` and are discharged at `Ob = ⊤` below.
+The form already exists in this tree: `Gandr.Shape.Graph`'s first equality layer sits in `module _ (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob))`, and its second layer discharges both parameters from decidable colour equality through Hedberg.
 This section extends that from h-level conditions to **any** undischarged obligation.
+
+**And a parameter carries no presumption that it is owed.** `Gandr.Shape.Graft`'s unit laws stood in that same shape until the ingredient they were parameterized for turned out to have a formulation that closes — so re-examine a standing hypothesis when you next touch its module, and retire it in place rather than propagating the price into what the module feeds.
 The surrounding discipline is unchanged: zero silent postulates, an assumption appears in the signature and never as a postulate, and a mid-proof module is a declared holey leaf gated on its own line.
 
 **Why this is a rule and not a preference.** A deferred residual is a claim that nothing depends on it.
