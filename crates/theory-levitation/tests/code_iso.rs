@@ -24,6 +24,11 @@
 //! checker replaces [`harness::CodeIso::round_trips`], while the round-trip
 //! evidence discipline carries over unchanged.
 //!
+//! Every `Nasu` locator in this suite cites Hayato Nasu, *Logical Aspects of
+//! Virtual Double Categories*, arXiv:2501.17869 — §3.2.3 is "Protype
+//! isomorphisms". Not the same author's *An Internal Logic of Virtual Double
+//! Categories* (arXiv:2410.06792), which has no §3.2.3.
+//!
 //! ## Deliberately NOT here (scope fence, design note §4.3)
 //!
 //! No statement of the path protype `⤳` (waits for F2), no `≅` judgment (waits

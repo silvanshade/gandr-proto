@@ -11,11 +11,15 @@
 //! machinery (design note §4.3 U3.0b: "rendered with zero new machinery"): a
 //! [`CodeIso`] is a thin certificate wrapper over the stage-0 generic programs,
 //! exactly as the `vdc_dictionary` suite's `Cell` is a thin wrapper over the
-//! landed cell structures. The landed
-//! [`gandr_theory_virtual_doctrines::ProtypeIso`] (Nasu §3.2.3 — "codes for the
-//! proterms mutually inverse to each other") is this shape at the judgment
-//! layer; the monomorphic-code round-trip discipline this harness pins carries
-//! over to it.
+//! landed cell structures. The landed `gandr-theory-virtual-doctrines`
+//! `ProtypeIso` (Nasu §3.2.3 — "codes for the two proterms mutually inverse to
+//! each other"; cited in full at this suite's root) is this shape at the
+//! judgment layer; the monomorphic-code round-trip discipline this harness pins
+//! carries over to it.
+//!
+//! The reference to that type is deliberately plain rather than an intra-doc
+//! link: `gandr-theory-virtual-doctrines` depends on this crate, so the edge a
+//! link would need is a cycle the layering rule refuses.
 //!
 //! # The evidence discipline (ADR-69 D1)
 //!

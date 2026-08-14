@@ -5,6 +5,11 @@
 //! stage-0 structures** of `gandr-theory-levitation`, with a per-law verdict
 //! recorded here.
 //!
+//! Every `Nasu` locator in this suite cites Hayato Nasu, *Logical Aspects of
+//! Virtual Double Categories*, arXiv:2501.17869 — Definition 3.2.6 is the split
+//! CFVDC and Lemma 3.2.8 is the splitness lemma. Not the same author's *An
+//! Internal Logic of Virtual Double Categories* (arXiv:2410.06792).
+//!
 //! ## Real structure vs the F0 stand-in
 //!
 //! Objects ([`harness::SigObj`] over real
