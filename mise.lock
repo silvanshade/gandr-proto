@@ -79,6 +79,53 @@ url = "https://github.com/anchore/syft/releases/download/v1.51.0/syft_1.51.0_win
 url_api = "https://api.github.com/repos/anchore/syft/releases/assets/508878657"
 
 [[tools.aube]]
+version = "1.40.0"
+backend = "github:endevco/aube"
+
+[tools.aube."platforms.linux-arm64"]
+checksum = "sha256:166a2a9ec4b006a3f3991b50b426f6fdf808bbb9b87b45eeaff199e4919f2ce2"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513113769"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-arm64-musl"]
+checksum = "sha256:15c641b223251901c0466d1fdbcd2488213c204847ada609bbaf70b978620728"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513074325"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-x64"]
+checksum = "sha256:fb4ca338cedb1a349abdca2ea57135faa6f63a78d85cf64af60aaf1a645af736"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513090652"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-x64-musl"]
+checksum = "sha256:e95c62fc21ae1e5f169a945f0b50d3b5b276b87e075ff9dc0511020bc51d29ea"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513091441"
+provenance = "github-attestations"
+
+[tools.aube."platforms.macos-arm64"]
+checksum = "sha256:9aaf56a7cb105449677084825c73816743e3df504861351a5af06c596e6f84e4"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513152932"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools.aube."platforms.macos-x64"]
+checksum = "sha256:dc079763a48f246a2b8fd54754015559f2d93b81eff990902c675e29ff534811"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/libaube-x86_64-apple-darwin.dylib"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513084542"
+provenance = "github-attestations"
+
+[tools.aube."platforms.windows-x64"]
+checksum = "sha256:79ceeded5550d422edee5ad0b24a64c6d1a386aa368f6d87fe551a2a6cdf7447"
+url = "https://github.com/jdx/aube/releases/download/v1.40.0/aube-v1.40.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/513087946"
+provenance = "github-attestations"
+
+[[tools.aube]]
 version = "1.38.1"
 backend = "github:endevco/aube"
 
@@ -125,53 +172,6 @@ url = "https://github.com/jdx/aube/releases/download/v1.38.1/aube-v1.38.1-x86_64
 url_api = "https://api.github.com/repos/jdx/aube/releases/assets/508093335"
 provenance = "github-attestations"
 
-[[tools.aube]]
-version = "1.37.0"
-backend = "github:endevco/aube"
-
-[tools.aube."platforms.linux-arm64"]
-checksum = "sha256:63488ce5494e80343129e360a59528562a9c5a82d538d10774c3e2f7ae0d8734"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496820640"
-provenance = "github-attestations"
-
-[tools.aube."platforms.linux-arm64-musl"]
-checksum = "sha256:ebd90cdd570e58af23e31f43b3708be4778505316c8a842ac69929c191361bf3"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496788139"
-provenance = "github-attestations"
-
-[tools.aube."platforms.linux-x64"]
-checksum = "sha256:1775b37c4381bff2314c96635cac3eeb90b02bea0f33371e553a4431dc893546"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496796145"
-provenance = "github-attestations"
-
-[tools.aube."platforms.linux-x64-musl"]
-checksum = "sha256:56f7b1978e66c6d5a80dc86c38c0b2c83e7019811524b41d941fdbf79b912a4c"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496794035"
-provenance = "github-attestations"
-
-[tools.aube."platforms.macos-arm64"]
-checksum = "sha256:6fdc27e146e5d6a45abf60ef7cf2e83d5b7284acbba4cecf6237905bd528a916"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496852124"
-provenance = "github-attestations"
-provenance_verified = true
-
-[tools.aube."platforms.macos-x64"]
-checksum = "sha256:4215eeb8c2febc488b766bb22d652d939bbbfd7e71a1f40ef8327ff375e89906"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/libaube-x86_64-apple-darwin.dylib"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496800802"
-provenance = "github-attestations"
-
-[tools.aube."platforms.windows-x64"]
-checksum = "sha256:7a264819a7c05d107ac72916f82209a183bfd26842b9528f1ca281bb32596c5e"
-url = "https://github.com/jdx/aube/releases/download/v1.37.0/aube-v1.37.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/jdx/aube/releases/assets/496805373"
-provenance = "github-attestations"
-
 [[tools."cargo:adrs"]]
 version = "0.11.0"
 backend = "cargo:adrs"
@@ -200,7 +200,7 @@ version = "0.4.10"
 backend = "cargo:cargo-careful"
 
 [[tools."cargo:cargo-dylint"]]
-version = "6.0.3"
+version = "6.0.4"
 backend = "cargo:cargo-dylint"
 
 [[tools."cargo:cargo-llvm-cov"]]
@@ -220,7 +220,7 @@ version = "0.10.0"
 backend = "cargo:coreutils"
 
 [[tools."cargo:dylint-link"]]
-version = "6.0.3"
+version = "6.0.4"
 backend = "cargo:dylint-link"
 
 [[tools."cargo:nu"]]
@@ -232,7 +232,7 @@ version = "0.4.13"
 backend = "cargo:prek"
 
 [[tools."cargo:rumdl"]]
-version = "0.2.53"
+version = "0.2.55"
 backend = "cargo:rumdl"
 
 [[tools."cargo:sizelint"]]
@@ -244,7 +244,7 @@ version = "1.49.0"
 backend = "cargo:typos-cli"
 
 [[tools."cargo:worktrunk"]]
-version = "0.72.0"
+version = "0.74.0"
 backend = "cargo:worktrunk"
 
 [[tools."github:agda/agda"]]
@@ -365,6 +365,53 @@ url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/as
 provenance = "github-attestations"
 
 [[tools."github:tombi-toml/tombi"]]
+version = "1.4.0"
+backend = "github:tombi-toml/tombi"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-arm64"]
+checksum = "sha256:b70750d462954294c354a014bb90399273876b953c21e3a136aafd3d1d41f5e8"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163060"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-arm64-musl"]
+checksum = "sha256:b70750d462954294c354a014bb90399273876b953c21e3a136aafd3d1d41f5e8"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163060"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-x64"]
+checksum = "sha256:e2dc1190e0590b1fd0581fa8f85017215ed9b05a4d85c1cf18e0979b6cf24fe1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163088"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-x64-musl"]
+checksum = "sha256:e2dc1190e0590b1fd0581fa8f85017215ed9b05a4d85c1cf18e0979b6cf24fe1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163088"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.macos-arm64"]
+checksum = "sha256:248159d26488f11fe8c36b9239b1ab84abe3533f4a5d8d066e56c091a99ffde1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163062"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools."github:tombi-toml/tombi"."platforms.macos-x64"]
+checksum = "sha256:7016e0028bf0ff122faeb49b0bb248c9d73885ce73b8ada26be6248e207977bc"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163065"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.windows-x64"]
+checksum = "sha256:376f26ef04c32b7de57352fb1572d550d2f728958f00bfa585cec94a1df677ab"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163086"
+provenance = "github-attestations"
+
+[[tools."github:tombi-toml/tombi"]]
 version = "1.2.10"
 backend = "github:tombi-toml/tombi"
 
@@ -411,53 +458,6 @@ url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.10/tombi-cli-1
 url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/508637499"
 provenance = "github-attestations"
 
-[[tools."github:tombi-toml/tombi"]]
-version = "1.2.5"
-backend = "github:tombi-toml/tombi"
-
-[tools."github:tombi-toml/tombi"."platforms.linux-arm64"]
-checksum = "sha256:0fa62b48aba40759e88a77e86ed20871819f0c15d9566cd56b17b71ece8b836b"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096092"
-provenance = "github-attestations"
-
-[tools."github:tombi-toml/tombi"."platforms.linux-arm64-musl"]
-checksum = "sha256:0fa62b48aba40759e88a77e86ed20871819f0c15d9566cd56b17b71ece8b836b"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096092"
-provenance = "github-attestations"
-
-[tools."github:tombi-toml/tombi"."platforms.linux-x64"]
-checksum = "sha256:05385bdf47d10828c1fc27190ee0ad44b777a57f56ea95c9ef568c845e3b7872"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096100"
-provenance = "github-attestations"
-
-[tools."github:tombi-toml/tombi"."platforms.linux-x64-musl"]
-checksum = "sha256:05385bdf47d10828c1fc27190ee0ad44b777a57f56ea95c9ef568c845e3b7872"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096100"
-provenance = "github-attestations"
-
-[tools."github:tombi-toml/tombi"."platforms.macos-arm64"]
-checksum = "sha256:e4c3dd5346650b80afa516b851e0bffb4ea8a8b51ced974712fd0dd10cb893ee"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096095"
-provenance = "github-attestations"
-provenance_verified = true
-
-[tools."github:tombi-toml/tombi"."platforms.macos-x64"]
-checksum = "sha256:b020e2daba5c563842578d164b66340251d5c1fac67106f496af4a4d30625f1e"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096094"
-provenance = "github-attestations"
-
-[tools."github:tombi-toml/tombi"."platforms.windows-x64"]
-checksum = "sha256:c338abcf1b1d088ad9436d3cc0a37d5ce82cde414de56ef693ceec2ce8aa3ec7"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.5/tombi-cli-1.2.5-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/496096098"
-provenance = "github-attestations"
-
 [[tools.node]]
 version = "26.7.0"
 backend = "core:node"
@@ -491,7 +491,7 @@ checksum = "sha256:d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c9
 url = "https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.zip"
 
 [[tools."npm:@commitlint/cli"]]
-version = "21.2.1"
+version = "21.2.2"
 backend = "npm:@commitlint/cli"
 
 [[tools."npm:oxfmt"]]
