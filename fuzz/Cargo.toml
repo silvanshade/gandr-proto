@@ -62,9 +62,7 @@ gandr-render-proto = { path = "../crates/gandr-render-proto", default-features =
 gandr-syntax = { path = "../crates/gandr-syntax", optional = true }
 gandr-tree-sitter = { path = "../crates/gandr-tree-sitter" }
 tree-sitter.workspace = true
-wyrd-rust-gates = { path = "../crates/wyrd-rust-gates", default-features = false, features = [
-  "fuzzing"
-], optional = true }
+wyrd-rust-gates = { path = "../crates/wyrd-rust-gates", default-features = false, features = ["fuzzing"], optional = true }
 
 [features]
 fuzzing = []

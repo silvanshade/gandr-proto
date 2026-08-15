@@ -19,9 +19,7 @@ package_manager = "aube"
 [env]
 RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.97.1') }}"
 RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default='nightly-2026-05-28') }}"
-_.path = [
-  "{{ exec(command='dirname \"$(command -v rustup || echo \"$HOME/.cargo/bin/rustup\")\"') }}"
-]
+_.path = ["{{ exec(command='dirname \"$(command -v rustup || echo \"$HOME/.cargo/bin/rustup\")\"') }}"]
 
 [task_config]
 includes = [".config/mise/tasks"]

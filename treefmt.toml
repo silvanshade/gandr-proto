@@ -14,15 +14,7 @@
 #     forbidden by the read-only-vendored-core discipline (core/HAZARDS.md H13).
 #   - .claude/worktrees/**: in-repo agent worktrees are foreign checkouts, not
 #     source to format (H13). Gitignoring is not scoping — exclude explicitly.
-excludes = [
-  ".beads/**",
-  ".agents/core/**",
-  ".claude/worktrees/**",
-  "node_modules/**",
-  "target/**",
-  "coverage/**",
-  ".rumdl_cache/**"
-]
+excludes = [".beads/**", ".agents/core/**", ".claude/worktrees/**", "node_modules/**", "target/**", "coverage/**", ".rumdl_cache/**"]
 
 [formatter.oxfmt]
 command = "oxfmt"
@@ -109,15 +101,7 @@ includes = ["*.md"]
 [formatter."rumdl-verify"]
 priority = 1
 command = "cargo"
-options = [
-  "run",
-  "--quiet",
-  "-p",
-  "gandr-workflow-gates",
-  "--",
-  "rumdl",
-  "check"
-]
+options = ["run", "--quiet", "-p", "gandr-workflow-gates", "--", "rumdl", "check"]
 includes = ["*.md"]
 
 # Parked (2026-07-30, owner directive): the docs-xml formatter runs through

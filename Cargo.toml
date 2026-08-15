@@ -636,9 +636,7 @@ rust-2024-compatibility = "deny"
 # Dylint drivers set `--cfg dylint_lib="<name>"`; crate code gates lint
 # suppressions on it (the cfg_attr(dylint_lib = ...) sites), so the cfg
 # name must be expected under every toolchain.
-unexpected_cfgs = { level = "deny", priority = -1, check-cfg = [
-  "cfg(dylint_lib, values(any()))"
-] }
+unexpected_cfgs = { level = "deny", priority = -1, check-cfg = ["cfg(dylint_lib, values(any()))"] }
 unknown-or-malformed-diagnostic-attributes = "deny"
 unused = "deny"
 warnings = "deny"

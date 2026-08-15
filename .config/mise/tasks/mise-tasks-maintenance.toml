@@ -7,15 +7,7 @@ usage = '''
 flag "--from <from>" help="Base revision for the mutation range"
 flag "--to <to>" help="Head revision for the mutation range"
 '''
-run = [
-  { task = "fuzz:weekly" },
-  { task = "mutants:scheduled", args = [
-    "--from",
-    "{{usage.from}}",
-    "--to",
-    "{{usage.to}}"
-  ] }
-]
+run = [{ task = "fuzz:weekly" }, { task = "mutants:scheduled", args = ["--from", "{{usage.from}}", "--to", "{{usage.to}}"] }]
 
 ["maintenance:advance"]
 description = "Atomically advance the successful weekly campaign watermark"
