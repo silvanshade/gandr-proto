@@ -35,7 +35,7 @@ cargo nextest run -p gandr-workflow-gates
 """
 
 ["test:graph-boundary"]
-description = "Run the live theory-graphs façade boundary gate (gandr-graph, ported in wave 1)"
+description = "Run the live theory-graphs façade boundary gate (gandr-theory-graphs, ported in wave 1)"
 run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN

@@ -35,7 +35,7 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 | `spec:proof-engineering.md` (held outside this repository)       | designing Agda structures: representation, characterization, reasoning style, namespacing — the doctrine, not the workflow                |
 | [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
 | [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
-| [workflow/specs.md](workflow/specs.md)                           | authoring/editing the `spec:` corpus, re-absorptions, doc fidelity                                                                        |
+| [workflow/specs.md](workflow/specs.md)                           | identifier, citation, and prose-form rules surviving the corpus migration (the `spec:` corpus itself has left)                            |
 | [workflow/docs.md](workflow/docs.md)                             | adding/restructuring docs, formatter posture, math-dense Markdown                                                                         |
 
 ## Quality gates, in one breath

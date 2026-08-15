@@ -1,12 +1,13 @@
-//! Structural `gandr-graph` boundary analysis.
+//! Structural `gandr-theory-graphs` boundary analysis.
 //!
 //! # Contract
 //! - requires: fixture metadata, when supplied, has Cargo-compatible `packages`
 //!   and `workspace_members` fields whose member package manifests are absolute
 //!   or relative to the workspace root.
 //! - ensures: returns findings for graph-stack direct dependencies outside
-//!   `gandr-graph`, graph-stack source references outside `gandr-graph`, and
-//!   externally visible `gandr-graph` declarations exposing graph-stack roots.
+//!   `gandr-theory-graphs`, graph-stack source references outside
+//!   `gandr-theory-graphs`, and externally visible `gandr-theory-graphs`
+//!   declarations exposing graph-stack roots.
 //! - provides: structural `syn`-backed graph-boundary diagnostics for workspace
 //!   packages.
 //! - fails: returns typed gate errors for unreadable metadata/source files,
@@ -78,16 +79,16 @@ crate::semantic_copy!(pub struct GraphStackNameFlag(bool));
 crate::semantic_copy!(pub struct PathIsRegularSourceFlag(bool));
 
 /// Workspace package allowed to own graph-stack implementation dependencies.
-const GRAPH_PACKAGE: &str = "gandr-graph";
+const GRAPH_PACKAGE: &str = "gandr-theory-graphs";
 /// Stable detail for direct dependency violations.
 const DIRECT_DEPENDENCY_DETAIL: &str =
-    "petgraph/fixedbitset may be direct dependencies only of gandr-graph";
+    "petgraph/fixedbitset may be direct dependencies only of gandr-theory-graphs";
 /// Stable detail for non-graph source references to graph-stack crates.
 const OUTSIDE_SOURCE_DETAIL: &str =
-    "source outside gandr-graph must not mention petgraph/fixedbitset graph-stack APIs";
-/// Stable detail for public `gandr-graph` API exposure violations.
+    "source outside gandr-theory-graphs must not mention petgraph/fixedbitset graph-stack APIs";
+/// Stable detail for public `gandr-theory-graphs` API exposure violations.
 const PUBLIC_API_DETAIL: &str =
-    "public gandr-graph declarations must not expose petgraph/fixedbitset graph-stack APIs";
+    "public gandr-theory-graphs declarations must not expose petgraph/fixedbitset graph-stack APIs";
 
 /// Runs graph-boundary analysis for a workspace root.
 ///
@@ -141,9 +142,9 @@ pub fn run(
 ///
 /// # Contract
 /// - requires: `path` names the supplied source for diagnostics; `package`
-///   selects outside-source checks unless it is exactly `gandr-graph`.
-/// - ensures: returns source findings outside `gandr-graph` and public API
-///   findings inside `gandr-graph`.
+///   selects outside-source checks unless it is exactly `gandr-theory-graphs`.
+/// - ensures: returns source findings outside `gandr-theory-graphs` and public
+///   API findings inside `gandr-theory-graphs`.
 /// - provides: graph-boundary findings for one already captured Rust source
 ///   file.
 /// - fails: returns a Rust parse error when `source` is not a complete Rust
@@ -158,7 +159,7 @@ pub fn run(
 ///
 /// # Adequacy
 /// - hypothesis: L3 only — integration fixtures distinguish outside-source
-///   checking from `gandr-graph` public API checking, alias/wildcard
+///   checking from `gandr-theory-graphs` public API checking, alias/wildcard
 ///   resolution, impl-self nameability, and parse failure through exact finding
 ///   vectors and typed error observations.
 /// - witness: `graph_boundary::tests::private_outside_crate_graph_stack_use_is_rejected`
@@ -462,8 +463,8 @@ fn source_findings(
     Ok(())
 }
 
-/// Append public API boundary findings for one parsed `gandr-graph` library
-/// root and its externally visible declared modules.
+/// Append public API boundary findings for one parsed `gandr-theory-graphs`
+/// library root and its externally visible declared modules.
 fn graph_public_api_findings<'semantic, P>(
     workspace_root: &Path,
     package: P,
@@ -1440,7 +1441,8 @@ fn rust_source_files(root: &Path) -> Result<Vec<PathBuf>, GateError>
     Ok(files)
 }
 
-/// Append findings for any graph-stack path anywhere outside `gandr-graph`.
+/// Append findings for any graph-stack path anywhere outside
+/// `gandr-theory-graphs`.
 fn outside_source_findings<'semantic, P>(
     workspace_root: &Path,
     package: P,
@@ -1706,8 +1708,9 @@ fn cargo_metadata(workspace_root: &Path) -> Result<String, GateError>
 ///   `workspace_members` fields whose member package manifests name readable
 ///   package roots, either absolute or relative to `workspace_root`.
 /// - ensures: returns findings for forbidden direct dependencies, outside
-///   graph-stack source references, and externally visible `gandr-graph` API
-///   exposure through the declared library module graph.
+///   graph-stack source references, and externally visible
+///   `gandr-theory-graphs` API exposure through the declared library module
+///   graph.
 /// - provides: graph-boundary findings from already captured Cargo metadata.
 /// - fails: returns typed gate errors for invalid metadata JSON or shape,
 ///   unreadable source files, ambiguous or missing public module files, and

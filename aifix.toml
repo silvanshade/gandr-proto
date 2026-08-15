@@ -1,0 +1,36 @@
+# Repo-side aifix profile overrides (bead gandr-y58).
+#
+# aifix's built-in `rust` profile runs bare `cargo clippy --quiet
+# --message-format=json` under the DEFAULT toolchain. In this repo that builds
+# the vendored rustc_private `clippy_utils` (pinned to the nightly below) under
+# stable rustc and emits spurious compiler errors as findings. The override
+# pins the same nightly the mise wall uses (`RUSTUP_TOOLCHAIN_NIGHTLY` in
+# mise.toml) and mirrors the `cargo:clippy` task flags, keeping
+# `--message-format=json` so aifix can parse the diagnostics. The proper fix
+# (toolchain-aware profiles) is tracked in the aifix project; this file is the
+# repo-side workaround until it lands.
+
+[profiles.rust]
+argv = [
+  "env",
+  "RUSTUP_TOOLCHAIN=nightly-2026-05-28",
+  "cargo",
+  "clippy",
+  "--workspace",
+  "--all-targets",
+  "--features=full",
+  "--message-format=json",
+  "--",
+  "-D",
+  "warnings",
+  "-A",
+  "clippy::std_instead_of_core",
+]
+
+# NOTE: the built-in `nushell` profile (nu-lint) emits non-diagnostic
+# box-drawing/output lines that aifix surfaces as spurious findings, and aifix
+# offers no repo-side way to suppress a detected built-in profile
+# (`ProfileConfig.auto` can only add detection, never subtract it). The
+# suppress-and-parse-properly fix is tracked in the aifix project; until then,
+# disregard nushell-profile findings here — gandr's nu scripts are gated by
+# repo hooks instead.

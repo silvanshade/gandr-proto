@@ -1,7 +1,7 @@
 # Workflow: documentation discipline
 
 > Read when: adding or restructuring documentation, or authoring math-dense Markdown.
-> Corpus authority and authoring discipline: [specs.md](specs.md).
+> Identifier, citation, and prose-form rules surviving the corpus migration: [specs.md](specs.md).
 > The MANIFEST/BLAKE3 registration machinery and its drift gate retired when the corpus left this repository.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
@@ -18,7 +18,7 @@ Every `spec:` change carries a mandatory fidelity review against its declared so
 - **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
 - **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
   When uncertain whether content is load-bearing, treat it as load-bearing.
-  For spec absorption the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree ([specs.md](specs.md)).
+  For spec absorption — work that happens in the corpus's own workspace, not here — the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree.
 - **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the contributor's private workspace, never in the tracked tree (`AGENTS.md` §"Commits and publishable history").
   What a survey _decides_ gets distilled into the design record; the survey itself does not move into `docs/`.
 
@@ -29,11 +29,11 @@ Per-crate ADR/METRICS/OPTIMIZATION files are legacy material outside the three p
 
 ## Specification corpus and the doc tool
 
-The **live design corpus is Markdown** under `spec:` — four tracks with their sub-documents and roadmaps, cited against `spec:bibliography.yml` ([specs.md](specs.md) is the authoring discipline).
+The **live design corpus is Markdown** under `spec:` — four tracks with their sub-documents and roadmaps, cited against its `spec:bibliography.yml` register (its authoring discipline moved with it).
 It is held outside this repository and cited by the alias.
 It is the authority; nothing else describes the design normatively.
 
-Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — owner ratification is pending, `gandr-wvd.17`), which validates three XML classes (`gandr-712`).
+Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — the crate is parked out of `workspace.members`, and its rescope to user-facing documentation tooling (a future manual, for one) together with the name ratification is tracked at `gandr-5ikn`), which validates three XML classes (`gandr-712`).
 They share one minimal block/inline substrate (`section`, `prose`, `list`, `table`, `code`; `inline-code`, `label`/`ref` coined anchors, `cite` bibliography keys) and one parse-is-validate discipline (banner presence, status presence, label define-once, label/cite resolution, per-class schema):
 
 - **research records** — `<research-record>`: status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.

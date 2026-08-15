@@ -4,9 +4,19 @@
 #
 # This is the [pre-push] enforcement point for the project's sign-on-push model:
 # commits may be authored unsigned (the AFK allowance), but the history that
-# reaches the remote must be signed. It checks every commit the push publishes —
+# reaches a remote must be signed. It checks every commit the push publishes —
 # the same range the message-lint gate uses (lib/push-range.nu), including the
 # full history on a force-pushed rewrite.
+#
+# REMOTE DESTINATIONS ONLY. The push destination is the pre-push hook's
+# positional arguments (remote name, remote URL) — which prek also exports as
+# PRE_COMMIT_REMOTE_NAME / PRE_COMMIT_REMOTE_URL, the same env channel
+# lib/push-range.nu reads for the refs. When the destination is a LOCAL
+# FILESYSTEM PATH (no `://`, not the `host:`/`user@host:` scp form) the push
+# publishes nothing to a remote — this is how `wt merge` lands a branch into
+# the primary checkout, as a push into that checkout's path — so the gate
+# prints a notice and skips. A missing/unknown destination fails CLOSED (full
+# enforcement).
 #
 # SIGNED-NESS is read from `git`'s `%G?` placeholder, which the repo's configured
 # `gpg.format=ssh` + `gpg.ssh.allowedSignersFile` make meaningful:
@@ -23,7 +33,40 @@ use lib/git.nu [git-sanitized]
 
 const GOOD_SIGNATURE = ["G" "U"]
 
-def main []: nothing -> nothing {
+# True when the push destination is a local filesystem path rather than a
+# remote: no `://` protocol, and no colon before any slash (git's own rule for
+# the `host:path` / `user@host:path` scp-like SSH form). An empty destination
+# is not local — unknown context fails closed, so the check runs.
+def is-local-destination [dest: string]: nothing -> bool {
+    if ($dest | is-empty) { return false }
+    if ($dest | str contains '://') { return false }
+    let colon = ($dest | str index-of ':')
+    let slash = ($dest | str index-of '/')
+    if ($colon >= 0) and (($slash < 0) or ($colon < $slash)) { return false }
+    true
+}
+
+# The pre-push hook hands the destination to `main` as its two positional
+# arguments (remote name, remote URL); prek exports the same context as
+# PRE_COMMIT_REMOTE_NAME / PRE_COMMIT_REMOTE_URL (lib/push-range.nu reads the
+# ref endpoints off the same channel). Positional wins; env is the fallback.
+def main [
+    remote_name?: string
+    remote_url?: string
+]: nothing -> nothing {
+    let raw_name_env = $env.PRE_COMMIT_REMOTE_NAME?
+    let name_env = (match $raw_name_env { null => "" _ => $raw_name_env } | str trim)
+    let raw_url_env = $env.PRE_COMMIT_REMOTE_URL?
+    let url_env = (match $raw_url_env { null => "" _ => $raw_url_env } | str trim)
+    let name = (match $remote_name { null => $name_env _ => $remote_name })
+    let url = (match $remote_url { null => $url_env _ => $remote_url })
+    let dest = (if ($url | is-not-empty) { $url } else { $name })
+
+    if (is-local-destination $dest) {
+        print "signed-commits: local-path push destination, skipping (sign-on-push applies to remotes only)"
+        return
+    }
+
     let plan = (resolve-push-range)
     let revs = (push-range-revs $plan)
 

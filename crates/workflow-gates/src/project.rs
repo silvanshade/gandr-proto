@@ -72,6 +72,12 @@ const FORBIDDEN_DEFAULT_GRAPH_PACKAGES: [&str; 6] = [
     "aho-corasick",
 ];
 
+/// Workspace member whose edges are not followed during default-graph
+/// traversal: `gandr-workflow-dylint` is a nightly-only `rustc_private` Dylint
+/// driver, so its `dylint_linting→dylint_internal→regex` chain is tooling-only
+/// and outside the production default graph policy.
+const EXEMPT_DEFAULT_GRAPH_MEMBER: &str = "gandr-workflow-dylint";
+
 /// Stable finding kind for forbidden default graph packages.
 const DEFAULT_GRAPH_FINDING_KIND: &str = "forbidden-default-dependency";
 
@@ -378,6 +384,8 @@ where
 /// - witness: `project::tests::malformed_metadata_is_reported_as_json_error`
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 /// - witness: `project::tests::non_host_only_forbidden_dependency_is_ignored`
+/// - witness: `project::tests::dylint_driver_only_forbidden_dependency_is_ignored`
+/// - witness: `project::tests::forbidden_package_through_non_exempt_member_is_reported`
 fn forbidden_default_graph_packages<'semantic, Metadata>(
     metadata_json: Metadata
 ) -> Result<Vec<String>, GateError>
@@ -528,7 +536,8 @@ fn dep_kind_reaches_default_graph(
 /// # Contract
 /// - requires: `graph` came from [`metadata_graph`].
 /// - ensures: returns every package name reachable from a workspace member at
-///   most once.
+///   most once, without following edges that originate from the exempt
+///   tooling-only Dylint driver member.
 /// - provides: the graph traversal for default dependency validation.
 /// - fails: returns malformed-metadata errors for roots or edges that reference
 ///   missing package records.
@@ -545,6 +554,8 @@ fn dep_kind_reaches_default_graph(
 ///   validation from full edge traversal by placing the forbidden package
 ///   beyond an intermediate node.
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
+/// - witness: `project::tests::dylint_driver_only_forbidden_dependency_is_ignored`
+/// - witness: `project::tests::forbidden_package_through_non_exempt_member_is_reported`
 fn reachable_default_package_names<'metadata>(
     graph: &MetadataGraph<'metadata>
 ) -> Result<BTreeSet<ReachableDefaultPackageNameText<'metadata>>, GateError>
@@ -572,6 +583,11 @@ fn reachable_default_package_names<'metadata>(
             )));
         };
         reachable_names.insert(ReachableDefaultPackageNameText::from(*package_name));
+        // Edges originating from the nightly-only rustc_private Dylint driver
+        // are tooling-only and outside the production default graph policy.
+        if *package_name == EXEMPT_DEFAULT_GRAPH_MEMBER {
+            continue;
+        }
         if let Some(children) = graph.dependencies.get(package_id) {
             for child in children {
                 pending.push(*child);
@@ -842,6 +858,8 @@ where
 /// - witness: `project::tests::metadata_missing_package_name_is_malformed`
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 /// - witness: `project::tests::non_host_only_forbidden_dependency_is_ignored`
+/// - witness: `project::tests::dylint_driver_only_forbidden_dependency_is_ignored`
+/// - witness: `project::tests::forbidden_package_through_non_exempt_member_is_reported`
 pub(crate) fn validate_default_dependency_graph_metadata<'semantic, Metadata>(
     metadata_json: Metadata
 ) -> GateResult
@@ -1052,6 +1070,9 @@ mod tests
     /// Minimal forbidden package id for metadata fixtures.
     const REGEX_ID: &str = "registry+https://example.invalid#regex@1.0.0";
 
+    /// Minimal exempt Dylint driver package id for metadata fixtures.
+    const DYLINT_ID: &str = "path+file:///workspace#workflow-dylint@0.1.0";
+
     /// Representative IU mount path used by pure status fixtures.
     const IU_PATH: &str = "metatheory/upstream/internal-univalence";
 
@@ -1123,6 +1144,34 @@ mod tests
     fn forbidden_transitive_package_is_reported() -> Result<(), GateError>
     {
         let metadata = transitive_regex_metadata();
+        let findings = validate_default_dependency_graph_metadata(&metadata)?;
+        assert_eq!(findings, vec![Finding::new(
+            DEFAULT_GRAPH_FINDING_KIND,
+            "",
+            CARGO_METADATA_SOURCE,
+            "regex",
+            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; keep tree-sitter behind the parity-only path",
+        )]);
+        Ok(())
+    }
+
+    /// A forbidden package reachable only through the exempt nightly-only
+    /// `rustc_private` Dylint driver is ignored.
+    #[test]
+    fn dylint_driver_only_forbidden_dependency_is_ignored() -> Result<(), GateError>
+    {
+        let metadata = dylint_only_regex_metadata();
+        let findings = validate_default_dependency_graph_metadata(&metadata)?;
+        assert!(findings.is_empty());
+        Ok(())
+    }
+
+    /// A forbidden package reachable through a non-exempt member is reported
+    /// even when the exempt Dylint driver also reaches it.
+    #[test]
+    fn forbidden_package_through_non_exempt_member_is_reported() -> Result<(), GateError>
+    {
+        let metadata = dylint_and_root_regex_metadata();
         let findings = validate_default_dependency_graph_metadata(&metadata)?;
         assert_eq!(findings, vec![Finding::new(
             DEFAULT_GRAPH_FINDING_KIND,
@@ -1704,6 +1753,68 @@ mod tests
                         }},
                         {{
                             "id": "{MID_ID}",
+                            "deps": [{{
+                                "pkg": "{REGEX_ID}",
+                                "dep_kinds": [{{"kind": "build", "target": null}}]
+                            }}]
+                        }},
+                        {{"id": "{REGEX_ID}", "deps": []}}
+                    ]
+                }}
+            }}"#
+        )
+    }
+
+    /// Build a minimal metadata graph where only the exempt Dylint driver
+    /// reaches regex.
+    fn dylint_only_regex_metadata() -> String
+    {
+        format!(
+            r#"{{
+                "packages": [
+                    {{"id": "{DYLINT_ID}", "name": "gandr-workflow-dylint"}},
+                    {{"id": "{REGEX_ID}", "name": "regex"}}
+                ],
+                "workspace_members": ["{DYLINT_ID}"],
+                "resolve": {{
+                    "nodes": [
+                        {{
+                            "id": "{DYLINT_ID}",
+                            "deps": [{{
+                                "pkg": "{REGEX_ID}",
+                                "dep_kinds": [{{"kind": null, "target": null}}]
+                            }}]
+                        }},
+                        {{"id": "{REGEX_ID}", "deps": []}}
+                    ]
+                }}
+            }}"#
+        )
+    }
+
+    /// Build a minimal metadata graph where both the exempt Dylint driver and
+    /// a non-exempt member reach regex.
+    fn dylint_and_root_regex_metadata() -> String
+    {
+        format!(
+            r#"{{
+                "packages": [
+                    {{"id": "{ROOT_ID}", "name": "root"}},
+                    {{"id": "{DYLINT_ID}", "name": "gandr-workflow-dylint"}},
+                    {{"id": "{REGEX_ID}", "name": "regex"}}
+                ],
+                "workspace_members": ["{ROOT_ID}", "{DYLINT_ID}"],
+                "resolve": {{
+                    "nodes": [
+                        {{
+                            "id": "{ROOT_ID}",
+                            "deps": [{{
+                                "pkg": "{REGEX_ID}",
+                                "dep_kinds": [{{"kind": null, "target": null}}]
+                            }}]
+                        }},
+                        {{
+                            "id": "{DYLINT_ID}",
                             "deps": [{{
                                 "pkg": "{REGEX_ID}",
                                 "dep_kinds": [{{"kind": "build", "target": null}}]

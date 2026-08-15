@@ -28,13 +28,12 @@ mod tests
 
     /// Stable detail for direct dependency violations.
     const DIRECT_DEPENDENCY_DETAIL: &str =
-        "petgraph/fixedbitset may be direct dependencies only of gandr-graph";
+        "petgraph/fixedbitset may be direct dependencies only of gandr-theory-graphs";
     /// Stable detail for non-graph source references to graph-stack crates.
     const OUTSIDE_SOURCE_DETAIL: &str =
-        "source outside gandr-graph must not mention petgraph/fixedbitset graph-stack APIs";
-    /// Stable detail for public `gandr-graph` API exposure violations.
-    const PUBLIC_API_DETAIL: &str =
-        "public gandr-graph declarations must not expose petgraph/fixedbitset graph-stack APIs";
+        "source outside gandr-theory-graphs must not mention petgraph/fixedbitset graph-stack APIs";
+    /// Stable detail for public `gandr-theory-graphs` API exposure violations.
+    const PUBLIC_API_DETAIL: &str = "public gandr-theory-graphs declarations must not expose petgraph/fixedbitset graph-stack APIs";
 
     /// Temporary workspace fixture plus metadata path.
     struct Fixture
@@ -103,7 +102,7 @@ mod tests
     {
         let fixture = Fixture::create(&[
             PackageFixture {
-                name: "gandr-graph",
+                name: "gandr-theory-graphs",
                 source: "pub trait EdgeSource { fn node_count(&self) -> impl Into<NodeCountCount>; }\n",
                 dependencies: &["petgraph"],
             },
@@ -126,7 +125,7 @@ mod tests
     {
         let fixture = Fixture::create(&[
             PackageFixture {
-                name: "gandr-graph",
+                name: "gandr-theory-graphs",
                 source: "pub fn graph_boundary_owner() {}\n",
                 dependencies: &["petgraph"],
             },
@@ -156,7 +155,7 @@ mod tests
     {
         let fixture = Fixture::create(&[
             PackageFixture {
-                name: "gandr-graph",
+                name: "gandr-theory-graphs",
                 source: "pub fn graph_boundary_owner() {}\n",
                 dependencies: &["petgraph"],
             },
@@ -191,7 +190,7 @@ use fixedbitset::FixedBitSet as Bits;
     fn multiline_nested_grouped_and_renamed_public_uses_are_rejected() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 pub use petgraph::{
     graph::{
@@ -209,10 +208,10 @@ pub use fixedbitset::FixedBitSet as Bits;
 
         assert_finding_lines(&findings, &[
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub use fixedbitset::FixedBitSet as Bits: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub use fixedbitset::FixedBitSet as Bits: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub use petgraph::{{graph::{{Graph as PgGraph, NodeIndex}}, visit::EdgeRef}}: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub use petgraph::{{graph::{{Graph as PgGraph, NodeIndex}}, visit::EdgeRef}}: petgraph detail={PUBLIC_API_DETAIL}"
             ),
         ]);
         Ok(())
@@ -223,7 +222,7 @@ pub use fixedbitset::FixedBitSet as Bits;
     fn public_signature_type_and_trait_leaks_are_rejected() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 pub type PublicGraph = petgraph::Graph<u32, u32>;
 pub const PUBLIC_BITS: fixedbitset::FixedBitSet = fixedbitset::FixedBitSet::new();
@@ -251,37 +250,37 @@ impl Owner {
 
         assert_finding_lines(&findings, &[
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub const PUBLIC_BITS: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub const PUBLIC_BITS: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub enum PublicEnum: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub enum PublicEnum: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub struct PublicStruct: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub struct PublicStruct: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub trait PublicTrait: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub trait PublicTrait: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub trait PublicTrait: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub trait PublicTrait: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub type PublicGraph: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub type PublicGraph: petgraph detail={PUBLIC_API_DETAIL}"
             ),
         ]);
         Ok(())
     }
 
-    /// Private graph-stack implementation details inside `gandr-graph` are
-    /// allowed.
+    /// Private graph-stack implementation details inside `gandr-theory-graphs`
+    /// are allowed.
     #[test]
     fn private_implementation_inside_gandr_graph_does_not_leak() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 use petgraph::Graph;
 
@@ -322,11 +321,11 @@ impl petgraph::visit::GraphBase for Private {
     fn public_module_graph_controls_api_analysis() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: "mod hidden;\npub mod api;\n",
             dependencies: &["petgraph"],
         }])?;
-        let src = fixture.root.join("crates/gandr-graph/src");
+        let src = fixture.root.join("crates/gandr-theory-graphs/src");
         gandr_workflow_gates::support::HOST_FILESYSTEM.write(
             src.join("hidden.rs"),
             "pub type HiddenGraph = petgraph::Graph<(), ()>;\n",
@@ -339,7 +338,7 @@ impl petgraph::visit::GraphBase for Private {
         let findings = run_ok(&fixture)?;
 
         assert_finding_lines(&findings, &[format!(
-            "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/api.rs declaration=pub type ApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
+            "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/api.rs declaration=pub type ApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
         )]);
         Ok(())
     }
@@ -350,11 +349,11 @@ impl petgraph::visit::GraphBase for Private {
     fn inline_module_directories_resolve_nested_out_of_line_modules() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: "pub mod outer { pub mod api; }\n",
             dependencies: &["petgraph"],
         }])?;
-        let src = fixture.root.join("crates/gandr-graph/src");
+        let src = fixture.root.join("crates/gandr-theory-graphs/src");
         gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(src.join("outer"))?;
         gandr_workflow_gates::support::HOST_FILESYSTEM.write(
             src.join("outer/api.rs"),
@@ -364,7 +363,7 @@ impl petgraph::visit::GraphBase for Private {
         let findings = run_ok(&fixture)?;
 
         assert_finding_lines(&findings, &[format!(
-            "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/outer/api.rs declaration=pub type NestedApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
+            "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/outer/api.rs declaration=pub type NestedApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
         )]);
         Ok(())
     }
@@ -375,11 +374,11 @@ impl petgraph::visit::GraphBase for Private {
     fn path_overridden_modules_resolve_from_effective_module_directory() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: "pub mod outer { #[path = \"renamed.rs\"] pub mod api; }\n",
             dependencies: &["petgraph"],
         }])?;
-        let src = fixture.root.join("crates/gandr-graph/src");
+        let src = fixture.root.join("crates/gandr-theory-graphs/src");
         gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(src.join("outer"))?;
         gandr_workflow_gates::support::HOST_FILESYSTEM.write(
             src.join("outer/renamed.rs"),
@@ -389,7 +388,7 @@ impl petgraph::visit::GraphBase for Private {
         let findings = run_ok(&fixture)?;
 
         assert_finding_lines(&findings, &[format!(
-            "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/outer/renamed.rs declaration=pub type OverrideApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
+            "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/outer/renamed.rs declaration=pub type OverrideApiGraph: petgraph detail={PUBLIC_API_DETAIL}"
         )]);
         Ok(())
     }
@@ -400,11 +399,11 @@ impl petgraph::visit::GraphBase for Private {
     fn ambiguous_public_module_sources_are_operational_errors() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: "pub mod api;\n",
             dependencies: &["petgraph"],
         }])?;
-        let src = fixture.root.join("crates/gandr-graph/src");
+        let src = fixture.root.join("crates/gandr-theory-graphs/src");
         gandr_workflow_gates::support::HOST_FILESYSTEM
             .write(src.join("api.rs"), "pub fn flat() {}\n")?;
         gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(src.join("api"))?;
@@ -426,7 +425,7 @@ impl petgraph::visit::GraphBase for Private {
     fn restricted_visibility_and_private_adapters_are_not_public_api() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 pub(crate) type CrateGraph = petgraph::Graph<(), ()>;
 pub mod scoped {
@@ -454,7 +453,7 @@ impl PrivateAdapter {
     fn alias_and_impl_surfaces_are_rejected() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 extern crate petgraph as pg;
 use fixedbitset::FixedBitSet as Bits;
@@ -477,16 +476,16 @@ impl pg::visit::GraphBase for Owner {
 
         assert_finding_lines(&findings, &[
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=impl: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=impl: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub type PublicId: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub type PublicId: petgraph detail={PUBLIC_API_DETAIL}"
             ),
         ]);
         Ok(())
@@ -498,7 +497,7 @@ impl pg::visit::GraphBase for Owner {
     fn private_forbidden_glob_cannot_hide_public_signature_root() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 use petgraph::graph::*;
 pub fn identity<T>(x: T) -> T { x }
@@ -510,7 +509,7 @@ pub fn expose(x: NodeIndex) -> NodeIndex { x }
         let findings = run_ok(&fixture)?;
 
         assert_finding_lines(&findings, &[format!(
-            "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub fn expose: petgraph detail={PUBLIC_API_DETAIL}"
+            "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub fn expose: petgraph detail={PUBLIC_API_DETAIL}"
         )]);
         Ok(())
     }
@@ -521,7 +520,7 @@ pub fn expose(x: NodeIndex) -> NodeIndex { x }
     fn forbidden_glob_inside_private_module_does_not_leak() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 mod private {
     use petgraph::graph::*;
@@ -542,7 +541,7 @@ mod private {
     fn private_self_trait_impl_is_not_public_api() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 struct Private;
 impl petgraph::visit::GraphBase for Private {
@@ -564,7 +563,7 @@ impl petgraph::visit::GraphBase for Private {
     fn public_self_trait_impl_is_public_api() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 pub struct Public;
 impl petgraph::visit::GraphBase for Public {
@@ -578,7 +577,7 @@ impl petgraph::visit::GraphBase for Public {
         let findings = run_ok(&fixture)?;
 
         assert_finding_lines(&findings, &[format!(
-            "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
+            "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=impl: petgraph detail={PUBLIC_API_DETAIL}"
         )]);
         Ok(())
     }
@@ -589,7 +588,7 @@ impl petgraph::visit::GraphBase for Public {
     fn additional_public_type_bearing_forms_are_rejected() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: r#"
 pub extern crate fixedbitset;
 pub union PublicUnion {
@@ -607,16 +606,16 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
 
         assert_finding_lines(&findings, &[
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub extern crate fixedbitset: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub extern crate fixedbitset: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub foreign fn foreign: fixedbitset detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub foreign fn foreign: fixedbitset detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub trait GraphAlias: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub trait GraphAlias: petgraph detail={PUBLIC_API_DETAIL}"
             ),
             format!(
-                "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub union PublicUnion: petgraph detail={PUBLIC_API_DETAIL}"
+                "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub union PublicUnion: petgraph detail={PUBLIC_API_DETAIL}"
             ),
         ]);
         Ok(())
@@ -630,7 +629,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
     {
         let fixture = Fixture::create(&[
             PackageFixture {
-                name: "gandr-graph",
+                name: "gandr-theory-graphs",
                 source: "pub fn graph_boundary_owner() {}\n",
                 dependencies: &["petgraph"],
             },
@@ -663,7 +662,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
     fn relative_manifest_paths_resolve_from_workspace_root() -> TestResult
     {
         let fixture = Fixture::create(&[PackageFixture {
-            name: "gandr-graph",
+            name: "gandr-theory-graphs",
             source: "pub fn graph_boundary_owner() {}\n",
             dependencies: &["petgraph"],
         }])?;
@@ -671,7 +670,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
         gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&nested_workspace)?;
         gandr_workflow_gates::support::HOST_FILESYSTEM
             .rename(fixture.root.join("crates"), nested_workspace.join("crates"))?;
-        gandr_workflow_gates::support::HOST_FILESYSTEM.write(&fixture.metadata_path, "{\"packages\":[{\"id\":\"gandr-graph\",\"name\":\"gandr-graph\",\"manifest_path\":\"crates/gandr-graph/Cargo.toml\",\"dependencies\":[{\"name\":\"petgraph\"}]}],\"workspace_members\":[\"gandr-graph\"]}")?;
+        gandr_workflow_gates::support::HOST_FILESYSTEM.write(&fixture.metadata_path, "{\"packages\":[{\"id\":\"gandr-theory-graphs\",\"name\":\"gandr-theory-graphs\",\"manifest_path\":\"crates/gandr-theory-graphs/Cargo.toml\",\"dependencies\":[{\"name\":\"petgraph\"}]}],\"workspace_members\":[\"gandr-theory-graphs\"]}")?;
 
         let result = run(&nested_workspace, Some(&fixture.metadata_path));
 
@@ -720,7 +719,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
                 dependencies: &["petgraph"],
             },
             PackageFixture {
-                name: "gandr-graph",
+                name: "gandr-theory-graphs",
                 source: "pub type Zed = petgraph::Graph<(), ()>;\n",
                 dependencies: &["petgraph"],
             },
@@ -749,7 +748,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
                     "kind=direct-dependency package=zeta-app path=crates/zeta-app/Cargo.toml declaration=petgraph detail={DIRECT_DEPENDENCY_DETAIL}"
                 ),
                 format!(
-                    "kind=public-graph-boundary package=gandr-graph path=crates/gandr-graph/src/lib.rs declaration=pub type Zed: petgraph detail={PUBLIC_API_DETAIL}"
+                    "kind=public-graph-boundary package=gandr-theory-graphs path=crates/gandr-theory-graphs/src/lib.rs declaration=pub type Zed: petgraph detail={PUBLIC_API_DETAIL}"
                 ),
                 format!(
                     "kind=source-declaration package=alpha-app path=crates/alpha-app/src/lib.rs declaration=graph-stack path: fixedbitset detail={OUTSIDE_SOURCE_DETAIL}"

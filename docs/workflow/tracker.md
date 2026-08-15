@@ -2,6 +2,9 @@
 
 > Read when: creating, closing, or triaging beads; wiring dependencies; auditing tracker state.
 > This file is the full statement of the tracker discipline.
+> **Every tracker write carries your actor.** `bd create`/`update`/`comment`/`close` (and any other writing subcommand) take `--actor '<name>'`, where the name is your commit-trailer registry entry's name part, byte-for-byte from `.commitlintrc.mts`, with the address dropped — otherwise `bd` records the write under the owner's identity.
+> Full mechanics and rationale: §"Agent-attribution metadata" below.
+> `bd prime`'s hook output does not mention `--actor`; the obligation stands regardless.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Source of truth and sync

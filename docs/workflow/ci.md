@@ -33,6 +33,13 @@ Run the **narrowest gate that proves your change** before any commit; the merge 
 The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
 The release no-panic smoke has no task yet; the parked push plan names `cargo:no-panic` against the day it does.
 
+## Run gates in the foreground; the exit status is the verdict
+
+Run gates — `gate:merge` above all — **in the foreground and read the output directly**.
+Do not redirect gate output to a file unless there is a specific reason, and that configuration is verified — recorded in a durable, named place — to work correctly.
+When concurrent `mise` runs are live, captured logs are **unverified evidence**: output can bleed between concurrent runs, so a saved transcript may attribute one run's lines to another.
+Whenever a captured transcript and the process exit status could disagree, **the exit status outranks the transcript**.
+
 ## The merge wall: `mise run gate:merge`
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
@@ -59,6 +66,8 @@ These are **parked** during the reboot and return at go-public; they are recorde
 
 - **Push tier** — `cargo run -p gandr-workflow-gates -- workflow push` (the fixed push plan in `crates/workflow-gates`) is parked as a `prek` pre-push hook because it invokes tasks not yet in place (`core:check`, `grammar:test`, `cargo:no-panic`, `wrkflw`).
   The live pre-push hooks are `commitlint` over the push range (`scripts/commitlint-range.nu`) and the signed-commits check (`scripts/check-signed-commits.nu`).
+  Signing posture: **commits are unsigned by default**, and the signed-commits hook enforces **only for remote destinations** — a local-path push (the `wt merge` transport, a push into the primary checkout's path) is skipped with a printed notice, since nothing reaches a remote.
+  Re-signing a range before a remote push is the deliberate sweep the boundary owns: `git rebase --root -f` (or `--exec 'git commit --amend --no-edit -S'` over the unsigned range) with signing on, then the ordinary push.
   A push is deliberately an **arc-boundary event**: push after a full arc of work has merged, never per-commit — but no remote exists yet, so pushes wait on go-public.
 - **Coverage** is judged **per production file**, never by an aggregate crate percentage (the 94%-crate/72%-file incident).
   `mise run coverage:check` compares each tracked production file against its recorded per-file floor and rejects any that fall below; the ratchet raises floors after a genuine improvement.

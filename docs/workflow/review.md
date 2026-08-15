@@ -43,7 +43,7 @@ Preconditions and boundaries:
 ## Absorption and reboot passes
 
 Migrations and reboots are the highest-volume absorption work there is, and the 2026-07-31 spec-reboot review measured their characteristic failures: one open question settled by assertion, a red gate never run, works cited with no entries, entries never cited, and a long tail of silently dropped detail.
-The rules below are what a migration owes beyond the per-document procedure of [specs.md](specs.md).
+The rules below are what a migration owes beyond the corpus's per-document authoring procedure, which left this repository with the corpus.
 
 - **The disposition ledger.** Every open item in a source — an open question, spike, obligation, falsifier, pending read — gets exactly one disposition, recorded where a reader meets it: **carried**; **declined with a reversal condition**; **parked with a reason**; or **retired with a tombstone saying why**.
   An item that vanishes without a disposition is a defect; omission is invisible in the artifact and only visible against the source.

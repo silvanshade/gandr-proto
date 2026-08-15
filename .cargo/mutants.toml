@@ -51,31 +51,3 @@ test_workspace = true
 # from being misreported as timeouts; the microVM's `--timeout` is the real bound.
 timeout_multiplier = 5.0
 build_timeout_multiplier = 5.0
-
-# Reviewed equivalent/non-contractual gandr-graph survivors from the template's
-# first baseline sweep — re-derive against this workspace's own first sweep.
-# Each pattern is fully anchored to one cargo-mutants name shape.
-exclude_re = [
-  # probe-only: determinism binary stances are row labels; this probe uses a single sorted stance.
-  '^crates/gandr-graph/src/bin/gandr-graph-determinism\.rs:[0-9]+:9: replace <impl WalkSym for ProbeWalkSym>::stance_tile_sorted -> bool with true$',
-  # probe-only: determinism label/mold projection is absent in the constructed probe rows.
-  '^crates/gandr-graph/src/bin/gandr-graph-determinism\.rs:[0-9]+:9: replace <impl WalkSym for ProbeWalkSym>::label_mold -> Option<\(Self::Label, Self::Mold\)> with Some\(\(Default::default\(\), Default::default\(\)\)\)$',
-  # hasher: explicit zero state and derived `Default` construct the same NodeIdHasher.
-  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:9: replace <impl BuildHasher for NodeIdBuildHasher>::build_hasher -> Self::Hasher with Default::default\(\)$',
-  # hasher: constant-zero finish only changes collision distribution; Eq still decides node identity.
-  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:9: replace <impl Hasher for NodeIdHasher>::finish -> u64 with 0$',
-  # hasher: OR preserves the dense-u32 hash path's only nonzero byte.
-  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:24: replace \^= with \|= in <impl Hasher for NodeIdHasher>::write$',
-  # hasher: AND preserves the dense-u32 hash path's zero high bytes.
-  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:24: replace \^= with &= in <impl Hasher for NodeIdHasher>::write$',
-  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
-  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::lt$',
-  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
-  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::gt$',
-  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
-  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::comparable$',
-  # unit weight: petgraph's unit edge weight has only one observable value.
-  '^crates/gandr-graph/src/view\.rs:[0-9]+:9: replace <impl EdgeRef for EdgeReference>::weight -> &Self::Weight with Box::leak\(Box::new\(Default::default\(\)\)\)$',
-  # minimal bottom-bound: `count <= height` is guaranteed after guarded increments.
-  '^crates/gandr-graph/src/walk\.rs:[0-9]+:22: replace < with <= in minimal$',
-]
