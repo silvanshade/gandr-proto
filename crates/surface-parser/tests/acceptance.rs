@@ -660,16 +660,19 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // composite, cyclic wiring, shared port, and the repeated port whose
     // derived boundary reaches the linearity refusal from source). The
     // fifty-fourth base example is the kernel-admission boundary witness, which
-    // pins both sides of what the certified kernel carries.
+    // pins both sides of what the certified kernel carries. The five package
+    // files are the model program for the three package forms plus four failure
+    // goldens: the abstraction leak, the uninferable `pack`, the grade-zero
+    // opening, and the payload whose shape leaves the package no grade to read.
     assert_eq!(
-        100, base_count,
-        "the model + pathological trees are 100 files (54 base + 3 codata + 7 inspection \
+        105, base_count,
+        "the model + pathological trees are 105 files (54 base + 3 codata + 7 inspection \
          + 6 identity + 13 declared-data + 1 item-level retirement + 8 module pathologies \
-         + 1 type-associativity + 1 shell host escape + 7 circuit)"
+         + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit)"
     );
     assert_eq!(
-        100, base_clean,
-        "all 100 model + pathological files mold clean"
+        105, base_clean,
+        "all 105 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

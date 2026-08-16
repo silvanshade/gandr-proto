@@ -43,6 +43,8 @@ mod namespace;
 #[cfg(test)]
 mod origin_identity;
 #[cfg(test)]
+mod packages;
+#[cfg(test)]
 mod proptest;
 #[cfg(test)]
 mod run;

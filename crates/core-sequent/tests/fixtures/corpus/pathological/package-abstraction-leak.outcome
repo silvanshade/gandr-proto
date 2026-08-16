@@ -1,0 +1,8 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/package-abstraction-leak.gandr
+; sexp-b3sum: 851e6cf13cf10d85aa874386d24e72108ee60e8b6a295c316a5e2a0f292e11ba
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 3
+Ret(Thunk(Omega, Abs("p", None, Bind(Ret(Var("p")), "m", Bind(Force(Var("m")), "r", RecordProj { record: Var("r"), label: "seed" })))))
+Ret(Thunk(Omega, Ret(Record({"seed": Int(7)}))))
+Stuck(ForcedNonThunk)

@@ -114,6 +114,12 @@ mod label
     pub const COLON_ANGLE: TileSpelling = TileSpelling(":>");
     /// Import-alias separator tile.
     pub const AS: TileSpelling = TileSpelling("as");
+    /// Package-type lead tile.
+    pub const PACKAGE: TileSpelling = TileSpelling("package");
+    /// Package-introduction lead tile.
+    pub const PACK: TileSpelling = TileSpelling("pack");
+    /// Package-elimination statement lead tile.
+    pub const UNPACK: TileSpelling = TileSpelling("unpack");
     /// Statement / item terminator.
     pub const SEMI: TileSpelling = TileSpelling(";");
     /// Comma separator.
@@ -791,6 +797,13 @@ impl<'tree> SynNode<'tree>
                 .child_by_field_name(node_kinds::FIELD_ARGUMENTS)
                 .map(Self::named_children)
                 .unwrap_or_default(),
+            // A package signature's abstract type components and a pack's
+            // witness types are both the named children of one `[ … ]` list;
+            // the commas are punctuation, so no segmentation is needed.
+            | (
+                node_kinds::PACKAGE_TYPE | node_kinds::PACK_EXPRESSION,
+                node_kinds::FIELD_COMPONENT,
+            ) => self.bracket_list(),
             | (
                 node_kinds::TYPE_APPLICATION | node_kinds::CONSTRUCTOR_PATTERN,
                 node_kinds::FIELD_ARGUMENT,
@@ -975,6 +988,21 @@ impl<'tree> SynNode<'tree>
                 self.nth_string_run(StringRunIndex(0))
             },
             | (node_kinds::IMPORT_DECLARATION, node_kinds::FIELD_ALIAS) => self.after(label::AS),
+            // A package type's payload and a pack's payload each follow the
+            // closing bracket of their list. An unpack's module binder is the
+            // identifier after its lead tile, its ascribed signature sits
+            // between `:` and `=`, and the package expression follows `=`.
+            | (
+                node_kinds::PACKAGE_TYPE | node_kinds::PACK_EXPRESSION,
+                node_kinds::FIELD_ARGUMENT,
+            ) => self.bracketed_prefix_argument(),
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_NAME) => {
+                self.after_lead(label::UNPACK)
+            },
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_TYPE) => {
+                self.between(label::COLON, label::EQUALS)
+            },
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE) => self.after(label::EQUALS),
             | (node_kinds::EXTERN_BLOCK, node_kinds::FIELD_LIBRARY) => {
                 self.nth_string_run(StringRunIndex(1))
             },
@@ -1218,6 +1246,12 @@ impl<'tree> SynNode<'tree>
             },
             | Some(label::MODULE) => node_kinds::MODULE_DECLARATION,
             | Some(label::IMPORT) => node_kinds::IMPORT_DECLARATION,
+            // The package rung's three leads. Each keyword starts exactly one
+            // form, so none of them needs a sort or shape side condition to
+            // discriminate.
+            | Some(label::PACKAGE) => node_kinds::PACKAGE_TYPE,
+            | Some(label::PACK) => node_kinds::PACK_EXPRESSION,
+            | Some(label::UNPACK) => node_kinds::UNPACK_STATEMENT,
             | Some(label::REC) => node_kinds::REC_BLOCK,
             | Some(label::VAL) => node_kinds::LET_STATEMENT,
             | Some(label::RUN) => node_kinds::BIND_STATEMENT,
@@ -1404,6 +1438,35 @@ impl<'tree> SynNode<'tree>
     {
         let sig = self.sig();
         // sig[0] is the `U` tile; skip an optional `[ r ]` grade bracket.
+        let mut index = 1_usize;
+        if sig.get(index).and_then(|&node| self.tree.tile_label(node))
+            == Some(label::LBRACKET_GRADE)
+            && let Some(close) = self.matching_close(
+                (&sig).into(),
+                SignificantIndex(index),
+                label::LBRACKET_GRADE,
+                label::RBRACKET_GRADE,
+            )
+        {
+            index = close.0.saturating_add(1);
+        }
+        if let Some(child) = sig.get(index) {
+            return Some(Self::wrap(self.tree, *child));
+        }
+        self.next_significant_sibling()
+    }
+
+    /// The operand of a `keyword [ … ] OPERAND` prefix form.
+    ///
+    /// The melder groups such a form as its keyword plus its bracket run, so
+    /// the operand is the immediately-following significant **sibling** rather
+    /// than a child — the same shape `U`/`U[r]` takes, and for the same reason.
+    /// The child case is still tried first, so a future grouping change needs
+    /// no edit here.
+    fn bracketed_prefix_argument(self) -> Option<Self>
+    {
+        let sig = self.sig();
+        // sig[0] is the lead keyword; skip its `[ … ]` list.
         let mut index = 1_usize;
         if sig.get(index).and_then(|&node| self.tree.tile_label(node))
             == Some(label::LBRACKET_GRADE)
@@ -1732,6 +1795,33 @@ impl<'tree> SynNode<'tree>
 
     /// The named children with punctuation/keyword tiles and grout removed —
     /// the default `named_children` for leaf-ish and wrapper forms.
+    /// The named children strictly inside this node's outermost `[ … ]`, with
+    /// commas skipped.
+    ///
+    /// The list shape a package signature's component list and a pack's witness
+    /// list share. Each element is one named node — a type identifier for a
+    /// component, an arbitrary type for a witness — so no comma segmentation is
+    /// needed: `,` is punctuation and never named.
+    fn bracket_list(self) -> Vec<Self>
+    {
+        let Some((container, body)) = self.bracket_body()
+        else {
+            return Vec::new();
+        };
+        let sig = self.tree.sig_children(container);
+        let Some(slice) = sig.get(body.start .. body.end)
+        else {
+            return Vec::new();
+        };
+        slice
+            .iter()
+            .copied()
+            .filter(|&id| self.is_named(id).0)
+            .map(|id| Self::wrap(self.tree, id))
+            .collect()
+    }
+
+    /// The significant named children of this node, punctuation skipped.
     fn plain_named_children(self) -> Vec<Self>
     {
         self.sig()
@@ -1843,6 +1933,7 @@ impl<'tree> SynNode<'tree>
         let kind = match lead {
             | Some(label::VAL) => node_kinds::LET_STATEMENT,
             | Some(label::RUN) => node_kinds::BIND_STATEMENT,
+            | Some(label::UNPACK) => node_kinds::UNPACK_STATEMENT,
             // Out-of-fragment statement keywords keep their statement kind so
             // the lowerer rejects them as `Unsupported` rather than mis-lowering
             // their contents as a bare expression statement.

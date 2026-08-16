@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xb0b5_edc0_6cc3_d277);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x144d_4708_c1e2_c5d7);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -113,8 +113,20 @@ mod contracts
     /// retired bare-parameter and field-tuple tails ride the same
     /// alternations rather than adding rules of their own. The sign member
     /// terminator adds one: the `;` tile after the inlined member family
-    /// (gandr-ng9.14).
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1896);
+    /// (gandr-ng9.14). The package rung adds one hundred and ten, and where
+    /// they go is the whole story: three forms declare fifteen molds
+    /// between them — the package type's binder brackets with their
+    /// `comma1` type-identifier clones, `pack`'s witness brackets with
+    /// their `comma1` Type clones, and the `unpack` statement's binder,
+    /// `:`, `=` and `;` — while the remaining ninety-five are the
+    /// **statement alternation**, which every block position inlines, so
+    /// admitting one statement form multiplies its five tiles by the
+    /// nineteen block sites. `val` and `run` carry twenty molds each for
+    /// exactly that reason, and `unpack` now joins them. Each form still
+    /// leads with a keyword no other form starts with, so none of them
+    /// widens a label from single- to multi-mold and the reachable
+    /// multi-mold count is unchanged.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2006);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -139,7 +151,7 @@ mod contracts
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 73),
+        (",", 75),
         ("-", 2),
         ("-->", 15),
         ("->", 9),
@@ -147,9 +159,9 @@ mod contracts
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 138),
+        (":", 158),
         (":>", 2),
-        (";", 201),
+        (";", 221),
         ("<", 4),
         ("<&", 1),
         ("<-", 20),
@@ -157,7 +169,7 @@ mod contracts
         ("<=", 1),
         ("<=>", 13),
         ("<>", 1),
-        ("=", 53),
+        ("=", 73),
         ("==", 1),
         ("==>", 17),
         ("=>", 8),
@@ -179,8 +191,8 @@ mod contracts
         ("Unit", 1),
         ("Unknown", 1),
         ("Void", 1),
-        ("[", 11),
-        ("]", 15),
+        ("[", 13),
+        ("]", 17),
         ("_", 31),
         ("acquire", 20),
         ("as", 82),
@@ -225,7 +237,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 285),
+        ("identifier", 305),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -246,6 +258,8 @@ mod contracts
         ("offer", 1),
         ("op", 3),
         ("oper", 4),
+        ("pack", 1),
+        ("package", 1),
         ("pipeline_operand", 2),
         ("postfix", 1),
         ("prefix", 1),
@@ -272,11 +286,12 @@ mod contracts
         ("thunk", 1),
         ("true", 3),
         ("type", 9),
-        ("type_identifier", 16),
+        ("type_identifier", 18),
         ("type_variable", 9),
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),
+        ("unpack", 20),
         ("val", 20),
         ("variable_name", 5),
         ("while", 1),
@@ -705,6 +720,11 @@ mod contracts
         // declaration. `sign` and `sort` each stay single-mold. The nested
         // member makes `module` cross from one reachable mold to two.
         //
+        // The package rung adds one. `package` and `pack` each lead exactly one
+        // form and stay single-mold; `unpack` crosses, because a statement form
+        // is inlined at every block site and so carries one mold per site — the
+        // same reason `val` and `run` are multi-mold.
+        //
         // The sealing rung adds two. `:>` arrives multi-mold outright, being
         // admissible at both the outer and the nested module ascription; and
         // `type` crosses from single- to multi-mold, having led only the
@@ -724,7 +744,7 @@ mod contracts
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
         assert_eq!(
-            75,
+            76,
             multi,
             "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0

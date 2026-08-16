@@ -760,6 +760,13 @@ fn statements(
         bind_statement(),
     ));
     out.push(r(
+        RuleName("unpack_statement"),
+        Provenance("unpack_statement"),
+        s,
+        p,
+        unpack_statement(),
+    ));
+    out.push(r(
         RuleName("leta_statement"),
         Provenance("leta_statement"),
         s,
@@ -1128,6 +1135,29 @@ fn expressions(
         p.unary,
         seq([t(TileLabel("hold")), h(s)]),
     ));
+    // `pack [ T , U ] E` — the package introduction. The bracketed types are
+    // the **witnesses**, one per abstract type component of the signature this
+    // is checked against, and they are written rather than inferred: the
+    // components exist only in the signature, so recovering them from the
+    // payload would mean guessing which of its types were meant to be
+    // abstract.
+    out.push(r(
+        RuleName("pack_expression"),
+        Provenance("pack_expression"),
+        s,
+        // `ret`'s precedence, not `force`'s: a pack takes a whole expression,
+        // and the payload a module is packed from is normally a `thunk { … }`
+        // — itself a unary form, which a non-associative unary `pack` could
+        // not take as an operand without parentheses.
+        p.ret,
+        seq([
+            t(TileLabel("pack")),
+            t(TileLabel("[")),
+            comma1(h(Sort::Type)),
+            t(TileLabel("]")),
+            h(s),
+        ]),
+    ));
     // The `arguments` list `( E, … )` is inlined in `call_expression` below. A
     // standalone `arguments` rule additionally gives `(` a form-first
     // Expression-sort mold that competes with the parenthesized-expression atom
@@ -1399,6 +1429,7 @@ fn statement_alt() -> Regex
     alt([
         val_statement(),
         bind_statement(),
+        unpack_statement(),
         seq([
             t(TileLabel("leta")),
             t(TileLabel("identifier")),
@@ -1442,6 +1473,27 @@ fn val_statement() -> Regex
     seq([
         t(TileLabel("val")),
         h(Sort::Pattern),
+        t(TileLabel("=")),
+        h(Sort::Expression),
+        t(TileLabel(";")),
+    ])
+}
+
+/// Build a package-eliminating statement: `unpack m : Sig = E ;`.
+///
+/// The module variable binds over the **rest of its block**, which is what
+/// makes the elimination check-only and the avoidance fence structural: the
+/// block's answer is fixed from outside, so an atom minted here can never reach
+/// it. The ascribed signature is the elimination's own half of the
+/// both-directions annotation, and it names the abstract type components the
+/// lowerer mints atoms for — so no separate binder list is needed or admitted.
+fn unpack_statement() -> Regex
+{
+    seq([
+        t(TileLabel("unpack")),
+        t(TileLabel("identifier")),
+        t(TileLabel(":")),
+        h(Sort::Type),
         t(TileLabel("=")),
         h(Sort::Expression),
         t(TileLabel(";")),

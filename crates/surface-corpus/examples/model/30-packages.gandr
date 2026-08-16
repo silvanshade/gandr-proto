@@ -1,0 +1,59 @@
+// First-class module packages: one signature, two representations, one client.
+//
+// `package [ T ] payload` is a type whose bracketed list binds the abstract
+// type components of a module signature over its payload. The payload is the
+// thunked module returner `U[r] (F #{ … })`, and its grade `r` is the
+// package's own grade -- written once, on the payload, so the two can never
+// disagree.
+//
+// `pack [ A ] e` supplies one *witness* type per abstract component and the
+// module those witnesses hide. It never infers: the abstract components exist
+// only in the signature, so guessing which of the payload's types were meant to
+// be abstract is exactly the guess the module boundary is annotated to forbid.
+// That is why each `def` below carries its signature first.
+//
+// `unpack m : Sig = e;` binds the module over the *rest of its block*. Inside,
+// `T` is a freshly minted abstract type: `seed` is a `T` and the only thing
+// that accepts a `T` is `read`, so the client can compute with the module and
+// cannot reach the representation. Two eliminations mint two atoms, so their
+// abstract types do not interchange either.
+//
+// The payoff is the last three definitions: `consume` is written once, against
+// the signature alone, and both counters flow into it -- one carrying an
+// `Integer` state, one a `String`. Neither the client nor the signature
+// mentions which.
+
+def consume(p: package [ T ] U[ω] (F #{ read: U[ω] (T -> F Integer), seed: T }))
+  -> F Integer
+{
+  unpack m : package [ T ] U[ω] (F #{ read: U[ω] (T -> F Integer), seed: T }) = p;
+  run r <- force m;
+  run f <- r.read;
+  run s <- r.seed;
+  f(s)
+}
+
+def int_counter : package [ T ] U[ω] (F #{ read: U[ω] (T -> F Integer), seed: T });
+def int_counter = pack [ Integer ] thunk {
+  ret #{ read = thunk { fn (n: Integer) { ret n } }, seed = 7 }
+};
+
+def text_counter : package [ T ] U[ω] (F #{ read: U[ω] (T -> F Integer), seed: T });
+def text_counter = pack [ String ] thunk {
+  ret #{ read = thunk { fn (s: String) { ret 42 } }, seed = "seven" }
+};
+
+def total() -> F Integer {
+  run a <- consume(int_counter);
+  run b <- consume(text_counter);
+  ret (a + b)
+}
+
+total()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: consume
+//@ expect-def: int_counter
+//@ expect-def: text_counter
+//@ expect-last-value: 49

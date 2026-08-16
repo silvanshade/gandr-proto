@@ -4,7 +4,7 @@
 //!
 //! It drives the whole export pipeline end to end — bridge → `add_decl` →
 //! export v1 `write` → `decode` → `read` (replay) — over the S1-eligible corpus
-//! partition (the 22 items the B2.3 bridge lowers and the choke point admits)
+//! partition (the 23 items the B2.3 bridge lowers and the choke point admits)
 //! **plus** the kernel-native C5 goldens (universe/lift), and pins each item's
 //! outcome against a checked-in per-item record. `GANDR_BLESS_KERNEL_EXPORT=1`
 //! re-blesses the records; the gate is otherwise inert (a pure verify).
@@ -101,7 +101,7 @@ mod tests
 
     /// The pinned count of S1-eligible corpus items (an independent
     /// re-derivation of the `kernel_corpus_partition` eligible count).
-    const ELIGIBLE_CARDINALITY: usize = 22;
+    const ELIGIBLE_CARDINALITY: usize = 23;
 
     /// The pinned count of reconstructed kernel-native C5 goldens.
     const GOLDEN_CARDINALITY: usize = 6;

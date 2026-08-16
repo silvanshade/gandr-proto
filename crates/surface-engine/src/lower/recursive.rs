@@ -14,9 +14,11 @@ use core::convert::Infallible;
 use core::convert::identity;
 use core::mem;
 
+use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::grade::Grade;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
+use gandr_core_checker::types::SealId;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
 use gandr_theory_recursion::Machine;
@@ -130,6 +132,14 @@ enum Request<'tree>
         /// Tuple CST node.
         node: SynNode<'tree>,
         /// Buffer receiving component hoists.
+        hoists: HoistBufferId,
+    },
+    /// Lower a package introduction's witnesses and payload.
+    Pack
+    {
+        /// Pack CST node.
+        node: SynNode<'tree>,
+        /// Buffer receiving payload hoists.
         hoists: HoistBufferId,
     },
     /// Lower a list literal's value-position elements.
@@ -442,6 +452,13 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
                     )
                 },
             ),
+            | node_kinds::PACK_EXPRESSION => {
+                Self::descend(Request::Pack { node, hoists }, move |_machine, output| {
+                    Self::returned(
+                        expect_value(output, node).map(|value| Lowered::Expr(EOut::Value(value))),
+                    )
+                })
+            },
             | node_kinds::FORCE_EXPRESSION => {
                 Self::descend(Request::Force { node }, move |_machine, output| {
                     Self::returned(
@@ -818,6 +835,48 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
         )
     }
 
+    /// Starts one package-introduction request.
+    ///
+    /// The witnesses lower as types before the payload is descended, so a
+    /// malformed witness is refused at the pack rather than after its payload
+    /// has been walked. The payload is an ordinary value-position expression
+    /// and shares the caller's hoist buffer, since a pack is a value and has
+    /// nowhere of its own to bind a hoist.
+    fn begin_pack(
+        &self,
+        node: SynNode<'tree>,
+        hoists: HoistBufferId,
+    ) -> LowerStep<'run, 'src, 'tree>
+    {
+        let mut witnesses = Vec::new();
+        for witness in node.children_by_field_name(node_kinds::FIELD_COMPONENT) {
+            match self.lowerer.lower_value_type_node(witness) {
+                | Ok(witness) => witnesses.push(witness),
+                | Err(error) => return Self::returned(Err(error)),
+            }
+        }
+        let payload_node = match super::required_field(node, node_kinds::FIELD_ARGUMENT) {
+            | Ok(payload_node) => payload_node,
+            | Err(error) => return Self::returned(Err(error)),
+        };
+        Self::descend(
+            Request::ValueExpr {
+                node: payload_node,
+                hoists,
+            },
+            move |_machine, output| {
+                let result = expect_value(output, payload_node).and_then(|payload| {
+                    let readback = payload.readback_value()?;
+                    VOut::from_legacy_value(
+                        &Value::pack(witnesses, readback),
+                        OriginNode::new(entry(node, None), alloc::vec![payload.origin]),
+                    )
+                });
+                Self::returned(result.map(Lowered::Value))
+            },
+        )
+    }
+
     /// Starts one thunk-literal request.
     fn begin_thunk(
         &self,
@@ -1003,7 +1062,7 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
     /// - measure: every continuation carries the proper successor cursor;
     /// - boundedness: the enclosing block is finite.
     fn begin_statement(
-        &self,
+        &mut self,
         first: SynNode<'tree>,
         rest: StatementCursor<'tree>,
         tail: Option<SynNode<'tree>>,
@@ -1060,6 +1119,64 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
                     },
                 )
             },
+            // `unpack m : Sig = E ;` binds the module variable over the REST
+            // of its block, which is what makes the elimination check-only:
+            // the block's answer arrives from outside, so an atom minted here
+            // cannot reach it.
+            | node_kinds::UNPACK_STATEMENT => {
+                let binder = match super::required_field(first, node_kinds::FIELD_NAME)
+                    .and_then(|name| super::node_text(self.lowerer.source, name))
+                {
+                    | Ok(binder) => binder.0.to_owned(),
+                    | Err(error) => return Self::returned(Err(error)),
+                };
+                let signature_node = match super::required_field(first, node_kinds::FIELD_TYPE) {
+                    | Ok(signature_node) => signature_node,
+                    | Err(error) => return Self::returned(Err(error)),
+                };
+                let signature = match self.lowerer.lower_value_type_node(signature_node) {
+                    | Ok(signature) => signature,
+                    | Err(error) => return Self::returned(Err(error)),
+                };
+                if !matches!(signature, ValueType::Package { .. } | ValueType::Unknown) {
+                    return Self::returned(Err(LowerError::UnpackNeedsPackageSignature {
+                        byte_range: signature_node.byte_range(),
+                    }));
+                }
+                let atoms = self
+                    .lowerer
+                    .mint_unpack_atoms(NameRef::from(binder.as_str()), &signature);
+                let source_node = match super::required_field(first, node_kinds::FIELD_SOURCE) {
+                    | Ok(source_node) => source_node,
+                    | Err(error) => return Self::returned(Err(error)),
+                };
+                let hoists = self.allocate_hoists();
+                Self::descend(
+                    Request::ValueExpr {
+                        node: source_node,
+                        hoists,
+                    },
+                    move |machine, output| {
+                        let parts = (|| {
+                            let scrut = expect_value(output, source_node)?;
+                            let hoists = machine.take_hoists(hoists, source_node)?;
+                            Ok(UnpackParts {
+                                scrut,
+                                signature,
+                                atoms,
+                                binder,
+                                hoists,
+                            })
+                        })();
+                        match parts {
+                            | Ok(parts) => {
+                                Self::continue_unpack_statement(parts, rest, tail, block_node, span)
+                            },
+                            | Err(error) => Self::returned(Err(error)),
+                        }
+                    },
+                )
+            },
             | node_kinds::LET_STATEMENT => Self::descend(
                 Request::LetStatement {
                     node: first,
@@ -1077,6 +1194,51 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
                 byte_range: first.byte_range(),
             })),
         }
+    }
+
+    /// Lowers an unpack continuation once its package value has returned.
+    ///
+    /// The rest of the block becomes the elimination's **body**, so the module
+    /// variable scopes over exactly the statements that follow it — the
+    /// declaration-granular shape the module design asks of a sealing binder.
+    fn continue_unpack_statement(
+        parts: UnpackParts,
+        rest: StatementCursor<'tree>,
+        tail: Option<SynNode<'tree>>,
+        block_node: SynNode<'tree>,
+        span: OriginEntry,
+    ) -> LowerStep<'run, 'src, 'tree>
+    {
+        Self::descend(
+            Request::Chain {
+                statements: rest,
+                tail,
+                block_node,
+            },
+            move |_machine, output| {
+                let result = (|| {
+                    let body = expect_comp(output, block_node)?;
+                    let unpacked = COut::from_legacy_comp(
+                        &Comp::Unpack {
+                            scrut: Rc::new({
+                                let readback_value = parts.scrut.readback_value()?;
+                                identity(readback_value)
+                            }),
+                            signature: Rc::new(parts.signature),
+                            atoms: parts.atoms,
+                            binder: parts.binder,
+                            body: Rc::new({
+                                let readback_comp = body.readback_comp()?;
+                                identity(readback_comp)
+                            }),
+                        },
+                        OriginNode::new(span, vec![parts.scrut.origin, body.origin]),
+                    )?;
+                    Lowerer::wrap_hoists(parts.hoists, unpacked, block_node)
+                })();
+                Self::returned(result.map(Lowered::Comp))
+            },
+        )
     }
 
     /// Lowers a statement continuation after its bound computation returns.
@@ -1379,6 +1541,7 @@ fn split_block<'tree>(
         let kind = child.kind();
         let mut is_statement = kind == node_kinds::LET_STATEMENT
             || kind == node_kinds::BIND_STATEMENT
+            || kind == node_kinds::UNPACK_STATEMENT
             || kind == node_kinds::EXPRESSION_STATEMENT
             || node_kinds::UNSUPPORTED_STATEMENTS.contains(&kind);
         if bool::from(lowerer.total()) && (child.is_error().0 || child.is_missing().0) {
@@ -1454,6 +1617,25 @@ fn bind_outputs(
         ),
         OriginNode::new(origin, vec![bound.origin, rest.origin]),
     )
+}
+
+/// Everything an `unpack` statement carries into its body continuation.
+///
+/// Grouped into one struct so the continuation closure takes a single moved
+/// value rather than five, which keeps it under the argument-count wall and
+/// keeps the pieces named where they are used.
+struct UnpackParts
+{
+    /// The lowered package value.
+    scrut: VOut,
+    /// The ascribed package signature.
+    signature: ValueType,
+    /// The atoms minted for this elimination, in signature order.
+    atoms: Vec<SealId>,
+    /// The module variable bound over the body.
+    binder: String,
+    /// The hoists the package value produced, wrapped around the elimination.
+    hoists: Vec<Hoist>,
 }
 
 /// One suspended outer layer of an n-ary tuple-pattern split.
@@ -1606,6 +1788,7 @@ impl<'run, 'src, 'tree: 'run> Machine for LowerMachine<'run, 'src, 'tree>
             | Request::Force { node } => self.begin_unary_comp(UnaryCompForm::Force, node),
             | Request::Ret { node } => self.begin_unary_comp(UnaryCompForm::Ret, node),
             | Request::Unary { node } => self.begin_unary_comp(UnaryCompForm::Negate, node),
+            | Request::Pack { node, hoists } => self.begin_pack(node, hoists),
             | Request::Thunk { node } => self.begin_thunk(node),
             | Request::Lambda { node } => self.begin_lambda(node),
             | Request::Block { node } => self.begin_block(node),

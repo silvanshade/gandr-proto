@@ -1,7 +1,7 @@
 ; gandr kernel export exit-gate outcomes (B2.3 deliverable 1; GANDR_BLESS_KERNEL_EXPORT)
 ; generator: gandr-core-sequent kernel_export_gate (GANDR_BLESS_KERNEL_EXPORT=1)
-; items: 28 (22 S1-eligible corpus + 6 kernel-native C5 goldens)
-; corpus-fixtures-b3sum: 7edcc697df1e373bcf05ffa01890e0128e2a30dad561ff483ef0fe9a6a7aca0b
+; items: 29 (23 S1-eligible corpus + 6 kernel-native C5 goldens)
+; corpus-fixtures-b3sum: 3f549dc96728f2c244ccfc892ae71de976d5d95b2830a706785e3f3035331aef
 ; columns: <source>\t<item-index>\t<size-bytes>\t<table-entries>\t<expanded-work>\t<artifact-work>\t<artifact-identity>
 model/01-first-computation.gandr	0	45	6	3	6	76f7a09424f12e3cc726b75dc3d20d61b8a03fccd8168510c9e85be369050198
 model/02-definitions.gandr	0	39	2	1	2	c26ce1bad8d4c84a3bbe053d5f6e817ba0bd764e028e0a46202dad9a9fd4f30e
@@ -21,6 +21,7 @@ pathological/module-linker-late-run-target.gandr	0	27	2	1	2	fb8a245fd7b03e219a09
 pathological/module-linker-late-run-target.gandr	1	27	2	1	2	4c87f60a05cb591e0f1e3567786d09e45809c314a938a27aaa045ae633b87e52
 pathological/module-linker-multiple-run-targets.gandr	0	27	2	1	2	fb8a245fd7b03e219a09ea4586925043b744c23bbdd31948502215ce1a4cc5c6
 pathological/module-linker-multiple-run-targets.gandr	1	27	2	1	2	4c87f60a05cb591e0f1e3567786d09e45809c314a938a27aaa045ae633b87e52
+pathological/package-payload-not-a-thunk.gandr	0	35	6	3	6	b5fea0bb535b90acde6e4a9e4067015b3a8b05c5406d1eac77d473e356707846
 pathological/record-update-non-record.gandr	0	27	2	1	2	1d101917a6fccc19a3c20c7f767359c9b2e58aa61a89522a189bcfb23ff46bba
 pathological/type-associativity.gandr	0	35	6	3	6	b5fea0bb535b90acde6e4a9e4067015b3a8b05c5406d1eac77d473e356707846
 pathological/type-associativity.gandr	1	35	6	3	6	b5fea0bb535b90acde6e4a9e4067015b3a8b05c5406d1eac77d473e356707846

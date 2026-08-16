@@ -1,0 +1,10 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/30-packages.gandr
+; sexp-b3sum: 1fae1583ed6448c42ad0e5267e901679b1f23efa8c78881fbaaacc691b0b378a
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 5
+Ret(Thunk(Omega, Abs("p", None, Bind(Ret(Var("p")), "m", Bind(Force(Var("m")), "r", Bind(RecordProj { record: Var("r"), label: "read" }, "f", Bind(RecordProj { record: Var("r"), label: "seed" }, "s", App(Force(Var("f")), Var("s")))))))))
+Ret(Thunk(Omega, Ret(Record({"read": Thunk(Omega, Abs("n", None, Ret(Var("n")))), "seed": Int(7)}))))
+Ret(Thunk(Omega, Ret(Record({"read": Thunk(Omega, Abs("s", None, Ret(Int(42)))), "seed": Str("seven")}))))
+Ret(Thunk(Omega, Bind(App(Force(Var("consume")), Var("int_counter")), "a", Bind(App(Force(Var("consume")), Var("text_counter")), "b", Bind(App(App(Force(Var("add")), Var("a")), Var("b")), "%tmp0", Ret(Var("%tmp0")))))))
+Stuck(ForcedNonThunk)

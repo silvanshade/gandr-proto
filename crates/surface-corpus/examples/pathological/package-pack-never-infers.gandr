@@ -1,0 +1,9 @@
+// Failure golden: a `pack` in inference position is stuck. The abstract type
+// components live only in the signature, so inferring a package type from the
+// payload would mean guessing which of its types were meant to be abstract --
+// the guess the annotated module boundary exists to forbid.
+def unannotated = pack [ Integer ] thunk { ret #{ seed = 7 } };
+
+unannotated
+
+//@ expect-diagnostic: pack only checks

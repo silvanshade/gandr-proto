@@ -67,6 +67,27 @@ fn add_type_rules(
             Regex::sort(ty),
         ]),
     ));
+    // The first-class module package type `package [ T , U ] PAYLOAD`. The
+    // bracketed list binds the signature's abstract type components over the
+    // payload, which is the thunked module returner `U[r] (F …)`.
+    //
+    // **The grade is written once.** A package's grade and its payload thunk's
+    // grade are the same `r`, so the surface carries no grade of its own and
+    // the lowerer reads it off the payload — the invariant holds by
+    // construction rather than by a check on two annotations that could
+    // disagree.
+    rules.push(rule(
+        RuleName("package_type"),
+        ty,
+        type_application,
+        Regex::seq([
+            tile(TileLabel("package")),
+            tile(TileLabel("[")),
+            comma1(tile(TileLabel("type_identifier"))),
+            tile(TileLabel("]")),
+            Regex::sort(ty),
+        ]),
+    ));
     rules.push(rule(
         RuleName("function_type"),
         ty,

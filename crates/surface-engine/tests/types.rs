@@ -146,6 +146,24 @@ mod tests
             })
             .expect("the matched `def f` item must carry the signature ascription"))
     }
+    /// **The package type.** Its binder list becomes the former's abstract
+    /// components and its grade is read off the payload thunk, so the two
+    /// grades cannot disagree; a payload of any other shape is refused at
+    /// formation rather than repaired.
+    #[test]
+    fn package_types_lower_with_the_grade_read_off_the_payload()
+    {
+        let payload = ValueType::thunk(
+            Grade::OMEGA,
+            CompType::returner(ValueType::record([("seed".to_owned(), atom("T"))])),
+        );
+        assert_eq!(
+            Ok(Ty::Value(ValueType::package(Grade::OMEGA, ["T"], payload))),
+            strict_signature_ascription("package [ T ] U[ω] (F #{ seed : T })"),
+            "the binder list becomes the abstract components and the grade is the payload's"
+        );
+    }
+
     #[test]
     fn every_covered_type_former_lowers_to_its_core_type()
     {

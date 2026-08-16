@@ -16,6 +16,7 @@
 //! (`def` values and `def`-function thunks).
 
 use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
 
 use gandr_core_checker::boundary::GradeBound;
 use gandr_core_checker::grade::Grade;
@@ -269,6 +270,16 @@ enum TypeFrame<'tree>
         /// Grade annotation parsed at the `U`.
         grade: Grade,
     },
+    /// Assemble a package type from its component labels and lowered payload.
+    Package
+    {
+        /// The whole package-type node (for error spans).
+        node: SynNode<'tree>,
+        /// The payload CST node.
+        argument: SynNode<'tree>,
+        /// The abstract type component labels, in signature order.
+        components: Vec<String>,
+    },
     /// Assemble a function type from its lowered parameter and result.
     Function
     {
@@ -369,6 +380,28 @@ fn lower_type_tree(
                             continue;
                         };
                         pending.push(TypeTask::Build(TypeFrame::F(argument)));
+                        pending.push(TypeTask::Node(argument));
+                    },
+                    | node_kinds::PACKAGE_TYPE => {
+                        let components = match package_components(source, node) {
+                            | Ok(components) => components,
+                            | Err(error) => {
+                                results.push(Err(error));
+                                continue;
+                            },
+                        };
+                        let argument = match required_field(node, node_kinds::FIELD_ARGUMENT) {
+                            | Ok(argument) => argument,
+                            | Err(error) => {
+                                results.push(Err(error));
+                                continue;
+                            },
+                        };
+                        pending.push(TypeTask::Build(TypeFrame::Package {
+                            node,
+                            argument,
+                            components,
+                        }));
                         pending.push(TypeTask::Node(argument));
                     },
                     | node_kinds::U_TYPE => {
@@ -611,6 +644,39 @@ fn assemble_type_frame(
                     .map(|body| Ty::Value(ValueType::thunk(grade, body))),
             );
         },
+        | TypeFrame::Package {
+            node,
+            argument,
+            components,
+        } => {
+            let child = pop_type_result(results, argument);
+            let assembled = value_result(child, argument, strictness).and_then(|payload| {
+                // The package's grade IS the payload thunk's grade, so it is
+                // read off rather than written twice. A payload of any other
+                // shape is a malformed signature and is refused here, at
+                // formation, rather than repaired into something checkable.
+                match payload {
+                    | ValueType::Thunk(grade, _) => Ok(Ty::Value(ValueType::Package {
+                        grade,
+                        abstracts: components,
+                        payload: Rc::new(payload),
+                    })),
+                    | ValueType::Unknown if matches!(strictness, Strictness::Total) => {
+                        Ok(Ty::Value(ValueType::Unknown))
+                    },
+                    | _ => Err(LowerError::PackagePayloadNotGradedThunk {
+                        byte_range: node.byte_range(),
+                    }),
+                }
+            });
+            results.push(match assembled {
+                | Ok(assembled) => Ok(assembled),
+                | Err(_) if matches!(strictness, Strictness::Total) => {
+                    Ok(Ty::Value(ValueType::Unknown))
+                },
+                | Err(error) => Err(error),
+            });
+        },
         | TypeFrame::Function { parameter, result } => {
             let result_ty = pop_type_result(results, result);
             let parameter_ty = pop_type_result(results, parameter);
@@ -712,6 +778,32 @@ fn assemble_type_frame(
             let _ = node;
         },
     }
+}
+
+/// Reads a package signature's abstract type component labels, in order.
+///
+/// Each is a `type_identifier` tile inside the `[ … ]` list. A label declared
+/// twice is refused: the second binder would shadow the first everywhere in the
+/// payload, so one of the two witnesses supplied at a `pack` could never be
+/// reached — a defect in the signature, refused where it is written.
+fn package_components(
+    source: PipelineSource<'_>,
+    node: SynNode<'_>,
+) -> LowerResult<Vec<String>>
+{
+    let mut components: Vec<String> = Vec::new();
+    for component in node.children_by_field_name(node_kinds::FIELD_COMPONENT) {
+        let name = node_text(source, component)?;
+        let name = name.0.to_owned();
+        if components.contains(&name) {
+            return Err(LowerError::DuplicatePackageComponent {
+                name,
+                byte_range: component.byte_range(),
+            });
+        }
+        components.push(name);
+    }
+    Ok(components)
 }
 
 /// Converts a lowered type into a value type at one consuming node.

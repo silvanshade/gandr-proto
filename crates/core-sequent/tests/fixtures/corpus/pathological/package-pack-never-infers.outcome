@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/package-pack-never-infers.gandr
+; sexp-b3sum: 6e13bb1b774c0064ae1122d24699c7886e2314284009f6e47b2274f951a16214
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Ret(Record({"seed": Int(7)}))))
+Ret(Var("unannotated"))

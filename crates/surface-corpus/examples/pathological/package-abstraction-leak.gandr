@@ -1,0 +1,15 @@
+// Failure golden: inside an `unpack`, the module's abstract component has the
+// minted atom's type and relates to no representation at all -- so a client
+// that uses the seed as an `Integer` is rejected, whatever the packer supplied.
+def leak(p: package [ T ] U[ω] (F #{ seed: T })) -> F Integer {
+  unpack m : package [ T ] U[ω] (F #{ seed: T }) = p;
+  run r <- force m;
+  r.seed
+}
+
+def counter : package [ T ] U[ω] (F #{ seed: T });
+def counter = pack [ Integer ] thunk { ret #{ seed = 7 } };
+
+leak(counter)
+
+//@ expect-diagnostic: type mismatch

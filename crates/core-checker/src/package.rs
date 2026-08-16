@@ -964,7 +964,7 @@ fn collect_embedded_types<'term>(
                     work.push(TermRef::Comp(rest));
                 },
                 | Comp::Force(ref thunked) | Comp::Dup(ref thunked) | Comp::Drop(ref thunked) => {
-                    work.push(TermRef::Value(thunked))
+                    work.push(TermRef::Value(thunked));
                 },
                 | Comp::Case(ref scrut, (_, ref lhs), (_, ref rhs)) => {
                     work.push(TermRef::Value(scrut));

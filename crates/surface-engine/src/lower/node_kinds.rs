@@ -67,6 +67,8 @@ pub const FIELD_RESULT: SyntaxField = SyntaxField("result");
 pub const FIELD_TYPE: SyntaxField = SyntaxField("type");
 pub const FIELD_VALUE: SyntaxField = SyntaxField("value");
 pub const FIELD_SOURCE: SyntaxField = SyntaxField("source");
+/// A package signature's abstract type components, or a pack's witness types.
+pub const FIELD_COMPONENT: SyntaxField = SyntaxField("component");
 pub const FIELD_FIELD: SyntaxField = SyntaxField("field");
 pub const FIELD_OBSERVATION: SyntaxField = SyntaxField("observation");
 pub const FIELD_EXPRESSION: SyntaxField = SyntaxField("expression");
@@ -78,6 +80,11 @@ pub const FIELD_CONSTRUCTOR: SyntaxField = SyntaxField("constructor");
 pub const FIELD_LEFT: SyntaxField = SyntaxField("left");
 pub const FIELD_RIGHT: SyntaxField = SyntaxField("right");
 pub const FIELD_CONDITION: SyntaxField = SyntaxField("condition");
+/// The package introduction `pack [ T , … ] E`.
+pub const PACK_EXPRESSION: SyntaxKind = SyntaxKind("pack_expression");
+/// The package elimination `unpack m : Sig = E ;`, binding `m` over the rest
+/// of its block.
+pub const UNPACK_STATEMENT: SyntaxKind = SyntaxKind("unpack_statement");
 pub const LET_STATEMENT: SyntaxKind = SyntaxKind("let_statement");
 pub const BIND_STATEMENT: SyntaxKind = SyntaxKind("bind_statement");
 pub const EXPRESSION_STATEMENT: SyntaxKind = SyntaxKind("expression_statement");
@@ -173,6 +180,12 @@ pub const RECORD_TYPE: SyntaxKind = SyntaxKind("record_type");
 /// exposed while the source says it is sealed — a failure with no symptom.
 pub const OPAQUE_SIGNATURE: SyntaxKind = SyntaxKind("opaque_signature");
 pub const RECORD_TYPE_FIELD: SyntaxKind = SyntaxKind("record_type_field");
+/// The first-class module package type `package [ T , … ] payload`.
+///
+/// The bracketed list binds the signature's abstract type components over the
+/// payload. The package's grade is **not** written here: it is the payload
+/// thunk's own grade, so the two cannot disagree.
+pub const PACKAGE_TYPE: SyntaxKind = SyntaxKind("package_type");
 pub const F_TYPE: SyntaxKind = SyntaxKind("f_type");
 pub const U_TYPE: SyntaxKind = SyntaxKind("u_type");
 pub const FUNCTION_TYPE: SyntaxKind = SyntaxKind("function_type");

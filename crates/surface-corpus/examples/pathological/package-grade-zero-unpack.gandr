@@ -1,0 +1,14 @@
+// Failure golden: unpacking demands `1 ⊑ r`, exactly as forcing a thunk does,
+// so a `Package_0` may be carried and never opened. The grade is written once,
+// on the payload thunk, and the package reads it off.
+def closed : package [ T ] U[0] (F #{ seed: T });
+def closed = pack [ Integer ] thunk[0] { ret #{ seed = 7 } };
+
+def open_it(p: package [ T ] U[0] (F #{ seed: T })) -> F Integer {
+  unpack m : package [ T ] U[0] (F #{ seed: T }) = p;
+  ret 1
+}
+
+open_it(closed)
+
+//@ expect-diagnostic: grade order requirement failed

@@ -110,6 +110,9 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 
+use gandr_core_checker::boundary::NameRef;
+use gandr_core_checker::boundary::SealComponentName;
+use gandr_core_checker::boundary::SealDeclarationName;
 use gandr_core_checker::grade::Grade;
 use gandr_core_checker::nominal::GandrSort;
 use gandr_core_checker::prim::NativePrim;
@@ -124,6 +127,7 @@ use gandr_core_checker::syntax::ValueNodeId;
 use gandr_core_checker::syntax::WalkBase;
 use gandr_core_checker::syntax::WalkMotive;
 use gandr_core_checker::types::CompType;
+use gandr_core_checker::types::SealId;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
 use gandr_core_incremental::region::Item;
@@ -384,6 +388,47 @@ pub enum LowerError
     OpaqueAscriptionUnelaborated
     {
         /// The ascription's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A package signature whose payload is not a graded thunk.
+    ///
+    /// A package's grade and its payload thunk's grade are the same `r`, so the
+    /// surface writes the grade once — on the payload — and the package reads
+    /// it off. A payload of any other shape leaves the package with no grade to
+    /// read, which is a malformed signature rather than something to repair
+    /// into a checkable one.
+    #[error("a package payload must be a graded thunk `U[r] (F …)` at bytes {byte_range:?}")]
+    PackagePayloadNotGradedThunk
+    {
+        /// The package type's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// An `unpack` whose ascription is not a package type.
+    ///
+    /// The elimination is annotated on purpose — a package is opaque to
+    /// core-type inference, so nothing reconstructs a module type from the
+    /// expression. An ascription of another shape leaves the elimination with
+    /// no components to mint atoms for, and is refused rather than read as some
+    /// nearby form.
+    #[error("an unpack ascription must be a package type at bytes {byte_range:?}")]
+    UnpackNeedsPackageSignature
+    {
+        /// The ascription's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A package signature declaring one abstract type component twice.
+    ///
+    /// The second binder would shadow the first everywhere in the payload, so
+    /// one of the two witnesses a `pack` supplies could never be reached.
+    #[error("package component `{name}` is declared more than once at bytes {byte_range:?}")]
+    DuplicatePackageComponent
+    {
+        /// The label declared twice.
+        name: String,
+        /// The label's byte range.
         byte_range: SourceRange,
     },
 
@@ -944,6 +989,7 @@ fn lower_source_seeded(
         obligations,
         import_scope: import_scope.clone(),
         import_index_base,
+        seal_serial: 0,
     }
     .source_file(tree.root())
 }
@@ -1402,6 +1448,15 @@ struct Lowerer<'src>
     /// each grout-leaf hole's [`HoleNote`] from the obligation responsible for
     /// the hole's span.
     obligations: Vec<ObligationInstance>,
+    /// The next serial an `unpack` mints its abstract-type atoms at.
+    ///
+    /// Minting is **per elimination**, and this counter is what makes it so: an
+    /// atom's identity is its site — the module binder plus the component label
+    /// — together with this serial, so two `unpack`s that happen to share a
+    /// binder name still mint atoms that do not interchange. It is monotone in
+    /// lowering order, so re-lowering one source mints the same atoms, which is
+    /// the determinism the seal discipline re-derives freshness from.
+    seal_serial: u64,
 }
 
 impl Lowerer<'_>
@@ -1410,6 +1465,38 @@ impl Lowerer<'_>
     fn total(&self) -> TotalMode
     {
         matches!(self.strictness, Strictness::Total).into()
+    }
+
+    /// Mints one abstract-type atom per component of an ascribed package
+    /// signature, in signature order.
+    ///
+    /// The site is the module binder plus the component label, which is exactly
+    /// the shape the sealing rung's minting key takes; the serial that
+    /// accompanies it comes from [`Self::seal_serial`] and is what makes two
+    /// eliminations distinct even when they share a binder name. A signature
+    /// that is not a package yields no atoms — the caller has already refused
+    /// it, and this returns the empty list rather than inventing one.
+    fn mint_unpack_atoms(
+        &mut self,
+        binder: NameRef<'_>,
+        signature: &ValueType,
+    ) -> Vec<SealId>
+    {
+        let ValueType::Package { ref abstracts, .. } = *signature
+        else {
+            return Vec::new();
+        };
+        let mut atoms = Vec::with_capacity(abstracts.len());
+        for component in abstracts {
+            let serial = self.seal_serial;
+            self.seal_serial = self.seal_serial.saturating_add(1);
+            atoms.push(SealId::new(
+                serial,
+                SealDeclarationName::from(<&str>::from(binder)),
+                SealComponentName::from(component.as_str()),
+            ));
+        }
+        atoms
     }
 
     /// Mints a fresh hole identifier — the next [`GandrSort::HoleAddr`] atom's
@@ -5901,6 +5988,9 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::DanglingSignature { ref byte_range, .. }
         | LowerError::DuplicateModuleMember { ref byte_range, .. }
         | LowerError::OpaqueAscriptionUnelaborated { ref byte_range }
+        | LowerError::PackagePayloadNotGradedThunk { ref byte_range }
+        | LowerError::UnpackNeedsPackageSignature { ref byte_range }
+        | LowerError::DuplicatePackageComponent { ref byte_range, .. }
         | LowerError::TypeSortMismatch { ref byte_range, .. }
         | LowerError::UnknownObservation { ref byte_range, .. }
         | LowerError::DuplicateObservation { ref byte_range, .. }
@@ -5933,6 +6023,13 @@ fn note_of(error: &LowerError) -> HoleNote
         },
         | LowerError::OpaqueAscriptionUnelaborated { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::OPAQUE_SIGNATURE,
+        },
+        | LowerError::PackagePayloadNotGradedThunk { .. }
+        | LowerError::DuplicatePackageComponent { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::PACKAGE_TYPE,
+        },
+        | LowerError::UnpackNeedsPackageSignature { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::UNPACK_STATEMENT,
         },
         | LowerError::MarkedReferenceOutsideRecursiveScope { .. }
         | LowerError::ReservedNamedMeasure { .. }
@@ -6228,6 +6325,7 @@ mod tests
             hoist: Gensym::new(GandrSort::TmpHoist),
             holes: Gensym::new(GandrSort::HoleAddr),
             strictness: Strictness::Strict,
+            seal_serial: 0,
             foreign: BTreeMap::new(),
             import_scope: Scope::new(),
             import_index_base: ImportIndex(0),
