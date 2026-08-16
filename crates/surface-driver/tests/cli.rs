@@ -4,25 +4,15 @@
 //! a *process* contract: what a calling shell — a `#!/usr/bin/env gandr`
 //! script, a `mise` task, a future build step — observes on standard output, on
 //! standard error, and in the exit status.
-//!
-//! Two further cases anchor the project's own production script,
-//! `scripts/agda-deps.gandr`, without running it: it clones a repository over
-//! the network, so the suite proves the script lowers and that it has not
-//! drifted from the literate corpus copy that explains it, and leaves execution
-//! to `mise run agda:deps`.
 
 #[cfg(test)]
 mod tests
 {
-    use std::path::Path;
     use std::path::PathBuf;
     use std::process::Command;
     use std::process::Output;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering;
-
-    use gandr_surface_engine::boundary::PipelineSource;
-    use gandr_surface_engine::lower::lower_source_total;
 
     /// A per-process suffix source keeping concurrent scratch scripts distinct.
     static NEXT_SCRATCH: AtomicU32 = AtomicU32::new(0);
@@ -100,57 +90,6 @@ mod tests
     fn status_of(output: &Output) -> ProcessStatus
     {
         ProcessStatus(output.status.code())
-    }
-
-    /// The workspace root, reached from this crate's manifest directory.
-    fn workspace_root() -> PathBuf
-    {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-    }
-
-    /// The lowered core rendering of a source file — the well-formedness shape.
-    ///
-    /// Comments and layout are stripped by lowering, so this is what the file
-    /// actually is as a program.
-    fn lowered_shape(path: &Path) -> String
-    {
-        let text = read_source(path);
-        let lowered = lower_source_total(PipelineSource(text.as_str()))
-            .unwrap_or_else(|error| panic!("`{}` must lower totally: {error}", path.display()));
-        let terms: Vec<String> = lowered
-            .items
-            .iter()
-            .map(|item| format!("{:?}", item.term))
-            .collect();
-        terms.join("\n")
-    }
-
-    /// The source text of a file the suite anchors.
-    fn read_source(path: &Path) -> String
-    {
-        std::fs::read_to_string(path)
-            .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", path.display()))
-    }
-
-    /// The single `sh -c` command line a provisioning source carries.
-    ///
-    /// This is the load-bearing payload the production script and its literate
-    /// corpus copy must agree on: everything else about the two files is
-    /// wrapping, and the command is what drifted between them historically.
-    fn shell_command_line(path: &Path) -> String
-    {
-        let text = read_source(path);
-        let mut lines = text.lines().filter(|line| line.starts_with("sh -c "));
-        let command = lines
-            .next()
-            .unwrap_or_else(|| panic!("`{}` must carry an `sh -c` command", path.display()))
-            .to_owned();
-        assert!(
-            lines.next().is_none(),
-            "`{}` must carry exactly one `sh -c` command",
-            path.display()
-        );
-        command
     }
 
     #[test]
@@ -383,45 +322,6 @@ mod tests
             status_of(&output),
             ProcessStatus(Some(2_i32)),
             "a source with no runnable item never reaches the machine"
-        );
-    }
-
-    #[test]
-    fn the_agda_deps_script_lowers_and_reaches_the_host()
-    {
-        let script = workspace_root().join("scripts/agda-deps.gandr");
-        let shape = lowered_shape(&script);
-        assert!(
-            shape.contains("Exec"),
-            "the provisioning script must reach the host `Exec` effect; got {shape}"
-        );
-        assert!(
-            shape.contains("Proc"),
-            "the provisioning script must propagate its status through `proc.exit`; got {shape}"
-        );
-    }
-
-    #[test]
-    fn the_agda_deps_script_and_its_corpus_walkthrough_have_not_drifted()
-    {
-        // The corpus copy explains the production script, and the two drifted apart
-        // once already — the copy was left behind at an older shape while the real
-        // script moved on. This is what keeps them together, and it compares the
-        // whole lowering rather than the command alone, so prose may differ and
-        // nothing else may.
-        let root = workspace_root();
-        let script = root.join("scripts/agda-deps.gandr");
-        let walkthrough =
-            root.join("crates/surface-corpus/examples/model/14-agda-deps-walkthrough.gandr");
-        assert_eq!(
-            shell_command_line(&script),
-            shell_command_line(&walkthrough),
-            "the literate corpus copy must carry the production script's command verbatim"
-        );
-        assert_eq!(
-            lowered_shape(&script),
-            lowered_shape(&walkthrough),
-            "the literate corpus copy must lower to the same program as the production script"
         );
     }
 }

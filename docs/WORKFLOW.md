@@ -31,7 +31,6 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 | [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
 | [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
 | [workflow/corpus.md](workflow/corpus.md)                         | surface-corpus examples, the feature landing rule                                                                                         |
-| [workflow/agda.md](workflow/agda.md)                             | the metatheory lane: layout, flags, gates, dependencies, solvers, the done-rule                                                           |
 | `spec:proof-engineering.md` (held outside this repository)       | designing Agda structures: representation, characterization, reasoning style, namespacing — the doctrine, not the workflow                |
 | [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
 | [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
@@ -49,7 +48,6 @@ Narrow, file-scoped checks (`rumdl check <file>`, `typos <file>`) stay useful wh
 Run the **narrowest gate that proves your change** before any commit; the merge wall (`gate:merge`) runs the composed sweep automatically ([workflow/ci.md](workflow/ci.md); the push tier and hosted CI are parked during the reboot).
 Docs: `treefmt:check`, `docs:conflict-markers`, `test:doc-gates`.
 Rust: `cargo:clippy` (pass/fail only — triage via aifix), `cargo:nextest`.
-Agda: `agda:check`.
 The design corpus and its BLAKE3 registry have left this repository, so registration is no longer part of authoring here and the drift and reference-integrity gates retired with them.
 
 ## Standing principles (the short forms)
@@ -57,7 +55,6 @@ The design corpus and its BLAKE3 registry have left this repository, so registra
 - **Modularity-first**: before modifying, evaluate structure — extract on touch, act or schedule, always surface (`AGENTS.md` §"Working posture"; precedents in [workflow/rust.md](workflow/rust.md)).
 - **Formatters and linters are best-effort**: never satisfy a tool at the cost of artifact fidelity ([workflow/docs.md](workflow/docs.md)).
 - **External research artifacts are reference-only**: read and cite published work; never vendor, port, or depend on companion artifacts, regardless of license.
-  Agda dependencies additionally need maintainer sign-off first ([workflow/agda.md](workflow/agda.md)).
 - **Graduation principle (dogfood the stack)**: when a major component ships, evaluate it as a replacement for the ad-hoc tooling that preceded it and file beads for the graduations it enables — the project's own layers are the intended substrate for the tooling around the project, so interim tooling keeps its formats substrate-agnostic.
 - **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
 - **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; keep surveys and session context out of the tree ([workflow/docs.md](workflow/docs.md)).

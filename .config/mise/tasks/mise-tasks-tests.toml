@@ -54,13 +54,6 @@ cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-gra
 cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
 """
 
-["test:options-policy"]
-description = "Run the Rust OPTIONS-policy regression suite and live policy sweep"
-run = """
-cargo nextest run -p gandr-workflow-gates
-cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
-"""
-
 ["test:page-balance"]
 description = "Run the Rust page-balance regression suite"
 run = """

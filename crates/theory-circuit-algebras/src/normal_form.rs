@@ -28,8 +28,8 @@
 //! # The linearization selected, and why the edge orientation
 //!
 //! **The edge orientation is selected** — the spanning-tree traversal
-//! `../metatheory/roadmap`'s `meta-spike-09` went looking for on the `canon`
-//! side. Four reasons, in the order they bind.
+//! `spec:metatheory/roadmap.md`'s `meta-spike-09` went looking for on the
+//! `canon` side. Four reasons, in the order they bind.
 //!
 //! - **Monogamy makes the edge cut choice-free and leaves the vertex cut with a
 //!   choice to break.** Removing a wire leaves two sides, and they are told
@@ -160,9 +160,9 @@
 //!
 //! The corpus places this face behind gandr's `Rigid` device and names
 //! `Rigid.canon-sound` at the circuit rung as the standing obligation that owes
-//! it. `Rigid` is a canonicalization on a setoid that decides its equivalence
-//! (`metatheory/src/Gandr/Rigid.agda`), and the correspondence is exact rather
-//! than an analogy:
+//! `Rigid` is a canonicalization on a setoid that decides its equivalence
+//! (`gandr-metatheory:src/Gandr/Rigid.agda`), and the correspondence is exact
+//! rather than an analogy:
 //!
 //! | `Rigid` | here |
 //! | ------- | ---- |
@@ -191,13 +191,13 @@
 //! documentation).
 //!
 //! **The metatheory's own `Rigid` instance is a different object and stays
-//! owed.** `../metatheory/roadmap`'s `Rigid.canon-sound` at the circuit rung is
-//! a normal form on the carrier's **construction terms** over merger and
-//! contraction — permutations outermost, ordered tree monomials, unique minimal
-//! representative — with a monomial-to-monomial rewriting condition to check
-//! first. That is not this procedure, and this procedure does not discharge it.
-//! Whether the two canons agree is an owed question rather than an assumption
-//! (`gandr-ng9.15-question-17`).
+//! owed.** `spec:metatheory/roadmap.md`'s `Rigid.canon-sound` at the circuit
+//! rung is a normal form on the carrier's **construction terms** over merger
+//! and contraction — permutations outermost, ordered tree monomials, unique
+//! minimal representative — with a monomial-to-monomial rewriting condition to
+//! check first. That is not this procedure, and this procedure does not
+//! discharge it. Whether the two canons agree is an owed question rather than
+//! an assumption (`gandr-ng9.15-question-17`).
 //!
 //! # Why the spider theorem arrives here rather than through rewriting
 //!

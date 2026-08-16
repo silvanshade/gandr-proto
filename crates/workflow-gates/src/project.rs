@@ -2,23 +2,13 @@
 //!
 //! This module ports only the project operations that still have a live
 //! Rust-gate role after the callsite audit: the default dependency graph guard
-//! and the IU submodule pin/clean guard. The default graph guard uses `cargo
-//! metadata` resolve data rather than parsing `cargo tree` text, so package
-//! identity comes from Cargo's JSON graph. The IU guard keeps every `git`
-//! invocation behind the shared sanitized-command support boundary.
+//! — using `cargo metadata` resolve data rather than parsing `cargo tree`
+//! text, so package identity comes from Cargo's JSON graph.
 //!
-//! Two audited Nushell behaviors are deliberately omitted here. First, the raw
-//! `^git` scanner is vacuous after clean cutover because this crate's project
-//! operations call [`support::run_output`] with `sanitized_git = true` instead
-//! of embedding ad-hoc environment scrubbing. Second, `scripts/agda-deps.nu` is
-//! not reimplemented in this module: `mise run agda:deps` runs
-//! `scripts/agda-deps.gandr` through the `gandr` script runner, which is what
-//! makes the Nushell bootstrap obsolete.
-//!
-//! That leaves the binary's own `agda-deps` command (`main.rs`) as a second
-//! implementation of the same provisioning step with no task calling it.
-//! Whether it is retired or documented as a driver-independent fallback is
-//! filed for the owner as `gandr-wvd.24.7-question-02`, not a settled state.
+//! The audited raw `^git` scanner is deliberately omitted here: it is vacuous
+//! after clean cutover because this crate's project operations call
+//! [`support::run_output`] with `sanitized_git = true` instead of embedding
+//! ad-hoc environment scrubbing.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -33,15 +23,10 @@ use crate::GateError;
 use crate::GateResult;
 use crate::support;
 
-crate::semantic_str!(pub struct IuPathText);
-crate::semantic_str!(pub struct StatusStdoutText);
-crate::semantic_str!(pub struct KindText);
-crate::semantic_str!(pub struct DeclarationText);
 crate::semantic_str!(pub struct CommandText);
 crate::semantic_copy!(pub struct CodeExitCode(Option<i32>));
 crate::semantic_str!(pub struct ContextText);
 crate::semantic_str!(pub struct FieldText);
-crate::semantic_str!(pub struct PorcelainStdoutText);
 crate::semantic_str!(pub struct MetadataText);
 crate::semantic_str!(pub struct ExpectedText);
 crate::semantic_str!(pub struct MessageText);
@@ -49,11 +34,9 @@ crate::semantic_str!(pub struct StdoutText);
 crate::semantic_str!(pub struct JsonFieldText);
 crate::semantic_str!(pub struct MetadataJsonText);
 crate::semantic_str!(pub struct HostTripleText);
-crate::semantic_str!(pub struct NameText);
 crate::semantic_str!(pub struct ReachableDefaultPackageNameText);
 crate::semantic_copy!(pub struct NCount(usize));
 crate::semantic_copy!(pub struct DepKindReachesDefaultGraphFlag(bool));
-crate::semantic_copy!(pub struct ContentAtRecordedPinFlag(bool));
 crate::semantic_copy!(pub struct DepReachesDefaultGraphFlag(bool));
 
 /// Logical source label used for live Cargo metadata JSON.
@@ -81,21 +64,6 @@ const EXEMPT_DEFAULT_GRAPH_MEMBER: &str = "gandr-workflow-dylint";
 /// Stable finding kind for forbidden default graph packages.
 const DEFAULT_GRAPH_FINDING_KIND: &str = "forbidden-default-dependency";
 
-/// Default IU submodule mount point relative to the workspace root.
-const DEFAULT_IU_PATH: &str = "metatheory/upstream/internal-univalence";
-
-/// Stable finding kind for an unregistered or uninitialized IU submodule.
-const IU_UNINITIALIZED_KIND: &str = "iu-pin-uninitialized";
-
-/// Stable finding kind for an IU checkout that differs from the recorded pin.
-const IU_DRIFTED_KIND: &str = "iu-pin-drifted";
-
-/// Stable finding kind for an IU submodule conflict state.
-const IU_CONFLICTED_KIND: &str = "iu-pin-conflicted";
-
-/// Stable finding kind for local edits inside the pinned IU submodule.
-const IU_DIRTY_KIND: &str = "iu-pin-dirty";
-
 /// Cargo metadata graph borrowed from a parsed JSON value.
 struct MetadataGraph<'metadata>
 {
@@ -105,45 +73,6 @@ struct MetadataGraph<'metadata>
     dependencies: BTreeMap<&'metadata str, Vec<&'metadata str>>,
     /// Workspace member package ids used as traversal roots.
     roots: Vec<&'metadata str>,
-}
-
-/// Parsed IU submodule status prefix and recorded pin.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct IuSubmoduleStatus
-{
-    /// Status class derived from the first `git submodule status` byte.
-    class: IuSubmoduleStatusClass,
-    /// Recorded gitlink SHA parsed from the status line when present.
-    recorded_sha: Option<String>,
-}
-
-/// Semantic class for the `git submodule status` prefix.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum IuSubmoduleStatusClass
-{
-    /// No status line was returned for the requested submodule path.
-    NotRegistered,
-    /// The submodule is checked out at the recorded pin.
-    Clean,
-    /// `-`: the submodule is not initialized or lost shared registration.
-    Uninitialized,
-    /// `+`: the checkout HEAD differs from the recorded gitlink pin.
-    Drifted,
-    /// `U`: the submodule is in a conflict state.
-    Conflicted,
-    /// Any other prefix preserved for compatibility with the Nushell script's
-    /// default branch, which proceeds to the clean-tree check.
-    Other(char),
-}
-
-/// Minimal command probe data needed by pure IU status validation.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct ProbeOutput<'output>
-{
-    /// Whether the probed command exited successfully.
-    success: bool,
-    /// Standard output observed for the probe.
-    stdout: &'output str,
 }
 
 /// Validate the default workspace dependency graph from live Cargo metadata.
@@ -190,121 +119,6 @@ pub fn check_default_dependency_graph(workspace_root: &Path) -> GateResult
 
     let stdout = output.stdout_lossy();
     validate_default_dependency_graph_metadata(stdout.as_ref())
-}
-
-/// Validate the default IU mount point against its recorded pin and clean tree.
-///
-/// # Contract
-/// - requires: `workspace_root` names a Git checkout containing the IU
-///   submodule mount.
-/// - ensures: returns semantic findings for uninitialized, drifted, conflicted,
-///   or dirty IU states, and returns no findings for a clean checkout at the
-///   recorded pin.
-/// - provides: the retained `check-iu-pin.nu` behavior through sanitized Git
-///   command execution.
-/// - fails: returns typed operational errors when required Git probes cannot be
-///   launched or when the clean-tree probe itself fails.
-/// - panics: none.
-/// - intension: probes are run sequentially; the dirty check is skipped
-///   whenever the status prefix already explains the failed pin state.
-///
-/// # Errors
-/// Returns command errors from the sanitized support runner and operational
-/// errors for a failing `git status --porcelain` command inside the submodule.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — `-`, `+`, `U`, clean, and dirty surfaces are
-///   distinguished by pure status/porcelain fixtures.
-/// - witness: `project::tests::uninitialized_submodule_with_recorded_content_reports_sibling_hint`
-/// - witness: `project::tests::drifted_submodule_reports_plus_status`
-/// - witness: `project::tests::conflicted_submodule_reports_u_status`
-/// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
-/// - witness: `project::tests::dirty_submodule_reports_read_only_violation`
-#[inline]
-pub fn check_default_iu_pin(workspace_root: &Path) -> GateResult
-{
-    check_iu_pin(workspace_root, Path::new(DEFAULT_IU_PATH))
-}
-
-/// Validate an IU submodule mount against its recorded pin and clean tree.
-///
-/// # Contract
-/// - requires: `workspace_root` is the Git checkout root and `iu_path` is the
-///   mount point to pass to `git submodule status` and `git -C`.
-/// - ensures: returns the same semantic findings as [`check_default_iu_pin`]
-///   for the supplied mount path.
-/// - provides: fixture-independent IU pin validation for callers that need an
-///   explicit mount point.
-/// - fails: returns support-runner errors for process launch failures and an
-///   operational error for a failing clean-tree probe.
-/// - panics: none.
-/// - intension: all Git commands pass `sanitized_git = true`.
-///
-/// # Errors
-/// Returns command errors from the sanitized support runner and operational
-/// errors for a failing clean-tree probe status failure.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — command failure, prefix-specific status
-///   findings, and dirty-tree findings are separated by fixture tests and by
-///   the status-before-dirty probe order.
-/// - witness: `project::tests::unregistered_submodule_reports_missing_registration`
-/// - witness: `project::tests::uninitialized_submodule_without_content_reports_init_hint`
-/// - witness: `project::tests::dirty_submodule_reports_read_only_violation`
-#[inline]
-pub fn check_iu_pin(
-    workspace_root: &Path,
-    iu_path: &Path,
-) -> GateResult
-{
-    let iu_label = path_label(iu_path);
-    let status_args = git_submodule_status_args(iu_path);
-    let status_output =
-        support::run_output(OsStr::new("git"), &status_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<support::SuccessFlag, _>(status_output.success()).0 {
-        return Ok(vec![iu_finding(
-            IU_UNINITIALIZED_KIND,
-            &iu_label,
-            "submodule status",
-            command_failure_detail(
-                "git submodule status",
-                crate::semantic_value::<support::OptionalCodeCode, _>(status_output.code()).0,
-            ),
-        )]);
-    }
-
-    let status_stdout = status_output.stdout_lossy();
-    let status = parse_iu_submodule_status(status_stdout.as_ref());
-    let pin_findings = if status.class == IuSubmoduleStatusClass::Uninitialized {
-        let head_args = git_rev_parse_head_args(iu_path);
-        let head_output =
-            support::run_output(OsStr::new("git"), &head_args, Some(workspace_root), true)?;
-        let head_stdout = head_output.stdout_lossy();
-        let head_probe = ProbeOutput {
-            success: crate::semantic_value::<support::SuccessFlag, _>(head_output.success()).0,
-            stdout: head_stdout.as_ref(),
-        };
-        iu_pin_findings_from_status(&iu_label, &status, Some(head_probe))
-    }
-    else {
-        iu_pin_findings_from_status(&iu_label, &status, None)
-    };
-    if !pin_findings.is_empty() {
-        return Ok(pin_findings);
-    }
-
-    let dirty_args = git_status_porcelain_args(iu_path);
-    let dirty_output =
-        support::run_output(OsStr::new("git"), &dirty_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<support::SuccessFlag, _>(dirty_output.success()).0 {
-        return Err(operational(command_failure_detail(
-            "git status inside IU submodule",
-            crate::semantic_value::<support::OptionalCodeCode, _>(dirty_output.code()).0,
-        )));
-    }
-
-    let dirty_stdout = dirty_output.stdout_lossy();
-    Ok(iu_clean_findings(&iu_label, dirty_stdout.as_ref()))
 }
 
 /// Discover Cargo's exact current host target triple through `rustc -vV`.
@@ -613,210 +427,6 @@ fn default_graph_findings(hits: &[String]) -> Vec<Finding>
     findings
 }
 
-/// Extract the recorded SHA from the remainder of a submodule status line.
-fn leading_status_sha<Characters>(characters: Characters) -> Option<String>
-where
-    Characters: IntoIterator<Item = char>,
-{
-    let mut sha = String::new();
-    let mut started = false;
-    for character in characters {
-        if character.is_ascii_hexdigit() {
-            sha.push(character);
-            started = true;
-        }
-        else if started || !character.is_whitespace() {
-            break;
-        }
-    }
-    (!sha.is_empty()).then_some(sha)
-}
-
-/// Return IU pin findings for already-captured status and optional HEAD probes.
-///
-/// # Contract
-/// - requires: `iu_path` is the diagnostic path label, `status_stdout` is a
-///   submodule-status capture, and `head_probe` is supplied when the caller
-///   wants the `-` status split by on-disk content.
-/// - ensures: returns at most one status finding and returns no finding for a
-///   clean or unknown-compatible prefix.
-/// - provides: pure IU status validation with the retained distinct `-`, `+`,
-///   and `U` diagnostics.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — status-class fixtures distinguish missing
-///   registration, sibling-deinit, fresh uninitialized, drifted, conflicted,
-///   and clean states.
-/// - witness: `project::tests::unregistered_submodule_reports_missing_registration`
-/// - witness: `project::tests::uninitialized_submodule_with_recorded_content_reports_sibling_hint`
-/// - witness: `project::tests::uninitialized_submodule_without_content_reports_init_hint`
-/// - witness: `project::tests::drifted_submodule_reports_plus_status`
-/// - witness: `project::tests::conflicted_submodule_reports_u_status`
-/// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
-#[cfg(test)]
-pub(crate) fn iu_pin_status_findings<'semantic, IuPath, StatusStdout>(
-    iu_path: IuPath,
-    status_stdout: StatusStdout,
-    head_probe: Option<ProbeOutput<'_>>,
-) -> Vec<Finding>
-where
-    IuPath: Into<IuPathText<'semantic>>,
-    StatusStdout: Into<StatusStdoutText<'semantic>>,
-{
-    let status_stdout = status_stdout.into().0;
-    let iu_path = iu_path.into().0;
-    let status = parse_iu_submodule_status(status_stdout);
-    iu_pin_findings_from_status(iu_path, &status, head_probe)
-}
-
-/// Parse the first `git submodule status` line into an IU status record.
-///
-/// # Contract
-/// - requires: `stdout` is the exact stdout captured from `git submodule status
-///   -- <iu-path>`.
-/// - ensures: classifies the retained `-`, `+`, `U`, clean-space, empty, and
-///   fallback prefix states without indexing into the string.
-/// - provides: the pure parser shared by live IU validation and fixture tests.
-/// - panics: none.
-/// - intension: only the first output line is classified, matching the single
-///   path passed to the Git command.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — empty, `-`, `+`, `U`, and clean-space prefixes
-///   are all distinguished by exact status fixtures.
-/// - witness: `project::tests::unregistered_submodule_reports_missing_registration`
-/// - witness: `project::tests::uninitialized_submodule_without_content_reports_init_hint`
-/// - witness: `project::tests::drifted_submodule_reports_plus_status`
-/// - witness: `project::tests::conflicted_submodule_reports_u_status`
-/// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
-pub(crate) fn parse_iu_submodule_status<'semantic, Stdout>(stdout: Stdout) -> IuSubmoduleStatus
-where
-    Stdout: Into<StdoutText<'semantic>>,
-{
-    let stdout = stdout.into().0;
-    if stdout.trim().is_empty() {
-        return IuSubmoduleStatus {
-            class: IuSubmoduleStatusClass::NotRegistered,
-            recorded_sha: None,
-        };
-    }
-
-    let Some(line) = stdout.lines().next()
-    else {
-        return IuSubmoduleStatus {
-            class: IuSubmoduleStatusClass::NotRegistered,
-            recorded_sha: None,
-        };
-    };
-    let mut characters = line.chars();
-    let Some(marker) = characters.next()
-    else {
-        return IuSubmoduleStatus {
-            class: IuSubmoduleStatusClass::NotRegistered,
-            recorded_sha: None,
-        };
-    };
-    let class = match marker {
-        | ' ' => IuSubmoduleStatusClass::Clean,
-        | '-' => IuSubmoduleStatusClass::Uninitialized,
-        | '+' => IuSubmoduleStatusClass::Drifted,
-        | 'U' => IuSubmoduleStatusClass::Conflicted,
-        | other => IuSubmoduleStatusClass::Other(other),
-    };
-
-    IuSubmoduleStatus {
-        class,
-        recorded_sha: leading_status_sha(characters),
-    }
-}
-
-/// Return IU pin findings for a parsed status record.
-fn iu_pin_findings_from_status<'semantic, IuPath>(
-    iu_path: IuPath,
-    status: &IuSubmoduleStatus,
-    head_probe: Option<ProbeOutput<'_>>,
-) -> Vec<Finding>
-where
-    IuPath: Into<IuPathText<'semantic>>,
-{
-    let iu_path = iu_path.into().0;
-    match status.class {
-        | IuSubmoduleStatusClass::NotRegistered => vec![iu_finding(
-            IU_UNINITIALIZED_KIND,
-            iu_path,
-            "submodule status",
-            "not a registered submodule",
-        )],
-        | IuSubmoduleStatusClass::Uninitialized => {
-            let detail = if content_at_recorded_pin(status, head_probe).into().0 {
-                "not initialized; content is on disk at the recorded pin but the submodule is unregistered: a sibling linked worktree likely ran git submodule deinit; recover from the primary checkout with git submodule init then git submodule update"
-            }
-            else {
-                "not initialized; run: git submodule update --init"
-            };
-            vec![iu_finding(IU_UNINITIALIZED_KIND, iu_path, "-", detail)]
-        },
-        | IuSubmoduleStatusClass::Drifted => vec![iu_finding(
-            IU_DRIFTED_KIND,
-            iu_path,
-            "+",
-            "checkout differs from the recorded pin; commit the intended pin bump, or run: git submodule update",
-        )],
-        | IuSubmoduleStatusClass::Conflicted => vec![iu_finding(
-            IU_CONFLICTED_KIND,
-            iu_path,
-            "U",
-            "has merge conflicts; resolve them first",
-        )],
-        | IuSubmoduleStatusClass::Clean | IuSubmoduleStatusClass::Other(_) => Vec::new(),
-    }
-}
-
-/// Return whether an uninitialized status still has content at the recorded
-/// pin.
-fn content_at_recorded_pin(
-    status: &IuSubmoduleStatus,
-    head_probe: Option<ProbeOutput<'_>>,
-) -> impl Into<ContentAtRecordedPinFlag>
-{
-    let Some(recorded) = status.recorded_sha.as_deref()
-    else {
-        return false;
-    };
-    let Some(probe) = head_probe
-    else {
-        return false;
-    };
-    probe.success && probe.stdout.trim() == recorded
-}
-
-/// Build one stable IU finding.
-fn iu_finding<'semantic, Kind, IuPath, Declaration, Detail>(
-    kind: Kind,
-    iu_path: IuPath,
-    declaration: Declaration,
-    detail: Detail,
-) -> Finding
-where
-    Kind: Into<KindText<'semantic>>,
-    IuPath: Into<IuPathText<'semantic>>,
-    Declaration: Into<DeclarationText<'semantic>>,
-    Detail: Into<String>,
-{
-    let iu_path = iu_path.into().0;
-    let declaration = declaration.into().0;
-    let detail = detail.into();
-    let kind = kind.into().0;
-    Finding::new(kind, "", iu_path, declaration, detail)
-}
-
-/// Return a deterministic text label for a path argument.
-fn path_label(path: &Path) -> String
-{
-    path.to_string_lossy().into_owned()
-}
-
 /// Build a stable command-failure detail from a live-streamed command status.
 fn command_failure_detail<'semantic, Command, Code>(
     command: Command,
@@ -934,44 +544,6 @@ where
     GateError::Operational { detail }
 }
 
-/// Return IU clean-tree findings from `git status --porcelain` stdout.
-///
-/// # Contract
-/// - requires: `porcelain_stdout` is captured from `git -C <iu-path> status
-///   --porcelain`.
-/// - ensures: returns no findings for empty porcelain output and one read-only
-///   violation for any nonempty output.
-/// - provides: pure clean-tree validation for the pinned IU dependency.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — empty and nonempty porcelain captures are the
-///   only semantic boundary for the retained clean-tree check.
-/// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
-/// - witness: `project::tests::dirty_submodule_reports_read_only_violation`
-pub(crate) fn iu_clean_findings<'semantic, IuPath, PorcelainStdout>(
-    iu_path: IuPath,
-    porcelain_stdout: PorcelainStdout,
-) -> Vec<Finding>
-where
-    IuPath: Into<IuPathText<'semantic>>,
-    PorcelainStdout: Into<PorcelainStdoutText<'semantic>>,
-{
-    let porcelain_stdout = porcelain_stdout.into().0;
-    let iu_path = iu_path.into().0;
-    if porcelain_stdout.trim().is_empty() {
-        Vec::new()
-    }
-    else {
-        vec![iu_finding(
-            IU_DIRTY_KIND,
-            iu_path,
-            "status --porcelain",
-            "has local modifications; the pinned upstream is read-only in gandr; land the change upstream, then bump the pin",
-        )]
-    }
-}
-
 /// Return one object field as a JSON string slice.
 fn json_string_field<'semantic, 'value, Field>(
     object: &'value serde_json::Map<String, serde_json::Value>,
@@ -1017,48 +589,10 @@ where
     ]
 }
 
-/// Build `git submodule status -- <iu_path>` arguments.
-fn git_submodule_status_args(iu_path: &Path) -> [OsString; 4]
-{
-    [
-        OsString::from("submodule"),
-        OsString::from("status"),
-        OsString::from("--"),
-        iu_path.as_os_str().to_os_string(),
-    ]
-}
-
-/// Build `git -C <iu_path> rev-parse HEAD` arguments.
-fn git_rev_parse_head_args(iu_path: &Path) -> [OsString; 4]
-{
-    [
-        OsString::from("-C"),
-        iu_path.as_os_str().to_os_string(),
-        OsString::from("rev-parse"),
-        OsString::from("HEAD"),
-    ]
-}
-
-/// Build `git -C <iu_path> status --porcelain` arguments.
-fn git_status_porcelain_args(iu_path: &Path) -> [OsString; 4]
-{
-    [
-        OsString::from("-C"),
-        iu_path.as_os_str().to_os_string(),
-        OsString::from("status"),
-        OsString::from("--porcelain"),
-    ]
-}
-
 /// Fixture tests for pure project-gate parsers and validators.
 #[cfg(test)]
 mod tests
 {
-
-    use std::env;
-    use std::path::Path;
-    use std::path::PathBuf;
-
     use super::*;
 
     /// Minimal package id for metadata fixtures.
@@ -1072,9 +606,6 @@ mod tests
 
     /// Minimal exempt Dylint driver package id for metadata fixtures.
     const DYLINT_ID: &str = "path+file:///workspace#workflow-dylint@0.1.0";
-
-    /// Representative IU mount path used by pure status fixtures.
-    const IU_PATH: &str = "metatheory/upstream/internal-univalence";
 
     /// Invalid metadata JSON reports the typed JSON error variant.
     #[test]
@@ -1181,134 +712,6 @@ mod tests
             "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; keep tree-sitter behind the parity-only path",
         )]);
         Ok(())
-    }
-
-    /// Empty submodule status output reports missing registration.
-    #[test]
-    fn unregistered_submodule_reports_missing_registration()
-    {
-        assert_eq!(iu_pin_status_findings(IU_PATH, "", None), vec![
-            Finding::new(
-                IU_UNINITIALIZED_KIND,
-                "",
-                IU_PATH,
-                "submodule status",
-                "not a registered submodule",
-            )
-        ]);
-    }
-
-    /// A `-` status with matching mount HEAD reports the sibling-deinit hint.
-    #[test]
-    fn uninitialized_submodule_with_recorded_content_reports_sibling_hint() -> Result<(), GateError>
-    {
-        let findings = iu_pin_status_findings(
-            IU_PATH,
-            "-abcdef1234567890 metatheory/upstream/internal-univalence\n",
-            Some(ProbeOutput {
-                success: true,
-                stdout: "abcdef1234567890\n",
-            }),
-        );
-        let Some(finding) = findings.first()
-        else {
-            return Err(GateError::operational("expected one IU finding"));
-        };
-        assert_eq!(1, findings.len());
-        assert_eq!("-", finding.declaration);
-        assert!(finding.detail.contains("sibling linked worktree"));
-        Ok(())
-    }
-
-    /// A `-` status without matching content reports the init command hint.
-    #[test]
-    fn uninitialized_submodule_without_content_reports_init_hint()
-    {
-        let findings = iu_pin_status_findings(
-            IU_PATH,
-            "-abcdef1234567890 metatheory/upstream/internal-univalence\n",
-            Some(ProbeOutput {
-                success: false,
-                stdout: "",
-            }),
-        );
-        assert_eq!(findings, vec![Finding::new(
-            IU_UNINITIALIZED_KIND,
-            "",
-            IU_PATH,
-            "-",
-            "not initialized; run: git submodule update --init",
-        )]);
-    }
-
-    /// A `+` status reports recorded-pin drift.
-    #[test]
-    fn drifted_submodule_reports_plus_status()
-    {
-        assert_eq!(
-            iu_pin_status_findings(
-                IU_PATH,
-                "+abcdef1234567890 metatheory/upstream/internal-univalence\n",
-                None,
-            ),
-            vec![Finding::new(
-                IU_DRIFTED_KIND,
-                "",
-                IU_PATH,
-                "+",
-                "checkout differs from the recorded pin; commit the intended pin bump, or run: git submodule update",
-            )]
-        );
-    }
-
-    /// A `U` status reports merge conflicts.
-    #[test]
-    fn conflicted_submodule_reports_u_status()
-    {
-        assert_eq!(
-            iu_pin_status_findings(
-                IU_PATH,
-                "Uabcdef1234567890 metatheory/upstream/internal-univalence\n",
-                None,
-            ),
-            vec![Finding::new(
-                IU_CONFLICTED_KIND,
-                "",
-                IU_PATH,
-                "U",
-                "has merge conflicts; resolve them first",
-            )]
-        );
-    }
-
-    /// A clean status line has no pin finding before the dirty check.
-    #[test]
-    fn clean_submodule_status_reports_no_pin_finding()
-    {
-        assert_eq!(
-            Vec::<Finding>::new(),
-            iu_pin_status_findings(
-                IU_PATH,
-                " abcdef1234567890 metatheory/upstream/internal-univalence\n",
-                None,
-            )
-        );
-    }
-
-    /// Nonempty porcelain output reports the read-only upstream violation.
-    #[test]
-    fn dirty_submodule_reports_read_only_violation()
-    {
-        assert_eq!(
-            iu_clean_findings(IU_PATH, " M src/Internal/Graph.agda\n"),
-            vec![Finding::new(
-                IU_DIRTY_KIND,
-                "",
-                IU_PATH,
-                "status --porcelain",
-                "has local modifications; the pinned upstream is read-only in gandr; land the change upstream, then bump the pin",
-            )]
-        );
     }
 
     /// Malformed Cargo metadata reports exact shape failures for duplicate IDs.
@@ -1533,174 +936,6 @@ mod tests
         ));
     }
 
-    /// IU status parsing uses only the first line and tolerates unknown
-    /// prefixes.
-    #[test]
-    fn submodule_status_parser_respects_first_line_and_unknown_prefix()
-    {
-        assert_eq!(
-            IuSubmoduleStatusClass::NotRegistered,
-            parse_iu_submodule_status("\n+abcdef1234567890 ignored\n").class,
-        );
-        assert_eq!(
-            IuSubmoduleStatusClass::Other('?'),
-            parse_iu_submodule_status("?abcdef1234567890 ignored\n").class,
-        );
-        assert_eq!(
-            None,
-            parse_iu_submodule_status("+not-a-sha ignored\n").recorded_sha,
-        );
-    }
-
-    /// IU content probes require both a recorded SHA and a successful HEAD
-    /// read.
-    #[test]
-    fn submodule_content_probe_requires_recorded_sha_and_successful_head()
-    {
-        assert_eq!(
-            iu_pin_status_findings(IU_PATH, "- metatheory/upstream/internal-univalence\n", None),
-            vec![Finding::new(
-                IU_UNINITIALIZED_KIND,
-                "",
-                IU_PATH,
-                "-",
-                "not initialized; run: git submodule update --init",
-            )],
-        );
-        assert_eq!(
-            iu_pin_status_findings(
-                IU_PATH,
-                "-abcdef1234567890 metatheory/upstream/internal-univalence\n",
-                Some(ProbeOutput {
-                    success: true,
-                    stdout: "different\n",
-                }),
-            ),
-            vec![Finding::new(
-                IU_UNINITIALIZED_KIND,
-                "",
-                IU_PATH,
-                "-",
-                "not initialized; run: git submodule update --init",
-            )],
-        );
-    }
-
-    /// Whitespace-only porcelain output is clean and path labels are stable.
-    #[test]
-    fn clean_porcelain_and_path_labels_are_stable()
-    {
-        assert!(iu_clean_findings(IU_PATH, " \n\t").is_empty());
-        assert_eq!("metatheory/iu", path_label(Path::new("metatheory/iu")));
-    }
-
-    /// Live Git submodule probes report clean and dirty IU states without
-    /// remotes.
-    #[test]
-    fn check_iu_pin_uses_local_git_fixture_for_clean_and_dirty_states() -> Result<(), GateError>
-    {
-        let fixture = ProjectFixture::new("iu-pin-clean-dirty")?;
-        let upstream = fixture.path().join("upstream");
-        let repo = fixture.path().join("repo");
-        support::HOST_FILESYSTEM
-            .create_dir_all(&upstream)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        support::HOST_FILESYSTEM
-            .create_dir_all(&repo)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-
-        git(&upstream, ["init"])?;
-        support::HOST_FILESYSTEM
-            .write(upstream.join("README.md"), "clean\n")
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        git(&upstream, ["add", "README.md"])?;
-        git_commit(&upstream, "seed upstream")?;
-
-        git(&repo, ["init"])?;
-        git_os(&repo, [
-            OsString::from("-c"),
-            OsString::from("protocol.file.allow=always"),
-            OsString::from("submodule"),
-            OsString::from("add"),
-            upstream.as_os_str().to_os_string(),
-            OsString::from("deps/iu"),
-        ])?;
-        git(&repo, ["add", ".gitmodules", "deps/iu"])?;
-        git_commit(&repo, "record submodule")?;
-
-        let iu_path = Path::new("deps/iu");
-        let pin_findings = check_iu_pin(&repo, iu_path)?;
-        assert!(pin_findings.is_empty());
-
-        support::HOST_FILESYSTEM
-            .write(repo.join(iu_path).join("README.md"), "dirty\n")
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        let findings = check_iu_pin(&repo, iu_path)?;
-        assert_eq!(1, findings.len());
-        let finding = findings
-            .first()
-            .ok_or_else(|| GateError::operational("missing dirty submodule finding"))?;
-        assert_eq!(IU_DIRTY_KIND, finding.kind);
-        Ok(())
-    }
-
-    /// Unregistered paths are reported from the live Git status probe.
-    #[test]
-    fn check_iu_pin_reports_unregistered_path_from_git_fixture() -> Result<(), GateError>
-    {
-        let fixture = ProjectFixture::new("iu-pin-unregistered")?;
-        git(fixture.path(), ["init"])?;
-        let findings = check_iu_pin(fixture.path(), Path::new("missing/iu"))?;
-        assert_eq!(1, findings.len());
-        let finding = findings
-            .first()
-            .ok_or_else(|| GateError::operational("missing unregistered submodule finding"))?;
-        assert_eq!(IU_UNINITIALIZED_KIND, finding.kind);
-        assert_eq!("submodule status", finding.declaration);
-        Ok(())
-    }
-
-    /// The default IU check reports an unregistered symlink without traversing
-    /// it.
-    #[cfg(unix)]
-    #[test]
-    fn check_default_iu_pin_reports_unregistered_symlink_without_dirty_probe()
-    -> Result<(), GateError>
-    {
-        let fixture = ProjectFixture::new("iu-pin-symlink")?;
-        let repo = fixture.path().join("repo");
-        let outside = fixture.path().join("outside");
-        support::HOST_FILESYSTEM
-            .create_dir_all(&repo)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        support::HOST_FILESYSTEM
-            .create_dir_all(&outside)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        git(&repo, ["init"])?;
-
-        let default_path = Path::new(DEFAULT_IU_PATH);
-        let link = repo.join(default_path);
-        let parent = link
-            .parent()
-            .ok_or_else(|| GateError::operational("default IU path has no parent"))?;
-        support::HOST_FILESYSTEM
-            .create_dir_all(parent)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        support::HOST_FILESYSTEM
-            .symlink(&outside, &link)
-            .map_err(|error| GateError::operational(error.to_string()))?;
-
-        let findings = check_default_iu_pin(&repo)?;
-
-        assert_eq!(1, findings.len());
-        let finding = findings
-            .first()
-            .ok_or_else(|| GateError::operational("missing symlink submodule finding"))?;
-        assert_eq!(IU_UNINITIALIZED_KIND, finding.kind);
-        assert_eq!("submodule status", finding.declaration);
-        Ok(())
-    }
-
     /// Build a minimal filtered graph where root has only a non-host regex
     /// dependency.
     fn non_host_only_regex_metadata() -> String
@@ -1841,109 +1076,5 @@ mod tests
             forbidden_default_graph_packages(metadata),
             Err(GateError::Operational { detail }) if detail.contains(expected)
         ));
-    }
-
-    /// Temporary project fixture directory removed on drop.
-    #[repr(transparent)]
-    struct ProjectFixture
-    {
-        /// Unique root path for this test.
-        root: PathBuf,
-    }
-
-    impl ProjectFixture
-    {
-        /// Create an empty fixture directory.
-        fn new<'semantic, Name>(name: Name) -> Result<Self, GateError>
-        where
-            Name: Into<NameText<'semantic>>,
-        {
-            let name = name.into().0;
-            let root = env::temp_dir().join(format!(
-                "gandr-workflow-gates-project-{}-{name}",
-                std::process::id()
-            ));
-            support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
-            support::HOST_FILESYSTEM.create_dir_all(&root)?;
-            Ok(Self { root })
-        }
-
-        /// Borrow the fixture root.
-        fn path(&self) -> &Path
-        {
-            &self.root
-        }
-    }
-
-    impl Drop for ProjectFixture
-    {
-        fn drop(&mut self)
-        {
-            drop(support::HOST_FILESYSTEM.remove_dir_all(&self.root));
-        }
-    }
-
-    /// Run Git with string arguments in a fixture repository.
-    fn git<Args>(
-        cwd: &Path,
-        args: Args,
-    ) -> Result<String, GateError>
-    where
-        Args: IntoIterator,
-        Args::Item: Into<OsString>,
-    {
-        git_os(cwd, args)
-    }
-
-    /// Run Git with OS-string arguments in a fixture repository.
-    fn git_os<Args>(
-        cwd: &Path,
-        args: Args,
-    ) -> Result<String, GateError>
-    where
-        Args: IntoIterator,
-        Args::Item: Into<OsString>,
-    {
-        let mut command = support::stateless_git_command();
-        command
-            .args(args.into_iter().map(Into::into))
-            .current_dir(cwd);
-        let output = command
-            .output()
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        if !output.status.success() {
-            return Err(GateError::operational(format!(
-                "git fixture failed: {}",
-                String::from_utf8_lossy(&output.stderr),
-            )));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
-    }
-
-    /// Commit staged fixture changes with deterministic identity.
-    fn git_commit<'semantic, Message>(
-        cwd: &Path,
-        message: Message,
-    ) -> Result<String, GateError>
-    where
-        Message: Into<MessageText<'semantic>>,
-    {
-        let message = message.into().0;
-        let mut command = support::stateless_git_command();
-        command
-            .args(["commit", "-m", message])
-            .current_dir(cwd)
-            .env("GIT_AUTHOR_DATE", "1000000000 +0000")
-            .env("GIT_COMMITTER_DATE", "1000000000 +0000");
-        let output = command
-            .output()
-            .map_err(|error| GateError::operational(error.to_string()))?;
-        if !output.status.success() {
-            return Err(GateError::operational(format!(
-                "git commit fixture failed: {}",
-                String::from_utf8_lossy(&output.stderr),
-            )));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 }

@@ -1,22 +1,17 @@
-//! Source-policy analyzers for Agda flags and Rust soundness oracles.
+//! Source-policy analyzers for Rust soundness oracles.
 //!
 //! This module is intentionally side-effect-thin: filesystem-facing entry
 //! points enumerate and read sources, while pure analyzers consume already
-//! captured source facts. The Agda half preserves the per-flag OPTIONS policy
-//! shape from `scripts/check-options-policy.nu`; the Rust half replaces the
-//! soundness-oracle line scanner with `syn` items and doc attributes.
+//! captured source facts. The soundness-oracle policy replaces the old line
+//! scanner with `syn` items and doc attributes.
 
 extern crate alloc;
 
-use alloc::borrow::Cow;
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
-use std::ffi::OsStr;
-use std::io::ErrorKind;
 use std::path::Path;
-use std::path::PathBuf;
 
 use crate::Finding;
 use crate::GateError;
@@ -24,8 +19,6 @@ use crate::GateResult;
 use crate::support;
 
 crate::semantic_str!(pub struct SourceText);
-crate::semantic_str!(pub struct FlagText);
-crate::semantic_str!(pub struct RootText);
 crate::semantic_str!(pub struct PathText);
 crate::semantic_str!(pub struct KindText);
 crate::semantic_str!(pub struct OracleText);
@@ -36,151 +29,18 @@ crate::semantic_bytes!(pub struct LeftBytes);
 crate::semantic_bytes!(pub struct RightBytes);
 crate::semantic_copy!(pub struct NextCount(usize));
 crate::semantic_str!(pub struct PayloadText);
-crate::semantic_optional_str!(pub struct OptionalSourceText);
-crate::semantic_copy!(pub struct AgdaOptionsContainsFlagFlag(bool));
-crate::semantic_copy!(pub struct OptionsModuleSatisfiesPolicyFlag(bool));
 crate::semantic_copy!(pub struct TestAttributeFlag(bool));
 crate::semantic_copy!(pub struct AsciiCaseInsensitiveFlag(bool));
 crate::semantic_copy!(pub struct AsciiBytesEqIgnoreCaseFlag(bool));
 
-/// Default Agda source roots governed by the OPTIONS policy.
-pub const DEFAULT_OPTIONS_ROOTS: [&str; 1] = ["metatheory/src"];
-
 /// Default Rust conformance source governed by the soundness-oracle policy.
 pub const DEFAULT_SOUNDNESS_ORACLE_FILE: &str = "crates/core-checker/src/conformance.rs";
-
-/// Empty exemption table shared by default Agda policy rows.
-const NO_OPTIONS_EXEMPTIONS: &[&str] = &[];
-
-/// Default mandated Agda OPTIONS policy rows.
-pub const DEFAULT_OPTIONS_POLICIES: [OptionsPolicy<'static>; 3] = [
-    OptionsPolicy {
-        flag: "--safe",
-        exempt: NO_OPTIONS_EXEMPTIONS,
-    },
-    OptionsPolicy {
-        flag: "--without-K",
-        exempt: NO_OPTIONS_EXEMPTIONS,
-    },
-    OptionsPolicy {
-        flag: "--hidden-argument-puns",
-        exempt: NO_OPTIONS_EXEMPTIONS,
-    },
-];
 
 /// Exact doc tag that marks a free-generator soundness oracle.
 const WITNESS_TAG: &str = "SOUNDNESS-ORACLE-WITNESS:";
 
 /// Exact doc tag that marks a biased soundness-oracle companion.
 const COMPANION_TAG: &str = "SOUNDNESS-ORACLE-COMPANION";
-
-/// One Agda OPTIONS policy row with per-flag exemptions.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct OptionsPolicy<'policy>
-{
-    /// Mandated Agda flag, for example `--safe`.
-    pub flag: &'policy str,
-    /// Governed-root-parent-relative module paths exempt from this flag.
-    pub exempt: &'policy [&'policy str],
-}
-
-/// One Agda module discovered under a governed root.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct OptionsModule<'source>
-{
-    /// Path relative to the governed root's parent, matching exemption entries.
-    pub relative_path: Cow<'source, str>,
-    /// UTF-8 source text, or [`None`] when the file could not be read.
-    pub source: Option<Cow<'source, str>>,
-}
-
-/// One governed Agda root and the modules discovered below it.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct OptionsRoot<'source>
-{
-    /// Root label used in vacuity findings.
-    pub root: Cow<'source, str>,
-    /// Sorted Agda modules discovered under this root.
-    pub modules: Vec<OptionsModule<'source>>,
-}
-
-/// Run the default Agda OPTIONS policy against the workspace metatheory root.
-///
-/// # Contract
-/// - requires: `workspace_root` identifies the workspace checkout root.
-/// - ensures: returns one semantic finding per vacuous governed root and per
-///   non-exempt module missing each mandated flag.
-/// - provides: file-backed replacement for `check-options-policy.nu` using the
-///   default roots and policy rows.
-/// - fails: returns gate errors from governed-root enumeration failures other
-///   than a missing root; unreadable modules are represented as semantic
-///   findings by scanning them as empty OPTIONS text.
-/// - panics: none.
-/// - intension: roots are visited in default policy order and module paths are
-///   sorted and deduplicated before analysis.
-///
-/// # Errors
-/// Returns I/O or operational gate errors from support-file enumeration when a
-/// root cannot be inspected for a reason other than absence.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — default root selection is a thin projection
-///   over [`run_options_policy_with`], whose vacuity, exemption, and
-///   missing-flag residues are killed by the pure analyzer witnesses.
-/// - witness: `source_policy::tests::options_truth_table_property`
-/// - witness: `source_policy::tests::options_vacuous_roots_fail_per_flag`
-#[inline]
-pub fn run_options_policy(workspace_root: &Path) -> GateResult
-{
-    let roots = DEFAULT_OPTIONS_ROOTS
-        .iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
-    return run_options_policy_with(workspace_root, &roots, &DEFAULT_OPTIONS_POLICIES);
-}
-
-/// Run an Agda OPTIONS policy against caller-supplied governed roots.
-///
-/// # Contract
-/// - requires: `workspace_root` identifies the checkout root used to resolve
-///   relative roots and render stable paths.
-/// - requires: each `roots` entry is either absolute or relative to
-///   `workspace_root`.
-/// - ensures: returns the same findings as [`analyze_options_policy`] after
-///   sorted, deduplicated `.agda` enumeration and fail-closed source reads.
-/// - provides: a file-backed analyzer surface for custom policy tests and CLI
-///   integration.
-/// - fails: returns gate errors from support-file enumeration failures other
-///   than missing roots.
-/// - panics: none.
-/// - intension: root order follows `roots`, policy order follows `policies`,
-///   and module order is lexicographic by full discovered path.
-///
-/// # Errors
-/// Returns I/O or operational gate errors from support-file enumeration when a
-/// root cannot be inspected for a reason other than absence.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — missing-root vacuity, file sort order,
-///   fail-closed read projection, and per-flag exemptions are separated by pure
-///   root/module fixtures and exact finding fields.
-/// - witness: `source_policy::tests::options_truth_table_property`
-/// - witness: `source_policy::tests::options_exemptions_are_per_flag`
-/// - witness: `source_policy::tests::options_vacuous_roots_fail_per_flag`
-#[inline]
-pub fn run_options_policy_with(
-    workspace_root: &Path,
-    roots: &[PathBuf],
-    policies: &[OptionsPolicy<'_>],
-) -> GateResult
-{
-    let mut loaded_roots = Vec::new();
-    for root in roots {
-        let loaded = load_options_root(workspace_root, root)?;
-        loaded_roots.push(loaded);
-    }
-    return Ok(analyze_options_policy(&loaded_roots, policies));
-}
 
 /// Run the default soundness-oracle companion policy in a workspace.
 ///
@@ -270,226 +130,6 @@ where
     })?;
     let path_text = display_path(path);
     return Ok(analyze_soundness_file(&path_text, &parsed));
-}
-
-/// Load one governed Agda root through the support filesystem API.
-///
-/// # Contract
-/// - requires: `root` is absolute or relative to `workspace_root`.
-/// - ensures: returns sorted, deduplicated `.agda` modules with sources loaded
-///   as UTF-8 when possible.
-/// - ensures: missing roots load as empty, preserving vacuity-as-finding.
-/// - provides: support-backed input projection for [`analyze_options_policy`].
-/// - fails: returns enumeration failures other than missing roots.
-/// - panics: none.
-///
-/// # Errors
-/// Returns support-file enumeration errors other than root absence.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — the semantic consequences of empty roots,
-///   unreadable sources, and sorted modules are witnessed by pure analyzer
-///   fixtures; support I/O itself is covered by integration gates.
-/// - witness: `source_policy::tests::options_truth_table_property`
-/// - witness: `source_policy::tests::options_vacuous_roots_fail_per_flag`
-fn load_options_root(
-    workspace_root: &Path,
-    root: &Path,
-) -> Result<OptionsRoot<'static>, GateError>
-{
-    let root_path = resolve_root(workspace_root, root);
-    let root_label = relative_path(workspace_root, &root_path);
-    let base = root_path.parent().unwrap_or(root_path.as_path());
-    let mut files = agda_files(&root_path)?;
-    files.sort();
-    files.dedup();
-
-    let mut modules = Vec::new();
-    for file in files {
-        let relative = relative_path(base, &file);
-        let source = match support::read_utf8(&file) {
-            | Ok(source) => Some(Cow::Owned(source)),
-            | Err(_error) => None,
-        };
-        modules.push(OptionsModule {
-            relative_path: Cow::Owned(relative),
-            source,
-        });
-    }
-
-    return Ok(OptionsRoot {
-        root: Cow::Owned(root_label),
-        modules,
-    });
-}
-
-/// Analyze already loaded Agda modules against OPTIONS policy rows.
-///
-/// # Contract
-/// - requires: `roots` contains modules sorted by the caller when intensional
-///   path order matters.
-/// - requires: module paths use the same relative convention as policy
-///   exemptions.
-/// - ensures: emits vacuity findings for each empty root and missing-flag
-///   findings for each non-exempt module lacking the exact flag token.
-/// - provides: pure OPTIONS policy validation over source facts.
-/// - panics: none.
-/// - intension: for each policy row, all vacuity findings precede all module
-///   findings, matching the Nushell gate's observable order.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — the Cartesian cases of present flag, absent
-///   flag, unreadable source, matching exemption, and nonmatching exemption
-///   kill the policy truth table; multi-flag fixtures kill exemption isolation.
-/// - witness: `source_policy::tests::options_truth_table_property`
-/// - witness: `source_policy::tests::options_exemptions_are_per_flag`
-/// - witness: `source_policy::tests::options_vacuous_roots_fail_per_flag`
-#[inline]
-#[must_use]
-pub fn analyze_options_policy(
-    roots: &[OptionsRoot<'_>],
-    policies: &[OptionsPolicy<'_>],
-) -> Vec<Finding>
-{
-    let mut findings = Vec::new();
-    for policy in policies {
-        for root in roots {
-            if root.modules.is_empty() {
-                findings.push(options_vacuity_finding(root.root.as_ref(), policy.flag));
-            }
-        }
-        for root in roots {
-            for module in &root.modules {
-                if !options_module_satisfies_policy(module, policy).into().0 {
-                    findings.push(options_missing_finding(
-                        module.relative_path.as_ref(),
-                        policy.flag,
-                    ));
-                }
-            }
-        }
-    }
-    return findings;
-}
-
-/// Resolve a governed root against the workspace root.
-fn resolve_root(
-    workspace_root: &Path,
-    root: &Path,
-) -> PathBuf
-{
-    if root.is_absolute() {
-        return root.to_path_buf();
-    }
-    return workspace_root.join(root);
-}
-
-/// Return whether an Agda source contains an exact flag token on an OPTIONS
-/// line.
-///
-/// # Contract
-/// - requires: `flag` is the exact mandated Agda option token.
-/// - ensures: ignores non-OPTIONS lines.
-/// - ensures: returns `true` only for a whitespace-delimited token equal to
-///   `flag`.
-/// - provides: token-backed OPTIONS matching without line-regex substring false
-///   positives.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — ordinary present, absent, and substring-only
-///   sources distinguish exact token matching from the old regex heuristic.
-/// - witness: `source_policy::tests::options_truth_table_property`
-fn agda_options_contains_flag<'semantic, Source, Flag>(
-    source: Source,
-    flag: Flag,
-) -> impl Into<AgdaOptionsContainsFlagFlag>
-where
-    Source: Into<SourceText<'semantic>>,
-    Flag: Into<FlagText<'semantic>>,
-{
-    let flag = flag.into().0;
-    let source = source.into().0;
-    return source
-        .lines()
-        .filter(|line| line.contains("OPTIONS"))
-        .flat_map(str::split_whitespace)
-        .any(|token| token == flag);
-}
-
-/// Build a vacuity finding for one policy/root pair.
-fn options_vacuity_finding<'semantic, Root, Flag>(
-    root: Root,
-    flag: Flag,
-) -> Finding
-where
-    Root: Into<RootText<'semantic>>,
-    Flag: Into<FlagText<'semantic>>,
-{
-    let flag = flag.into().0;
-    let root = root.into().0;
-    return Finding::new(
-        "agda-options-vacuous",
-        "",
-        root,
-        flag,
-        format!("no .agda modules found under {root}/"),
-    );
-}
-
-/// Return whether a module satisfies one OPTIONS policy row.
-///
-/// # Contract
-/// - requires: `module.relative_path` and `policy.exempt` use the same path
-///   convention.
-/// - ensures: returns `true` when the module is exempt for this exact policy
-///   row, regardless of source readability.
-/// - ensures: otherwise returns `true` only when readable source contains the
-///   exact policy flag token on an OPTIONS line.
-/// - provides: the per-flag truth predicate for OPTIONS policy findings.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — readable-present, readable-absent, unreadable,
-///   exempt-readable, and exempt-unreadable cases kill every branch.
-/// - witness: `source_policy::tests::options_truth_table_property`
-/// - witness: `source_policy::tests::options_exemptions_are_per_flag`
-fn options_module_satisfies_policy(
-    module: &OptionsModule<'_>,
-    policy: &OptionsPolicy<'_>,
-) -> impl Into<OptionsModuleSatisfiesPolicyFlag>
-{
-    if policy
-        .exempt
-        .iter()
-        .any(|&exempt| exempt == module.relative_path.as_ref())
-    {
-        return true;
-    }
-    return module
-        .source
-        .as_deref()
-        .is_some_and(|source| agda_options_contains_flag(source, policy.flag).into().0);
-}
-
-/// Build a missing-flag finding for one policy/module pair.
-fn options_missing_finding<'semantic, Path, Flag>(
-    path: Path,
-    flag: Flag,
-) -> Finding
-where
-    Path: Into<PathText<'semantic>>,
-    Flag: Into<FlagText<'semantic>>,
-{
-    let flag = flag.into().0;
-    let path = path.into().0;
-    return Finding::new(
-        "agda-options-missing",
-        "",
-        path,
-        flag,
-        format!("OPTIONS lacks {flag} and is not exempt"),
-    );
 }
 
 /// Collect all free functions from a parsed Rust file in source order.
@@ -894,46 +534,6 @@ where
         .all(|(left_byte, right_byte)| left_byte.eq_ignore_ascii_case(right_byte));
 }
 
-/// Render `path` relative to `base` when possible.
-fn relative_path(
-    base: &Path,
-    path: &Path,
-) -> String
-{
-    match path.strip_prefix(base) {
-        | Ok(relative) => return display_path(relative),
-        | Err(_error) => return display_path(path),
-    }
-}
-
-/// Enumerate Agda files below a root, treating absent roots as empty.
-///
-/// # Contract
-/// - requires: `root` is the directory to scan.
-/// - ensures: returns support-discovered `.agda` paths.
-/// - ensures: returns an empty list when `root` does not exist.
-/// - provides: vacuity-preserving root enumeration.
-/// - fails: returns support-file enumeration errors other than root absence.
-/// - panics: none.
-///
-/// # Errors
-/// Returns support-file enumeration errors other than root absence.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise — root absence and ordinary empty roots have the
-///   same semantic projection, and non-empty roots are sorted by the caller.
-/// - witness: `source_policy::tests::options_vacuous_roots_fail_per_flag`
-fn agda_files(root: &Path) -> Result<Vec<PathBuf>, GateError>
-{
-    match support::walk_files(root, OsStr::new("agda")) {
-        | Ok(files) => return Ok(files),
-        | Err(GateError::Io { source, .. }) if source.kind() == ErrorKind::NotFound => {
-            return Ok(Vec::new());
-        },
-        | Err(error) => return Err(error),
-    }
-}
-
 /// Render a path with lossy UTF-8 replacement for diagnostics.
 fn display_path(path: &Path) -> String
 {
@@ -1063,163 +663,6 @@ struct OracleTags
 mod tests
 {
     use super::*;
-
-    /// Governed module path used by OPTIONS fixtures.
-    const MODULE_PATH: &str = "src/Gandr/Foo.agda";
-
-    /// One OPTIONS truth-table row.
-    #[derive(Clone, Copy)]
-    struct OptionsCase
-    {
-        /// Human-readable case name for assertion messages.
-        name: &'static str,
-        /// Optional source text; [`None`] models an unreadable file.
-        source: Option<&'static str>,
-        /// Exemptions attached to the tested policy row.
-        exemptions: &'static [&'static str],
-        /// Whether the module should satisfy the policy.
-        want_ok: bool,
-    }
-
-    /// Return finding declarations in order.
-    fn finding_declarations(findings: &[Finding]) -> Vec<String>
-    {
-        return findings
-            .iter()
-            .map(|finding| finding.declaration.clone())
-            .collect();
-    }
-
-    /// Exhaust the OPTIONS policy truth table for one flag and one module.
-    #[test]
-    fn options_truth_table_property()
-    {
-        let cases = [
-            OptionsCase {
-                name: "present exact flag",
-                source: Some("{-# OPTIONS --safe #-}\n"),
-                exemptions: &[],
-                want_ok: true,
-            },
-            OptionsCase {
-                name: "absent flag",
-                source: Some("{-# OPTIONS --without-K #-}\n"),
-                exemptions: &[],
-                want_ok: false,
-            },
-            OptionsCase {
-                name: "substring is not exact flag",
-                source: Some("{-# OPTIONS --safe-ish #-}\n"),
-                exemptions: &[],
-                want_ok: false,
-            },
-            OptionsCase {
-                name: "unreadable source fails closed",
-                source: None,
-                exemptions: &[],
-                want_ok: false,
-            },
-            OptionsCase {
-                name: "exemption admits absent flag",
-                source: Some("module Gandr.Foo where\n"),
-                exemptions: &[MODULE_PATH],
-                want_ok: true,
-            },
-            OptionsCase {
-                name: "exemption admits unreadable source",
-                source: None,
-                exemptions: &[MODULE_PATH],
-                want_ok: true,
-            },
-        ];
-
-        for case in cases {
-            let policy = OptionsPolicy {
-                flag: "--safe",
-                exempt: case.exemptions,
-            };
-            let root = options_root(vec![options_module(case.source)]);
-            let findings = analyze_options_policy(&[root], &[policy]);
-            assert_eq!(
-                findings.is_empty(),
-                case.want_ok,
-                "OPTIONS truth-table case failed: {}",
-                case.name
-            );
-        }
-    }
-
-    /// Prove that one flag's exemption does not exempt other flags.
-    #[test]
-    fn options_exemptions_are_per_flag()
-    {
-        let safe = OptionsPolicy {
-            flag: "--safe",
-            exempt: &[MODULE_PATH],
-        };
-        let without_k = OptionsPolicy {
-            flag: "--without-K",
-            exempt: &[],
-        };
-        let root = options_root(vec![options_module(Some("module Gandr.Foo where\n"))]);
-
-        let findings = analyze_options_policy(&[root], &[safe, without_k]);
-
-        assert_eq!(
-            finding_declarations(&findings),
-            vec!["--without-K"],
-            "only the non-exempt flag should fail"
-        );
-    }
-
-    /// Prove that empty roots fail once per policy row.
-    #[test]
-    fn options_vacuous_roots_fail_per_flag()
-    {
-        let safe = OptionsPolicy {
-            flag: "--safe",
-            exempt: &[],
-        };
-        let without_k = OptionsPolicy {
-            flag: "--without-K",
-            exempt: &[],
-        };
-        let root = options_root(Vec::new());
-
-        let findings = analyze_options_policy(&[root], &[safe, without_k]);
-
-        assert_eq!(
-            finding_kinds(&findings),
-            vec!["agda-options-vacuous", "agda-options-vacuous"],
-            "each policy row should report root vacuity"
-        );
-        assert_eq!(
-            finding_declarations(&findings),
-            vec!["--safe", "--without-K"],
-            "vacuity findings should preserve policy order"
-        );
-    }
-
-    /// Build one borrowed OPTIONS root fixture.
-    fn options_root(modules: Vec<OptionsModule<'static>>) -> OptionsRoot<'static>
-    {
-        return OptionsRoot {
-            root: Cow::Borrowed("metatheory/src"),
-            modules,
-        };
-    }
-
-    /// Build one borrowed OPTIONS module fixture.
-    fn options_module<Source>(source: Source) -> OptionsModule<'static>
-    where
-        Source: Into<OptionalSourceText<'static>>,
-    {
-        let source = source.into().0;
-        return OptionsModule {
-            relative_path: Cow::Borrowed(MODULE_PATH),
-            source: source.map(Cow::Borrowed),
-        };
-    }
 
     /// Prove cfg and ignore attributes do not hide a direct test marker.
     #[test]

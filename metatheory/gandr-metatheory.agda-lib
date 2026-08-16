@@ -1,3 +1,0 @@
-name: gandr-metatheory
-depend:
-include: src vendor/agda-stdlib/src

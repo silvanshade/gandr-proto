@@ -15,7 +15,7 @@ It routes into the authoritative docs instead of restating them; where two docs 
 gandr is a dependently typed language and shell built around a minimal certified kernel.
 A polarized CBPV core is checked by a bidirectional typing machine, lowered by static focusing onto a polarized System-L command IL, and executed by the L machine.
 Higher-dimensional rewriting — budgeted Squier completion over an oriented cell store, with replayable tracelet certificates reflected through a virtual-double-category judgement layer — is the computational-univalence story.
-Persistence is content-addressed and untrusted; the mechanized metatheory is Agda.
+Persistence is content-addressed and untrusted; the mechanized metatheory is Agda and lives in the separate `gandr-metatheory` repository.
 
 ## Repository layout
 
@@ -23,7 +23,6 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `crates/`                                | the Rust workspace; the domains, the member count and its counting convention are below                          |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
-| `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
 | `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))          |
 | `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                                  |

@@ -18,7 +18,7 @@
 # Pre-start is intentionally minimal while the gandr reboot bootstraps: the
 # remaining template steps (mise setup, submodule init/warmup) reference state
 # this repo does not have yet and are re-grown alongside the pieces they serve
-# (toolchain gates, metatheory mount).
+# (toolchain gates).
 
 [[pre-start]]
 copy-ignored = "wt step copy-ignored"

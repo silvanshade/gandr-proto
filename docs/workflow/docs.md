@@ -86,7 +86,7 @@ Research surveys never enter `docs/` at all: distill what was _decided_ into the
 ## Formatters and linters are best-effort
 
 A formatter/linter must never be satisfied at the cost of an artifact's **fidelity**; relax or scope the tool (raise the limit, disable the rule, exclude the path), never alter content to appease it .
-Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the content-mutating `typos` and `sizelint` run tree-wide with targeted fidelity excludes (`*.typ`, `*.agda`, `*.agda-lib` in `treefmt.toml`, mirrored in `typos.toml` so standalone editor/CLI runs are safe).
+Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the content-mutating `typos` and `sizelint` run tree-wide with targeted fidelity excludes (`*.typ` in `treefmt.toml`, mirrored in `typos.toml` so standalone editor/CLI runs are safe).
 
 ## The unordered-list marker is `-`
 

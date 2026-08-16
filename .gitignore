@@ -63,13 +63,6 @@ fuzz/target/
 fuzz/artifacts/
 fuzz/coverage/
 
-# Agda metatheory: vendored deps, machine-local library registry, build output
-/metatheory/vendor/
-/metatheory/reference/
-/metatheory/libraries
-/metatheory/_build/
-*.agdai
-
 # macOS cruft
 .DS_Store
 

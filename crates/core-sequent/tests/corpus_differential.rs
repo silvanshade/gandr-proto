@@ -105,12 +105,14 @@ mod tests
         // now realizing. The B1 phase-3 seams landed the remainder: prelude
         // free-name resolution (ADR-42) leaves the empty-prelude force miss at
         // `ForcedNonThunk`, and the ADR-76 identity formers and ADR-80 declared
-        // data are realized, so no corpus item declines. Raise (never lower) as
-        // later work lands.
+        // data are realized, so no corpus item declines. The corpus itself
+        // shrank by one when the `14-agda-deps-walkthrough` example left with
+        // the Agda metatheory extraction (2026-08-15), moving the full-corpus
+        // count to 105 of 105. Raise (never lower) as later work lands.
         assert!(
-            usize::from(outcome.realized) >= 106,
+            usize::from(outcome.realized) >= 105,
             "the L machine's model-corpus realization regressed below the pinned \
-             checkpoint floor (106), got {} of {}",
+             checkpoint floor (105), got {} of {}",
             outcome.realized,
             outcome.items
         );

@@ -6,13 +6,6 @@
 # conventions); .claude/worktrees/ = in-repo agent worktrees. Both excluded per
 # core/HAZARDS.md H13 (gitignoring is not scoping).
 #
-# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
-# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) a standalone `typos` run — which reads
-# THIS config, not treefmt's — must never "correct". Mirrors the treefmt
-# [formatter.typos]/[formatter.sizelint] excludes so editor/CLI passes are safe
-# too (core hazard H8). Consumer-local LIVE-hazard fix; permanent fix = the
-# core H8 fragment.
-#
 # *.typ: greenfield typst manual sources (Track C) quote Agda/math identifiers
 # verbatim, so they get the same protection.
 #
@@ -21,7 +14,7 @@
 # "corrected" the key aks-2015 → ask-2015 (the exact H8 failure mode,
 # 2026-07-03, internal-univalence).
 #
-# vendor trees (metatheory/vendor/** = vendored agda-stdlib; vendor/** kept for
+# vendor trees (vendor/** kept for
 # any future root-level vendoring) are read-only upstream: a standalone typos
 # run has already "corrected" upstream CHANGELOG spellings, dirtying the pin;
 # scoped out so editor/CLI passes leave vendored trees untouched.
@@ -36,8 +29,6 @@ extend-exclude = [
   "treefmt.toml",
   ".agents/core/",
   ".claude/worktrees/",
-  "*.agda",
-  "*.agda-lib",
   "*.typ",
   "docs/manual/refs.yml",
   # The corpus hayagriva bibliography was excluded here for the same reason as
@@ -45,7 +36,6 @@ extend-exclude = [
   # prose. It left the repository with the specification corpus, so the entry is
   # gone rather than stale.
   "vendor/**",
-  "metatheory/vendor/**",
 ]
 
 [default]
@@ -113,8 +103,8 @@ nd = "nd"
 transfor = "transfor"
 transfors = "transfors"
 # "operad" is the standard name for the algebraic structure (operads, dioperads,
-# properads, modular operads); typos rewrites it to "operand". The *.agda
-# exclude already covers the metatheory modules; this covers the Markdown prose.
+# properads, modular operads); typos rewrites it to "operand". This covers the
+# Markdown prose.
 operad = "operad"
 Operad = "Operad"
 # "substitude" — the Batanin–Kock–Weber structure (a monad in the bicategory of

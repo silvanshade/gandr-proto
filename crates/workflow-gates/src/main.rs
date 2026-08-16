@@ -23,16 +23,13 @@ use gandr_workflow_gates::mutants;
 gandr_workflow_gates::semantic_str!(pub struct CommandNameText);
 gandr_workflow_gates::semantic_copy!(pub struct NonceNonce(u128));
 gandr_workflow_gates::semantic_copy!(pub struct AttemptCount(u16));
-gandr_workflow_gates::semantic_str!(pub struct ActionText);
 gandr_workflow_gates::semantic_str!(pub struct OptionNameText);
 gandr_workflow_gates::semantic_str!(pub struct LabelText);
 gandr_workflow_gates::semantic_str!(pub struct DetailText);
-gandr_workflow_gates::semantic_copy!(pub struct SanitizedGitFlag(bool));
 gandr_workflow_gates::semantic_str!(pub struct ModeText);
 gandr_workflow_gates::semantic_str!(pub struct SuffixText);
 gandr_workflow_gates::semantic_str!(pub struct ExpectedText);
 gandr_workflow_gates::semantic_str!(pub struct ValueText);
-gandr_workflow_gates::semantic_str!(pub struct NameText);
 gandr_workflow_gates::semantic_copy!(pub struct MutantsTemporaryPathsAreAvailableFlag(bool));
 gandr_workflow_gates::semantic_copy!(pub struct ConsumeMutantsCommonArgumentFlag(bool));
 gandr_workflow_gates::semantic_copy!(pub struct OptionTokenFlag(bool));
@@ -76,23 +73,6 @@ const FUZZ_TARGETS: [FuzzSmokeTarget; 5] = [
     FuzzSmokeTarget::Parity,
     FuzzSmokeTarget::Gates,
 ];
-
-/// Git executable used by Agda dependency provisioning.
-const GIT_PROGRAM: &str = "git";
-/// Agda standard-library repository required by `agda:deps`.
-const AGDA_STDLIB_REPOSITORY: &str = "https://github.com/agda/agda-stdlib.git";
-/// Agda standard-library branch validated for the pinned Agda toolchain.
-const AGDA_STDLIB_BRANCH: &str = "v2.4";
-/// Relative vendor directory that stores Agda dependencies.
-const AGDA_VENDOR_DIR: &str = "metatheory/vendor";
-/// Relative Agda standard-library checkout directory.
-const AGDA_STDLIB_DIR: &str = "metatheory/vendor/agda-stdlib";
-/// Relative `.agda-lib` file written to the Agda libraries file.
-const AGDA_STDLIB_LIB: &str = "metatheory/vendor/agda-stdlib/standard-library.agda-lib";
-/// Relative Agda libraries file consumed by `agda`.
-const AGDA_LIBRARIES_FILE: &str = "metatheory/libraries";
-/// Stable success message preserved from the Gandr Agda dependency script.
-const AGDA_DEPS_READY_STDOUT: &str = "agda deps ready: stdlib v2.4\n";
 
 /// Run the CLI and convert typed outcomes to process exit codes.
 ///
@@ -210,11 +190,6 @@ where
             let outcome = docs::commands::run_guarded_rumdl(mode, &paths, cwd.as_deref())?;
             Ok(rumdl_outcome(&outcome))
         },
-        | Command::OptionsPolicy { workspace_root } => {
-            let findings =
-                gandr_workflow_gates::source_policy::run_options_policy(&workspace_root)?;
-            Ok(GateOutcome::from_findings(findings))
-        },
         | Command::SoundnessOracles { workspace_root } => {
             let findings = gandr_workflow_gates::source_policy::run_default_soundness_oracles(
                 &workspace_root,
@@ -225,16 +200,6 @@ where
             let findings =
                 gandr_workflow_gates::project::check_default_dependency_graph(&workspace_root)?;
             Ok(GateOutcome::from_findings(findings))
-        },
-        | Command::IuPin { workspace_root } => {
-            let findings = gandr_workflow_gates::project::check_default_iu_pin(&workspace_root)?;
-            Ok(GateOutcome::from_findings(findings))
-        },
-        | Command::AgdaDeps { workspace_root } => {
-            let workspace_root = agda_workspace_root(workspace_root.as_deref())?;
-            let plan = AgdaDependencyPlan::new(workspace_root);
-            run_agda_deps_plan(&plan)?;
-            Ok(GateOutcome::Clean)
         },
         | Command::Coverage {
             mode,
@@ -353,11 +318,8 @@ where
         | Some("docs-reference") => parse_docs_reference(arguments),
         | Some("page-balance") => parse_page_balance(arguments),
         | Some("rumdl") => parse_rumdl(arguments),
-        | Some("options-policy") => parse_options_policy(arguments),
         | Some("soundness-oracles") => parse_soundness_oracles(arguments),
         | Some("default-graph") => parse_default_graph(arguments),
-        | Some("iu-pin") => parse_iu_pin(arguments),
-        | Some("agda-deps") => parse_agda_deps(arguments),
         | Some("coverage") => parse_coverage(arguments),
         | Some("maintenance-range") => parse_maintenance_range(arguments),
         | Some("mutants") => parse_mutants(arguments),
@@ -562,16 +524,6 @@ where
     Ok(Command::Rumdl { mode, paths, cwd })
 }
 
-/// Parse `options-policy --workspace-root PATH`.
-fn parse_options_policy<Arguments>(arguments: Arguments) -> Result<Command, GateError>
-where
-    Arguments: IntoIterator<Item = OsString>,
-{
-    Ok(Command::OptionsPolicy {
-        workspace_root: parse_required_workspace_root(arguments, "options-policy")?,
-    })
-}
-
 /// Parse `soundness-oracles --workspace-root PATH`.
 fn parse_soundness_oracles<Arguments>(arguments: Arguments) -> Result<Command, GateError>
 where
@@ -589,26 +541,6 @@ where
 {
     Ok(Command::DefaultGraph {
         workspace_root: parse_required_workspace_root(arguments, "default-graph")?,
-    })
-}
-
-/// Parse `iu-pin --workspace-root PATH`.
-fn parse_iu_pin<Arguments>(arguments: Arguments) -> Result<Command, GateError>
-where
-    Arguments: IntoIterator<Item = OsString>,
-{
-    Ok(Command::IuPin {
-        workspace_root: parse_required_workspace_root(arguments, "iu-pin")?,
-    })
-}
-
-/// Parse `agda-deps [--workspace-root PATH]`.
-fn parse_agda_deps<Arguments>(arguments: Arguments) -> Result<Command, GateError>
-where
-    Arguments: IntoIterator<Item = OsString>,
-{
-    Ok(Command::AgdaDeps {
-        workspace_root: parse_optional_workspace_root(arguments)?,
     })
 }
 
@@ -641,31 +573,6 @@ where
         workspace_root,
         format!("{command_name} requires --workspace-root PATH"),
     )
-}
-
-/// Parse an optional `--workspace-root PATH`.
-fn parse_optional_workspace_root<Arguments>(
-    arguments: Arguments
-) -> Result<Option<PathBuf>, GateError>
-where
-    Arguments: IntoIterator<Item = OsString>,
-{
-    let mut workspace_root = None;
-    let mut arguments = arguments.into_iter().peekable();
-    while let Some(argument) = arguments.next() {
-        if argument == OsStr::new("--workspace-root") {
-            let value = take_option_value("--workspace-root", &mut arguments)?;
-            set_once(
-                &mut workspace_root,
-                "--workspace-root",
-                PathBuf::from(value),
-            )?;
-        }
-        else {
-            return Err(unknown_argument(&argument));
-        }
-    }
-    Ok(workspace_root)
 }
 
 /// Parse `coverage check|ratchet --repo-root PATH [--summary PATH] [--floors
@@ -1142,333 +1049,6 @@ where
     Ok(Command::FuzzSmoke {
         plan: FuzzSmokePlan::new(targets),
     })
-}
-
-/// Resolve the Agda dependency workspace root.
-///
-/// # Contract
-/// - ensures: returns the caller-supplied workspace root unchanged, or the
-///   current directory when the CLI omitted `--workspace-root`.
-/// - provides: legacy-compatible current-directory defaulting for `agda-deps`.
-/// - fails: returns [`GateError::Io`] when the current directory cannot be
-///   read.
-/// - panics: none.
-///
-/// # Errors
-/// Returns [`GateError::Io`] if [`std::env::current_dir`] fails.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — parser and command-plan tests observe explicit
-///   roots; runtime current-directory failure is delegated to the standard
-///   library.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-fn agda_workspace_root(workspace_root: Option<&Path>) -> Result<PathBuf, GateError>
-{
-    match workspace_root {
-        | Some(root) => Ok(root.to_path_buf()),
-        | None => gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir(),
-    }
-}
-
-/// Run the Agda standard-library dependency provisioning plan.
-///
-/// # Contract
-/// - requires: `plan.workspace_root()` names the workspace root whose
-///   `metatheory/` tree should receive the dependency checkout.
-/// - ensures: writes `metatheory/libraries` with the canonical standard-library
-///   `.agda-lib` path and emits the stable ready line on success.
-/// - provides: a Rust-backed second path to what `scripts/agda-deps.gandr`
-///   provisions, with typed Git argv and shared Git environment sanitization.
-///   No task invokes it: `mise run agda:deps` runs the gandr script, and
-///   whether this command is retired or kept as a driver-independent fallback
-///   is filed for the owner as `gandr-wvd.24.7-question-02`.
-/// - fails: returns typed filesystem, output, or Git status errors.
-/// - panics: none.
-/// - intension: skips Git when the `.agda-lib` file already exists; otherwise
-///   clone is used for a missing checkout and fetch+checkout for a present
-///   checkout that lacks the ready file.
-///
-/// # Errors
-/// Returns [`GateError`] for directory creation, Git subprocess failure,
-/// canonicalization, library-file publication, or stdout write failure.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — pure CLI tests pin the clone/fetch/checkout argv and
-///   sanitization plan; support tests pin the inherited Git controls removed by
-///   the shared runner.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-/// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-fn run_agda_deps_plan(plan: &AgdaDependencyPlan) -> Result<(), GateError>
-{
-    ensure_agda_stdlib(plan)?;
-    write_agda_libraries_file(plan)?;
-    write_agda_ready_stdout()
-}
-
-/// Ensure the Agda standard-library checkout exists at the requested branch.
-///
-/// # Contract
-/// - requires: `plan.workspace_root()` is the checkout root to provision.
-/// - ensures: returns successfully only when the standard-library `.agda-lib`
-///   file is present after any needed Git operation.
-/// - provides: the cache-aware clone-or-refresh decision for Agda dependencies.
-/// - fails: returns typed directory, Git status, or missing-ready-file errors.
-/// - panics: none.
-/// - intension: the ready file short-circuits Git; an existing checkout
-///   refreshes through fetch+checkout, while a missing checkout uses clone.
-///
-/// # Errors
-/// Returns [`GateError`] for vendor directory creation, checkout existence
-/// probing, nonzero Git status, or a missing ready file after provisioning.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — command-plan tests pin the side-effecting Git
-///   choices and support tests pin environment sanitization for those choices.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-/// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-fn ensure_agda_stdlib(plan: &AgdaDependencyPlan) -> Result<(), GateError>
-{
-    let stdlib_lib = agda_stdlib_lib_path(plan);
-    if stdlib_lib.is_file() {
-        return Ok(());
-    }
-
-    let vendor = agda_vendor_dir(plan);
-    gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(vendor)?;
-
-    let stdlib = agda_stdlib_dir(plan);
-    if gandr_workflow_gates::support::HOST_FILESYSTEM
-        .try_exists(stdlib)
-        .map(bool::from)?
-    {
-        run_agda_git_command("fetch", &agda_fetch_command_plan(plan))?;
-        run_agda_git_command("checkout", &agda_checkout_command_plan(plan))?;
-    }
-    else {
-        run_agda_git_command("clone", &agda_clone_command_plan(plan))?;
-    }
-
-    if agda_stdlib_lib_path(plan).is_file() {
-        Ok(())
-    }
-    else {
-        Err(GateError::operational(format!(
-            "agda-deps: missing {} after provisioning",
-            agda_stdlib_lib_path(plan).display()
-        )))
-    }
-}
-
-/// Write the Agda libraries file used by `agda`.
-///
-/// # Contract
-/// - requires: the standard-library `.agda-lib` file exists under the planned
-///   workspace root.
-/// - ensures: writes one newline-terminated canonical `.agda-lib` path to
-///   `metatheory/libraries`.
-/// - provides: the legacy Agda library registration side effect.
-/// - fails: returns typed canonicalization or write errors.
-/// - panics: none.
-///
-/// # Errors
-/// Returns [`GateError::Io`] when canonicalizing the library path or writing
-/// the libraries file fails.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — the smoke run observes the canonical libraries file
-///   contents after provisioning.
-/// - witness: `manual smoke: cargo run -p gandr-workflow-gates -- agda-deps
-///   --workspace-root <temp>`
-fn write_agda_libraries_file(plan: &AgdaDependencyPlan) -> Result<(), GateError>
-{
-    let stdlib_lib = agda_stdlib_lib_path(plan);
-    let canonical_stdlib_lib =
-        gandr_workflow_gates::support::HOST_FILESYSTEM.canonicalize(stdlib_lib)?;
-    let mut line = canonical_stdlib_lib.to_string_lossy().into_owned();
-    line.push('\n');
-    let libraries = agda_libraries_file(plan);
-    gandr_workflow_gates::support::HOST_FILESYSTEM.write(libraries, line)
-}
-
-/// Emit the stable Agda dependency success line.
-///
-/// # Contract
-/// - ensures: writes and flushes `agda deps ready: stdlib v2.4\n` to stdout.
-/// - provides: the success marker this command's caller reads. The gandr script
-///   carries the same `printf` text, but a `#!{ … }` block lowers to the
-///   captured spawn mode, so the script's copy never reaches a terminal — the
-///   two provisioning paths agree on what they DO and differ on what a caller
-///   SEES, which is the gap `gandr-czio` tracks.
-/// - fails: returns a typed stdout write or flush error.
-/// - panics: none.
-///
-/// # Errors
-/// Returns [`GateError::Io`] when stdout cannot be written or flushed.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — the smoke run observes the exact stdout marker.
-/// - witness: `manual smoke: cargo run -p gandr-workflow-gates -- agda-deps
-///   --workspace-root <temp>`
-fn write_agda_ready_stdout() -> Result<(), GateError>
-{
-    let mut stdout_lock = std::io::stdout().lock();
-    stdout_lock
-        .write_all(AGDA_DEPS_READY_STDOUT.as_bytes())
-        .and_then(|()| stdout_lock.flush())
-        .map_err(|source| GateError::Io {
-            path: PathBuf::from("stdout"),
-            source,
-        })
-}
-
-/// Return the Agda standard-library checkout path for `plan`.
-fn agda_stdlib_dir(plan: &AgdaDependencyPlan) -> PathBuf
-{
-    plan.workspace_root().join(AGDA_STDLIB_DIR)
-}
-
-/// Return the Agda standard-library `.agda-lib` path for `plan`.
-fn agda_stdlib_lib_path(plan: &AgdaDependencyPlan) -> PathBuf
-{
-    plan.workspace_root().join(AGDA_STDLIB_LIB)
-}
-
-/// Return the Agda vendor directory path for `plan`.
-fn agda_vendor_dir(plan: &AgdaDependencyPlan) -> PathBuf
-{
-    plan.workspace_root().join(AGDA_VENDOR_DIR)
-}
-
-/// Return the `git fetch` command plan for an existing Agda stdlib checkout.
-///
-/// # Contract
-/// - ensures: returns `-C metatheory/vendor/agda-stdlib fetch --depth 1 origin
-///   v2.4` under the workspace root.
-/// - provides: typed refresh argv without shell interpolation or ambient Git
-///   repository controls.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — the CLI plan witness asserts the exact argv, cwd,
-///   and sanitization flag.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-#[must_use]
-pub(crate) fn agda_fetch_command_plan(plan: &AgdaDependencyPlan) -> AgdaDependencyGitCommandPlan
-{
-    AgdaDependencyGitCommandPlan::new(plan.workspace_root().to_path_buf(), vec![
-        OsString::from("-C"),
-        OsString::from(AGDA_STDLIB_DIR),
-        OsString::from("fetch"),
-        OsString::from("--depth"),
-        OsString::from("1"),
-        OsString::from("origin"),
-        OsString::from(AGDA_STDLIB_BRANCH),
-    ])
-}
-
-/// Run one sanitized Git command plan for Agda dependency provisioning.
-///
-/// # Contract
-/// - requires: `plan` was constructed by an Agda dependency command-plan
-///   function.
-/// - ensures: returns success only for a successful Git exit status.
-/// - provides: the single Agda dependency boundary into
-///   [`gandr_workflow_gates::support::run_status`] with Git sanitization
-///   enabled.
-/// - fails: returns process I/O errors or an operational nonzero-status error.
-/// - panics: none.
-///
-/// # Errors
-/// Returns [`GateError`] from the support runner or for a nonzero Git status.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — command-plan tests assert every Agda Git command is
-///   marked sanitized, while support tests assert which environment keys are
-///   removed by the runner.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-/// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-fn run_agda_git_command<'semantic, Action>(
-    action: Action,
-    plan: &AgdaDependencyGitCommandPlan,
-) -> Result<(), GateError>
-where
-    Action: Into<ActionText<'semantic>>,
-{
-    let action = action.into().0;
-    let status = gandr_workflow_gates::support::run_status(
-        OsStr::new(GIT_PROGRAM),
-        plan.args(),
-        Some(plan.cwd()),
-        plan.sanitized_git().0,
-    )?;
-    if status.success() {
-        Ok(())
-    }
-    else {
-        Err(GateError::operational(format!(
-            "agda-deps: git {action} failed with {}",
-            status_detail(status)
-        )))
-    }
-}
-
-/// Return the `git checkout` command plan for a fetched Agda stdlib revision.
-///
-/// # Contract
-/// - ensures: returns `-C metatheory/vendor/agda-stdlib checkout --detach
-///   FETCH_HEAD` under the workspace root.
-/// - provides: typed checkout argv without shell interpolation or ambient Git
-///   repository controls.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — the CLI plan witness asserts the exact argv, cwd,
-///   and sanitization flag.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-#[must_use]
-pub(crate) fn agda_checkout_command_plan(plan: &AgdaDependencyPlan)
--> AgdaDependencyGitCommandPlan
-{
-    AgdaDependencyGitCommandPlan::new(plan.workspace_root().to_path_buf(), vec![
-        OsString::from("-C"),
-        OsString::from(AGDA_STDLIB_DIR),
-        OsString::from("checkout"),
-        OsString::from("--detach"),
-        OsString::from("FETCH_HEAD"),
-    ])
-}
-
-/// Return the `git clone` command plan for the Agda standard library.
-///
-/// # Contract
-/// - ensures: returns `clone --depth 1 --branch v2.4 <repo>
-///   metatheory/vendor/agda-stdlib` under the workspace root.
-/// - provides: typed clone argv without shell interpolation or ambient Git
-///   repository controls.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — the CLI plan witness asserts the exact argv, cwd,
-///   and sanitization flag.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-#[must_use]
-pub(crate) fn agda_clone_command_plan(plan: &AgdaDependencyPlan) -> AgdaDependencyGitCommandPlan
-{
-    AgdaDependencyGitCommandPlan::new(plan.workspace_root().to_path_buf(), vec![
-        OsString::from("clone"),
-        OsString::from("--depth"),
-        OsString::from("1"),
-        OsString::from("--branch"),
-        OsString::from(AGDA_STDLIB_BRANCH),
-        OsString::from(AGDA_STDLIB_REPOSITORY),
-        OsString::from(AGDA_STDLIB_DIR),
-    ])
-}
-
-/// Return the Agda libraries file path for `plan`.
-fn agda_libraries_file(plan: &AgdaDependencyPlan) -> PathBuf
-{
-    plan.workspace_root().join(AGDA_LIBRARIES_FILE)
 }
 
 /// Run the deterministic AFL smoke plan.
@@ -1961,7 +1541,7 @@ fn default_manifest_path() -> PathBuf
 #[must_use]
 pub fn usage_text() -> impl Into<UsageTextText<'static>>
 {
-    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, docs-manifest, docs-reference, page-balance, rumdl, options-policy, soundness-oracles, default-graph, iu-pin, agda-deps [--workspace-root PATH], coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|parse|check|parity|gates]"
+    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|parse|check|parity|gates]"
 }
 
 /// Parsed supported CLI command.
@@ -2028,12 +1608,6 @@ pub enum Command
         /// Optional command working directory.
         cwd: Option<PathBuf>,
     },
-    /// Agda OPTIONS policy gate.
-    OptionsPolicy
-    {
-        /// Workspace root used to resolve default governed roots.
-        workspace_root: PathBuf,
-    },
     /// Rust soundness-oracle companion gate.
     SoundnessOracles
     {
@@ -2045,18 +1619,6 @@ pub enum Command
     {
         /// Cargo workspace root.
         workspace_root: PathBuf,
-    },
-    /// IU submodule pin policy gate.
-    IuPin
-    {
-        /// Git workspace root.
-        workspace_root: PathBuf,
-    },
-    /// Agda standard-library dependency provisioning command.
-    AgdaDeps
-    {
-        /// Optional workspace root; current directory is used when absent.
-        workspace_root: Option<PathBuf>,
     },
     /// Coverage floor policy command.
     Coverage
@@ -2131,110 +1693,6 @@ pub enum CoverageCommand
     Check,
     /// Rewrite coverage floors to the ratcheted policy.
     Ratchet,
-}
-
-/// Pure Agda dependency provisioning plan.
-///
-/// # Contract
-/// - ensures: carries the workspace root used to derive all Agda dependency
-///   filesystem paths and Git working directories.
-/// - provides: a side-effect-free value for CLI parsing, tests, and runtime
-///   provisioning.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — CLI tests distinguish explicit and default roots and
-///   assert every Git command plan projected from the root.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(transparent)]
-pub(crate) struct AgdaDependencyPlan
-{
-    /// Workspace root that owns `metatheory/`.
-    workspace_root: PathBuf,
-}
-
-impl AgdaDependencyPlan
-{
-    /// Build a plan rooted at `workspace_root`.
-    #[inline]
-    #[must_use]
-    pub(crate) fn new(workspace_root: PathBuf) -> Self
-    {
-        Self { workspace_root }
-    }
-
-    /// Borrow the workspace root.
-    #[inline]
-    #[must_use]
-    pub(crate) fn workspace_root(&self) -> &Path
-    {
-        &self.workspace_root
-    }
-}
-
-/// Pure Git command plan for one Agda dependency operation.
-///
-/// # Contract
-/// - ensures: stores a working directory, exact argv vector, and the decision
-///   to route execution through the shared sanitized Git runner.
-/// - provides: process-free command witnesses for Agda dependency clone, fetch,
-///   and checkout operations.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L3 only — CLI tests assert clone/fetch/checkout argv and the
-///   sanitization bit before any process launch.
-/// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct AgdaDependencyGitCommandPlan
-{
-    /// Working directory supplied to the Git subprocess.
-    cwd: PathBuf,
-    /// Exact argument vector supplied to Git.
-    args: Vec<OsString>,
-    /// Whether the shared support runner must remove Git repository controls.
-    sanitized_git: bool,
-}
-
-impl AgdaDependencyGitCommandPlan
-{
-    /// Build a sanitized Git command plan.
-    fn new(
-        cwd: PathBuf,
-        args: Vec<OsString>,
-    ) -> Self
-    {
-        Self {
-            cwd,
-            args,
-            sanitized_git: true,
-        }
-    }
-
-    /// Borrow the Git working directory.
-    #[inline]
-    #[must_use]
-    pub(crate) fn cwd(&self) -> &Path
-    {
-        &self.cwd
-    }
-
-    /// Borrow the exact Git argument vector.
-    #[inline]
-    #[must_use]
-    pub(crate) fn args(&self) -> &[OsString]
-    {
-        &self.args
-    }
-
-    /// Return whether the shared support runner sanitizes Git controls.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn sanitized_git(&self) -> SanitizedGitFlag
-    {
-        SanitizedGitFlag(self.sanitized_git)
-    }
 }
 
 /// AFL harness target accepted by `fuzz-smoke`.
@@ -2722,8 +2180,6 @@ impl MutantsScheduledOptions
 mod tests
 {
     use core::error::Error;
-    use core::sync::atomic::AtomicU64;
-    use core::sync::atomic::Ordering;
 
     use gandr_workflow_gates::semantic_value;
 
@@ -2731,10 +2187,6 @@ mod tests
 
     /// Shared result type for CLI driver unit witnesses.
     type TestResult<T = ()> = Result<T, Box<dyn Error>>;
-
-    /// Per-process suffix keeping filesystem fixtures disjoint in parallel
-    /// tests.
-    static NEXT_TEMP_ROOT: AtomicU64 = AtomicU64::new(0);
 
     /// Assert one generated mutants temporary path names the expected mode and
     /// role.
@@ -2845,16 +2297,6 @@ mod tests
                 expected: ExpectedCommand::RumdlCheck,
             },
             ValidCommandCase {
-                label: "options-policy",
-                args: &[
-                    "gandr-workflow-gates",
-                    "options-policy",
-                    "--workspace-root",
-                    "workspace",
-                ],
-                expected: ExpectedCommand::OptionsPolicy,
-            },
-            ValidCommandCase {
                 label: "soundness-oracles",
                 args: &[
                     "gandr-workflow-gates",
@@ -2873,31 +2315,6 @@ mod tests
                     "workspace",
                 ],
                 expected: ExpectedCommand::DefaultGraph,
-            },
-            ValidCommandCase {
-                label: "iu-pin",
-                args: &[
-                    "gandr-workflow-gates",
-                    "iu-pin",
-                    "--workspace-root",
-                    "workspace",
-                ],
-                expected: ExpectedCommand::IuPin,
-            },
-            ValidCommandCase {
-                label: "agda-default",
-                args: &["gandr-workflow-gates", "agda-deps"],
-                expected: ExpectedCommand::AgdaDefault,
-            },
-            ValidCommandCase {
-                label: "agda-explicit",
-                args: &[
-                    "gandr-workflow-gates",
-                    "agda-deps",
-                    "--workspace-root",
-                    "workspace",
-                ],
-                expected: ExpectedCommand::AgdaExplicit,
             },
             ValidCommandCase {
                 label: "coverage-check-default",
@@ -3154,17 +2571,9 @@ mod tests
                 assert_eq!(vec![PathBuf::from("README.md")], paths);
                 assert_eq!(Some(PathBuf::from("docs")), cwd);
             },
-            | (ExpectedCommand::OptionsPolicy, Command::OptionsPolicy { workspace_root })
             | (ExpectedCommand::SoundnessOracles, Command::SoundnessOracles { workspace_root })
-            | (ExpectedCommand::DefaultGraph, Command::DefaultGraph { workspace_root })
-            | (ExpectedCommand::IuPin, Command::IuPin { workspace_root }) => {
+            | (ExpectedCommand::DefaultGraph, Command::DefaultGraph { workspace_root }) => {
                 assert_eq!(workspace_root, PathBuf::from("workspace"));
-            },
-            | (ExpectedCommand::AgdaDefault, Command::AgdaDeps { workspace_root }) => {
-                assert_eq!(None, workspace_root);
-            },
-            | (ExpectedCommand::AgdaExplicit, Command::AgdaDeps { workspace_root }) => {
-                assert_eq!(Some(PathBuf::from("workspace")), workspace_root);
             },
             | (
                 ExpectedCommand::CoverageCheckDefault,
@@ -3511,10 +2920,6 @@ mod tests
                 detail: "unknown argument `--unknown`",
             },
             UsageCase {
-                args: &["gandr-workflow-gates", "options-policy"],
-                detail: "options-policy requires --workspace-root PATH",
-            },
-            UsageCase {
                 args: &["gandr-workflow-gates", "coverage"],
                 detail: "coverage requires check or ratchet",
             },
@@ -3649,17 +3054,6 @@ mod tests
             UsageCase {
                 args: &["gandr-workflow-gates", "fuzz-smoke", "--target", "vm"],
                 detail: "unsupported fuzz-smoke target `vm`",
-            },
-            UsageCase {
-                args: &[
-                    "gandr-workflow-gates",
-                    "agda-deps",
-                    "--workspace-root",
-                    "one",
-                    "--workspace-root",
-                    "two",
-                ],
-                detail: "duplicate --workspace-root",
             },
         ];
 
@@ -3844,95 +3238,6 @@ mod tests
         Ok(())
     }
 
-    /// Agda command planning and ready checkout short-circuit avoid ambient
-    /// Git.
-    #[test]
-    fn agda_plans_and_ready_checkout_are_exact_without_git() -> TestResult
-    {
-        let under_unit_test = running_under_binary_unit_test()?;
-        if !under_unit_test.0 {
-            return Ok(());
-        }
-        let root = TempRoot::create("agda-ready")?;
-        let plan = AgdaDependencyPlan::new(root.path().to_path_buf());
-        assert_eq!(plan.workspace_root(), root.path());
-        let explicit_root = agda_workspace_root(Some(root.path()))?;
-        assert_eq!(explicit_root, root.path());
-        let default_root = agda_workspace_root(None)?;
-        let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
-        assert_eq!(default_root, current_dir);
-        assert_eq!(agda_vendor_dir(&plan), root.path().join(AGDA_VENDOR_DIR));
-        assert_eq!(agda_stdlib_dir(&plan), root.path().join(AGDA_STDLIB_DIR));
-        assert_eq!(
-            agda_stdlib_lib_path(&plan),
-            root.path().join(AGDA_STDLIB_LIB)
-        );
-        assert_eq!(
-            agda_libraries_file(&plan),
-            root.path().join(AGDA_LIBRARIES_FILE)
-        );
-
-        let clone = agda_clone_command_plan(&plan);
-        assert_eq!(clone.cwd(), root.path());
-        assert!(clone.sanitized_git().0);
-        assert_eq!(
-            clone.args(),
-            os_strings([
-                "clone",
-                "--depth",
-                "1",
-                "--branch",
-                AGDA_STDLIB_BRANCH,
-                AGDA_STDLIB_REPOSITORY,
-                AGDA_STDLIB_DIR,
-            ])
-            .as_slice()
-        );
-
-        let fetch = agda_fetch_command_plan(&plan);
-        assert_eq!(fetch.cwd(), root.path());
-        assert!(fetch.sanitized_git().0);
-        assert_eq!(
-            fetch.args(),
-            os_strings([
-                "-C",
-                AGDA_STDLIB_DIR,
-                "fetch",
-                "--depth",
-                "1",
-                "origin",
-                AGDA_STDLIB_BRANCH,
-            ])
-            .as_slice()
-        );
-
-        let checkout = agda_checkout_command_plan(&plan);
-        assert_eq!(checkout.cwd(), root.path());
-        assert!(checkout.sanitized_git().0);
-        assert_eq!(
-            checkout.args(),
-            os_strings(["-C", AGDA_STDLIB_DIR, "checkout", "--detach", "FETCH_HEAD"]).as_slice()
-        );
-
-        let stdlib_lib = agda_stdlib_lib_path(&plan);
-        let Some(parent) = stdlib_lib.parent()
-        else {
-            return Err(Box::new(std::io::Error::other(
-                "stdlib lib path has no parent",
-            )));
-        };
-        gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        gandr_workflow_gates::support::HOST_FILESYSTEM
-            .write(&stdlib_lib, "name: standard-library\n")?;
-        run_agda_deps_plan(&plan)?;
-        let libraries = gandr_workflow_gates::support::HOST_FILESYSTEM
-            .read_to_string(agda_libraries_file(&plan))?;
-        let canonical_lib =
-            gandr_workflow_gates::support::HOST_FILESYSTEM.canonicalize(stdlib_lib)?;
-        assert_eq!(libraries, format!("{}\n", canonical_lib.to_string_lossy()));
-        Ok(())
-    }
-
     /// Return whether this copy runs inside the binary unit-test executable.
     fn running_under_binary_unit_test() -> TestResult<RunningUnderBinaryUnitTestFlag>
     {
@@ -4051,48 +3356,6 @@ mod tests
         values.into_iter().map(Into::into).collect()
     }
 
-    /// Temporary directory removed when the test exits.
-    #[repr(transparent)]
-    struct TempRoot
-    {
-        /// Root path.
-        path: PathBuf,
-    }
-
-    impl TempRoot
-    {
-        /// Create one unique temporary root for a test.
-        fn create<'semantic, Name>(name: Name) -> TestResult<Self>
-        where
-            Name: Into<NameText<'semantic>>,
-        {
-            let name = name.into().0;
-            let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-            let temp_root = std::env::temp_dir().join(format!(
-                "gandr-workflow-gates-main-{name}-{}-{suffix}",
-                std::process::id()
-            ));
-            drop(gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(&temp_root));
-            gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&temp_root)?;
-            Ok(Self { path: temp_root })
-        }
-
-        /// Borrow the root path.
-        fn path(&self) -> &Path
-        {
-            &self.path
-        }
-    }
-
-    impl Drop for TempRoot
-    {
-        /// Remove the temporary root best-effort.
-        fn drop(&mut self)
-        {
-            drop(gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(&self.path));
-        }
-    }
-
     /// Expected command shape for one parser acceptance row.
     #[derive(Clone, Copy)]
     enum ExpectedCommand
@@ -4113,18 +3376,10 @@ mod tests
         RumdlFmt,
         /// `rumdl check`.
         RumdlCheck,
-        /// `options-policy`.
-        OptionsPolicy,
         /// `soundness-oracles`.
         SoundnessOracles,
         /// `default-graph`.
         DefaultGraph,
-        /// `iu-pin`.
-        IuPin,
-        /// `agda-deps` without a workspace root.
-        AgdaDefault,
-        /// `agda-deps` with a workspace root.
-        AgdaExplicit,
         /// `coverage check` with default policy paths.
         CoverageCheckDefault,
         /// `coverage ratchet` with explicit policy paths.

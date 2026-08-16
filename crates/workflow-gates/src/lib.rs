@@ -210,9 +210,9 @@ pub mod graph_boundary;
 pub mod maintenance;
 /// Contained mutation campaign planning, execution, and publication.
 pub mod mutants;
-/// Repository dependency-graph and submodule-pin policy.
+/// Repository dependency-graph policy.
 pub mod project;
-/// Source-level Agda option and soundness-oracle policy.
+/// Source-level soundness-oracle policy.
 pub mod source_policy;
 /// Shared process and filesystem support used by gate domains.
 pub mod support;

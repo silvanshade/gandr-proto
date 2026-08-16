@@ -129,14 +129,9 @@ includes = ["*"]
 # Fidelity-critical greenfield / generated sources are owned by their producers.
 # *.typ: greenfield typst sources under docs/manual/ (Track C) — rendered docs,
 # not size-bounded prose; typst has no treefmt formatter (vetted-dep gate first).
-# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
-# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …); a content-MUTATING formatter must
-# never rewrite them (core hazard H8). Consumer-local LIVE-hazard fix — the
-# permanent fix is the core H8 exclude fragment; this drift is intentional
-# until the core ships it.
 # PLAN.html: generated 550KB+ export of the approved wayfinder plan — size is
 # inherent to the artifact (embedded inventory + bibliography), not prose bloat.
-excludes = ["*.typ", "*.agda", "*.agda-lib", "PLAN.html"]
+excludes = ["*.typ", "PLAN.html"]
 
 [formatter."tombi-format"]
 command = "tombi"
@@ -156,12 +151,7 @@ includes = ["*"]
 # not be auto-"corrected" by typos.
 # *.typ: greenfield typst sources (Track C) carry curryst/fletcher identifiers
 # and unicode math typos must not rewrite (a flagged fidelity risk).
-# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
-# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) typos must never rewrite (core hazard
-# H8). Also mirrored in typos.toml extend-exclude so a standalone `typos`
-# (editor/CLI) run — which reads that config, not treefmt's — is safe too.
-# Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
 # PLAN.html: generated export carrying bibliography author names and register/
 # tracker ids (Tye, FoPSS, gandr-8ot, …) — the same class; mirrored in
 # typos.toml extend-exclude.
-excludes = ["*.typ", "*.agda", "*.agda-lib", "PLAN.html"]
+excludes = ["*.typ", "PLAN.html"]

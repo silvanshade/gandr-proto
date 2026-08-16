@@ -28,11 +28,7 @@
 
 extern crate alloc;
 
-#[cfg(feature = "fuzzing")]
-use alloc::borrow::Cow;
 use alloc::format;
-#[cfg(feature = "fuzzing")]
-use alloc::vec;
 #[cfg(feature = "fuzzing")]
 use std::path::Path;
 
@@ -83,14 +79,10 @@ pub enum CliCommandName
     PageBalance,
     /// Guarded rumdl wrapper gate.
     Rumdl,
-    /// Agda OPTIONS source policy gate.
-    OptionsPolicy,
     /// Rust soundness-oracle source policy gate.
     SoundnessOracles,
     /// Default dependency-graph policy gate.
     DefaultGraph,
-    /// Internal-univalence submodule pin gate.
-    IuPin,
     /// Coverage floor policy gate.
     Coverage,
     /// Weekly maintenance range gate.
@@ -136,10 +128,8 @@ impl CliCommandName
             | "docs-reference" => Ok(Self::DocsReference),
             | "page-balance" => Ok(Self::PageBalance),
             | "rumdl" => Ok(Self::Rumdl),
-            | "options-policy" => Ok(Self::OptionsPolicy),
             | "soundness-oracles" => Ok(Self::SoundnessOracles),
             | "default-graph" => Ok(Self::DefaultGraph),
-            | "iu-pin" => Ok(Self::IuPin),
             | "coverage" => Ok(Self::Coverage),
             | "maintenance-range" => Ok(Self::MaintenanceRange),
             | "mutants" => Ok(Self::Mutants),
@@ -162,10 +152,8 @@ impl CliCommandName
             | Self::DocsReference => ValueText("docs-reference"),
             | Self::PageBalance => ValueText("page-balance"),
             | Self::Rumdl => ValueText("rumdl"),
-            | Self::OptionsPolicy => ValueText("options-policy"),
             | Self::SoundnessOracles => ValueText("soundness-oracles"),
             | Self::DefaultGraph => ValueText("default-graph"),
-            | Self::IuPin => ValueText("iu-pin"),
             | Self::Coverage => ValueText("coverage"),
             | Self::MaintenanceRange => ValueText("maintenance-range"),
             | Self::Mutants => ValueText("mutants"),
@@ -252,8 +240,6 @@ struct ParserDomainReport
     cli: ParserDomainStatus,
     /// Documentation command parser outcome.
     docs: ParserDomainStatus,
-    /// Agda source OPTIONS analyzer outcome.
-    source_options: ParserDomainStatus,
     /// Rust soundness-oracle source parser outcome.
     source_soundness: ParserDomainStatus,
     /// Coverage floor-policy parser and validator outcome.
@@ -274,7 +260,6 @@ impl ParserDomainReport
         Self {
             cli: ParserDomainStatus::Skipped,
             docs: ParserDomainStatus::Skipped,
-            source_options: ParserDomainStatus::Skipped,
             source_soundness: ParserDomainStatus::Skipped,
             coverage: ParserDomainStatus::Skipped,
             mutation: ParserDomainStatus::Skipped,
@@ -337,7 +322,6 @@ where
         domains: ParserDomainReport {
             cli: exercise_cli_text(text),
             docs: exercise_docs_text(text),
-            source_options: exercise_source_options_text(text),
             source_soundness: exercise_source_soundness_text(text),
             coverage: exercise_coverage_text(text),
             mutation: exercise_mutation_text(text),
@@ -375,27 +359,6 @@ where
     let text = text.into().0;
     let token = first_token_or_empty(text).into().0;
     result_to_status(crate::docs::commands::RumdlMode::parse(token))
-}
-
-/// Exercise pure Agda OPTIONS policy analysis over one synthetic module.
-#[cfg(feature = "fuzzing")]
-fn exercise_source_options_text<'semantic, Text>(text: Text) -> ParserDomainStatus
-where
-    Text: Into<TextText<'semantic>>,
-{
-    let text = text.into().0;
-    let roots = vec![crate::source_policy::OptionsRoot {
-        root: Cow::Borrowed("fuzz-root"),
-        modules: vec![crate::source_policy::OptionsModule {
-            relative_path: Cow::Borrowed("Fuzz.agda"),
-            source: Some(Cow::Borrowed(text)),
-        }],
-    }];
-    let _findings = crate::source_policy::analyze_options_policy(
-        &roots,
-        &crate::source_policy::DEFAULT_OPTIONS_POLICIES,
-    );
-    ParserDomainStatus::Completed
 }
 
 /// Exercise Rust source parsing and soundness-oracle validation.
@@ -557,10 +520,8 @@ mod tests
         (CliCommandName::DocsReference, "docs-reference"),
         (CliCommandName::PageBalance, "page-balance"),
         (CliCommandName::Rumdl, "rumdl"),
-        (CliCommandName::OptionsPolicy, "options-policy"),
         (CliCommandName::SoundnessOracles, "soundness-oracles"),
         (CliCommandName::DefaultGraph, "default-graph"),
-        (CliCommandName::IuPin, "iu-pin"),
         (CliCommandName::Coverage, "coverage"),
         (CliCommandName::MaintenanceRange, "maintenance-range"),
         (CliCommandName::Mutants, "mutants"),
@@ -616,7 +577,6 @@ mod tests
         assert_eq!(report.input, InputDisposition::Exercised);
         assert_eq!(report.domains.cli, ParserDomainStatus::Rejected);
         assert_eq!(report.domains.docs, ParserDomainStatus::Rejected);
-        assert_eq!(report.domains.source_options, ParserDomainStatus::Completed);
         assert_eq!(
             report.domains.source_soundness,
             ParserDomainStatus::Completed
@@ -633,13 +593,6 @@ mod tests
 
         let docs = exercise_fuzz_bytes(b"fmt");
         assert_eq!(docs.domains.docs, ParserDomainStatus::Completed);
-
-        let options =
-            exercise_fuzz_bytes(b"{-# OPTIONS --safe --without-K --hidden-argument-puns #-}\n");
-        assert_eq!(
-            options.domains.source_options,
-            ParserDomainStatus::Completed
-        );
 
         let soundness = exercise_fuzz_bytes(
             br#"#[test]

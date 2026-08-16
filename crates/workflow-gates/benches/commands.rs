@@ -444,22 +444,9 @@ fn bench_mutation_planning(criterion: &mut Criterion)
 /// Benchmark source-policy analyzers callable without external processes.
 fn bench_source_policy_checks(criterion: &mut Criterion)
 {
-    let workspace_root = fixture_path("source_policy");
-    let roots = [PathBuf::from("metatheory/src")];
     let soundness_path = Path::new("crates/gandr-core/src/conformance.rs");
 
     let mut group = criterion.benchmark_group("source_policy_checks");
-    group.throughput(Throughput::Elements(1));
-    group.bench_function("run_options_policy_with", |bencher| {
-        bencher.iter(|| {
-            let findings = fixture_value(source_policy::run_options_policy_with(
-                black_box(&workspace_root),
-                black_box(&roots),
-                black_box(&source_policy::DEFAULT_OPTIONS_POLICIES),
-            ));
-            black_box(findings.len());
-        });
-    });
     group.throughput(Throughput::Bytes(
         throughput_count(SOUNDNESS_SOURCE.len()).into().0,
     ));

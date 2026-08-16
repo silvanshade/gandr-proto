@@ -85,11 +85,8 @@ const EXPECTED_COMMANDS: &[&str] = &[
     "docs-reference",
     "page-balance",
     "rumdl",
-    "options-policy",
     "soundness-oracles",
     "default-graph",
-    "iu-pin",
-    "agda-deps",
     "coverage",
     "maintenance-range",
     "mutants",
@@ -265,7 +262,6 @@ const EXPECTED_MERGE_GATE_TASKS: &[&str] = &[
     "cargo:dylint:local",
     "cargo:doc-check",
     "cargo:nextest",
-    "agda:merge-check",
     "treefmt:check",
 ];
 
@@ -790,13 +786,6 @@ fn top_level_command_inventory_is_exact() -> TestResult
             .contains("fuzz-smoke [--target lower|parse|check|parity|gates]"),
         "usage text should advertise the closed fuzz-smoke target set"
     );
-    assert!(
-        cli::usage_text()
-            .into()
-            .0
-            .contains("agda-deps [--workspace-root PATH]"),
-        "usage text should advertise the Agda dependency workspace-root option"
-    );
     Ok(())
 }
 
@@ -1016,91 +1005,6 @@ fn workflow_plan_selection_is_typed_without_execution() -> TestResult
             )));
         },
     }
-    Ok(())
-}
-
-/// Agda dependency planning uses typed Git argv and the sanitized support path.
-#[test]
-fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
-{
-    let root_parsed = cli::parse_command(os_args([
-        "gandr-workflow-gates",
-        "agda-deps",
-        "--workspace-root",
-        "workspace",
-    ]))?;
-    match root_parsed {
-        | cli::Command::AgdaDeps { workspace_root } => {
-            assert_eq!(workspace_root, Some(PathBuf::from("workspace")));
-        },
-        | _ => {
-            return Err(Box::new(std::io::Error::other(
-                "agda-deps parsed as a different command",
-            )));
-        },
-    }
-
-    let default_parsed = cli::parse_command(os_args(["gandr-workflow-gates", "agda-deps"]))?;
-    match default_parsed {
-        | cli::Command::AgdaDeps { workspace_root } => {
-            assert_eq!(None, workspace_root);
-        },
-        | _ => {
-            return Err(Box::new(std::io::Error::other(
-                "agda-deps default parsed as a different command",
-            )));
-        },
-    }
-
-    let plan = cli::AgdaDependencyPlan::new(PathBuf::from("workspace"));
-    let clone_plan = cli::agda_clone_command_plan(&plan);
-    assert_eq!(clone_plan.cwd(), Path::new("workspace"));
-    assert!(clone_plan.sanitized_git().0);
-    assert_eq!(
-        clone_plan.args(),
-        os_strings([
-            "clone",
-            "--depth",
-            "1",
-            "--branch",
-            "v2.4",
-            "https://github.com/agda/agda-stdlib.git",
-            "metatheory/vendor/agda-stdlib",
-        ])
-        .as_slice()
-    );
-
-    let fetch_plan = cli::agda_fetch_command_plan(&plan);
-    assert_eq!(fetch_plan.cwd(), Path::new("workspace"));
-    assert!(fetch_plan.sanitized_git().0);
-    assert_eq!(
-        fetch_plan.args(),
-        os_strings([
-            "-C",
-            "metatheory/vendor/agda-stdlib",
-            "fetch",
-            "--depth",
-            "1",
-            "origin",
-            "v2.4",
-        ])
-        .as_slice()
-    );
-
-    let checkout_plan = cli::agda_checkout_command_plan(&plan);
-    assert_eq!(checkout_plan.cwd(), Path::new("workspace"));
-    assert!(checkout_plan.sanitized_git().0);
-    assert_eq!(
-        checkout_plan.args(),
-        os_strings([
-            "-C",
-            "metatheory/vendor/agda-stdlib",
-            "checkout",
-            "--detach",
-            "FETCH_HEAD",
-        ])
-        .as_slice()
-    );
     Ok(())
 }
 

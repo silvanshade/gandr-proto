@@ -1,9 +1,9 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 165
-; corpus-fixtures-b3sum: a0879d13dfa301131de60794ad716aca125d4fdae265df32ba5e89b247d39436
+; items: 164
+; corpus-fixtures-b3sum: 7edcc697df1e373bcf05ffa01890e0128e2a30dad561ff483ef0fe9a6a7aca0b
 ; class declared-data: 8
-; class effects-control: 11
+; class effects-control: 10
 ; class eligible: 22
 ; class hole-unknown: 11
 ; class identity: 9
@@ -48,7 +48,6 @@ model/11-functions.gandr	1	open-free-name
 model/11-functions.gandr	2	open-free-name
 model/12-typed-holes.gandr	0	hole-unknown
 model/13-shell-blocks.gandr	0	effects-control
-model/14-agda-deps-walkthrough.gandr	0	effects-control
 model/15-record-update.gandr	0	structural-stock
 model/15-record-update.gandr	1	native
 model/16-record-update-field-retype.gandr	0	structural-stock

@@ -31,7 +31,7 @@ Three rules follow, and the third is what makes the first two worth the edit:
 - **Prefix by topic, number by position.** The prefix is the disambiguator; the number is only an index within it.
   Numbering is **stable** — retiring an item leaves its number unused rather than renumbering the rest, because renumbering silently invalidates every reference taken before it.
 - **Give the identifier an anchor.** An identifier nobody can link to is a search string.
-  Prefer a heading per item (`### meta-spike-04`), which Obsidian resolves as `[[metatheory/roadmap#meta-spike-04]]`; a table cannot be linked into row by row, so a list of items that get cited individually should not be a table.
+  Prefer a heading per item (`### meta-spike-04`), which Obsidian resolves as a heading link into its home document (`spec:metatheory/roadmap.md §"meta-spike-04"`); a table cannot be linked into row by row, so a list of items that get cited individually should not be a table.
   Where a heading per item is too heavy, lead the item with the bolded identifier and link to the section.
 - **Cite by link, not by code.** `[[roadmap#Open questions|meta-question-19]]` survives a document being reorganised and tells the reader where to go; `open question 19` does neither.
 

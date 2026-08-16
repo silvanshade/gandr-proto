@@ -24,7 +24,7 @@ A reference that resolves only inside its home document arrives somewhere else m
 **No bare letter-number identifiers.** Anything referred to anywhere that matters — a decision, commitment, obligation, finding, spike, open question, stage, rung, phase — carries an identifier whose prefix abbreviates what it _is_ or the topic it belongs to, followed by a zero-padded number: `meta-spike-04`, `meta-question-19`.
 Never `M1`, `S1`, `P1`, `H2`, `D11`, `F3.19`.
 Numbering is **stable**: retiring an item leaves its number unused rather than renumbering the rest, because renumbering silently invalidates every reference already taken against it.
-Give each identifier an anchor and cite it **by link, not by code** — `[[metatheory/roadmap#meta-question-19]]`, never "open question 19".
+Give each identifier an anchor and cite it **by link, not by code** — `spec:metatheory/roadmap.md §"meta-question-19"`, never "open question 19".
 
 This is not hypothetical, and this project has already paid for it: `S1` named a metatheory spike and an undefined "trusted S1 core" at the same time, and the collision stayed invisible until someone cited one and meant the other.
 Retired schemes are the sole exception and stay exactly as they are — the concordance in the guards ledger exists to decode old notes, so the codes in its left-hand column are data, not usage.
@@ -47,7 +47,7 @@ The full statement of the identifier rule, with the anchoring and linking conven
 
 ## Description is a hypothesis, not evidence
 
-**Any text describing an artifact is a guide to what to expect, and never proof of what is.** This binds on every describing surface in this tree without exception: Rust doc comments and rustdoc, Agda comments and module headers, per-crate status files, corpus example prose, the specification corpus, tracker items, and commit messages.
+**Any text describing an artifact is a guide to what to expect, and never proof of what is.** This binds on every describing surface in this tree without exception: Rust doc comments and rustdoc, per-crate status files, corpus example prose, the specification corpus, tracker items, and commit messages.
 Read it to know where to look and what shape to expect.
 **Then verify against the thing itself** — the definition, the rule, the test, the tree.
 
