@@ -80,6 +80,7 @@ use crate::boundary::ShiftReplay;
 use crate::cell::CellId;
 use crate::cell::CellStore;
 use crate::overlap::Overlap;
+use crate::overlap::OverlapSupport;
 use crate::overlap::overlaps_between;
 use crate::rewrite::CellApp;
 use crate::rewrite::rewrite_at;
@@ -308,6 +309,10 @@ where
 
 /// The three guard conjuncts, with the convexity discharge supplied.
 ///
+/// The overlap support is supplied as well, precomputed by the caller: a
+/// consumer asking about many pairs over one store builds it once instead of
+/// once per query, which is what [`check_shift_guard`] does for a one-off.
+///
 /// Split out from [`derive_shift_equivalence`] so the third conjunct's refusal
 /// is exercisable on today's alphabets, both of which discharge it: the public
 /// entry point reads the discharge from the alphabet and never lets a caller
@@ -339,11 +344,12 @@ where
 /// - witness: `shift::tests::a_nested_pair_is_refused_before_the_overlap_conjunct`
 /// - witness: `shift::tests::an_undischarged_convexity_conjunct_refuses_the_pair`
 #[inline]
-pub(crate) fn check_shift_guard<A>(
+pub(crate) fn check_shift_guard_with_support<A>(
     store: &CellStore<A>,
     first: &CellApp<A>,
     second: &CellApp<A>,
     convexity: ConvexityDischarge,
+    support: &OverlapSupport,
 ) -> Result<(), ShiftObstruction<A>>
 where
     A: CellAlphabet,
@@ -356,31 +362,50 @@ where
     else {
         return Err(ShiftObstruction::UnknownCell { cell: second.cell });
     };
-    // Conjunct one: the positions are incomparable, so the two applications
-    // address disjoint subtrees and neither can be inside the other's image.
     let order = A::position_order(&first.at, &second.at);
     if order != PositionOrder::Incomparable {
         return Err(ShiftObstruction::ComparablePositions { order });
     }
-    // Conjunct two: the cell pair has trivial overlap. The enumerator is keyed
-    // by an *ordered* pair — a composition overlap runs from the left cell's
-    // right-hand side into the right cell's left-hand side — so both orders are
-    // asked, and either one answering is interference.
-    let mut overlaps = overlaps_between((first.cell, first_cell), (second.cell, second_cell));
-    overlaps.extend(overlaps_between(
-        (second.cell, second_cell),
-        (first.cell, first_cell),
-    ));
-    if let Some(overlap) = overlaps.into_iter().next() {
-        return Err(ShiftObstruction::GenuineOverlap {
-            overlap: Box::new(overlap),
-        });
+    if !bool::from(support.independent(first.cell, second.cell)) {
+        let mut overlaps = overlaps_between((first.cell, first_cell), (second.cell, second_cell));
+        overlaps.extend(overlaps_between(
+            (second.cell, second_cell),
+            (first.cell, first_cell),
+        ));
+        if let Some(overlap) = overlaps.into_iter().next() {
+            return Err(ShiftObstruction::GenuineOverlap {
+                overlap: Box::new(overlap),
+            });
+        }
     }
-    // Conjunct three: carried, not swept.
     if convexity != ConvexityDischarge::LeftConnectedOverAcyclicTarget {
         return Err(ShiftObstruction::ConvexityNotDischarged);
     }
     Ok(())
+}
+/// Check the independence guard, building the overlap support for this call.
+///
+/// # Contract
+/// - ensures: exactly [`check_shift_guard_with_support`], with the support
+///   relation built from `store` rather than supplied by the caller — the
+///   spelling for a one-off query, where a caller asking per pair over one
+///   store builds the support once and calls the with-support form.
+/// - panics: none.
+///
+/// # Errors
+/// See [`check_shift_guard_with_support`].
+#[inline]
+pub(crate) fn check_shift_guard<A>(
+    store: &CellStore<A>,
+    first: &CellApp<A>,
+    second: &CellApp<A>,
+    convexity: ConvexityDischarge,
+) -> Result<(), ShiftObstruction<A>>
+where
+    A: CellAlphabet,
+{
+    let support = OverlapSupport::from_store(store);
+    check_shift_guard_with_support(store, first, second, convexity, &support)
 }
 
 /// Fire `lead` then `trail` from `term`, refusing the step that does not fire.

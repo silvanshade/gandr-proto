@@ -38,8 +38,9 @@
 //!
 //! # The independence relation is asked, never restated
 //!
-//! [`step_independence`] delegates to [`crate::shift::check_shift_guard`] and
-//! reads **any** refusal as dependence. That is the conservative direction:
+//! [`step_independence_with_support`] delegates to
+//! [`crate::shift::check_shift_guard_with_support`] and reads **any** refusal
+//! as dependence. That is the conservative direction:
 //! refusing to commute keeps the recorded order, which is always a valid
 //! derivation. It also means the crate has exactly one independence relation,
 //! so this module cannot drift from the shift quotient it is the causal
@@ -81,9 +82,10 @@ use crate::cell::CellStore;
 use crate::normal_form::CausalPast;
 use crate::normal_form::PrimId;
 use crate::normal_form::causal_past_address;
+use crate::overlap::OverlapSupport;
 use crate::rewrite::CellApp;
 use crate::sequent::SequentAlphabet;
-use crate::shift::check_shift_guard;
+use crate::shift::check_shift_guard_with_support;
 
 /// One **event** of a recorded derivation — a step that moved the term,
 /// together with the content address of the primitive it applies.
@@ -361,9 +363,8 @@ impl<A: CellAlphabet> EventOrder<A>
     ///   the crate's single independence relation rather than a second copy of
     ///   it.
     /// - panics: none.
-    /// - intension: quadratic in the number of events — one independence
-    ///   question per ordered pair, asked through the shift guard and not
-    ///   cached here.
+    /// - intension: quadratic in the number of events — one constant-time
+    ///   support lookup per ordered pair after one store-wide cache build.
     ///
     /// # Adequacy
     /// - hypothesis: L3 pointwise, and the depth recurrence needs **three**
@@ -389,6 +390,7 @@ impl<A: CellAlphabet> EventOrder<A>
         convexity: ConvexityDischarge,
     ) -> Self
     {
+        let support = OverlapSupport::from_store(store);
         let mut dependences: Vec<Vec<EventIndex>> = Vec::with_capacity(events.len());
         let mut depths: Vec<CausalDepth> = Vec::with_capacity(events.len());
         let mut keys: Vec<EventKey> = Vec::with_capacity(events.len());
@@ -396,11 +398,12 @@ impl<A: CellAlphabet> EventOrder<A>
             let mut edges: Vec<EventIndex> = Vec::new();
             let mut depth = 0_usize;
             for (earlier, prior) in events.iter().enumerate().take(index) {
-                if bool::from(step_independence(
+                if bool::from(step_independence_with_support(
                     store,
                     &prior.step,
                     &current.step,
                     convexity,
+                    &support,
                 )) {
                     continue;
                 }
@@ -1033,11 +1036,11 @@ impl<A: CellAlphabet> EventOrder<A>
 /// Whether two recorded steps are licensed to commute.
 ///
 /// The question is delegated to the crate's single shift guard
-/// ([`check_shift_guard`]) rather than restated, and **any** refusal — a
-/// comparable position, a genuine overlap, an undischarged convexity conjunct,
-/// or an unresolvable identifier — is read as dependence. That direction is the
-/// conservative one: refusing to commute keeps the recorded order, which is
-/// always a valid derivation.
+/// ([`check_shift_guard_with_support`]) rather than restated, and **any**
+/// refusal — a comparable position, a genuine overlap, an undischarged
+/// convexity conjunct, or an unresolvable identifier — is read as dependence.
+/// That direction is the conservative one: refusing to commute keeps the
+/// recorded order, which is always a valid derivation.
 ///
 /// # Contract
 /// - ensures: a positive answer exactly when the guard's three conjuncts hold
@@ -1048,10 +1051,10 @@ impl<A: CellAlphabet> EventOrder<A>
 ///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the relation is not restated here, so its
-///   conjuncts are witnessed at [`check_shift_guard`]'s own suite; what this
-///   wrapper adds is the direction of the collapse, separated by an overlapping
-///   pair at incomparable positions whose two orders demonstrably reach one
-///   term and which the quotient still refuses. The third conjunct's
+///   conjuncts are witnessed at [`check_shift_guard_with_support`]'s own suite;
+///   what this wrapper adds is the direction of the collapse, separated by an
+///   overlapping pair at incomparable positions whose two orders demonstrably
+///   reach one term and which the quotient still refuses. The third conjunct's
 ///   contribution reaches this wrapper only over an alphabet that withholds the
 ///   warrant, which is a missing input rather than a missing assertion.
 ///   Symmetry is **not** separated by any fixture and is not claimed to be:
@@ -1066,18 +1069,20 @@ impl<A: CellAlphabet> EventOrder<A>
 /// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
 /// - witness: `normal_form::tests::a_withheld_convexity_warrant_empties_the_shift_quotient`
 /// - witness: `normal_form::tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join`
-#[inline]
 #[must_use]
-pub(crate) fn step_independence<A>(
+fn step_independence_with_support<A>(
     store: &CellStore<A>,
     left: &CellApp<A>,
     right: &CellApp<A>,
     convexity: ConvexityDischarge,
+    support: &OverlapSupport,
 ) -> StepIndependence
 where
     A: CellAlphabet,
 {
-    StepIndependence::from(check_shift_guard(store, left, right, convexity).is_ok())
+    StepIndependence::from(
+        check_shift_guard_with_support(store, left, right, convexity, support).is_ok(),
+    )
 }
 
 #[cfg(test)]

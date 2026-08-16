@@ -163,14 +163,10 @@
 //! # Cost, and what this rung deliberately does not build
 //!
 //! Building a normal form costs one replay of the recorded path, one replay of
-//! the canonical schedule, and a **quadratic** number of independence questions
-//! in the surviving path length. That quadratic is the measured falsifier the
-//! cheapness argument can lose to, not a prediction
-//! (`shift::tests::an_adjacent_transposition_schedule_asks_a_quadratic_number_of_questions`
-//! in the crate's integration suite). The overlap conjunct is cell-pair-keyed
-//! and cacheable, and **that cache is not built here**: it is the
-//! overlap-support cache rung, and adding a private copy of it now would put a
-//! second index in the crate for the same relation.
+//! the canonical schedule, and a **quadratic** number of constant-time
+//! independence lookups in the surviving path length. The overlap-support
+//! cache is built once by [`crate::causal::EventOrder`] from the completion
+//! overlap enumerator; this module does not maintain a second index.
 //!
 //! [`CellAlphabet::skolemize`]: crate::alphabet::CellAlphabet::skolemize
 
@@ -184,6 +180,7 @@ use crate::alphabet::ConvexityDischarge;
 use crate::boundary::CausalDepth;
 use crate::boundary::NormalFormEquality;
 use crate::boundary::PrimMultiplicity;
+use crate::boundary::ReplayLevel;
 use crate::causal::DerivationEvent;
 use crate::causal::EventOrder;
 use crate::cell::Cell;
@@ -470,6 +467,160 @@ impl<A: CellAlphabet> ReplayWitness<A>
         }
         path
     }
+
+    /// Project the certified derivation into deterministic replay batches.
+    ///
+    /// # Contract
+    /// - ensures: each returned level is an antichain in the certified event
+    ///   order, and levels retain dependency order.
+    /// - provides: the critical-path fuel consumed by level execution.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+    #[inline]
+    #[must_use]
+    pub fn replay_plan(&self) -> ReplayPlan<A>
+    {
+        let mut levels = Vec::new();
+        for layer in self.order.layers() {
+            let mut steps = Vec::with_capacity(layer.len());
+            for index in layer {
+                if let Some(event) = self.order.event(index) {
+                    steps.push(event.step().clone());
+                }
+            }
+            levels.push(steps);
+        }
+        ReplayPlan {
+            peak: self.normal_form.peak.clone(),
+            critical_path: CausalDepth::from(levels.len()),
+            levels,
+        }
+    }
+}
+/// A deterministic antichain schedule for replaying a certified derivation.
+///
+/// # Contract
+/// - ensures: levels contain independent certificate steps in dependency order.
+/// - provides: parallel-batch and on-demand replay with critical-path fuel.
+/// - panics: none.
+///
+/// # Adequacy
+/// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReplayPlan<A: CellAlphabet = SequentAlphabet>
+{
+    /// The term the plan replays from, as the certified witness recorded it.
+    peak: A::Cmd,
+    /// The antichain levels, in dependency order.
+    levels: Vec<Vec<CellApp<A>>>,
+    /// The fuel a complete replay consumes — the number of levels.
+    critical_path: CausalDepth,
+}
+
+impl<A: CellAlphabet> ReplayPlan<A>
+{
+    /// The antichain levels, in dependency order.
+    ///
+    /// # Contract
+    /// - ensures: levels are returned in deterministic dependency order.
+    /// - provides: independent work units suitable for parallel or on-demand
+    ///   replay.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+    #[inline]
+    #[must_use]
+    pub fn levels(&self) -> &[Vec<CellApp<A>>]
+    {
+        &self.levels
+    }
+
+    /// The critical-path fuel required to finish the plan.
+    ///
+    /// # Contract
+    /// - ensures: the value equals the number of dependency levels.
+    /// - provides: a fuel metric independent of serialized step count.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+    #[inline]
+    #[must_use]
+    pub const fn critical_path(&self) -> CausalDepth
+    {
+        self.critical_path
+    }
+
+    /// Replay one independent level from an already-replayed command.
+    ///
+    /// # Contract
+    /// - ensures: only the requested antichain level is executed.
+    /// - provides: on-demand level execution with deterministic within-level
+    ///   order.
+    /// - fails: [`NormalFormObstruction::InvalidReplayLevel`] when `level` is
+    ///   outside the plan, and the schedule refusals — a stale cell identifier
+    ///   or a step carrying no redex — when a scheduled step does not fire.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// See the `- fails:` clause above.
+    ///
+    /// # Adequacy
+    /// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+    #[inline]
+    pub fn replay_level(
+        &self,
+        store: &CellStore<A>,
+        current: &A::Cmd,
+        level: ReplayLevel,
+    ) -> Result<A::Cmd, NormalFormObstruction<A>>
+    {
+        let Some(steps) = self.levels.get(usize::from(level)).map(Vec::as_slice)
+        else {
+            return Err(NormalFormObstruction::InvalidReplayLevel {
+                level,
+                levels: CausalDepth::from(self.levels.len()),
+            });
+        };
+        run_schedule(store, current, steps)
+    }
+
+    /// Replay all levels when `fuel` covers the dependency critical path.
+    ///
+    /// # Contract
+    /// - ensures: levels execute in dependency order without flattening them
+    ///   into one serialized schedule.
+    /// - provides: the same outcome as sequential replay for independent
+    ///   levels, while retaining parallel batch boundaries for execution.
+    /// - fails: the schedule refusals of [`Self::replay_level`] — a stale cell
+    ///   identifier or a step carrying no redex. Fuel below the critical path
+    ///   is `Ok(None)`, a defined decline rather than a failure.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// See the `- fails:` clause above.
+    ///
+    /// # Adequacy
+    /// - witness: `normal_form::tests::a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan`.
+    #[inline]
+    pub fn replay_with_fuel(
+        &self,
+        store: &CellStore<A>,
+        fuel: CausalDepth,
+    ) -> Result<Option<A::Cmd>, NormalFormObstruction<A>>
+    {
+        if fuel < self.critical_path {
+            return Ok(None);
+        }
+        let mut current = A::skolemize(&self.peak);
+        for level in 0 .. self.levels.len() {
+            current = self.replay_level(store, &current, ReplayLevel::from(level))?;
+        }
+        Ok(Some(current))
+    }
 }
 
 /// Why a recorded derivation was **refused** a normal form.
@@ -480,6 +631,15 @@ impl<A: CellAlphabet> ReplayWitness<A>
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NormalFormObstruction<A: CellAlphabet = SequentAlphabet>
 {
+    /// A replay caller requested a level outside the plan's bounds.
+    InvalidReplayLevel
+    {
+        /// The requested zero-based level index.
+        level: ReplayLevel,
+        /// The number of levels the plan holds, which is also its critical-path
+        /// fuel — a count, never an index into the levels.
+        levels: CausalDepth,
+    },
     /// A recorded step names a cell the store does not hold.
     UnknownCell
     {
@@ -1568,6 +1728,101 @@ mod tests
                 "each primitive occurs once"
             );
         }
+    }
+
+    #[test]
+    fn a_fused_fixture_replays_both_certificate_paths_through_its_critical_path_plan()
+    {
+        let (store, tracelet) = fused_fixture();
+        let witness_a = normalize_certified(
+            &store,
+            &tracelet.overlap.peak,
+            &tracelet.joins_at,
+            &tracelet.path_a,
+        )
+        .expect("the generated certificate path_a replays");
+        let witness_b = normalize_certified(
+            &store,
+            &tracelet.overlap.peak,
+            &tracelet.joins_at,
+            &tracelet.path_b,
+        )
+        .expect("the generated certificate path_b replays");
+        assert_eq!(
+            witness_a.normal_form().joins_at,
+            witness_b.normal_form().joins_at,
+            "both certificate paths reach the same join"
+        );
+        let plan_a = witness_a.replay_plan();
+        let plan_b = witness_b.replay_plan();
+        // A replay plan is per-path, not per-boundary: `path_a` fires the two
+        // constituent cells and `path_b` fires the one fused cell, so the two
+        // plans schedule different cells and different level counts. What the
+        // two certificate paths share is the join they replay to, and that is
+        // what is asserted below — plan equality is not the invariant here.
+        assert_ne!(
+            plan_a.levels(),
+            plan_b.levels(),
+            "the fused path and the two-step path are different derivations of one boundary"
+        );
+        let sequential_a = run_schedule(
+            &store,
+            &SequentAlphabet::skolemize(&tracelet.overlap.peak),
+            &witness_a.canonical_path(),
+        )
+        .expect("the sequential canonical path_a replay succeeds");
+        let sequential_b = run_schedule(
+            &store,
+            &SequentAlphabet::skolemize(&tracelet.overlap.peak),
+            &witness_b.canonical_path(),
+        )
+        .expect("the sequential canonical path_b replay succeeds");
+        assert_eq!(sequential_a, sequential_b, "both sequential replays agree");
+        let planned = plan_a
+            .replay_with_fuel(&store, plan_a.critical_path())
+            .expect("the critical-path budget does not obstruct replay")
+            .expect("the complete plan returns an outcome");
+        assert_eq!(
+            sequential_a, planned,
+            "planned replay equals sequential replay"
+        );
+        let planned_b = plan_b
+            .replay_with_fuel(&store, plan_b.critical_path())
+            .expect("the critical-path budget does not obstruct the fused replay")
+            .expect("the complete fused plan returns an outcome");
+        assert_eq!(
+            sequential_b, planned_b,
+            "the fused path's planned replay equals its sequential replay"
+        );
+        let mut on_demand = SequentAlphabet::skolemize(&tracelet.overlap.peak);
+        for level in 0 .. plan_a.levels().len() {
+            on_demand = plan_a
+                .replay_level(&store, &on_demand, ReplayLevel::from(level))
+                .expect("each independent level replays on demand");
+        }
+        assert_eq!(
+            sequential_a, on_demand,
+            "on-demand replay equals sequential replay"
+        );
+        assert_eq!(
+            CausalDepth::from(plan_a.levels().len()),
+            plan_a.critical_path(),
+            "fuel is the number of antichain levels"
+        );
+        assert!(
+            matches!(
+                plan_a.replay_level(&store, &on_demand, ReplayLevel::from(plan_a.levels().len())),
+                Err(NormalFormObstruction::InvalidReplayLevel { .. })
+            ),
+            "a level outside the plan is refused as a typed obstruction, not a panic"
+        );
+        assert!(
+            plan_a
+                .replay_with_fuel(&store, CausalDepth::from(0_usize))
+                .expect("insufficient fuel is a normal result")
+                .is_none(),
+            "serialization work cannot be substituted for critical-path fuel"
+        );
     }
 
     #[test]

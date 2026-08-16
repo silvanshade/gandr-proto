@@ -117,6 +117,11 @@ copy_wrapper!(
     "Index of one position in a sequentialization of a derivation's events."
 );
 copy_wrapper!(
+    ReplayLevel,
+    usize,
+    "Zero-based dependency level of a certified derivation's replay plan."
+);
+copy_wrapper!(
     TranspositionCount,
     usize,
     "Number of adjacent transpositions an exchange witness performs."
@@ -234,7 +239,15 @@ copy_wrapper!(
 copy_wrapper!(
     StepIndependence,
     bool,
-    "Whether two recorded steps of one derivation are licensed to commute."
+    "Whether two recorded steps, two cells, two certificates, or two overlaps are independent: \
+     true means licensed to commute. This is the crate's single independence polarity, and an \
+     overlap question is this value negated at the point it is asked rather than an \
+     opposite-polarity sibling type."
+);
+copy_wrapper!(
+    CertificateIndex,
+    usize,
+    "Stable index of a certificate inserted into an overlap support."
 );
 copy_wrapper!(
     SubstitutionEmptyStatus,
