@@ -926,10 +926,13 @@ impl<'tree> SynNode<'tree>
                 | node_kinds::CODATA_OBSERVATION,
                 node_kinds::FIELD_TYPE,
             ) => self.after(label::COLON),
+            // An `unpack`'s package expression joins this group: it is the
+            // named child after `=`, exactly as a `val` statement's value is.
             | (
                 node_kinds::LET_STATEMENT | node_kinds::CO_FIELD | node_kinds::RECORD_FIELD,
                 node_kinds::FIELD_VALUE,
-            ) => self.after(label::EQUALS),
+            )
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE) => self.after(label::EQUALS),
             | (node_kinds::BIND_STATEMENT, node_kinds::FIELD_SOURCE) => {
                 self.after(label::LEFT_ARROW)
             },
@@ -1002,7 +1005,6 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_TYPE) => {
                 self.between(label::COLON, label::EQUALS)
             },
-            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE) => self.after(label::EQUALS),
             | (node_kinds::EXTERN_BLOCK, node_kinds::FIELD_LIBRARY) => {
                 self.nth_string_run(StringRunIndex(1))
             },
