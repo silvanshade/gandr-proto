@@ -39,6 +39,8 @@ mod incremental;
 #[cfg(test)]
 mod kernel;
 #[cfg(test)]
+mod live_match;
+#[cfg(test)]
 mod namespace;
 #[cfg(test)]
 mod origin_identity;

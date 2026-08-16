@@ -71,8 +71,11 @@ use super::types as ty_lower;
 use crate::boundary::ConstructorArity;
 use crate::boundary::ConstructorName;
 use crate::boundary::MatchDecision;
+use crate::boundary::MatchIndex;
 use crate::boundary::NodeText;
+use crate::boundary::TypeName;
 use crate::desc_elab::elaborate_data_descs;
+use crate::live_match;
 use crate::origin::ElabKind;
 use crate::origin::OriginNode;
 use crate::synnode::SynNode;
@@ -389,6 +392,79 @@ impl Lowerer<'_>
             acc = Value::pair(value, acc);
         }
         acc
+    }
+
+    /// The declaration view the live pattern analysis reads: every declared
+    /// datatype with its constructors, in declaration order, each carrying its
+    /// declared field count.
+    ///
+    /// It is a snapshot taken once at the end of lowering rather than a borrow,
+    /// so the analysis is a function of its arguments and can be recomputed
+    /// from a checkpoint without re-entering the lowerer.
+    pub(super) fn constructor_table(&self) -> live_match::ConstructorTable
+    {
+        let mut table = live_match::ConstructorTable::new();
+        for (name, decl) in &self.data {
+            let constructors = decl
+                .ctors
+                .iter()
+                .enumerate()
+                .map(|(tag, ctor)| live_match::DeclaredConstructor {
+                    name: ctor.clone(),
+                    arity: usize::from(
+                        self.field_arity(name.as_str().into(), ConstructorTag::from(tag)),
+                    ),
+                })
+                .collect();
+            table.declare(TypeName::from(name.as_str()), constructors);
+        }
+        table
+    }
+
+    /// Records one `case` for the live pattern analysis: its lowered scrutinee,
+    /// and every arm's pattern translated into the analysis's constraint
+    /// language.
+    ///
+    /// Recording is unconditional and never fails. An arm whose pattern is
+    /// outside what the lowerer can compile still contributes a branch here —
+    /// which is the point: the analysis describes the match the programmer
+    /// wrote, not the subset that happened to lower.
+    ///
+    /// Nothing here consults the declaration registry. Which datatype the match
+    /// eliminates is settled once, at analysis time, against the registry as it
+    /// stood when lowering finished — so a `case` written before the `data`
+    /// block it matches on is resolved exactly as one written after it.
+    pub(super) fn record_match_site(
+        &mut self,
+        node: SynNode<'_>,
+        scrutinee: &Value,
+    )
+    {
+        let branches: Vec<live_match::BranchPattern> = named_non_extra_children(node)
+            .into_iter()
+            .filter(|arm| arm.kind() == node_kinds::ARM)
+            .filter_map(|arm| arm.child_by_field_name(node_kinds::FIELD_PATTERN))
+            .map(|pattern| live_match::BranchPattern {
+                shape: live_match::translate_pattern(pattern),
+                byte_range: pattern.byte_range(),
+            })
+            .collect();
+        // The index is per source item, so a consumer addressing a match by
+        // (source item, match) needs nothing but the item's own source order —
+        // and nothing about how many core items that source item becomes.
+        let match_index = MatchIndex::from(
+            self.match_sites
+                .iter()
+                .filter(|site| site.source_item == self.source_item)
+                .count(),
+        );
+        self.match_sites.push(live_match::MatchSite {
+            source_item: self.source_item,
+            match_index,
+            byte_range: node.byte_range(),
+            scrutinee: scrutinee.clone(),
+            branches,
+        });
     }
 
     /// The declared field count of constructor `tag` of datatype `data_name`
@@ -741,6 +817,12 @@ impl Lowerer<'_>
         let scrut_node = required_field(node, node_kinds::FIELD_VALUE)?;
         let scrut = self.value_expr(scrut_node, &mut hoists)?;
         let scrut_value = scrut.readback_value()?;
+
+        // Record the match for the live pattern analysis before the arms are
+        // compiled away. The recording observes; it decides nothing about what
+        // follows, and a `case` this analysis has something to say about lowers
+        // exactly as one it does not.
+        self.record_match_site(node, &scrut_value);
 
         // Collect the arms as (tag, binder, body), and the datatype every arm
         // must share.

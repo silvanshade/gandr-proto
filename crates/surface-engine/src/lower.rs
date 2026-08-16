@@ -154,6 +154,7 @@ use crate::boundary::PipelineSource;
 use crate::boundary::ScopeSegment;
 use crate::boundary::ShellWordContinuation;
 use crate::boundary::SignificantIndex;
+use crate::boundary::SourceItemId;
 use crate::boundary::SourceOffset;
 use crate::boundary::SourceRange;
 use crate::boundary::SyntaxField;
@@ -164,6 +165,7 @@ use crate::ffi::CType;
 use crate::ffi::ForeignFn;
 use crate::ffi::ForeignModule;
 use crate::ffi::ForeignParam;
+use crate::live_match;
 use crate::namespace::Binding;
 use crate::namespace::Collision;
 use crate::namespace::EventKind;
@@ -907,6 +909,24 @@ pub struct Lowered
     /// constant tables. A REPL session carries it into the next submission
     /// exactly as it carries [`Self::import_scope`].
     recognition: Recognition,
+    /// Every match expression this source contributed, recorded in the live
+    /// analysis's own constraint language ([`crate::live_match`]) and addressed
+    /// by the **source** item that owns it.
+    ///
+    /// Lowering records rather than decides. It holds the CST, which is the
+    /// only place pattern structure survives, and it knows which source item it
+    /// is reading — but it does not know which submission of a session it
+    /// belongs to, and it has no business retaining anything past its own
+    /// result. So the sites travel out unanalyzed, and the session stamps the
+    /// submission, runs the analysis, and keeps the record.
+    ///
+    /// Nothing here gates lowering — a match this analysis calls inexhaustive
+    /// lowers exactly as it did before, and its siblings land beside it.
+    pub match_sites: Vec<live_match::MatchSite>,
+    /// The declarations the recorded sites are decided against, snapshotted
+    /// once at the end of lowering so every match sees the same table whatever
+    /// order the source put them in.
+    pub constructors: live_match::ConstructorTable,
 }
 
 impl Lowered
@@ -1224,6 +1244,8 @@ fn lower_source_seeded(
         obligations,
         import_scope: import_scope.clone(),
         import_index_base,
+        match_sites: Vec::new(),
+        source_item: SourceItemId(0),
         seal_serial: 0,
         recognition: match recognition {
             | Some(previous) => Recognition::resumed(previous, shadow_policy),
@@ -1789,6 +1811,59 @@ fn take_sig(
 // --- The lowerer
 // --------------------------------------------------------------
 
+/// Decodes the interior of a string literal.
+///
+/// Shared by the expression lowering and the pattern analysis: a string in
+/// pattern position denotes the same value as one in expression position, so
+/// the two must decode it the same way, or a literal pattern would silently
+/// stop matching its own literal.
+///
+/// Per the grammar
+/// (`grammar.js` `escape_sequence` = `\` followed by `.` or a `\r?\n`), an
+/// escape is a backslash followed by either one character or a line
+/// continuation:
+/// - the recognized escapes `\n` `\t` `\r` `\0` `\\` `\"` `\'` map to their
+///   control character;
+/// - a backslash before an actual newline (`\<LF>` or `\<CR><LF>`) is a line
+///   continuation, elided (the backslash and the newline both dropped);
+/// - any other `\c` decodes to the literal `c` (the backslash dropped), and a
+///   trailing lone backslash is dropped.
+#[inline]
+#[must_use]
+pub(crate) fn decode_string_escapes(inner: NodeText<'_>) -> String
+{
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            out.push(ch);
+            continue;
+        }
+        match chars.next() {
+            | Some('n') => out.push('\n'),
+            | Some('t') => out.push('\t'),
+            | Some('r') => out.push('\r'),
+            | Some('0') => out.push('\0'),
+            | Some('\\') => out.push('\\'),
+            | Some('"') => out.push('"'),
+            | Some('\'') => out.push('\''),
+            // A backslash before a literal newline is a line continuation
+            // (the grammar's `\r?\n` escape alternative): elide it. For a
+            // CRLF continuation the paired LF follows the CR in the same
+            // token, so consume it too. A trailing lone backslash (`None`)
+            // likewise yields nothing.
+            | Some('\r') => {
+                if chars.peek() == Some(&'\n') {
+                    let _consumed = chars.next();
+                }
+            },
+            | Some('\n') | None => {},
+            | Some(other) => out.push(other),
+        }
+    }
+    out
+}
+
 /// Lowering state: the source text (for node text extraction), the hoist-binder
 /// allocator, the hole-id allocator (total mode), and the strictness — both
 /// allocators are `Gensym`s over the nominal atom substrate (the design
@@ -1861,6 +1936,24 @@ struct Lowerer<'src>
     /// each grout-leaf hole's [`HoleNote`] from the obligation responsible for
     /// the hole's span.
     obligations: Vec<ObligationInstance>,
+    /// The match expressions recorded for live pattern analysis, in lowering
+    /// order.
+    ///
+    /// Recording happens while the CST is still in hand, because pattern
+    /// structure exists nowhere else: the lowered `case` keeps tag-indexed arms
+    /// and drops the or-patterns, literals, and nesting the programmer wrote.
+    /// The analysis itself runs after lowering, over these sites alone.
+    match_sites: Vec<live_match::MatchSite>,
+    /// The identity of the **source** item currently being lowered, so a
+    /// recorded match site knows which item the programmer wrote it in.
+    ///
+    /// Counted over the source items lowering reads, not over the core items it
+    /// emits. The two coincide today — each source item lowers to one core item
+    /// — and nothing downstream may depend on their coinciding: a source item
+    /// that lowered to two core items would renumber every later core index
+    /// while leaving every source identity exactly where it was, which is the
+    /// whole reason obligations are addressed by this one.
+    source_item: SourceItemId,
     /// The next serial an `unpack` mints its abstract-type atoms at.
     ///
     /// Minting is **per elimination**, and this counter is what makes it so: an
@@ -2288,7 +2381,7 @@ impl Lowerer<'_>
     ///
     /// The `string` node text spans the surrounding double quotes; they are
     /// stripped and the grammar's single-character escape sequences decoded
-    /// ([`Self::decode_string_escapes`]). Unlike `number`, every well-formed
+    /// ([`decode_string_escapes`]). Unlike `number`, every well-formed
     /// `string` is a valid literal, so there is no rejecting branch.
     fn string_literal(
         &self,
@@ -2303,54 +2396,9 @@ impl Lowerer<'_>
             .and_then(|rest| rest.strip_suffix('"'))
             .unwrap_or(text.0);
         VOut::from_legacy_value(
-            &Value::Str(Self::decode_string_escapes(inner.into())),
+            &Value::Str(decode_string_escapes(inner.into())),
             OriginNode::leaf(entry(node, None)),
         )
-    }
-
-    /// Decodes the interior of a string literal. Per the grammar
-    /// (`grammar.js` `escape_sequence` = `\` followed by `.` or a `\r?\n`), an
-    /// escape is a backslash followed by either one character or a line
-    /// continuation:
-    /// - the recognized escapes `\n` `\t` `\r` `\0` `\\` `\"` `\'` map to their
-    ///   control character;
-    /// - a backslash before an actual newline (`\<LF>` or `\<CR><LF>`) is a
-    ///   line continuation, elided (the backslash and the newline both
-    ///   dropped);
-    /// - any other `\c` decodes to the literal `c` (the backslash dropped), and
-    ///   a trailing lone backslash is dropped.
-    fn decode_string_escapes(inner: NodeText<'_>) -> String
-    {
-        let mut out = String::with_capacity(inner.len());
-        let mut chars = inner.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if ch != '\\' {
-                out.push(ch);
-                continue;
-            }
-            match chars.next() {
-                | Some('n') => out.push('\n'),
-                | Some('t') => out.push('\t'),
-                | Some('r') => out.push('\r'),
-                | Some('0') => out.push('\0'),
-                | Some('\\') => out.push('\\'),
-                | Some('"') => out.push('"'),
-                | Some('\'') => out.push('\''),
-                // A backslash before a literal newline is a line continuation
-                // (the grammar's `\r?\n` escape alternative): elide it. For a
-                // CRLF continuation the paired LF follows the CR in the same
-                // token, so consume it too. A trailing lone backslash (`None`)
-                // likewise yields nothing.
-                | Some('\r') => {
-                    if chars.peek() == Some(&'\n') {
-                        let _consumed = chars.next();
-                    }
-                },
-                | Some('\n') | None => {},
-                | Some(other) => out.push(other),
-            }
-        }
-        out
     }
 
     /// Lowers `true`/`false` to an annotated injection into `1 + 1` (plan:
@@ -4697,7 +4745,7 @@ impl Lowerer<'_>
                         byte_range: node.byte_range(),
                     });
                 };
-                Ok(Self::decode_string_escapes(inner.into()))
+                Ok(decode_string_escapes(inner.into()))
             },
             | kind => Err(LowerError::MalformedNode {
                 kind,
@@ -4903,6 +4951,9 @@ impl Lowerer<'_>
         let mut foreign: Vec<ForeignModule> = Vec::new();
         let mut codata: BTreeMap<String, codata::CodataDecl> = BTreeMap::new();
         let mut imports: Vec<ImportDeclaration> = Vec::new();
+        // Counted over the source items read, so it never moves when the number
+        // of core items one of them produces does.
+        let mut source_item_count: usize = 0;
         let mut namespace_handler = ImportNamespaceHandler;
 
         // The whole file failed to parse as items when it yields no item node
@@ -5063,6 +5114,13 @@ impl Lowerer<'_>
                     continue;
                 }
                 let item_index = items.len();
+                // Every match this item lowers is recorded against the source
+                // item's own identity, so the analysis result is addressed by
+                // where the programmer wrote it rather than by where lowering
+                // happened to put it. The counter advances per source item read
+                // — independently of how many core items that item produces.
+                self.source_item = SourceItemId(source_item_count);
+                source_item_count = source_item_count.saturating_add(1);
                 match self.item(child) {
                     | Ok((mut item, origin)) => {
                         // An explicit signature wins over any sugar-derived
@@ -5150,6 +5208,13 @@ impl Lowerer<'_>
         for (index, origin) in origins.into_iter().enumerate() {
             origin_map.insert_root(index, origin);
         }
+        // The declaration snapshot is taken once, here — after the registries
+        // are complete and before they are handed to the result, so every
+        // recorded match is decided against the same table regardless of where
+        // in the source it sat. Deciding is the session's, not lowering's: a
+        // lowering knows its own source and nothing of the submission it
+        // belongs to.
+        let constructors = self.constructor_table();
         Ok(Lowered {
             items,
             foreign,
@@ -5161,6 +5226,8 @@ impl Lowerer<'_>
             import_scope: core::mem::take(&mut self.import_scope),
             modules: core::mem::take(&mut self.modules),
             recognition: self.recognition.clone(),
+            match_sites: core::mem::take(&mut self.match_sites),
+            constructors,
         })
     }
 
@@ -7536,6 +7603,8 @@ mod tests
             hoist: Gensym::new(GandrSort::TmpHoist),
             holes: Gensym::new(GandrSort::HoleAddr),
             strictness: Strictness::Strict,
+            match_sites: Vec::new(),
+            source_item: SourceItemId(0),
             seal_serial: 0,
             foreign: BTreeMap::new(),
             import_scope: Scope::new(),

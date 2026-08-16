@@ -142,6 +142,7 @@ pub mod host;
 pub mod item_source;
 pub mod kernel;
 pub mod link;
+pub mod live_match;
 pub mod lower;
 pub mod namespace;
 pub mod origin;

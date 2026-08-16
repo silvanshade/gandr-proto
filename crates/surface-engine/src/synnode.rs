@@ -198,6 +198,8 @@ mod label
     pub const FALSE: TileSpelling = TileSpelling("false");
     /// The wildcard pattern tile label.
     pub const WILDCARD: TileSpelling = TileSpelling("_");
+    /// Rest-pattern lead tile (`.. p` inside a list pattern).
+    pub const DOT_DOT: TileSpelling = TileSpelling("..");
     /// The unrestricted-grade tile label.
     pub const OMEGA: TileSpelling = TileSpelling("ω");
     /// The type-variable tile label.
@@ -1126,6 +1128,38 @@ impl<'tree> SynNode<'tree>
             .map(|id| Self::wrap(self.tree, id))
     }
 
+    /// Whether this node carries `spelling` as a top-level tile — one of its
+    /// own significant children rather than one buried in a sub-form.
+    ///
+    /// A form the melder keeps **flat** has tiles a named-child walk cannot
+    /// see: `[h, ..t]` commits its `..` as a sibling of the elements, not as a
+    /// node wrapping the tail, so a consumer that must know a list pattern has
+    /// a rest has no named child to ask. This is the accessor for exactly that
+    /// question, and the depth rule is the recognizer's own — a tile inside a
+    /// nested bracket belongs to the nested form.
+    ///
+    /// # Contract
+    /// - ensures: `true` only for a tile at this node's own level.
+    /// - provides: the flat-form tile query the pattern analysis needs.
+    /// - fails: never; a synthesized run with no tiles answers `false`.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — a list pattern's rest is invisible to a named-child
+    ///   walk, so a wrong answer here silently turns `[h, ..t]` into a
+    ///   fixed-length `[h, t]` and refutes every list it should match.
+    /// - witness: `live_match::tests::translation_covers_the_landed_pattern_grammar`
+    #[inline]
+    #[must_use]
+    pub fn has_top_level_tile(
+        self,
+        spelling: TileSpelling,
+    ) -> TilePresence
+    {
+        let sig = self.sig();
+        self.has_top_level((&sig).into(), spelling)
+    }
+
     /// Whether this node is an `ERROR`/repair region: a grout leaf (a
     /// convex/ghost repair the melder inserted for a missing tile).
     #[inline]
@@ -1235,6 +1269,24 @@ impl<'tree> SynNode<'tree>
         let second_label = sig
             .get(start.saturating_add(1))
             .and_then(|&node| self.tree.tile_label(node));
+        // The three pattern forms whose lead tile does not name them. Each is
+        // recognized by the operator it carries rather than by what it starts
+        // with, because both operands are patterns and the left one may be
+        // anything: `Some(y) | None` leads with a constructor, `_ as m` with a
+        // wildcard, and neither lead says which form it is. The or-pattern is
+        // tested first because it binds loosest, so `p | q as m` groups as
+        // `p | (q as m)` and only the `|` is top-level here.
+        if matches!(sort, Some(Sort::Pattern)) {
+            if self.has_top_level(sig, label::PIPE).0 {
+                return node_kinds::OR_PATTERN;
+            }
+            if self.has_top_level(sig, label::AS).0 {
+                return node_kinds::AS_PATTERN;
+            }
+            if lead == Some(label::DOT_DOT) {
+                return node_kinds::REST_PATTERN;
+            }
+        }
         match lead {
             | Some(label::DEF) => self.classify_def(sig, SignificantIndex(start)),
             | Some(label::EXTERN) => node_kinds::EXTERN_BLOCK,

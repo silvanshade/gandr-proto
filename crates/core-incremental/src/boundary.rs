@@ -104,3 +104,28 @@ copy_wrapper!(
     usize,
     "Number of item checkpoints adopted by an incremental resume."
 );
+copy_wrapper!(
+    SubmissionOrdinal,
+    usize,
+    "Which submission of a producing session a match was written in. Opaque to \
+     this crate: it is the producer's own numbering, and the stream only orders \
+     and compares it."
+);
+copy_wrapper!(
+    SourceItemOrdinal,
+    usize,
+    "Which source item of its submission owns a match — the programmer's item, \
+     never a core item position, because one source item may lower to any \
+     number of core items."
+);
+copy_wrapper!(
+    MatchOrdinal,
+    usize,
+    "Which match of its owning source item this is, in source order."
+);
+copy_wrapper!(
+    LivenessEmpty,
+    bool,
+    "Whether a liveness map publishes nothing at all — no analyzed match and no \
+     unretained submission."
+);

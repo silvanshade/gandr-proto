@@ -113,6 +113,7 @@ macro_rules! test_copy_boundary {
 }
 
 test_copy_boundary!(TestCount, usize);
+test_copy_boundary!(TestHoleId, u32);
 test_copy_boundary!(TestPathComponent, u32);
 test_copy_boundary!(TestInteger, i64);
 test_copy_boundary!(TestDecision, bool);

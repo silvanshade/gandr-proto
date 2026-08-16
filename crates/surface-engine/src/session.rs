@@ -116,12 +116,17 @@ use crate::boundary::DefinitionBindingFlag;
 use crate::boundary::DefinitionName;
 use crate::boundary::PipelineSource;
 use crate::boundary::SourceRange;
+use crate::boundary::SubmissionIndex;
 use crate::diag;
 use crate::ffi::ForeignModule;
 use crate::kernel::DefinitionOffer;
 use crate::kernel::KernelAdmissions;
 use crate::kernel::KernelVerdict;
 use crate::kernel::WithheldReason;
+use crate::live_match::MatchAnalysis;
+use crate::live_match::RetainedSource;
+use crate::live_match::SubmissionRecord;
+use crate::live_match::liveness;
 use crate::lower::ImportDeclaration;
 use crate::lower::ImportIndex;
 use crate::lower::LowerError;
@@ -211,6 +216,19 @@ pub struct Submission
     /// index-aligned with `outcomes`. Every item has an entry: one the kernel
     /// never saw carries [`KernelVerdict::Withheld`] naming why.
     pub kernel: Vec<KernelVerdict>,
+    /// What the live pattern analysis concluded about each match expression in
+    /// the submitted source, in lowering order.
+    ///
+    /// These are the elaboration's **obligations**, carried through to the
+    /// caller unrendered: exhaustiveness and redundancy facts, per-branch
+    /// liveness, and the pattern-position hole marks.
+    ///
+    /// Each analysis is addressed by its [`crate::live_match::MatchOrigin`] —
+    /// the submission it was written in, the source item that owns it, and its
+    /// position in that item. That is the same addressing the synthesis stream
+    /// publishes, so a consumer reading both needs no translation between them,
+    /// and neither has to know how many core items any source item lowered to.
+    pub matches: Vec<MatchAnalysis>,
 }
 
 /// A REPL session: item-granular typing checkpoints and the definition values
@@ -261,6 +279,17 @@ pub struct Session
     /// The kernel environment the session's S1-eligible definitions accumulate
     /// in, and the naming environment that resolves one to another.
     kernel: KernelAdmissions,
+    /// One entry per submission, in submission order: the source-side match
+    /// records the live pattern analysis is recomputed from, or the marker
+    /// standing where a submission's records were never retained.
+    ///
+    /// **This is the only state the analysis needs, and it lives here rather
+    /// than in the core.** A checkpoint keeps a lowered term, and patterns are
+    /// not in a lowered term — so without this a match submitted on an earlier
+    /// line would silently stop being reported the moment a later line arrived.
+    /// Keeping it session-side is what leaves checkpoints, their footprints,
+    /// and their equality exactly as they were.
+    sources: Vec<RetainedSource>,
 }
 
 impl Session
@@ -269,7 +298,8 @@ impl Session
     ///
     /// # Contract
     /// - ensures: the returned session types against the prelude operators and
-    ///   carries no source items, checkpoints, or definitions.
+    ///   carries no source items, checkpoints, definitions, or source match
+    ///   records.
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -292,6 +322,7 @@ impl Session
             recognition: Recognition::new(ShadowPolicy::WarnAndAllow),
             shadow_policy: ShadowPolicy::WarnAndAllow,
             kernel: KernelAdmissions::new(),
+            sources: Vec::new(),
         }
     }
 
@@ -318,6 +349,70 @@ impl Session
     )
     {
         self.shadow_policy = policy;
+    }
+
+    /// Opens a session on core state restored from a persisted checkpoint
+    /// artifact, with **no** source match records.
+    ///
+    /// This is the record-stripped resume, and what it cannot do is the point.
+    /// A checkpoint artifact carries lowered terms and their typings; the
+    /// patterns the programmer wrote were never in the core to be persisted. So
+    /// the restored program's matches are unrecoverable, and the session says
+    /// exactly that: everything restored is recorded as one prior submission
+    /// whose source was not retained, and the synthesis stream names it with
+    /// [`gandr_core_incremental::stream::SynthesisEvent::SourceNotRetained`].
+    /// One marker rather than a reconstructed count is deliberate — the
+    /// artifact carries no submission structure, and inventing one would be a
+    /// fiction a consumer could not tell from a fact.
+    ///
+    /// # Contract
+    /// - requires: `checkpoints` validated `program`, as
+    ///   [`gandr_core_incremental::persistence::restore`] returns them
+    ///   together.
+    /// - ensures: the typing context is rebuilt from the restored typings, so a
+    ///   value-typed bound definition is in scope for the next submission by
+    ///   name and type.
+    /// - ensures: the restored program is one prior submission reported as
+    ///   `SourceNotRetained`, and the next submission is numbered after it and
+    ///   analyzed normally.
+    /// - ensures: what the artifact does not carry is not invented. Stored
+    ///   definition **values** are absent, so a restored definition is bound
+    ///   for typing and evaluates nothing — the same standing an unevaluable
+    ///   definition already has. The surface declaration registries (`data`,
+    ///   `codata`, imports, `extern` modules) are absent too, so a submission
+    ///   naming an earlier datatype must redeclare it.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the distinction that matters is between "no matches
+    ///   to report" and "the records are gone", and only a resumed session can
+    ///   exhibit the second; a fixture that never resumes cannot tell an
+    ///   implementation that omits the marker from one that publishes it.
+    /// - witness: `live_match::tests::a_record_stripped_resume_reports_source_not_retained`
+    #[inline]
+    #[must_use]
+    pub fn resume_from_core(
+        program: Program,
+        checkpoints: Checkpoints,
+    ) -> Self
+    {
+        let mut session = Self::new();
+        for typing in checkpoints.items.iter().map(|item| &item.typing) {
+            if let ItemTyping::Definition {
+                ref name,
+                ty: Ty::Value(ref value_type),
+                bound: true,
+            } = *typing
+            {
+                session.ctx.bind(name.clone(), value_type.clone());
+            }
+        }
+        session.program = program;
+        session.checkpoints = checkpoints;
+        session.sources = alloc::vec![RetainedSource::SourceNotRetained {
+            submission: SubmissionIndex::from(0_usize),
+        }];
+        session
     }
 
     /// The kernel admissions this session has accumulated.
@@ -471,6 +566,35 @@ impl Session
         &self.ctx
     }
 
+    /// The ordered item program whose typing state this session checkpoints.
+    ///
+    /// # Contract
+    /// - ensures: returns every item submitted so far, in program order — the
+    ///   same program [`Session::persist_kernel_checkpoint`] stores under and
+    ///   [`gandr_core_incremental::persistence::restore`] validates against.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn program(&self) -> &Program
+    {
+        &self.program
+    }
+
+    /// The validated typing checkpoints, one per item of [`Session::program`].
+    ///
+    /// # Contract
+    /// - ensures: returns the checkpoint set the next resume starts from.
+    /// - provides: the core state a caller persists and later reopens through
+    ///   [`Session::resume_from_core`] — core state only, carrying no source
+    ///   match records, which is why reopening reports them as not retained.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn checkpoints(&self) -> &Checkpoints
+    {
+        &self.checkpoints
+    }
+
     /// Resolves a persistent import path to the declaration that introduced
     /// its binding.
     ///
@@ -508,6 +632,8 @@ impl Session
     ///   replacement.
     /// - witness: `tests::session::successful_submissions_publish_whole_program_synthesis`
     /// - witness: `session::tests::failed_submission_retains_latest_synthesis`
+    /// - witness: `live_match::tests::the_stream_publishes_per_branch_status`
+    /// - witness: `live_match::tests::adoption_does_not_move_a_verdict`
     #[inline]
     #[must_use]
     pub fn latest_synthesis_stream(&self) -> Option<SynthesisStream>
@@ -551,6 +677,8 @@ impl Session
     /// - witness: `gandr_core_incremental::tests::incremental`
     /// - witness: `tests::kernel::every_item_carries_exactly_one_verdict`
     /// - witness: `tests::kernel::a_later_definition_refers_to_an_earlier_one`
+    /// - witness: `live_match::tests::an_inexhaustive_match_does_not_block_its_siblings`
+    /// - witness: `live_match::tests::the_submission_and_the_stream_agree_on_the_item`
     #[inline]
     pub fn submit<'source, S>(
         &mut self,
@@ -591,20 +719,42 @@ impl Session
     ///   after an injected error kills mutation-before-error and
     ///   stream-clearing variants.
     /// - witness: `session::tests::failed_submission_retains_latest_synthesis`
+    /// - witness: `live_match::tests::a_prior_submissions_matches_survive_the_next_one`
     #[inline]
     fn finish_submission(
         &mut self,
         lowered: Result<crate::lower::Lowered, LowerError>,
     ) -> Result<Submission, LowerError>
     {
-        let lowered = lowered?;
+        let mut lowered = lowered?;
         let report = diag::report(&lowered, &self.ctx);
+
+        // Retain this submission's source records, and analyze it as one of
+        // them. The submission's number is its position in the retained
+        // sequence — a count of submissions, never of items — so a source item
+        // that lowers to several core items moves nothing here.
+        //
+        // The lowering error above is this method's only failure, so recording
+        // now still leaves the session unchanged on every path that returns
+        // one.
+        let record = SubmissionRecord {
+            submission: SubmissionIndex::from(self.sources.len()),
+            sites: core::mem::take(&mut lowered.match_sites),
+            table: core::mem::take(&mut lowered.constructors),
+        };
+        let matches = record.analyze();
+        self.sources.push(RetainedSource::Records(record));
 
         let prior_item_count = self.program.items.len();
         let mut edited = self.program.clone();
         edited.items.extend(lowered.items.iter().cloned());
         let resumed = resume_with(&self.checkpoints, &edited, &self.base_ctx);
-        let synthesis = SynthesisStream::from_resume(&resumed);
+        // Whole-program liveness: this submission's analyses merged with every
+        // earlier submission's, recomputed from the retained records rather
+        // than accumulated, and keyed by origin so each recorded match
+        // publishes exactly one entry.
+        let synthesis =
+            SynthesisStream::from_resume_with_liveness(&resumed, &liveness(&self.sources));
 
         let mut outcomes = Vec::with_capacity(lowered.items.len());
         let mut verdicts = Vec::with_capacity(lowered.items.len());
@@ -649,6 +799,7 @@ impl Session
             report,
             outcomes,
             kernel: verdicts,
+            matches,
         })
     }
 

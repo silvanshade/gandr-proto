@@ -108,6 +108,12 @@ pub const UNSUPPORTED_STATEMENTS: [SyntaxKind; 6] = [
 /// A tuple pattern `(p, q, …)`.
 pub const TUPLE_PATTERN: SyntaxKind = SyntaxKind("tuple_pattern");
 pub const CONSTRUCTOR_PATTERN: SyntaxKind = SyntaxKind("constructor_pattern");
+/// An or-pattern `p | q`.
+pub const OR_PATTERN: SyntaxKind = SyntaxKind("or_pattern");
+/// An as-pattern `p as x`.
+pub const AS_PATTERN: SyntaxKind = SyntaxKind("as_pattern");
+/// A rest pattern `.. p`, binding the tail of a list pattern.
+pub const REST_PATTERN: SyntaxKind = SyntaxKind("rest_pattern");
 pub const WILDCARD: SyntaxKind = SyntaxKind("wildcard");
 pub const IDENTIFIER: SyntaxKind = SyntaxKind("identifier");
 pub const TYPE_VARIABLE: SyntaxKind = SyntaxKind("type_variable");

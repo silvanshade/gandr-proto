@@ -488,6 +488,62 @@ semantic_copy!(
     /// Whether an origin map contains no provenance entries.
     pub struct OriginMapEmpty(bool);
 );
+semantic_copy!(
+    /// Which submission of a session a source item was written in.
+    ///
+    /// Submissions are numbered as a session receives them, so the index is
+    /// stable for the life of the session and independent of how many core
+    /// items any submission lowered to.
+    pub struct SubmissionIndex(usize);
+);
+semantic_copy!(
+    /// Stable identity of one **source** item within its submission — the
+    /// programmer's item, counted as lowering reads the source file.
+    ///
+    /// Deliberately not a core item index. One source item may lower to any
+    /// number of core items, and an obligation about a pattern the programmer
+    /// wrote must survive that: the identity is assigned where the item is
+    /// read, and nothing downstream renumbers it.
+    pub struct SourceItemId(usize);
+);
+semantic_copy!(
+    /// Source-order index of one match expression within its source item.
+    pub struct MatchIndex(usize);
+);
+semantic_copy!(
+    /// Source-order index of one branch within its match expression.
+    pub struct BranchIndex(usize);
+);
+semantic_copy!(
+    /// Number of leading branches that already entail a later branch.
+    pub struct EntailingPrefix(usize);
+);
+semantic_copy!(
+    /// Identity of a pattern-position typed hole, derived from its source
+    /// position rather than minted, so it never perturbs the expression holes
+    /// around it.
+    pub struct PatternHoleId(u32);
+);
+semantic_copy!(
+    /// Whether a value is too indeterminate for a pattern to decide against.
+    pub struct ScrutineeIndeterminacy(bool);
+);
+semantic_copy!(
+    /// Whether every step that produced a coverage row was a pattern the
+    /// analysis read — the only case that can establish coverage.
+    pub struct RowReadability(bool);
+);
+semantic_copy!(
+    /// Whether filling a pattern hole would settle what a coverage row leaves
+    /// open. False once an unreadable region stands on the row's path, because
+    /// no filling reaches that.
+    pub struct RowHoleDischargeable(bool);
+);
+semantic_copy!(
+    /// Number of pending sub-results one assembly step consumes from a working
+    /// stack.
+    pub struct PendingResultCount(usize);
+);
 
 semantic_str!(SyntaxKind);
 semantic_str!(TileSpelling);
