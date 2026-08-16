@@ -60,6 +60,7 @@ pub mod intern;
 pub mod kernel_bridge;
 pub mod machine;
 pub mod mark;
+pub mod nbe;
 pub mod nominal;
 pub mod outcome;
 pub mod prim;

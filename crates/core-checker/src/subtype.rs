@@ -56,6 +56,9 @@ use crate::boundary::NameRef;
 use crate::boundary::SubtypeDecision;
 use crate::control::Dir;
 use crate::error::TypeError;
+use crate::nbe::Normalizer;
+use crate::nbe::conv::converts;
+use crate::nbe::conv::type_converts;
 use crate::types::CompType;
 use crate::types::Ty;
 use crate::types::ValueType;
@@ -290,8 +293,14 @@ pub fn comp_subtype(
 /// `Unknown` side (the consistent-subtyping wildcard, D5), then decomposes
 /// the pair by the §"Subtyping decomposition" rules — covariant `×`, `+`,
 /// `List`, record, `F`, and `With`; contravariant arrow argument, `Stk` answer,
-/// and `Thunk` grade; both directions on `Path` and `Sigma` — and pushes the
-/// child goals.
+/// and `Thunk` grade — and pushes the child goals.
+///
+/// The two **invariant** formers are decided rather than decomposed: `Path` and
+/// `Sigma` go to the normalizer's definitional equality
+/// ([`crate::nbe::conv::type_converts`]) in one call each, because invariance
+/// is what conversion decides and a two-way subtyping pass was only ever
+/// spelling that out. Endpoints go the same way
+/// ([`crate::nbe::conv::converts`]), so they now relate up to beta.
 ///
 /// # Contract
 /// - ensures: returns `true` iff every goal the initial goals decompose into
@@ -306,6 +315,14 @@ pub fn comp_subtype(
 /// - input recursion: none.
 fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
 {
+    // The normalizer is minted only if an invariant position is actually met,
+    // and it is then reused for every one in this run. It carries the **empty**
+    // definitional environment, and that is correct rather than convenient: the
+    // core term language has no definition form at all, so nothing the checker
+    // compares can have an unfolding rule. A populated environment belongs to
+    // the elaborator, which reaches conversion through the normalizer's own
+    // entry points rather than through this relation.
+    let mut nbe: Option<Normalizer> = None;
     while let Some(goal) = goals.pop() {
         match goal {
             | SubtypeGoal::Value(sub, sup) => {
@@ -382,13 +399,18 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                             rhs: ref hi_rhs,
                         },
                     ) => {
-                        if !bool::from(crate::identity::value_eq(lo_lhs, hi_lhs))
-                            || !bool::from(crate::identity::value_eq(lo_rhs, hi_rhs))
+                        // Invariance in the carrier and in both endpoints: the
+                        // identity type's arm is decided by *conversion*, not by
+                        // a two-way subtyping pass, because widening a path
+                        // without transport is unsound and conversion is the
+                        // relation that says so directly.
+                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        if !bool::from(converts(nbe, lo_lhs, hi_lhs))
+                            || !bool::from(converts(nbe, lo_rhs, hi_rhs))
+                            || !bool::from(type_converts(nbe, lo_ty, hi_ty))
                         {
                             return false.into();
                         }
-                        goals.push(SubtypeGoal::Value(Rc::clone(hi_ty), Rc::clone(lo_ty)));
-                        goals.push(SubtypeGoal::Value(Rc::clone(lo_ty), Rc::clone(hi_ty)));
                     },
                     | (
                         &ValueType::Data {
@@ -424,6 +446,12 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                             snd: ref hi_snd,
                         },
                     ) => {
+                        // Invariance again, and for the same reason: covariant
+                        // subtyping under a dependent binder is a refinement
+                        // this rung does not make, so the two sides convert or
+                        // they do not relate. The binder alignment stays here
+                        // because it is the caller's obligation, not the
+                        // conversion relation's.
                         let lo_snd_aligned = if lo_binder == hi_binder {
                             Rc::clone(lo_snd)
                         }
@@ -434,13 +462,12 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                                 &crate::syntax::Value::var(NameRef::from(hi_binder.as_str())),
                             ))
                         };
-                        goals.push(SubtypeGoal::Value(
-                            Rc::clone(hi_snd),
-                            Rc::clone(&lo_snd_aligned),
-                        ));
-                        goals.push(SubtypeGoal::Value(lo_snd_aligned, Rc::clone(hi_snd)));
-                        goals.push(SubtypeGoal::Value(Rc::clone(hi_fst), Rc::clone(lo_fst)));
-                        goals.push(SubtypeGoal::Value(Rc::clone(lo_fst), Rc::clone(hi_fst)));
+                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        if !bool::from(type_converts(nbe, lo_fst, hi_fst))
+                            || !bool::from(type_converts(nbe, &lo_snd_aligned, hi_snd))
+                        {
+                            return false.into();
+                        }
                     },
                     | _ => return false.into(),
                 }
@@ -517,6 +544,71 @@ mod tests
     {
         let value_type = ValueType::atom("Foo");
         assert!(bool::from(value_subtype(&value_type, &value_type)));
+    }
+
+    /// **The conversion migration, observed through the relation that consumes
+    /// it.** Identity endpoints used to be compared by a structural,
+    /// no-reduction equality, so two beta-equal endpoints read as distinct and
+    /// the two path types did not relate. They now go through the normalizer,
+    /// which is the deliberate coarsening the rung was scheduled for.
+    #[test]
+    fn path_endpoints_relate_up_to_beta_since_the_normalizer_decides_them()
+    {
+        let redex = Rc::new(crate::syntax::Value::Thunk(
+            crate::grade::Grade::ONE,
+            Rc::new(crate::syntax::Comp::app(
+                crate::syntax::Comp::lam(
+                    "x",
+                    crate::syntax::Comp::ret(crate::syntax::Value::var(
+                        crate::boundary::NameRef::from("x"),
+                    )),
+                ),
+                crate::syntax::Value::Int(3),
+            )),
+        ));
+        let contractum = Rc::new(crate::syntax::Value::Thunk(
+            crate::grade::Grade::ONE,
+            Rc::new(crate::syntax::Comp::ret(crate::syntax::Value::Int(3))),
+        ));
+        let path =
+            |lhs: &Rc<crate::syntax::Value>, rhs: &Rc<crate::syntax::Value>| ValueType::Path {
+                ty: Rc::new(ValueType::integer()),
+                lhs: Rc::clone(lhs),
+                rhs: Rc::clone(rhs),
+            };
+        let reduced = path(&contractum, &contractum);
+        let unreduced = path(&redex, &redex);
+        assert!(bool::from(value_subtype(&unreduced, &reduced)));
+        assert!(bool::from(value_subtype(&reduced, &unreduced)));
+        // Endpoints that are genuinely apart still do not relate.
+        let apart = path(
+            &contractum,
+            &Rc::new(crate::syntax::Value::Thunk(
+                crate::grade::Grade::ONE,
+                Rc::new(crate::syntax::Comp::ret(crate::syntax::Value::Int(4))),
+            )),
+        );
+        assert!(!bool::from(value_subtype(&reduced, &apart)));
+    }
+
+    /// A dependent pair is invariant, and the normalizer decides it: two sigmas
+    /// differing only in their binder name relate, and one differing in a
+    /// component does not.
+    #[test]
+    fn sigma_is_invariant_and_alpha_insensitive()
+    {
+        let sigma = |binder: &str| ValueType::Sigma {
+            fst: Rc::new(ValueType::integer()),
+            binder: alloc::string::String::from(binder),
+            snd: Rc::new(ValueType::Unit),
+        };
+        assert!(bool::from(value_subtype(&sigma("x"), &sigma("y"))));
+        let other = ValueType::Sigma {
+            fst: Rc::new(ValueType::integer()),
+            binder: alloc::string::String::from("x"),
+            snd: Rc::new(ValueType::integer()),
+        };
+        assert!(!bool::from(value_subtype(&sigma("x"), &other)));
     }
 
     /// **The abstraction-leak refutation at the checked core.** A sealed atom

@@ -4,6 +4,18 @@ Notable changes to the gandr workspace, newest first.
 This is the single workspace changelog; the per-crate `docs/` directories it replaces are leaving the tree, and their salvageable history is preserved here.
 Entries dated before 2026-07-21 record the relevant tier's lineage before its absorption into this tree.
 
+## 2026-08-16
+
+- **core-checker**: the checker acquires a real conversion engine — `nbe` normalizes by evaluation over a glued semantic domain, and the structural no-reduction equality that stood in for definitional equality is retired rather than kept beside it.
+  The value domain names **both glued faces in its type**: a term face retaining the source value while nothing beneath it has reduced, so readback hands that term straight back, and an unfolding face keeping a neutral's lazily-forced unfolded form beside its neutral form, grown as the spine grows.
+  Force has three modes and readback three options, both iterative, and both deterministic: fresh variables are de Bruijn levels drawn from a counter, so no answer depends on an address, an allocation order, or a map iteration order.
+  Conversion runs the six-step pipeline — identity, cached-word guards, iterative structural comparison, lazy unfolding ordered by definitional height, smart unfolding gated on case-tree progress, and rigid/flex/full speculation over choice points that back off onto the already-forced face rather than re-evaluating.
+  Semantic values live in a per-run arena as `u32` ids with watermark truncation, so evaluation aliases ids without creating sharing and nothing an unfolding built outlives its verdict; interning is **syntax only**, one deduplicating table per differential face, and no lookup establishes equality across faces.
+  Records reduce and compare: structure projection is weak-head and spine-local, and a record type — which is what a module signature is — compares field by field over its canonical order, with no width rule and no permutation rule anywhere in the engine.
+  Effects, handlers, resumptions, delimiters, captures, the grade operations, and native primitives evaluate their operands and stop, so the conversion quarantine now holds by construction rather than because nothing was evaluated.
+- **core-checker**: the identity type's subtyping arm is decided by that engine — endpoints through the normalizer's value conversion and the carrier through its type conversion, replacing the structural equality and the two-way subtyping pass that stood in for invariance.
+  Two beta-equal endpoints now relate where they previously did not, which is the deliberate coarsening this rung was scheduled for; the dependent pair's arm moves the same way, keeping its binder alignment on the caller's side where it belongs.
+
 ## 2026-08-14
 
 - **surface-engine**: the kernel bridge acquires a shipping consumer — the interactive session now offers every typed definition to the certified kernel's `add_decl` choke point through `gandr-core-checker`'s elaborator-side bridge, accumulating the definitions that lower into the closed S1 vocabulary as one kernel environment (`kernel::KernelAdmissions`, reachable as `Session::kernel`).

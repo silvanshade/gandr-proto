@@ -312,6 +312,101 @@ copy_wrapper!(
     bool,
     "Result of a structural value equality check."
 );
+copy_wrapper!(
+    ApproximateDepth,
+    u32,
+    "Saturating depth approximation cached in a semantic guard word."
+);
+copy_wrapper!(
+    BacktrackStatus,
+    bool,
+    "Whether a conversion failure found a speculation choice point to retry."
+);
+copy_wrapper!(
+    ClosureArity,
+    usize,
+    "Number of binders a normalizer closure abstracts."
+);
+copy_wrapper!(
+    TermRetention,
+    bool,
+    "Whether evaluating a value left its source term face retainable."
+);
+copy_wrapper!(
+    UnfoldPermission,
+    bool,
+    "Whether a force mode or conversion state may spend an unfolding."
+);
+copy_wrapper!(
+    ConversionFuel,
+    u32,
+    "Remaining unfolding steps a conversion or readback run may spend."
+);
+copy_wrapper!(
+    DefinitionCount,
+    usize,
+    "Number of definitions visible in a definitional environment."
+);
+copy_wrapper!(
+    DefinitionHeightLevel,
+    u32,
+    "Definitional height of a definition body in the unfolding order."
+);
+copy_wrapper!(
+    GuardDecision,
+    bool,
+    "Whether a pair of semantic guard words settles a comparison outright."
+);
+copy_wrapper!(
+    HoleOccurrence,
+    bool,
+    "Whether a hole occurs anywhere inside a semantic value."
+);
+copy_wrapper!(
+    InternedSyntaxCount,
+    usize,
+    "Number of canonical entries in the normalizer's syntax interner."
+);
+copy_wrapper!(
+    ProgressStatus,
+    bool,
+    "Whether unfolding a definition made case-tree progress."
+);
+copy_wrapper!(
+    RigidStatus,
+    bool,
+    "Whether no unfolding rule is reachable inside a semantic value."
+);
+copy_wrapper!(
+    ScopeDepth,
+    usize,
+    "Number of open scopes in a per-scope definitional environment."
+);
+copy_wrapper!(
+    SemanticHash,
+    u64,
+    "Content hash cached in a semantic value's guard word."
+);
+copy_wrapper!(
+    SemanticNodeCount,
+    usize,
+    "Population of one node family in the normalizer's semantic arena."
+);
+copy_wrapper!(
+    SemanticNodeIndex,
+    usize,
+    "Index of a node in one family of the normalizer's semantic arena."
+);
+copy_wrapper!(
+    SpineLength,
+    usize,
+    "Number of frustrated eliminators in a neutral computation's spine."
+);
+copy_wrapper!(
+    VariableLevel,
+    u32,
+    "De Bruijn level of a normalizer-generated rigid variable."
+);
 
 impl PrimitivePredicate
 {
@@ -495,6 +590,29 @@ impl AsMut<Vec<Vec<u32>>> for PathSetMut<'_>
 {
     #[inline]
     fn as_mut(&mut self) -> &mut Vec<Vec<u32>>
+    {
+        self.0
+    }
+}
+
+/// Borrowed canonical binder scope used while keying a term.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct BinderScope<'term>(&'term [&'term str]);
+
+impl<'term> From<&'term [&'term str]> for BinderScope<'term>
+{
+    #[inline]
+    fn from(value: &'term [&'term str]) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl<'term> AsRef<[&'term str]> for BinderScope<'term>
+{
+    #[inline]
+    fn as_ref(&self) -> &[&'term str]
     {
         self.0
     }

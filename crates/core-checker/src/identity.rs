@@ -1,160 +1,42 @@
-//! Identity-type support.
-//!
-//! Structural value equality and the value-into-type substitution that
-//! instantiates the [`Comp::Walk`](crate::syntax::Comp::Walk) motive (ADR-76;
-//! the identity and univalence design's §4).
+//! Identity-type support: the value-into-type substitution that instantiates
+//! the [`Comp::Walk`](crate::syntax::Comp::Walk) motive (ADR-76; the identity
+//! and univalence design's §4).
 //!
 //! `Path A x y` is gandr's first dependent former — terms occur inside a type —
-//! so two pieces of machinery the non-dependent core never needed arrive here:
+//! and it needs two pieces of machinery the non-dependent core never did. One
+//! of them lives here.
 //!
-//! * **structural value equality** [`value_eq`], the `≡ᵥ` the identity
-//!   subtyping arm ([`crate::subtype::value_subtype`]) decides its endpoints
-//!   with; and
-//! * **value-into-type substitution** ([`subst_valuetype`] /
-//!   [`subst_comptype`]), which the identity eliminator's typing rule
-//!   ([`crate::checker`] / [`crate::machine`]) drives to form the base's
-//!   expected type `C[x/y][here(x)/q]` and the result type `C[a/x][b/y][p/q]`.
+//! * **Value-into-type substitution** ([`subst_valuetype`] /
+//!   [`subst_comptype`]) is this module's: the identity eliminator's typing
+//!   rule ([`crate::checker`] / [`crate::machine`]) drives it to form the
+//!   base's expected type `C[x/y][here(x)/q]` and the result type
+//!   `C[a/x][b/y][p/q]`.
+//! * **Definitional equality on the endpoints** is not. The `≡ᵥ` the identity
+//!   subtyping arm decides its endpoints with is now
+//!   [`crate::nbe::conv::converts`], the normalizer's own relation. The
+//!   structural, no-reduction equality that stood in for it at rung 1 is
+//!   **retired**: it decided a strictly weaker relation than the language's,
+//!   and keeping both would have meant two definitional equalities in one
+//!   checker.
 //!
-//! At rung 1 (the identity and univalence design's §4.3) there is **no
-//! reduction
-//! inside a type**: `value_eq` is α-respecting structural equality with a
-//! pointer-equality fast path and hole/annotation consistency, nothing more;
-//! the NbE-era definitional equality that adds Walk-β,
-//! congruence, and substitution laws is future work. Types carry **no binders**
-//! (`Path A x y` does not bind `x`/`y` — they are value *occurrences*), so type
-//! substitution is capture-free structural recursion that delegates the one
-//! binder-bearing case — a value under a thunk — to the proven capture-avoiding
-//! engine [`crate::subst::subst_value`]. Both `value_eq` and the type
-//! substitution engine run as explicit heap worklists (the ADR-47 iterative
-//! discipline), so even an adversarially deep value or type compares and
-//! substitutes without overflowing the host call stack.
+//! Types carry **no binders** (`Path A x y` does not bind `x`/`y` — they are
+//! value *occurrences*), so type substitution is capture-free structural
+//! recursion that delegates the one binder-bearing case — a value under a thunk
+//! — to the proven capture-avoiding engine [`crate::subst::subst_value`]. The
+//! substitution engine runs as an explicit heap worklist (the ADR-47 iterative
+//! discipline), so even an adversarially deep type substitutes without
+//! overflowing the host call stack.
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
 use crate::boundary::NameRef;
-use crate::boundary::ValueEquality;
 use crate::effect::EffectRow;
 use crate::grade::Grade;
 use crate::subst::subst_value;
 use crate::syntax::Value;
 use crate::types::CompType;
 use crate::types::ValueType;
-
-/// Decides the structural value equality `x ≡ᵥ y` the identity type's endpoints
-/// are compared with (ADR-76; the `≡ᵥ` of [`crate::types::ValueType::Path`]).
-///
-/// This is **not** subtyping: it is a symmetric, reflexive equality on values,
-/// the rung-1 (no-reduction) shadow of the NbE-era definitional equality on
-/// `Path` endpoints. It composes with the gradual discipline exactly as
-/// [`crate::subtype::value_subtype`] does: a [`Value::Hole`] is consistent with
-/// any value (both directions), and an annotation `(v : A)` is transparent.
-/// Otherwise it descends structurally, with a [`core::ptr::eq`] reflexive
-/// fast-path so an aliased `Rc` short-circuits (the ADR-50 Decision B idiom).
-///
-/// # Contract
-/// - ensures: returns `true` iff `lhs` and `rhs` are structurally equal after
-///   annotation-peeling, treating any [`Value::Hole`] as consistent with every
-///   value. Reflexive (`value_eq(v, v)` for every `v`) and symmetric; NOT
-///   transitive once a hole participates (the gradual-consistency price,
-///   exactly as `value_subtype`).
-/// - panics: none.
-#[inline]
-#[must_use]
-/// # Termination
-/// - reason: structural equality drains an explicit finite comparison stack.
-/// - measure: remaining queued child pairs under comparison.
-/// - boundedness: compared terms and types are finite Rust values.
-/// - input recursion: none.
-pub fn value_eq(
-    lhs: &Value,
-    rhs: &Value,
-) -> ValueEquality
-{
-    let mut work = vec![(lhs, rhs)];
-    while let Some((left, right)) = work.pop() {
-        if core::ptr::eq(left, right) {
-            continue;
-        }
-        let left = peel(left);
-        let right = peel(right);
-        if matches!(*left, Value::Hole(_)) || matches!(*right, Value::Hole(_)) {
-            continue;
-        }
-        match (left, right) {
-            | (&Value::Pair(ref a_fst, ref a_snd), &Value::Pair(ref b_fst, ref b_snd)) => {
-                work.push((a_fst, b_fst));
-                work.push((a_snd, b_snd));
-            },
-            | (&Value::Inj(a_side, ref a_payload), &Value::Inj(b_side, ref b_payload)) => {
-                if a_side != b_side {
-                    return false.into();
-                }
-                work.push((a_payload, b_payload));
-            },
-            | (&Value::List(ref a_elems), &Value::List(ref b_elems)) => {
-                if a_elems.len() != b_elems.len() {
-                    return false.into();
-                }
-                work.extend(
-                    a_elems
-                        .iter()
-                        .zip(b_elems.iter())
-                        .map(|(a_elem, b_elem)| (a_elem.as_ref(), b_elem.as_ref())),
-                );
-            },
-            | (&Value::Record(ref a_fields), &Value::Record(ref b_fields)) => {
-                if a_fields.len() != b_fields.len() {
-                    return false.into();
-                }
-                for (label, a_field) in a_fields {
-                    let Some(b_field) = b_fields.get(label)
-                    else {
-                        return false.into();
-                    };
-                    work.push((a_field.as_ref(), b_field.as_ref()));
-                }
-            },
-            | (&Value::Here(ref a_witness), &Value::Here(ref b_witness)) => {
-                work.push((a_witness, b_witness));
-            },
-            | (
-                &Value::Ctor {
-                    id: ref a_id,
-                    tag: a_tag,
-                    payload: ref a_payload,
-                },
-                &Value::Ctor {
-                    id: ref b_id,
-                    tag: b_tag,
-                    payload: ref b_payload,
-                },
-            ) => {
-                if a_id != b_id || a_tag != b_tag {
-                    return false.into();
-                }
-                work.push((a_payload, b_payload));
-            },
-            | (other_lhs, other_rhs) if other_lhs == other_rhs => {},
-            | _ => return false.into(),
-        }
-    }
-    true.into()
-}
-
-/// Peels type-annotation layers `(v : A)` off a value, returning the innermost
-/// non-[`Value::Annot`] value — an ascription is transparent to identity, so
-/// `value_eq` compares through it (mirroring the private `Value::peeled`).
-#[inline]
-#[must_use]
-fn peel(value: &Value) -> &Value
-{
-    let mut current = value;
-    while let Value::Annot(ref inner, _) = *current {
-        current = inner;
-    }
-    current
-}
 
 /// Substitutes the value `repl` for the free value variable `name` inside a
 /// **value type**, the type-level half of the identity eliminator's motive

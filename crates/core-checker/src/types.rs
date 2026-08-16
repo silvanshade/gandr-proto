@@ -380,13 +380,14 @@ pub enum ValueType
     ///
     /// Subtyping is **invariant** in the carrier `A` and in both endpoints
     /// (covariant widening is unsound without transport): `Path A x y <: Path
-    /// A′ x′ y′` iff `A ≡ A′` and `x ≡ᵥ x′` and `y ≡ᵥ y′`, where `≡ᵥ` is
-    /// the structural value equality of [`crate::identity::value_eq`] and
-    /// `≡` on the carrier is invariance decided by two-way
-    /// [`crate::subtype::value_subtype`] (see [`crate::subtype`]). NbE-era
-    /// definitional equality will extend `≡ᵥ` with Walk-β,
-    /// congruence, and substitution laws; rung 1 admits no reduction inside
-    /// a type.
+    /// A′ x′ y′` iff `A ≡ A′` and `x ≡ᵥ x′` and `y ≡ᵥ y′`. Both `≡ᵥ` on the
+    /// endpoints and `≡` on the carrier are **definitional equality**, decided
+    /// by the normalizer ([`crate::nbe::conv::converts`] and
+    /// [`crate::nbe::conv::type_converts`]); the two-way subtyping pass that
+    /// stood in for the carrier, and the structural no-reduction equality that
+    /// stood in for the endpoints, are both retired. So `≡ᵥ` now carries
+    /// Walk-β, congruence, and the substitution laws, and reduction inside a
+    /// type is admitted.
     Path
     {
         /// The carrier value type `A`.
