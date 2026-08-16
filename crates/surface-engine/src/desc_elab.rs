@@ -454,6 +454,22 @@ impl<'tree> Reader<'tree>
         };
         match self.label(first).map(|label| label.0) {
             | Some("oper") => {
+                if matches!(polarity, DeclPolarity::Codata) {
+                    let last = run.last().copied().unwrap_or(first);
+                    let respelling = self
+                        .codata_oper_respelling(run)
+                        .unwrap_or_else(|| "`name(params) : Result`".to_owned());
+                    elab.diagnostics.push(ElabDiagnostic::new(
+                        format!(
+                            "an `oper` member has no place in a `codata` block: codata admits \
+                             observations and `rule` members; `oper` is `data` / `sign` \
+                             vocabulary. If this member was meant to observe the codata value, \
+                             respell it as {respelling}"
+                        ),
+                        SurfaceSpan::new(self.span(first).start, self.span(last).end),
+                    ));
+                    return;
+                }
                 if let Some(op) = self.oper_member(run) {
                     lists.opers.push(op);
                 }
@@ -526,6 +542,33 @@ impl<'tree> Reader<'tree>
             },
             | _ => {},
         }
+    }
+
+    /// Recover the observation spelling of a data-style `oper` member.
+    fn codata_oper_respelling(
+        &self,
+        run: &[NodeId],
+    ) -> Option<String>
+    {
+        let mut cursor = Cursor::new(self, run);
+        cursor.bump(); // `oper`
+        let name_id = cursor.bump()?;
+        let name = self.text(name_id).0;
+        let inputs = self.op_params(&mut cursor);
+        if !cursor.eat(TileSpelling("->")).0 {
+            return None;
+        }
+        let outputs = self.op_result(&mut cursor);
+        let (output, rest) = outputs.split_first()?;
+        if !rest.is_empty() {
+            return None;
+        }
+        let inputs = inputs
+            .iter()
+            .map(|input| format!("{} : {}", input.name, input.sort))
+            .collect::<Vec<String>>()
+            .join(", ");
+        Some(format!("`{name}({inputs}) : {}`", output.sort))
     }
 
     /// Elaborate a generator member `Ctor : Side ( --> Result )? [ attrs ]?` —

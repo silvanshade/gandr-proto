@@ -1,0 +1,14 @@
+// Decline golden: a `sign` block operation written with the data-block spelling.
+//
+// `sign` members are judgments. The missing top-level colon used to fabricate an
+// empty operation arity and defer a false "no output port" report to cell
+// lowering. The description route now declines only this member and preserves
+// the ruled sibling.
+sign Theory {
+  sort Nat : Type;
+  oper add(m : Nat, n : Nat) -> Nat;
+  oper succ : (n : Nat) --> Nat;
+}
+
+//@ mode: desc
+//@ expect-desc-decline: top-level `:` judgment signature

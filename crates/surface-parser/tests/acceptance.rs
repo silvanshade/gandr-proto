@@ -241,6 +241,45 @@ fn circuit_block_form_molds_zero_obligation() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// A data-spelled `oper` inside `codata` molds whole so the description reader
+/// can decline that one member without repair swallowing its siblings.
+#[test]
+fn codata_oper_decline_region_molds_zero_obligation() -> Result<(), Box<dyn Error>>
+{
+    let source = "codata S : Type { head : Nat; oper tail(s : S) -> S; rule head ==> head; }";
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "the decline region and both siblings mold cleanly: {:?}",
+        result
+            .obligations()
+            .iter()
+            .map(|obligation| (obligation.class, obligation.span))
+            .collect::<Vec<_>>()
+    );
+    Ok(())
+}
+
+/// A data-spelled `oper` inside `sign` molds as one member so its localized
+/// decline cannot consume the next ruled judgment.
+#[test]
+fn sign_data_oper_decline_region_molds_zero_obligation() -> Result<(), Box<dyn Error>>
+{
+    let source = "sign Theory { sort Nat : Type; oper add(m : Nat, n : Nat) -> Nat; oper succ : \
+                  (n : Nat) --> Nat; }";
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "the declined member and valid sibling mold cleanly: {:?}",
+        result
+            .obligations()
+            .iter()
+            .map(|obligation| (obligation.class, obligation.span))
+            .collect::<Vec<_>>()
+    );
+    Ok(())
+}
+
 /// The arrow grid does not disturb the shorter tiles it extends: a case arm's
 /// `=>`, a bind statement's `<-`, and the `<=` / `==` comparisons all still
 /// mold exactly as before. This is the parser half of the lexical check the
@@ -583,8 +622,8 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let files = gandr_files(&examples);
     assert!(files.len() >= 50, "corpus is populated ({})", files.len());
 
-    // Per-tree accounting: model + pathological hold at 114 / 114 clean — 53
-    // files under `model/` and 61 under `pathological/`, counted by path — and
+    // Per-tree accounting: model + pathological hold at 116 / 116 clean — 53
+    // files under `model/` and 63 under `pathological/`, counted by path — and
     // the surface tree must be non-empty and clean; the single gate spans all
     // three trees.
     let mut clean = 0_usize;
@@ -676,15 +715,12 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        114, base_count,
-        "the model + pathological trees are 114 files (54 base + 3 codata + 7 inspection \
-         + 6 identity + 12 declared-data + 1 item-level retirement + 8 module pathologies \
-         + 7 module rung + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit \
-         + 2 builtins)"
+        116, base_count,
+        "the model + pathological trees are 116 files (53 model + 63 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        114, base_clean,
-        "all 114 model + pathological files mold clean"
+        116, base_clean,
+        "all 116 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

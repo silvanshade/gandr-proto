@@ -508,12 +508,7 @@ fn data_member() -> Regex
         // `op` lead still parses so the elaborator can decline it with the
         // respelling (the retired-`~>` precedent); after the respell, `op` is
         // the operator-fixity declaration only.
-        seq([
-            alt([t(TileLabel("oper")), t(TileLabel("op"))]),
-            t(TileLabel("identifier")),
-            params(),
-            opt(seq([t(TileLabel("->")), op_result()])),
-        ]),
+        data_oper_member(alt([t(TileLabel("oper")), t(TileLabel("op"))])),
         // reserved `rule lhs ==> rhs` 2-cell member.
         seq([
             t(TileLabel("rule")),
@@ -521,6 +516,17 @@ fn data_member() -> Regex
             rule_face_arrow(),
             h(Sort::Expression),
         ]),
+    ])
+}
+
+/// Build the data-style operation member after its context-specific lead menu.
+fn data_oper_member(lead: Regex) -> Regex
+{
+    seq([
+        lead,
+        t(TileLabel("identifier")),
+        params(),
+        opt(seq([t(TileLabel("->")), op_result()])),
     ])
 }
 
@@ -605,7 +611,8 @@ fn op_result() -> Regex
 }
 
 /// Build an inline `codata` member: an observation `[grade?] name (params?) :
-/// Type`, or the reserved `rule` 2-cell.
+/// Type`, a data-style `oper` preserved whole for block-kind-aware decline, or
+/// the reserved `rule` 2-cell.
 fn codata_member() -> Regex
 {
     alt([
@@ -620,6 +627,7 @@ fn codata_member() -> Regex
             t(TileLabel(":")),
             h(Sort::Type),
         ]),
+        data_oper_member(t(TileLabel("oper"))),
         seq([
             t(TileLabel("rule")),
             h(Sort::Expression),

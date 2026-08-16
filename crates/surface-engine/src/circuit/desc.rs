@@ -344,20 +344,38 @@ fn oper_member(
         ));
         return None;
     }
-    let (inputs, output) = signature_ports(shape, run);
+    let Some((inputs, output)) = signature_ports(shape, run)
+    else {
+        let respelling = data_oper_respelling(shape, run, name)
+            .unwrap_or_else(|| "`oper name : (inputs) --> (output)`".to_owned());
+        diagnostics.push(ElabDiagnostic::new(
+            format!(
+                "the `oper {}` member carries no top-level `:` judgment signature, so no \
+                 description operation can be formed from it: write {respelling}; the general \
+                 judgment spelling is `oper name : (inputs) --> (output)`",
+                name.0
+            ),
+            run_span(shape, run),
+        ));
+        return None;
+    };
     let inputs: Vec<SortRef> = inputs
         .into_iter()
         .map(|port| SortRef::new(port.name, port.sort))
         .collect();
-    let outputs = output
-        .into_iter()
-        .map(|port| SortRef::new(port.name, port.sort))
-        .collect::<Vec<SortRef>>();
-    Some(OperDesc::new(
-        name.0.to_owned(),
-        crate::desc_elab::bridge_arity(inputs, outputs),
-        Attrs::empty(),
-    ))
+    let arity = match output {
+        | None => gandr_theory_levitation::BridgeArity::new(
+            inputs,
+            Vec::<u32>::new(),
+            Vec::<u32>::new(),
+            Vec::<u32>::new(),
+            Vec::<SortRef>::new(),
+        ),
+        | Some(output) => {
+            crate::desc_elab::bridge_arity(inputs, vec![SortRef::new(output.name, output.sort)])
+        },
+    };
+    Some(OperDesc::new(name.0.to_owned(), arity, Attrs::empty()))
 }
 
 /// Read a block-bodied `rule r : sphere { filler }` member into a circuit rule.
@@ -827,28 +845,58 @@ struct SignaturePort
     sort: String,
 }
 
-/// Read a member's signature into its input ports and its single output port.
+/// Recover a data-style operation as the judgment spelling this route admits.
+fn data_oper_respelling(
+    shape: Shape<'_, '_>,
+    run: &[NodeId],
+    name: CircuitName<'_>,
+) -> Option<String>
+{
+    let arrow = shape.find_at_top_level(run, TileSpelling("->"))?;
+    let mut fresh = FreshWire::default();
+    let inputs = run
+        .get(2 .. arrow.0)
+        .map(|side| side_ports(shape, side, &mut fresh))
+        .unwrap_or_default();
+    let outputs = run
+        .get(arrow.0.saturating_add(1) ..)
+        .map(|side| side_ports(shape, side, &mut fresh))
+        .unwrap_or_default();
+    let (output, rest) = outputs.split_first()?;
+    if !rest.is_empty() {
+        return None;
+    }
+    let inputs = inputs
+        .iter()
+        .map(|input| format!("{} : {}", input.name, input.sort))
+        .collect::<Vec<String>>()
+        .join(", ");
+    Some(format!(
+        "`oper {} : ({inputs}) --> {}`",
+        name.0, output.sort
+    ))
+}
+
+/// Read a colon-anchored member signature into its input ports and its single
+/// output port.
 ///
 /// The sugar ladder is applied here, which is what makes the named-port normal
 /// form the only shape past this point: a bare-sort side is one unnamed port,
 /// an unnamed port mints a fresh name in order, and a side with no arrow is the
-/// result (`data Zero : Nat` is `() --> (_ : Nat)`).
+/// result (`data Zero : Nat` is `() --> (_ : Nat)`). A missing top-level `:`
+/// returns [`None`], so it cannot be confused with a real signature that has no
+/// output port.
 fn signature_ports(
     shape: Shape<'_, '_>,
     run: &[NodeId],
-) -> (Vec<SignaturePort>, Option<SignaturePort>)
+) -> Option<(Vec<SignaturePort>, Option<SignaturePort>)>
 {
-    let Some(tail) = shape.after_colon(run)
-    else {
-        return (Vec::new(), None);
-    };
+    let tail = shape.after_colon(run)?;
     let (signature, _filler) = shape.split_body(tail);
     let mut fresh = FreshWire::default();
     let Some(found) = shape.find_arrow_at_top_level(signature)
     else {
-        // No arrow: the whole side is the result, and the member takes no
-        // inputs.
-        return (Vec::new(), side_ports(shape, signature, &mut fresh).pop());
+        return Some((Vec::new(), side_ports(shape, signature, &mut fresh).pop()));
     };
     let inputs = signature
         .get(.. found.index.0)
@@ -859,7 +907,7 @@ fn signature_ports(
         .map(|side| side_ports(shape, side, &mut fresh))
         .unwrap_or_default()
         .pop();
-    (inputs, output)
+    Some((inputs, output))
 }
 
 /// Read one side of a signature — a parenthesized port list, or the bare sort

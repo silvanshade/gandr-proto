@@ -187,25 +187,54 @@ fn circuit_declarations(
     out.push(declaration);
 }
 
-/// Build the block-bodied judgment `oper|rule name : signature { filler }?` as
-/// a `sign` **member**.
+/// Build a `sign` member led by `oper` or `rule`.
 ///
-/// The block body is optional because a declaration may be a **boundary
-/// without a filler** — `oper add : (Nat, Nat) --> Nat` declares an interface
-/// and nothing else, while `oper accumulate : … { … }` fills one.
+/// Both genuine judgments use `name : signature { filler }?`. An `oper` also
+/// preserves the parenthesis-led data-block spelling as one member so
+/// description elaboration can issue the block-aware decline without parser
+/// repair consuming a sibling. A `rule` remains colon-only.
 ///
-/// Which keyword led is exactly what the arrow-kind confirmation reads: the
-/// declared kind fixes the row of the arrow grid the signature's arrow must
-/// come from, so a grammar that admitted only the matching arrow would trade a
-/// nameable error for a parse failure.
+/// The judgment block body is optional because a declaration may be a
+/// **boundary without a filler** — `oper add : (Nat, Nat) --> Nat` declares an
+/// interface and nothing else, while `oper accumulate : … { … }` fills one.
+///
+/// The lead keyword is what arrow-kind confirmation reads: the declared kind
+/// fixes the row of the arrow grid the signature's arrow must come from, so a
+/// grammar admitting only the matching arrow would trade a nameable error for
+/// a parse failure.
 fn circuit_judgment() -> Regex
 {
+    alt([
+        seq([
+            t(TileLabel("oper")),
+            t(TileLabel("identifier")),
+            alt([circuit_judgment_tail(), data_spelled_oper_tail()]),
+        ]),
+        seq([
+            t(TileLabel("rule")),
+            t(TileLabel("identifier")),
+            circuit_judgment_tail(),
+        ]),
+    ])
+}
+
+/// Build the colon-led tail shared by ruled circuit judgments.
+fn circuit_judgment_tail() -> Regex
+{
+    seq([t(TileLabel(":")), signature(), opt(body())])
+}
+
+/// Build the parenthesis-led data-block tail reserved for localized decline.
+fn data_spelled_oper_tail() -> Regex
+{
     seq([
-        alt([t(TileLabel("oper")), t(TileLabel("rule"))]),
-        t(TileLabel("identifier")),
-        t(TileLabel(":")),
-        signature(),
-        opt(body()),
+        t(TileLabel("(")),
+        opt(comma1(seq([
+            t(TileLabel("identifier")),
+            opt(seq([t(TileLabel(":")), h(Sort::Type)])),
+        ]))),
+        t(TileLabel(")")),
+        opt(seq([t(TileLabel("->")), h(Sort::Type)])),
     ])
 }
 

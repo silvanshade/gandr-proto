@@ -611,3 +611,94 @@ sign Broken {
         TestText("`rule <name> : <signature>`"),
     ]);
 }
+
+#[test]
+fn a_data_spelled_sign_oper_declines_before_no_output_can_be_fabricated()
+{
+    let source = "\
+sign Theory {
+  sort Nat : Type;
+  oper add(m : Nat, n : Nat) -> Nat;
+  oper succ : (n : Nat) --> Nat;
+}
+";
+    let elab = elaborate_data_descs(source);
+    let desc = elab
+        .descs
+        .first()
+        .expect("the sign block reads into a description");
+    assert_eq!(1, desc.sorts.len(), "the sort sibling remains");
+    assert_eq!(1, desc.opers.len(), "the valid operation sibling remains");
+    assert_eq!(
+        "succ",
+        desc.opers
+            .first()
+            .expect("one valid operation")
+            .name
+            .as_ref(),
+        "the malformed member never fabricates an empty-arity operation"
+    );
+    assert_eq!(
+        1,
+        elab.diagnostics.len(),
+        "the malformed member region earns exactly one primary diagnostic: {:?}",
+        elab.diagnostics
+    );
+    let decline = elab.diagnostics.first().expect("one localized decline");
+    assert!(
+        decline.message.contains("top-level `:`")
+            && decline
+                .message
+                .contains("`oper add : (m : Nat, n : Nat) --> Nat`")
+            && decline
+                .message
+                .contains("`oper name : (inputs) --> (output)`"),
+        "the decline names the judgment spelling and recovered respelling: {}",
+        decline.message
+    );
+    let start = usize::from(decline.span.start);
+    let end = usize::from(decline.span.end);
+    assert_eq!(
+        "oper add(m : Nat, n : Nat) -> Nat",
+        source
+            .get(start .. end)
+            .expect("the decline span is in source"),
+        "the decline covers only the offending member"
+    );
+
+    let cells = elaborate_desc_cells(&elab.descs);
+    assert!(
+        cells
+            .diagnostics
+            .iter()
+            .all(|diagnostic| !diagnostic.message.contains("no output port")),
+        "a run with no top-level judgment colon never reaches `NoOutput`: {:?}",
+        cells.diagnostics
+    );
+
+    let colon_source = "sign Missing { sort Nat : Type; oper missing : (n : Nat) --> (); }";
+    let colon_anchored = elaborate_data_descs(colon_source);
+    assert!(
+        colon_anchored.diagnostics.is_empty(),
+        "the colon-anchored positive control is a readable judgment: {:?}",
+        colon_anchored.diagnostics
+    );
+    let colon_desc = colon_anchored
+        .descs
+        .first()
+        .expect("the colon-anchored sign block elaborates");
+    assert_eq!(
+        1,
+        colon_desc.opers.len(),
+        "the colon-anchored outputless judgment reaches operation admission"
+    );
+    let colon_cells = elaborate_desc_cells(&colon_anchored.descs);
+    assert!(
+        colon_cells
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("no output port")),
+        "`NoOutput` remains reserved for a colon-anchored signature truly missing output: {:?}",
+        colon_cells.diagnostics
+    );
+}

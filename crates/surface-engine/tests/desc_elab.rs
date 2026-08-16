@@ -555,4 +555,44 @@ mod tests
             elab.diagnostics
         );
     }
+
+    #[test]
+    fn a_codata_oper_declines_without_swallowing_observation_and_rule_siblings()
+    {
+        let source = "codata S : Type { head : Nat; oper tail(s : S) -> S; rule head ==> head; }";
+        let elab = elaborate_data_descs(source);
+        let desc = elab.descs.first().expect("the codata block elaborated");
+        assert_eq!(1, desc.ctors.len(), "the observation sibling remains");
+        assert_eq!(1, desc.rules.len(), "the rule sibling remains");
+        assert!(
+            desc.opers.is_empty(),
+            "a codata `oper` never reaches the description"
+        );
+        assert_eq!(
+            1,
+            elab.diagnostics.len(),
+            "the malformed member region earns exactly one primary diagnostic: {:?}",
+            elab.diagnostics
+        );
+        let decline = elab.diagnostics.first().expect("one localized decline");
+        assert!(
+            decline.message.contains("`codata` block")
+                && decline.message.contains("observations and `rule` members")
+                && decline
+                    .message
+                    .contains("`oper` is `data` / `sign` vocabulary")
+                && decline.message.contains("`tail(s : S) : S`"),
+            "the decline names the block law and recoverable observation spelling: {}",
+            decline.message
+        );
+        let start = usize::from(decline.span.start);
+        let end = usize::from(decline.span.end);
+        assert_eq!(
+            "oper tail(s : S) -> S",
+            source
+                .get(start .. end)
+                .expect("the decline span is in source"),
+            "the decline covers only the offending member"
+        );
+    }
 }

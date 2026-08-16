@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x953f_2c0e_987c_0d89);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x3c00_3754_6fec_8b55);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -98,20 +98,22 @@ mod contracts
     /// mold in their 20 expanded statement contexts.
     /// The dedicated instantiation-sort forms add seven molds: two `<`
     /// occurrences and one each for `>`, `=`, `tail`, and the two
-    /// named-resident `identifier` occurrences. The circuit block form adds
-    /// 238, dominated by the `comma1` clones of its port lists: the `oper` /
-    /// `rule` judgment is declared **once** and shared by the `sign` member and
-    /// the top-level declaration precisely to keep that number from doubling,
-    /// and the parameter-side binders are kept off the result side for the same
-    /// reason. The rule-face migration adds four: the `data` and `codata`
-    /// members' face arrow becomes a two-way alternation (`==>` ruled, `~>`
-    /// retired-but-admissible), and each member family carries two copies of
-    /// its arrow through `comma1`. The nested generator-block form adds
-    /// fifty: the typed head-parameter binder (its `:` and Type hole, per
-    /// `comma1` clone and per block kind), the head's `: Idx -> Type`
-    /// annotation, the generator member's local telescope and `-->`
-    /// signature, and the member-list's optional migration comma — the
-    /// retired bare-parameter and field-tuple tails ride the same
+    /// named-resident `identifier` occurrences. The ruled circuit block form
+    /// adds 238. Description-member decline preservation adds another 133:
+    /// `codata` gains the data-style `oper` region it must preserve for
+    /// block-kind-aware decline, while `sign` factors the `oper` lead before
+    /// choosing its colon-led judgment tail or parenthesis-led data spelling.
+    /// Keeping the `rule` branch colon-only duplicates one signature/body copy;
+    /// that cost prevents the decline reservation from widening rule syntax.
+    /// The parameter-side binders remain off the result side. The rule-face
+    /// migration adds four: the `data` and `codata` members' face arrow becomes
+    /// a two-way alternation (`==>` ruled, `~>` retired-but-admissible), and
+    /// each member family carries two copies of its arrow through `comma1`.
+    /// The nested generator-block form adds fifty: the typed head-parameter
+    /// binder (its `:` and Type hole, per `comma1` clone and per block kind),
+    /// the head's `: Idx -> Type` annotation, the generator member's local
+    /// telescope and `-->` signature, and the member-list's optional migration
+    /// comma. The retired bare-parameter and field-tuple tails ride the same
     /// alternations rather than adding rules of their own. The sign member
     /// terminator adds one: the `;` tile after the inlined member family
     /// (gandr-ng9.14). The package rung adds one hundred and ten, and where
@@ -139,7 +141,7 @@ mod contracts
     /// the `@[ … ]` block outside the member it decorates; that costs one copy
     /// of the definition tail. And the manifest type component `type T = τ`
     /// adds four `=` molds, one per signature occurrence.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2016);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2149);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -158,33 +160,33 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 162),
-        (")", 165),
+        ("(", 173),
+        (")", 176),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 75),
+        (",", 86),
         ("-", 2),
-        ("-->", 15),
-        ("->", 9),
+        ("-->", 20),
+        ("->", 12),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 158),
+        (":", 179),
         (":>", 2),
-        (";", 221),
+        (";", 223),
         ("<", 4),
         ("<&", 1),
         ("<-", 20),
-        ("<->", 13),
+        ("<->", 18),
         ("<=", 1),
-        ("<=>", 13),
+        ("<=>", 18),
         ("<>", 1),
         ("=", 81),
         ("==", 1),
-        ("==>", 17),
+        ("==>", 22),
         ("=>", 8),
         (">", 3),
         (">&", 1),
@@ -206,7 +208,7 @@ mod contracts
         ("Void", 1),
         ("[", 13),
         ("]", 17),
-        ("_", 31),
+        ("_", 43),
         ("acquire", 20),
         ("as", 83),
         ("at", 1),
@@ -221,7 +223,7 @@ mod contracts
         ("command_substitution_start", 1),
         ("constructor", 6),
         ("continue", 1),
-        ("data", 8),
+        ("data", 10),
         ("def", 5),
         ("double_string_fragment", 1),
         ("drop", 1),
@@ -234,7 +236,7 @@ mod contracts
         ("f32", 1),
         ("f64", 1),
         ("false", 3),
-        ("feed", 2),
+        ("feed", 3),
         ("file_descriptor", 1),
         ("fn", 1),
         ("for", 1),
@@ -250,7 +252,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 306),
+        ("identifier", 338),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -266,11 +268,11 @@ mod contracts
         ("mu", 1),
         ("negation", 1),
         ("newline", 1),
-        ("node", 2),
+        ("node", 3),
         ("number", 21),
         ("offer", 1),
         ("op", 3),
-        ("oper", 4),
+        ("oper", 6),
         ("pack", 1),
         ("package", 1),
         ("pipeline_operand", 2),
@@ -280,7 +282,7 @@ mod contracts
         ("recv", 20),
         ("release", 20),
         ("ret", 1),
-        ("rule", 12),
+        ("rule", 14),
         ("run", 20),
         ("select", 1),
         ("send", 1),
@@ -309,11 +311,11 @@ mod contracts
         ("variable_name", 5),
         ("while", 1),
         ("with", 1),
-        ("{", 33),
+        ("{", 34),
         ("|", 4),
         ("|&", 1),
         ("||", 2),
-        ("}", 47),
+        ("}", 48),
         ("~>", 4),
         ("ω", 16),
     ];

@@ -1,0 +1,5 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/desc/sign-data-oper-spelling.gandr
+; sexp-b3sum: 601ebfd0a2cfabd3759c7299923aa60bde9e14ae5184771dec3b9ca73f2780c3
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 0
