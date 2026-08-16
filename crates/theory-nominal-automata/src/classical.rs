@@ -304,6 +304,127 @@ impl fmt::Display for RestrictionError
     }
 }
 
+/// A finite tree symbol identified by its deterministic alphabet index.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TreeSymbol(u32);
+
+impl From<u32> for TreeSymbol
+{
+    #[inline]
+    fn from(value: u32) -> Self
+    {
+        Self(value)
+    }
+}
+
+/// A finite tree used as an NFTA witness.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Tree
+{
+    Node
+    {
+        symbol: TreeSymbol,
+        children: Vec<Self>,
+    },
+}
+
+/// A deterministic witness for finite-tree emptiness.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TreeWitness(Tree);
+
+impl TreeWitness
+{
+    /// The witness tree.
+    #[must_use]
+    #[inline]
+    pub fn tree(&self) -> &Tree
+    {
+        &self.0
+    }
+}
+
+/// A finite bottom-up nondeterministic tree automaton.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Nfta
+{
+    /// The finite state set.
+    states: BTreeSet<StateId>,
+    /// The accepting root states.
+    finals: BTreeSet<StateId>,
+    /// The bottom-up transition relation.
+    transitions: BTreeMap<(TreeSymbol, Vec<StateId>), BTreeSet<StateId>>,
+}
+
+impl Nfta
+{
+    /// Construct an NFTA with canonical transition keys.
+    ///
+    /// # Contract
+    /// - requires: every transition state and final state belongs to `states`.
+    /// - ensures: transitions are finite and ordered.
+    /// - provides: a bottom-up finite-tree automaton.
+    /// - panics: none.
+    #[must_use]
+    #[inline]
+    pub fn new(
+        states: BTreeSet<StateId>,
+        finals: BTreeSet<StateId>,
+        transitions: BTreeMap<(TreeSymbol, Vec<StateId>), BTreeSet<StateId>>,
+    ) -> Option<Self>
+    {
+        if !finals.is_subset(&states)
+            || transitions.iter().any(|(key, targets)| {
+                let children = &key.1;
+                !children.iter().all(|state| states.contains(state)) || !targets.is_subset(&states)
+            })
+        {
+            return None;
+        }
+        Some(Self {
+            states,
+            finals,
+            transitions,
+        })
+    }
+
+    /// Return a deterministic accepted tree, or `None` when the language is
+    /// empty.
+    #[inline]
+    pub fn emptiness_witness(&self) -> Option<TreeWitness>
+    {
+        let mut known: BTreeMap<StateId, Tree> = BTreeMap::new();
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for (key, targets) in &self.transitions {
+                let symbol = key.0;
+                let children = &key.1;
+                if children.iter().all(|state| known.contains_key(state)) {
+                    let trees = children
+                        .iter()
+                        .filter_map(|state| known.get(state).cloned())
+                        .collect::<Vec<_>>();
+                    for target in targets {
+                        if !known.contains_key(target) {
+                            known.insert(*target, Tree::Node {
+                                symbol,
+                                children: trees.clone(),
+                            });
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        self.finals
+            .iter()
+            .find_map(|state| known.get(state).cloned())
+            .map(TreeWitness)
+    }
+}
+
 #[cfg(test)]
 mod tests
 {
