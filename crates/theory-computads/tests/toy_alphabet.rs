@@ -18,6 +18,8 @@ pub use tests::Toy;
 pub use tests::ToyAlphabet;
 pub use tests::ToyNameRef;
 pub use tests::ToyPos;
+pub use tests::derived_toy_cell;
+pub use tests::reoriented_toy_cell;
 pub use tests::toy_cell;
 
 #[cfg(test)]
@@ -645,6 +647,24 @@ mod tests
     ) -> Cell<ToyAlphabet>
     {
         Cell::new(lhs, rhs, ToyOrient::Given, ToyProv::Rule)
+    }
+
+    /// A toy cell with the same faces but completion-derived orientation.
+    pub fn reoriented_toy_cell(
+        lhs: Toy,
+        rhs: Toy,
+    ) -> Cell<ToyAlphabet>
+    {
+        Cell::new(lhs, rhs, ToyOrient::Derived, ToyProv::Rule)
+    }
+
+    /// A toy cell with completion-derived orientation and provenance.
+    pub fn derived_toy_cell(
+        lhs: Toy,
+        rhs: Toy,
+    ) -> Cell<ToyAlphabet>
+    {
+        Cell::new(lhs, rhs, ToyOrient::Derived, ToyProv::Derived)
     }
 
     /// (add-Z): `Add(Zero, x) ~> x`.

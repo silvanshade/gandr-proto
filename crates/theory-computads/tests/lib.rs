@@ -9,6 +9,8 @@ mod circuit_instantiation;
 #[cfg(test)]
 mod composition;
 #[cfg(test)]
+mod content_faithfulness;
+#[cfg(test)]
 mod differential;
 #[cfg(test)]
 mod flow;

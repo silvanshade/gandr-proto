@@ -224,6 +224,15 @@ where
 ///   [`CellAlphabet::unify_cmd`] two-sided (a most general unifier), and both
 ///   leave `subst` possibly partially extended on failure;
 ///   [`CellAlphabet::rename_apart`] is deterministic and structure-preserving.
+/// - requires: every field whose value can distinguish two
+///   [`crate::cell::Cell`] values reaches the local ordering digest used by
+///   [`crate::normal_form::prim_address`]; this is a content-faithfulness
+///   obligation, not an injectivity or portability promise.
+/// - requires: two occurrences of one primitive at one position remain
+///   dependent: [`CellAlphabet::position_order`] must return
+///   [`PositionOrder::Same`] for a position paired with itself, so causal
+///   layering can separate repeated occurrences by depth in the graded
+///   quotient.
 /// - ensures: the engines (`crate::overlap`, `crate::completion`,
 ///   `crate::rewrite`, `crate::tracelet`, `crate::compose`) are total over any
 ///   implementor — every decline path is data, never a panic or divergence.
@@ -238,6 +247,10 @@ where
 /// - witness: `toy_alphabet::tests::the_enumerator_finds_the_toy_composition_overlap`
 /// - witness: `toy_alphabet::tests::the_normalizer_runs_over_the_toy_alphabet`
 /// - witness: `toy_alphabet::tests::completion_orients_and_certifies_over_the_toy_alphabet`
+/// - witness: `content_faithfulness::tests::production_alphabets_satisfy_content_faithfulness`
+/// - witness: `content_faithfulness::tests::adversarial_alphabets_are_explicitly_exempt`
+/// - witness: `content_faithfulness::tests::same_position_dependence_separates_multiplicity`
+/// - witness: `content_faithfulness::tests::mutations_are_rejected_by_the_fixture`
 pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt::Debug
 {
     /// The **command-pattern term type** — the tree a cell's two faces are
