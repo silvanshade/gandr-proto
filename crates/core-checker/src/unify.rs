@@ -137,10 +137,25 @@ pub enum Constraint
 /// The solver-machine service: a metacontext, the equations posed against it,
 /// and the run that answers them.
 ///
+/// # Posing a constraint in a context
+///
+/// A constraint is posed **closed over its context**: the locals it mentions
+/// are bound by abstractions wrapping both sides, and a metavariable that may
+/// depend on one of them is applied to it. The solver opens those abstractions
+/// itself, and a variable it opened is what a pattern spine is made of.
+///
+/// A local left as a free name instead is indistinguishable from a global
+/// definition, which a closed metavariable's solution is free to mention. So a
+/// spine argument that is a free name is not a pattern argument, and the
+/// equation postpones as [`PostponeReason::NonPatternSpine`] rather than
+/// solving. That is a fact about what the solver can tell apart, and the
+/// closure discipline is what tells it.
+///
 /// # Contract
 /// - requires: every metavariable occurring in a pushed constraint is declared
 ///   in the metacontext, and every local variable a metavariable may depend on
-///   reaches it through that metavariable's spine rather than as a free name.
+///   reaches it through that metavariable's spine, under an abstraction the
+///   constraint itself carries, rather than as a free name.
 /// - ensures: [`Self::run`] leaves the normalizer's semantic arena exactly as
 ///   it found it, and leaves the metacontext holding every binding the run
 ///   made, so a second run resumes rather than restarts.
