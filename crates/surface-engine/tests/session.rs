@@ -23,6 +23,8 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
+    use gandr_core_incremental::boundary::AdoptionDecision;
+    use gandr_core_incremental::stream::SynthesisEvent;
     use gandr_surface_engine::namespace::DottedName;
     use gandr_surface_engine::namespace::NamePath;
     use gandr_surface_engine::session::ItemOutcome;
@@ -116,6 +118,107 @@ mod tests
         assert_eq!(
             resumed_outcomes, full.outcomes,
             "checkpointed append must preserve the from-scratch outcomes"
+        );
+    }
+
+    /// Successful submissions publish owned whole-program streams with stable
+    /// boundaries, global order, and per-item adoption decisions.
+    #[test]
+    fn successful_submissions_publish_whole_program_synthesis()
+    {
+        let mut session = Session::new();
+        assert!(
+            session.latest_synthesis_stream().is_none(),
+            "a fresh session has no successful synthesis"
+        );
+
+        let _first_submission = session
+            .submit("def retained = 40")
+            .expect("first definition lowering must succeed");
+        let first_stream = session
+            .latest_synthesis_stream()
+            .expect("first successful submission publishes a stream");
+
+        let _second_submission = session
+            .submit("ret retained")
+            .expect("appended expression lowering must succeed");
+        let first_events = first_stream.collect::<Vec<SynthesisEvent>>();
+        let &[
+            SynthesisEvent::Started {
+                item_count: first_count,
+            },
+            SynthesisEvent::Item {
+                index: first_index,
+                typing: ref first_typing,
+                adopted: first_adopted,
+            },
+            SynthesisEvent::Completed,
+        ] = first_events.as_slice()
+        else {
+            panic!("first stream must contain Started, one Item, Completed: {first_events:?}");
+        };
+        assert_eq!(
+            first_count, 1,
+            "first stream covers the complete one-item program"
+        );
+        assert_eq!(first_index, 0, "first item has global source index zero");
+        assert_eq!(
+            first_adopted,
+            AdoptionDecision::from(false),
+            "the first submission recomputes its only item"
+        );
+
+        let second_events = session
+            .latest_synthesis_stream()
+            .expect("second successful submission replaces the latest stream")
+            .collect::<Vec<SynthesisEvent>>();
+        let &[
+            SynthesisEvent::Started {
+                item_count: second_count,
+            },
+            SynthesisEvent::Item {
+                index: retained_index,
+                typing: ref retained_typing,
+                adopted: retained_adopted,
+            },
+            SynthesisEvent::Item {
+                index: appended_index,
+                adopted: appended_adopted,
+                ..
+            },
+            SynthesisEvent::Completed,
+        ] = second_events.as_slice()
+        else {
+            panic!(
+                "second stream must contain Started, two ordered Items, Completed: \
+                 {second_events:?}"
+            );
+        };
+        assert_eq!(
+            second_count, 2,
+            "second stream covers both accumulated program items"
+        );
+        assert_eq!(
+            retained_index, 0,
+            "retained definition remains globally first"
+        );
+        assert_eq!(
+            retained_typing, first_typing,
+            "adoption preserves the retained definition's validated typing"
+        );
+        assert_eq!(
+            retained_adopted,
+            AdoptionDecision::from(true),
+            "the unchanged prior definition is adopted"
+        );
+        assert_eq!(
+            appended_index, 1,
+            "new expression follows in global source order"
+        );
+        assert_eq!(
+            appended_adopted,
+            AdoptionDecision::from(false),
+            "the newly appended expression is recomputed"
         );
     }
     /// A submission owns its outcomes after the session advances, so callers

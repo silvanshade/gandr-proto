@@ -104,6 +104,7 @@ use gandr_core_incremental::persistence::CheckpointStoreError;
 use gandr_core_incremental::persistence::persist;
 use gandr_core_incremental::region::Item;
 use gandr_core_incremental::region::Program;
+use gandr_core_incremental::stream::SynthesisStream;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 use gandr_storage_artifact::ArtifactError;
 use gandr_storage_artifact::BuiltArtifact;
@@ -223,6 +224,8 @@ pub struct Session
     program: Program,
     /// One validated typing checkpoint per item in [`Self::program`].
     checkpoints: Checkpoints,
+    /// The latest successful whole-program synthesis stream.
+    latest_synthesis: Option<SynthesisStream>,
     /// The accumulated definition values, in definition order, each the
     /// once-evaluated result of a value-typed `def` ([`Session::define`]).
     defs: Vec<(String, Value)>,
@@ -267,6 +270,7 @@ impl Session
             base_ctx,
             program: Program::default(),
             checkpoints: Checkpoints::default(),
+            latest_synthesis: None,
             defs: Vec::new(),
             prelude: prelude_env(),
             foreign: BTreeMap::new(),
@@ -447,6 +451,31 @@ impl Session
         let index = self.import_scope.resolve(path)?.data.0;
         self.imports.get(index)
     }
+    /// Returns an owned stream over the latest successful whole-program typing.
+    ///
+    /// # Contract
+    /// - ensures: returns a fresh stream cursor over the latest successful
+    ///   submission's `Started`, source-ordered `Item`, and `Completed` events;
+    ///   a failed submission leaves that stream unchanged.
+    /// - provides: caller-owned incremental synthesis events without rechecking
+    ///   or borrowing the session.
+    /// - panics: none.
+    /// - intension: clones the single stream retained at the successful submit
+    ///   boundary; it performs no lowering or typing work.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise event assertions over the first revision, an
+    ///   appended revision, and an injected infrastructure failure distinguish
+    ///   missing boundaries, reordered items, wrong adoption flags, and failure
+    ///   replacement.
+    /// - witness: `tests::session::successful_submissions_publish_whole_program_synthesis`
+    /// - witness: `session::tests::failed_submission_retains_latest_synthesis`
+    #[inline]
+    #[must_use]
+    pub fn latest_synthesis_stream(&self) -> Option<SynthesisStream>
+    {
+        self.latest_synthesis.clone()
+    }
 
     /// Lowers, reports, incrementally types, and evaluates one line of source.
     ///
@@ -473,12 +502,14 @@ impl Session
     /// Returns the lowering [`LowerError`] for an infrastructure failure.
     ///
     /// # Adequacy
-    /// - hypothesis: the session's incremental typing sequence must equal a
-    ///   from-scratch typing of the same accumulated program while preserving
-    ///   cross-line evaluation. The session differential and the core
-    ///   checkpoint differential distinguish stale adoption, missing
+    /// - hypothesis: L2 agreement — the session's incremental typing sequence
+    ///   must equal a from-scratch typing of the same accumulated program while
+    ///   preserving cross-line evaluation. The session differential and the
+    ///   core checkpoint differential distinguish stale adoption, missing
     ///   checkpoints, and a return to detached per-item typing.
     /// - witness: `tests::session::checkpointed_session_matches_from_scratch`
+    /// - witness: `tests::session::successful_submissions_publish_whole_program_synthesis`
+    /// - witness: `session::tests::failed_submission_retains_latest_synthesis`
     /// - witness: `gandr_core_incremental::tests::incremental`
     /// - witness: `tests::kernel::every_item_carries_exactly_one_verdict`
     /// - witness: `tests::kernel::a_later_definition_refers_to_an_earlier_one`
@@ -497,13 +528,44 @@ impl Session
             &self.data,
             &self.import_scope,
             ImportIndex(self.imports.len()),
-        )?;
+        );
+        self.finish_submission(lowered)
+    }
+
+    /// Completes one attempted lowering as an atomic session submission.
+    ///
+    /// # Contract
+    /// - ensures: an error returns before any session state changes; success
+    ///   installs exactly one latest whole-program synthesis stream after the
+    ///   existing outcome, checkpoint, declaration, import, and kernel updates.
+    /// - provides: the transaction boundary between infrastructure lowering and
+    ///   session mutation.
+    /// - fails: returns the supplied lowering error unchanged.
+    /// - panics: none.
+    ///
+    /// # Errors
+    ///
+    /// Returns the infrastructure [`LowerError`] supplied by lowering.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise comparison of every retained event before and
+    ///   after an injected error kills mutation-before-error and
+    ///   stream-clearing variants.
+    /// - witness: `session::tests::failed_submission_retains_latest_synthesis`
+    #[inline]
+    fn finish_submission(
+        &mut self,
+        lowered: Result<crate::lower::Lowered, LowerError>,
+    ) -> Result<Submission, LowerError>
+    {
+        let lowered = lowered?;
         let report = diag::report(&lowered, &self.ctx);
 
         let prior_item_count = self.program.items.len();
         let mut edited = self.program.clone();
         edited.items.extend(lowered.items.iter().cloned());
         let resumed = resume_with(&self.checkpoints, &edited, &self.base_ctx);
+        let synthesis = SynthesisStream::from_resume(&resumed);
 
         let mut outcomes = Vec::with_capacity(lowered.items.len());
         let mut verdicts = Vec::with_capacity(lowered.items.len());
@@ -542,6 +604,7 @@ impl Session
         for module in lowered.foreign {
             self.foreign.insert(module.name.clone(), module);
         }
+        self.latest_synthesis = Some(synthesis);
         Ok(Submission {
             report,
             outcomes,
@@ -669,5 +732,42 @@ fn term_into_comp(term: &Term) -> Comp
     match *term {
         | Term::Value(ref value) => Comp::ret(value.clone()),
         | Term::Comp(ref comp) => comp.clone(),
+    }
+}
+#[cfg(test)]
+mod tests
+{
+    use gandr_core_incremental::stream::SynthesisEvent;
+
+    use super::*;
+
+    /// An infrastructure failure cannot clear or replace the last successful
+    /// stream retained by the transaction boundary.
+    #[test]
+    fn failed_submission_retains_latest_synthesis()
+    {
+        let mut session = Session::new();
+        let _submission = session
+            .submit("def retained = 40")
+            .expect("fixture lowering must succeed");
+        let before = session
+            .latest_synthesis_stream()
+            .expect("successful submission publishes a stream")
+            .collect::<Vec<SynthesisEvent>>();
+
+        let failed = session.finish_submission(Err(LowerError::ParseFailed));
+        assert_eq!(
+            failed,
+            Err(LowerError::ParseFailed),
+            "the infrastructure failure is returned unchanged"
+        );
+        let after = session
+            .latest_synthesis_stream()
+            .expect("failed submission retains the prior stream")
+            .collect::<Vec<SynthesisEvent>>();
+        assert_eq!(
+            after, before,
+            "failed submission preserves every prior event and adoption decision"
+        );
     }
 }
