@@ -165,9 +165,11 @@ use alloc::vec::Vec;
 use crate::interface::ComponentIndex;
 use crate::interface::Edge;
 use crate::interface::EdgeCount;
+use crate::interface::PairCount;
 use crate::interface::PartialBijection;
 use crate::interface::Seam;
 use crate::interface::Wire;
+use crate::interface::WireCount;
 use crate::interface::Wiring;
 
 /// How many search steps an embedding search may take.
@@ -340,11 +342,11 @@ impl Embedding
     /// - intension: the conjuncts are checked in a fixed order — the image's
     ///   length; then, per pattern edge in pattern order, its claimed image's
     ///   range, label, arity, and incidence; generator injectivity, reported at
-    ///   the first colliding pair in pattern order; the wire map's totality and
-    ///   range in pattern wire order; the seam, inputs half before outputs; the
-    ///   warrant; and finally the convexity sweep. The sweep **always runs**:
-    ///   the discharge is a producer-side economy and never a reader-side
-    ///   assumption, so a certificate claiming
+    ///   the first colliding pair in pattern order; the wire map's totality,
+    ///   range, and exactness in pattern wire order; the seam, inputs half
+    ///   before outputs; the warrant; and finally the convexity sweep. The
+    ///   sweep **always runs**: the discharge is a producer-side economy and
+    ///   never a reader-side assumption, so a certificate claiming
     ///   [`ConvexityWarrant::LeftConnectedOverAcyclicTarget`] is swept exactly
     ///   as any other.
     ///
@@ -367,6 +369,7 @@ impl Embedding
     /// - witness: `matching::tests::a_certificate_sharing_one_generator_is_refused`
     /// - witness: `matching::tests::a_certificate_leaving_a_wire_unmapped_is_refused`
     /// - witness: `matching::tests::a_certificate_imaging_a_wire_outside_the_target_is_refused`
+    /// - witness: `matching::tests::a_certificate_mapping_wires_outside_the_pattern_is_refused`
     /// - witness: `matching::tests::a_certificate_with_a_forged_seam_is_refused`
     /// - witness: `matching::tests::a_certificate_with_an_unearned_warrant_is_refused`
     /// - witness: `matching::tests::a_non_convex_certificate_is_refused_with_the_offending_path`
@@ -443,6 +446,12 @@ impl Embedding
                 },
                 | Some(_) => {},
             }
+        }
+        if self.wires.pair_count() != PairCount(pattern.wire_count().0) {
+            return Err(EmbeddingObstruction::WireMapOverwide {
+                expected: pattern.wire_count(),
+                claimed: self.wires.pair_count(),
+            });
         }
         let derived = seam_of(pattern, &self.wires);
         if derived.inputs != self.seam.inputs {
@@ -894,6 +903,18 @@ pub enum EmbeddingObstruction
         wire: Wire,
         /// The claimed image, which the target does not declare.
         claimed: Wire,
+    },
+    /// The wire map assigns wires the pattern does not have. With totality
+    /// already checked, the map's domain is exactly the pattern's wires or the
+    /// certificate carries assignments nothing asked for — and two
+    /// certificates differing only in such junk would compare unequal while
+    /// denoting one embedding, so the extras are refused rather than ignored.
+    WireMapOverwide
+    {
+        /// How many wires the pattern declares.
+        expected: WireCount,
+        /// How many pairs the claimed map carries.
+        claimed: PairCount,
     },
     /// The claimed seam is not the wire map's own boundary restriction. The
     /// seam is derived data, so a disagreement is a forgery rather than a
@@ -3132,6 +3153,32 @@ mod tests
             }),
             claim.check(&pattern, &target),
             "the target declares seven wires, so Wire(7) is not one of them"
+        );
+    }
+
+    #[test]
+    fn a_certificate_mapping_wires_outside_the_pattern_is_refused()
+    {
+        // The bare-wire pattern has exactly one wire; a claim whose map also
+        // assigns Wire(5) carries an assignment the pattern never asked for.
+        // With totality holding, extras are the only way the count can differ.
+        let pattern = bare_wire_pattern();
+        let target = multi_output_target();
+        let image = claimed_wires(&[(Wire(0), Wire(0)), (Wire(5), Wire(5))]);
+        let claim = Embedding::claim(
+            Vec::new().into_boxed_slice(),
+            image,
+            Seam::default(),
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::WireMapOverwide {
+                expected: WireCount(1),
+                claimed: PairCount(2),
+            }),
+            claim.check(&pattern, &target),
+            "the map's domain is exactly the pattern's wires, or the claim is \
+             not evidence of an embedding of this pattern"
         );
     }
 
