@@ -698,6 +698,28 @@ mod tests
         }
     }
 
+    /// The signature node a thunked package elimination ascribes.
+    ///
+    /// Reads the id rather than the type, so a test can state what two
+    /// separately allocated terms do **not** share.
+    fn unpack_signature(
+        nbe: &Normalizer,
+        node: crate::syntax::ValueNodeId,
+    ) -> crate::syntax::ValueTypeNodeId
+    {
+        let crate::syntax::ValueNode::Thunk(_, body) =
+            *nbe.syntax().values.get(node).expect("a value node")
+        else {
+            panic!("the fixture must be a thunk");
+        };
+        let crate::syntax::CompNode::Unpack { signature, .. } =
+            *nbe.syntax().comps.get(body).expect("a computation node")
+        else {
+            panic!("the fixture must thunk a package elimination");
+        };
+        signature
+    }
+
     /// A unit value ascribed at `ty`, so a type is observable through a term.
     fn ascribed(ty: ValueType) -> Rc<Value>
     {
@@ -1671,6 +1693,113 @@ mod tests
         assert!(
             !bool::from(nbe.converts(&plain, &regenerated)),
             "two unpacks with distinct minted atoms were merged"
+        );
+    }
+
+    #[test]
+    fn stuck_unpacks_that_ascribe_different_signatures_do_not_convert()
+    {
+        let mut nbe = Normalizer::new();
+        // Everything but the signature is held fixed — same minted atom, same
+        // neutral scrutinee, same body — so the signature is the only thing
+        // that can decide, and a comparison that dropped it would accept.
+        let stuck = |signature: ValueType| {
+            thunk(Comp::unpack(
+                Value::var(NameRef::from("unknown")),
+                signature,
+                [seal(
+                    TypeSerial::from(7_u64),
+                    SealComponentName::from("component"),
+                )],
+                "opened",
+                Comp::force(Value::var(NameRef::from("opened"))),
+            ))
+        };
+        // The two signatures share their grade, their arity, and their binder
+        // label, and differ only inside the payload — so a comparison that
+        // stopped at the former's shape would accept them as well.
+        let integer = stuck(package_type(
+            TypeAtomName::from("component"),
+            ValueType::integer(),
+        ));
+        let string = stuck(package_type(
+            TypeAtomName::from("component"),
+            ValueType::string(),
+        ));
+        assert!(
+            !bool::from(nbe.converts(&integer, &string)),
+            "two eliminations ascribing different signatures were merged"
+        );
+    }
+
+    #[test]
+    fn stuck_unpacks_that_open_different_bodies_do_not_convert()
+    {
+        let mut nbe = Normalizer::new();
+        let signature = package_type(TypeAtomName::from("component"), ValueType::integer());
+        // The annotation half agrees exactly — one signature, one atom, one
+        // neutral scrutinee — so only the body closure is left to decide, and a
+        // head comparison that never pushed it would accept.
+        let stuck = |body: Comp| {
+            thunk(Comp::unpack(
+                Value::var(NameRef::from("unknown")),
+                signature.clone(),
+                [seal(
+                    TypeSerial::from(8_u64),
+                    SealComponentName::from("component"),
+                )],
+                "opened",
+                body,
+            ))
+        };
+        // Both bodies are returners over the same binder, so a comparison that
+        // matched their shape without descending would accept them too.
+        let opened = stuck(Comp::ret(Value::var(NameRef::from("opened"))));
+        let discarded = stuck(Comp::ret(Value::Unit));
+        assert!(
+            !bool::from(nbe.converts(&opened, &discarded)),
+            "two eliminations with different bodies were merged"
+        );
+    }
+
+    #[test]
+    fn separately_built_stuck_unpacks_convert_on_alpha_equivalent_signatures()
+    {
+        let mut nbe = Normalizer::new();
+        let stuck = |label: TypeAtomName<'_>| {
+            thunk(Comp::unpack(
+                Value::var(NameRef::from("unknown")),
+                package_type(label, ValueType::integer()),
+                [seal(
+                    TypeSerial::from(9_u64),
+                    SealComponentName::from("component"),
+                )],
+                "opened",
+                Comp::force(Value::var(NameRef::from("opened"))),
+            ))
+        };
+        // Allocated rather than lowered, so the interner cannot hand back one
+        // representative for two alpha-equivalent terms: these are two nodes,
+        // and the signatures inside them are two nodes as well.
+        let left_term = stuck(TypeAtomName::from("component"));
+        let right_term = stuck(TypeAtomName::from("renamed"));
+        let left_node = nbe.syntax_mut().alloc_value(&left_term).unwrap();
+        let right_node = nbe.syntax_mut().alloc_value(&right_term).unwrap();
+        // The precondition the law rests on, asserted rather than assumed: a
+        // comparison by node identity has nothing to work with here.
+        let left_signature = unpack_signature(&nbe, left_node);
+        let right_signature = unpack_signature(&nbe, right_node);
+        assert_ne!(
+            left_signature, right_signature,
+            "the two signatures shared a node, so identity would decide this"
+        );
+        // The ordinary conversion oracle, entered at the semantic values the
+        // two separate nodes evaluate to.
+        let left = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, left_node).unwrap();
+        let right = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, right_node).unwrap();
+        assert!(
+            bool::from(crate::nbe::conv::converts_values(&mut nbe, left, right).unwrap()),
+            "two separately built alpha-equivalent signatures were treated as distinct"
         );
     }
 
