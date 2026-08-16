@@ -148,6 +148,14 @@
 //! [`crate::interface::spine`]. The boundary complement a rewrite would need is
 //! not here and is not this rung's.
 //!
+//! The rung's 2026-08-16 increment added the certificate discipline's reader
+//! half and the multi-admission diagnostic. [`Embedding::check`] independently
+//! re-derives every conjunct a claimed embedding asserts — validity as a
+//! property the reader refutes, never one the producer asserts — with each
+//! failure a typed [`EmbeddingObstruction`], and [`Matching::ambiguity`]
+//! reports a deterministic diagnostic naming where several admitted readings
+//! of one pattern diverge.
+//!
 //! [`Wiring::assemble`]: crate::interface::Wiring::assemble
 
 use alloc::boxed::Box;
@@ -156,6 +164,7 @@ use alloc::vec::Vec;
 
 use crate::interface::ComponentIndex;
 use crate::interface::Edge;
+use crate::interface::EdgeCount;
 use crate::interface::PartialBijection;
 use crate::interface::Seam;
 use crate::interface::Wire;
@@ -276,6 +285,194 @@ impl Embedding
     {
         self.convexity
     }
+
+    /// **Claim** an embedding — the unchecked constructor a certificate enters
+    /// by.
+    ///
+    /// A value built here asserts nothing. The certificate discipline is that
+    /// validity is a property the reader refutes rather than one the producer
+    /// asserts, so the search builds its certificates through the private path
+    /// and this constructor exists for everything else — a deserialized
+    /// certificate, a hand-built claim, a fixture. Whether the claim holds is
+    /// [`Embedding::check`]'s verdict, never this constructor's.
+    #[inline]
+    #[must_use]
+    pub fn claim(
+        image: Box<[Edge]>,
+        wires: PartialBijection,
+        seam: Seam,
+        convexity: ConvexityWarrant,
+    ) -> Self
+    {
+        Self {
+            image,
+            wires,
+            seam,
+            convexity,
+        }
+    }
+
+    /// **Independently re-check** this certificate against the two diagrams it
+    /// claims to relate.
+    ///
+    /// This is the reader half of the certificate discipline for matching: an
+    /// [`Embedding`] is evidence, and evidence is something its consumer
+    /// *refutes* rather than something its producer asserts. Every conjunct the
+    /// search's own contract promises is re-derived here from the two diagrams
+    /// and the certificate alone — nothing is inherited from the fact that a
+    /// search happened to produce the value.
+    ///
+    /// # Contract
+    /// - requires: both diagrams are monogamous, boundary-honest and acyclic,
+    ///   which [`Wiring::assemble`] has already established for any value of
+    ///   the type; the certificate itself is arbitrary, which is the point.
+    /// - ensures: `Ok(warrant)` exactly when the certificate is a label-,
+    ///   sort-, arity-, incidence- and port-order-preserving monomorphism of
+    ///   `pattern` into `target`, whose seam is the wire map's own boundary
+    ///   restriction, whose warrant is one `pattern` earns, and whose image is
+    ///   convex in `target`; `warrant` is then the certificate's own.
+    /// - provides: validity as a checkable property of the certificate, with
+    ///   every failed conjunct surfacing as a typed obstruction naming its
+    ///   locus rather than as a bare verdict.
+    /// - fails: [`EmbeddingObstruction`], the first failing conjunct in the
+    ///   check's stated order.
+    /// - panics: none.
+    /// - intension: the conjuncts are checked in a fixed order — the image's
+    ///   length; then, per pattern edge in pattern order, its claimed image's
+    ///   range, label, arity, and incidence; generator injectivity, reported at
+    ///   the first colliding pair in pattern order; the wire map's totality and
+    ///   range in pattern wire order; the seam, inputs half before outputs; the
+    ///   warrant; and finally the convexity sweep. The sweep **always runs**:
+    ///   the discharge is a producer-side economy and never a reader-side
+    ///   assumption, so a certificate claiming
+    ///   [`ConvexityWarrant::LeftConnectedOverAcyclicTarget`] is swept exactly
+    ///   as any other.
+    ///
+    /// # Errors
+    /// See the `- fails:` clause above.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L1 evidence — every certificate the search issues verifies
+    ///   across the fixture families (multi-output, multi-root, reconvergent,
+    ///   disconnected, bare-wire, and empty), and each refusal class is
+    ///   separated by one targeted corruption of a verifying certificate, so a
+    ///   conjunct dropped from the check fails a test rather than silently
+    ///   accepting.
+    /// - witness: `matching::tests::the_searches_certificates_verify_against_their_own_diagrams`
+    /// - witness: `matching::tests::a_certificate_with_a_forged_image_length_is_refused`
+    /// - witness: `matching::tests::a_certificate_imaged_outside_the_target_is_refused`
+    /// - witness: `matching::tests::a_certificate_with_a_relabelled_image_is_refused`
+    /// - witness: `matching::tests::a_certificate_with_an_arity_wrong_image_is_refused`
+    /// - witness: `matching::tests::a_certificate_with_a_shifted_wire_map_is_refused`
+    /// - witness: `matching::tests::a_certificate_sharing_one_generator_is_refused`
+    /// - witness: `matching::tests::a_certificate_leaving_a_wire_unmapped_is_refused`
+    /// - witness: `matching::tests::a_certificate_imaging_a_wire_outside_the_target_is_refused`
+    /// - witness: `matching::tests::a_certificate_with_a_forged_seam_is_refused`
+    /// - witness: `matching::tests::a_certificate_with_an_unearned_warrant_is_refused`
+    /// - witness: `matching::tests::a_non_convex_certificate_is_refused_with_the_offending_path`
+    #[inline]
+    pub fn check(
+        &self,
+        pattern: &Wiring,
+        target: &Wiring,
+    ) -> Result<ConvexityWarrant, EmbeddingObstruction>
+    {
+        if self.image.len() != pattern.edge_count().0 {
+            return Err(EmbeddingObstruction::ImageLength {
+                expected: pattern.edge_count(),
+                claimed: EdgeCount(self.image.len()),
+            });
+        }
+        for (position, (from, claimed)) in pattern
+            .generators()
+            .iter()
+            .zip(self.image.iter().copied())
+            .enumerate()
+        {
+            let at = Edge(position);
+            let Some(onto) = target.generator(claimed)
+            else {
+                return Err(EmbeddingObstruction::ImageOutOfRange { at, claimed });
+            };
+            if from.label != onto.label {
+                return Err(EmbeddingObstruction::LabelMismatch { at, claimed });
+            }
+            if from.sources.len() != onto.sources.len() || from.targets.len() != onto.targets.len()
+            {
+                return Err(EmbeddingObstruction::ArityMismatch { at, claimed });
+            }
+            let sources = from
+                .sources
+                .iter()
+                .copied()
+                .zip(onto.sources.iter().copied());
+            let targets = from
+                .targets
+                .iter()
+                .copied()
+                .zip(onto.targets.iter().copied());
+            for (wire, expected) in sources.chain(targets) {
+                if self.wires.image_of(wire) != Some(expected) {
+                    return Err(EmbeddingObstruction::IncidenceMismatch { at, wire, expected });
+                }
+            }
+        }
+        for (first, left) in self.image.iter().copied().enumerate() {
+            let rest = self
+                .image
+                .iter()
+                .copied()
+                .enumerate()
+                .skip(first.saturating_add(1));
+            for (second, right) in rest {
+                if left == right {
+                    return Err(EmbeddingObstruction::NonInjectiveImage {
+                        first: Edge(first),
+                        second: Edge(second),
+                        claimed: left,
+                    });
+                }
+            }
+        }
+        for index in 0 .. pattern.wire_count().0 {
+            let wire = Wire(index);
+            match self.wires.image_of(wire) {
+                | None => return Err(EmbeddingObstruction::WireUnmapped { wire }),
+                | Some(claimed) if claimed.0 >= target.wire_count().0 => {
+                    return Err(EmbeddingObstruction::WireImageOutOfRange { wire, claimed });
+                },
+                | Some(_) => {},
+            }
+        }
+        let derived = seam_of(pattern, &self.wires);
+        if derived.inputs != self.seam.inputs {
+            return Err(EmbeddingObstruction::SeamMismatch {
+                half: SeamHalf::Inputs,
+            });
+        }
+        if derived.outputs != self.seam.outputs {
+            return Err(EmbeddingObstruction::SeamMismatch {
+                half: SeamHalf::Outputs,
+            });
+        }
+        if self.convexity == ConvexityWarrant::LeftConnectedOverAcyclicTarget {
+            let computed = connectivity(pattern);
+            if computed != Connectivity::StronglyConnected {
+                return Err(EmbeddingObstruction::UnearnedWarrant {
+                    connectivity: computed,
+                });
+            }
+        }
+        let covered: BTreeSet<Edge> = self.image.iter().copied().collect();
+        if let Some(detour) = sweep_for_escape(target, &covered) {
+            return Err(EmbeddingObstruction::NotConvex {
+                escape: detour.escape,
+                through: detour.through,
+                re_entry: detour.re_entry,
+            });
+        }
+        Ok(self.convexity)
+    }
 }
 
 /// A candidate the convexity conjunct **refused**, with the path that refused
@@ -386,6 +583,212 @@ impl Matching
     {
         self.steps
     }
+
+    /// The **multi-admission diagnostic** for this search.
+    ///
+    /// A pattern admitted at several embeddings is ambiguous: the search found
+    /// more than one way to read the pattern in the target, and a consumer
+    /// choosing one silently would be choosing arbitrarily. The diagnostic
+    /// names where the readings diverge rather than only that they do.
+    ///
+    /// # Contract
+    /// - ensures: `None` when the search admitted no embedding (a matchless
+    ///   pattern is not ambiguous, it is unmatched) or exactly one (a unique
+    ///   match needs no discrimination); otherwise the admission count and one
+    ///   [`Divergence`] per admitted embedding past the representative, in
+    ///   enumeration order.
+    /// - provides: a deterministic account of the ambiguity — the
+    ///   representative is the first admitted embedding in the search's
+    ///   enumeration order, and each divergence is the first assignment on
+    ///   which that later embedding disagrees with it.
+    /// - panics: none.
+    /// - intension: the discriminator is the first differing generator image in
+    ///   pattern position order, or — when every generator image agrees, which
+    ///   leaves only wires no generator pins — the first differing wire image
+    ///   in pattern wire order. Both orders are the enumeration's own, so the
+    ///   diagnostic is a function of the [`Matching`] value alone. A later
+    ///   embedding identical to the representative would contribute no
+    ///   divergence; the search never admits one assignment twice, so the case
+    ///   is defensive rather than reachable.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — the `None` arms are separated by a unique
+    ///   match and a matchless one, and the diagnostic's two discriminator arms
+    ///   are separated by a generator-level divergence and a wire-level one,
+    ///   with the representative, the divergence order, and the discriminating
+    ///   locus each pinned exactly rather than up to choice.
+    /// - witness: `matching::tests::a_unique_or_absent_match_reports_no_ambiguity`
+    /// - witness: `matching::tests::a_multi_admission_reports_its_first_divergences_in_order`
+    /// - witness: `matching::tests::a_bare_wire_ambiguity_discriminates_on_the_wire`
+    /// - witness: `matching::tests::two_orderings_of_port_free_generators_diverge_at_the_first_generator`
+    #[inline]
+    #[must_use]
+    pub fn ambiguity(&self) -> Option<Ambiguity>
+    {
+        let (representative, rest) = self.admitted.split_first()?;
+        if rest.is_empty() {
+            return None;
+        }
+        let mut divergences: Vec<Divergence> = Vec::with_capacity(rest.len());
+        for (offset, variant) in rest.iter().enumerate() {
+            let Some(discriminator) = first_discriminator(representative, variant)
+            else {
+                continue;
+            };
+            divergences.push(Divergence {
+                admitted: AdmittedIndex(offset.saturating_add(1)),
+                discriminator,
+            });
+        }
+        Some(Ambiguity {
+            admissions: self.admitted_count(),
+            divergences: divergences.into_boxed_slice(),
+        })
+    }
+}
+
+/// Which admitted embedding of a [`Matching`] a [`Divergence`] concerns — an
+/// index into [`Matching::admitted`]'s enumeration order.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AdmittedIndex(pub usize);
+
+/// Where a later admitted embedding first disagrees with the representative.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Discriminator
+{
+    /// A pattern generator is imaged differently.
+    Generator
+    {
+        /// The pattern generator whose image differs.
+        at: Edge,
+        /// The image the representative assigns.
+        representative: Edge,
+        /// The image the diverging embedding assigns.
+        variant: Edge,
+    },
+    /// A pattern wire is imaged differently — necessarily a wire no generator
+    /// pins, because generator images that agree force every port's image by
+    /// incidence.
+    Wire
+    {
+        /// The pattern wire whose image differs.
+        wire: Wire,
+        /// The image the representative assigns.
+        representative: Wire,
+        /// The image the diverging embedding assigns.
+        variant: Wire,
+    },
+}
+
+/// One later embedding's first difference from the representative.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Divergence
+{
+    /// Which admitted embedding diverges.
+    admitted: AdmittedIndex,
+    /// Where it first diverges.
+    discriminator: Discriminator,
+}
+
+impl Divergence
+{
+    /// Which admitted embedding diverges — an index into
+    /// [`Matching::admitted`]'s enumeration order.
+    #[inline]
+    #[must_use]
+    pub const fn admitted(&self) -> AdmittedIndex
+    {
+        self.admitted
+    }
+
+    /// Where it first diverges from the representative.
+    #[inline]
+    #[must_use]
+    pub const fn discriminator(&self) -> Discriminator
+    {
+        self.discriminator
+    }
+}
+
+/// What a multi-admission search found, deterministically ordered.
+///
+/// The representative is the first admitted embedding in the search's
+/// enumeration order, and the divergences follow the same order, so the whole
+/// report is a function of the [`Matching`] value: run the same search twice
+/// and the diagnostic is identical.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Ambiguity
+{
+    /// How many embeddings the search admitted.
+    admissions: MatchCount,
+    /// One first-difference per admitted embedding past the representative.
+    divergences: Box<[Divergence]>,
+}
+
+impl Ambiguity
+{
+    /// How many embeddings the search admitted — the ambiguity's size.
+    #[inline]
+    #[must_use]
+    pub const fn admissions(&self) -> MatchCount
+    {
+        self.admissions
+    }
+
+    /// One first-difference per admitted embedding past the representative, in
+    /// enumeration order.
+    #[inline]
+    #[must_use]
+    pub fn divergences(&self) -> &[Divergence]
+    {
+        &self.divergences
+    }
+}
+
+/// The first assignment on which `representative` and `variant` disagree.
+///
+/// # Contract
+/// - ensures: the first generator image, in pattern position order, on which
+///   the two embeddings differ; failing that, the first wire image in pattern
+///   wire order; `None` exactly when the two records agree everywhere, which
+///   the search never produces for two distinct admissions and which is
+///   therefore defensive rather than reachable.
+/// - panics: none.
+fn first_discriminator(
+    representative: &Embedding,
+    variant: &Embedding,
+) -> Option<Discriminator>
+{
+    let images = representative
+        .image
+        .iter()
+        .copied()
+        .zip(variant.image.iter().copied());
+    for (position, (representative_image, variant_image)) in images.enumerate() {
+        if representative_image != variant_image {
+            return Some(Discriminator::Generator {
+                at: Edge(position),
+                representative: representative_image,
+                variant: variant_image,
+            });
+        }
+    }
+    let wires = representative
+        .wires
+        .pairs()
+        .into_iter()
+        .zip(variant.wires.pairs());
+    for ((wire, representative_image), (_, variant_image)) in wires {
+        if representative_image != variant_image {
+            return Some(Discriminator::Wire {
+                wire,
+                representative: representative_image,
+                variant: variant_image,
+            });
+        }
+    }
+    None
 }
 
 /// Why an embedding search was declined outright.
@@ -398,6 +801,128 @@ pub enum MatchObstruction
     {
         /// How many steps were taken before the budget ran out.
         consumed: SearchSteps,
+    },
+}
+
+/// Which half of the span-level seam a refusal concerns.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum SeamHalf
+{
+    /// The input half — the pattern's input ports to their images.
+    Inputs,
+    /// The output half — the pattern's output ports to their images.
+    Outputs,
+}
+
+/// Why an [`Embedding`] certificate failed [`Embedding::check`].
+///
+/// Every variant names the conjunct that failed and the locus that failed it,
+/// in the fixed check order [`Embedding::check`] documents, so a refusal is
+/// usable evidence rather than a verdict.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EmbeddingObstruction
+{
+    /// The claimed image holds the wrong number of generators: one slot per
+    /// pattern generator is the certificate's own shape.
+    ImageLength
+    {
+        /// How many generators the pattern holds.
+        expected: EdgeCount,
+        /// How many image slots the certificate claims.
+        claimed: EdgeCount,
+    },
+    /// A claimed image is not a generator of the target at all.
+    ImageOutOfRange
+    {
+        /// The pattern generator whose image is claimed.
+        at: Edge,
+        /// The claimed image, which the target does not hold.
+        claimed: Edge,
+    },
+    /// The claimed image carries a different label — a different name, or the
+    /// same name worn in a different role.
+    LabelMismatch
+    {
+        /// The pattern generator whose label is not preserved.
+        at: Edge,
+        /// The claimed image carrying another label.
+        claimed: Edge,
+    },
+    /// The claimed image has a different arity on one side, under the right
+    /// label.
+    ArityMismatch
+    {
+        /// The pattern generator whose arity is not preserved.
+        at: Edge,
+        /// The claimed image of another arity.
+        claimed: Edge,
+    },
+    /// The wire map disagrees with the claimed image's incidence: the image of
+    /// a pattern port is not the corresponding port of the claimed generator.
+    IncidenceMismatch
+    {
+        /// The pattern generator whose port is mis-mapped.
+        at: Edge,
+        /// The pattern port wire whose image is wrong.
+        wire: Wire,
+        /// Where incidence says the wire must go — the claimed generator's
+        /// port at the same position.
+        expected: Wire,
+    },
+    /// Two pattern generators claim one target generator, so the claimed map
+    /// is not a monomorphism.
+    NonInjectiveImage
+    {
+        /// The first pattern generator making the claim, in pattern order.
+        first: Edge,
+        /// The second pattern generator making the same claim.
+        second: Edge,
+        /// The target generator both claim.
+        claimed: Edge,
+    },
+    /// A pattern wire has no image at all — possible only for a wire no
+    /// generator is incident to, since incidence covers every port.
+    WireUnmapped
+    {
+        /// The pattern wire the map forgets.
+        wire: Wire,
+    },
+    /// A pattern wire is mapped outside the target's declared wires.
+    WireImageOutOfRange
+    {
+        /// The pattern wire whose image is out of range.
+        wire: Wire,
+        /// The claimed image, which the target does not declare.
+        claimed: Wire,
+    },
+    /// The claimed seam is not the wire map's own boundary restriction. The
+    /// seam is derived data, so a disagreement is a forgery rather than a
+    /// second opinion.
+    SeamMismatch
+    {
+        /// Which half of the seam disagrees first.
+        half: SeamHalf,
+    },
+    /// The certificate claims
+    /// [`ConvexityWarrant::LeftConnectedOverAcyclicTarget`] for a pattern that
+    /// is not strongly connected — a warrant the pattern does not earn.
+    UnearnedWarrant
+    {
+        /// The pattern's computed connectivity, naming the unreached port pair
+        /// that costs the discharge.
+        connectivity: Connectivity,
+    },
+    /// The claimed image is not convex in the target: the check's own sweep
+    /// found a directed path that leaves the image and returns to it.
+    NotConvex
+    {
+        /// The wire the offending path leaves the image on — an image output.
+        escape: Wire,
+        /// A generator outside the image the offending path runs through.
+        through: Edge,
+        /// The wire the offending path re-enters the image on — an image
+        /// input.
+        re_entry: Wire,
     },
 }
 
@@ -2272,6 +2797,584 @@ mod tests
         assert_eq!(
             5_usize, agreed,
             "and it separates both verdicts rather than agreeing only on refusals"
+        );
+    }
+
+    /// A claimed wire map from pairs, which must be injective.
+    fn claimed_wires(pairs: &[(Wire, Wire)]) -> PartialBijection
+    {
+        let mut map = PartialBijection::new();
+        for (source, image) in pairs.iter().copied() {
+            map.extend(source, image)
+                .expect("the fixture map is injective");
+        }
+        map
+    }
+
+    /// The disconnected pattern's two-admission target: two `a` generators and
+    /// one `b`, so the first component has two places to land.
+    fn two_admission_target() -> Wiring
+    {
+        diagram(
+            WireCount(6),
+            alloc::vec![
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("a"), [Wire(2)], [Wire(3)]),
+                Generator::new(value("b"), [Wire(4)], [Wire(5)]),
+            ],
+            Interface::new(alloc::vec![Wire(0), Wire(2), Wire(4)], alloc::vec![
+                Wire(1),
+                Wire(3),
+                Wire(5)
+            ]),
+        )
+    }
+
+    /// The identity pattern: one bare wire, open at both ends.
+    fn bare_wire_pattern() -> Wiring
+    {
+        diagram(
+            WireCount(1),
+            Vec::new(),
+            Interface::new([Wire(0)], [Wire(0)]),
+        )
+    }
+
+    #[test]
+    fn the_searches_certificates_verify_against_their_own_diagrams()
+    {
+        // The reader side accepts exactly what the producer side admits, across
+        // every fixture family the search is witnessed on — and the warrant the
+        // check returns is the certificate's own.
+        let empty = diagram(
+            WireCount(0),
+            Vec::new(),
+            Interface::new(Vec::new(), Vec::new()),
+        );
+        let cases = alloc::vec![
+            Against {
+                pattern: multi_output_pattern(),
+                target: multi_output_target(),
+            },
+            Against {
+                pattern: multi_root_pattern(),
+                target: multi_root_target(),
+            },
+            Against {
+                pattern: reconvergent_pattern(),
+                target: reconvergent_target(),
+            },
+            Against {
+                pattern: disconnected_pattern(),
+                target: two_admission_target(),
+            },
+            Against {
+                pattern: bare_wire_pattern(),
+                target: multi_output_target(),
+            },
+            Against {
+                pattern: empty,
+                target: multi_root_target(),
+            },
+        ];
+        let mut checked: usize = 0;
+        for case in &cases {
+            let matching = embeddings(&case.pattern, &case.target, budget())
+                .expect("the search fits the budget");
+            for certificate in matching.admitted() {
+                assert_eq!(
+                    Ok(certificate.convexity()),
+                    certificate.check(&case.pattern, &case.target),
+                    "a certificate the search issued verifies against its own diagrams"
+                );
+                checked = checked.saturating_add(1);
+            }
+        }
+        assert_eq!(
+            13_usize, checked,
+            "one each for multi-output, multi-root and reconvergent, two for the \
+             disconnected pattern, seven bare-wire images, and the empty embedding"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_a_forged_image_length_is_refused()
+    {
+        let pattern = multi_root_pattern();
+        let target = multi_root_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        let short = Embedding::claim(
+            certificate.image()[.. 2].to_vec().into_boxed_slice(),
+            certificate.wires().clone(),
+            certificate.seam().clone(),
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::ImageLength {
+                expected: EdgeCount(3),
+                claimed: EdgeCount(2),
+            }),
+            short.check(&pattern, &target),
+            "one image slot per pattern generator is the certificate's own shape"
+        );
+        let mut longer = certificate.image().to_vec();
+        longer.push(Edge(5));
+        let overlong = Embedding::claim(
+            longer.into_boxed_slice(),
+            certificate.wires().clone(),
+            certificate.seam().clone(),
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::ImageLength {
+                expected: EdgeCount(3),
+                claimed: EdgeCount(4),
+            }),
+            overlong.check(&pattern, &target),
+            "in either direction"
+        );
+    }
+
+    #[test]
+    fn a_certificate_imaged_outside_the_target_is_refused()
+    {
+        let pattern = multi_root_pattern();
+        let target = multi_root_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        let claim = Embedding::claim(
+            alloc::vec![Edge(2), Edge(3), Edge(99)].into_boxed_slice(),
+            certificate.wires().clone(),
+            certificate.seam().clone(),
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::ImageOutOfRange {
+                at: Edge(2),
+                claimed: Edge(99),
+            }),
+            claim.check(&pattern, &target),
+            "an image the target does not hold is not an embedding"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_a_relabelled_image_is_refused()
+    {
+        let pattern = reconvergent_pattern();
+        let target = reconvergent_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        let claim = Embedding::claim(
+            alloc::vec![Edge(0), Edge(2)].into_boxed_slice(),
+            certificate.wires().clone(),
+            certificate.seam().clone(),
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::LabelMismatch {
+                at: Edge(0),
+                claimed: Edge(0),
+            }),
+            claim.check(&pattern, &target),
+            "the target's `e` wears another label than the pattern's `f`, so the claim \
+             fails at the first pattern generator"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_an_arity_wrong_image_is_refused()
+    {
+        // One label at two arities is two generators; the claimed image carries
+        // the right name at the wrong shape.
+        let pattern = diagram(
+            WireCount(2),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1)])],
+            Interface::new([Wire(0)], [Wire(1)]),
+        );
+        let target = diagram(
+            WireCount(3),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1), Wire(2)])],
+            Interface::new([Wire(0)], alloc::vec![Wire(1), Wire(2)]),
+        );
+        let claim = Embedding::claim(
+            alloc::vec![Edge(0)].into_boxed_slice(),
+            claimed_wires(&[(Wire(0), Wire(0)), (Wire(1), Wire(1))]),
+            Seam::default(),
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::ArityMismatch {
+                at: Edge(0),
+                claimed: Edge(0),
+            }),
+            claim.check(&pattern, &target),
+            "the label agrees and the arity does not"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_a_shifted_wire_map_is_refused()
+    {
+        let pattern = reconvergent_pattern();
+        let target = reconvergent_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        // The real certificate sends the pattern's input Wire(0) to the target
+        // wire below `f`; sending it one wire lower contradicts the claimed
+        // image's own incidence.
+        let claim = Embedding::claim(
+            certificate.image().to_vec().into_boxed_slice(),
+            claimed_wires(&[
+                (Wire(0), Wire(0)),
+                (Wire(1), Wire(2)),
+                (Wire(2), Wire(3)),
+                (Wire(3), Wire(4)),
+            ]),
+            certificate.seam().clone(),
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::IncidenceMismatch {
+                at: Edge(0),
+                wire: Wire(0),
+                expected: Wire(1),
+            }),
+            claim.check(&pattern, &target),
+            "the wire map must agree with the claimed image's ports, in order"
+        );
+    }
+
+    #[test]
+    fn a_certificate_sharing_one_generator_is_refused()
+    {
+        // The port-free case, where generator injectivity carries alone: two
+        // nullary generators of one label, both claimed onto one target
+        // generator.
+        let pattern = diagram(
+            WireCount(0),
+            alloc::vec![
+                Generator::new(value("s"), Vec::new(), Vec::new()),
+                Generator::new(value("s"), Vec::new(), Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        );
+        let target = pattern.clone();
+        let claim = Embedding::claim(
+            alloc::vec![Edge(0), Edge(0)].into_boxed_slice(),
+            PartialBijection::new(),
+            Seam::default(),
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::NonInjectiveImage {
+                first: Edge(0),
+                second: Edge(1),
+                claimed: Edge(0),
+            }),
+            claim.check(&pattern, &target),
+            "one target generator cannot serve two pattern generators"
+        );
+    }
+
+    #[test]
+    fn a_certificate_leaving_a_wire_unmapped_is_refused()
+    {
+        // The bare wire is the one wire no generator's incidence covers, so it
+        // is where totality has to be checked in its own right.
+        let pattern = bare_wire_pattern();
+        let target = multi_output_target();
+        let claim = Embedding::claim(
+            Vec::new().into_boxed_slice(),
+            PartialBijection::new(),
+            Seam::default(),
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::WireUnmapped { wire: Wire(0) }),
+            claim.check(&pattern, &target),
+            "a wire map that forgets the pattern's one wire is no embedding"
+        );
+    }
+
+    #[test]
+    fn a_certificate_imaging_a_wire_outside_the_target_is_refused()
+    {
+        let pattern = bare_wire_pattern();
+        let target = multi_output_target();
+        let image = claimed_wires(&[(Wire(0), Wire(7))]);
+        let claim = Embedding::claim(
+            Vec::new().into_boxed_slice(),
+            image.clone(),
+            Seam {
+                inputs: image.clone(),
+                outputs: image,
+            },
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::WireImageOutOfRange {
+                wire: Wire(0),
+                claimed: Wire(7),
+            }),
+            claim.check(&pattern, &target),
+            "the target declares seven wires, so Wire(7) is not one of them"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_a_forged_seam_is_refused()
+    {
+        let pattern = multi_root_pattern();
+        let target = multi_root_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        let claim = Embedding::claim(
+            certificate.image().to_vec().into_boxed_slice(),
+            certificate.wires().clone(),
+            Seam {
+                inputs: PartialBijection::new(),
+                outputs: certificate.seam().outputs.clone(),
+            },
+            certificate.convexity(),
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::SeamMismatch {
+                half: SeamHalf::Inputs,
+            }),
+            claim.check(&pattern, &target),
+            "the seam is the wire map's own boundary restriction, so a forgery \
+             disagrees with the re-derivation"
+        );
+    }
+
+    #[test]
+    fn a_certificate_with_an_unearned_warrant_is_refused()
+    {
+        // The disconnected pattern's matches are swept, never discharged; a
+        // certificate claiming the discharge for it claims a warrant the
+        // pattern does not earn, however legal the image.
+        let pattern = disconnected_pattern();
+        let target = two_admission_target();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let certificate = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        assert_eq!(
+            ConvexityWarrant::SweptOverTheComplement,
+            certificate.convexity(),
+            "the search itself swept this one"
+        );
+        let claim = Embedding::claim(
+            certificate.image().to_vec().into_boxed_slice(),
+            certificate.wires().clone(),
+            certificate.seam().clone(),
+            ConvexityWarrant::LeftConnectedOverAcyclicTarget,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::UnearnedWarrant {
+                connectivity: Connectivity::Disconnected {
+                    from: Wire(0),
+                    to: Wire(3),
+                },
+            }),
+            claim.check(&pattern, &target),
+            "the first component's input reaches nothing in the second, so the \
+             discharge is not this pattern's to claim"
+        );
+    }
+
+    #[test]
+    fn a_non_convex_certificate_is_refused_with_the_offending_path()
+    {
+        // The published blocking shape, forged as a certificate: the image the
+        // search's own refusal names, claimed with the swept warrant. The
+        // check's sweep must find the same path the search's did.
+        let blocked = diagram(
+            WireCount(4),
+            alloc::vec![
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("c"), [Wire(1)], [Wire(2)]),
+                Generator::new(value("b"), [Wire(2)], [Wire(3)]),
+            ],
+            Interface::new([Wire(0)], [Wire(3)]),
+        );
+        let pattern = disconnected_pattern();
+        let claim = Embedding::claim(
+            alloc::vec![Edge(0), Edge(2)].into_boxed_slice(),
+            claimed_wires(&[
+                (Wire(0), Wire(0)),
+                (Wire(1), Wire(1)),
+                (Wire(2), Wire(2)),
+                (Wire(3), Wire(3)),
+            ]),
+            Seam {
+                inputs: claimed_wires(&[(Wire(0), Wire(0)), (Wire(2), Wire(2))]),
+                outputs: claimed_wires(&[(Wire(1), Wire(1)), (Wire(3), Wire(3))]),
+            },
+            ConvexityWarrant::SweptOverTheComplement,
+        );
+        assert_eq!(
+            Err(EmbeddingObstruction::NotConvex {
+                escape: Wire(1),
+                through: Edge(1),
+                re_entry: Wire(2),
+            }),
+            claim.check(&pattern, &blocked),
+            "a structural embedding that is not convex is refused with the \
+             offending path, exactly as the search refuses it"
+        );
+    }
+
+    #[test]
+    fn a_unique_or_absent_match_reports_no_ambiguity()
+    {
+        let unique = embeddings(&multi_root_pattern(), &multi_root_target(), budget())
+            .expect("the search fits the budget");
+        assert_eq!(MatchCount(1), unique.admitted_count(), "one embedding");
+        assert!(
+            unique.ambiguity().is_none(),
+            "a unique match needs no discrimination"
+        );
+        let joined = diagram(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("b"), [Wire(1)], [Wire(2)]),
+            ],
+            Interface::new([Wire(0)], [Wire(2)]),
+        );
+        let absent = embeddings(&disconnected_pattern(), &joined, budget())
+            .expect("the search fits the budget");
+        assert_eq!(MatchCount(0), absent.admitted_count(), "no embedding");
+        assert!(
+            absent.ambiguity().is_none(),
+            "and a matchless pattern is unmatched, not ambiguous"
+        );
+    }
+
+    #[test]
+    fn a_multi_admission_reports_its_first_divergences_in_order()
+    {
+        let matching = embeddings(&disconnected_pattern(), &two_admission_target(), budget())
+            .expect("the search fits the budget");
+        let ambiguity = matching
+            .ambiguity()
+            .expect("two admissions are an ambiguity");
+        assert_eq!(
+            MatchCount(2),
+            ambiguity.admissions(),
+            "one embedding per choice of image for the first component"
+        );
+        let divergences = ambiguity.divergences();
+        assert_eq!(
+            1_usize,
+            divergences.len(),
+            "one divergence per later embedding"
+        );
+        let divergence = divergences.first().expect("the divergence is there");
+        assert_eq!(
+            AdmittedIndex(1),
+            divergence.admitted(),
+            "against the second admitted embedding, in enumeration order"
+        );
+        assert_eq!(
+            Discriminator::Generator {
+                at: Edge(0),
+                representative: Edge(0),
+                variant: Edge(1),
+            },
+            divergence.discriminator(),
+            "and the two readings first disagree on where the first component's \
+             generator lands"
+        );
+    }
+
+    #[test]
+    fn a_bare_wire_ambiguity_discriminates_on_the_wire()
+    {
+        // Every embedding has the same (empty) generator image, so the only
+        // place two readings can diverge is the bare wire's image — the case
+        // the wire arm of the discriminator exists for.
+        let target = multi_output_target();
+        let matching = embeddings(&bare_wire_pattern(), &target, budget())
+            .expect("the search fits the budget");
+        let ambiguity = matching
+            .ambiguity()
+            .expect("seven admissions are an ambiguity");
+        assert_eq!(MatchCount(7), ambiguity.admissions(), "one per target wire");
+        assert_eq!(
+            6_usize,
+            ambiguity.divergences().len(),
+            "and one divergence for every later one"
+        );
+        for (offset, divergence) in ambiguity.divergences().iter().enumerate() {
+            let variant = Wire(offset.saturating_add(1));
+            assert_eq!(
+                AdmittedIndex(offset.saturating_add(1)),
+                divergence.admitted(),
+                "in enumeration order"
+            );
+            assert_eq!(
+                Discriminator::Wire {
+                    wire: Wire(0),
+                    representative: Wire(0),
+                    variant,
+                },
+                divergence.discriminator(),
+                "each later reading sends the bare wire to a different target wire"
+            );
+        }
+    }
+
+    #[test]
+    fn two_orderings_of_port_free_generators_diverge_at_the_first_generator()
+    {
+        // Both orderings of two nullary same-label generators are embeddings,
+        // and they diverge immediately: the first pattern generator is imaged
+        // differently.
+        let pattern = diagram(
+            WireCount(0),
+            alloc::vec![
+                Generator::new(value("s"), Vec::new(), Vec::new()),
+                Generator::new(value("s"), Vec::new(), Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        );
+        let target = pattern.clone();
+        let matching = embeddings(&pattern, &target, budget()).expect("the search fits the budget");
+        let ambiguity = matching
+            .ambiguity()
+            .expect("two orderings are an ambiguity");
+        let divergence = ambiguity
+            .divergences()
+            .first()
+            .expect("the divergence is there");
+        assert_eq!(
+            Discriminator::Generator {
+                at: Edge(0),
+                representative: Edge(0),
+                variant: Edge(1),
+            },
+            divergence.discriminator(),
+            "the second reading swaps the two generators, starting with the first"
         );
     }
 }
