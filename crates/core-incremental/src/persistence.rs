@@ -481,6 +481,26 @@ mod tests
             }],
         }
     }
+
+    fn parseable_noncanonical_checkpoints() -> alloc::vec::Vec<u8>
+    {
+        let mut checkpoints = checkpoint(Term::Value(Value::Unit), None);
+        let footprint = &mut checkpoints.items[0].footprint;
+        let _inserted = footprint.names.insert(String::from("a"));
+        let _inserted = footprint.names.insert(String::from("b"));
+        let mut noncanonical = encode_checkpoints(&checkpoints).unwrap();
+        let encoded_b = [1, 0, 0, 0, b'b'];
+        let offset = noncanonical
+            .windows(encoded_b.len())
+            .position(|window| window == encoded_b)
+            .expect("encoded footprint label");
+        let label_index = offset
+            .checked_add(encoded_b.len())
+            .and_then(|end| end.checked_sub(1))
+            .expect("encoded footprint label index");
+        noncanonical[label_index] = b'a';
+        noncanonical
+    }
     fn checkpoint_item(
         term: Term,
         ascription: Option<Ty>,
@@ -808,22 +828,32 @@ mod tests
     #[test]
     fn checkpoint_decoder_rejects_parseable_noncanonical_payload()
     {
-        let mut checkpoints = checkpoint(Term::Value(Value::Unit), None);
-        let footprint = &mut checkpoints.items[0].footprint;
-        let _inserted = footprint.names.insert(String::from("a"));
-        let _inserted = footprint.names.insert(String::from("b"));
-        let mut noncanonical = encode_checkpoints(&checkpoints).unwrap();
-        let encoded_b = [1, 0, 0, 0, b'b'];
-        let offset = noncanonical
-            .windows(encoded_b.len())
-            .position(|window| window == encoded_b)
-            .expect("encoded footprint label");
-        noncanonical[offset + encoded_b.len() - 1] = b'a';
+        let noncanonical = parseable_noncanonical_checkpoints();
 
         assert_eq!(
             decode_checkpoints(&noncanonical),
             Err(CheckpointStoreError::NonCanonical)
         );
+    }
+
+    #[test]
+    fn file_load_rejects_parseable_noncanonical_payload_after_integrity_checks()
+    {
+        let root = root("noncanonical");
+        drop(std::fs::remove_dir_all(&root));
+        let program = program(&[1]);
+        let address = address_of(&program).unwrap();
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let payload = parseable_noncanonical_checkpoints();
+        let artifact = artifact_bytes(address, backend, &payload).unwrap();
+        let mut store = FileCheckpointStore::open(&root).unwrap();
+        std::fs::write(root.join(hex(address.0)), artifact).unwrap();
+
+        assert_eq!(
+            store.load(address, backend),
+            Err(CheckpointStoreError::NonCanonical)
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
