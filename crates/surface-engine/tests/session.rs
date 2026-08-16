@@ -118,6 +118,39 @@ mod tests
             "checkpointed append must preserve the from-scratch outcomes"
         );
     }
+    /// A submission owns its outcomes after the session advances, so callers
+    /// can drain an earlier result without observing later session mutations.
+    #[test]
+    fn submission_owns_outcomes_after_session_advances()
+    {
+        let mut session = Session::new();
+        let first = session
+            .submit("def retained = 40")
+            .expect("definition lowering must not fail");
+        let second = session
+            .submit("ret retained")
+            .expect("expression lowering must not fail");
+
+        assert_eq!(
+            1,
+            first.outcomes.len(),
+            "the first submission remains intact"
+        );
+        assert_eq!(
+            1,
+            second.outcomes.len(),
+            "the second submission is independent"
+        );
+        assert!(
+            matches!(
+                first.outcomes.first(),
+                Some(ItemOutcome::Definition { name, bound: true, .. })
+                    if name == "retained"
+            ),
+            "the first submission retains its owned definition outcome"
+        );
+    }
+
     /// One-part function sugar pushes the declared `F Integer` result type into
     /// a check-only `case` body, then the definition evaluates normally.
     #[test]

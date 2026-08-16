@@ -891,6 +891,62 @@ mod tests
         );
     }
 
+    /// A borrowed computation can be run repeatedly without sharing driver
+    /// state between runs; each invocation owns and drains its host session.
+    #[test]
+    fn run_program_reuses_the_computation_without_session_state_leakage()
+    {
+        let program = Comp::bind(
+            Comp::perform(
+                effect::host::exec(),
+                effect::host::EXEC_RUN,
+                command("printf", &["stable".into()]),
+            ),
+            "reply",
+            Comp::ret(Value::var("reply")),
+        );
+
+        let first = run_program(&program);
+        let second = run_program(&program);
+
+        assert_eq!(
+            first.returned().and_then(Value::as_record),
+            second.returned().and_then(Value::as_record),
+            "reusing a computation yields the same drained host reply"
+        );
+    }
+
+    /// Captured execution drains both output streams into the typed reply,
+    /// rather than leaving one pipe attached to the host session.
+    #[test]
+    fn exec_captured_mode_drains_both_output_streams()
+    {
+        let outcome = run_op(
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command("sh", &["-c".into(), "printf out; printf err >&2".into()]),
+        );
+        let fields = outcome
+            .returned()
+            .and_then(Value::as_record)
+            .expect("reply");
+
+        assert_eq!(
+            Some("out"),
+            fields
+                .get(effect::host::FIELD_STDOUT)
+                .and_then(|value| Value::as_str(value))
+                .map(<&str>::from)
+        );
+        assert_eq!(
+            Some("err"),
+            fields
+                .get(effect::host::FIELD_STDERR)
+                .and_then(|value| Value::as_str(value))
+                .map(<&str>::from)
+        );
+    }
+
     #[test]
     fn returned_is_none_for_non_ret_outcomes()
     {
