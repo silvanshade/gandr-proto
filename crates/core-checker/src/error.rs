@@ -93,6 +93,44 @@ pub mod text
     /// answer type is undetermined; A3.3 `+control`).
     pub const SHIFT_NEEDS_RESET: &str =
         "shift must appear inside a reset that fixes its answer type";
+    /// Hint for a `pack` in inference mode (rule Pack⇓ is check-only).
+    ///
+    /// Stronger than the injection's reason: the abstract type components live
+    /// only in the signature, so inferring a package type from the payload
+    /// would mean guessing which of its types were meant to be abstract.
+    pub const ANNOTATE_PACK: &str =
+        "pack only checks; annotate it or check against a package type Package_r ⟨ᾱ⟩ A";
+    /// Hint for a `pack` whose witness count disagrees with the signature's
+    /// abstract type components.
+    pub const PACK_ARITY_MISMATCH: &str =
+        "supply exactly one witness type per abstract type component of the signature";
+    /// Hint for an `unpack` in inference mode (the elimination is check-only,
+    /// which is also the avoidance fence: an expectation formed outside the
+    /// unpack cannot mention the atoms minted inside it).
+    pub const UNPACK_NEEDS_CHECK: &str = "unpack only checks; supply an expected answer type, which is what keeps a minted \
+         abstract type from escaping its scope";
+    /// Hint for an `unpack` whose recorded atoms do not match the signature's
+    /// abstract type components one for one.
+    pub const UNPACK_ATOM_MISMATCH: &str =
+        "an unpack binds exactly one distinct minted atom per abstract type component";
+    /// Expected shape of a package's payload.
+    ///
+    /// A package's own grade and its payload thunk's grade are the same `r`
+    /// rather than two independent annotations, so a payload graded otherwise
+    /// is a malformed signature rather than a subtyping question. Fills the
+    /// [`TypeError::ShapeMismatch`] `expected` slot ("expected {this}").
+    pub const SHAPE_PACKAGE_PAYLOAD: &str = "a thunk graded exactly as the package itself";
+    /// Expected shape of a `pack`'s expectation and an `unpack`'s ascription.
+    pub const SHAPE_PACKAGE: &str = "a package type";
+    /// Hint for an instantiation refused because an identity endpoint in the
+    /// payload mentions an abstract type component.
+    pub const PACKAGE_ABSTRACT_UNDER_PATH: &str = "an identity-type endpoint in the payload mentions an abstract type component; \
+         substituting a type through a term is outside this rung, and passing the endpoint \
+         through would leave the component free";
+    /// Hint for a package signature that declares one abstract type component
+    /// twice.
+    pub const PACKAGE_DUPLICATE_COMPONENT: &str =
+        "a package signature declares each abstract type component once";
     /// Expected shape of an application head.
     pub const SHAPE_ARROW: &str = "an arrow type";
     /// Expected shape of a forced value.

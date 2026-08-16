@@ -272,6 +272,12 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
                 | ValueType::Data { ref args, .. } => {
                     pending.extend(args.iter().map(|arg| StaticGoal::Value(arg)));
                 },
+                // A package is `Unknown`-free iff its payload is; the binder
+                // labels are names, carrying no type-level `Unknown`, exactly
+                // as a dependent pair's binder does not.
+                | ValueType::Package { ref payload, .. } => {
+                    pending.push(StaticGoal::Value(payload));
+                },
                 | ValueType::Unknown => return false.into(),
             },
             | StaticGoal::Comp(ty) => match *ty {
@@ -529,6 +535,631 @@ mod levitation
             "x",
             ValueType::path(ValueType::integer(), Value::var("x"), Value::var("x")),
         )
+    }
+}
+
+/// **The package rung.** Packing, unpacking, and the two properties the rung
+/// exists for: a client meets abstract types rather than the representation,
+/// and a package is not a graded thunk however alike the two look.
+mod packages
+{
+    use super::*;
+    use crate::boundary::NameRef;
+    use crate::boundary::TypeSerial;
+    use crate::package;
+    use crate::types::SealId;
+
+    /// `U_grade (F payload)` — the thunked module returner a package carries.
+    fn returner_thunk(
+        grade: Grade,
+        payload: ValueType,
+    ) -> ValueType
+    {
+        ValueType::thunk(grade, CompType::F(Rc::new(payload), EffectRow::EMPTY))
+    }
+
+    /// The worked signature: a counter abstracting its state type `t`, with a
+    /// seed of that type and a reader from it to `Integer`.
+    ///
+    /// `Package_grade ⟨t⟩ U_grade (F #{ read: U_ω (t → F Integer), seed: t })`.
+    fn counter(grade: Grade) -> ValueType
+    {
+        ValueType::package(
+            grade,
+            ["t"],
+            returner_thunk(
+                grade,
+                ValueType::record([
+                    (
+                        "read".to_owned(),
+                        ValueType::thunk(
+                            Grade::OMEGA,
+                            CompType::arrow(
+                                ValueType::atom("t"),
+                                CompType::returner(ValueType::integer()),
+                            ),
+                        ),
+                    ),
+                    ("seed".to_owned(), ValueType::atom("t")),
+                ]),
+            ),
+        )
+    }
+
+    /// A counter whose state is an integer: the seed is a literal and the
+    /// reader is the identity.
+    fn integer_counter() -> Value
+    {
+        Value::pack(
+            [ValueType::integer()],
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::ret(Value::record([
+                    (
+                        "read".to_owned(),
+                        Value::thunk(
+                            Grade::OMEGA,
+                            Comp::lam_ann("n", ValueType::integer(), Comp::ret(Value::var("n"))),
+                        ),
+                    ),
+                    ("seed".to_owned(), Value::int(7_i64)),
+                ])),
+            ),
+        )
+    }
+
+    /// A counter whose state is a *string*: a structurally different
+    /// representation behind the same signature, which is what makes the
+    /// abstraction worth having.
+    fn string_counter() -> Value
+    {
+        Value::pack(
+            [ValueType::string()],
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::ret(Value::record([
+                    (
+                        "read".to_owned(),
+                        Value::thunk(
+                            Grade::OMEGA,
+                            Comp::lam_ann("s", ValueType::string(), Comp::ret(Value::int(7_i64))),
+                        ),
+                    ),
+                    ("seed".to_owned(), Value::string("seven")),
+                ])),
+            ),
+        )
+    }
+
+    /// The atom one unpack mints for the counter's single component.
+    fn atom(serial: TypeSerial) -> SealId
+    {
+        SealId::new(serial, "counter", "t")
+    }
+
+    /// The consumer body: force the module, project its reader and its seed,
+    /// and apply the one to the other — the only route the signature offers,
+    /// and the only route that type-checks.
+    fn read_the_seed(module: NameRef<'_>) -> Comp
+    {
+        let module = <&str>::from(module);
+        Comp::bind(
+            Comp::force(Value::var(module)),
+            "r",
+            Comp::bind(
+                Comp::record_proj(Value::var("r"), "read"),
+                "f",
+                Comp::bind(
+                    Comp::record_proj(Value::var("r"), "seed"),
+                    "s",
+                    Comp::app(Comp::force(Value::var("f")), Value::var("s")),
+                ),
+            ),
+        )
+    }
+
+    /// Packing checks against the signature, checker and machine agreeing step
+    /// for step: the payload is checked at the *witness* type, so the packer's
+    /// representation is checked exactly once.
+    #[test]
+    fn packing_checks_against_its_signature_and_agrees()
+    {
+        let signature = counter(Grade::OMEGA);
+        for implementation in [integer_counter(), string_counter()] {
+            let result = agree_value(&Ctx::new(), &implementation, &Dir::Check(signature.clone()));
+            assert_eq!(
+                result,
+                Ok(Ty::Value(signature.clone())),
+                "either representation packs at the same signature"
+            );
+        }
+    }
+
+    /// A pack whose payload does not match the signature at the supplied
+    /// witness is rejected — the representation is checked, not assumed.
+    #[test]
+    fn packing_a_mismatched_payload_is_rejected()
+    {
+        let mismatched = Value::pack(
+            [ValueType::integer()],
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::ret(Value::record([
+                    (
+                        "read".to_owned(),
+                        Value::thunk(
+                            Grade::OMEGA,
+                            Comp::lam_ann("n", ValueType::integer(), Comp::ret(Value::var("n"))),
+                        ),
+                    ),
+                    ("seed".to_owned(), Value::string("not an integer")),
+                ])),
+            ),
+        );
+        let result = agree_value(&Ctx::new(), &mismatched, &Dir::Check(counter(Grade::OMEGA)));
+        assert!(
+            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            "the seed is checked at the witness type Integer, so a string seed fails"
+        );
+    }
+
+    /// A pack in inference position is stuck: the abstract components live only
+    /// in the signature, so there is nothing to infer them from.
+    #[test]
+    fn packing_never_infers()
+    {
+        let result = agree_value(&Ctx::new(), &integer_counter(), &Dir::Infer);
+        assert!(
+            matches!(
+                result,
+                Err(TypeError::StuckExpr {
+                    hint: crate::error::text::ANNOTATE_PACK,
+                    ..
+                })
+            ),
+            "a package type is never guessed from a payload"
+        );
+    }
+
+    /// A witness count that is not the signature's arity is refused where it is
+    /// written.
+    #[test]
+    fn packing_with_the_wrong_arity_is_refused()
+    {
+        let extra = Value::pack(
+            [ValueType::integer(), ValueType::string()],
+            Value::thunk(Grade::OMEGA, Comp::ret(Value::Unit)),
+        );
+        let result = agree_value(&Ctx::new(), &extra, &Dir::Check(counter(Grade::OMEGA)));
+        assert!(
+            matches!(
+                result,
+                Err(TypeError::StuckExpr {
+                    hint: crate::error::text::PACK_ARITY_MISMATCH,
+                    ..
+                })
+            ),
+            "one witness per abstract type component, no more and no fewer"
+        );
+    }
+
+    /// **The application consumer.** Unpacking binds the module at abstract
+    /// types and the body reaches its `Integer` answer through the signature's
+    /// own operation — checker and machine agreeing step for step.
+    #[test]
+    fn unpacking_lets_a_consumer_use_the_module_through_its_signature()
+    {
+        let signature = counter(Grade::OMEGA);
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        let unpack = Comp::unpack(
+            Value::var("p"),
+            signature,
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            read_the_seed(NameRef::from("m")),
+        );
+        let expected = CompType::returner(ValueType::integer());
+        let result = agree_comp(&ctx, &unpack, &Dir::Check(expected.clone()));
+        assert_eq!(
+            result,
+            Ok(Ty::Comp(expected)),
+            "the consumer reaches its answer through the signature's reader"
+        );
+    }
+
+    /// **The abstraction.** The same consumer body, with the seed used as an
+    /// `Integer` directly, is rejected: inside the unpack the seed has the
+    /// minted atom's type and relates to no representation at all.
+    #[test]
+    fn a_consumer_cannot_reach_the_representation()
+    {
+        let signature = counter(Grade::OMEGA);
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        let leak = Comp::bind(
+            Comp::force(Value::var("m")),
+            "r",
+            Comp::bind(
+                Comp::record_proj(Value::var("r"), "seed"),
+                "s",
+                Comp::ret(Value::var("s")),
+            ),
+        );
+        let unpack = Comp::unpack(
+            Value::var("p"),
+            signature,
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            leak,
+        );
+        let result = agree_comp(
+            &ctx,
+            &unpack,
+            &Dir::Check(CompType::returner(ValueType::integer())),
+        );
+        assert!(
+            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            "the seed is abstract inside the unpack, whatever the packer supplied"
+        );
+    }
+
+    /// **Atom freshness per unpack.** Two eliminations mint two atoms, and the
+    /// abstract types they bind do not interchange: the inner body cannot feed
+    /// the outer module's reader with the inner module's seed.
+    #[test]
+    fn two_unpacks_do_not_interchange_their_abstract_types()
+    {
+        let signature = counter(Grade::OMEGA);
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        // outer: bind `f` to the outer module's reader; inner: bind `s` to the
+        // inner module's seed; then apply the one to the other.
+        let inner = Comp::bind(
+            Comp::force(Value::var("n")),
+            "r2",
+            Comp::bind(
+                Comp::record_proj(Value::var("r2"), "seed"),
+                "s",
+                Comp::app(Comp::force(Value::var("f")), Value::var("s")),
+            ),
+        );
+        let outer = Comp::bind(
+            Comp::force(Value::var("m")),
+            "r1",
+            Comp::bind(
+                Comp::record_proj(Value::var("r1"), "read"),
+                "f",
+                Comp::unpack(
+                    Value::var("p"),
+                    signature.clone(),
+                    [atom(TypeSerial::from(1_u64))],
+                    "n",
+                    inner,
+                ),
+            ),
+        );
+        let crossed = Comp::unpack(
+            Value::var("p"),
+            signature.clone(),
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            outer,
+        );
+        let expected = CompType::returner(ValueType::integer());
+        let result = agree_comp(&ctx, &crossed, &Dir::Check(expected.clone()));
+        assert!(
+            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            "two unpacks mint two atoms, so their abstract types are not interchangeable"
+        );
+        // The same body, kept inside one unpack, is well typed — so the failure
+        // above is the freshness and not a defect in the term.
+        let straight = Comp::unpack(
+            Value::var("p"),
+            signature,
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            read_the_seed(NameRef::from("m")),
+        );
+        assert_eq!(
+            agree_comp(&ctx, &straight, &Dir::Check(expected.clone())),
+            Ok(Ty::Comp(expected)),
+            "one unpack's own reader and seed do meet"
+        );
+    }
+
+    /// An unpack in inference position is stuck, which is the avoidance fence:
+    /// the answer comes from outside, so a minted atom can never escape into
+    /// it.
+    #[test]
+    fn unpacking_never_infers()
+    {
+        let signature = counter(Grade::OMEGA);
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        let unpack = Comp::unpack(
+            Value::var("p"),
+            signature,
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            read_the_seed(NameRef::from("m")),
+        );
+        let result = agree_comp(&ctx, &unpack, &Dir::Infer);
+        assert!(
+            matches!(
+                result,
+                Err(TypeError::StuckExpr {
+                    hint: crate::error::text::UNPACK_NEEDS_CHECK,
+                    ..
+                })
+            ),
+            "the expectation is what keeps a minted atom inside its scope"
+        );
+    }
+
+    /// **The grade leg, and what the Q4 ruling buys.** A `Package_0` may be
+    /// carried and never opened: unpacking demands `1 ⊑ r`, exactly as forcing
+    /// a thunk does.
+    #[test]
+    fn a_grade_zero_package_cannot_be_unpacked()
+    {
+        let signature = counter(Grade::ZERO);
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        let unpack = Comp::unpack(
+            Value::var("p"),
+            signature,
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            read_the_seed(NameRef::from("m")),
+        );
+        let result = agree_comp(
+            &ctx,
+            &unpack,
+            &Dir::Check(CompType::returner(ValueType::integer())),
+        );
+        assert_eq!(
+            result,
+            Err(TypeError::GradeError {
+                lower: Grade::ONE,
+                upper: Grade::ZERO,
+            }),
+            "a grade-zero package is transportable and unopenable"
+        );
+    }
+
+    /// **The representation is distinct from graded composition, in both
+    /// directions.** Forcing a package is a shape mismatch, and unpacking a
+    /// thunk is one too; neither former's eliminator reaches the other.
+    #[test]
+    fn a_package_is_not_a_thunk_at_either_eliminator()
+    {
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), counter(Grade::OMEGA));
+        ctx.bind(
+            "t".to_owned(),
+            returner_thunk(Grade::OMEGA, ValueType::integer()),
+        );
+        let forced = agree_comp(
+            &ctx,
+            &Comp::force(Value::var("p")),
+            &Dir::Check(CompType::returner(ValueType::integer())),
+        );
+        assert!(
+            matches!(
+                forced,
+                Err(TypeError::ShapeMismatch {
+                    expected: crate::error::text::SHAPE_THUNK,
+                    ..
+                })
+            ),
+            "force refuses a package, so no client opens one without minting"
+        );
+        let unpacked = Comp::unpack(
+            Value::var("t"),
+            returner_thunk(Grade::OMEGA, ValueType::integer()),
+            [atom(TypeSerial::from(0_u64))],
+            "m",
+            Comp::ret(Value::int(0_i64)),
+        );
+        let result = agree_comp(
+            &ctx,
+            &unpacked,
+            &Dir::Check(CompType::returner(ValueType::integer())),
+        );
+        assert!(
+            matches!(
+                result,
+                Err(TypeError::ShapeMismatch {
+                    expected: crate::error::text::SHAPE_PACKAGE,
+                    ..
+                })
+            ),
+            "unpack refuses a thunk, so the two formers stay apart"
+        );
+    }
+
+    /// Subtyping relates a package to a package and to nothing else, so no
+    /// coercion to or from a thunk exists in either direction.
+    #[test]
+    fn no_subtyping_bridges_a_package_and_a_thunk()
+    {
+        let package = counter(Grade::OMEGA);
+        let ValueType::Package { ref payload, .. } = package
+        else {
+            panic!("the counter signature is a package");
+        };
+        let thunk = payload.as_ref().clone();
+        assert!(
+            !bool::from(value_subtype(&package, &thunk)),
+            "a package is not a subtype of the thunk it carries"
+        );
+        assert!(
+            !bool::from(value_subtype(&thunk, &package)),
+            "nor is that thunk a subtype of the package"
+        );
+    }
+
+    /// Package subtyping is invariant in the payload up to α-renaming of the
+    /// binders and contravariant in the grade — the `Thunk` leg, on a former
+    /// that shares no representation with it.
+    #[test]
+    fn package_subtyping_is_alpha_invariant_and_grade_contravariant()
+    {
+        let spelled_t = counter(Grade::OMEGA);
+        let spelled_u = ValueType::package(
+            Grade::OMEGA,
+            ["u"],
+            returner_thunk(
+                Grade::OMEGA,
+                ValueType::record([
+                    (
+                        "read".to_owned(),
+                        ValueType::thunk(
+                            Grade::OMEGA,
+                            CompType::arrow(
+                                ValueType::atom("u"),
+                                CompType::returner(ValueType::integer()),
+                            ),
+                        ),
+                    ),
+                    ("seed".to_owned(), ValueType::atom("u")),
+                ]),
+            ),
+        );
+        assert!(
+            bool::from(value_subtype(&spelled_t, &spelled_u)),
+            "two spellings of one signature relate"
+        );
+        assert!(
+            bool::from(value_subtype(&spelled_u, &spelled_t)),
+            "and they relate in both directions, the payload being invariant"
+        );
+        let once = counter(Grade::ONE);
+        assert!(
+            bool::from(value_subtype(&spelled_t, &once)),
+            "a package openable ω times is usable where one opening is expected"
+        );
+        assert!(
+            !bool::from(value_subtype(&once, &spelled_t)),
+            "the reverse fails: the grade leg is contravariant"
+        );
+        let two_components = ValueType::package(
+            Grade::OMEGA,
+            ["t", "u"],
+            returner_thunk(Grade::OMEGA, ValueType::atom("t")),
+        );
+        assert!(
+            !bool::from(value_subtype(&spelled_t, &two_components)),
+            "packages of different arity relate to nothing"
+        );
+    }
+
+    /// **Malformed payloads are rejected rather than normalized.** A package
+    /// whose payload thunk is graded other than the package itself relates to
+    /// nothing: the grade normalization applies only where the two already
+    /// agree, so the comparator is a backstop behind the typing rules rather
+    /// than a repair that hides the defect.
+    #[test]
+    fn a_malformed_payload_grade_relates_to_nothing()
+    {
+        let well_formed = counter(Grade::OMEGA);
+        let malformed = ValueType::package(
+            Grade::OMEGA,
+            ["t"],
+            // The payload thunk is graded ONE where the package is graded ω.
+            returner_thunk(
+                Grade::ONE,
+                ValueType::record([
+                    (
+                        "read".to_owned(),
+                        ValueType::thunk(
+                            Grade::OMEGA,
+                            CompType::arrow(
+                                ValueType::atom("t"),
+                                CompType::returner(ValueType::integer()),
+                            ),
+                        ),
+                    ),
+                    ("seed".to_owned(), ValueType::atom("t")),
+                ]),
+            ),
+        );
+        assert!(
+            !bool::from(value_subtype(&malformed, &well_formed)),
+            "a payload graded other than its package is not silently normalized"
+        );
+        assert!(
+            !bool::from(value_subtype(&well_formed, &malformed)),
+            "nor in the other direction"
+        );
+        assert!(
+            bool::from(value_subtype(&malformed, &malformed)),
+            "it still relates to itself, so the refusal is about the disagreement"
+        );
+        // And the typing rules refuse it ahead of subtyping, which is where the
+        // check belongs; the comparator above is the backstop.
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), malformed.clone());
+        let result = agree_comp(
+            &ctx,
+            &Comp::unpack(
+                Value::var("p"),
+                malformed,
+                [atom(TypeSerial::from(0_u64))],
+                "m",
+                Comp::ret(Value::Unit),
+            ),
+            &Dir::Check(CompType::returner(ValueType::Unit)),
+        );
+        assert!(
+            matches!(
+                result,
+                Err(TypeError::ShapeMismatch {
+                    expected: crate::error::text::SHAPE_PACKAGE_PAYLOAD,
+                    ..
+                })
+            ),
+            "well-formedness is decided at the rule, before any subtyping question"
+        );
+    }
+
+    /// The renaming subtyping performs cannot be captured by a source-level
+    /// atom, because the canonical binders carry a character no identifier
+    /// does.
+    #[test]
+    fn alignment_cannot_be_captured_by_a_source_atom()
+    {
+        let hostile = ValueType::package(
+            Grade::OMEGA,
+            ["t"],
+            returner_thunk(
+                Grade::OMEGA,
+                ValueType::prod(
+                    ValueType::atom("t"),
+                    ValueType::atom(
+                        package::canonical_binder(crate::boundary::PackageArity::from(0_usize))
+                            .as_str(),
+                    ),
+                ),
+            ),
+        );
+        assert!(
+            bool::from(value_subtype(&hostile, &hostile)),
+            "a payload naming a canonical binder still relates to itself"
+        );
+        let benign = ValueType::package(
+            Grade::OMEGA,
+            ["t"],
+            returner_thunk(
+                Grade::OMEGA,
+                ValueType::prod(ValueType::atom("t"), ValueType::integer()),
+            ),
+        );
+        assert!(
+            !bool::from(value_subtype(&hostile, &benign)),
+            "and it does not relate to a payload that differs there"
+        );
     }
 }
 
@@ -5208,6 +5839,7 @@ enum RebuildFrame
         arity: usize,
     },
     ValueSigma(String),
+    ValuePackage(Grade, Vec<String>),
     CompF(EffectRow),
     CompArrow,
     CompWith,
@@ -5321,6 +5953,21 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     steps.push(RebuildStep::Value(snd));
                     steps.push(RebuildStep::Value(fst));
                 },
+                // A package rebuilds its payload with a fresh `Rc` for the same
+                // reason the dependent pair does: so the reflexivity oracle
+                // descends structurally rather than short-circuiting on
+                // `core::ptr::eq`.
+                | ValueType::Package {
+                    grade,
+                    ref abstracts,
+                    ref payload,
+                } => {
+                    steps.push(RebuildStep::Frame(RebuildFrame::ValuePackage(
+                        grade,
+                        abstracts.clone(),
+                    )));
+                    steps.push(RebuildStep::Value(payload));
+                },
                 | ValueType::Unknown => outputs.push(RebuildOutput::Value(ValueType::Unknown)),
             },
             | RebuildStep::Comp(ty) => match *ty {
@@ -5404,6 +6051,14 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     outputs.push(RebuildOutput::Value(ValueType::Data {
                         id,
                         args: args.into_iter().map(Rc::new).collect(),
+                    }));
+                },
+                | RebuildFrame::ValuePackage(grade, abstracts) => {
+                    let payload = pop_rebuilt_value(&mut outputs);
+                    outputs.push(RebuildOutput::Value(ValueType::Package {
+                        grade,
+                        abstracts,
+                        payload: Rc::new(payload),
                     }));
                 },
                 | RebuildFrame::ValueSigma(binder) => {

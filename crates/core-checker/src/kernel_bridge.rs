@@ -190,6 +190,25 @@ pub enum BridgeRejection
     /// A dependent-pair eliminator `split`.
     #[error("a dependent-pair eliminator has no S1 image (Split is an S2 dependent eliminator)")]
     SplitEliminator,
+    /// A first-class module package type `Package_r ⟨ᾱ⟩ A`.
+    ///
+    /// The kernel's module vocabulary is exactly one declaration kind — an
+    /// abstract type — by the recommended handshake posture: the elaborator
+    /// flattens and the kernel checks the residue. The package former's kernel
+    /// image waits on the export format's structured-name segment list, which
+    /// is the one of the four reservations still unfilled; without names a
+    /// flattened module's members have nothing to be called.
+    #[error(
+        "a package type has no S1 image (the kernel's module vocabulary is the abstract-type \
+             declaration alone)"
+    )]
+    PackageType,
+    /// A packed module `pack ⟨Ā⟩ v`.
+    #[error("a packed module has no S1 image (see the package type's rejection)")]
+    PackValue,
+    /// A package eliminator `unpack`.
+    #[error("a package eliminator has no S1 image (see the package type's rejection)")]
+    UnpackEliminator,
     /// An identity type `Path A x y`.
     #[error("an identity type has no S1 image (Path/identity arrives at B7)")]
     PathType,
@@ -275,6 +294,9 @@ impl BridgeRejection
             | Self::WithType
             | Self::Projection => BridgeExclusionClass("structural-stock"),
             | Self::SigmaType | Self::SplitEliminator => BridgeExclusionClass("sigma-split"),
+            | Self::PackageType | Self::PackValue | Self::UnpackEliminator => {
+                BridgeExclusionClass("package")
+            },
             | Self::PathType | Self::HereProof | Self::WalkEliminator => {
                 BridgeExclusionClass("identity")
             },
@@ -595,6 +617,7 @@ fn lower_type<'core>(
                     },
                 },
                 | ValueType::Sigma { .. } => return Err(BridgeRejection::SigmaType),
+                | ValueType::Package { .. } => return Err(BridgeRejection::PackageType),
                 | ValueType::Unknown => return Err(BridgeRejection::UnknownValueType),
             },
             | TypeGoal::Comp(spec) => match *spec {
@@ -961,6 +984,7 @@ fn lower_term<'core>(
                 | Value::Stk(_) => return Err(BridgeRejection::ReifiedStackValue),
                 | Value::Here(_) => return Err(BridgeRejection::HereProof),
                 | Value::Ctor { .. } => return Err(BridgeRejection::DataConstructor),
+                | Value::Pack { .. } => return Err(BridgeRejection::PackValue),
             },
             | TermGoal::Comp(spec) => match *spec {
                 | Comp::Abs(ref binder, _, ref body) => {
@@ -1008,6 +1032,7 @@ fn lower_term<'core>(
                     goal = TermGoal::Value(value.as_ref());
                     continue 'expand;
                 },
+                | Comp::Unpack { .. } => return Err(BridgeRejection::UnpackEliminator),
                 | Comp::ListCase { .. } => return Err(BridgeRejection::ListEliminator),
                 | Comp::Split { .. } => return Err(BridgeRejection::SplitEliminator),
                 | Comp::DataCase(..) => return Err(BridgeRejection::DataEliminator),

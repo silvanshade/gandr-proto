@@ -160,6 +160,45 @@ pub enum Frame
         /// checks against.
         result: ValueType,
     },
+    /// A packed module's payload is pending; yields the stored package type
+    /// (rule Pack⇓). The image of [`Frame::Ctor`]: every check the rule makes —
+    /// arity, the payload's grade, and the witness substitution — ran at the
+    /// dispatch, so the pop just returns the result type.
+    Pack
+    {
+        /// The package type (or `Unknown`) the pack checks against.
+        result: ValueType,
+    },
+    /// An unpack's scrutinee is pending; the module binder, the type it binds
+    /// at, the body, and the expectation are stored (rule Unpack⇓).
+    ///
+    /// The stored binding type is computed at the **dispatch** rather than
+    /// here, because everything it depends on — the ascribed signature and
+    /// the recorded atoms — is in the term, so nothing waits on the
+    /// scrutinee's own type. That is the difference from [`Frame::Split`],
+    /// whose binder types are only known once the scrutinee has been
+    /// inferred.
+    Unpack
+    {
+        /// The module variable bound over the body.
+        binder: String,
+        /// The type the module variable binds at — the payload with each
+        /// abstract type component replaced by its minted atom.
+        bound: ValueType,
+        /// The stored body.
+        body: Comp,
+        /// The expectation, delivered verbatim once the body checks.
+        expected: CompType,
+    },
+    /// An unpack's body is pending; the pop restores `Γ` and returns the stored
+    /// expectation (rule Unpack⇓). The [`Frame::SplitBody`] discipline, minus
+    /// the motive: an unpack has no motive by design, since a motive is what
+    /// would let a minted atom escape into the answer.
+    UnpackBody
+    {
+        /// The expectation the unpack delivers.
+        result: CompType,
+    },
     /// A checked list literal's current element is pending; the remaining
     /// elements and the result type are stored (rule List⇓; ADR-40 D3). Each
     /// element is descended in `elem_dir`; when none remain the stored `result`
@@ -1227,6 +1266,58 @@ fn step_value(
                 hint: text::ANNOTATE_CTOR,
             }),
         },
+        // Rule Pack⇓: a packed module only checks, against a package type or
+        // `Unknown`. Every refusal — arity, the payload's grade, the witness
+        // substitution — fires **here, at the dispatch, before any frame is
+        // pushed**, the identical firing point as the recursive checker's rule
+        // body, so the two stay lock-step on which error surfaces first.
+        | Value::Pack { witnesses, payload } => match dir {
+            | Dir::Check(ValueType::Package {
+                grade,
+                abstracts,
+                payload: signature_payload,
+            }) => {
+                let expected = crate::package::pack_payload_expectation(
+                    grade,
+                    &abstracts,
+                    signature_payload.as_ref(),
+                    &witnesses,
+                );
+                let expected = match expected {
+                    | Ok(expected) => expected,
+                    | Err(refusal) => {
+                        return Err(crate::package::refusal_error(
+                            refusal,
+                            Term::Value(Value::Pack { witnesses, payload }),
+                        ));
+                    },
+                };
+                stack.push(Frame::Pack {
+                    result: ValueType::Package {
+                        grade,
+                        abstracts,
+                        payload: signature_payload,
+                    },
+                });
+                Ok(Control::DescendValue {
+                    value: unrc(payload),
+                    dir: Dir::Check(expected),
+                })
+            },
+            | Dir::Check(ValueType::Unknown) => {
+                stack.push(Frame::Pack {
+                    result: ValueType::Unknown,
+                });
+                Ok(Control::DescendValue {
+                    value: unrc(payload),
+                    dir: Dir::Check(ValueType::Unknown),
+                })
+            },
+            | Dir::Infer | Dir::Check(_) => Err(TypeError::StuckExpr {
+                expr: Term::Value(Value::Pack { witnesses, payload }),
+                hint: text::ANNOTATE_PACK,
+            }),
+        },
     }
 }
 
@@ -1695,6 +1786,86 @@ fn step_comp(
                 dir: Dir::Infer,
             })
         },
+        // Rule Unpack⇓: inference is stuck and every signature refusal fires
+        // **here, at the descend step, before any frame is pushed** — the
+        // identical firing point as the recursive checker's rule body. The
+        // scrutinee is then descended in **checking** mode against the
+        // ascription, which is the decidability fence: nothing infers a module
+        // type from a core term.
+        | Comp::Unpack {
+            scrut,
+            signature,
+            atoms,
+            binder,
+            body,
+        } => {
+            let Dir::Check(expected) = dir
+            else {
+                return Err(TypeError::StuckExpr {
+                    expr: Term::Comp(Comp::Unpack {
+                        scrut,
+                        signature,
+                        atoms,
+                        binder,
+                        body,
+                    }),
+                    hint: text::UNPACK_NEEDS_CHECK,
+                });
+            };
+            let bound = match *signature {
+                | ValueType::Package {
+                    grade,
+                    ref abstracts,
+                    payload: ref signature_payload,
+                } => {
+                    if !bool::from(Grade::ONE.leq(grade)) {
+                        return Err(TypeError::GradeError {
+                            lower: Grade::ONE,
+                            upper: grade,
+                        });
+                    }
+                    let bound = crate::package::unpack_binding(
+                        grade,
+                        abstracts,
+                        signature_payload.as_ref(),
+                        &atoms,
+                    );
+                    match bound {
+                        | Ok(bound) => bound,
+                        | Err(refusal) => {
+                            return Err(crate::package::refusal_error(
+                                refusal,
+                                Term::Comp(Comp::Unpack {
+                                    scrut,
+                                    signature,
+                                    atoms,
+                                    binder,
+                                    body,
+                                }),
+                            ));
+                        },
+                    }
+                },
+                | ValueType::Unknown => ValueType::Unknown,
+                | ref other => {
+                    return Err(TypeError::ShapeMismatch {
+                        expected: text::SHAPE_PACKAGE,
+                        actual: Ty::Value(other.clone()),
+                    });
+                },
+            };
+            let ascribed = signature.as_ref().clone();
+            stack.push(Frame::Unpack {
+                binder,
+                bound,
+                body: unrc(body),
+                expected,
+            });
+            Ok(Control::DescendValue {
+                value: unrc(scrut),
+                dir: Dir::Check(ascribed),
+            })
+        },
     }
 }
 /// Builds the legacy diagnostic expression for an unannotated abstraction
@@ -1778,9 +1949,40 @@ fn step_return(
         // Rule Ctor⇓ (ADR-80 Decision 2): the payload typed (by inference); the
         // nominal `id` check already ran at the dispatch, so return the stored
         // data type. The image of `Frame::Inj`.
-        | Frame::Ctor { result } => {
+        // Rule Pack⇓ pop shares this arm: the payload checked against the
+        // instantiated signature, and every other check the pack rule makes —
+        // arity, the payload's grade, the witness substitution — ran at the
+        // dispatch. Both frames therefore just return their stored type.
+        | Frame::Ctor { result } | Frame::Pack { result } => {
             expect_value(ty)?;
             Ok(return_value(result))
+        },
+        // Rule Unpack⇓ pop: the scrutinee checked against the ascription. Bind
+        // the module variable at the type the dispatch computed and descend the
+        // body against the expectation, which rides the `UnpackBody` frame.
+        | Frame::Unpack {
+            binder,
+            bound,
+            body,
+            expected,
+        } => {
+            expect_value(ty)?;
+            ctx.bind(binder, bound);
+            stack.push(Frame::UnpackBody {
+                result: expected.clone(),
+            });
+            Ok(Control::DescendComp {
+                comp: body,
+                dir: Dir::Check(expected),
+            })
+        },
+        // Rule Unpack⇓ pop 2: the body checked; restore `Γ` and return the
+        // stored expectation, never the body's echo (the `SplitBody`
+        // discipline).
+        | Frame::UnpackBody { result } => {
+            expect_comp(ty)?;
+            ctx.unbind();
+            Ok(return_comp(result))
         },
         // Rule List⇓ (ADR-40 D3): the current element typed (sort-checked); the
         // element's own subsumption already ran at its descend. Descend the next

@@ -129,6 +129,7 @@ use crate::syntax::WalkBaseNode;
 use crate::syntax::WalkMotive;
 use crate::syntax::WalkMotiveNode;
 use crate::types::CompType;
+use crate::types::SealId;
 use crate::types::Ty;
 use crate::types::ValueType;
 
@@ -994,6 +995,34 @@ enum MarkFrame
         /// Result type.
         result: CompType,
     },
+    /// Continue an unpack after its scrutinee.
+    CompUnpackAfterScrut
+    {
+        /// Pending parent facts.
+        pending: PendingComp,
+        /// The module variable.
+        binder: String,
+        /// The type the module variable binds at.
+        bound: ValueType,
+        /// The body.
+        body: Rc<Comp>,
+        /// The direction the body is decorated in.
+        body_dir: Dir<CompType>,
+        /// Original direction.
+        dir: Dir<CompType>,
+        /// Result type.
+        result: CompType,
+    },
+    /// Finish an unpack after its body.
+    CompUnpackAfterBody
+    {
+        /// Pending parent facts.
+        pending: PendingComp,
+        /// Original direction.
+        dir: Dir<CompType>,
+        /// Result type.
+        result: CompType,
+    },
     /// Continue a `with` after its first component.
     CompWithAfterFst
     {
@@ -1361,6 +1390,14 @@ enum InternFrame
         /// Constructor tag.
         tag: usize,
     },
+    /// Finish a packed module after its payload.
+    ValuePackAfterPayload
+    {
+        /// Optional Rc cache key for the parent.
+        cache_key: Option<*const Value>,
+        /// The already-interned witness type ids.
+        witnesses: Vec<ValueTypeNodeId>,
+    },
     /// Finish a unary computation after a computation child.
     CompUnaryCompAfterChild
     {
@@ -1652,6 +1689,34 @@ enum InternFrame
         motive: WalkMotiveNode,
         /// Base binder.
         base_x: String,
+    },
+    /// Continue an unpack after the scrutinee.
+    CompUnpackAfterScrut
+    {
+        /// Optional Rc cache key for the parent.
+        cache_key: Option<*const Comp>,
+        /// The already-interned ascribed signature id.
+        signature: ValueTypeNodeId,
+        /// The atoms the elimination binds its components to.
+        atoms: Vec<SealId>,
+        /// The module variable.
+        binder: String,
+        /// The body, still to be interned.
+        body: Rc<Comp>,
+    },
+    /// Finish an unpack after the body.
+    CompUnpackAfterBody
+    {
+        /// Optional Rc cache key for the parent.
+        cache_key: Option<*const Comp>,
+        /// Scrutinee id.
+        scrut: ValueNodeId,
+        /// The already-interned ascribed signature id.
+        signature: ValueTypeNodeId,
+        /// The atoms the elimination binds its components to.
+        atoms: Vec<SealId>,
+        /// The module variable.
+        binder: String,
     },
     /// Continue a stack argument after the value child.
     StackArgAfterValue
@@ -2312,6 +2377,82 @@ impl Marker
                     );
                 },
             },
+            // Rule Pack⇓ marked: every refusal the checker raises becomes a
+            // mark here and the node recovers at `Unknown`, so the payload is
+            // still decorated. The one term child is the payload — the
+            // witnesses are types and carry no term facts.
+            | Value::Pack { witnesses, payload } => match dir {
+                | Dir::Check(ValueType::Package {
+                    grade,
+                    abstracts,
+                    payload: signature_payload,
+                }) => {
+                    let expected = crate::package::pack_payload_expectation(
+                        grade,
+                        &abstracts,
+                        signature_payload.as_ref(),
+                        &witnesses,
+                    );
+                    match expected {
+                        | Ok(expected) => {
+                            self.schedule_child_value(
+                                0,
+                                payload,
+                                Dir::Check(expected),
+                                MarkFrame::ValueReturnAfterChild {
+                                    pending,
+                                    result: ValueType::Package {
+                                        grade,
+                                        abstracts,
+                                        payload: signature_payload,
+                                    },
+                                },
+                                run,
+                            );
+                        },
+                        | Err(refusal) => {
+                            pending.marks.push(crate::package::refusal_mark(refusal));
+                            self.schedule_child_value(
+                                0,
+                                payload,
+                                Dir::Check(ValueType::Unknown),
+                                MarkFrame::ValueReturnAfterChild {
+                                    pending,
+                                    result: ValueType::Unknown,
+                                },
+                                run,
+                            );
+                        },
+                    }
+                },
+                | Dir::Check(ValueType::Unknown) => {
+                    self.schedule_child_value(
+                        0,
+                        payload,
+                        Dir::Check(ValueType::Unknown),
+                        MarkFrame::ValueReturnAfterChild {
+                            pending,
+                            result: ValueType::Unknown,
+                        },
+                        run,
+                    );
+                },
+                | Dir::Infer | Dir::Check(_) => {
+                    pending.marks.push(Mark::Stuck {
+                        hint: text::ANNOTATE_PACK,
+                    });
+                    self.schedule_child_value(
+                        0,
+                        payload,
+                        Dir::Check(ValueType::Unknown),
+                        MarkFrame::ValueReturnAfterChild {
+                            pending,
+                            result: ValueType::Unknown,
+                        },
+                        run,
+                    );
+                },
+            },
         }
     }
 
@@ -2529,6 +2670,79 @@ impl Marker
                         body,
                         dir,
                         scrut_value,
+                    },
+                    run,
+                );
+            },
+            // Rule Unpack⇓ marked: the ascription decides everything before the
+            // scrutinee is visited, exactly as in the checker, so each refusal
+            // becomes a mark here and the node recovers by binding the module
+            // variable at `Unknown`. Term children are the scrutinee (0) and
+            // the body (1); the signature is a type child.
+            | Comp::Unpack {
+                scrut,
+                signature,
+                atoms,
+                binder,
+                body,
+            } => {
+                let bound = match *signature {
+                    | ValueType::Package {
+                        grade,
+                        ref abstracts,
+                        payload: ref signature_payload,
+                    } => {
+                        if bool::from(Grade::ONE.leq(grade)) {
+                            let bound = crate::package::unpack_binding(
+                                grade,
+                                abstracts,
+                                signature_payload.as_ref(),
+                                &atoms,
+                            );
+                            match bound {
+                                | Ok(bound) => bound,
+                                | Err(refusal) => {
+                                    pending.marks.push(crate::package::refusal_mark(refusal));
+                                    ValueType::Unknown
+                                },
+                            }
+                        }
+                        else {
+                            pending.marks.push(Mark::Thunkability { available: grade });
+                            ValueType::Unknown
+                        }
+                    },
+                    | ValueType::Unknown => ValueType::Unknown,
+                    | ref other => {
+                        pending.marks.push(Mark::ShapeMismatch {
+                            expected: text::SHAPE_PACKAGE,
+                            actual: Ty::Value(other.clone()),
+                        });
+                        ValueType::Unknown
+                    },
+                };
+                let (body_dir, result) = match dir {
+                    | Dir::Check(ref expected) => (Dir::Check(expected.clone()), expected.clone()),
+                    | Dir::Infer => {
+                        pending.marks.push(Mark::Stuck {
+                            hint: text::UNPACK_NEEDS_CHECK,
+                        });
+                        (Dir::Check(CompType::Unknown), CompType::Unknown)
+                    },
+                };
+                let ascribed = signature.as_ref().clone();
+                self.schedule_child_value(
+                    0,
+                    scrut,
+                    Dir::Check(ascribed),
+                    MarkFrame::CompUnpackAfterScrut {
+                        pending,
+                        binder,
+                        bound,
+                        body,
+                        body_dir,
+                        dir,
+                        result,
                     },
                     run,
                 );
@@ -3652,6 +3866,41 @@ impl Marker
                 let ty = finish_comp(split_result, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
+            | MarkFrame::CompUnpackAfterScrut {
+                pending,
+                binder,
+                bound,
+                body,
+                body_dir,
+                dir,
+                result,
+            } => {
+                let _scrut_ty = expect_value(done);
+                let _popped = self.path.pop();
+                self.ctx.bind(binder, bound);
+                self.schedule_child_comp(
+                    1,
+                    body,
+                    body_dir,
+                    MarkFrame::CompUnpackAfterBody {
+                        pending,
+                        dir,
+                        result,
+                    },
+                    run,
+                );
+            },
+            | MarkFrame::CompUnpackAfterBody {
+                mut pending,
+                dir,
+                result,
+            } => {
+                let _body_ty = expect_comp(done);
+                let _popped = self.path.pop();
+                self.ctx.unbind();
+                let ty = finish_comp(result, dir, &mut pending.marks);
+                run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
+            },
             | MarkFrame::CompWithAfterFst {
                 pending,
                 snd,
@@ -4160,6 +4409,26 @@ impl Marker
                 InternFrame::ValueCtorAfterPayload { cache_key, id, tag },
                 run,
             ),
+            | Value::Pack { witnesses, payload } => {
+                let mut interned = Vec::with_capacity(witnesses.len());
+                for witness in &witnesses {
+                    match self.arena.alloc_value_type(witness.as_ref()).ok() {
+                        | Some(id) => interned.push(id),
+                        | None => {
+                            run.result = Some(InternResult::Value(None));
+                            return;
+                        },
+                    }
+                }
+                self.schedule_intern_value_rc(
+                    payload,
+                    InternFrame::ValuePackAfterPayload {
+                        cache_key,
+                        witnesses: interned,
+                    },
+                    run,
+                );
+            },
         }
     }
 
@@ -4380,6 +4649,26 @@ impl Marker
                 },
                 run,
             ),
+            | Comp::Unpack {
+                scrut,
+                signature,
+                atoms,
+                binder,
+                body,
+            } => match self.arena.alloc_value_type(signature.as_ref()).ok() {
+                | Some(signature) => self.schedule_intern_value_rc(
+                    scrut,
+                    InternFrame::CompUnpackAfterScrut {
+                        cache_key,
+                        signature,
+                        atoms,
+                        binder,
+                        body,
+                    },
+                    run,
+                ),
+                | None => run.result = Some(InternResult::Comp(None)),
+            },
         }
     }
 
@@ -4712,6 +5001,17 @@ impl Marker
                     },
                     | None => run.result = Some(InternResult::Value(None)),
                 }
+            },
+            | InternFrame::ValuePackAfterPayload {
+                cache_key,
+                witnesses,
+            } => match expect_intern_value(done) {
+                | Some(payload) => {
+                    run.result = Some(
+                        self.finish_intern_value(ValueNode::Pack { witnesses, payload }, cache_key),
+                    );
+                },
+                | None => run.result = Some(InternResult::Value(None)),
             },
             | InternFrame::CompUnaryCompAfterChild { cache_key, kind } => {
                 match expect_intern_comp(done) {
@@ -5147,6 +5447,47 @@ impl Marker
                             scrut,
                             motive,
                             base: WalkBaseNode { x: base_x, body },
+                        },
+                        cache_key,
+                    ));
+                },
+                | None => run.result = Some(InternResult::Comp(None)),
+            },
+            | InternFrame::CompUnpackAfterScrut {
+                cache_key,
+                signature,
+                atoms,
+                binder,
+                body,
+            } => match expect_intern_value(done) {
+                | Some(scrut) => self.schedule_intern_comp_rc(
+                    body,
+                    InternFrame::CompUnpackAfterBody {
+                        cache_key,
+                        scrut,
+                        signature,
+                        atoms,
+                        binder,
+                    },
+                    run,
+                ),
+                | None => run.result = Some(InternResult::Comp(None)),
+            },
+            | InternFrame::CompUnpackAfterBody {
+                cache_key,
+                scrut,
+                signature,
+                atoms,
+                binder,
+            } => match expect_intern_comp(done) {
+                | Some(body) => {
+                    run.result = Some(self.finish_intern_comp(
+                        CompNode::Unpack {
+                            scrut,
+                            signature,
+                            atoms,
+                            binder,
+                            body,
                         },
                         cache_key,
                     ));
@@ -6045,6 +6386,15 @@ mod tests
                         ref scrut,
                         ref body,
                         ..
+                    }
+                    // An unpack's term children are the same pair: the
+                    // scrutinee (0) and the body (1). Its ascribed signature,
+                    // minted atoms and module binder are attributes, exactly as
+                    // a split's motive and binders are.
+                    | Comp::Unpack {
+                        ref scrut,
+                        ref body,
+                        ..
                     } => {
                         let mut body_path = item.path.clone();
                         body_path.push(1);
@@ -6170,7 +6520,12 @@ mod tests
                             path: fst_path,
                         });
                     },
-                    | Value::Inj(_, ref payload) | Value::Annot(ref payload, _) => {
+                    // A pack joins these: its term child is its payload (0),
+                    // its witness types being attributes as an ascription's
+                    // type is.
+                    | Value::Inj(_, ref payload)
+                    | Value::Annot(ref payload, _)
+                    | Value::Pack { ref payload, .. } => {
                         let mut path = item.path;
                         path.push(0);
                         pending.push(EnumItem {
@@ -6330,6 +6685,102 @@ mod tests
             &Ctx::new(),
             &Comp::reset(Comp::shift("k", Comp::ret(Value::Unit))),
             &Dir::Check(f_unit),
+        );
+    }
+
+    /// **The package rung against the oracle.** A well-typed pack and a
+    /// well-typed consumer carry no error mark and synthesize the checker's own
+    /// type; an abstraction leak and a grade-zero opening force one.
+    ///
+    /// Without this the oracle would hold for packages only vacuously: the free
+    /// generators produce no package term, so the property tests above quantify
+    /// over a set the new formers are not in.
+    #[test]
+    fn package_terms_agree_with_the_checker()
+    {
+        let component = ValueType::atom("t");
+        let signature = ValueType::package(
+            Grade::OMEGA,
+            ["t"],
+            ValueType::thunk(
+                Grade::OMEGA,
+                CompType::F(
+                    Rc::new(ValueType::record([("seed".to_owned(), component)])),
+                    EffectRow::EMPTY,
+                ),
+            ),
+        );
+        let implementation = Value::pack(
+            [ValueType::integer()],
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::ret(Value::record([("seed".to_owned(), Value::int(7_i64))])),
+            ),
+        );
+        oracle_value(&Ctx::new(), &implementation, &Dir::Check(signature.clone()));
+        // A pack in inference position: the checker is stuck, so the marker
+        // must carry an error mark.
+        oracle_value(&Ctx::new(), &implementation, &Dir::Infer);
+
+        let mut ctx = Ctx::new();
+        ctx.bind("p".to_owned(), signature.clone());
+        let atom = crate::types::SealId::new(0_u64, "counter", "t");
+        // The consumer keeps the seed abstract: it binds it and returns unit,
+        // which needs nothing of its type.
+        let opaque_use = Comp::bind(
+            Comp::force(Value::var("m")),
+            "r",
+            Comp::bind(
+                Comp::record_proj(Value::var("r"), "seed"),
+                "s",
+                Comp::ret(Value::Unit),
+            ),
+        );
+        let well_typed = Comp::unpack(
+            Value::var("p"),
+            signature.clone(),
+            [atom.clone()],
+            "m",
+            opaque_use,
+        );
+        oracle_comp(
+            &ctx,
+            &well_typed,
+            &Dir::Check(CompType::returner(ValueType::Unit)),
+        );
+
+        // The leak: the seed used as an `Integer`. The checker rejects, so the
+        // marker must record at least one error mark.
+        let leak = Comp::bind(
+            Comp::force(Value::var("m")),
+            "r",
+            Comp::bind(
+                Comp::record_proj(Value::var("r"), "seed"),
+                "s",
+                Comp::ret(Value::var("s")),
+            ),
+        );
+        oracle_comp(
+            &ctx,
+            &Comp::unpack(Value::var("p"), signature, [atom.clone()], "m", leak),
+            &Dir::Check(CompType::returner(ValueType::integer())),
+        );
+
+        // The grade-zero opening: refused for its grade, and marked for it.
+        let closed = ValueType::package(
+            Grade::ZERO,
+            ["t"],
+            ValueType::thunk(
+                Grade::ZERO,
+                CompType::F(Rc::new(ValueType::Unit), EffectRow::EMPTY),
+            ),
+        );
+        let mut closed_ctx = Ctx::new();
+        closed_ctx.bind("q".to_owned(), closed.clone());
+        oracle_comp(
+            &closed_ctx,
+            &Comp::unpack(Value::var("q"), closed, [atom], "m", Comp::ret(Value::Unit)),
+            &Dir::Check(CompType::returner(ValueType::Unit)),
         );
     }
 

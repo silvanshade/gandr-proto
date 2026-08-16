@@ -63,6 +63,7 @@ pub mod mark;
 pub mod nbe;
 pub mod nominal;
 pub mod outcome;
+pub mod package;
 pub mod prim;
 pub mod seal;
 pub mod stack;

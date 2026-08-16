@@ -715,7 +715,11 @@ fn step_value(
             | Value::Annot(ref child, _)
             // A reflexivity proof's witness is its single value child `0`
             // (identity-eliminator design).
-            | Value::Here(ref child)),
+            | Value::Here(ref child)
+            // A packed module's payload is its single value child `0`; the
+            // witness types are attributes, not children, exactly as an
+            // ascription's type is.
+            | Value::Pack { payload: ref child, .. }),
             0,
         )
         | (&Value::Pair(_, ref child), 1) => Some(TermRef::Value(child)),
@@ -771,7 +775,11 @@ fn step_comp(
             // The identity eliminator's base body is its computation child `1`
             // (its scrutinee is the value child `0`; the motive is a type —
             // an attribute, not a child; identity-eliminator design).
-            | Comp::Walk { base: WalkBase { body: ref child, .. }, .. }),
+            | Comp::Walk { base: WalkBase { body: ref child, .. }, .. }
+            // An unpack's body is its computation child `1` (its package value
+            // is the value child `0`; the ascribed signature, the minted atoms
+            // and the module binder are attributes, not children).
+            | Comp::Unpack { body: ref child, .. }),
             1,
         )
         // A list-case's `nil` body is child 1, its `cons` body child 2 (the
@@ -809,7 +817,9 @@ fn step_comp(
             | Comp::RecordProj { record: ref child, .. }
             // The identity eliminator's scrutinee is its value child `0`
             // (identity-eliminator design).
-            | Comp::Walk { scrut: ref child, .. }),
+            | Comp::Walk { scrut: ref child, .. }
+            // An unpack's package value is its value child `0`.
+            | Comp::Unpack { scrut: ref child, .. }),
             0,
         )
         | (&Comp::App(_, ref child), 1) => Some(TermRef::Value(child)),

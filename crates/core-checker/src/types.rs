@@ -526,6 +526,89 @@ pub enum ValueType
         /// The atom's minted nominal identity.
         SealId,
     ),
+    /// A **first-class module package** `Package_r ⟨ᾱ⟩ A` — the module layer's
+    /// one addition to the frozen value-type grammar.
+    ///
+    /// It internalizes a module at the core value level: the abstract type
+    /// components `ᾱ` of the module's signature become **binders**, and the
+    /// payload `A` is the signature's remaining content — in practice the
+    /// thunked module returner `U_s (F^ε {ℓᵢ:Aᵢ})` the landed record-module
+    /// lowering already produces, with each abstract component appearing inside
+    /// it as an [`Atom`](ValueType::Atom) naming its binder.
+    ///
+    /// # It is the type-level Σ the predicative fence keeps out of `Sigma`
+    ///
+    /// [`Sigma`](ValueType::Sigma) binds a **value** and is fenced away from
+    /// [`Universe`](ValueType::Universe) heads, so `Σ(T : Type). A(T)` — the
+    /// shape every module signature with an abstract type component has — is
+    /// outside its fragment by construction. `Package` is that shape, admitted
+    /// at exactly one place: the module boundary, where **both directions are
+    /// annotated** so no rule ever guesses it. Packing supplies its witness
+    /// types explicitly ([`Value::Pack`](crate::syntax::Value::Pack),
+    /// check-only) and unpacking supplies the signature it eliminates at
+    /// ([`Comp::Unpack`](crate::syntax::Comp::Unpack), check-only). Checking a
+    /// given large type is easy; guessing one is fenced, and the fence is what
+    /// keeps the frozen core's decidability where it was.
+    ///
+    /// # Binders are names, and abstraction happens at the elimination
+    ///
+    /// `abstracts` holds the signature's abstract type component labels in
+    /// signature order — they are ordinary binders, not minted atoms, because
+    /// **minting happens at unpack**. An `Unpack` mints one fresh
+    /// [`Sealed`](ValueType::Sealed) atom per binder and substitutes it into
+    /// the payload, so two eliminations of one package yield abstract types
+    /// that do not interchange, and a client can never reach the
+    /// representation the packer supplied. That is where abstraction safety
+    /// is bought; the type itself only records what is abstracted over.
+    ///
+    /// The kinds are arity-only (every binder classifies at `Type`), so the
+    /// binder list is flat rather than a telescope: no binder can depend on an
+    /// earlier one, and a `Vec` is the complete representation rather than a
+    /// simplification of one.
+    ///
+    /// # It is not a graded thunk, and that is deliberate
+    ///
+    /// A package carries a usage grade and internalizes a thunked computation,
+    /// which is exactly [`Thunk`](ValueType::Thunk)'s job description — and it
+    /// is nonetheless a **separate former with a separate eliminator and no
+    /// coercion in either direction**.
+    /// [`Comp::Force`](crate::syntax::Comp::Force) refuses a package and
+    /// [`Comp::Unpack`](crate::syntax::Comp::Unpack) refuses a thunk;
+    /// [`crate::subtype`] relates a package only to a package.
+    /// Forcing a package would hand a client the payload at the packer's
+    /// witness types with no atom minted anywhere — the abstraction leak with
+    /// no symptom — so the two formers stay apart at the representation, and
+    /// the shared grade annotation is an annotation rather than a shared
+    /// representation.
+    ///
+    /// Subtyping is **invariant in the payload** (up to positional α-renaming
+    /// of the binders, the [`Sigma`](ValueType::Sigma) precedent) and
+    /// **contravariant in the grade** (`hi ⊑ lo`, the
+    /// [`Thunk`](ValueType::Thunk) leg): a package usable more often is a
+    /// subtype of one usable less often. Two packages of different arity relate
+    /// to nothing.
+    ///
+    /// [`Atom`]: ValueType::Atom
+    Package
+    {
+        /// The usage grade `r` — how many times this package may be unpacked.
+        ///
+        /// [`Comp::Unpack`](crate::syntax::Comp::Unpack) requires `1 ⊑ r`,
+        /// exactly as [`Comp::Force`](crate::syntax::Comp::Force) does of a
+        /// thunk, so a `Package_0` is a package that may be transported and
+        /// never opened.
+        grade: Grade,
+        /// The abstract type component labels `ᾱ`, in signature order.
+        ///
+        /// These are binders: an occurrence inside `payload` is an
+        /// [`Atom`](ValueType::Atom) of the same name, and the whole list is
+        /// discharged in one simultaneous substitution at pack and at unpack
+        /// ([`crate::package`]).
+        abstracts: Vec<String>,
+        /// The payload value type `A`, in whose scope every name in
+        /// `abstracts` is bound.
+        payload: Rc<Self>,
+    },
     /// The unknown (hole) type `?` of value sort (A2.2 holes extension;
     /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5 — the Hazelnut hole
     /// type).
@@ -770,6 +853,42 @@ impl ValueType
             fst: Rc::new(fst),
             binder: binder.into().as_ref().to_owned(),
             snd: Rc::new(snd),
+        }
+    }
+
+    /// Builds a package type `Package_grade ⟨abstracts⟩ payload`
+    /// ([`ValueType::Package`]).
+    ///
+    /// The binder labels arrive as [`SealComponentName`]s because they are the
+    /// abstract type components of a signature — the same role the sealing rung
+    /// already names — and an occurrence of one inside `payload` is an
+    /// [`Atom`](ValueType::Atom) of that name.
+    ///
+    /// # Contract
+    /// - requires: nothing; a duplicate label is a defect the typing rules
+    ///   refuse ([`crate::package::instantiate`]), not this constructor's
+    ///   business.
+    /// - ensures: preserves the grade, the binder order, and the payload
+    ///   exactly.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn package<'source, I, C>(
+        grade: Grade,
+        abstracts: I,
+        payload: Self,
+    ) -> Self
+    where
+        I: IntoIterator<Item = C>,
+        C: Into<SealComponentName<'source>>,
+    {
+        Self::Package {
+            grade,
+            abstracts: abstracts
+                .into_iter()
+                .map(|label| label.into().as_ref().to_owned())
+                .collect(),
+            payload: Rc::new(payload),
         }
     }
 }

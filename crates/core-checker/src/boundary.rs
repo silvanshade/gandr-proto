@@ -256,6 +256,11 @@ copy_wrapper!(
     u64,
     "Number of abstract-machine steps taken."
 );
+copy_wrapper!(
+    PackageArity,
+    usize,
+    "Number of abstract type components a package signature declares."
+);
 copy_wrapper!(PathIndex, u32, "One component of a marked tree path.");
 copy_wrapper!(PrimitiveArity, usize, "Arity of a primitive operation.");
 copy_wrapper!(

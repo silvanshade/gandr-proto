@@ -351,6 +351,21 @@ impl<'src> Subst<'src>
                     self.work.push(Task::DescendComp(base.body.as_ref()));
                 }
             },
+            // The module variable binds a **value**, so it shadows exactly as
+            // `Bind`'s does. The ascribed signature is a type and is shared
+            // through, the same treatment an ascription's type gets here.
+            | Comp::Unpack {
+                ref scrut,
+                ref binder,
+                ref body,
+                ..
+            } => {
+                self.work.push(Task::CombineComp(comp));
+                self.work.push(Task::DescendValue(scrut.as_ref()));
+                if binder != self.name {
+                    self.work.push(Task::DescendComp(body.as_ref()));
+                }
+            },
         }
     }
 
@@ -551,6 +566,28 @@ impl<'src> Subst<'src>
                     },
                 }
             },
+            | Comp::Unpack {
+                ref signature,
+                ref atoms,
+                ref binder,
+                ref body,
+                ..
+            } => {
+                let scrut = self.take_value();
+                let body_sub = if binder == self.name {
+                    Rc::clone(body)
+                }
+                else {
+                    Rc::new(self.take_comp())
+                };
+                Comp::Unpack {
+                    scrut: Rc::new(scrut),
+                    signature: Rc::clone(signature),
+                    atoms: atoms.clone(),
+                    binder: binder.clone(),
+                    body: body_sub,
+                }
+            },
         };
         self.comps.push(rebuilt);
     }
@@ -620,7 +657,14 @@ impl<'src> Subst<'src>
             },
             // A declared-data constructor carries an ordinary field-tuple
             // payload (ADR-80); descend into it exactly as an injection payload.
+            // A declared-data constructor carries a field-tuple payload and a
+            // pack carries its module payload; both descend that one value
+            // child. A pack's witnesses are types and are shared through, the
+            // treatment an ascription's type gets here.
             | Value::Ctor {
+                payload: ref field, ..
+            }
+            | Value::Pack {
                 payload: ref field, ..
             } => {
                 self.work.push(Task::CombineValue(value));
@@ -670,6 +714,10 @@ impl<'src> Subst<'src>
             | Value::Annot(_, ref ty) => Value::Annot(Rc::new(self.take_value()), Rc::clone(ty)),
             | Value::Stk(_) => Value::Stk(Rc::new(self.take_stack())),
             | Value::Here(_) => Value::Here(Rc::new(self.take_value())),
+            | Value::Pack { ref witnesses, .. } => Value::Pack {
+                witnesses: witnesses.clone(),
+                payload: Rc::new(self.take_value()),
+            },
             // Leaves are rebuilt in `descend_value` and never reach a combine;
             // the arm is required only for exhaustiveness.
             | Value::Var(_)

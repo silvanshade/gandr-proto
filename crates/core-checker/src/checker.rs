@@ -399,6 +399,7 @@ impl Rec
             | Value::Stk(stack) => self.rule_stk(stack, dir),
             | Value::Here(witness) => self.rule_here(witness, dir),
             | Value::Ctor { id, tag, payload } => self.rule_ctor(id, tag, payload, dir),
+            | Value::Pack { witnesses, payload } => self.rule_pack(witnesses, payload, dir),
         }
     }
 
@@ -464,6 +465,13 @@ impl Rec
                 motive,
                 base,
             } => self.rule_walk(scrut, &motive, base, dir),
+            | Comp::Unpack {
+                scrut,
+                signature,
+                atoms,
+                binder,
+                body,
+            } => self.rule_unpack(scrut, signature, atoms, binder, body, dir),
         }
     }
 
@@ -620,6 +628,74 @@ impl Rec
                     payload,
                 }),
                 hint: text::ANNOTATE_CTOR,
+            }),
+        }
+    }
+
+    /// Rule Pack⇓: a packed module is **check-only**, and the expectation's
+    /// abstract type components are discharged with the term's own witnesses
+    /// before the payload premise runs.
+    ///
+    /// Inference is stuck for a stronger reason than an injection's: the
+    /// abstract components exist only in the signature, so inferring a package
+    /// type from the payload would mean guessing which of its types were meant
+    /// to be abstract. The witnesses are the term's half of the boundary
+    /// annotation, which is why they are supplied rather than recovered.
+    ///
+    /// The payload's expected type is the signature's payload with every
+    /// component replaced by its witness, so the packer's representation is
+    /// checked exactly once — here — and is invisible everywhere after.
+    /// # Termination
+    /// - reason: mirrors finite typing-rule derivations.
+    /// - measure: remaining checked syntax, type, or stack premises.
+    /// - boundedness: inputs are finite Rust values allocated before checking.
+    /// - input recursion: structurally finite checked-term descent.
+    fn rule_pack(
+        &mut self,
+        witnesses: Vec<Rc<ValueType>>,
+        payload: Rc<Value>,
+        dir: Dir<ValueType>,
+    ) -> Result<ValueType, TypeError>
+    {
+        match dir {
+            | Dir::Check(ValueType::Package {
+                grade,
+                abstracts,
+                payload: signature_payload,
+            }) => {
+                let expected = crate::package::pack_payload_expectation(
+                    grade,
+                    &abstracts,
+                    signature_payload.as_ref(),
+                    &witnesses,
+                );
+                let expected = match expected {
+                    | Ok(expected) => expected,
+                    | Err(refusal) => {
+                        return Err(crate::package::refusal_error(
+                            refusal,
+                            Term::Value(Value::Pack { witnesses, payload }),
+                        ));
+                    },
+                };
+                self.value(unrc(payload), Dir::Check(expected))?;
+                Ok(ValueType::Package {
+                    grade,
+                    abstracts,
+                    payload: signature_payload,
+                })
+            },
+            // The matched package (A2.2 holes extension): an `Unknown`
+            // expectation abstracts over nothing, so the payload checks against
+            // `Unknown` and the result is the expectation — the `List` matched
+            // discipline, not `Ctor`'s inference of its payload.
+            | Dir::Check(ValueType::Unknown) => {
+                self.value(unrc(payload), Dir::Check(ValueType::Unknown))?;
+                Ok(ValueType::Unknown)
+            },
+            | Dir::Infer | Dir::Check(_) => Err(TypeError::StuckExpr {
+                expr: Term::Value(Value::Pack { witnesses, payload }),
+                hint: text::ANNOTATE_PACK,
             }),
         }
     }
@@ -1351,6 +1427,104 @@ impl Rec
         self.ctx.unbind();
         self.ctx.unbind();
         finish_comp(result, dir)
+    }
+
+    /// Rule Unpack⇓: eliminate a package, minting its abstract components.
+    ///
+    /// The elimination is **check-only**, and that is the avoidance fence
+    /// rather than a limitation: the answer arrives from the outer context, so
+    /// it cannot mention the atoms this rule binds, and no abstract type can
+    /// escape its scope. A checker that inferred here would have to invent an
+    /// avoiding supertype, and principal avoiding signatures do not exist in
+    /// general.
+    ///
+    /// The scrutinee is **checked against the ascription** rather than
+    /// inferred, which is the same fence from the other side: a package is
+    /// opaque to core-type inference, so nothing reconstructs a module type
+    /// from a core term's shape.
+    ///
+    /// The grade leg is [`Self::rule_force`]'s — `1 ⊑ r` — so a `Package_0`
+    /// may be passed around and never opened. It is checked **before** the
+    /// premises, so a grade refusal fires at the same point the typing
+    /// machine's descend step declines.
+    /// # Termination
+    /// - reason: mirrors finite typing-rule derivations.
+    /// - measure: remaining checked syntax, type, or stack premises.
+    /// - boundedness: inputs are finite Rust values allocated before checking.
+    /// - input recursion: structurally finite checked-term descent.
+    fn rule_unpack(
+        &mut self,
+        scrut: Rc<Value>,
+        signature: Rc<ValueType>,
+        atoms: Vec<crate::types::SealId>,
+        binder: String,
+        body: Rc<Comp>,
+        dir: Dir<CompType>,
+    ) -> Result<CompType, TypeError>
+    {
+        let Dir::Check(expected) = dir
+        else {
+            return Err(TypeError::StuckExpr {
+                expr: Term::Comp(Comp::Unpack {
+                    scrut,
+                    signature,
+                    atoms,
+                    binder,
+                    body,
+                }),
+                hint: text::UNPACK_NEEDS_CHECK,
+            });
+        };
+        let bound = match *signature {
+            | ValueType::Package {
+                grade,
+                ref abstracts,
+                payload: ref signature_payload,
+            } => {
+                if !bool::from(Grade::ONE.leq(grade)) {
+                    return Err(TypeError::GradeError {
+                        lower: Grade::ONE,
+                        upper: grade,
+                    });
+                }
+                let bound = crate::package::unpack_binding(
+                    grade,
+                    abstracts,
+                    signature_payload.as_ref(),
+                    &atoms,
+                );
+                match bound {
+                    | Ok(bound) => bound,
+                    | Err(refusal) => {
+                        return Err(crate::package::refusal_error(
+                            refusal,
+                            Term::Comp(Comp::Unpack {
+                                scrut,
+                                signature,
+                                atoms,
+                                binder,
+                                body,
+                            }),
+                        ));
+                    },
+                }
+            },
+            // The matched package (A2.2 holes extension): an `Unknown`
+            // ascription binds the module variable at `Unknown`, exactly as a
+            // matched scrutinee does everywhere else.
+            | ValueType::Unknown => ValueType::Unknown,
+            | ref other => {
+                return Err(TypeError::ShapeMismatch {
+                    expected: text::SHAPE_PACKAGE,
+                    actual: Ty::Value(other.clone()),
+                });
+            },
+        };
+        self.value(unrc(scrut), Dir::Check(signature.as_ref().clone()))?;
+        self.ctx.bind(binder, bound);
+        self.comp(unrc(body), Dir::Check(expected.clone()))?;
+        self.ctx.unbind();
+        Ok(expected)
     }
 
     /// Rule With⇓: check each component against its conjunct (§"Core rules";

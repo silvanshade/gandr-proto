@@ -168,6 +168,14 @@ enum ValueFinish<'type_>
         /// name).
         substitute_snd: bool,
     },
+    /// Rebuild a package `Package_r ⟨ᾱ⟩ A` from its grade, its binder labels,
+    /// and its rebuilt payload.
+    ///
+    /// No shadowing test is needed and that is worth stating rather than
+    /// leaving to inference: a package binds **type** names, and this engine
+    /// substitutes a **value** for a value variable, so the two binder spaces
+    /// do not meet. The payload is therefore always traversed.
+    Package(Grade, &'type_ [String]),
 }
 
 /// A pending computation-type reassembly — everything a
@@ -292,6 +300,14 @@ fn subst_type(
                     }
                     tasks.push(TypeTask::Value(fst));
                 },
+                | ValueType::Package {
+                    grade,
+                    ref abstracts,
+                    ref payload,
+                } => {
+                    tasks.push(TypeTask::FinishValue(ValueFinish::Package(grade, abstracts)));
+                    tasks.push(TypeTask::Value(payload));
+                },
             },
             | TypeTask::Comp(ty) => match *ty {
                 | CompType::Unknown => comps.push(CompType::Unknown),
@@ -381,6 +397,14 @@ fn subst_type(
                         fst: Rc::new(fst),
                         binder,
                         snd,
+                    });
+                },
+                | ValueFinish::Package(grade, abstracts) => {
+                    let payload = pop_value_type(&mut values);
+                    values.push(ValueType::Package {
+                        grade,
+                        abstracts: abstracts.to_vec(),
+                        payload: Rc::new(payload),
                     });
                 },
             },

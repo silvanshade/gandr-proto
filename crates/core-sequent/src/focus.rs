@@ -482,6 +482,15 @@ impl Focuser
                         });
                     },
                     | Value::Annot(ref inner, _) => work.push(FocusTask::Value(inner.as_ref())),
+                    // A packed module **erases to its payload**: its witnesses
+                    // are types, and `𝓕` is type-erased, so a package has no
+                    // runtime existence beyond the module it carries. The
+                    // abstraction it buys is static — the checker refuses a
+                    // client that reaches the representation, and there is
+                    // nothing left at runtime for such a client to reach.
+                    | Value::Pack { ref payload, .. } => {
+                        work.push(FocusTask::Value(payload.as_ref()));
+                    },
                     | Value::Hole(hole) => {
                         let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(hole)))?;
                         results.push(FocusResult::Producer(producer));
@@ -536,6 +545,27 @@ impl Focuser
                         });
                         work.push(FocusTask::Comp {
                             comp: continuation.as_ref(),
+                            cont,
+                        });
+                    },
+                    // An unpack **erases to a bind of a return**: with the
+                    // witnesses gone and the atoms a typing-time device, what
+                    // is left of `unpack v as ⟨ā⟩ m in t` is `ret v >>= m. t`,
+                    // and the two focus identically. The atom minting has no
+                    // runtime image at all, which is the point — abstraction is
+                    // a static property, so erasing it costs nothing.
+                    | Comp::Unpack {
+                        ref scrut,
+                        ref binder,
+                        ref body,
+                        ..
+                    } => {
+                        work.push(FocusTask::BuildUnpack {
+                            scrut: scrut.as_ref(),
+                            binder,
+                        });
+                        work.push(FocusTask::Comp {
+                            comp: body.as_ref(),
                             cont,
                         });
                     },
@@ -901,6 +931,13 @@ impl Focuser
                         comp: bound,
                         cont: mu,
                     });
+                },
+                | FocusTask::BuildUnpack { scrut, binder } => {
+                    let continuation = pop_command(&mut results);
+                    let mu =
+                        self.new_consumer(ConsumerNode::MuTilde(binder.clone(), continuation))?;
+                    work.push(FocusTask::BuildRet { cont: mu });
+                    work.push(FocusTask::Value(scrut));
                 },
                 | FocusTask::BuildForce { cont } => {
                     let producer = pop_producer(&mut results);
@@ -1438,6 +1475,16 @@ enum FocusTask<'src>
         /// The bound computation.
         bound: &'src Comp,
         /// The binder the bound value is received under.
+        binder: &'src String,
+    },
+    /// Continues an unpack: once the body is focused, cut the package value
+    /// against the `μ̃binder` consumer — the image of [`Self::BuildBind`] whose
+    /// bound computation is the erased `ret v`, which no borrow can name.
+    BuildUnpack
+    {
+        /// The package value, erased to its payload by the value case.
+        scrut: &'src Value,
+        /// The module variable the payload is received under.
         binder: &'src String,
     },
     /// Cuts the top producer result against a `force` destructor frame.

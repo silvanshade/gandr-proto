@@ -53,6 +53,7 @@ use alloc::rc::Rc;
 
 use crate::boundary::IntegerLiteral;
 use crate::boundary::NameRef;
+use crate::boundary::PackageArity;
 use crate::boundary::SubtypeDecision;
 use crate::control::Dir;
 use crate::error::TypeError;
@@ -468,6 +469,66 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                         {
                             return false.into();
                         }
+                    },
+                    // A package relates to a package and to nothing else — the
+                    // catch-all below is what refuses it against a `Thunk`,
+                    // which is the coercion the module design forbids in both
+                    // directions rather than merely declines to provide.
+                    //
+                    // The grade leg is `Thunk`'s, contravariantly: a package
+                    // openable more often is a subtype of one openable less
+                    // often. The payload is compared **invariantly** (the
+                    // `Sigma` precedent) after both sides are α-aligned at one
+                    // canonical binder per position, so neither side's spelling
+                    // of its abstract components can decide the answer.
+                    | (
+                        &ValueType::Package {
+                            grade: lo_grade,
+                            abstracts: ref lo_abstracts,
+                            payload: ref lo_payload,
+                        },
+                        &ValueType::Package {
+                            grade: hi_grade,
+                            abstracts: ref hi_abstracts,
+                            payload: ref hi_payload,
+                        },
+                    ) => {
+                        if lo_abstracts.len() != hi_abstracts.len()
+                            || !bool::from(hi_grade.leq(lo_grade))
+                        {
+                            return false.into();
+                        }
+                        let arity = PackageArity::from(lo_abstracts.len());
+                        let witnesses = crate::package::canonical_witnesses(arity);
+                        // A refused alignment is not a relation that failed but
+                        // one that could not be decided, and an undecided
+                        // relation is refused rather than assumed: the
+                        // permissive direction here would relate an abstraction
+                        // to a representation.
+                        let Ok(lo_aligned) =
+                            crate::package::instantiate(lo_abstracts, lo_payload, &witnesses)
+                        else {
+                            return false.into();
+                        };
+                        let Ok(hi_aligned) =
+                            crate::package::instantiate(hi_abstracts, hi_payload, &witnesses)
+                        else {
+                            return false.into();
+                        };
+                        // The payload's own thunk grade IS the package's grade,
+                        // so it is normalized away here and decided once by the
+                        // leg above rather than twice — invariance would
+                        // otherwise win and the contravariant leg would never
+                        // fire (`crate::package::comparable_payload`).
+                        let lo_aligned =
+                            Rc::new(crate::package::comparable_payload(lo_grade, &lo_aligned));
+                        let hi_aligned =
+                            Rc::new(crate::package::comparable_payload(hi_grade, &hi_aligned));
+                        goals.push(SubtypeGoal::Value(
+                            Rc::clone(&hi_aligned),
+                            Rc::clone(&lo_aligned),
+                        ));
+                        goals.push(SubtypeGoal::Value(lo_aligned, hi_aligned));
                     },
                     | _ => return false.into(),
                 }

@@ -323,6 +323,20 @@ pub enum ValueTypeNode
         /// The dependent tail type id `B`.
         snd: ValueTypeNodeId,
     },
+    /// The first-class module package `Package_grade ⟨abstracts⟩ payload`, the
+    /// flat mirror of [`crate::types::ValueType::Package`].
+    ///
+    /// The binder labels are owned attributes (type-variable names, discharged
+    /// by [`crate::package::instantiate`]); the payload is a type-arena id.
+    Package
+    {
+        /// The usage grade `r` — how many times the package may be unpacked.
+        grade: Grade,
+        /// The abstract type component labels, in signature order.
+        abstracts: Vec<String>,
+        /// The payload type id, in whose scope every label is bound.
+        payload: ValueTypeNodeId,
+    },
     Unknown,
 }
 
@@ -369,6 +383,18 @@ pub enum ValueNode
         /// The constructor's position in the decl-table `ctors` list.
         tag: usize,
         /// The field-tuple payload id.
+        payload: ValueNodeId,
+    },
+    /// A packed module `pack ⟨witnesses⟩ payload`, the flat mirror of
+    /// [`crate::syntax::Value::Pack`].
+    ///
+    /// The witnesses are type-arena ids — the abstraction's own half of the
+    /// both-directions annotation — and the payload is a value-arena id.
+    Pack
+    {
+        /// The witness type ids, positionally matching the signature's binders.
+        witnesses: Vec<ValueTypeNodeId>,
+        /// The packed payload value id.
         payload: ValueNodeId,
     },
 }
@@ -509,6 +535,25 @@ pub enum CompNode
         motive: WalkMotiveNode,
         /// The diagonal base `(x). c`.
         base: WalkBaseNode,
+    },
+    /// The package eliminator `unpack v : σ as ⟨atoms⟩ binder in t`, the flat
+    /// mirror of [`crate::syntax::Comp::Unpack`].
+    ///
+    /// The ascribed signature is a type-arena id — the elimination's own half
+    /// of the both-directions annotation — and the minted atoms are owned
+    /// attributes, exactly as they are in the structural form.
+    Unpack
+    {
+        /// The package value id.
+        scrut: ValueNodeId,
+        /// The ascribed package type id.
+        signature: ValueTypeNodeId,
+        /// The atoms minted for this elimination, in signature order.
+        atoms: Vec<SealId>,
+        /// The module variable bound over the body.
+        binder: String,
+        /// The body computation id.
+        body: CompNodeId,
     },
 }
 
@@ -828,6 +873,43 @@ pub enum Value
         /// The field-tuple payload (unit / value / product-or-record).
         payload: Rc<Self>,
     },
+    /// A **packed module** `pack ⟨Ā⟩ v` — the introduction of
+    /// [`crate::types::ValueType::Package`], and the module layer's one new
+    /// value form.
+    ///
+    /// It carries a witness type for each abstract type component the signature
+    /// declares, in signature order, together with the payload those witnesses
+    /// abstract: the grade-`r` thunked module returner the package
+    /// internalizes. Checking substitutes the witnesses into the
+    /// signature's payload simultaneously ([`crate::package::instantiate`])
+    /// and checks `payload` against the result, so the packer's
+    /// representation is checked at the representation and hidden
+    /// everywhere after.
+    ///
+    /// **Check-only, and the witnesses are why.** A pack in inference position
+    /// is stuck ([`crate::error::text::ANNOTATE_PACK`]), like
+    /// [`Self::Ctor`] and [`Self::Inj`] — but for a stronger reason than
+    /// either. The abstract components exist only in the signature, so
+    /// inferring a package type from the payload's structure would mean
+    /// *guessing* which of the payload's types were meant to be abstract,
+    /// which is exactly the guess the module-and-core boundary is annotated
+    /// in both directions to forbid. The witnesses are the other half of
+    /// that annotation: they are in the term rather than inferred, so no
+    /// rule ever recovers them from the payload.
+    ///
+    /// Its payload is an ordinary value, so substitution and structural diffing
+    /// descend into it (the structural-child discipline of [`Self::Inj`]). Its
+    /// eliminator is [`Comp::Unpack`] and nothing else: forcing it is a shape
+    /// mismatch, because a package is not a thunk however alike the two look.
+    Pack
+    {
+        /// The witness types `Ā`, positionally matching the signature's
+        /// abstract type components.
+        witnesses: Vec<Rc<ValueType>>,
+        /// The packed payload — the thunked module returner the package
+        /// internalizes, at the witnesses' types.
+        payload: Rc<Self>,
+    },
 }
 
 impl Value
@@ -1052,6 +1134,25 @@ impl Value
         Self::Ctor {
             id,
             tag: usize::from(tag),
+            payload: Rc::new(payload),
+        }
+    }
+
+    /// Builds a packed module `pack ⟨witnesses⟩ payload` ([`Self::Pack`]).
+    ///
+    /// The witnesses are positional: witness `i` discharges the signature's
+    /// `i`th abstract type component.
+    #[inline]
+    #[must_use]
+    pub fn pack<I>(
+        witnesses: I,
+        payload: Self,
+    ) -> Self
+    where
+        I: IntoIterator<Item = ValueType>,
+    {
+        Self::Pack {
+            witnesses: witnesses.into_iter().map(Rc::new).collect(),
             payload: Rc::new(payload),
         }
     }
@@ -1700,6 +1801,63 @@ pub enum Comp
         /// The diagonal base `c(x)`.
         base: WalkBase,
     },
+    /// **Package elimination** `unpack v : σ as ⟨ā⟩ m in t` — the sole
+    /// eliminator of [`crate::types::ValueType::Package`], and the place
+    /// abstraction is actually bought.
+    ///
+    /// The scrutinee is **checked** against the ascribed signature rather than
+    /// inferred, which is the decidability fence from the elimination side: a
+    /// package is opaque to core-type inference, so no rule reconstructs a
+    /// module type from a core term's structure. The signature's abstract type
+    /// components are then discharged with the atoms in `atoms` — one fresh
+    /// [`crate::types::ValueType::Sealed`] per component — and `m` is bound to
+    /// the payload at the resulting type.
+    ///
+    /// # Minting here is the whole point
+    ///
+    /// The client meets the payload at **abstract** types, never at the witness
+    /// types the packer supplied, because the witnesses were discharged at the
+    /// introduction and the elimination substitutes atoms instead. Two unpacks
+    /// mint two sets of atoms, so their abstract types do not interchange —
+    /// unpacking is generative, exactly as sealing is. [`Self::Force`] mints
+    /// nothing and refuses a package outright; that asymmetry is what keeps a
+    /// package from being openable as a thunk.
+    ///
+    /// The atoms are **recorded in the term rather than invented by typing**,
+    /// which is the sealing rung's own discipline
+    /// ([`crate::seal::SealTable`]): the elaborator mints against a table that
+    /// refuses a repeated site, records what it minted, and a reader re-derives
+    /// and refutes. Typing checks what it can decide locally — one atom per
+    /// component, pairwise distinct — and does not pretend to a freshness
+    /// property no state-free pass can establish.
+    ///
+    /// # Check-only, and the avoidance fence that follows
+    ///
+    /// The answer type arrives from the outer context and is delivered verbatim
+    /// (the [`Self::Case`] discipline; inference is stuck with
+    /// [`crate::error::text::UNPACK_NEEDS_CHECK`]). That is not a limitation
+    /// worked around but the **avoidance fence**: an expectation formed outside
+    /// the unpack cannot mention atoms minted inside it, so no abstract type
+    /// can escape its scope, and the checker never has to invent an
+    /// avoiding supertype — principal avoiding signatures do not exist in
+    /// general, so a checker that tried would be guessing.
+    ///
+    /// The grade leg is [`Self::Force`]'s: unpacking demands `1 ⊑ r`, so a
+    /// `Package_0` may be passed around and never opened.
+    Unpack
+    {
+        /// The package value (checked against `signature`).
+        scrut: Rc<Value>,
+        /// The ascribed package type — the elimination's own annotation.
+        signature: Rc<ValueType>,
+        /// The atoms this elimination binds its abstract components to, in
+        /// signature order.
+        atoms: Vec<SealId>,
+        /// The module variable `m`, bound to the payload over `body`.
+        binder: String,
+        /// The body `t`, checked against the expectation.
+        body: Rc<Self>,
+    },
 }
 
 impl Comp
@@ -2070,6 +2228,33 @@ impl Comp
             base,
         }
     }
+
+    /// Builds a package elimination `unpack scrut : signature as ⟨atoms⟩ binder
+    /// in body` ([`Self::Unpack`]).
+    ///
+    /// The atoms are positional: atom `i` is what the signature's `i`th
+    /// abstract type component is bound to inside `body`.
+    #[inline]
+    #[must_use]
+    pub fn unpack<'source, I, B>(
+        scrut: Value,
+        signature: ValueType,
+        atoms: I,
+        binder: B,
+        body: Self,
+    ) -> Self
+    where
+        I: IntoIterator<Item = SealId>,
+        B: Into<BinderName<'source>>,
+    {
+        Self::Unpack {
+            scrut: Rc::new(scrut),
+            signature: Rc::new(signature),
+            atoms: atoms.into_iter().collect(),
+            binder: binder.into().as_ref().to_owned(),
+            body: Rc::new(body),
+        }
+    }
 }
 
 /// A reified stack `K` — Levy's third syntactic sort (evaluation contexts),
@@ -2311,6 +2496,15 @@ enum LegacyAllocFinish<'legacy>
     /// Reassembles a dependent-pair [`ValueTypeNode::Sigma`] from the binder
     /// name and the converted head/tail type ids.
     ValueTypeSigma(&'legacy str),
+    /// Reassembles a package [`ValueTypeNode::Package`] from the grade, the
+    /// binder labels, and the converted payload type id.
+    ValueTypePackage
+    {
+        /// The package's usage grade.
+        grade: Grade,
+        /// The abstract type component labels, in signature order.
+        abstracts: &'legacy [String],
+    },
     /// Reassembles a returner [`CompTypeNode::F`] from the converted value
     /// type id and the borrowed effect row.
     CompTypeF(&'legacy EffectRow),
@@ -2352,6 +2546,13 @@ enum LegacyAllocFinish<'legacy>
         id: &'legacy DataId,
         /// The constructor's tag within the datatype declaration.
         tag: usize,
+    },
+    /// Reassembles a packed module [`ValueNode::Pack`] from the converted
+    /// witness type ids and payload value id.
+    ValuePack
+    {
+        /// How many witness types the pack carries.
+        witnesses: usize,
     },
     /// Reassembles an abstraction [`CompNode::Abs`] from the converted body
     /// id (and the converted annotation id when present).
@@ -2473,6 +2674,16 @@ enum LegacyAllocFinish<'legacy>
         /// The diagonal base `(x). c`.
         base: &'legacy WalkBase,
     },
+    /// Reassembles a package elimination [`CompNode::Unpack`] from the
+    /// converted scrutinee value id, signature type id, and body computation
+    /// id.
+    CompUnpack
+    {
+        /// The atoms the elimination binds its components to.
+        atoms: &'legacy [SealId],
+        /// The module variable bound over the body.
+        binder: &'legacy str,
+    },
     /// Reassembles an argument push [`StackNode::Arg`] from the converted
     /// value id and rest stack id.
     StackArg,
@@ -2579,6 +2790,15 @@ enum FlatReadFinish<'arena>
     /// Reassembles a dependent-pair [`ValueType::Sigma`] from the binder name
     /// and the read-back head/tail types.
     ValueTypeSigma(&'arena str),
+    /// Reassembles a package [`ValueType::Package`] from the grade, the binder
+    /// labels, and the read-back payload type.
+    ValueTypePackage
+    {
+        /// The package's usage grade.
+        grade: Grade,
+        /// The abstract type component labels, in signature order.
+        abstracts: &'arena [String],
+    },
     /// Reassembles a returner [`CompType::F`] from the read-back value type
     /// and the borrowed effect row.
     CompTypeF(&'arena EffectRow),
@@ -2620,6 +2840,13 @@ enum FlatReadFinish<'arena>
         id: &'arena DataId,
         /// The constructor's tag within the datatype declaration.
         tag: usize,
+    },
+    /// Reassembles a packed module [`Value::Pack`] from the read-back witness
+    /// types and payload value.
+    ValuePack
+    {
+        /// How many witness types the pack carries.
+        witnesses: usize,
     },
     /// Reassembles an abstraction [`Comp::Abs`] from the read-back body (and
     /// the read-back annotation type when present).
@@ -2736,6 +2963,15 @@ enum FlatReadFinish<'arena>
         motive: &'arena WalkMotiveNode,
         /// The diagonal base `(x). c`.
         base: &'arena WalkBaseNode,
+    },
+    /// Reassembles a package elimination [`Comp::Unpack`] from the read-back
+    /// scrutinee value, signature type, and body computation.
+    CompUnpack
+    {
+        /// The atoms the elimination binds its components to.
+        atoms: &'arena [SealId],
+        /// The module variable bound over the body.
+        binder: &'arena str,
     },
     /// Reassembles an argument push [`Stack::Arg`] from the read-back value
     /// and rest stack.
@@ -3259,6 +3495,18 @@ impl FlatArena
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(snd.as_ref())));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(fst.as_ref())));
             },
+            | ValueType::Package {
+                grade,
+                ref abstracts,
+                ref payload,
+            } => {
+                work.push(LegacyAllocFrame::Finish(
+                    LegacyAllocFinish::ValueTypePackage { grade, abstracts },
+                ));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(
+                    payload.as_ref(),
+                )));
+            },
             | ValueType::Unknown => {
                 let id = self
                     .value_types
@@ -3433,6 +3681,20 @@ impl FlatArena
                     tag,
                 }));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(payload.as_ref())));
+            },
+            | Value::Pack {
+                ref witnesses,
+                ref payload,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValuePack {
+                    witnesses: witnesses.len(),
+                }));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(payload.as_ref())));
+                for witness in witnesses.iter().rev() {
+                    work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(
+                        witness.as_ref(),
+                    )));
+                }
             },
         }
         Ok(())
@@ -3640,6 +3902,23 @@ impl FlatArena
                 )));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(scrut.as_ref())));
             },
+            | Comp::Unpack {
+                ref scrut,
+                ref signature,
+                ref atoms,
+                ref binder,
+                ref body,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompUnpack {
+                    atoms,
+                    binder,
+                }));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Comp(body.as_ref())));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(
+                    signature.as_ref(),
+                )));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(scrut.as_ref())));
+            },
         }
         Ok(())
     }
@@ -3785,6 +4064,46 @@ impl FlatArena
                     })
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
+            },
+            | LegacyAllocFinish::ValueTypePackage { grade, abstracts } => {
+                let payload = pop_alloc_value_type(results)?;
+                let id = self
+                    .value_types
+                    .alloc(ValueTypeNode::Package {
+                        grade,
+                        abstracts: abstracts.to_vec(),
+                        payload,
+                    })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::ValueType(id));
+            },
+            | LegacyAllocFinish::ValuePack { witnesses } => {
+                let payload = pop_alloc_value(results)?;
+                let witness_ids = pop_alloc_value_types(results, witnesses.into())?;
+                let id = self
+                    .values
+                    .alloc(ValueNode::Pack {
+                        witnesses: witness_ids,
+                        payload,
+                    })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::Value(id));
+            },
+            | LegacyAllocFinish::CompUnpack { atoms, binder } => {
+                let body = pop_alloc_comp(results)?;
+                let signature = pop_alloc_value_type(results)?;
+                let scrut = pop_alloc_value(results)?;
+                let id = self
+                    .comps
+                    .alloc(CompNode::Unpack {
+                        scrut,
+                        signature,
+                        atoms: atoms.to_vec(),
+                        binder: binder.to_owned(),
+                        body,
+                    })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::Comp(id));
             },
             | LegacyAllocFinish::ValueTypeSigma(binder) => {
                 let snd = pop_alloc_value_type(results)?;
@@ -4350,6 +4669,17 @@ impl FlatArena
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(snd)));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(fst)));
             },
+            | ValueTypeNode::Package {
+                grade,
+                ref abstracts,
+                payload,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::ValueTypePackage {
+                    grade,
+                    abstracts,
+                }));
+                work.push(FlatReadFrame::Visit(FlatRoot::ValueType(payload)));
+            },
             | ValueTypeNode::Unknown => {
                 results.push(StructuralRoot::ValueType(ValueType::Unknown));
             },
@@ -4494,6 +4824,18 @@ impl FlatArena
                     tag,
                 }));
                 work.push(FlatReadFrame::Visit(FlatRoot::Value(payload)));
+            },
+            | ValueNode::Pack {
+                ref witnesses,
+                payload,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::ValuePack {
+                    witnesses: witnesses.len(),
+                }));
+                work.push(FlatReadFrame::Visit(FlatRoot::Value(payload)));
+                for witness in witnesses.iter().rev() {
+                    work.push(FlatReadFrame::Visit(FlatRoot::ValueType(*witness)));
+                }
             },
         }
         Ok(())
@@ -4684,6 +5026,21 @@ impl FlatArena
                 work.push(FlatReadFrame::Visit(FlatRoot::CompType(motive.body)));
                 work.push(FlatReadFrame::Visit(FlatRoot::Value(scrut)));
             },
+            | CompNode::Unpack {
+                scrut,
+                signature,
+                ref atoms,
+                ref binder,
+                body,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::CompUnpack {
+                    atoms,
+                    binder,
+                }));
+                work.push(FlatReadFrame::Visit(FlatRoot::Comp(body)));
+                work.push(FlatReadFrame::Visit(FlatRoot::ValueType(signature)));
+                work.push(FlatReadFrame::Visit(FlatRoot::Value(scrut)));
+            },
         }
         Ok(())
     }
@@ -4819,6 +5176,34 @@ impl FlatArena
                     fst: Rc::new(fst),
                     binder: binder.to_owned(),
                     snd: Rc::new(snd),
+                }));
+            },
+            | FlatReadFinish::ValueTypePackage { grade, abstracts } => {
+                let payload = pop_read_value_type(results)?;
+                results.push(StructuralRoot::ValueType(ValueType::Package {
+                    grade,
+                    abstracts: abstracts.to_vec(),
+                    payload: Rc::new(payload),
+                }));
+            },
+            | FlatReadFinish::ValuePack { witnesses } => {
+                let payload = pop_read_value(results)?;
+                let witness_types = pop_read_value_types(results, witnesses.into())?;
+                results.push(StructuralRoot::Value(Value::Pack {
+                    witnesses: witness_types.into_iter().map(Rc::new).collect(),
+                    payload: Rc::new(payload),
+                }));
+            },
+            | FlatReadFinish::CompUnpack { atoms, binder } => {
+                let body = pop_read_comp(results)?;
+                let signature = pop_read_value_type(results)?;
+                let scrut = pop_read_value(results)?;
+                results.push(StructuralRoot::Comp(Comp::Unpack {
+                    scrut: Rc::new(scrut),
+                    signature: Rc::new(signature),
+                    atoms: atoms.to_vec(),
+                    binder: binder.to_owned(),
+                    body: Rc::new(body),
                 }));
             },
             | FlatReadFinish::CompTypeF(row) => {

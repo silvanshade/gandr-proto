@@ -21,3 +21,5 @@ mod focus_properties;
 mod kernel_corpus_partition;
 #[cfg(test)]
 mod kernel_export_gate;
+#[cfg(test)]
+mod packages;

@@ -1062,6 +1062,23 @@ fn subst_comp(
             };
             Comp::Bind(Rc::new(bound), binder.clone(), Rc::new(cont))
         },
+        | Comp::Unpack {
+            ref scrut,
+            ref signature,
+            ref atoms,
+            ref binder,
+            ref body,
+        } => {
+            let scrut = subst_value(scrut, name, repl);
+            let body = subst_under(SubstitutionName(binder.as_str()), body, name, repl);
+            Comp::Unpack {
+                scrut: Rc::new(scrut),
+                signature: Rc::clone(signature),
+                atoms: atoms.clone(),
+                binder: binder.clone(),
+                body: Rc::new(body),
+            }
+        },
         | Comp::Force(ref value) => Comp::Force(Rc::new(subst_value(value, name, repl))),
         | Comp::Case(ref scrut, (ref lb, ref lbody), (ref rb, ref rbody)) => {
             let scrut = subst_value(scrut, name, repl);
