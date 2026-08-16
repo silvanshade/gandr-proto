@@ -515,3 +515,99 @@ fn a_sign_block_is_a_declaration_rather_than_an_unsupported_item()
         "a `sign` block contributes no runnable item"
     );
 }
+
+#[test]
+fn a_fillerless_rule_member_declines_to_the_higher_cells_lane()
+{
+    // `rule involutive : (b : Bit) <=> (c : Bit)` declares a face between
+    // SORTS. A description member holds a rewrite face as a pair of terms, so
+    // there is no slot for the term-free sphere and the higher-cells lane owes
+    // its representation. What changed is not the verdict but its visibility:
+    // the member used to leave this route contributing neither a description
+    // member nor a diagnostic, which reads to its author exactly like
+    // acceptance.
+    let reported = messages(TestText(
+        "\
+sign Bits {
+  sort Bit : Type;
+  rule involutive : (b : Bit) <=> (c : Bit);
+}
+",
+    ));
+    assert_names(&reported, &[
+        TestText("rule `involutive`"),
+        TestText("declares a face between sorts and writes no filler"),
+        TestText("does not carry yet"),
+        TestText("higher-cells lane"),
+    ]);
+    // Declining is not carrying: no circuit rule reached the description, and
+    // therefore no cell reached the store.
+    let elab = elaborate_data_descs(
+        "\
+sign Bits {
+  sort Bit : Type;
+  rule involutive : (b : Bit) <=> (c : Bit);
+}
+",
+    );
+    let desc = elab
+        .descs
+        .first()
+        .expect("the block reads into a description");
+    assert!(
+        desc.circuits.is_empty(),
+        "a fillerless member is carried by no description member"
+    );
+    let cells = elaborate_desc_cells(&elab.descs);
+    let store = cells.stores.first().expect("one store per description");
+    assert_eq!(
+        gandr_theory_computads::CellCount::from(0_usize),
+        store.len(),
+        "and contributes no cell"
+    );
+}
+
+#[test]
+fn a_written_face_in_a_sign_block_declines_naming_the_block_form_that_holds_it()
+{
+    // The written face `rule lhs ==> rhs` is a `data` / `codata` block member.
+    // Spelled inside a `sign` block it carries no top-level `:`, so this route
+    // reads no sphere from it — and now says which block form does hold it,
+    // instead of dropping the member with no diagnostic at all.
+    let reported = messages(TestText(
+        "\
+sign Adder {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule unit ==> add;
+}
+",
+    ));
+    assert_names(&reported, &[
+        TestText("rule `unit`"),
+        TestText("carries no `:` signature"),
+        TestText("`data` or `codata` block member instead"),
+    ]);
+}
+
+#[test]
+fn a_member_with_no_judgment_head_declines_rather_than_vanishing()
+{
+    // A member run always starts at its lead keyword (`split_before_leads`
+    // drops what precedes the first one), so a member whose name the parse did
+    // not reach arrives here as a bare keyword. The lead is all the decline can
+    // name, and naming it is what separates a member the route could not read
+    // from a member the source never wrote.
+    let reported = messages(TestText(
+        "\
+sign Broken {
+  sort Nat : Type;
+  rule ;
+}
+",
+    ));
+    assert_names(&reported, &[
+        TestText("the `rule` member declares no name"),
+        TestText("`rule <name> : <signature>`"),
+    ]);
+}

@@ -19,7 +19,8 @@
 //! | `data C : sig`           | a decline — the item-level member is retired     |
 //! | `oper f : sig`           | an operation, with its two port lists as arity   |
 //! | `rule r : sphere { … }`  | a [`CircuitRule`] — the graduated form           |
-//! | `rule r : sphere`        | nothing — see below                              |
+//! | `rule r : sphere`        | a decline — see below                            |
+//! | a member with no readable judgment head | a decline naming the spelling     |
 //!
 //! The **`data` member's** retirement is the nested generator block's ruling:
 //! a family is declared once, whole, with its parameters bound at the head and
@@ -36,10 +37,26 @@
 //! carries two terms, and the sphere-typed representation `Φ ▸ x ⇴ y` is the
 //! higher-cells lane's (`spec:surface-language/higher-cells.md`,
 //! section "Sphere-typed boundaries"). Such a member is therefore carried by no
-//! description member rather than approximated by one; its arrow is still
+//! description member rather than approximated by one, and **it says so**: the
+//! member earns a not-yet-carried decline naming the lane that owes it, because
+//! a member that reaches this route and contributes nothing is otherwise
+//! indistinguishable to its author from one that was read. Its arrow is still
 //! confirmed by the surface check. An **`oper` member with a filler** is a
 //! circuit 1-cell *definition*, which is a different graduation from this one,
 //! and it is declined by name rather than silently dropped.
+//!
+//! # Every member that contributes nothing says so
+//!
+//! Two shapes used to leave this route with no description member *and* no
+//! diagnostic, which made a malformed declaration indistinguishable from an
+//! absent one at the surface: a member whose **judgment head** the parse did
+//! not reach (`split_before_leads` starts every run at its lead keyword, so
+//! such a run carries a keyword and no readable name), and a `rule` member
+//! carrying **no top-level `:`** — the written-face spelling `rule lhs ==>
+//! rhs`, which is a `data` / `codata` block member rather than a `sign` block
+//! one. Both now decline at the member run's own span. This is what makes the
+//! `sign_desc` contract below — *every member it does not carry appends a
+//! diagnostic* — a claim with a witness rather than a description.
 //!
 //! # Where the sphere comes from, and what that costs
 //!
@@ -131,7 +148,10 @@ const ALPHABET_QUESTION: &str = "gandr-ui9";
 ///   and one [`CircuitRule`] per block-bodied `rule` member the route admits;
 ///   every member it does not carry appends a diagnostic naming the member and
 ///   the lane that owes it — the retired item-level `data` member included,
-///   declined with the nested generator block's respelling.
+///   declined with the nested generator block's respelling, and the fillerless
+///   `rule` member and the member with no readable judgment head with it. **No
+///   member leaves this route contributing neither a description member nor a
+///   diagnostic.**
 /// - provides: the acceptance flip's surface half — the declaration table entry
 ///   a parsed circuit block denotes.
 /// - fails: never; a member the route cannot read contributes a diagnostic and
@@ -140,12 +160,19 @@ const ALPHABET_QUESTION: &str = "gandr-ui9";
 ///
 /// # Adequacy
 /// - hypothesis: L3 — the four member families are separated by what each
-///   contributes (a retirement decline, an operation, a circuit rule, nothing),
-///   and the decline channels are separated by the member each names.
+///   contributes (a retirement decline, an operation, a circuit rule, a
+///   not-yet-carried decline), and the decline channels are separated by the
+///   member each names.
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `a_ruled_sign_block_lowers_its_members_into_a_description`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `an_item_level_data_member_declines_with_the_nested_block_respelling`
+/// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
+///   `a_fillerless_rule_member_declines_to_the_higher_cells_lane`
+/// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
+///   `a_written_face_in_a_sign_block_declines_naming_the_block_form_that_holds_it`
+/// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
+///   `a_member_with_no_judgment_head_declines_rather_than_vanishing`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `a_many_out_node_declines_naming_the_cell_alphabet_question`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
@@ -180,6 +207,11 @@ pub fn sign_desc(
 /// telescope; it is deliberately *not* enough for a frame head to resolve,
 /// which is why a top-level rule applying an undeclared frame earns the
 /// out-of-signature refusal rather than silence.
+///
+/// A declaration whose own judgment head is unreadable yields no description —
+/// and a decline saying so, on the same channel a member of a `sign` block
+/// takes, because a top-level declaration that contributes nothing is the same
+/// failure with one fewer enclosing brace.
 pub fn circuit_declaration_desc(
     shape: Shape<'_, '_>,
     node: NodeId,
@@ -188,7 +220,11 @@ pub fn circuit_declaration_desc(
 ) -> Option<SignDesc>
 {
     let children = shape.reader.sig_children(node);
-    let (name, _kind) = shape.judgment_head(&children)?;
+    let Some((name, _kind)) = strict_judgment_head(shape, &children)
+    else {
+        diagnostics.extend(unreadable_head_decline(shape, &children));
+        return None;
+    };
     Some(block_desc(
         shape,
         core::slice::from_ref(&children),
@@ -211,7 +247,7 @@ fn block_desc(
     // apply a head its block declares later (the surface check's own order).
     let mut kinds = KindEnv::default();
     for member in members {
-        if let Some((member_name, kind)) = shape.judgment_head(member) {
+        if let Some((member_name, kind)) = strict_judgment_head(shape, member) {
             kinds.bind(member_name, kind);
         }
     }
@@ -220,7 +256,7 @@ fn block_desc(
     // block itself (the `SignDesc::new` default).
     let mut sorts: Vec<SortDesc> = Vec::new();
     for member in members {
-        if let Some((member_name, CircuitKind::Sort)) = shape.judgment_head(member) {
+        if let Some((member_name, CircuitKind::Sort)) = strict_judgment_head(shape, member) {
             sorts.push(SortDesc::new(member_name.0, DeclPolarity::Data));
         }
     }
@@ -230,8 +266,9 @@ fn block_desc(
     let mut ops: Vec<OperDesc> = Vec::new();
     let mut circuits: Vec<CircuitRule> = Vec::new();
     for member in members {
-        let Some((member_name, kind)) = shape.judgment_head(member)
+        let Some((member_name, kind)) = strict_judgment_head(shape, member)
         else {
+            diagnostics.extend(unreadable_head_decline(shape, member));
             continue;
         };
         match kind {
@@ -326,7 +363,10 @@ fn oper_member(
 /// Read a block-bodied `rule r : sphere { filler }` member into a circuit rule.
 ///
 /// This is the graduated form. Everything the route cannot carry declines here
-/// with the lane that owes it, and nothing is admitted speculatively.
+/// with the lane that owes it, nothing is admitted speculatively, and **no
+/// input path returns [`None`] without appending a diagnostic** — the two that
+/// used to (a run with no top-level `:`, and a member with no filler) are the
+/// ones an author was least able to distinguish from acceptance.
 fn rule_member(
     shape: Shape<'_, '_>,
     run: &[NodeId],
@@ -336,13 +376,45 @@ fn rule_member(
 ) -> Option<CircuitRule>
 {
     let span = run_span(shape, run);
-    let tail = shape.after_colon(run)?;
+    // The judgment's `:` is what separates the member's name from its sphere.
+    // A run without one is the written-face spelling `rule lhs ==> rhs`, which
+    // is a `data` / `codata` block member: this route reads no face from it,
+    // and says which block form does.
+    let Some(tail) = shape.after_colon(run)
+    else {
+        diagnostics.push(ElabDiagnostic::new(
+            format!(
+                "rule `{name}` carries no `:` signature, so this route reads no sphere from it: \
+                 a `sign` block member is the judgment `rule {name} : <signature> {{ … }}`, and \
+                 the written face `lhs ==> rhs` is a `data` or `codata` block member instead",
+                name = name.0
+            ),
+            span,
+        ));
+        return None;
+    };
     let (signature, interior) = shape.split_body(tail);
     // A `rule` member with no filler declares a face between sorts, which the
     // declaration table has no term-free slot for; the higher-cells lane owes
     // the sphere-typed representation, and the surface check has already
-    // confirmed the member's arrow.
-    let interior = interior?;
+    // confirmed the member's arrow. The member is carried by no description
+    // member — and it earns a decline saying so, rather than leaving its author
+    // unable to tell a member that was read from one that was not.
+    let Some(interior) = interior
+    else {
+        diagnostics.push(ElabDiagnostic::new(
+            format!(
+                "rule `{name}` declares a face between sorts and writes no filler, which this \
+                 route does not carry yet: a description member holds a rewrite face as a pair \
+                 of terms, and the term-free sphere `Φ ▸ x ⇴ y` is the higher-cells lane's \
+                 representation — the member's arrow is confirmed by the surface check either \
+                 way",
+                name = name.0
+            ),
+            span,
+        ));
+        return None;
+    };
     let ports = telescope(shape, signature);
     let out = match declared_output(shape, signature) {
         | Ok(out) => out,
@@ -850,6 +922,73 @@ fn has_filler(
             .and_then(|tail| shape.split_body(tail).1)
             .is_some(),
     )
+}
+
+/// The three tiles a member name molds as, one per member family: `sort` binds
+/// a `type_identifier`, `data` a `constructor`, and `oper` / `rule` an
+/// `identifier` (`surface-grammar`'s `sign_member` and `top_level_judgment`).
+const NAME_TILES: [TileSpelling; 3] = [
+    TileSpelling("type_identifier"),
+    TileSpelling("constructor"),
+    TileSpelling("identifier"),
+];
+
+/// A member's judgment head, read **strictly**: the name must be one of the
+/// tiles a member name molds as ([`NAME_TILES`]).
+///
+/// [`Shape::judgment_head`] takes whatever node follows the lead keyword as the
+/// name, which is the right reading for the surface check — that pass confirms
+/// arrows against a declared kind and a wrong name costs it nothing. This route
+/// mints **description members**, so the same latitude produces a member named
+/// `}` or `;` out of a repaired parse, and every diagnostic downstream then
+/// quotes that name back at its author. Reading the head strictly here turns
+/// those into one decline that says the name did not mold, which is what the
+/// source actually got wrong.
+///
+/// The stricter reading is deliberately local to this route rather than pushed
+/// into [`Shape`]: widening it would change what the surface check confirms,
+/// which is a different question with its own witnesses.
+fn strict_judgment_head<'tree>(
+    shape: Shape<'_, 'tree>,
+    run: &[NodeId],
+) -> Option<(CircuitName<'tree>, CircuitKind)>
+{
+    let head = shape.judgment_head(run)?;
+    let &name = run.get(1)?;
+    let label = shape.reader.label(name)?;
+    NAME_TILES.contains(&label).then_some(head)
+}
+
+/// The decline a member run whose **judgment head** the parse did not reach
+/// earns, at the run's own span.
+///
+/// [`split_before_leads`] starts every run at a member keyword and drops what
+/// precedes the first one, so a run arriving here carries its lead and no name
+/// tile after it. The lead keyword is therefore all the decline can name, and
+/// naming it is what separates a member the route could not read from a member
+/// the source never wrote.
+///
+/// [`None`] only where there is no run and no lead to name, which no parse of a
+/// member region produces; the total signature is what keeps the caller from
+/// deciding that question a second time.
+///
+/// [`split_before_leads`]: crate::circuit::shape::split_before_leads
+fn unreadable_head_decline(
+    shape: Shape<'_, '_>,
+    run: &[NodeId],
+) -> Option<ElabDiagnostic>
+{
+    let &lead = run.first()?;
+    let keyword = shape.reader.label(lead)?;
+    Some(ElabDiagnostic::new(
+        format!(
+            "the `{keyword}` member declares no name, so this route carries no description \
+             member for it: every member of a `sign` block and every top-level circuit \
+             declaration is the judgment `{keyword} <name> : <signature>`",
+            keyword = keyword.0
+        ),
+        run_span(shape, run),
+    ))
 }
 
 /// The span a member run covers, from its lead to its last node.

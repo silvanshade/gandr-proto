@@ -1,0 +1,35 @@
+// A rewrite face between SORTS, with no filler: carried by no description
+// member, and now saying so.
+//
+// `rule involutive : (b : Bit) <=> (c : Bit)` declares a face whose endpoints
+// are sorts rather than terms. A description member holds a rewrite face as a
+// pair of open terms, so there is no slot for the term-free sphere, and the
+// sphere-typed representation belongs to the higher-cells lane. The verdict is
+// unchanged and correct: this route carries the member as nothing.
+//
+// What the member earns is the diagnostic. A member that reaches the
+// description route, contributes no description member, and says nothing is
+// indistinguishable to its author from one that was read and accepted — the
+// same failure mode a silent narrowing has, one step earlier. So the route
+// declines it as not-yet-carried and names the lane that owes the
+// representation, exactly as the many-out operation names the cell-alphabet
+// question.
+//
+// The member's arrow is still confirmed by the surface check either way: `<=>`
+// on a rule is the certificate algebra's unconditional-composition licence, not
+// a reserved glyph, and nothing here reserves it.
+//
+// Nothing reaches the cell layer from this block. The `sort` member is the
+// block's own colour and mints no cell, and the declined `rule` mints none, so
+// the store is empty.
+sign Invertible {
+  sort Bit : Type;
+  oper flip : (b : Bit) --> (c : Bit);
+  rule involutive : (b : Bit) <=> (c : Bit);
+}
+
+//@ mode: desc
+//@ expect-desc-rules: 0
+//@ expect-desc-store-cells: 0
+//@ expect-desc-decline: rule `involutive` declares a face between sorts and writes no filler
+//@ expect-desc-decline: higher-cells lane
