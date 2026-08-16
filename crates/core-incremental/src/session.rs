@@ -105,9 +105,16 @@ impl<S> IncrementalSession<S>
 #[cfg(test)]
 mod tests
 {
+    use gandr_core_checker::syntax::Comp;
+    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::syntax::Value;
+
     use super::*;
     use crate::persistence::FileCheckpointStore;
     use crate::persistence::MemoryCheckpointStore;
+    use crate::persistence::address_of;
+    use crate::persistence::restore;
+    use crate::region::Item;
 
     #[derive(Default)]
     struct Observer;
@@ -135,17 +142,34 @@ mod tests
         ]);
     }
     #[test]
-    fn reopened_file_session_streams_validated_resume()
+    fn separately_reopened_file_session_resumes_supported_checkpoint()
     {
         let root = std::env::temp_dir().join(format!("gandr-session-{}", std::process::id()));
         drop(std::fs::remove_dir_all(&root));
         let backend = BackendArtifact::from_bytes(b"backend");
-        let mut first = IncrementalSession::new(FileCheckpointStore::open(&root).unwrap(), backend);
+        let program = Program::new(alloc::vec![Item::new(
+            None,
+            None,
+            Term::Comp(Comp::ret(Value::int(1))),
+        )]);
         let mut observer = Observer;
-        let resume = first.submit(&Program::default(), &mut observer).unwrap();
-        let reopened =
+
+        let mut first = IncrementalSession::new(FileCheckpointStore::open(&root).unwrap(), backend);
+        let _submitted = first.submit(&program, &mut observer).unwrap();
+        drop(first.into_store());
+
+        let address = address_of(&program).unwrap();
+        let mut loader = FileCheckpointStore::open(&root).unwrap();
+        let checkpoints = restore(&mut loader, &program, address, backend, &mut observer)
+            .unwrap()
+            .unwrap();
+        drop(loader);
+
+        let resume = Resume::from_checkpoints(checkpoints);
+        let mut reopened =
             IncrementalSession::reopen(FileCheckpointStore::open(&root).unwrap(), backend, resume);
-        assert!(reopened.stream().is_some());
+        let resumed = reopened.submit(&program, &mut observer).unwrap();
+        assert_eq!(usize::from(resumed.adopted_count()), 1);
         std::fs::remove_dir_all(root).unwrap();
     }
 }

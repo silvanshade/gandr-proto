@@ -11,19 +11,18 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write as _;
-use core::hash::Hash as _;
-use core::hash::Hasher;
-use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
-/// Fixed byte length of the file-artifact header.
-const FILE_HEADER_LEN: usize = 76;
-
 use crate::checkpoint::Checkpoints;
 use crate::region::Program;
+
+/// Canonical, process-independent persistence encoding.
+mod codec;
+
+/// Fixed byte length of the file-artifact header.
+const FILE_HEADER_LEN: usize = 116;
 
 /// A stable content address for one lowered program revision.
 #[repr(transparent)]
@@ -57,7 +56,7 @@ impl BackendArtifact
     }
 }
 
-/// Semantic checkpoint structures deferred to the durable HPSA codec.
+/// Exact process-local or opaque forms outside the canonical codec.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UnsupportedPersistence
 {
@@ -65,12 +64,10 @@ pub enum UnsupportedPersistence
     DataIdSerial,
     /// A mint-order opaque seal serial is process-local.
     SealIdSerial,
-    /// A reified stack requires a stable DTO owned by HPSA.
+    /// A reified stack has no stable structural persistence contract.
     OpaqueStack,
-    /// An inline effect signature requires a stable DTO owned by HPSA.
+    /// An inline effect signature is deliberately representation-opaque.
     OpaqueEffectSignature,
-    /// A checkpoint item has unsupported nested semantic fields.
-    CheckpointItem,
 }
 
 /// A persistence failure that leaves the caller with no partially trusted
@@ -143,8 +140,8 @@ pub trait CheckpointStore
 #[repr(transparent)]
 pub struct MemoryCheckpointStore
 {
-    /// In-memory records keyed by content and backend identity.
-    records: BTreeMap<(CheckpointAddress, BackendArtifact), Checkpoints>,
+    /// Canonical records keyed by content and backend identity.
+    records: BTreeMap<(CheckpointAddress, BackendArtifact), Vec<u8>>,
 }
 
 impl CheckpointStore for MemoryCheckpointStore
@@ -156,7 +153,10 @@ impl CheckpointStore for MemoryCheckpointStore
         backend: BackendArtifact,
     ) -> Result<Option<Checkpoints>, CheckpointStoreError>
     {
-        Ok(self.records.get(&(address, backend)).cloned())
+        self.records
+            .get(&(address, backend))
+            .map(|bytes| codec::decode_checkpoints(bytes))
+            .transpose()
     }
 
     #[inline]
@@ -167,19 +167,19 @@ impl CheckpointStore for MemoryCheckpointStore
         checkpoints: Checkpoints,
     ) -> Result<(), CheckpointStoreError>
     {
-        self.records.insert((address, backend), checkpoints);
+        let bytes = codec::encode_checkpoints(&checkpoints)?;
+        self.records.insert((address, backend), bytes);
         Ok(())
     }
 }
 
 /// A content-addressed file store with atomic replacement of complete records.
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct FileCheckpointStore
 {
     /// Directory containing hash-named checkpoint artifacts.
     root: PathBuf,
-    /// Process-local mirror of records written by this store.
-    records: BTreeMap<(CheckpointAddress, BackendArtifact), Checkpoints>,
 }
 
 impl FileCheckpointStore
@@ -195,14 +195,11 @@ impl FileCheckpointStore
         P: AsRef<Path>,
     {
         let root = path.as_ref().to_path_buf();
-        fs::create_dir_all(&root).map_err(|error| {
+        std::fs::create_dir_all(&root).map_err(|error| {
             drop(error);
             CheckpointStoreError::Io
         })?;
-        Ok(Self {
-            root,
-            records: BTreeMap::new(),
-        })
+        Ok(Self { root })
     }
 }
 
@@ -216,24 +213,40 @@ impl CheckpointStore for FileCheckpointStore
     ) -> Result<Option<Checkpoints>, CheckpointStoreError>
     {
         let path = self.root.join(hex(address.0));
-        let Ok(bytes) = fs::read(path)
-        else {
-            return Ok(None);
+        let bytes = match std::fs::read(path) {
+            | Ok(bytes) => bytes,
+            | Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+            | Err(error) => {
+                drop(error);
+                return Err(CheckpointStoreError::Io);
+            },
         };
         if bytes.len() < FILE_HEADER_LEN
             || bytes.get(.. 8) != Some(b"GFILE\0\0\0")
-            || bytes.get(8 .. 12) != Some(&1_u32.to_le_bytes())
+            || bytes.get(8 .. 12) != Some(&2_u32.to_le_bytes())
             || bytes.get(12 .. 44) != Some(&address.0)
         {
             return Err(CheckpointStoreError::Corrupt);
         }
-        if bytes.get(44 .. FILE_HEADER_LEN) != Some(&backend.0) {
-            return Ok(None);
-        }
+        let payload_len_bytes: [u8; 8] = bytes
+            .get(76 .. 84)
+            .ok_or(CheckpointStoreError::Corrupt)?
+            .try_into()
+            .map_err(|_error| CheckpointStoreError::Corrupt)?;
+        let payload_len = usize::try_from(u64::from_le_bytes(payload_len_bytes))
+            .map_err(|_error| CheckpointStoreError::Corrupt)?;
         let payload = bytes
             .get(FILE_HEADER_LEN ..)
             .ok_or(CheckpointStoreError::Corrupt)?;
-        let decoded = decode_checkpoints(payload)?;
+        if payload.len() != payload_len
+            || bytes.get(84 .. FILE_HEADER_LEN) != Some(blake3::hash(payload).as_bytes())
+        {
+            return Err(CheckpointStoreError::Corrupt);
+        }
+        let decoded = codec::decode_checkpoints(payload)?;
+        if bytes.get(44 .. 76) != Some(&backend.0) {
+            return Ok(None);
+        }
         Ok(Some(decoded))
     }
 
@@ -245,88 +258,57 @@ impl CheckpointStore for FileCheckpointStore
         checkpoints: Checkpoints,
     ) -> Result<(), CheckpointStoreError>
     {
-        let payload = encode_checkpoints(&checkpoints)?;
-        let artifact = artifact_bytes(address, backend, &payload);
+        let payload = codec::encode_checkpoints(&checkpoints)?;
+        let artifact = artifact_bytes(address, backend, &payload)?;
         let path = self.root.join(hex(address.0));
         let temporary = self
             .root
             .join(format!("{}.tmp-{}", hex(address.0), std::process::id()));
-        fs::write(&temporary, artifact).map_err(|error| {
+        std::fs::write(&temporary, artifact).map_err(|error| {
             drop(error);
             CheckpointStoreError::Io
         })?;
-        fs::rename(&temporary, &path).map_err(|error| {
+        std::fs::rename(&temporary, &path).map_err(|error| {
             drop(error);
             CheckpointStoreError::Io
         })?;
-        self.records.insert((address, backend), checkpoints);
         Ok(())
     }
 }
 
-/// Computes the address of a lowered program, independent of item positions.
-#[must_use]
-#[inline]
-pub fn address_of(program: &Program) -> CheckpointAddress
-{
-    let mut hasher = DigestHasher::default();
-    program.items.len().hash(&mut hasher);
-    for item in &program.items {
-        item.name.hash(&mut hasher);
-        item.ascription.hash(&mut hasher);
-        alloc::format!("{:?}", item.term).hash(&mut hasher);
-    }
-    CheckpointAddress(hasher.finish_digest())
-}
-
-/// Classifies semantic fields that require the HPSA-owned durable codec.
-#[inline]
-fn unsupported_reason(item: &crate::checkpoint::ItemCheckpoint) -> Option<UnsupportedPersistence>
-{
-    if matches!(item.ascription, Some(Ty::Value(ValueType::Data { .. }))) {
-        return Some(UnsupportedPersistence::DataIdSerial);
-    }
-    if matches!(item.ascription, Some(Ty::Value(ValueType::Sealed(_)))) {
-        return Some(UnsupportedPersistence::SealIdSerial);
-    }
-    if matches!(item.ascription, Some(Ty::Value(ValueType::Stk(..)))) {
-        return Some(UnsupportedPersistence::OpaqueStack);
-    }
-    None
-}
-/// Encodes the currently supported canonical checkpoint subset.
+/// Computes the BLAKE3 address of a lowered program's canonical bytes.
 ///
 /// # Errors
 ///
-/// Returns [`CheckpointStoreError::UnsupportedPersistence`] when a checkpoint
-/// contains semantic fields that require the HPSA-owned durable codec.
+/// Returns the precise unsupported semantic form encountered while encoding.
+#[inline]
+pub fn address_of(program: &Program) -> Result<CheckpointAddress, CheckpointStoreError>
+{
+    let bytes = codec::encode_program(program)?;
+    Ok(CheckpointAddress(*blake3::hash(&bytes).as_bytes()))
+}
+
+/// Encodes a checkpoint set into the process-independent canonical format.
+///
+/// # Errors
+///
+/// Returns the precise unsupported semantic form encountered while encoding.
 #[inline]
 pub fn encode_checkpoints(checkpoints: &Checkpoints) -> Result<Vec<u8>, CheckpointStoreError>
 {
-    for item in &checkpoints.items {
-        if let Some(reason) = unsupported_reason(item) {
-            return Err(CheckpointStoreError::UnsupportedPersistence(reason));
-        }
-    }
-    if checkpoints.items.is_empty() {
-        return Ok(b"GCP\0\x01\0\0\0\0".to_vec());
-    }
-    Err(CheckpointStoreError::UnsupportedPersistence(
-        UnsupportedPersistence::CheckpointItem,
-    ))
+    codec::encode_checkpoints(checkpoints)
 }
+
+/// Decodes one complete canonical checkpoint payload.
+///
 /// # Errors
 ///
-/// Returns [`CheckpointStoreError::Corrupt`] for a mismatched payload.
+/// Returns [`CheckpointStoreError::Corrupt`] for malformed, truncated, or
+/// trailing bytes.
 #[inline]
 pub fn decode_checkpoints(bytes: &[u8]) -> Result<Checkpoints, CheckpointStoreError>
 {
-    if bytes == b"GCP\0\x01\0\0\0\0" {
-        Ok(Checkpoints::default())
-    }
-    else {
-        Err(CheckpointStoreError::Corrupt)
-    }
+    codec::decode_checkpoints(bytes)
 }
 
 /// Stores a checkpoint and notifies the optional extension observer.
@@ -346,7 +328,7 @@ where
     S: CheckpointStore,
     O: CheckpointObserver,
 {
-    let address = address_of(program);
+    let address = address_of(program)?;
     store.store(address, backend, checkpoints)?;
     observer.stored(address);
     Ok(address)
@@ -369,7 +351,7 @@ where
     S: CheckpointStore,
     O: CheckpointObserver,
 {
-    if address_of(program) != address {
+    if address_of(program)? != address {
         observer.invalidated(address);
         return Ok(None);
     }
@@ -380,20 +362,24 @@ where
     Ok(restored)
 }
 
-/// Builds a file artifact with fixed-width identity fields and payload.
+/// Builds a file artifact with fixed-width identity and integrity fields.
 fn artifact_bytes(
     address: CheckpointAddress,
     backend: BackendArtifact,
     payload: &[u8],
-) -> Vec<u8>
+) -> Result<Vec<u8>, CheckpointStoreError>
 {
+    let payload_len =
+        u64::try_from(payload.len()).map_err(|_error| CheckpointStoreError::Rejected)?;
     let mut bytes = Vec::with_capacity(FILE_HEADER_LEN.saturating_add(payload.len()));
     bytes.extend_from_slice(b"GFILE\0\0\0");
-    bytes.extend_from_slice(&1_u32.to_le_bytes());
+    bytes.extend_from_slice(&2_u32.to_le_bytes());
     bytes.extend_from_slice(&address.0);
     bytes.extend_from_slice(&backend.0);
+    bytes.extend_from_slice(&payload_len.to_le_bytes());
+    bytes.extend_from_slice(blake3::hash(payload).as_bytes());
     bytes.extend_from_slice(payload);
-    bytes
+    Ok(bytes)
 }
 
 /// Encodes a digest as lowercase hexadecimal.
@@ -408,47 +394,40 @@ fn hex(bytes: [u8; 32]) -> String
     output
 }
 
-#[derive(Default)]
-#[repr(transparent)]
-/// Incremental hash input used to derive a BLAKE3 checkpoint address.
-struct DigestHasher
-{
-    /// Canonical bytes accumulated for the digest.
-    bytes: Vec<u8>,
-}
-
-impl Hasher for DigestHasher
-{
-    #[inline]
-    fn finish(&self) -> u64
-    {
-        0
-    }
-
-    #[inline]
-    fn write(
-        &mut self,
-        bytes: &[u8],
-    )
-    {
-        self.bytes.extend_from_slice(bytes);
-    }
-}
-
-impl DigestHasher
-{
-    #[inline]
-    /// Finalizes the accumulated bytes as a BLAKE3 digest.
-    fn finish_digest(self) -> [u8; 32]
-    {
-        *blake3::hash(&self.bytes).as_bytes()
-    }
-}
-
 #[cfg(test)]
 mod tests
 {
+    use alloc::collections::BTreeMap;
+    use alloc::rc::Rc;
+
+    use gandr_core_checker::boundary::EffectSignatureName;
+    use gandr_core_checker::boundary::OperationName;
+    use gandr_core_checker::effect::EffectOp;
+    use gandr_core_checker::effect::EffectSig;
+    use gandr_core_checker::error::TypeError;
+    use gandr_core_checker::error::text;
+    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::prim::NativePrim;
+    use gandr_core_checker::syntax::Comp;
+    use gandr_core_checker::syntax::NumLit;
+    use gandr_core_checker::syntax::SplitMotive;
+    use gandr_core_checker::syntax::Stack;
+    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::syntax::WalkBase;
+    use gandr_core_checker::syntax::WalkMotive;
+    use gandr_core_checker::types::CompType;
+    use gandr_core_checker::types::DataId;
+    use gandr_core_checker::types::SealId;
+    use gandr_core_checker::types::Ty;
+    use gandr_core_checker::types::ValueType;
+
     use super::*;
+    use crate::checkpoint::ItemCheckpoint;
+    use crate::checkpoint::ItemTyping;
+    use crate::checkpoint::checkpoint_program;
+    use crate::footprint::Footprint;
+    use crate::region::Item;
 
     #[derive(Default)]
     struct Observer
@@ -476,87 +455,530 @@ mod tests
         }
     }
 
-    #[test]
-    fn persists_and_restores_complete_checkpoint_sets()
+    fn program(values: &[i64]) -> Program
     {
-        let program = Program::default();
-        let backend = BackendArtifact::from_bytes(b"backend-v1");
-        let mut store = MemoryCheckpointStore::default();
+        values
+            .iter()
+            .map(|value| Item::new(None, None, Term::Comp(Comp::ret(Value::int(*value)))))
+            .collect()
+    }
+
+    fn checkpoint(
+        term: Term,
+        ascription: Option<Ty>,
+    ) -> Checkpoints
+    {
+        Checkpoints {
+            items: alloc::vec![ItemCheckpoint {
+                name: None,
+                ascription,
+                term,
+                footprint: Footprint::default(),
+                typing: ItemTyping::Holey,
+            }],
+        }
+    }
+    fn checkpoint_item(
+        term: Term,
+        ascription: Option<Ty>,
+        typing: ItemTyping,
+    ) -> ItemCheckpoint
+    {
+        ItemCheckpoint {
+            name: None,
+            ascription,
+            term,
+            footprint: Footprint::default(),
+            typing,
+        }
+    }
+
+    fn root(label: &str) -> PathBuf
+    {
+        std::env::temp_dir().join(format!("gandr-checkpoint-{label}-{}", std::process::id()))
+    }
+
+    #[test]
+    fn independently_built_programs_have_identical_bytes_and_addresses()
+    {
+        let first = program(&[1, 2]);
+        let second = program(&[1, 2]);
+        assert_eq!(
+            codec::encode_program(&first).unwrap(),
+            codec::encode_program(&second).unwrap()
+        );
+        assert_eq!(address_of(&first).unwrap(), address_of(&second).unwrap());
+    }
+
+    #[test]
+    fn meaningful_program_changes_and_source_order_change_identity()
+    {
+        let ordered = program(&[1, 2]);
+        let reordered = program(&[2, 1]);
+        let changed = program(&[1, 3]);
+        assert_ne!(
+            address_of(&ordered).unwrap(),
+            address_of(&reordered).unwrap()
+        );
+        assert_ne!(address_of(&ordered).unwrap(), address_of(&changed).unwrap());
+
+        let named = Program::new(alloc::vec![Item::new(
+            Some(String::from("x")),
+            Some(Ty::Value(ValueType::integer())),
+            Term::Value(Value::int(1)),
+        )]);
+        let renamed = Program::new(alloc::vec![Item::new(
+            Some(String::from("y")),
+            Some(Ty::Value(ValueType::integer())),
+            Term::Value(Value::int(1)),
+        )]);
+        assert_ne!(address_of(&named).unwrap(), address_of(&renamed).unwrap());
+    }
+
+    #[test]
+    fn canonical_maps_and_supported_semantic_variants_round_trip()
+    {
+        let mut first_fields = BTreeMap::new();
+        first_fields.insert(String::from("b"), Rc::new(Value::int(2)));
+        first_fields.insert(String::from("a"), Rc::new(Value::int(1)));
+        let mut second_fields = BTreeMap::new();
+        second_fields.insert(String::from("a"), Rc::new(Value::int(1)));
+        second_fields.insert(String::from("b"), Rc::new(Value::int(2)));
+        let first_program = Program::new(alloc::vec![Item::new(
+            None,
+            None,
+            Term::Value(Value::Record(first_fields)),
+        )]);
+        let second_program = Program::new(alloc::vec![Item::new(
+            None,
+            None,
+            Term::Value(Value::Record(second_fields)),
+        )]);
+        assert_eq!(
+            codec::encode_program(&first_program).unwrap(),
+            codec::encode_program(&second_program).unwrap()
+        );
+
+        let pure = CompType::returner(ValueType::Unit);
+        let arrow = CompType::arrow(ValueType::atom("A"), CompType::Unknown);
+        let with = CompType::with(pure.clone(), arrow);
+        let mut type_fields = BTreeMap::new();
+        type_fields.insert(
+            String::from("prod"),
+            Rc::new(ValueType::prod(
+                ValueType::Unit,
+                ValueType::sum(ValueType::atom("L"), ValueType::atom("R")),
+            )),
+        );
+        type_fields.insert(
+            String::from("list"),
+            Rc::new(ValueType::list(ValueType::atom("Element"))),
+        );
+        type_fields.insert(
+            String::from("thunk"),
+            Rc::new(ValueType::thunk(Grade::OMEGA, with.clone())),
+        );
+        type_fields.insert(
+            String::from("stack"),
+            Rc::new(ValueType::stk(pure, with.clone())),
+        );
+        type_fields.insert(
+            String::from("path"),
+            Rc::new(ValueType::path(
+                ValueType::Unit,
+                Value::Unit,
+                Value::here(Value::Unit),
+            )),
+        );
+        type_fields.insert(String::from("universe"), Rc::new(ValueType::Universe));
+        type_fields.insert(
+            String::from("sigma"),
+            Rc::new(ValueType::sigma(
+                ValueType::Unit,
+                "x",
+                ValueType::atom("Tail"),
+            )),
+        );
+        type_fields.insert(String::from("unknown"), Rc::new(ValueType::Unknown));
+        let rich_type = ValueType::Record(type_fields);
+
+        let numbers = Value::List(alloc::vec![
+            Rc::new(Value::Num(NumLit::U32(1))),
+            Rc::new(Value::Num(NumLit::U64(2))),
+            Rc::new(Value::Num(NumLit::I32(-3))),
+            Rc::new(Value::Num(NumLit::I64(-4))),
+            Rc::new(Value::Num(NumLit::F32(5.0_f32.to_bits()))),
+            Rc::new(Value::Num(NumLit::F64(6.0_f64.to_bits()))),
+        ]);
+        let mut value_fields = BTreeMap::new();
+        value_fields.insert(String::from("var"), Rc::new(Value::var("free")));
+        value_fields.insert(String::from("unit"), Rc::new(Value::Unit));
+        value_fields.insert(String::from("int"), Rc::new(Value::int(-1)));
+        value_fields.insert(String::from("string"), Rc::new(Value::string("text")));
+        value_fields.insert(String::from("numbers"), Rc::new(numbers));
+        value_fields.insert(
+            String::from("pair"),
+            Rc::new(Value::pair(Value::Unit, Value::inj1(Value::Unit))),
+        );
+        value_fields.insert(String::from("inj2"), Rc::new(Value::inj2(Value::Unit)));
+        value_fields.insert(
+            String::from("thunk"),
+            Rc::new(Value::thunk(
+                Grade::fin(2_u64.into()),
+                Comp::ret(Value::Unit),
+            )),
+        );
+        value_fields.insert(
+            String::from("annot"),
+            Rc::new(Value::annot(Value::Unit, ValueType::Unit)),
+        );
+        value_fields.insert(String::from("here"), Rc::new(Value::here(Value::Unit)));
+        let rich_value = Value::Record(value_fields);
+
+        let terms = alloc::vec![
+            Term::Value(rich_value),
+            Term::Value(Value::hole(7)),
+            Term::Comp(Comp::Abs(
+                String::from("x"),
+                Some(Rc::new(ValueType::Unit)),
+                Rc::new(Comp::ret(Value::var("x"))),
+            )),
+            Term::Comp(Comp::app(
+                Comp::lam_ann("x", ValueType::Unit, Comp::ret(Value::var("x"))),
+                Value::Unit,
+            )),
+            Term::Comp(Comp::bind(
+                Comp::ret(Value::Unit),
+                "x",
+                Comp::ret(Value::var("x")),
+            )),
+            Term::Comp(Comp::force(Value::thunk(
+                Grade::ONE,
+                Comp::ret(Value::Unit),
+            ))),
+            Term::Comp(Comp::case(
+                Value::inj1(Value::Unit),
+                "left",
+                Comp::ret(Value::var("left")),
+                "right",
+                Comp::ret(Value::var("right")),
+            )),
+            Term::Comp(Comp::DataCase(Rc::new(Value::var("data")), alloc::vec![
+                (String::from("zero"), Rc::new(Comp::ret(Value::Unit))),
+                (String::from("one"), Rc::new(Comp::ret(Value::var("one")))),
+            ],)),
+            Term::Comp(Comp::list_case(
+                Value::List(Vec::new()),
+                Comp::ret(Value::Unit),
+                "head",
+                "tail",
+                Comp::ret(Value::var("head")),
+            )),
+            Term::Comp(Comp::Split {
+                scrut: Rc::new(Value::pair(Value::Unit, Value::Unit)),
+                fst_name: String::from("fst"),
+                snd_name: String::from("snd"),
+                motive: Some(Box::new(SplitMotive::new(
+                    "pair",
+                    CompType::returner(ValueType::Unit),
+                ))),
+                body: Rc::new(Comp::ret(Value::var("fst"))),
+            }),
+            Term::Comp(Comp::record_proj(Value::Record(BTreeMap::new()), "field")),
+            Term::Comp(Comp::with(Comp::ret(Value::Unit), Comp::ret(Value::Unit),)),
+            Term::Comp(Comp::prj1(Comp::with(
+                Comp::ret(Value::Unit),
+                Comp::ret(Value::Unit),
+            ))),
+            Term::Comp(Comp::prj2(Comp::with(
+                Comp::ret(Value::Unit),
+                Comp::ret(Value::Unit),
+            ))),
+            Term::Comp(Comp::dup(Value::thunk(Grade::ONE, Comp::ret(Value::Unit),))),
+            Term::Comp(Comp::drop(Value::thunk(
+                Grade::ZERO,
+                Comp::ret(Value::Unit),
+            ))),
+            Term::Comp(Comp::resume(Value::Unit, Comp::ret(Value::Unit))),
+            Term::Comp(Comp::reset(Comp::ret(Value::Unit))),
+            Term::Comp(Comp::shift("continuation", Comp::ret(Value::Unit))),
+            Term::Comp(Comp::hole(8)),
+            Term::Comp(Comp::Native {
+                prim: NativePrim::Add,
+                args: alloc::vec![Rc::new(Value::int(1)), Rc::new(Value::int(2))],
+            }),
+            Term::Comp(Comp::walk(
+                Value::here(Value::Unit),
+                WalkMotive::new("lhs", "rhs", "path", CompType::returner(ValueType::Unit),),
+                WalkBase::new("base", Comp::ret(Value::var("base"))),
+            )),
+        ];
+
+        let mut items: Vec<ItemCheckpoint> = terms
+            .into_iter()
+            .map(|term| {
+                checkpoint_item(term, Some(Ty::Value(rich_type.clone())), ItemTyping::Holey)
+            })
+            .collect();
+        let simple_term = Term::Value(Value::Unit);
+        let value_ty = Ty::Value(ValueType::Unit);
+        items.extend([
+            checkpoint_item(simple_term.clone(), None, ItemTyping::Definition {
+                name: String::from("definition"),
+                ty: value_ty.clone(),
+                bound: true,
+            }),
+            checkpoint_item(simple_term.clone(), None, ItemTyping::Expression {
+                ty: Ty::Comp(with),
+            }),
+            checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
+                error: TypeError::TypeMismatch {
+                    expected: value_ty.clone(),
+                    actual: Ty::Value(ValueType::Unknown),
+                },
+            }),
+            checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
+                error: TypeError::ShapeMismatch {
+                    expected: text::SHAPE_ARROW,
+                    actual: value_ty,
+                },
+            }),
+            checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
+                error: TypeError::StuckExpr {
+                    expr: simple_term.clone(),
+                    hint: text::ANNOTATE_INJECTION,
+                },
+            }),
+            checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
+                error: TypeError::UnboundVariable {
+                    name: String::from("missing"),
+                },
+            }),
+            checkpoint_item(simple_term, None, ItemTyping::TypeError {
+                error: TypeError::GradeError {
+                    lower: Grade::fin(2_u64.into()),
+                    upper: Grade::ONE,
+                },
+            }),
+        ]);
+        let mut footprint = Footprint::default();
+        let _inserted = footprint.names.insert(String::from("z"));
+        let _inserted = footprint.names.insert(String::from("a"));
+        footprint.opaque = true;
+        footprint.has_hole = true;
+        if let Some(item) = items.first_mut() {
+            item.footprint = footprint;
+        }
+        let checkpoints = Checkpoints { items };
+        let bytes = encode_checkpoints(&checkpoints).unwrap();
+        assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
+    #[test]
+    fn checkpoint_decoder_rejects_truncation_corruption_and_trailing_bytes()
+    {
+        let checkpoints = checkpoint_program(&program(&[1]));
+        let original = encode_checkpoints(&checkpoints).unwrap();
+
+        let mut truncated = original.clone();
+        let _removed = truncated.pop();
+        assert_eq!(
+            decode_checkpoints(&truncated),
+            Err(CheckpointStoreError::Corrupt)
+        );
+
+        let mut corrupt = original.clone();
+        corrupt[8] = u8::MAX;
+        assert_eq!(
+            decode_checkpoints(&corrupt),
+            Err(CheckpointStoreError::Corrupt)
+        );
+
+        let mut trailing = original;
+        trailing.push(0);
+        assert_eq!(
+            decode_checkpoints(&trailing),
+            Err(CheckpointStoreError::Corrupt)
+        );
+    }
+
+    #[test]
+    fn supported_nonempty_checkpoints_round_trip_in_memory_and_reopened_file()
+    {
+        let root = root("supported");
+        drop(std::fs::remove_dir_all(&root));
+        let program = program(&[1, 2]);
+        let checkpoints = checkpoint_program(&program);
+        let backend = BackendArtifact::from_bytes(b"backend");
         let mut observer = Observer::default();
-        let address = persist(
-            &mut store,
+
+        let mut memory = MemoryCheckpointStore::default();
+        let memory_address = persist(
+            &mut memory,
             &program,
             backend,
-            Checkpoints::default(),
-            &mut observer,
-        )
-        .unwrap();
-        assert_eq!(observer.stored, 1);
-        assert_eq!(
-            restore(&mut store, &program, address, backend, &mut observer).unwrap(),
-            Some(Checkpoints::default())
-        );
-        assert_eq!(observer.invalidated, 0);
-    }
-
-    #[test]
-    fn backend_identity_invalidates_prior_checkpoint()
-    {
-        let program = Program::default();
-        let backend_v1 = BackendArtifact::from_bytes(b"backend-v1");
-        let backend_v2 = BackendArtifact::from_bytes(b"backend-v2");
-        let mut store = MemoryCheckpointStore::default();
-        let mut observer = Observer::default();
-        let address = persist(
-            &mut store,
-            &program,
-            backend_v1,
-            Checkpoints::default(),
+            checkpoints.clone(),
             &mut observer,
         )
         .unwrap();
         assert_eq!(
-            restore(&mut store, &program, address, backend_v2, &mut observer).unwrap(),
-            None
+            restore(
+                &mut memory,
+                &program,
+                memory_address,
+                backend,
+                &mut observer
+            )
+            .unwrap(),
+            Some(checkpoints.clone())
         );
-        assert_eq!(observer.invalidated, 1);
-    }
 
-    #[test]
-    fn file_store_round_trips_empty_checkpoint()
-    {
-        let root = std::env::temp_dir().join(format!("gandr-checkpoint-{}", std::process::id()));
-        drop(fs::remove_dir_all(&root));
-        let program = Program::default();
-        let backend = BackendArtifact::from_bytes(b"backend");
         let mut first = FileCheckpointStore::open(&root).unwrap();
-        let mut observer = Observer::default();
-        let address = persist(
+        let file_address = persist(
             &mut first,
             &program,
             backend,
-            Checkpoints::default(),
+            checkpoints.clone(),
             &mut observer,
         )
         .unwrap();
+        assert_eq!(file_address, memory_address);
+        drop(first);
         let mut reopened = FileCheckpointStore::open(&root).unwrap();
-        assert_eq!(
-            restore(&mut reopened, &program, address, backend, &mut observer).unwrap(),
-            Some(Checkpoints::default())
-        );
-        let other_backend = BackendArtifact::from_bytes(b"backend-v2");
         assert_eq!(
             restore(
                 &mut reopened,
                 &program,
-                address,
-                other_backend,
+                file_address,
+                backend,
                 &mut observer
             )
             .unwrap(),
-            None
+            Some(checkpoints)
         );
-        assert_eq!(observer.invalidated, 1);
-        fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn nested_process_local_and_opaque_forms_report_exact_errors()
+    {
+        let data = Value::Pair(
+            Rc::new(Value::Unit),
+            Rc::new(Value::Ctor {
+                id: DataId::new(1_u64, "D"),
+                tag: 0,
+                payload: Rc::new(Value::Unit),
+            }),
+        );
+        assert_eq!(
+            encode_checkpoints(&checkpoint(Term::Value(data), None)),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::DataIdSerial
+            ))
+        );
+
+        let sealed = ValueType::prod(
+            ValueType::Unit,
+            ValueType::Sealed(SealId::new(1_u64, "module", "abstract")),
+        );
+        assert_eq!(
+            encode_checkpoints(&checkpoint(
+                Term::Value(Value::Unit),
+                Some(Ty::Value(sealed))
+            )),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::SealIdSerial
+            ))
+        );
+
+        let stack = Value::Pair(Rc::new(Value::Unit), Rc::new(Value::stk(Stack::empty())));
+        assert_eq!(
+            encode_checkpoints(&checkpoint(Term::Value(stack), None)),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::OpaqueStack
+            ))
+        );
+
+        let signature = EffectSig::new(EffectSignatureName::from("E"), alloc::vec![EffectOp::new(
+            OperationName::from("op"),
+            ValueType::Unit,
+            ValueType::Unit
+        )]);
+        let effect = Comp::reset(Comp::perform(signature, "op", Value::Unit));
+        assert_eq!(
+            encode_checkpoints(&checkpoint(Term::Comp(effect), None)),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::OpaqueEffectSignature
+            ))
+        );
+    }
+
+    #[test]
+    fn file_load_distinguishes_not_found_from_other_read_errors()
+    {
+        let root = root("io");
+        drop(std::fs::remove_dir_all(&root));
+        let mut store = FileCheckpointStore::open(&root).unwrap();
+        let address = address_of(&Program::default()).unwrap();
+        let backend = BackendArtifact::from_bytes(b"backend");
+        assert_eq!(store.load(address, backend).unwrap(), None);
+
+        let artifact_path = root.join(hex(address.0));
+        std::fs::create_dir_all(&artifact_path).unwrap();
+        assert_eq!(store.load(address, backend), Err(CheckpointStoreError::Io));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn file_load_rejects_path_mismatch_corruption_truncation_and_trailing_bytes()
+    {
+        let root = root("corrupt");
+        drop(std::fs::remove_dir_all(&root));
+        let program = program(&[1]);
+        let checkpoints = checkpoint_program(&program);
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let mut observer = Observer::default();
+        let mut writer = FileCheckpointStore::open(&root).unwrap();
+        let address = persist(&mut writer, &program, backend, checkpoints, &mut observer).unwrap();
+        let path = root.join(hex(address.0));
+        let original = std::fs::read(&path).unwrap();
+
+        let mut mismatch = original.clone();
+        mismatch[12] ^= 1;
+        std::fs::write(&path, mismatch).unwrap();
+        let mut reader = FileCheckpointStore::open(&root).unwrap();
+        assert_eq!(
+            reader.load(address, backend),
+            Err(CheckpointStoreError::Corrupt)
+        );
+
+        let mut corrupt = original.clone();
+        let payload_byte = corrupt.last_mut().unwrap();
+        *payload_byte ^= 1;
+        std::fs::write(&path, corrupt).unwrap();
+        let mut reader = FileCheckpointStore::open(&root).unwrap();
+        assert_eq!(
+            reader.load(address, backend),
+            Err(CheckpointStoreError::Corrupt)
+        );
+
+        let mut truncated = original.clone();
+        let _removed = truncated.pop();
+        std::fs::write(&path, truncated).unwrap();
+        let mut reader = FileCheckpointStore::open(&root).unwrap();
+        assert_eq!(
+            reader.load(address, backend),
+            Err(CheckpointStoreError::Corrupt)
+        );
+
+        let mut trailing = original;
+        trailing.push(0);
+        std::fs::write(&path, trailing).unwrap();
+        let mut reader = FileCheckpointStore::open(&root).unwrap();
+        assert_eq!(
+            reader.load(address, backend),
+            Err(CheckpointStoreError::Corrupt)
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
