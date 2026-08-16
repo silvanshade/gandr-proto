@@ -1,6 +1,14 @@
 //! Evaluation and forcing: syntax into the glued semantic domain, and the
 //! three force modes that decide how far a weak head is driven.
 //!
+//! # Syntax arrives as node ids, never as owned terms
+//!
+//! Every term this module reads is a **node id** into the flat carrier
+//! ([`FlatArena`]), and every term it hands to a semantic record is the same.
+//! Nothing here clones a reference-counted term into the semantic arena, which
+//! is what makes that arena's teardown flat in any drop order rather than only
+//! when the caller still owns the syntax.
+//!
 //! # Weak-head normalization is spine-local
 //!
 //! A projection or an application drives its **head** to a value form and no
@@ -34,8 +42,9 @@
 //! arguments are compared by congruence. Two natives with the same primitive
 //! and convertible arguments are convertible, which is strictly more than
 //! syntactic equality would give.
+//!
+//! [`FlatArena`]: crate::syntax::FlatArena
 
-use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -46,6 +55,7 @@ use crate::boundary::TermRetention;
 use crate::boundary::UnfoldPermission;
 use crate::nbe::Normalizer;
 use crate::nbe::sem::Closure;
+use crate::nbe::sem::ClosureId;
 use crate::nbe::sem::CompUnfold;
 use crate::nbe::sem::Elim;
 use crate::nbe::sem::EnvId;
@@ -66,9 +76,11 @@ use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_str;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::syntax::Comp;
+use crate::syntax::CompNode;
+use crate::syntax::CompNodeId;
 use crate::syntax::Side;
-use crate::syntax::Value;
+use crate::syntax::ValueNode;
+use crate::syntax::ValueNodeId;
 
 /// How far a force drives its subject.
 ///
@@ -121,14 +133,14 @@ enum Frame
     /// An eliminator waiting for a weak-head normal form to consume it.
     Elim(Elim),
     /// A thunk cell waiting to memoize the weak-head normal form beneath it.
-    Memoize(crate::nbe::sem::ClosureId),
+    Memoize(ClosureId),
 }
 
 /// The machine's phase.
 enum Phase
 {
     /// Carrying an environment and a syntax node toward the head.
-    Descend(EnvId, Rc<Comp>),
+    Descend(EnvId, CompNodeId),
     /// Carrying a weak-head normal form back out through the frames.
     Unwind(SemCompId),
 }
@@ -170,6 +182,45 @@ mod kind
     pub const LAZY_PAIR: u64 = 16;
     /// The tag of a neutral computation.
     pub const NEUTRAL: u64 = 17;
+}
+
+/// Reads one syntax value node out of the store.
+///
+/// The node is cloned rather than borrowed because minting needs the store's
+/// owner mutably; a node's children are ids, so the clone is shallow.
+///
+/// # Errors
+///
+/// Returns [`SemError::MissingSyntaxValue`] when the id does not resolve.
+#[inline]
+pub fn syntax_value(
+    nbe: &Normalizer,
+    id: ValueNodeId,
+) -> Result<ValueNode, SemError>
+{
+    nbe.syntax()
+        .values
+        .get(id)
+        .cloned()
+        .ok_or(SemError::MissingSyntaxValue(id))
+}
+
+/// Reads one syntax computation node out of the store (see [`syntax_value`]).
+///
+/// # Errors
+///
+/// Returns [`SemError::MissingSyntaxComp`] when the id does not resolve.
+#[inline]
+pub fn syntax_comp(
+    nbe: &Normalizer,
+    id: CompNodeId,
+) -> Result<CompNode, SemError>
+{
+    nbe.syntax()
+        .comps
+        .get(id)
+        .cloned()
+        .ok_or(SemError::MissingSyntaxComp(id))
 }
 
 /// Computes the guard word of a value node from its children's cached guards.
@@ -337,12 +388,12 @@ pub fn value(
 fn value_retaining(
     nbe: &mut Normalizer,
     node: SemValueNode,
-    term: &Rc<Value>,
+    term: ValueNodeId,
 ) -> Result<SemValueId, SemError>
 {
     let guard = value_guard(nbe.arena(), &node)?;
     nbe.arena_mut()
-        .mint_value(SemValue::new(node, guard).retaining(Rc::clone(term)))
+        .mint_value(SemValue::new(node, guard).retaining(term))
 }
 
 /// Mints a computation node with its computed guard word.
@@ -385,11 +436,11 @@ fn closure(
     nbe: &mut Normalizer,
     env: EnvId,
     binders: Vec<String>,
-    body: &Rc<Comp>,
-) -> Result<crate::nbe::sem::ClosureId, SemError>
+    body: CompNodeId,
+) -> Result<ClosureId, SemError>
 {
     nbe.arena_mut()
-        .mint_closure(Closure::new(env, binders, Rc::clone(body)))
+        .mint_closure(Closure::new(env, binders, body))
 }
 
 /// Binds a closure's binders to `args` over its captured environment.
@@ -400,17 +451,13 @@ fn closure(
 /// error when an id does not resolve.
 fn enter(
     nbe: &mut Normalizer,
-    id: crate::nbe::sem::ClosureId,
+    id: ClosureId,
     args: &[SemValueId],
-) -> Result<(EnvId, Rc<Comp>), SemError>
+) -> Result<(EnvId, CompNodeId), SemError>
 {
     let (mut env, binders, body) = {
         let closure = nbe.arena().closure(id)?;
-        (
-            closure.env(),
-            closure.binders().to_vec(),
-            Rc::clone(closure.body()),
-        )
+        (closure.env(), closure.binders().to_vec(), closure.body())
     };
     if binders.len() != args.len() {
         return Err(SemError::ClosureArity);
@@ -421,16 +468,56 @@ fn enter(
     Ok((env, body))
 }
 
+/// One finished child on the value walk's result stack: the semantic value,
+/// together with whether its evaluation touched the environment at all.
+#[derive(Clone, Copy, Debug)]
+struct Evaluated
+{
+    /// The semantic value.
+    id: SemValueId,
+    /// Whether the source term is still equal to this value, so the term face
+    /// may retain it.
+    retained: TermRetention,
+}
+
+/// What a value-walk finish frame reassembles.
+enum ValueFinish
+{
+    /// Rebuild a pair.
+    Pair,
+    /// Rebuild an injection.
+    Inj(Side),
+    /// Rebuild a list of this many elements.
+    List(usize),
+    /// Rebuild a record over these labels, in order.
+    Record(Vec<String>),
+    /// Rebuild a reflexivity witness.
+    Here,
+    /// Rebuild a constructor value.
+    Ctor(crate::types::DataId, ConstructorTag),
+}
+
+/// One pending step of the value walk.
+enum ValueTask
+{
+    /// Evaluate a value node.
+    Visit(ValueNodeId),
+    /// Reassemble a node from the results already on the stack.
+    Finish(ValueNodeId, ValueFinish),
+}
+
 /// Evaluates a **value** under `env` into the semantic domain.
 ///
 /// Values are inert: nothing here reduces, so evaluation is a structural
 /// rebuild that resolves variables and suspends thunks. What it also does is
 /// decide the **term face**: a value whose evaluation consulted no environment
-/// binding and captured no environment into a closure is equal to the term it
-/// came from, so that term is retained and readback can hand it straight back.
+/// binding and captured no environment into a closure is equal to the node it
+/// came from, so that node id is retained and readback can hand it straight
+/// back.
 ///
 /// # Contract
-/// - requires: `env` was minted by this normalizer's arena.
+/// - requires: `env` was minted by this normalizer's arena and `term` names a
+///   node in its syntax store.
 /// - ensures: the result is the semantic value of `term` under `env`; a
 ///   variable bound in `env` **aliases** the bound id rather than copying it,
 ///   which is how the sharing the caller handed in is preserved without any
@@ -457,253 +544,244 @@ fn enter(
 /// # Termination
 /// - reason: the walk drains an explicit task stack over one finite term.
 /// - measure: pending tasks on the stack.
-/// - boundedness: terms are finite values and thunk bodies are suspended rather
-///   than entered.
+/// - boundedness: terms are finite node graphs and thunk bodies are suspended
+///   rather than entered.
 /// - input recursion: none.
 #[inline]
 pub fn eval_value(
     nbe: &mut Normalizer,
     env: EnvId,
-    term: &Rc<Value>,
+    term: ValueNodeId,
 ) -> Result<SemValueId, SemError>
 {
-    /// What a finish frame reassembles.
-    enum Finish
-    {
-        /// Rebuild a pair.
-        Pair,
-        /// Rebuild an injection.
-        Inj(Side),
-        /// Rebuild a list of this many elements.
-        List(usize),
-        /// Rebuild a record over these labels, in order.
-        Record(Vec<String>),
-        /// Rebuild a reflexivity witness.
-        Here,
-        /// Rebuild a constructor value.
-        Ctor(crate::types::DataId, ConstructorTag),
-    }
-
-    /// One pending step of the value walk.
-    enum Task
-    {
-        /// Evaluate a value.
-        Visit(Rc<Value>),
-        /// Reassemble a node from the results already on the stack.
-        Finish(Rc<Value>, Finish),
-    }
-
-    let mut work = alloc::vec![Task::Visit(Rc::clone(term))];
+    let mut work = alloc::vec![ValueTask::Visit(term)];
     let mut done: Vec<Evaluated> = Vec::new();
     while let Some(task) = work.pop() {
         match task {
-            | Task::Visit(term) => match *term {
-                | Value::Var(ref name) => {
-                    let bound = nbe.arena().lookup(env, NameRef::from(name.as_str()))?;
-                    match bound {
-                        | Some(id) => done.push(Evaluated {
-                            id,
-                            retained: TermRetention::from(false),
-                        }),
-                        | None => {
-                            let face = match nbe.definitions().lookup(NameRef::from(name.as_str()))
-                            {
-                                | Some(definition) => ValueUnfold::Pending(definition.height()),
-                                | None => ValueUnfold::Rigid,
-                            };
-                            let node = SemValueNode::Rigid(Rigid::Free(name.clone()), face);
-                            let id = value_retaining(nbe, node, &term)?;
-                            done.push(Evaluated {
-                                id,
-                                retained: TermRetention::from(true),
-                            });
-                        },
-                    }
-                },
-                | Value::Unit => {
-                    let id = value_retaining(nbe, SemValueNode::Unit, &term)?;
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(true),
-                    });
-                },
-                | Value::Int(literal) => {
-                    let id = value_retaining(nbe, SemValueNode::Int(literal), &term)?;
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(true),
-                    });
-                },
-                | Value::Str(ref literal) => {
-                    let node = SemValueNode::Str(literal.clone());
-                    let id = value_retaining(nbe, node, &term)?;
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(true),
-                    });
-                },
-                | Value::Num(literal) => {
-                    let id = value_retaining(nbe, SemValueNode::Num(literal), &term)?;
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(true),
-                    });
-                },
-                | Value::Hole(hole) => {
-                    let node = SemValueNode::Rigid(Rigid::Hole(hole), ValueUnfold::Rigid);
-                    let id = value_retaining(nbe, node, &term)?;
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(true),
-                    });
-                },
-                | Value::Thunk(grade, ref body) => {
-                    let id = closure(nbe, env, Vec::new(), body)?;
-                    let node = SemValueNode::Thunk(grade, id);
-                    let id = if env == SemArena::EMPTY_ENV {
-                        value_retaining(nbe, node, &term)?
-                    }
-                    else {
-                        value(nbe, node)?
-                    };
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(env == SemArena::EMPTY_ENV),
-                    });
-                },
-                | Value::Stk(ref stack) => {
-                    let node = SemValueNode::Reified(Rc::clone(stack));
-                    let id = if env == SemArena::EMPTY_ENV {
-                        value_retaining(nbe, node, &term)?
-                    }
-                    else {
-                        value(nbe, node)?
-                    };
-                    done.push(Evaluated {
-                        id,
-                        retained: TermRetention::from(env == SemArena::EMPTY_ENV),
-                    });
-                },
-                | Value::Annot(ref inner, _) => work.push(Task::Visit(Rc::clone(inner))),
-                | Value::Pair(ref fst, ref snd) => {
-                    work.push(Task::Finish(Rc::clone(&term), Finish::Pair));
-                    work.push(Task::Visit(Rc::clone(snd)));
-                    work.push(Task::Visit(Rc::clone(fst)));
-                },
-                | Value::Inj(side, ref payload) => {
-                    work.push(Task::Finish(Rc::clone(&term), Finish::Inj(side)));
-                    work.push(Task::Visit(Rc::clone(payload)));
-                },
-                | Value::Here(ref witness) => {
-                    work.push(Task::Finish(Rc::clone(&term), Finish::Here));
-                    work.push(Task::Visit(Rc::clone(witness)));
-                },
-                | Value::Ctor {
-                    ref id,
-                    tag,
-                    ref payload,
-                } => {
-                    let finish = Finish::Ctor(id.clone(), ConstructorTag::from(tag));
-                    work.push(Task::Finish(Rc::clone(&term), finish));
-                    work.push(Task::Visit(Rc::clone(payload)));
-                },
-                | Value::List(ref elements) => {
-                    work.push(Task::Finish(Rc::clone(&term), Finish::List(elements.len())));
-                    for element in elements.iter().rev() {
-                        work.push(Task::Visit(Rc::clone(element)));
-                    }
-                },
-                | Value::Record(ref fields) => {
-                    let labels = fields.keys().cloned().collect::<Vec<_>>();
-                    work.push(Task::Finish(Rc::clone(&term), Finish::Record(labels)));
-                    for field in fields.values().rev() {
-                        work.push(Task::Visit(Rc::clone(field)));
-                    }
-                },
-            },
-            | Task::Finish(term, finish) => {
-                let (node, unchanged) = match finish {
-                    | Finish::Pair => {
-                        let snd = pop(&mut done);
-                        let snd_fresh = bool::from(snd.retained);
-                        let snd = snd.id;
-                        let fst = pop(&mut done);
-                        let fst_fresh = bool::from(fst.retained);
-                        let fst = fst.id;
-                        (SemValueNode::Pair(fst, snd), fst_fresh && snd_fresh)
-                    },
-                    | Finish::Inj(side) => {
-                        let payload = pop(&mut done);
-                        let fresh = bool::from(payload.retained);
-                        let payload = payload.id;
-                        (SemValueNode::Inj(side, payload), fresh)
-                    },
-                    | Finish::Here => {
-                        let witness = pop(&mut done);
-                        let fresh = bool::from(witness.retained);
-                        let witness = witness.id;
-                        (SemValueNode::Here(witness), fresh)
-                    },
-                    | Finish::Ctor(id, tag) => {
-                        let payload = pop(&mut done);
-                        let fresh = bool::from(payload.retained);
-                        let payload = payload.id;
-                        (SemValueNode::Ctor { id, tag, payload }, fresh)
-                    },
-                    | Finish::List(count) => {
-                        let mut elements = Vec::with_capacity(count);
-                        let mut unchanged = true;
-                        for _ in 0 .. count {
-                            let id = pop(&mut done);
-                            let fresh = bool::from(id.retained);
-                            let id = id.id;
-                            elements.push(id);
-                            unchanged = unchanged && fresh;
-                        }
-                        elements.reverse();
-                        (SemValueNode::List(elements), unchanged)
-                    },
-                    | Finish::Record(labels) => {
-                        let mut values = Vec::with_capacity(labels.len());
-                        let mut unchanged = true;
-                        for _ in 0 .. labels.len() {
-                            let id = pop(&mut done);
-                            let fresh = bool::from(id.retained);
-                            let id = id.id;
-                            values.push(id);
-                            unchanged = unchanged && fresh;
-                        }
-                        values.reverse();
-                        let fields = labels.into_iter().zip(values).collect();
-                        (SemValueNode::Record(fields), unchanged)
-                    },
-                };
-                let id = if unchanged {
-                    value_retaining(nbe, node, &term)?
-                }
-                else {
-                    value(nbe, node)?
-                };
-                done.push(Evaluated {
-                    id,
-                    retained: TermRetention::from(unchanged),
-                });
+            | ValueTask::Visit(term) => visit_value(nbe, env, term, &mut work, &mut done)?,
+            | ValueTask::Finish(term, finish) => {
+                finish_value(nbe, term, finish, &mut done)?;
             },
         }
     }
     Ok(pop(&mut done).id)
 }
 
-/// One finished child on the value walk's result stack: the semantic value,
-/// together with whether its evaluation touched the environment at all.
-#[derive(Clone, Copy, Debug)]
-struct Evaluated
+/// Evaluates one value node, queueing its children.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn visit_value(
+    nbe: &mut Normalizer,
+    env: EnvId,
+    term: ValueNodeId,
+    work: &mut Vec<ValueTask>,
+    done: &mut Vec<Evaluated>,
+) -> Result<(), SemError>
 {
-    /// The semantic value.
-    id: SemValueId,
-    /// Whether the source term is still equal to this value, so the term face
-    /// may retain it.
-    retained: TermRetention,
+    /// Records one finished leaf, with its term face retained.
+    fn leaf(
+        nbe: &mut Normalizer,
+        node: SemValueNode,
+        term: ValueNodeId,
+        done: &mut Vec<Evaluated>,
+    ) -> Result<(), SemError>
+    {
+        let id = value_retaining(nbe, node, term)?;
+        done.push(Evaluated {
+            id,
+            retained: TermRetention::from(true),
+        });
+        Ok(())
+    }
+
+    match syntax_value(nbe, term)? {
+        | ValueNode::Var(name) => {
+            let bound = nbe.arena().lookup(env, NameRef::from(name.as_str()))?;
+            match bound {
+                | Some(id) => done.push(Evaluated {
+                    id,
+                    retained: TermRetention::from(false),
+                }),
+                | None => {
+                    let face = match nbe.definitions().lookup(NameRef::from(name.as_str())) {
+                        | Some(definition) => ValueUnfold::Pending(definition.height()),
+                        | None => ValueUnfold::Rigid,
+                    };
+                    leaf(
+                        nbe,
+                        SemValueNode::Rigid(Rigid::Free(name), face),
+                        term,
+                        done,
+                    )?;
+                },
+            }
+        },
+        | ValueNode::Unit => leaf(nbe, SemValueNode::Unit, term, done)?,
+        | ValueNode::Int(literal) => leaf(nbe, SemValueNode::Int(literal), term, done)?,
+        | ValueNode::Str(literal) => leaf(nbe, SemValueNode::Str(literal), term, done)?,
+        | ValueNode::Num(literal) => leaf(nbe, SemValueNode::Num(literal), term, done)?,
+        | ValueNode::Hole(hole) => {
+            leaf(
+                nbe,
+                SemValueNode::Rigid(Rigid::Hole(hole), ValueUnfold::Rigid),
+                term,
+                done,
+            )?;
+        },
+        | ValueNode::Thunk(grade, body) => {
+            let cell = closure(nbe, env, Vec::new(), body)?;
+            suspend(nbe, SemValueNode::Thunk(grade, cell), env, term, done)?;
+        },
+        | ValueNode::Stk(stack) => {
+            suspend(nbe, SemValueNode::Reified(stack), env, term, done)?;
+        },
+        | ValueNode::Annot(inner, _) => work.push(ValueTask::Visit(inner)),
+        | ValueNode::Pair(fst, snd) => {
+            work.push(ValueTask::Finish(term, ValueFinish::Pair));
+            work.push(ValueTask::Visit(snd));
+            work.push(ValueTask::Visit(fst));
+        },
+        | ValueNode::Inj(side, payload) => {
+            work.push(ValueTask::Finish(term, ValueFinish::Inj(side)));
+            work.push(ValueTask::Visit(payload));
+        },
+        | ValueNode::Here(witness) => {
+            work.push(ValueTask::Finish(term, ValueFinish::Here));
+            work.push(ValueTask::Visit(witness));
+        },
+        | ValueNode::Ctor { id, tag, payload } => {
+            let finish = ValueFinish::Ctor(id, ConstructorTag::from(tag));
+            work.push(ValueTask::Finish(term, finish));
+            work.push(ValueTask::Visit(payload));
+        },
+        | ValueNode::List(elements) => {
+            work.push(ValueTask::Finish(term, ValueFinish::List(elements.len())));
+            for element in elements.iter().rev() {
+                work.push(ValueTask::Visit(*element));
+            }
+        },
+        | ValueNode::Record(fields) => {
+            let labels = fields.keys().cloned().collect::<Vec<_>>();
+            work.push(ValueTask::Finish(term, ValueFinish::Record(labels)));
+            for field in fields.values().rev() {
+                work.push(ValueTask::Visit(*field));
+            }
+        },
+    }
+    Ok(())
+}
+
+/// Records a node that suspends its body over the environment — a thunk or a
+/// reified stack. Its term face survives only in the empty environment, where
+/// the capture cannot have changed anything.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn suspend(
+    nbe: &mut Normalizer,
+    node: SemValueNode,
+    env: EnvId,
+    term: ValueNodeId,
+    done: &mut Vec<Evaluated>,
+) -> Result<(), SemError>
+{
+    let inert = env == SemArena::EMPTY_ENV;
+    let id = if inert {
+        value_retaining(nbe, node, term)?
+    }
+    else {
+        value(nbe, node)?
+    };
+    done.push(Evaluated {
+        id,
+        retained: TermRetention::from(inert),
+    });
+    Ok(())
+}
+
+/// Reassembles one value node from the children already on the result stack.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn finish_value(
+    nbe: &mut Normalizer,
+    term: ValueNodeId,
+    finish: ValueFinish,
+    done: &mut Vec<Evaluated>,
+) -> Result<(), SemError>
+{
+    let (node, unchanged) = match finish {
+        | ValueFinish::Pair => {
+            let snd = pop(done);
+            let fst = pop(done);
+            (
+                SemValueNode::Pair(fst.id, snd.id),
+                bool::from(fst.retained) && bool::from(snd.retained),
+            )
+        },
+        | ValueFinish::Inj(side) => {
+            let payload = pop(done);
+            (
+                SemValueNode::Inj(side, payload.id),
+                bool::from(payload.retained),
+            )
+        },
+        | ValueFinish::Here => {
+            let witness = pop(done);
+            (SemValueNode::Here(witness.id), bool::from(witness.retained))
+        },
+        | ValueFinish::Ctor(id, tag) => {
+            let payload = pop(done);
+            (
+                SemValueNode::Ctor {
+                    id,
+                    tag,
+                    payload: payload.id,
+                },
+                bool::from(payload.retained),
+            )
+        },
+        | ValueFinish::List(count) => {
+            let mut elements = Vec::with_capacity(count);
+            let mut unchanged = true;
+            for _ in 0 .. count {
+                let child = pop(done);
+                elements.push(child.id);
+                unchanged = unchanged && bool::from(child.retained);
+            }
+            elements.reverse();
+            (SemValueNode::List(elements), unchanged)
+        },
+        | ValueFinish::Record(labels) => {
+            let mut fields = Vec::with_capacity(labels.len());
+            let mut unchanged = true;
+            for _ in 0 .. labels.len() {
+                let child = pop(done);
+                fields.push(child.id);
+                unchanged = unchanged && bool::from(child.retained);
+            }
+            fields.reverse();
+            (
+                SemValueNode::Record(labels.into_iter().zip(fields).collect()),
+                unchanged,
+            )
+        },
+    };
+    let id = if unchanged {
+        value_retaining(nbe, node, term)?
+    }
+    else {
+        value(nbe, node)?
+    };
+    done.push(Evaluated {
+        id,
+        retained: TermRetention::from(unchanged),
+    });
+    Ok(())
 }
 
 /// Pops one finished child off the value walk's result stack.
@@ -781,8 +859,8 @@ pub fn force_value(
                 if !bool::from(mode.unfolds(definition.transparency())) {
                     return Ok(current);
                 }
-                let body = Rc::clone(definition.body());
-                let unfolded = eval_value(nbe, SemArena::EMPTY_ENV, &body)?;
+                let body = definition.body();
+                let unfolded = eval_value(nbe, SemArena::EMPTY_ENV, body)?;
                 nbe.arena_mut()
                     .set_value_unfold(current, ValueUnfold::Forced(unfolded))?;
                 if unfolded == current {
@@ -816,7 +894,8 @@ fn head_face(
 /// Evaluates a **computation** under `env` to weak-head normal form.
 ///
 /// # Contract
-/// - requires: `env` was minted by this normalizer's arena.
+/// - requires: `env` was minted by this normalizer's arena and `term` names a
+///   node in its syntax store.
 /// - ensures: the result is the weak-head normal form of `term` under `env` in
 ///   `mode`; every reduction that fires is a beta law of the calculus, and no
 ///   effect, handler, resumption, delimiter, capture, grade operation, or
@@ -840,23 +919,15 @@ fn head_face(
 /// - witness: `nbe::tests::record_projection_reduces_and_stays_spine_local`
 /// - witness: `nbe::tests::walk_beta_fires_on_here`
 /// - witness: `nbe::tests::the_quarantine_leaves_effects_neutral`
-///
-/// # Termination
-/// - reason: the machine is a loop over an explicit frame stack, not recursion.
-/// - measure: the frame stack together with the term being descended into.
-/// - boundedness: each descend step consumes one syntax node and each unwind
-///   step consumes one frame; unbounded unfolding is bounded by the
-///   normalizer's fuel through [`force_value`].
-/// - input recursion: none.
 #[inline]
 pub fn eval_comp(
     nbe: &mut Normalizer,
     env: EnvId,
-    term: &Rc<Comp>,
+    term: CompNodeId,
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
 {
-    run_machine(nbe, Phase::Descend(env, Rc::clone(term)), Vec::new(), mode)
+    run_machine(nbe, Phase::Descend(env, term), Vec::new(), mode)
 }
 
 /// Drives the machine from `phase` over `stack` until the stack drains.
@@ -867,7 +938,7 @@ pub fn eval_comp(
 ///
 /// # Termination
 /// - reason: the driver is a loop over an explicit frame stack, not recursion.
-/// - measure: the frame stack together with the term being descended into.
+/// - measure: the frame stack together with the node being descended into.
 /// - boundedness: each step consumes one syntax node or one frame, and
 ///   unfolding is bounded by the normalizer's fuel.
 /// - input recursion: none.
@@ -880,7 +951,7 @@ fn run_machine(
 {
     loop {
         phase = match phase {
-            | Phase::Descend(env, node) => descend(nbe, env, &node, mode, &mut stack)?,
+            | Phase::Descend(env, node) => descend(nbe, env, node, mode, &mut stack)?,
             | Phase::Unwind(id) => match unwind(nbe, id, &mut stack)? {
                 | Some(next) => next,
                 | None => return Ok(id),
@@ -944,7 +1015,7 @@ pub fn project(
 #[inline]
 pub fn enter_nullary(
     nbe: &mut Normalizer,
-    cell: crate::nbe::sem::ClosureId,
+    cell: ClosureId,
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
 {
@@ -969,7 +1040,7 @@ pub fn enter_nullary(
 #[inline]
 pub fn enter_with(
     nbe: &mut Normalizer,
-    cell: crate::nbe::sem::ClosureId,
+    cell: ClosureId,
     args: &[SemValueId],
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
@@ -1037,38 +1108,38 @@ pub fn rerun_spine(
 fn descend(
     nbe: &mut Normalizer,
     env: EnvId,
-    node: &Rc<Comp>,
+    node: CompNodeId,
     mode: ForceMode,
     stack: &mut Vec<Frame>,
 ) -> Result<Phase, SemError>
 {
-    match **node {
-        | Comp::Abs(ref binder, _, ref body) => {
+    match syntax_comp(nbe, node)? {
+        | CompNode::Abs(binder, _, body) => {
             if let Some(&Frame::Elim(Elim::Apply(arg))) = stack.last() {
                 stack.pop();
-                let env = nbe.arena_mut().bind(env, binder.clone(), arg)?;
-                Ok(Phase::Descend(env, Rc::clone(body)))
+                let env = nbe.arena_mut().bind(env, binder, arg)?;
+                Ok(Phase::Descend(env, body))
             }
             else {
-                let id = closure(nbe, env, alloc::vec![binder.clone()], body)?;
-                Ok(Phase::Unwind(comp(nbe, SemCompNode::Lambda(id))?))
+                let cell = closure(nbe, env, alloc::vec![binder], body)?;
+                Ok(Phase::Unwind(comp(nbe, SemCompNode::Lambda(cell))?))
             }
         },
-        | Comp::App(ref head, ref arg) => {
+        | CompNode::App(head, arg) => {
             let arg = eval_value(nbe, env, arg)?;
             stack.push(Frame::Elim(Elim::Apply(arg)));
-            Ok(Phase::Descend(env, Rc::clone(head)))
+            Ok(Phase::Descend(env, head))
         },
-        | Comp::Prj(side, ref body) => {
+        | CompNode::Prj(side, body) => {
             stack.push(Frame::Elim(Elim::Project(side)));
-            Ok(Phase::Descend(env, Rc::clone(body)))
+            Ok(Phase::Descend(env, body))
         },
-        | Comp::Bind(ref bound, ref binder, ref cont) => {
-            let id = closure(nbe, env, alloc::vec![binder.clone()], cont)?;
-            stack.push(Frame::Elim(Elim::Sequence(id)));
-            Ok(Phase::Descend(env, Rc::clone(bound)))
+        | CompNode::Bind(bound, binder, cont) => {
+            let cell = closure(nbe, env, alloc::vec![binder], cont)?;
+            stack.push(Frame::Elim(Elim::Sequence(cell)));
+            Ok(Phase::Descend(env, bound))
         },
-        | Comp::Ret(ref carried) => {
+        | CompNode::Ret(carried) => {
             let carried = eval_value(nbe, env, carried)?;
             if let Some(&Frame::Elim(Elim::Sequence(cont))) = stack.last() {
                 stack.pop();
@@ -1079,12 +1150,12 @@ fn descend(
                 Ok(Phase::Unwind(comp(nbe, SemCompNode::Return(carried))?))
             }
         },
-        | Comp::With(ref fst, ref snd) => {
+        | CompNode::With(fst, snd) => {
             let fst = closure(nbe, env, Vec::new(), fst)?;
             let snd = closure(nbe, env, Vec::new(), snd)?;
             Ok(Phase::Unwind(comp(nbe, SemCompNode::LazyPair(fst, snd))?))
         },
-        | Comp::Force(ref thunked) => {
+        | CompNode::Force(thunked) => {
             let thunked = eval_value(nbe, env, thunked)?;
             let thunked = force_value(nbe, thunked, mode)?;
             let cell = match *nbe.arena().value(thunked)?.node() {
@@ -1110,7 +1181,7 @@ fn descend(
                 },
             }
         },
-        | Comp::Case(ref scrut, ref on_left, ref on_right) => {
+        | CompNode::Case(scrut, on_left, on_right) => {
             let scrut = eval_value(nbe, env, scrut)?;
             let scrut = force_value(nbe, scrut, mode)?;
             let injected = match *nbe.arena().value(scrut)?.node() {
@@ -1119,18 +1190,18 @@ fn descend(
             };
             match injected {
                 | Some((Side::Fst, payload)) => {
-                    let cell = closure(nbe, env, alloc::vec![on_left.0.clone()], &on_left.1)?;
+                    let cell = closure(nbe, env, alloc::vec![on_left.0], on_left.1)?;
                     let (env, body) = enter(nbe, cell, &[payload])?;
                     Ok(Phase::Descend(env, body))
                 },
                 | Some((Side::Snd, payload)) => {
-                    let cell = closure(nbe, env, alloc::vec![on_right.0.clone()], &on_right.1)?;
+                    let cell = closure(nbe, env, alloc::vec![on_right.0], on_right.1)?;
                     let (env, body) = enter(nbe, cell, &[payload])?;
                     Ok(Phase::Descend(env, body))
                 },
                 | None => {
-                    let left = closure(nbe, env, alloc::vec![on_left.0.clone()], &on_left.1)?;
-                    let right = closure(nbe, env, alloc::vec![on_right.0.clone()], &on_right.1)?;
+                    let left = closure(nbe, env, alloc::vec![on_left.0], on_left.1)?;
+                    let right = closure(nbe, env, alloc::vec![on_right.0], on_right.1)?;
                     let face = head_face(nbe, scrut)?;
                     let head = NeutralHead::Case {
                         scrutinee: scrut,
@@ -1141,26 +1212,26 @@ fn descend(
                 },
             }
         },
-        | Comp::DataCase(ref scrut, ref arms) => {
+        | CompNode::DataCase { scrut, arms } => {
             let scrut = eval_value(nbe, env, scrut)?;
             let scrut = force_value(nbe, scrut, mode)?;
             let constructed = match *nbe.arena().value(scrut)?.node() {
                 | SemValueNode::Ctor { tag, payload, .. } => Some((usize::from(tag), payload)),
                 | _ => None,
             };
-            match constructed
-                .and_then(|(tag, payload)| arms.get(tag).map(|arm| (arm.clone(), payload)))
-            {
+            let selected = constructed
+                .and_then(|(tag, payload)| arms.get(tag).map(|arm| (arm.clone(), payload)));
+            match selected {
                 | Some(((binder, body), payload)) => {
-                    let cell = closure(nbe, env, alloc::vec![binder], &body)?;
+                    let cell = closure(nbe, env, alloc::vec![binder], body)?;
                     let (env, body) = enter(nbe, cell, &[payload])?;
                     Ok(Phase::Descend(env, body))
                 },
                 | None => {
                     let mut cells = Vec::with_capacity(arms.len());
                     for arm in arms {
-                        let cell = closure(nbe, env, alloc::vec![arm.0.clone()], &arm.1)?;
-                        cells.push((arm.0.clone(), cell));
+                        let cell = closure(nbe, env, alloc::vec![arm.0.clone()], arm.1)?;
+                        cells.push((arm.0, cell));
                     }
                     let face = head_face(nbe, scrut)?;
                     let head = NeutralHead::DataCase {
@@ -1171,12 +1242,12 @@ fn descend(
                 },
             }
         },
-        | Comp::ListCase {
-            ref scrut,
-            ref nil,
-            ref head,
-            ref tail,
-            ref cons,
+        | CompNode::ListCase {
+            scrut,
+            nil,
+            head,
+            tail,
+            cons,
         } => {
             let scrut = eval_value(nbe, env, scrut)?;
             let scrut = force_value(nbe, scrut, mode)?;
@@ -1193,16 +1264,14 @@ fn descend(
                     },
                     | Some((first, rest)) => {
                         let rest = value(nbe, SemValueNode::List(rest.to_vec()))?;
-                        let binders = alloc::vec![head.clone(), tail.clone()];
-                        let cell = closure(nbe, env, binders, cons)?;
+                        let cell = closure(nbe, env, alloc::vec![head, tail], cons)?;
                         let (env, body) = enter(nbe, cell, &[*first, rest])?;
                         Ok(Phase::Descend(env, body))
                     },
                 },
                 | None => {
                     let nil = closure(nbe, env, Vec::new(), nil)?;
-                    let binders = alloc::vec![head.clone(), tail.clone()];
-                    let cons = closure(nbe, env, binders, cons)?;
+                    let cons = closure(nbe, env, alloc::vec![head, tail], cons)?;
                     let face = head_face(nbe, scrut)?;
                     let head = NeutralHead::ListCase {
                         scrutinee: scrut,
@@ -1213,11 +1282,11 @@ fn descend(
                 },
             }
         },
-        | Comp::Split {
-            ref scrut,
-            ref fst_name,
-            ref snd_name,
-            ref body,
+        | CompNode::Split {
+            scrut,
+            fst_name,
+            snd_name,
+            body,
             ..
         } => {
             // The motive is a type ascription on the eliminator: it names the
@@ -1229,8 +1298,7 @@ fn descend(
                 | SemValueNode::Pair(fst, snd) => Some([fst, snd]),
                 | _ => None,
             };
-            let binders = alloc::vec![fst_name.clone(), snd_name.clone()];
-            let cell = closure(nbe, env, binders, body)?;
+            let cell = closure(nbe, env, alloc::vec![fst_name, snd_name], body)?;
             match paired {
                 | Some(components) => {
                     let (env, body) = enter(nbe, cell, &components)?;
@@ -1246,10 +1314,7 @@ fn descend(
                 },
             }
         },
-        | Comp::RecordProj {
-            ref record,
-            ref label,
-        } => {
+        | CompNode::RecordProj { record, label } => {
             // Structure projection, weak-head and spine-local: the record's
             // head is driven to a structure and the sibling components are
             // never touched.
@@ -1263,26 +1328,19 @@ fn descend(
                 | Some(field) => Ok(Phase::Unwind(comp(nbe, SemCompNode::Return(field))?)),
                 | None => {
                     let face = head_face(nbe, record)?;
-                    let head = NeutralHead::Project {
-                        record,
-                        label: label.clone(),
-                    };
+                    let head = NeutralHead::Project { record, label };
                     Ok(Phase::Unwind(neutral(nbe, head, face)?))
                 },
             }
         },
-        | Comp::Walk {
-            ref scrut,
-            ref base,
-            ..
-        } => {
+        | CompNode::Walk { scrut, base, .. } => {
             let scrut = eval_value(nbe, env, scrut)?;
             let scrut = force_value(nbe, scrut, mode)?;
             let witnessed = match *nbe.arena().value(scrut)?.node() {
                 | SemValueNode::Here(witness) => Some(witness),
                 | _ => None,
             };
-            let cell = closure(nbe, env, alloc::vec![base.x.clone()], &base.body)?;
+            let cell = closure(nbe, env, alloc::vec![base.x], base.body)?;
             match witnessed {
                 | Some(witness) => {
                     let (env, body) = enter(nbe, cell, &[witness])?;
@@ -1298,7 +1356,7 @@ fn descend(
                 },
             }
         },
-        | Comp::Native { prim, ref args } => {
+        | CompNode::Native { prim, args } => {
             let mut evaluated = Vec::with_capacity(args.len());
             for arg in args {
                 evaluated.push(eval_value(nbe, env, arg)?);
@@ -1309,48 +1367,48 @@ fn descend(
             };
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Dup(ref carried) => {
+        | CompNode::Dup(carried) => {
             let carried = eval_value(nbe, env, carried)?;
             let head = NeutralHead::Dup(carried);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Drop(ref carried) => {
+        | CompNode::Drop(carried) => {
             let carried = eval_value(nbe, env, carried)?;
             let head = NeutralHead::Drop(carried);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Perform(ref sig, ref op, ref carried) => {
+        | CompNode::Perform(_, _, carried) => {
+            // The signature and the operation name stay on the source node,
+            // which the head names rather than copies.
             let carried = eval_value(nbe, env, carried)?;
             let head = NeutralHead::Perform {
-                sig: Rc::new(sig.as_ref().clone()),
-                op: op.clone(),
+                source: node,
                 payload: carried,
             };
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Handle {
-            ref sig,
-            ref scrutinee,
-            ref ret,
-            ref ops,
+        | CompNode::Handle {
+            scrutinee,
+            ret,
+            ops,
+            ..
         } => {
             let scrutinee = closure(nbe, env, Vec::new(), scrutinee)?;
-            let ret_cell = closure(nbe, env, alloc::vec![ret.0.clone()], &ret.1)?;
+            let ret_cell = closure(nbe, env, alloc::vec![ret.0], ret.1)?;
             let mut clauses = Vec::with_capacity(ops.len());
             for clause in ops {
-                let binders = alloc::vec![clause.payload.clone(), clause.resume.clone()];
-                let cell = closure(nbe, env, binders, &clause.body)?;
-                clauses.push((clause.op.clone(), cell));
+                let binders = alloc::vec![clause.payload, clause.resume];
+                clauses.push(closure(nbe, env, binders, clause.body)?);
             }
             let head = NeutralHead::Handle {
-                sig: Rc::new(sig.as_ref().clone()),
+                source: node,
                 scrutinee,
                 ret: ret_cell,
                 ops: clauses,
             };
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Resume(ref carried, ref body) => {
+        | CompNode::Resume(carried, body) => {
             let carried = eval_value(nbe, env, carried)?;
             let body = closure(nbe, env, Vec::new(), body)?;
             let head = NeutralHead::Resume {
@@ -1359,17 +1417,17 @@ fn descend(
             };
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Reset(ref body) => {
+        | CompNode::Reset(body) => {
             let body = closure(nbe, env, Vec::new(), body)?;
             let head = NeutralHead::Reset(body);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Shift(ref binder, ref body) => {
-            let body = closure(nbe, env, alloc::vec![binder.clone()], body)?;
+        | CompNode::Shift(binder, body) => {
+            let body = closure(nbe, env, alloc::vec![binder], body)?;
             let head = NeutralHead::Shift(body);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },
-        | Comp::Hole(hole) => {
+        | CompNode::Hole(hole) => {
             let head = NeutralHead::Hole(hole);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
         },

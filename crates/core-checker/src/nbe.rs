@@ -91,7 +91,9 @@ use crate::nbe::intern::SyntaxInterner;
 use crate::nbe::sem::SemArena;
 use crate::nbe::sem::SemError;
 use crate::nbe::sem::Watermark;
+use crate::syntax::FlatArena;
 use crate::syntax::Value;
+use crate::syntax::ValueNodeId;
 
 /// The default fuel a normalizer spends before it stops unfolding.
 ///
@@ -127,7 +129,10 @@ pub struct Normalizer
     arena: SemArena,
     /// The per-scope definitional environment.
     defs: Definitions,
-    /// The per-face syntax interner.
+    /// The syntax store: the flat node carrier every handle in the semantic
+    /// arena names. It owns the syntax; nothing in the semantic arena does.
+    syntax: FlatArena,
+    /// The per-face syntax interner, keyed on canonical content.
     interner: SyntaxInterner,
     /// The next de Bruijn level readback and conversion will generate.
     next_level: u32,
@@ -158,6 +163,7 @@ impl Normalizer
         Self {
             arena: SemArena::new(),
             defs: Definitions::new(),
+            syntax: FlatArena::new(),
             interner: SyntaxInterner::new(),
             next_level: 0,
             fuel: ConversionFuel::from(DEFAULT_FUEL),
@@ -183,11 +189,61 @@ impl Normalizer
         &self.defs
     }
 
-    /// The definitional environment, for defining and for scoping.
+    /// The definitional environment, for scoping.
+    ///
+    /// Defining goes through [`Self::define`] rather than through this, because
+    /// a definition's body is lowered into the syntax store first and the
+    /// environment holds the resulting handle.
     #[inline]
     pub fn definitions_mut(&mut self) -> &mut Definitions
     {
         &mut self.defs
+    }
+
+    /// Defines `name` as `body`, reducible, lowering the body into the syntax
+    /// store on the way.
+    ///
+    /// # Contract
+    /// - ensures: `name` unfolds to `body` in the innermost open scope, at the
+    ///   height the definition graph gives it.
+    /// - fails: [`SemError::SyntaxStore`] when lowering fails.
+    /// - panics: none.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SemError::SyntaxStore`] when lowering fails.
+    #[inline]
+    pub fn define<'source, N>(
+        &mut self,
+        name: N,
+        body: &Value,
+    ) -> Result<(), SemError>
+    where
+        N: Into<crate::boundary::NameRef<'source>>,
+    {
+        self.define_with(name, body, defs::Transparency::Reducible)
+    }
+
+    /// Defines `name` as `body` with an explicit transparency — the reserved
+    /// irreducible opt-out.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SemError::SyntaxStore`] when lowering fails.
+    #[inline]
+    pub fn define_with<'source, N>(
+        &mut self,
+        name: N,
+        body: &Value,
+        transparency: defs::Transparency,
+    ) -> Result<(), SemError>
+    where
+        N: Into<crate::boundary::NameRef<'source>>,
+    {
+        let node = self.lower_input(body)?;
+        self.defs
+            .define_with(&self.syntax, name, node, transparency);
+        Ok(())
     }
 
     /// The per-face syntax interner.
@@ -198,11 +254,26 @@ impl Normalizer
         &self.interner
     }
 
-    /// The per-face syntax interner, for interning.
+    /// The syntax store every handle in the semantic arena names.
+    ///
+    /// There is deliberately **no mutable accessor for the interner**. The flat
+    /// carrier is `Clone`, so handing one out would let a caller insert any
+    /// node under a face of its own choosing and the two faces' representative
+    /// sets would stop being disjoint; interning is reached only through
+    /// [`Self::lower_input`] and [`Self::intern_readback`], each of which fixes
+    /// its own face.
     #[inline]
-    pub fn interner_mut(&mut self) -> &mut SyntaxInterner
+    #[must_use]
+    pub fn syntax(&self) -> &FlatArena
     {
-        &mut self.interner
+        &self.syntax
+    }
+
+    /// The syntax store, for lowering and for readback.
+    #[inline]
+    pub fn syntax_mut(&mut self) -> &mut FlatArena
+    {
+        &mut self.syntax
     }
 
     /// The semantic arena.
@@ -331,16 +402,92 @@ impl Normalizer
     #[inline]
     pub fn normalize(
         &mut self,
-        term: &Rc<Value>,
+        term: &Value,
     ) -> Result<Rc<Value>, SemError>
     {
+        let node = self.normalize_node(term)?;
+        self.reify(node)
+    }
+
+    /// Normalizes a source value and returns the **node** its normal form
+    /// occupies in the syntax store, interned into the readback face.
+    ///
+    /// This is the entry a caller uses when it wants to keep working in node
+    /// ids; [`Self::normalize`] is this composed with one reification.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+    #[inline]
+    pub fn normalize_node(
+        &mut self,
+        term: &Value,
+    ) -> Result<ValueNodeId, SemError>
+    {
+        let lowered = self.lower_input(term)?;
         let opened = self.begin_run();
-        let evaluated = eval::eval_value(self, SemArena::EMPTY_ENV, term)?;
+        let evaluated = eval::eval_value(self, SemArena::EMPTY_ENV, lowered)?;
         let quoted = quote::quote_value(self, evaluated, quote::QuoteMode::Canonical)?;
         self.finish_run(opened);
-        Ok(self
-            .interner
-            .intern(intern::Face::ReadbackNormalForm, quoted))
+        // Canonical readback output, which is exactly what the readback face
+        // accepts; the precondition on `intern_readback` states why.
+        Ok(self.intern_readback(quoted))
+    }
+
+    /// Interns a node into the **readback** face's table.
+    ///
+    /// # Contract
+    /// - requires: `node` is [`quote::QuoteMode::Canonical`] readback output or
+    ///   a fresh allocation — **never** a [`quote::QuoteMode::Retained`] result
+    ///   and never an input-face representative. The retained mode returns the
+    ///   *input-face* node by design, which is the term face working, and
+    ///   offering one here would put a single node in both tables; two lookups
+    ///   would then agree on a representative across faces, which is exactly
+    ///   the cross-face equality the tables must never establish.
+    /// - ensures: the result is alpha-identical to `node` and shared with every
+    ///   alpha-identical normal form previously interned into the readback
+    ///   face; the two faces' representative sets stay **disjoint**, so one
+    ///   alpha-key may sit in both tables under two different representatives
+    ///   and neither table can speak for the other.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the precondition is enforced by construction on the
+    ///   one live path, so the witness pins that path rather than the guard:
+    ///   normalizing a term whose binders are source names must intern a
+    ///   *different* representative from the lowered input, with one entry in
+    ///   each face.
+    /// - witness: `nbe::tests::normalize_node_interns_a_canonical_form_not_the_input`
+    #[inline]
+    pub(crate) fn intern_readback(
+        &mut self,
+        node: ValueNodeId,
+    ) -> ValueNodeId
+    {
+        self.interner
+            .intern(&self.syntax, intern::Face::ReadbackNormalForm, node)
+    }
+
+    /// Reads a syntax node back out to an ordinary term.
+    ///
+    /// This is the **only** place the engine produces an owned recursive term,
+    /// and it is a boundary service for callers rather than an internal step:
+    /// the reified term is the caller's, and nothing inside the normalizer
+    /// keeps a reference to it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SemError::SyntaxStore`] when the node does not resolve.
+    #[inline]
+    pub fn reify(
+        &self,
+        node: ValueNodeId,
+    ) -> Result<Rc<Value>, SemError>
+    {
+        self.syntax
+            .value(node)
+            .map(Rc::new)
+            .map_err(|_error| SemError::MissingSyntaxValue(node))
     }
 
     /// Decides definitional equality of two source values.
@@ -374,21 +521,37 @@ impl Normalizer
         conv::type_converts(self, lhs, rhs)
     }
 
-    /// Interns an elaboration-input term into the input face's table.
+    /// Lowers a caller's term into the syntax store and interns it into the
+    /// **input** face, returning the node the engine will work from.
     ///
     /// # Contract
-    /// - ensures: the result is alpha-identical to `term` and shared with every
-    ///   alpha-identical term previously interned into the **input** face; it
-    ///   is never shared with a readback normal form, because the faces hold
-    ///   separate tables and are never compared.
+    /// - ensures: the result names a node alpha-identical to `term` and shared
+    ///   with every alpha-identical term previously lowered into the input
+    ///   face; it is never shared with a readback normal form, because the
+    ///   faces hold separate tables and are never compared.
+    /// - provides: the one crossing from a caller's owned term into the
+    ///   engine's handles — past it, no owned recursive term exists inside the
+    ///   normalizer.
+    /// - fails: [`SemError::SyntaxStore`] when the store's id space is
+    ///   exhausted.
     /// - panics: none.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SemError::SyntaxStore`] when lowering fails.
     #[inline]
-    pub fn intern_input(
+    pub fn lower_input(
         &mut self,
-        term: Rc<Value>,
-    ) -> Rc<Value>
+        term: &Value,
+    ) -> Result<ValueNodeId, SemError>
     {
-        self.interner.intern(intern::Face::ElaborationInput, term)
+        let node = self
+            .syntax
+            .alloc_value(term)
+            .map_err(|_error| SemError::SyntaxStore)?;
+        Ok(self
+            .interner
+            .intern(&self.syntax, intern::Face::ElaborationInput, node))
     }
 }
 
@@ -461,6 +624,15 @@ mod tests
         Rc::new(Value::Record(fields))
     }
 
+    /// Lowers a caller's term into the normalizer's syntax store.
+    fn lower(
+        nbe: &mut Normalizer,
+        term: &Value,
+    ) -> crate::syntax::ValueNodeId
+    {
+        nbe.lower_input(term).expect("lowering must succeed")
+    }
+
     /// The trivial effect signature the quarantine tests perform against.
     fn signature() -> EffectSig
     {
@@ -504,8 +676,8 @@ mod tests
     fn extending_a_glued_spine_reopens_the_unfolding_face()
     {
         let mut nbe = Normalizer::new();
-        let head =
-            eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &var(NameRef::from("f"))).unwrap();
+        let node = lower(&mut nbe, &var(NameRef::from("f")));
+        let head = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         let rigid = Neutral::new(NeutralHead::Force(head), sem::CompUnfold::Rigid);
         assert_eq!(
             rigid.extended(sem::Elim::Project(Side::Fst), None).unfold(),
@@ -522,13 +694,14 @@ mod tests
     fn truncating_to_a_watermark_drops_every_family()
     {
         let mut nbe = Normalizer::new();
-        let mark = nbe.watermark();
         let term = thunk(Comp::app(
             Comp::lam("x", Comp::ret(Value::Unit)),
             Value::Unit,
         ));
-        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &term).unwrap();
-        let _ = force_value(&mut nbe, evaluated, ForceMode::Unfold).unwrap();
+        let node = lower(&mut nbe, &term);
+        let mark = nbe.watermark();
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
+        let _forced = force_value(&mut nbe, evaluated, ForceMode::Unfold).unwrap();
         assert_ne!(nbe.watermark(), mark);
         nbe.truncate_to(mark);
         assert_eq!(nbe.watermark(), mark);
@@ -538,13 +711,9 @@ mod tests
     fn an_arena_id_resolves_only_while_it_is_live()
     {
         let mut nbe = Normalizer::new();
+        let node = lower(&mut nbe, &int(IntegerLiteral::from(1_i64)));
         let mark = nbe.watermark();
-        let evaluated = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &int(IntegerLiteral::from(1_i64)),
-        )
-        .unwrap();
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         assert!(nbe.arena().value(evaluated).is_ok());
         nbe.truncate_to(mark);
         assert!(nbe.arena().value(evaluated).is_err());
@@ -555,26 +724,24 @@ mod tests
     #[test]
     fn definition_height_is_one_above_what_the_body_mentions()
     {
-        let mut defs = defs::Definitions::new();
-        defs.define(
-            crate::boundary::NameRef::from("a"),
-            int(IntegerLiteral::from(1_i64)),
-        );
-        let base = defs
-            .lookup(crate::boundary::NameRef::from("a"))
+        let mut nbe = Normalizer::new();
+        nbe.define(NameRef::from("a"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        let base = nbe
+            .definitions()
+            .lookup(NameRef::from("a"))
             .unwrap()
             .height();
         assert_eq!(u32::from(base), 1);
-        defs.define(
-            crate::boundary::NameRef::from("b"),
-            Rc::new(Value::Pair(
-                var(NameRef::from("a")),
-                int(IntegerLiteral::from(2_i64)),
-            )),
-        );
+        nbe.define(
+            NameRef::from("b"),
+            &Value::Pair(var(NameRef::from("a")), int(IntegerLiteral::from(2_i64))),
+        )
+        .unwrap();
         assert_eq!(
             u32::from(
-                defs.lookup(crate::boundary::NameRef::from("b"))
+                nbe.definitions()
+                    .lookup(NameRef::from("b"))
                     .unwrap()
                     .height()
             ),
@@ -582,13 +749,12 @@ mod tests
         );
         // A body mentioning nothing defined stays at the base height, whatever
         // else the environment holds.
-        defs.define(
-            crate::boundary::NameRef::from("c"),
-            int(IntegerLiteral::from(3_i64)),
-        );
+        nbe.define(NameRef::from("c"), &int(IntegerLiteral::from(3_i64)))
+            .unwrap();
         assert_eq!(
             u32::from(
-                defs.lookup(crate::boundary::NameRef::from("c"))
+                nbe.definitions()
+                    .lookup(NameRef::from("c"))
                     .unwrap()
                     .height()
             ),
@@ -599,35 +765,25 @@ mod tests
     #[test]
     fn a_nested_scope_shadows_and_then_releases()
     {
-        let mut defs = defs::Definitions::new();
-        defs.define(
-            crate::boundary::NameRef::from("a"),
-            int(IntegerLiteral::from(1_i64)),
-        );
-        defs.open_scope();
-        defs.define(
-            crate::boundary::NameRef::from("a"),
-            int(IntegerLiteral::from(2_i64)),
-        );
+        let mut nbe = Normalizer::new();
+        nbe.define(NameRef::from("a"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        let outer = nbe.definitions().lookup(NameRef::from("a")).unwrap().body();
+        nbe.definitions_mut().open_scope();
+        nbe.define(NameRef::from("a"), &int(IntegerLiteral::from(2_i64)))
+            .unwrap();
+        let inner = nbe.definitions().lookup(NameRef::from("a")).unwrap().body();
+        assert_ne!(outer, inner);
+        assert_eq!(*nbe.reify(inner).unwrap(), Value::Int(2));
+        nbe.definitions_mut().close_scope();
         assert_eq!(
-            **defs
-                .lookup(crate::boundary::NameRef::from("a"))
-                .unwrap()
-                .body(),
-            Value::Int(2)
-        );
-        defs.close_scope();
-        assert_eq!(
-            **defs
-                .lookup(crate::boundary::NameRef::from("a"))
-                .unwrap()
-                .body(),
-            Value::Int(1)
+            nbe.definitions().lookup(NameRef::from("a")).unwrap().body(),
+            outer
         );
         // The root scope is never closed, so the environment always has
         // somewhere to define into.
-        defs.close_scope();
-        assert_eq!(usize::from(defs.depth()), 1);
+        nbe.definitions_mut().close_scope();
+        assert_eq!(usize::from(nbe.definitions().depth()), 1);
     }
 
     // ── the per-face syntax interner ────────────────────────────────────────
@@ -636,22 +792,14 @@ mod tests
     fn interning_shares_alpha_equivalent_terms_within_a_face()
     {
         let mut nbe = Normalizer::new();
-        let first = thunk(Comp::lam(
-            "x",
-            Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-        ));
-        let second = thunk(Comp::lam(
-            "y",
-            Comp::ret(Value::var(crate::boundary::NameRef::from("y"))),
-        ));
-        assert!(!Rc::ptr_eq(&first, &second));
-        let canonical = nbe.intern_input(Rc::clone(&first));
-        let again = nbe.intern_input(Rc::clone(&second));
-        assert!(Rc::ptr_eq(&canonical, &again));
+        let first = thunk(Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))));
+        let second = thunk(Comp::lam("y", Comp::ret(Value::var(NameRef::from("y")))));
+        let canonical = lower(&mut nbe, &first);
+        let again = lower(&mut nbe, &second);
+        assert_eq!(canonical, again);
         // An alpha-distinct term is a second entry.
-        let other = thunk(Comp::lam("x", Comp::ret(Value::Unit)));
-        let other = nbe.intern_input(other);
-        assert!(!Rc::ptr_eq(&canonical, &other));
+        let other = lower(&mut nbe, &thunk(Comp::lam("x", Comp::ret(Value::Unit))));
+        assert_ne!(canonical, other);
         assert_eq!(usize::from(nbe.interner().len(Face::ElaborationInput)), 2);
     }
 
@@ -659,19 +807,151 @@ mod tests
     fn interning_keeps_the_two_faces_disjoint()
     {
         let mut nbe = Normalizer::new();
-        let input = thunk(Comp::ret(Value::Int(1)));
-        let readback = thunk(Comp::ret(Value::Int(1)));
-        assert!(!Rc::ptr_eq(&input, &readback));
-        let input = nbe.intern_input(input);
-        let readback = nbe
-            .interner_mut()
-            .intern(Face::ReadbackNormalForm, readback);
-        // Alpha-identical, yet not shared: a lookup in one face can never
-        // establish equality with the other.
-        assert_eq!(*input, *readback);
-        assert!(!Rc::ptr_eq(&input, &readback));
+        let term = thunk(Comp::ret(Value::Int(1)));
+        let input = lower(&mut nbe, &term);
+        // The same syntax again, this time offered to the readback face: the
+        // tables are separate, so it gets its own representative and no lookup
+        // can establish that the two are one.
+        let fresh = nbe.syntax_mut().alloc_value(&term).unwrap();
+        let readback = nbe.intern_readback(fresh);
+        assert_ne!(input, readback);
+        assert_eq!(
+            canonical_key(nbe.syntax(), input),
+            canonical_key(nbe.syntax(), readback)
+        );
         assert_eq!(usize::from(nbe.interner().len(Face::ElaborationInput)), 1);
         assert_eq!(usize::from(nbe.interner().len(Face::ReadbackNormalForm)), 1);
+    }
+
+    #[test]
+    fn normalize_node_interns_a_canonical_form_not_the_input()
+    {
+        let mut nbe = Normalizer::new();
+        // An already-normal term whose binder carries a SOURCE name: nothing
+        // reduces, so the only thing normalization changes is the binder, and
+        // the readback representative must therefore be a different node from
+        // the lowered input.
+        let term = thunk(Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))));
+        let input = lower(&mut nbe, &term);
+        let normal = nbe.normalize_node(&term).unwrap();
+        assert_ne!(
+            input, normal,
+            "the readback face took the input representative"
+        );
+        // One entry per face, and the two entries share an alpha-key: the key
+        // is canonical in binder form, so this is exactly the case where a
+        // shared table would have collapsed the faces into one representative.
+        assert_eq!(usize::from(nbe.interner().len(Face::ElaborationInput)), 1);
+        assert_eq!(usize::from(nbe.interner().len(Face::ReadbackNormalForm)), 1);
+        assert_eq!(
+            canonical_key(nbe.syntax(), input),
+            canonical_key(nbe.syntax(), normal),
+            "the two faces should hold one alpha-key under two representatives"
+        );
+        // And this is what pins the mode: normalization reads back canonically,
+        // so the binder is a level rather than the source name it went in with.
+        let Value::Thunk(_, ref body) = *nbe.reify(normal).unwrap()
+        else {
+            panic!("normalizing a thunk did not produce one");
+        };
+        let Comp::Abs(ref binder, ..) = **body
+        else {
+            panic!("normalizing a lambda did not produce one");
+        };
+        assert_eq!(binder.as_str(), "\u{ab}0\u{bb}");
+    }
+
+    // ── ownership: the arena holds handles, never terms ─────────────────────
+
+    #[test]
+    fn a_deep_term_survives_its_input_syntax_being_dropped_first()
+    {
+        let mut nbe = Normalizer::new();
+        // Ten thousand nested binds, lowered into the store, and then the
+        // caller's own term released BEFORE the normalizer. Nothing in the
+        // semantic arena owns that term, so this is an ordinary drop; the
+        // earlier shape — a reference-counted term face — freed the chain
+        // recursively here and aborted the process.
+        let mut body = Comp::ret(Value::Int(0));
+        for index in 0 .. 10_000_u32 {
+            let name = alloc::format!("v{index}");
+            body = Comp::bind(Comp::ret(Value::Int(1)), name.as_str(), body);
+        }
+        let term = thunk(body);
+        let lowered = lower(&mut nbe, &term);
+        release_binds(term);
+        // The engine still works from its own handles after the input is gone.
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(
+            canonical_key(nbe.syntax(), quoted),
+            canonical_key(nbe.syntax(), quoted)
+        );
+        drop(nbe);
+    }
+
+    #[test]
+    fn a_deeply_nested_value_survives_its_input_syntax_being_dropped_first()
+    {
+        let mut nbe = Normalizer::new();
+        let mut term = int(IntegerLiteral::from(0_i64));
+        for _ in 0 .. 10_000_u32 {
+            term = Rc::new(Value::Pair(
+                Rc::clone(&term),
+                int(IntegerLiteral::from(1_i64)),
+            ));
+        }
+        let lowered = lower(&mut nbe, &term);
+        let expected = canonical_key(nbe.syntax(), lowered);
+        // Input released first, with no ordering care taken: the store owns its
+        // own flat nodes and the semantic arena owns ids.
+        release_pairs(term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        // And the normalizer's own teardown is flat: dropping it here frees a
+        // vector of nodes with id children, whatever the caller did first.
+        drop(nbe);
+    }
+
+    /// Releases a deep sequencing chain one level at a time.
+    ///
+    /// This releases the **caller's** term, not the normalizer's: the abstract
+    /// syntax tree's derived `Drop` recurses one call per reference-counted
+    /// link, which is the tree's own standing constraint. The point of the two
+    /// witnesses above is that the normalizer no longer participates in it.
+    fn release_binds(term: Rc<Value>)
+    {
+        let Some(Value::Thunk(_, mut body)) = Rc::into_inner(term)
+        else {
+            return;
+        };
+        loop {
+            let Some(comp) = Rc::into_inner(body)
+            else {
+                return;
+            };
+            match comp {
+                | Comp::Bind(_, _, cont) => body = cont,
+                | _ => return,
+            }
+        }
+    }
+
+    /// Releases a deep left-nested pair chain one level at a time (see
+    /// [`release_binds`]).
+    fn release_pairs(mut term: Rc<Value>)
+    {
+        loop {
+            let Some(value) = Rc::into_inner(term)
+            else {
+                return;
+            };
+            match value {
+                | Value::Pair(fst, _) => term = fst,
+                | _ => return,
+            }
+        }
     }
 
     // ── evaluation, the term face, and forcing ──────────────────────────────
@@ -680,34 +960,28 @@ mod tests
     fn evaluating_an_unreduced_value_retains_its_term_face()
     {
         let mut nbe = Normalizer::new();
-        let term = Rc::new(Value::Pair(
-            int(IntegerLiteral::from(1_i64)),
-            var(NameRef::from("free")),
-        ));
-        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &term).unwrap();
-        let retained = nbe.arena().value(evaluated).unwrap().face().retained();
-        assert!(retained.is_some_and(|face| Rc::ptr_eq(face, &term)));
+        let term = Value::Pair(int(IntegerLiteral::from(1_i64)), var(NameRef::from("free")));
+        let node = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
+        assert_eq!(
+            nbe.arena().value(evaluated).unwrap().face().retained(),
+            Some(node)
+        );
     }
 
     #[test]
     fn evaluating_through_the_environment_drops_the_term_face()
     {
         let mut nbe = Normalizer::new();
-        let bound = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &int(IntegerLiteral::from(9_i64)),
-        )
-        .unwrap();
+        let bound = lower(&mut nbe, &int(IntegerLiteral::from(9_i64)));
+        let bound = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, bound).unwrap();
         let env = nbe
             .arena_mut()
-            .bind(sem::SemArena::EMPTY_ENV, "x".to_owned(), bound)
+            .bind(sem::SemArena::EMPTY_ENV, String::from("x"), bound)
             .unwrap();
-        let term = Rc::new(Value::Pair(
-            int(IntegerLiteral::from(1_i64)),
-            var(NameRef::from("x")),
-        ));
-        let evaluated = eval_value(&mut nbe, env, &term).unwrap();
+        let term = Value::Pair(int(IntegerLiteral::from(1_i64)), var(NameRef::from("x")));
+        let node = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, env, node).unwrap();
         assert!(
             nbe.arena()
                 .value(evaluated)
@@ -722,13 +996,17 @@ mod tests
     fn retained_readback_hands_back_the_source_term()
     {
         let mut nbe = Normalizer::new();
-        let term = Rc::new(Value::Pair(
+        let term = Value::Pair(
             int(IntegerLiteral::from(1_i64)),
             int(IntegerLiteral::from(2_i64)),
-        ));
-        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &term).unwrap();
+        );
+        let node = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Retained).unwrap();
-        assert!(Rc::ptr_eq(&quoted, &term));
+        assert_eq!(
+            quoted, node,
+            "the term face rebuilt instead of handing back"
+        );
     }
 
     #[test]
@@ -753,9 +1031,14 @@ mod tests
             ]),
             Rc::new(Value::Here(int(IntegerLiteral::from(5_i64)))),
         ] {
-            let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &term).unwrap();
+            let node = lower(&mut nbe, &term);
+            let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
             let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
-            assert_eq!(*quoted, *term, "canonical readback changed an inert value");
+            assert_eq!(
+                canonical_key(nbe.syntax(), quoted),
+                canonical_key(nbe.syntax(), node),
+                "canonical readback changed an inert value"
+            );
         }
     }
 
@@ -763,12 +1046,10 @@ mod tests
     fn forcing_unfolds_a_reducible_definition()
     {
         let mut nbe = Normalizer::new();
-        nbe.definitions_mut().define(
-            crate::boundary::NameRef::from("f"),
-            int(IntegerLiteral::from(5_i64)),
-        );
-        let evaluated =
-            eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &var(NameRef::from("f"))).unwrap();
+        nbe.define(NameRef::from("f"), &int(IntegerLiteral::from(5_i64)))
+            .unwrap();
+        let node = lower(&mut nbe, &var(NameRef::from("f")));
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         // Weak-head forcing keeps the neutral face.
         let held = force_value(&mut nbe, evaluated, ForceMode::WeakHead).unwrap();
         assert!(matches!(
@@ -787,13 +1068,14 @@ mod tests
     fn speculative_forcing_leaves_an_irreducible_definition_alone()
     {
         let mut nbe = Normalizer::new();
-        nbe.definitions_mut().define_with(
-            crate::boundary::NameRef::from("f"),
-            int(IntegerLiteral::from(5_i64)),
+        nbe.define_with(
+            NameRef::from("f"),
+            &int(IntegerLiteral::from(5_i64)),
             Transparency::Irreducible,
-        );
-        let evaluated =
-            eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &var(NameRef::from("f"))).unwrap();
+        )
+        .unwrap();
+        let node = lower(&mut nbe, &var(NameRef::from("f")));
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         let speculative = force_value(&mut nbe, evaluated, ForceMode::Speculative).unwrap();
         assert!(matches!(
             *nbe.arena().value(speculative).unwrap().node(),
@@ -811,10 +1093,10 @@ mod tests
     {
         let mut nbe = Normalizer::new();
         nbe.set_fuel(ConversionFuel::from(16));
-        nbe.definitions_mut()
-            .define(crate::boundary::NameRef::from("f"), var(NameRef::from("f")));
-        let evaluated =
-            eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &var(NameRef::from("f"))).unwrap();
+        nbe.define(NameRef::from("f"), &var(NameRef::from("f")))
+            .unwrap();
+        let node = lower(&mut nbe, &var(NameRef::from("f")));
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         // The point of the test is that this returns at all: the fuel bound
         // stops an unfolding rule that unfolds to itself.
         let forced = force_value(&mut nbe, evaluated, ForceMode::Unfold).unwrap();
@@ -830,15 +1112,11 @@ mod tests
     fn beta_fires_for_every_positive_eliminator()
     {
         let mut nbe = Normalizer::new();
-        let motive = WalkMotive::new("x", "y", "q", CompType::Unknown);
         let cases: [(Rc<Value>, Rc<Value>); 7] = [
             // Application.
             (
                 thunk(Comp::app(
-                    Comp::lam(
-                        "x",
-                        Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-                    ),
+                    Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
                     Value::Int(3),
                 )),
                 thunk(Comp::ret(Value::Int(3))),
@@ -856,7 +1134,7 @@ mod tests
                 thunk(Comp::bind(
                     Comp::ret(Value::Int(1)),
                     "x",
-                    Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
+                    Comp::ret(Value::var(NameRef::from("x"))),
                 )),
                 thunk(Comp::ret(Value::Int(1))),
             ),
@@ -865,10 +1143,10 @@ mod tests
                 thunk(Comp::Case(
                     Rc::new(Value::Inj(Side::Fst, int(IntegerLiteral::from(1_i64)))),
                     (
-                        "l".to_owned(),
-                        Rc::new(Comp::ret(Value::var(crate::boundary::NameRef::from("l")))),
+                        String::from("l"),
+                        Rc::new(Comp::ret(Value::var(NameRef::from("l")))),
                     ),
-                    ("r".to_owned(), Rc::new(Comp::ret(Value::Int(0)))),
+                    (String::from("r"), Rc::new(Comp::ret(Value::Int(0)))),
                 )),
                 thunk(Comp::ret(Value::Int(1))),
             ),
@@ -879,10 +1157,10 @@ mod tests
                         int(IntegerLiteral::from(1_i64)),
                         int(IntegerLiteral::from(2_i64)),
                     )),
-                    fst_name: "a".to_owned(),
-                    snd_name: "b".to_owned(),
+                    fst_name: String::from("a"),
+                    snd_name: String::from("b"),
                     motive: None,
-                    body: Rc::new(Comp::ret(Value::var(crate::boundary::NameRef::from("b")))),
+                    body: Rc::new(Comp::ret(Value::var(NameRef::from("b")))),
                 }),
                 thunk(Comp::ret(Value::Int(2))),
             ),
@@ -894,9 +1172,9 @@ mod tests
                         int(IntegerLiteral::from(2_i64))
                     ])),
                     nil: Rc::new(Comp::ret(Value::Int(0))),
-                    head: "h".to_owned(),
-                    tail: "t".to_owned(),
-                    cons: Rc::new(Comp::ret(Value::var(crate::boundary::NameRef::from("h")))),
+                    head: String::from("h"),
+                    tail: String::from("t"),
+                    cons: Rc::new(Comp::ret(Value::var(NameRef::from("h")))),
                 }),
                 thunk(Comp::ret(Value::Int(1))),
             ),
@@ -918,7 +1196,6 @@ mod tests
                 "a beta rule did not fire: {redex:?}"
             );
         }
-        drop(motive);
     }
 
     #[test]
@@ -929,8 +1206,8 @@ mod tests
             scrut: Rc::new(Value::Here(int(IntegerLiteral::from(7_i64)))),
             motive: alloc::boxed::Box::new(WalkMotive::new("x", "y", "q", CompType::Unknown)),
             base: WalkBase {
-                x: "w".to_owned(),
-                body: Rc::new(Comp::ret(Value::var(crate::boundary::NameRef::from("w")))),
+                x: String::from("w"),
+                body: Rc::new(Comp::ret(Value::var(NameRef::from("w")))),
             },
         });
         assert!(bool::from(
@@ -941,8 +1218,8 @@ mod tests
             scrut: Rc::new(Value::Here(int(IntegerLiteral::from(7_i64)))),
             motive: alloc::boxed::Box::new(WalkMotive::new("a", "b", "c", CompType::Unknown)),
             base: WalkBase {
-                x: "z".to_owned(),
-                body: Rc::new(Comp::ret(Value::var(crate::boundary::NameRef::from("z")))),
+                x: String::from("z"),
+                body: Rc::new(Comp::ret(Value::var(NameRef::from("z")))),
             },
         });
         assert!(bool::from(nbe.converts(&redex, &other)));
@@ -958,7 +1235,7 @@ mod tests
             Grade::ONE,
             Rc::new(Comp::RecordProj {
                 record: var(NameRef::from("undefined")),
-                label: "missing".to_owned(),
+                label: String::from("missing"),
             }),
         ));
         let projection = thunk(Comp::RecordProj {
@@ -966,7 +1243,7 @@ mod tests
                 (FieldName::from("a"), sibling),
                 (FieldName::from("b"), int(IntegerLiteral::from(2_i64))),
             ]),
-            label: "b".to_owned(),
+            label: String::from("b"),
         });
         let normal = nbe.normalize(&projection).unwrap();
         assert_eq!(
@@ -980,7 +1257,7 @@ mod tests
         // A projection whose head is not a structure stays neutral.
         let neutral = thunk(Comp::RecordProj {
             record: var(NameRef::from("m")),
-            label: "b".to_owned(),
+            label: String::from("b"),
         });
         let normal = nbe.normalize(&neutral).unwrap();
         assert!(matches!(
@@ -999,10 +1276,7 @@ mod tests
                 FieldName::from("identity"),
                 Rc::new(Value::Thunk(
                     Grade::ONE,
-                    Rc::new(Comp::lam(
-                        "x",
-                        Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-                    )),
+                    Rc::new(Comp::lam("x", Comp::ret(Value::var(NameRef::from("x"))))),
                 )),
             ),
             (
@@ -1013,13 +1287,10 @@ mod tests
         let projected = thunk(Comp::bind(
             Comp::RecordProj {
                 record: Rc::clone(&module),
-                label: "identity".to_owned(),
+                label: String::from("identity"),
             },
             "f",
-            Comp::app(
-                Comp::force(Value::var(crate::boundary::NameRef::from("f"))),
-                Value::Int(4),
-            ),
+            Comp::app(Comp::force(Value::var(NameRef::from("f"))), Value::Int(4)),
         ));
         assert!(bool::from(
             nbe.converts(&projected, &thunk(Comp::ret(Value::Int(4))))
@@ -1032,7 +1303,7 @@ mod tests
         let mut nbe = Normalizer::new();
         let performed = thunk(Comp::Perform(
             alloc::boxed::Box::new(signature()),
-            "get".to_owned(),
+            String::from("get"),
             int(IntegerLiteral::from(1_i64)),
         ));
         let normal = nbe.normalize(&performed).unwrap();
@@ -1044,7 +1315,7 @@ mod tests
         assert!(bool::from(nbe.converts(&performed, &performed)));
         let other = thunk(Comp::Perform(
             alloc::boxed::Box::new(signature()),
-            "get".to_owned(),
+            String::from("get"),
             int(IntegerLiteral::from(2_i64)),
         ));
         assert!(!bool::from(nbe.converts(&performed, &other)));
@@ -1052,7 +1323,7 @@ mod tests
         // by the normalizer even though the operation is never run.
         let reducible = thunk(Comp::Perform(
             alloc::boxed::Box::new(signature()),
-            "get".to_owned(),
+            String::from("get"),
             Rc::new(Value::Annot(
                 int(IntegerLiteral::from(1_i64)),
                 Rc::new(ValueType::integer()),
@@ -1069,7 +1340,7 @@ mod tests
         let mut nbe = Normalizer::new();
         let term = thunk(Comp::lam(
             "someSourceName",
-            Comp::ret(Value::var(crate::boundary::NameRef::from("someSourceName"))),
+            Comp::ret(Value::var(NameRef::from("someSourceName"))),
         ));
         let normal = nbe.normalize(&term).unwrap();
         let Value::Thunk(_, ref body) = *normal
@@ -1088,20 +1359,33 @@ mod tests
     fn unfolding_readback_spends_the_definition()
     {
         let mut nbe = Normalizer::new();
-        nbe.definitions_mut().define(
-            crate::boundary::NameRef::from("five"),
-            int(IntegerLiteral::from(5_i64)),
-        );
-        let evaluated = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &var(NameRef::from("five")),
-        )
-        .unwrap();
+        nbe.define(NameRef::from("five"), &int(IntegerLiteral::from(5_i64)))
+            .unwrap();
+        let node = lower(&mut nbe, &var(NameRef::from("five")));
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         let held = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
-        assert_eq!(*held, Value::Var("five".to_owned()));
+        assert_eq!(*nbe.reify(held).unwrap(), Value::Var(String::from("five")));
         let spent = quote_value(&mut nbe, evaluated, QuoteMode::Unfolding).unwrap();
-        assert_eq!(*spent, Value::Int(5));
+        assert_eq!(*nbe.reify(spent).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn readback_is_deterministic_across_runs()
+    {
+        let term = thunk(Comp::lam(
+            "x",
+            Comp::bind(
+                Comp::ret(Value::var(NameRef::from("x"))),
+                "y",
+                Comp::ret(Value::Pair(
+                    var(NameRef::from("y")),
+                    var(NameRef::from("x")),
+                )),
+            ),
+        ));
+        let first = Normalizer::new().normalize(&term).unwrap();
+        let second = Normalizer::new().normalize(&term).unwrap();
+        assert_eq!(*first, *second);
     }
 
     #[test]
@@ -1112,35 +1396,13 @@ mod tests
         // Two normalizations on ONE normalizer, not two: the fresh-level
         // counter restarts per run, so the second names its binder the same way
         // the first did rather than continuing from where the first stopped.
-        let once = nbe.normalize(&term).unwrap();
-        let twice = nbe.normalize(&term).unwrap();
-        assert_eq!(*once, *twice);
-        assert!(
-            Rc::ptr_eq(&once, &twice),
-            "the readback face failed to dedup"
-        );
+        let once = nbe.normalize_node(&term).unwrap();
+        let twice = nbe.normalize_node(&term).unwrap();
+        assert_eq!(once, twice, "the readback face failed to dedup");
         // And normalizing the normal form is the same term again.
-        let thrice = nbe.normalize(&once).unwrap();
-        assert_eq!(*once, *thrice);
-    }
-
-    #[test]
-    fn readback_is_deterministic_across_runs()
-    {
-        let term = thunk(Comp::lam(
-            "x",
-            Comp::bind(
-                Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-                "y",
-                Comp::ret(Value::Pair(
-                    var(NameRef::from("y")),
-                    Rc::new(Value::var(crate::boundary::NameRef::from("x"))),
-                )),
-            ),
-        ));
-        let first = Normalizer::new().normalize(&term).unwrap();
-        let second = Normalizer::new().normalize(&term).unwrap();
-        assert_eq!(*first, *second);
+        let reified = nbe.reify(once).unwrap();
+        let thrice = nbe.normalize_node(&reified).unwrap();
+        assert_eq!(once, thrice);
     }
 
     // ── the conversion relation ─────────────────────────────────────────────
@@ -1208,10 +1470,7 @@ mod tests
                 (FieldName::from("b"), int(IntegerLiteral::from(3_i64))),
             ]),
             thunk(Comp::app(
-                Comp::lam(
-                    "z",
-                    Comp::ret(Value::var(crate::boundary::NameRef::from("z"))),
-                ),
+                Comp::lam("z", Comp::ret(Value::var(NameRef::from("z")))),
                 Value::Int(1),
             )),
             thunk(Comp::ret(Value::Int(1))),
@@ -1219,9 +1478,9 @@ mod tests
         ];
         for left in &terms {
             for right in &terms {
-                let normal_left = nbe.normalize(left).unwrap();
-                let normal_right = nbe.normalize(right).unwrap();
-                let same_normal_form = *normal_left == *normal_right;
+                let normal_left = nbe.normalize_node(left).unwrap();
+                let normal_right = nbe.normalize_node(right).unwrap();
+                let same_normal_form = normal_left == normal_right;
                 let convertible = bool::from(nbe.converts(left, right));
                 // Equal normal forms always convert. The converse holds on this
                 // hole-free, eta-free set, so the two agree here exactly.
@@ -1241,12 +1500,12 @@ mod tests
         // alone does not decide — this is the normalizer-exclusive territory
         // the design names, so it carries its own law rather than a
         // differential.
-        let neutral = thunk(Comp::force(Value::var(crate::boundary::NameRef::from("f"))));
+        let neutral = thunk(Comp::force(Value::var(NameRef::from("f"))));
         let expanded = thunk(Comp::lam(
             "x",
             Comp::app(
-                Comp::force(Value::var(crate::boundary::NameRef::from("f"))),
-                Value::var(crate::boundary::NameRef::from("x")),
+                Comp::force(Value::var(NameRef::from("f"))),
+                Value::var(NameRef::from("x")),
             ),
         ));
         assert!(bool::from(nbe.converts(&neutral, &expanded)));
@@ -1272,14 +1531,10 @@ mod tests
     fn conversion_unfolds_the_taller_side()
     {
         let mut nbe = Normalizer::new();
-        nbe.definitions_mut().define(
-            crate::boundary::NameRef::from("one"),
-            int(IntegerLiteral::from(1_i64)),
-        );
-        nbe.definitions_mut().define(
-            crate::boundary::NameRef::from("also_one"),
-            var(NameRef::from("one")),
-        );
+        nbe.define(NameRef::from("one"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        nbe.define(NameRef::from("also_one"), &var(NameRef::from("one")))
+            .unwrap();
         // Two definitions at different heights, both unfolding to the same
         // literal: the height rule picks a side and the comparison closes.
         assert!(bool::from(nbe.converts(
@@ -1300,16 +1555,17 @@ mod tests
     fn speculation_closes_a_spine_without_unfolding_and_backtracks_when_it_must()
     {
         let mut nbe = Normalizer::new();
-        nbe.definitions_mut().define(
-            crate::boundary::NameRef::from("f"),
-            Rc::new(Value::Thunk(
+        nbe.define(
+            NameRef::from("f"),
+            &Value::Thunk(
                 Grade::ONE,
                 Rc::new(Comp::lam("x", Comp::ret(Value::Int(0)))),
-            )),
-        );
+            ),
+        )
+        .unwrap();
         let applied = |arg: i64| {
             thunk(Comp::app(
-                Comp::force(Value::var(crate::boundary::NameRef::from("f"))),
+                Comp::force(Value::var(NameRef::from("f"))),
                 Value::Int(arg),
             ))
         };
@@ -1360,10 +1616,7 @@ mod tests
     {
         let mut nbe = Normalizer::new();
         let redex = thunk(Comp::app(
-            Comp::lam(
-                "x",
-                Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-            ),
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
             Value::Int(3),
         ));
         let contractum = thunk(Comp::ret(Value::Int(3)));
@@ -1400,16 +1653,13 @@ mod tests
         let mut nbe = Normalizer::new();
         for term in [
             thunk(Comp::app(
-                Comp::lam(
-                    "x",
-                    Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-                ),
+                Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
                 Value::Int(3),
             )),
             record(&[(FieldName::from("a"), int(IntegerLiteral::from(1_i64)))]),
             thunk(Comp::RecordProj {
                 record: record(&[(FieldName::from("a"), int(IntegerLiteral::from(1_i64)))]),
-                label: "a".to_owned(),
+                label: String::from("a"),
             }),
         ] {
             let normal = nbe.normalize(&term).unwrap();
@@ -1426,16 +1676,13 @@ mod tests
         let mut nbe = Normalizer::new();
         let term = thunk(Comp::bind(
             Comp::app(
-                Comp::lam(
-                    "x",
-                    Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-                ),
+                Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
                 Value::Int(3),
             ),
             "y",
             Comp::ret(Value::Pair(
                 var(NameRef::from("y")),
-                Rc::new(Value::var(crate::boundary::NameRef::from("y"))),
+                var(NameRef::from("y")),
             )),
         ));
         let once = nbe.normalize(&term).unwrap();
@@ -1447,21 +1694,21 @@ mod tests
     fn normalizing_leaves_the_arena_where_it_found_it()
     {
         let mut nbe = Normalizer::new();
-        let before = nbe.watermark();
         let term = thunk(Comp::app(
-            Comp::lam(
-                "x",
-                Comp::ret(Value::var(crate::boundary::NameRef::from("x"))),
-            ),
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
             Value::Int(3),
         ));
-        drop(nbe.normalize(&term).unwrap());
+        // The syntax store keeps what it is given — it owns the canonical
+        // syntax — but the SEMANTIC arena is where a run's scratch lives, and
+        // that is what returns to its watermark.
+        let before = nbe.watermark();
+        let _normal = nbe.normalize(&term).unwrap();
         assert_eq!(
             nbe.watermark(),
             before,
             "normalization left semantic nodes behind"
         );
-        let _ = nbe.converts(&term, &term);
+        let _decision = nbe.converts(&term, &term);
         assert_eq!(
             nbe.watermark(),
             before,
@@ -1469,126 +1716,33 @@ mod tests
         );
     }
 
-    /// Releases a deep sequencing chain one level at a time.
-    ///
-    /// The abstract syntax tree's *derived* `Drop` recurses one call per
-    /// reference-counted link, so dropping a chain this deep would abort the
-    /// test process for a reason that has nothing to do with the normalizer.
-    /// This dismantles the chain iteratively instead, which is the same
-    /// discipline the machine's own deep-chain test keeps.
-    fn release_binds(term: Rc<Value>)
-    {
-        let Some(Value::Thunk(_, mut body)) = Rc::into_inner(term)
-        else {
-            return;
-        };
-        loop {
-            let Some(comp) = Rc::into_inner(body)
-            else {
-                return;
-            };
-            match comp {
-                | Comp::Bind(_, _, cont) => body = cont,
-                | _ => return,
-            }
-        }
-    }
-
-    /// Releases a deep left-nested pair chain one level at a time (see
-    /// [`release_binds`]).
-    ///
-    /// The order matters as much as the loop. A retained **term face** puts a
-    /// reference-counted syntax pointer inside the arena, so an arena holding
-    /// the last reference to a deep chain frees it recursively when it drops.
-    /// Releasing the normalizer first, while the source chain is still owned by
-    /// the caller, turns those into decrements.
-    fn release_pairs(mut term: Rc<Value>)
-    {
-        loop {
-            let Some(value) = Rc::into_inner(term)
-            else {
-                return;
-            };
-            match value {
-                | Value::Pair(fst, _) => term = fst,
-                | _ => return,
-            }
-        }
-    }
-
-    #[test]
-    fn a_deep_term_normalizes_without_growing_the_host_stack()
-    {
-        let mut nbe = Normalizer::new();
-        // Ten thousand nested binds. An evaluator that recursed on term depth
-        // overflows here; the worklist discipline is what stops it, and the
-        // chain is dismantled level by level afterwards so the syntax tree's
-        // own recursive drop cannot be mistaken for the normalizer's.
-        let mut body = Comp::ret(Value::Int(0));
-        for index in 0 .. 10_000_u32 {
-            let name = alloc::format!("v{index}");
-            body = Comp::bind(Comp::ret(Value::Int(1)), name.as_str(), body);
-        }
-        let term = thunk(body);
-        assert!(bool::from(
-            nbe.converts(&term, &thunk(Comp::ret(Value::Int(0))))
-        ));
-        release_binds(term);
-    }
-
-    #[test]
-    fn a_deeply_nested_value_evaluates_and_reads_back()
-    {
-        let mut nbe = Normalizer::new();
-        let mut term = int(IntegerLiteral::from(0_i64));
-        for _ in 0 .. 10_000_u32 {
-            term = Rc::new(Value::Pair(
-                Rc::clone(&term),
-                int(IntegerLiteral::from(1_i64)),
-            ));
-        }
-        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, &term).unwrap();
-        let normal = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
-        // Compared through the canonical key, which is itself iterative: the
-        // derived structural equality would recurse on depth.
-        assert_eq!(canonical_key(&normal), canonical_key(&term));
-        // The normalizer is released while the source chain is still owned
-        // here, so the retained term faces decrement rather than free — see
-        // `release_pairs` for why that matters.
-        drop(nbe);
-        release_pairs(normal);
-        release_pairs(term);
-    }
-
     #[test]
     fn the_arena_reports_its_own_population()
     {
         let mut nbe = Normalizer::new();
+        let node = lower(&mut nbe, &int(IntegerLiteral::from(1_i64)));
         let before = usize::from(nbe.arena().value_count());
-        let _ = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &int(IntegerLiteral::from(1_i64)),
-        )
-        .unwrap();
+        let _evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         assert!(usize::from(nbe.arena().value_count()) > before);
     }
 
     #[test]
     fn a_semantic_value_carries_the_guard_it_was_minted_with()
     {
+        let mut nbe = Normalizer::new();
+        let node = lower(&mut nbe, &int(IntegerLiteral::from(1_i64)));
         let guard = Guard::leaf(mix_word(
             seed(crate::boundary::SemanticHash::from(1)),
             crate::boundary::SemanticHash::from(2),
         ));
-        let node = SemValue::new(
-            SemValueNode::Rigid(Rigid::Free("x".to_owned()), ValueUnfold::Rigid),
+        let value = SemValue::new(
+            SemValueNode::Rigid(Rigid::Free(String::from("x")), ValueUnfold::Rigid),
             guard,
         );
-        assert_eq!(node.guard(), guard);
-        assert!(node.face().retained().is_none());
-        let retained = node.retaining(int(IntegerLiteral::from(1_i64)));
-        assert!(retained.face().retained().is_some());
+        assert_eq!(value.guard(), guard);
+        assert!(value.face().retained().is_none());
+        let retained = value.retaining(node);
+        assert_eq!(retained.face().retained(), Some(node));
     }
 
     #[test]
@@ -1606,81 +1760,48 @@ mod tests
     }
 
     #[test]
+    fn a_free_variable_is_a_blocker_the_neutral_names()
+    {
+        let mut nbe = Normalizer::new();
+        let node = lower(&mut nbe, &var(NameRef::from("stuck")));
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
+        let named = match *nbe.arena().value(evaluated).unwrap().node() {
+            | SemValueNode::Rigid(Rigid::Free(ref name), _) => name.clone(),
+            | _ => String::new(),
+        };
+        assert_eq!(named.as_str(), "stuck");
+    }
+
+    #[test]
     fn the_computation_entry_points_answer_for_computations_directly()
     {
         let mut nbe = Normalizer::new();
         // The value-level entries are convenience over the computation-level
         // ones; a caller holding weak-head normal computations compares and
         // reads them back without going through a thunk.
-        let redex = Rc::new(Comp::app(
+        let redex = thunk(Comp::app(
             Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
             Value::Int(3),
         ));
-        let contractum = Rc::new(Comp::ret(Value::Int(3)));
-        let left = crate::nbe::eval::eval_comp(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &redex,
-            ForceMode::Unfold,
-        )
-        .unwrap();
-        let right = crate::nbe::eval::eval_comp(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &contractum,
-            ForceMode::Unfold,
-        )
-        .unwrap();
+        let contractum = thunk(Comp::ret(Value::Int(3)));
+        let left = lower(&mut nbe, &redex);
+        let right = lower(&mut nbe, &contractum);
+        let left = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, left).unwrap();
+        let right = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, right).unwrap();
         assert!(bool::from(
-            crate::nbe::conv::converts_comps(&mut nbe, left, right).unwrap()
-        ));
-        let quoted = crate::nbe::quote::quote_comp(&mut nbe, left, QuoteMode::Canonical).unwrap();
-        assert_eq!(*quoted, Comp::Ret(int(IntegerLiteral::from(3_i64))));
-        // And the semantic value entry answers the same question one level
-        // down.
-        let evaluated = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &int(IntegerLiteral::from(3_i64)),
-        )
-        .unwrap();
-        let again = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &int(IntegerLiteral::from(3_i64)),
-        )
-        .unwrap();
-        assert!(bool::from(
-            crate::nbe::conv::converts_values(&mut nbe, evaluated, again).unwrap()
+            crate::nbe::conv::converts_values(&mut nbe, left, right).unwrap()
         ));
     }
 
     #[test]
     fn a_normalizer_can_be_built_over_an_existing_environment()
     {
-        let mut defs = defs::Definitions::new();
-        defs.define(NameRef::from("f"), int(IntegerLiteral::from(5_i64)));
-        let mut nbe = Normalizer::with_definitions(defs);
+        let mut nbe = Normalizer::new();
+        nbe.define(NameRef::from("f"), &int(IntegerLiteral::from(5_i64)))
+            .unwrap();
         assert!(bool::from(nbe.converts(
             &var(NameRef::from("f")),
             &int(IntegerLiteral::from(5_i64))
         )));
-    }
-
-    #[test]
-    fn a_free_variable_is_a_blocker_the_neutral_names()
-    {
-        let mut nbe = Normalizer::new();
-        let evaluated = eval_value(
-            &mut nbe,
-            sem::SemArena::EMPTY_ENV,
-            &var(NameRef::from("stuck")),
-        )
-        .unwrap();
-        let named = match *nbe.arena().value(evaluated).unwrap().node() {
-            | SemValueNode::Rigid(Rigid::Free(ref name), _) => name.clone(),
-            | _ => String::new(),
-        };
-        assert_eq!(named.as_str(), "stuck");
     }
 }

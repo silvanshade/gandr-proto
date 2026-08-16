@@ -39,28 +39,28 @@
 //!
 //! Interning belongs to syntax and to syntax only ([`intern`]).
 //!
-//! # Totality, and the one place it is not free
+//! # Totality, and why teardown is flat in every drop order
 //!
-//! Every node's **semantic** children are `Copy` ids, so the derived `Clone`
-//! and `Drop` are shallow over the value domain itself and no traversal here
-//! recurses on term depth.
+//! Every child of every node here is a `Copy` id — semantic children into this
+//! arena, and **syntax children into the flat node carrier** ([`FlatArena`]).
+//! No record in this module owns a reference-counted term, so the derived
+//! `Clone` and `Drop` are shallow, arena teardown is a flat vector drop, and no
+//! traversal recurses on term depth.
 //!
-//! The **syntax** a node retains is a different matter, and saying so is worth
-//! more than the flat-teardown claim it replaces. A [`TermFace`] holds a
-//! reference-counted source value and a [`Closure`] holds a reference-counted
-//! computation; the abstract syntax tree's *derived* `Drop` recurses one call
-//! per link, so an arena that holds the **last** reference to a deep term frees
-//! it recursively when it drops. That is the syntax tree's standing constraint
-//! rather than one this arena introduces — every holder of an `Rc<Value>` in
-//! this crate inherits it, and it is measured and documented at the machine's
-//! own deep-chain test — but the arena does carry it, and a caller releasing a
-//! deep term is better off releasing the normalizer first, while it still owns
-//! the term, so the retained faces decrement instead of freeing.
+//! That is a **structural** property rather than a maintained one, and the
+//! distinction is the point. An earlier shape had the term face hold an
+//! `Rc<Value>` and a closure hold an `Rc<Comp>`. Teardown was then flat only
+//! while somebody *else* still owned the term: the syntax tree's derived `Drop`
+//! recurses one call per link, so an arena holding the **last** reference to a
+//! deep term freed it recursively. Releasing the normalizer before the term
+//! made the symptom disappear and left the ownership defect exactly where it
+//! was. A handle cannot be held that way — dropping the caller's syntax first
+//! changes nothing here, because nothing here ever owned it.
 //!
 //! [`intern`]: crate::nbe::intern
+//! [`FlatArena`]: crate::syntax::FlatArena
 
 use alloc::collections::BTreeMap;
-use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -77,15 +77,14 @@ use crate::boundary::SemanticNodeCount;
 use crate::boundary::SemanticNodeIndex;
 use crate::boundary::SpineLength;
 use crate::boundary::VariableLevel;
-use crate::effect::EffectSig;
 use crate::grade::Grade;
 use crate::prim::NativePrim;
-use crate::syntax::Comp;
+use crate::syntax::CompNodeId;
 use crate::syntax::HoleId;
 use crate::syntax::NumLit;
 use crate::syntax::Side;
-use crate::syntax::Stack;
-use crate::syntax::Value;
+use crate::syntax::StackNodeId;
+use crate::syntax::ValueNodeId;
 use crate::types::DataId;
 
 /// Defines a transparent arena id with its explicit conversions and its
@@ -169,36 +168,45 @@ pub enum SemError
     MissingNeutral(NeutralId),
     /// A closure was applied to a different number of arguments than it binds.
     ClosureArity,
+    /// A syntax value node id did not resolve in the syntax store.
+    MissingSyntaxValue(ValueNodeId),
+    /// A syntax computation node id did not resolve in the syntax store.
+    MissingSyntaxComp(CompNodeId),
+    /// Lowering a caller's term into the syntax store failed.
+    SyntaxStore,
 }
 
 /// The **term face**: the source term a semantic value came from, kept exactly
 /// while nothing inside the value has reduced.
 ///
 /// Readback returns the retained term verbatim rather than rebuilding one, so
-/// quoting an unreduced subterm costs one reference-count clone instead of a
-/// traversal. The face is dropped the moment any reduction fires beneath the
-/// value, which is what keeps it honest: a retained term is always a term the
-/// value is still equal to.
-#[derive(Clone, Debug, Default)]
+/// quoting an unreduced subterm costs a copied id instead of a traversal. The
+/// face is dropped the moment any reduction fires beneath the value, which is
+/// what keeps it honest: a retained term is always a term the value is still
+/// equal to.
+///
+/// It is a **non-owning handle** into the syntax store, never a pointer that
+/// owns the term. The store owns the canonical syntax; this names a node in it.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TermFace
 {
     /// Nothing is retained — readback rebuilds the term from the value.
     #[default]
     Rebuilt,
-    /// The unreduced source value this semantic value came from.
-    Retained(Rc<Value>),
+    /// The unreduced source node this semantic value came from.
+    Retained(ValueNodeId),
 }
 
 impl TermFace
 {
-    /// The retained source term, when the face carries one.
+    /// The retained source node, when the face carries one.
     #[inline]
     #[must_use]
-    pub fn retained(&self) -> Option<&Rc<Value>>
+    pub fn retained(self) -> Option<ValueNodeId>
     {
-        match *self {
+        match self {
             | Self::Rebuilt => None,
-            | Self::Retained(ref term) => Some(term),
+            | Self::Retained(term) => Some(term),
         }
     }
 }
@@ -577,9 +585,9 @@ pub enum SemValueNode
         /// The constructor's field-tuple payload.
         payload: SemValueId,
     },
-    /// A reified stack: opaque to conversion by construction, carried whole and
-    /// compared syntactically.
-    Reified(Rc<Stack>),
+    /// A reified stack: opaque to conversion by construction, named by its
+    /// syntax node and compared as syntax.
+    Reified(StackNodeId),
     /// A neutral value: a rigid head with no eliminator that could fire.
     ///
     /// Value neutrals carry no spine, and that is a fact about the calculus
@@ -623,7 +631,7 @@ impl SemValue
     #[must_use]
     pub fn retaining(
         mut self,
-        term: Rc<Value>,
+        term: ValueNodeId,
     ) -> Self
     {
         self.face = TermFace::Retained(term);
@@ -641,9 +649,9 @@ impl SemValue
     /// The term face.
     #[inline]
     #[must_use]
-    pub fn face(&self) -> &TermFace
+    pub fn face(&self) -> TermFace
     {
-        &self.face
+        self.face
     }
 
     /// The guard word.
@@ -791,26 +799,31 @@ pub enum NeutralHead
     /// A grade discard — quarantined.
     Drop(SemValueId),
     /// An effect performance — quarantined.
+    ///
+    /// The signature and the operation name stay on the **syntax node**, which
+    /// this head names rather than copies: a semantic record carries no owned
+    /// syntax at all, and reading the sig back is one arena lookup.
     Perform
     {
-        /// The effect signature.
-        sig: Rc<EffectSig>,
-        /// The operation name.
-        op: String,
+        /// The syntax node this performance came from.
+        source: CompNodeId,
         /// The evaluated payload.
         payload: SemValueId,
     },
     /// An effect handler — quarantined.
+    ///
+    /// As with a performance, the signature and the clause labels stay on the
+    /// syntax node this head names.
     Handle
     {
-        /// The effect signature.
-        sig: Rc<EffectSig>,
+        /// The syntax node this handler came from.
+        source: CompNodeId,
         /// The handled computation, delayed.
         scrutinee: ClosureId,
         /// The return clause, binding the returned value.
         ret: ClosureId,
-        /// The operation clauses, each binding payload and resumption.
-        ops: Vec<(String, ClosureId)>,
+        /// The operation clauses, in the source node's order.
+        ops: Vec<ClosureId>,
     },
     /// A resumption — quarantined.
     Resume
@@ -963,8 +976,8 @@ pub struct Closure
     env: EnvId,
     /// The binders this closure abstracts, in order.
     binders: Vec<String>,
-    /// The syntax body.
-    body: Rc<Comp>,
+    /// The syntax body, named in the store rather than owned.
+    body: CompNodeId,
     /// The memoized result of a nullary closure — the explicit thunk cell.
     ///
     /// Rust has no host laziness, and the fastest precedent's call-by-need
@@ -982,7 +995,7 @@ impl Closure
     pub fn new(
         env: EnvId,
         binders: Vec<String>,
-        body: Rc<Comp>,
+        body: CompNodeId,
     ) -> Self
     {
         Self {
@@ -1012,9 +1025,9 @@ impl Closure
     /// The syntax body.
     #[inline]
     #[must_use]
-    pub fn body(&self) -> &Rc<Comp>
+    pub fn body(&self) -> CompNodeId
     {
-        &self.body
+        self.body
     }
 
     /// The memoized nullary result, once one has been forced.

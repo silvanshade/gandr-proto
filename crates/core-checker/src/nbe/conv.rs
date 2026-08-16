@@ -67,7 +67,9 @@ use crate::nbe::eval::force_head;
 use crate::nbe::eval::force_value;
 use crate::nbe::eval::project;
 use crate::nbe::eval::rerun_spine;
+use crate::nbe::eval::syntax_comp;
 use crate::nbe::eval::value;
+use crate::nbe::intern::canonical_stack_key;
 use crate::nbe::sem::ClosureId;
 use crate::nbe::sem::CompUnfold;
 use crate::nbe::sem::Elim;
@@ -191,6 +193,8 @@ fn converts_checked(
     rhs: &Rc<Value>,
 ) -> Result<ValueEquality, SemError>
 {
+    let lhs = nbe.lower_input(lhs)?;
+    let rhs = nbe.lower_input(rhs)?;
     let lhs = eval_value(nbe, SemArena::EMPTY_ENV, lhs)?;
     let rhs = eval_value(nbe, SemArena::EMPTY_ENV, rhs)?;
     converts_values(nbe, lhs, rhs)
@@ -340,10 +344,15 @@ fn value_goal(
         | (&SemValueNode::Num(left), &SemValueNode::Num(right)) => {
             return Ok(ValueEquality::from(left == right));
         },
-        | (&SemValueNode::Reified(ref left), &SemValueNode::Reified(ref right)) => {
-            return Ok(ValueEquality::from(
-                Rc::ptr_eq(left, right) || left == right,
-            ));
+        | (&SemValueNode::Reified(left), &SemValueNode::Reified(right)) => {
+            // A reified stack is opaque to conversion by construction, so the
+            // only equality on offer is alpha-identity of its syntax, taken
+            // through the canonical key rather than through its node id: two
+            // equal stacks lowered twice are two ids and one key.
+            let store = nbe.syntax();
+            let decided = left == right
+                || canonical_stack_key(store, left) == canonical_stack_key(store, right);
+            return Ok(ValueEquality::from(decided));
         },
         | (&SemValueNode::Pair(left_fst, left_snd), &SemValueNode::Pair(right_fst, right_snd)) => {
             goals.push(Frame::Value(left_snd, right_snd, state));
@@ -878,17 +887,17 @@ fn head_goal(
         },
         | (
             &NeutralHead::Perform {
-                sig: ref left_sig,
-                op: ref left_op,
+                source: left_source,
                 payload: left_payload,
             },
             &NeutralHead::Perform {
-                sig: ref right_sig,
-                op: ref right_op,
+                source: right_source,
                 payload: right_payload,
             },
         ) => {
-            if left_sig != right_sig || left_op != right_op {
+            // The signature and the operation name live on the source nodes, so
+            // congruence reads them back rather than carrying copies.
+            if !bool::from(same_effect_head(nbe, left_source, right_source)?) {
                 return Ok(ValueEquality::from(false));
             }
             goals.push(Frame::Value(left_payload, right_payload, state));
@@ -896,29 +905,30 @@ fn head_goal(
         },
         | (
             &NeutralHead::Handle {
-                sig: ref left_sig,
+                source: left_source,
                 scrutinee: left_scrutinee,
                 ret: left_ret,
                 ops: ref left_ops,
             },
             &NeutralHead::Handle {
-                sig: ref right_sig,
+                source: right_source,
                 scrutinee: right_scrutinee,
                 ret: right_ret,
                 ops: ref right_ops,
             },
         ) => {
-            if left_sig != right_sig || left_ops.len() != right_ops.len() {
+            // The signature and the clause labels live on the source nodes, so
+            // congruence reads them back rather than carrying copies.
+            if left_ops.len() != right_ops.len()
+                || !bool::from(same_effect_head(nbe, left_source, right_source)?)
+            {
                 return Ok(ValueEquality::from(false));
             }
             for (left, right) in left_ops.iter().zip(right_ops.iter()).rev() {
-                if left.0 != right.0 {
-                    return Ok(ValueEquality::from(false));
-                }
                 closures_goal(
                     nbe,
-                    left.1,
-                    right.1,
+                    *left,
+                    *right,
                     ClosureArity::from(2_usize),
                     state,
                     goals,
@@ -978,6 +988,53 @@ fn head_goal(
         },
         | _ => Ok(ValueEquality::from(false)),
     }
+}
+
+/// Whether two quarantined effect heads agree on their signature and labels.
+///
+/// Both are read off their source nodes: the semantic record names the node
+/// rather than copying the signature out of it, so this is where the two are
+/// compared.
+///
+/// # Errors
+///
+/// Returns [`SemError`] when a source node does not resolve.
+fn same_effect_head(
+    nbe: &Normalizer,
+    lhs: crate::syntax::CompNodeId,
+    rhs: crate::syntax::CompNodeId,
+) -> Result<ValueEquality, SemError>
+{
+    if lhs == rhs {
+        return Ok(ValueEquality::from(true));
+    }
+    let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
+        | (
+            crate::syntax::CompNode::Perform(left_sig, left_op, _),
+            crate::syntax::CompNode::Perform(right_sig, right_op, _),
+        ) => left_sig == right_sig && left_op == right_op,
+        | (
+            crate::syntax::CompNode::Handle {
+                sig: left_sig,
+                ops: left_ops,
+                ..
+            },
+            crate::syntax::CompNode::Handle {
+                sig: right_sig,
+                ops: right_ops,
+                ..
+            },
+        ) => {
+            left_sig == right_sig
+                && left_ops.len() == right_ops.len()
+                && left_ops
+                    .iter()
+                    .zip(right_ops.iter())
+                    .all(|(left, right)| left.op == right.op)
+        },
+        | _ => false,
+    };
+    Ok(ValueEquality::from(decided))
 }
 
 /// Unfolds a neutral computation's head and re-runs its spine, memoizing the

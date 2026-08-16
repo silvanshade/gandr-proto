@@ -32,7 +32,6 @@
 
 use alloc::borrow::ToOwned as _;
 use alloc::collections::BTreeMap;
-use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -40,8 +39,11 @@ use crate::boundary::DefinitionCount;
 use crate::boundary::DefinitionHeightLevel;
 use crate::boundary::NameRef;
 use crate::boundary::ScopeDepth;
-use crate::syntax::Comp;
-use crate::syntax::Value;
+use crate::syntax::CompNode;
+use crate::syntax::CompNodeId;
+use crate::syntax::FlatArena;
+use crate::syntax::ValueNode;
+use crate::syntax::ValueNodeId;
 
 /// Whether the engine may unfold a definition speculatively.
 ///
@@ -65,8 +67,10 @@ pub enum Transparency
 #[derive(Clone, Debug)]
 pub struct Definition
 {
-    /// The body the name unfolds to.
-    body: Rc<Value>,
+    /// The body the name unfolds to, named in the syntax store rather than
+    /// owned: a definitional environment holds handles for the same reason the
+    /// semantic arena does.
+    body: ValueNodeId,
     /// The definitional height: one above the tallest definition the body
     /// mentions, so "unfold the taller side" is a total order on a finite
     /// environment.
@@ -80,9 +84,9 @@ impl Definition
     /// The body this definition unfolds to.
     #[inline]
     #[must_use]
-    pub fn body(&self) -> &Rc<Value>
+    pub fn body(&self) -> ValueNodeId
     {
-        &self.body
+        self.body
     }
 
     /// The definitional height.
@@ -215,12 +219,13 @@ impl Definitions
     #[inline]
     pub fn define<'source, N>(
         &mut self,
+        arena: &FlatArena,
         name: N,
-        body: Rc<Value>,
+        body: ValueNodeId,
     ) where
         N: Into<NameRef<'source>>,
     {
-        self.define_with(name, body, Transparency::Reducible);
+        self.define_with(arena, name, body, Transparency::Reducible);
     }
 
     /// Defines `name` as `body` with an explicit transparency — the reserved
@@ -232,14 +237,15 @@ impl Definitions
     #[inline]
     pub fn define_with<'source, N>(
         &mut self,
+        arena: &FlatArena,
         name: N,
-        body: Rc<Value>,
+        body: ValueNodeId,
         transparency: Transparency,
     ) where
         N: Into<NameRef<'source>>,
     {
         let name = name.into();
-        let height = self.height_of(body.as_ref());
+        let height = self.height_of(arena, body);
         let definition = Definition {
             body,
             height,
@@ -293,11 +299,12 @@ impl Definitions
     /// - input recursion: none.
     fn height_of(
         &self,
-        body: &Value,
+        arena: &FlatArena,
+        body: ValueNodeId,
     ) -> DefinitionHeightLevel
     {
         let mut tallest = 0_u32;
-        for name in mentioned_names(body) {
+        for name in mentioned_names(arena, body) {
             if let Some(definition) = self.lookup(NameRef::from(name.as_str())) {
                 tallest = tallest.max(u32::from(definition.height));
             }
@@ -306,133 +313,141 @@ impl Definitions
     }
 }
 
-/// Every variable name mentioned anywhere in `body`, bound occurrences
-/// included.
+/// Every variable name mentioned anywhere in the term rooted at `body`, bound
+/// occurrences included.
 ///
 /// Over-approximating is deliberate and cheap: a shadowed occurrence can only
 /// raise a height, and a height that is too tall costs one extra unfolding
 /// choice rather than a wrong answer.
 ///
 /// # Termination
-/// - reason: the walk drains an explicit worklist over one finite term.
-/// - measure: pending subterms on the worklist.
-/// - boundedness: terms are finite values.
+/// - reason: the walk drains an explicit worklist over one finite node graph.
+/// - measure: pending nodes on the worklist.
+/// - boundedness: node graphs are finite and each node queues only its own
+///   children.
 /// - input recursion: none.
-fn mentioned_names(body: &Value) -> Vec<String>
+fn mentioned_names(
+    arena: &FlatArena,
+    body: ValueNodeId,
+) -> Vec<String>
 {
-    /// One pending subterm on the name scan's worklist.
-    enum Task<'term>
+    /// One pending node on the name scan's worklist.
+    enum Task
     {
-        /// A value still to scan.
-        Value(&'term Value),
-        /// A computation still to scan.
-        Comp(&'term Comp),
+        /// A value node still to scan.
+        Value(ValueNodeId),
+        /// A computation node still to scan.
+        Comp(CompNodeId),
     }
 
     let mut names = Vec::new();
     let mut work = alloc::vec![Task::Value(body)];
     while let Some(task) = work.pop() {
         match task {
-            | Task::Value(value) => match *value {
-                | Value::Var(ref name) => names.push(name.clone()),
-                // Leaves and a reified stack alike mention no name: a stack's
-                // own bodies are frozen syntax that no unfolding rule reaches.
-                | Value::Unit
-                | Value::Int(_)
-                | Value::Str(_)
-                | Value::Num(_)
-                | Value::Hole(_)
-                | Value::Stk(_) => {},
-                | Value::Pair(ref fst, ref snd) => {
-                    work.push(Task::Value(fst));
-                    work.push(Task::Value(snd));
-                },
-                | Value::Inj(_, ref payload)
-                | Value::Here(ref payload)
-                | Value::Ctor { ref payload, .. } => {
-                    work.push(Task::Value(payload));
-                },
-                | Value::List(ref elements) => {
-                    work.extend(elements.iter().map(|element| Task::Value(element)));
-                },
-                | Value::Record(ref fields) => {
-                    work.extend(fields.values().map(|field| Task::Value(field)));
-                },
-                | Value::Thunk(_, ref body) => work.push(Task::Comp(body)),
-                | Value::Annot(ref inner, _) => work.push(Task::Value(inner)),
+            | Task::Value(id) => {
+                let Some(node) = arena.values.get(id)
+                else {
+                    continue;
+                };
+                match *node {
+                    | ValueNode::Var(ref name) => names.push(name.clone()),
+                    // Leaves and a reified stack alike mention no name a
+                    // definition could unfold: a stack's own bodies are frozen
+                    // syntax that no unfolding rule reaches.
+                    | ValueNode::Unit
+                    | ValueNode::Int(_)
+                    | ValueNode::Str(_)
+                    | ValueNode::Num(_)
+                    | ValueNode::Hole(_)
+                    | ValueNode::Stk(_) => {},
+                    | ValueNode::Pair(fst, snd) => {
+                        work.push(Task::Value(fst));
+                        work.push(Task::Value(snd));
+                    },
+                    | ValueNode::Inj(_, carried)
+                    | ValueNode::Here(carried)
+                    | ValueNode::Ctor {
+                        payload: carried, ..
+                    } => work.push(Task::Value(carried)),
+                    | ValueNode::List(ref elements) => {
+                        work.extend(elements.iter().map(|element| Task::Value(*element)));
+                    },
+                    | ValueNode::Record(ref fields) => {
+                        work.extend(fields.values().map(|field| Task::Value(*field)));
+                    },
+                    | ValueNode::Thunk(_, body) => work.push(Task::Comp(body)),
+                    | ValueNode::Annot(inner, _) => work.push(Task::Value(inner)),
+                }
             },
-            | Task::Comp(comp) => match *comp {
-                | Comp::Abs(_, _, ref body) | Comp::Prj(_, ref body) | Comp::Reset(ref body) => {
-                    work.push(Task::Comp(body));
-                },
-                | Comp::Shift(_, ref body) => work.push(Task::Comp(body)),
-                | Comp::App(ref head, ref arg) => {
-                    work.push(Task::Comp(head));
-                    work.push(Task::Value(arg));
-                },
-                | Comp::Ret(ref value)
-                | Comp::Force(ref value)
-                | Comp::Dup(ref value)
-                | Comp::Drop(ref value) => work.push(Task::Value(value)),
-                | Comp::Bind(ref bound, _, ref cont) | Comp::With(ref bound, ref cont) => {
-                    work.push(Task::Comp(bound));
-                    work.push(Task::Comp(cont));
-                },
-                | Comp::Case(ref scrut, ref left, ref right) => {
-                    work.push(Task::Value(scrut));
-                    work.push(Task::Comp(&left.1));
-                    work.push(Task::Comp(&right.1));
-                },
-                | Comp::DataCase(ref scrut, ref arms) => {
-                    work.push(Task::Value(scrut));
-                    work.extend(arms.iter().map(|arm| Task::Comp(&arm.1)));
-                },
-                | Comp::ListCase {
-                    ref scrut,
-                    ref nil,
-                    ref cons,
-                    ..
-                } => {
-                    work.push(Task::Value(scrut));
-                    work.push(Task::Comp(nil));
-                    work.push(Task::Comp(cons));
-                },
-                | Comp::Split {
-                    ref scrut,
-                    ref body,
-                    ..
-                } => {
-                    work.push(Task::Value(scrut));
-                    work.push(Task::Comp(body));
-                },
-                | Comp::RecordProj { ref record, .. } => work.push(Task::Value(record)),
-                | Comp::Perform(_, _, ref payload) => work.push(Task::Value(payload)),
-                | Comp::Handle {
-                    ref scrutinee,
-                    ref ret,
-                    ref ops,
-                    ..
-                } => {
-                    work.push(Task::Comp(scrutinee));
-                    work.push(Task::Comp(&ret.1));
-                    work.extend(ops.iter().map(|clause| Task::Comp(&clause.body)));
-                },
-                | Comp::Resume(ref value, ref body) => {
-                    work.push(Task::Value(value));
-                    work.push(Task::Comp(body));
-                },
-                | Comp::Native { ref args, .. } => {
-                    work.extend(args.iter().map(|arg| Task::Value(arg)));
-                },
-                | Comp::Walk {
-                    ref scrut,
-                    ref base,
-                    ..
-                } => {
-                    work.push(Task::Value(scrut));
-                    work.push(Task::Comp(&base.body));
-                },
-                | Comp::Hole(_) => {},
+            | Task::Comp(id) => {
+                let Some(node) = arena.comps.get(id)
+                else {
+                    continue;
+                };
+                match *node {
+                    | CompNode::Abs(_, _, body)
+                    | CompNode::Prj(_, body)
+                    | CompNode::Reset(body)
+                    | CompNode::Shift(_, body) => work.push(Task::Comp(body)),
+                    | CompNode::App(head, arg) => {
+                        work.push(Task::Comp(head));
+                        work.push(Task::Value(arg));
+                    },
+                    | CompNode::Ret(carried)
+                    | CompNode::Force(carried)
+                    | CompNode::Dup(carried)
+                    | CompNode::Drop(carried)
+                    | CompNode::Perform(_, _, carried) => work.push(Task::Value(carried)),
+                    | CompNode::Bind(bound, _, cont) | CompNode::With(bound, cont) => {
+                        work.push(Task::Comp(bound));
+                        work.push(Task::Comp(cont));
+                    },
+                    | CompNode::Case(scrut, ref left, ref right) => {
+                        work.push(Task::Value(scrut));
+                        work.push(Task::Comp(left.1));
+                        work.push(Task::Comp(right.1));
+                    },
+                    | CompNode::DataCase { scrut, ref arms } => {
+                        work.push(Task::Value(scrut));
+                        work.extend(arms.iter().map(|arm| Task::Comp(arm.1)));
+                    },
+                    | CompNode::ListCase {
+                        scrut, nil, cons, ..
+                    } => {
+                        work.push(Task::Value(scrut));
+                        work.push(Task::Comp(nil));
+                        work.push(Task::Comp(cons));
+                    },
+                    | CompNode::Split { scrut, body, .. } => {
+                        work.push(Task::Value(scrut));
+                        work.push(Task::Comp(body));
+                    },
+                    | CompNode::RecordProj { record, .. } => work.push(Task::Value(record)),
+                    | CompNode::Handle {
+                        scrutinee,
+                        ref ret,
+                        ref ops,
+                        ..
+                    } => {
+                        work.push(Task::Comp(scrutinee));
+                        work.push(Task::Comp(ret.1));
+                        work.extend(ops.iter().map(|clause| Task::Comp(clause.body)));
+                    },
+                    | CompNode::Resume(carried, body) => {
+                        work.push(Task::Value(carried));
+                        work.push(Task::Comp(body));
+                    },
+                    | CompNode::Native { ref args, .. } => {
+                        work.extend(args.iter().map(|arg| Task::Value(*arg)));
+                    },
+                    | CompNode::Walk {
+                        scrut, ref base, ..
+                    } => {
+                        work.push(Task::Value(scrut));
+                        work.push(Task::Comp(base.body));
+                    },
+                    | CompNode::Hole(_) => {},
+                }
             },
         }
     }

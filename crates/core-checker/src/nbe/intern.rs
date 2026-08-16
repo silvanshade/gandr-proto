@@ -30,9 +30,9 @@
 //! token stream in which every binder emits one fixed token and every bound
 //! occurrence emits its de Bruijn index, so two alpha-equivalent terms produce
 //! the same stream and two alpha-distinct terms do not. Free occurrences emit
-//! their name. A key contains no arena id, no arena index, no address, no
-//! generation, no session datum, and nothing about any output the normalizer
-//! produced.
+//! their name. A key contains no semantic-arena id, no address, no generation,
+//! no session datum, and nothing about any output the normalizer produced; the
+//! **syntax node ids it walks never enter it**, only the content they name.
 //!
 //! The table is a deduplicator, not an equality oracle. It is disjoint from the
 //! type interner ([`crate::intern`]) and it takes nothing into the trusted
@@ -41,21 +41,27 @@
 //! [`SemArena`]: crate::nbe::sem::SemArena
 
 use alloc::collections::BTreeMap;
-use alloc::rc::Rc;
 use alloc::vec::Vec;
 
 use crate::boundary::BinderName;
 use crate::boundary::BinderScope;
 use crate::boundary::InternedSyntaxCount;
 use crate::boundary::SemanticHash;
+use crate::boundary::SemanticNodeCount;
 use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::syntax::Comp;
-use crate::syntax::Stack;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::ValueType;
+use crate::syntax::CompNode;
+use crate::syntax::CompNodeId;
+use crate::syntax::CompTypeNode;
+use crate::syntax::CompTypeNodeId;
+use crate::syntax::FlatArena;
+use crate::syntax::StackNode;
+use crate::syntax::StackNodeId;
+use crate::syntax::ValueNode;
+use crate::syntax::ValueNodeId;
+use crate::syntax::ValueTypeNode;
+use crate::syntax::ValueTypeNodeId;
 
 /// One token in a canonical key's stream.
 #[repr(transparent)]
@@ -89,8 +95,8 @@ impl CanonicalKey
 {
     /// The key's folded digest, used as the table's bucket index.
     ///
-    /// Named for what it is rather than `hash`, which on this type would
-    /// shadow the derived hashing implementation's own method.
+    /// Named for what it is rather than `hash`, which on this type would shadow
+    /// the derived hashing implementation's own method.
     #[inline]
     #[must_use]
     pub fn digest(&self) -> SemanticHash
@@ -121,8 +127,8 @@ pub enum Face
 #[derive(Clone, Debug, Default)]
 struct FaceTable
 {
-    /// Canonical entries, bucketed by key hash and disambiguated by the key.
-    buckets: BTreeMap<u64, Vec<(CanonicalKey, Rc<Value>)>>,
+    /// Canonical entries, bucketed by key digest and disambiguated by the key.
+    buckets: BTreeMap<u64, Vec<(CanonicalKey, ValueNodeId)>>,
     /// The number of canonical entries.
     count: usize,
 }
@@ -133,17 +139,18 @@ impl FaceTable
     /// face has not seen an alpha-identical term before.
     fn intern(
         &mut self,
-        term: Rc<Value>,
-    ) -> Rc<Value>
+        arena: &FlatArena,
+        term: ValueNodeId,
+    ) -> ValueNodeId
     {
-        let key = canonical_key(&term);
+        let key = canonical_key(arena, term);
         let bucket = self.buckets.entry(u64::from(key.digest())).or_default();
         for entry in &*bucket {
             if entry.0 == key {
-                return Rc::clone(&entry.1);
+                return entry.1;
             }
         }
-        bucket.push((key, Rc::clone(&term)));
+        bucket.push((key, term));
         self.count = self.count.saturating_add(1);
         term
     }
@@ -155,8 +162,8 @@ impl FaceTable
 /// - requires: the caller names the face a term came from; a term from one face
 ///   is never offered to another face's table.
 /// - ensures: [`Self::intern`] returns a representative that is alpha-identical
-///   to its argument and identical (by pointer) for every alpha-identical term
-///   previously interned **into the same face**.
+///   to its argument and identical for every alpha-identical term previously
+///   interned **into the same face**.
 /// - provides: sharing across repeated conversion and readback calls, with no
 ///   effect on any answer — dropping the interner changes nothing but
 ///   allocation counts.
@@ -211,7 +218,7 @@ impl SyntaxInterner
     ///
     /// # Contract
     /// - ensures: the result is alpha-identical to `term`; two alpha-identical
-    ///   terms interned into the **same** face return the same pointer; a term
+    ///   terms interned into the **same** face return the same node id; a term
     ///   interned into one face never returns a representative belonging to the
     ///   other face.
     /// - provides: deduplication only — the answer of every conversion,
@@ -228,13 +235,14 @@ impl SyntaxInterner
     #[inline]
     pub fn intern(
         &mut self,
+        arena: &FlatArena,
         face: Face,
-        term: Rc<Value>,
-    ) -> Rc<Value>
+        term: ValueNodeId,
+    ) -> ValueNodeId
     {
         match face {
-            | Face::ElaborationInput => self.input.intern(term),
-            | Face::ReadbackNormalForm => self.readback.intern(term),
+            | Face::ElaborationInput => self.input.intern(arena, term),
+            | Face::ReadbackNormalForm => self.readback.intern(arena, term),
         }
     }
 }
@@ -242,16 +250,16 @@ impl SyntaxInterner
 /// One pending step in the canonical-key traversal.
 enum KeyTask<'term>
 {
-    /// Emit the tokens of a value.
-    Value(&'term Value),
-    /// Emit the tokens of a computation.
-    Comp(&'term Comp),
-    /// Emit the tokens of a stack.
-    Stack(&'term Stack),
-    /// Emit the tokens of a value type.
-    ValueType(&'term ValueType),
-    /// Emit the tokens of a computation type.
-    CompType(&'term CompType),
+    /// Emit the tokens of a value node.
+    Value(ValueNodeId),
+    /// Emit the tokens of a computation node.
+    Comp(CompNodeId),
+    /// Emit the tokens of a stack node.
+    Stack(StackNodeId),
+    /// Emit the tokens of a value type node.
+    ValueType(ValueTypeNodeId),
+    /// Emit the tokens of a computation type node.
+    CompType(CompTypeNodeId),
     /// Push one binder onto the canonical scope.
     PushOne(&'term str),
     /// Push two binders onto the canonical scope, the second innermost.
@@ -272,6 +280,9 @@ mod tag
     pub const FREE: u64 = 2;
     /// The tag closing a name's bytes.
     pub const NAME_END: u64 = 3;
+    /// The tag of a node id that did not resolve: a key still forms, and a
+    /// dangling id is equal to nothing that resolves.
+    pub const DANGLING: u64 = 4;
     /// The base of the value-node tag block.
     pub const VALUE: u64 = 0x1000;
     /// The base of the computation-node tag block.
@@ -286,28 +297,54 @@ mod tag
     pub const WORD: u64 = 0x6000;
 }
 
-/// The canonical key of `term`: its full structural content in canonical binder
-/// form.
+/// The canonical key of the term rooted at `term`: its full structural content
+/// in canonical binder form.
 ///
 /// # Contract
 /// - ensures: two alpha-equivalent terms produce equal keys, and two terms that
 ///   differ in anything but binder names produce different keys; the key
-///   mentions no arena id, index, address, generation, or session datum.
+///   mentions no node id, no semantic-arena id, no address, no generation, and
+///   no session datum — only the content the ids name.
 /// - panics: none.
 ///
 /// # Termination
-/// - reason: the traversal drains an explicit task stack over one finite term.
+/// - reason: the traversal drains an explicit task stack over one finite node
+///   graph.
 /// - measure: pending tasks on the stack.
-/// - boundedness: terms are finite values, and each node pushes tasks only for
+/// - boundedness: node graphs are finite and each node queues tasks only for
 ///   its own children.
 /// - input recursion: none.
-#[must_use]
 #[inline]
-pub fn canonical_key(term: &Value) -> CanonicalKey
+#[must_use]
+pub fn canonical_key(
+    arena: &FlatArena,
+    term: ValueNodeId,
+) -> CanonicalKey
+{
+    key_from(arena, KeyTask::Value(term))
+}
+
+/// The canonical key of a reified stack — how two opaque stacks are compared
+/// without reading either back.
+#[inline]
+#[must_use]
+pub fn canonical_stack_key(
+    arena: &FlatArena,
+    stack: StackNodeId,
+) -> CanonicalKey
+{
+    key_from(arena, KeyTask::Stack(stack))
+}
+
+/// Drains the canonical-key traversal from one root task.
+fn key_from(
+    arena: &FlatArena,
+    root: KeyTask<'_>,
+) -> CanonicalKey
 {
     let mut tokens = Vec::new();
     let mut scope: Vec<&str> = Vec::new();
-    let mut work = alloc::vec![KeyTask::Value(term)];
+    let mut work = alloc::vec![root];
     while let Some(task) = work.pop() {
         match task {
             | KeyTask::Name(name) => {
@@ -326,16 +363,31 @@ pub fn canonical_key(term: &Value) -> CanonicalKey
                     scope.pop();
                 }
             },
-            | KeyTask::Value(value) => visit_value(
-                value,
-                BinderScope::from(scope.as_slice()),
-                &mut tokens,
-                &mut work,
-            ),
-            | KeyTask::Comp(comp) => visit_comp(comp, &mut tokens, &mut work),
-            | KeyTask::Stack(stack) => visit_stack(stack, &mut tokens, &mut work),
-            | KeyTask::ValueType(ty) => visit_value_type(ty, &mut tokens, &mut work),
-            | KeyTask::CompType(ty) => visit_comp_type(ty, &mut tokens, &mut work),
+            | KeyTask::Value(id) => match arena.values.get(id) {
+                | Some(node) => visit_value(
+                    node,
+                    BinderScope::from(scope.as_slice()),
+                    &mut tokens,
+                    &mut work,
+                ),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::Comp(id) => match arena.comps.get(id) {
+                | Some(node) => visit_comp(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::Stack(id) => match arena.stacks.get(id) {
+                | Some(node) => visit_stack(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::ValueType(id) => match arena.value_types.get(id) {
+                | Some(node) => visit_value_type(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::CompType(id) => match arena.comp_types.get(id) {
+                | Some(node) => visit_comp_type(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
         }
     }
     CanonicalKey(tokens)
@@ -363,110 +415,112 @@ fn hashed<H>(
     payload(tokens, CanonicalToken::from(u64::from(hash)));
 }
 
+/// Emits a child count or a de Bruijn index as a payload token.
+fn length(
+    tokens: &mut Vec<CanonicalToken>,
+    count: SemanticNodeCount,
+)
+{
+    payload(
+        tokens,
+        CanonicalToken::from(u64::try_from(usize::from(count)).unwrap_or(u64::MAX)),
+    );
+}
+
 /// Emits the canonical tokens of one value node and queues its children.
 fn visit_value<'term>(
-    value: &'term Value,
+    node: &'term ValueNode,
     scope: BinderScope<'_>,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
 {
-    match *value {
-        | Value::Var(ref name) => match scope
-            .as_ref()
-            .iter()
-            .rev()
-            .position(|bound| *bound == name.as_str())
-        {
-            | Some(index) => {
-                tokens.push(CanonicalToken::from(tag::BOUND));
-                payload(
-                    tokens,
-                    CanonicalToken::from(u64::try_from(index).unwrap_or(u64::MAX)),
-                );
-            },
-            | None => {
-                tokens.push(CanonicalToken::from(tag::FREE));
-                work.push(KeyTask::Name(name.as_str()));
-            },
+    match *node {
+        | ValueNode::Var(ref name) => {
+            let bound = scope
+                .as_ref()
+                .iter()
+                .rev()
+                .position(|open| *open == name.as_str());
+            match bound {
+                | Some(index) => {
+                    tokens.push(CanonicalToken::from(tag::BOUND));
+                    length(tokens, SemanticNodeCount::from(index));
+                },
+                | None => {
+                    tokens.push(CanonicalToken::from(tag::FREE));
+                    work.push(KeyTask::Name(name.as_str()));
+                },
+            }
         },
-        | Value::Unit => tokens.push(CanonicalToken::from(tag::VALUE)),
-        | Value::Int(literal) => {
+        | ValueNode::Unit => tokens.push(CanonicalToken::from(tag::VALUE)),
+        | ValueNode::Int(literal) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(1)));
             hashed(tokens, &literal);
         },
-        | Value::Str(ref literal) => {
+        | ValueNode::Str(ref literal) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(2)));
             work.push(KeyTask::Name(literal.as_str()));
         },
-        | Value::Num(literal) => {
+        | ValueNode::Num(literal) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(3)));
             hashed(tokens, &literal);
         },
-        | Value::Pair(ref fst, ref snd) => {
+        | ValueNode::Pair(fst, snd) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(4)));
             work.push(KeyTask::Value(snd));
             work.push(KeyTask::Value(fst));
         },
-        | Value::Inj(side, ref payload_value) => {
+        | ValueNode::Inj(side, carried) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(5)));
             hashed(tokens, &side);
-            work.push(KeyTask::Value(payload_value));
+            work.push(KeyTask::Value(carried));
         },
-        | Value::List(ref elements) => {
+        | ValueNode::List(ref elements) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(6)));
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(elements.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(elements.len()));
             for element in elements.iter().rev() {
-                work.push(KeyTask::Value(element));
+                work.push(KeyTask::Value(*element));
             }
         },
-        | Value::Record(ref fields) => {
+        | ValueNode::Record(ref fields) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(7)));
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(fields.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(fields.len()));
             for (label, field) in fields.iter().rev() {
-                work.push(KeyTask::Value(field));
+                work.push(KeyTask::Value(*field));
                 work.push(KeyTask::Name(label.as_str()));
             }
         },
-        | Value::Thunk(grade, ref body) => {
+        | ValueNode::Thunk(grade, body) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(8)));
             hashed(tokens, &grade);
             work.push(KeyTask::Comp(body));
         },
-        | Value::Annot(ref inner, ref ty) => {
+        | ValueNode::Annot(inner, ty) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(9)));
             work.push(KeyTask::ValueType(ty));
             work.push(KeyTask::Value(inner));
         },
-        | Value::Hole(id) => {
+        | ValueNode::Hole(id) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(10)));
             hashed(tokens, &id);
         },
-        | Value::Stk(ref stack) => {
+        | ValueNode::Stk(stack) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(11)));
             work.push(KeyTask::Stack(stack));
         },
-        | Value::Here(ref witness) => {
+        | ValueNode::Here(witness) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(12)));
             work.push(KeyTask::Value(witness));
         },
-        | Value::Ctor {
+        | ValueNode::Ctor {
             ref id,
             tag: constructor,
-            payload: ref carried,
+            payload: carried,
         } => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(13)));
             hashed(tokens, id);
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(constructor).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(constructor));
             work.push(KeyTask::Value(carried));
         },
     }
@@ -475,7 +529,7 @@ fn visit_value<'term>(
 /// Emits the canonical tokens of one computation node and queues its children,
 /// bracketing every binder it opens.
 fn visit_comp<'term>(
-    comp: &'term Comp,
+    node: &'term CompNode,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
@@ -484,7 +538,7 @@ fn visit_comp<'term>(
     fn under<'term>(
         work: &mut Vec<KeyTask<'term>>,
         binder: BinderName<'term>,
-        body: &'term Comp,
+        body: CompNodeId,
     )
     {
         work.push(KeyTask::Pop(1));
@@ -492,56 +546,52 @@ fn visit_comp<'term>(
         work.push(KeyTask::PushOne(binder.into()));
     }
 
-    match *comp {
-        | Comp::Abs(ref binder, ref ann, ref body) => {
-            tokens.push(CanonicalToken::from(tag::COMP));
+    match *node {
+        | CompNode::Abs(ref binder, _, body) => {
             // The optional ascription is inert for the canonical key exactly as
             // it is inert for evaluation: an annotation names a type, and two
             // terms differing only in it denote one value.
-            let _ = ann;
+            tokens.push(CanonicalToken::from(tag::COMP));
             under(work, BinderName::from(binder.as_str()), body);
         },
-        | Comp::App(ref head, ref arg) => {
+        | CompNode::App(head, arg) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(1)));
             work.push(KeyTask::Value(arg));
             work.push(KeyTask::Comp(head));
         },
-        | Comp::Ret(ref value) => {
+        | CompNode::Ret(carried) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(2)));
-            work.push(KeyTask::Value(value));
+            work.push(KeyTask::Value(carried));
         },
-        | Comp::Bind(ref bound, ref binder, ref cont) => {
+        | CompNode::Bind(bound, ref binder, cont) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(3)));
             under(work, BinderName::from(binder.as_str()), cont);
             work.push(KeyTask::Comp(bound));
         },
-        | Comp::Force(ref value) => {
+        | CompNode::Force(carried) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(4)));
-            work.push(KeyTask::Value(value));
+            work.push(KeyTask::Value(carried));
         },
-        | Comp::Case(ref scrut, ref left, ref right) => {
+        | CompNode::Case(scrut, ref left, ref right) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(5)));
-            under(work, BinderName::from(right.0.as_str()), &right.1);
-            under(work, BinderName::from(left.0.as_str()), &left.1);
+            under(work, BinderName::from(right.0.as_str()), right.1);
+            under(work, BinderName::from(left.0.as_str()), left.1);
             work.push(KeyTask::Value(scrut));
         },
-        | Comp::DataCase(ref scrut, ref arms) => {
+        | CompNode::DataCase { scrut, ref arms } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(6)));
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(arms.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(arms.len()));
             for arm in arms.iter().rev() {
-                under(work, BinderName::from(arm.0.as_str()), &arm.1);
+                under(work, BinderName::from(arm.0.as_str()), arm.1);
             }
             work.push(KeyTask::Value(scrut));
         },
-        | Comp::ListCase {
-            ref scrut,
-            ref nil,
+        | CompNode::ListCase {
+            scrut,
+            nil,
             ref head,
             ref tail,
-            ref cons,
+            cons,
         } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(7)));
             work.push(KeyTask::Pop(2));
@@ -550,11 +600,11 @@ fn visit_comp<'term>(
             work.push(KeyTask::Comp(nil));
             work.push(KeyTask::Value(scrut));
         },
-        | Comp::Split {
-            ref scrut,
+        | CompNode::Split {
+            scrut,
             ref fst_name,
             ref snd_name,
-            ref body,
+            body,
             ..
         } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(8)));
@@ -563,100 +613,89 @@ fn visit_comp<'term>(
             work.push(KeyTask::PushTwo(fst_name.as_str(), snd_name.as_str()));
             work.push(KeyTask::Value(scrut));
         },
-        | Comp::RecordProj {
-            ref record,
-            ref label,
-        } => {
+        | CompNode::RecordProj { record, ref label } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(9)));
             work.push(KeyTask::Value(record));
             work.push(KeyTask::Name(label.as_str()));
         },
-        | Comp::With(ref fst, ref snd) => {
+        | CompNode::With(fst, snd) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(10)));
             work.push(KeyTask::Comp(snd));
             work.push(KeyTask::Comp(fst));
         },
-        | Comp::Prj(side, ref body) => {
+        | CompNode::Prj(side, body) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(11)));
             hashed(tokens, &side);
             work.push(KeyTask::Comp(body));
         },
-        | Comp::Dup(ref value) => {
+        | CompNode::Dup(carried) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(12)));
-            work.push(KeyTask::Value(value));
+            work.push(KeyTask::Value(carried));
         },
-        | Comp::Drop(ref value) => {
+        | CompNode::Drop(carried) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(13)));
-            work.push(KeyTask::Value(value));
+            work.push(KeyTask::Value(carried));
         },
-        | Comp::Perform(ref sig, ref op, ref carried) => {
+        | CompNode::Perform(ref sig, ref op, carried) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(14)));
             hashed(tokens, sig.as_ref());
             work.push(KeyTask::Value(carried));
             work.push(KeyTask::Name(op.as_str()));
         },
-        | Comp::Handle {
+        | CompNode::Handle {
             ref sig,
-            ref scrutinee,
+            scrutinee,
             ref ret,
             ref ops,
         } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(15)));
             hashed(tokens, sig.as_ref());
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(ops.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(ops.len()));
             for clause in ops.iter().rev() {
                 work.push(KeyTask::Pop(2));
-                work.push(KeyTask::Comp(&clause.body));
+                work.push(KeyTask::Comp(clause.body));
                 work.push(KeyTask::PushTwo(
                     clause.payload.as_str(),
                     clause.resume.as_str(),
                 ));
                 work.push(KeyTask::Name(clause.op.as_str()));
             }
-            under(work, BinderName::from(ret.0.as_str()), &ret.1);
+            under(work, BinderName::from(ret.0.as_str()), ret.1);
             work.push(KeyTask::Comp(scrutinee));
         },
-        | Comp::Resume(ref value, ref body) => {
+        | CompNode::Resume(carried, body) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(16)));
             work.push(KeyTask::Comp(body));
-            work.push(KeyTask::Value(value));
+            work.push(KeyTask::Value(carried));
         },
-        | Comp::Reset(ref body) => {
+        | CompNode::Reset(body) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(17)));
             work.push(KeyTask::Comp(body));
         },
-        | Comp::Shift(ref binder, ref body) => {
+        | CompNode::Shift(ref binder, body) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(18)));
             under(work, BinderName::from(binder.as_str()), body);
         },
-        | Comp::Hole(id) => {
+        | CompNode::Hole(id) => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(19)));
             hashed(tokens, &id);
         },
-        | Comp::Native { prim, ref args } => {
+        | CompNode::Native { prim, ref args } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(20)));
             hashed(tokens, &prim);
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(args.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(args.len()));
             for arg in args.iter().rev() {
-                work.push(KeyTask::Value(arg));
+                work.push(KeyTask::Value(*arg));
             }
         },
-        | Comp::Walk {
-            ref scrut,
-            ref base,
-            ..
+        | CompNode::Walk {
+            scrut, ref base, ..
         } => {
             // The motive is a type ascription on the eliminator and contributes
             // nothing to the value it computes, so it is erased here for the
-            // same reason an annotation is.
+            // same reason an ascription is.
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(21)));
-            under(work, BinderName::from(base.x.as_str()), &base.body);
+            under(work, BinderName::from(base.x.as_str()), base.body);
             work.push(KeyTask::Value(scrut));
         },
     }
@@ -664,26 +703,26 @@ fn visit_comp<'term>(
 
 /// Emits the canonical tokens of one stack node and queues its children.
 fn visit_stack<'term>(
-    stack: &'term Stack,
+    node: &'term StackNode,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
 {
-    match *stack {
-        | Stack::Empty => tokens.push(CanonicalToken::from(tag::STACK)),
-        | Stack::Arg(ref arg, ref rest) => {
+    match *node {
+        | StackNode::Empty => tokens.push(CanonicalToken::from(tag::STACK)),
+        | StackNode::Arg(arg, rest) => {
             tokens.push(CanonicalToken::from(tag::STACK.saturating_add(1)));
             work.push(KeyTask::Stack(rest));
             work.push(KeyTask::Value(arg));
         },
-        | Stack::Bind(ref binder, ref body, ref rest) => {
+        | StackNode::Bind(ref binder, body, rest) => {
             tokens.push(CanonicalToken::from(tag::STACK.saturating_add(2)));
             work.push(KeyTask::Stack(rest));
             work.push(KeyTask::Pop(1));
             work.push(KeyTask::Comp(body));
             work.push(KeyTask::PushOne(binder.as_str()));
         },
-        | Stack::Prj(side, ref rest) => {
+        | StackNode::Prj(side, rest) => {
             tokens.push(CanonicalToken::from(tag::STACK.saturating_add(3)));
             hashed(tokens, &side);
             work.push(KeyTask::Stack(rest));
@@ -691,82 +730,78 @@ fn visit_stack<'term>(
     }
 }
 
-/// Emits the canonical tokens of one value type and queues its children.
+/// Emits the canonical tokens of one value type node and queues its children.
 fn visit_value_type<'term>(
-    ty: &'term ValueType,
+    node: &'term ValueTypeNode,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
 {
-    match *ty {
-        | ValueType::Atom(ref name) => {
+    match *node {
+        | ValueTypeNode::Atom(ref name) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE));
             work.push(KeyTask::Name(name.as_str()));
         },
-        | ValueType::Unit => tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(1))),
-        | ValueType::Prod(ref fst, ref snd) => {
+        | ValueTypeNode::Unit => {
+            tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(1)));
+        },
+        | ValueTypeNode::Prod(fst, snd) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(2)));
             work.push(KeyTask::ValueType(snd));
             work.push(KeyTask::ValueType(fst));
         },
-        | ValueType::Sum(ref lhs, ref rhs) => {
+        | ValueTypeNode::Sum(lhs, rhs) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(3)));
             work.push(KeyTask::ValueType(rhs));
             work.push(KeyTask::ValueType(lhs));
         },
-        | ValueType::List(ref element) => {
+        | ValueTypeNode::List(element) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(4)));
             work.push(KeyTask::ValueType(element));
         },
-        | ValueType::Record(ref fields) => {
+        | ValueTypeNode::Record(ref fields) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(5)));
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(fields.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(fields.len()));
             for (label, field) in fields.iter().rev() {
-                work.push(KeyTask::ValueType(field));
+                work.push(KeyTask::ValueType(*field));
                 work.push(KeyTask::Name(label.as_str()));
             }
         },
-        | ValueType::Thunk(grade, ref body) => {
+        | ValueTypeNode::Thunk(grade, body) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(6)));
             hashed(tokens, &grade);
             work.push(KeyTask::CompType(body));
         },
-        | ValueType::Stk(ref consumes, ref delivers) => {
+        | ValueTypeNode::Stk(consumes, delivers) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(7)));
             work.push(KeyTask::CompType(delivers));
             work.push(KeyTask::CompType(consumes));
         },
-        | ValueType::Path {
-            ty: ref carrier,
-            ref lhs,
-            ref rhs,
+        | ValueTypeNode::Path {
+            ty: carrier,
+            lhs,
+            rhs,
         } => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(8)));
             work.push(KeyTask::Value(rhs));
             work.push(KeyTask::Value(lhs));
             work.push(KeyTask::ValueType(carrier));
         },
-        | ValueType::Data { ref id, ref args } => {
+        | ValueTypeNode::Data { ref id, ref args } => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(9)));
             hashed(tokens, id);
-            payload(
-                tokens,
-                CanonicalToken::from(u64::try_from(args.len()).unwrap_or(u64::MAX)),
-            );
+            length(tokens, SemanticNodeCount::from(args.len()));
             for arg in args.iter().rev() {
-                work.push(KeyTask::ValueType(arg));
+                work.push(KeyTask::ValueType(*arg));
             }
         },
-        | ValueType::Universe => {
+        | ValueTypeNode::Universe => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(10)));
         },
-        | ValueType::Sigma {
-            ref fst,
+        | ValueTypeNode::Sigma {
+            fst,
             ref binder,
-            ref snd,
+            snd,
         } => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(11)));
             work.push(KeyTask::Pop(1));
@@ -774,40 +809,41 @@ fn visit_value_type<'term>(
             work.push(KeyTask::PushOne(binder.as_str()));
             work.push(KeyTask::ValueType(fst));
         },
-        | ValueType::Sealed(ref id) => {
+        | ValueTypeNode::Sealed(ref id) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(12)));
             hashed(tokens, id);
         },
-        | ValueType::Unknown => {
+        | ValueTypeNode::Unknown => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(13)));
         },
     }
 }
 
-/// Emits the canonical tokens of one computation type and queues its children.
+/// Emits the canonical tokens of one computation type node and queues its
+/// children.
 fn visit_comp_type<'term>(
-    ty: &'term CompType,
+    node: &'term CompTypeNode,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
 {
-    match *ty {
-        | CompType::F(ref of, ref row) => {
+    match *node {
+        | CompTypeNode::F(of, ref row) => {
             tokens.push(CanonicalToken::from(tag::COMP_TYPE));
             hashed(tokens, row);
             work.push(KeyTask::ValueType(of));
         },
-        | CompType::Arrow(ref arg, ref res) => {
+        | CompTypeNode::Arrow(arg, res) => {
             tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(1)));
             work.push(KeyTask::CompType(res));
             work.push(KeyTask::ValueType(arg));
         },
-        | CompType::With(ref fst, ref snd) => {
+        | CompTypeNode::With(fst, snd) => {
             tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(2)));
             work.push(KeyTask::CompType(snd));
             work.push(KeyTask::CompType(fst));
         },
-        | CompType::Unknown => {
+        | CompTypeNode::Unknown => {
             tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(3)));
         },
     }

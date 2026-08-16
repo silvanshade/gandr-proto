@@ -1,14 +1,19 @@
 //! Readback: a semantic value back into syntax, iteratively, in one of three
 //! modes.
 //!
+//! Readback produces **node ids** in the syntax store, exactly as evaluation
+//! consumes them. A caller wanting an ordinary term reifies one at the boundary
+//! ([`Normalizer::normalize`]); nothing inside the engine ever holds an owned
+//! recursive term.
+//!
 //! # Readback chooses a face
 //!
 //! The value domain carries two faces and readback is where the choice is
 //! visible:
 //!
 //! * [`QuoteMode::Retained`] prefers the **term face** — a value that never
-//!   reduced hands back the source term it came from, so quoting an unreduced
-//!   subterm costs one reference-count clone and never rebuilds anything;
+//!   reduced hands back the source node it came from, so quoting an unreduced
+//!   subterm costs one id and rebuilds nothing;
 //! * [`QuoteMode::Canonical`] ignores the term face and rebuilds from the
 //!   semantic value, so binders come out in **canonical form** — a de Bruijn
 //!   level rendered into a name — which is what makes two readback results
@@ -29,10 +34,10 @@
 //! deterministic for that reason and not by accident.
 //!
 //! [`conv`]: crate::nbe::conv
+//! [`Normalizer::normalize`]: crate::nbe::Normalizer::normalize
 
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -42,6 +47,7 @@ use crate::nbe::Normalizer;
 use crate::nbe::eval::ForceMode;
 use crate::nbe::eval::eval_comp;
 use crate::nbe::eval::force_value;
+use crate::nbe::eval::syntax_comp;
 use crate::nbe::eval::value;
 use crate::nbe::sem::ClosureId;
 use crate::nbe::sem::Elim;
@@ -53,11 +59,15 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::syntax::Comp;
-use crate::syntax::OpClause;
+use crate::syntax::CompNode;
+use crate::syntax::CompNodeId;
+use crate::syntax::CompTypeNode;
+use crate::syntax::OpClauseNode;
 use crate::syntax::Side;
-use crate::syntax::Value;
-use crate::syntax::WalkBase;
+use crate::syntax::ValueNode;
+use crate::syntax::ValueNodeId;
+use crate::syntax::WalkBaseNode;
+use crate::syntax::WalkMotiveNode;
 use crate::types::DataId;
 
 /// How readback treats the two faces and the definitional environment.
@@ -103,6 +113,40 @@ fn level_name(level: VariableLevel) -> String
     format!("\u{ab}{}\u{bb}", u32::from(level))
 }
 
+/// Allocates one value node in the syntax store.
+///
+/// # Errors
+///
+/// Returns [`SemError::SyntaxStore`] when the store's id space is exhausted.
+#[inline]
+fn emit_value(
+    nbe: &mut Normalizer,
+    node: ValueNode,
+) -> Result<ValueNodeId, SemError>
+{
+    nbe.syntax_mut()
+        .values
+        .alloc(node)
+        .ok_or(SemError::SyntaxStore)
+}
+
+/// Allocates one computation node in the syntax store.
+///
+/// # Errors
+///
+/// Returns [`SemError::SyntaxStore`] when the store's id space is exhausted.
+#[inline]
+fn emit_comp(
+    nbe: &mut Normalizer,
+    node: CompNode,
+) -> Result<CompNodeId, SemError>
+{
+    nbe.syntax_mut()
+        .comps
+        .alloc(node)
+        .ok_or(SemError::SyntaxStore)
+}
+
 /// Opens a closure under fresh levels: binds each binder to a rigid variable
 /// and drives the body to weak-head normal form.
 ///
@@ -117,11 +161,7 @@ fn open(
 {
     let (mut env, binders, body) = {
         let closure = nbe.arena().closure(cell)?;
-        (
-            closure.env(),
-            closure.binders().to_vec(),
-            Rc::clone(closure.body()),
-        )
+        (closure.env(), closure.binders().to_vec(), closure.body())
     };
     let mut names = Vec::with_capacity(binders.len());
     for binder in binders {
@@ -131,7 +171,7 @@ fn open(
         env = nbe.arena_mut().bind(env, binder, rigid)?;
         names.push(level_name(level));
     }
-    let whnf = eval_comp(nbe, env, &body, mode.force())?;
+    let whnf = eval_comp(nbe, env, body, mode.force())?;
     Ok((names, whnf))
 }
 
@@ -167,8 +207,8 @@ enum CompFinish
     Force,
     /// Rebuild a sum elimination over these branch binders.
     Case(String, String),
-    /// Rebuild a declared-data elimination over these arm names and binders.
-    DataCase(Vec<(String, String)>),
+    /// Rebuild a declared-data elimination over these arm binders.
+    DataCase(Vec<String>),
     /// Rebuild a list elimination over the cons binders.
     ListCase(String, String),
     /// Rebuild a pair elimination over its two binders.
@@ -183,14 +223,10 @@ enum CompFinish
     Dup,
     /// Rebuild a grade discard.
     Drop,
-    /// Rebuild an effect performance.
-    Perform(Rc<crate::effect::EffectSig>, String),
-    /// Rebuild a handler over its return binder and its operation clauses.
-    Handle(
-        Rc<crate::effect::EffectSig>,
-        String,
-        Vec<(String, String, String)>,
-    ),
+    /// Rebuild an effect performance, reading its signature off the source.
+    Perform(CompNodeId),
+    /// Rebuild a handler, reading its signature and labels off the source.
+    Handle(CompNodeId, String, Vec<(String, String)>),
     /// Rebuild a resumption.
     Resume,
     /// Rebuild a delimiter.
@@ -220,17 +256,17 @@ enum Task
     FinishComp(CompFinish),
 }
 
-/// Reads a semantic **value** back into syntax.
+/// Reads a semantic **value** back into a syntax node.
 ///
 /// # Contract
 /// - requires: `id` was minted by this normalizer's arena.
-/// - ensures: the result is a term whose evaluation is convertible to `id`; in
-///   [`QuoteMode::Retained`] an unreduced value hands back the very term it was
-///   evaluated from, and in the other two modes every binder is rendered from a
-///   de Bruijn level, so the result is in canonical binder form.
+/// - ensures: the result names a node whose evaluation is convertible to `id`;
+///   in [`QuoteMode::Retained`] an unreduced value hands back the very node it
+///   was evaluated from, and in the other two modes every binder is rendered
+///   from a de Bruijn level, so the result is in canonical binder form.
 /// - provides: the syntax half of normalization — the normal form a caller
 ///   asked for.
-/// - fails: the arena's error when an id fails to resolve or the id space is
+/// - fails: the arena's error when an id fails to resolve or an id space is
 ///   exhausted.
 /// - panics: none.
 ///
@@ -259,21 +295,21 @@ pub fn quote_value(
     nbe: &mut Normalizer,
     id: SemValueId,
     mode: QuoteMode,
-) -> Result<Rc<Value>, SemError>
+) -> Result<ValueNodeId, SemError>
 {
     let mut work = alloc::vec![Task::Value(id)];
-    let mut values: Vec<Rc<Value>> = Vec::new();
-    let mut comps: Vec<Rc<Comp>> = Vec::new();
+    let mut values: Vec<ValueNodeId> = Vec::new();
+    let mut comps: Vec<CompNodeId> = Vec::new();
     run(nbe, mode, &mut work, &mut values, &mut comps)?;
-    Ok(pop_value(&mut values))
+    pop_value(nbe, &mut values)
 }
 
-/// Reads a semantic **computation** back into syntax.
+/// Reads a semantic **computation** back into a syntax node.
 ///
 /// # Contract
 /// - requires: `id` was minted by this normalizer's arena.
-/// - ensures: the result is a computation whose evaluation is convertible to
-///   `id`, with binders in canonical form in the rebuilding modes.
+/// - ensures: the result names a node whose evaluation is convertible to `id`,
+///   with binders in canonical form in the rebuilding modes.
 /// - fails: the arena's error when an id fails to resolve.
 /// - panics: none.
 ///
@@ -285,13 +321,13 @@ pub fn quote_comp(
     nbe: &mut Normalizer,
     id: SemCompId,
     mode: QuoteMode,
-) -> Result<Rc<Comp>, SemError>
+) -> Result<CompNodeId, SemError>
 {
     let mut work = alloc::vec![Task::Comp(id)];
-    let mut values: Vec<Rc<Value>> = Vec::new();
-    let mut comps: Vec<Rc<Comp>> = Vec::new();
+    let mut values: Vec<ValueNodeId> = Vec::new();
+    let mut comps: Vec<CompNodeId> = Vec::new();
     run(nbe, mode, &mut work, &mut values, &mut comps)?;
-    Ok(pop_comp(&mut comps))
+    pop_comp(nbe, &mut comps)
 }
 
 /// Drains the readback worklist.
@@ -309,16 +345,16 @@ fn run(
     nbe: &mut Normalizer,
     mode: QuoteMode,
     work: &mut Vec<Task>,
-    values: &mut Vec<Rc<Value>>,
-    comps: &mut Vec<Rc<Comp>>,
+    values: &mut Vec<ValueNodeId>,
+    comps: &mut Vec<CompNodeId>,
 ) -> Result<(), SemError>
 {
     while let Some(task) = work.pop() {
         match task {
             | Task::Value(id) => quote_value_task(nbe, id, mode, work, values)?,
             | Task::Comp(id) => quote_comp_task(nbe, id, mode, work)?,
-            | Task::FinishValue(finish) => finish_value(finish, values, comps),
-            | Task::FinishComp(finish) => finish_comp(finish, values, comps),
+            | Task::FinishValue(finish) => finish_value(nbe, finish, values, comps)?,
+            | Task::FinishComp(finish) => finish_comp(nbe, finish, values, comps)?,
         }
     }
     Ok(())
@@ -334,13 +370,13 @@ fn quote_value_task(
     id: SemValueId,
     mode: QuoteMode,
     work: &mut Vec<Task>,
-    values: &mut Vec<Rc<Value>>,
+    values: &mut Vec<ValueNodeId>,
 ) -> Result<(), SemError>
 {
     if matches!(mode, QuoteMode::Retained)
         && let Some(term) = nbe.arena().value(id)?.face().retained()
     {
-        values.push(Rc::clone(term));
+        values.push(term);
         return Ok(());
     }
     let id = match mode {
@@ -349,18 +385,34 @@ fn quote_value_task(
     };
     let node = nbe.arena().value(id)?.node().clone();
     match node {
-        | SemValueNode::Unit => values.push(Rc::new(Value::Unit)),
-        | SemValueNode::Int(literal) => values.push(Rc::new(Value::Int(literal))),
-        | SemValueNode::Str(literal) => values.push(Rc::new(Value::Str(literal))),
-        | SemValueNode::Num(literal) => values.push(Rc::new(Value::Num(literal))),
-        | SemValueNode::Reified(stack) => values.push(Rc::new(Value::Stk(stack))),
+        | SemValueNode::Unit => {
+            let id = emit_value(nbe, ValueNode::Unit)?;
+            values.push(id);
+        },
+        | SemValueNode::Int(literal) => {
+            let id = emit_value(nbe, ValueNode::Int(literal))?;
+            values.push(id);
+        },
+        | SemValueNode::Str(literal) => {
+            let id = emit_value(nbe, ValueNode::Str(literal))?;
+            values.push(id);
+        },
+        | SemValueNode::Num(literal) => {
+            let id = emit_value(nbe, ValueNode::Num(literal))?;
+            values.push(id);
+        },
+        | SemValueNode::Reified(stack) => {
+            let id = emit_value(nbe, ValueNode::Stk(stack))?;
+            values.push(id);
+        },
         | SemValueNode::Rigid(head, _) => {
-            let term = match head {
-                | Rigid::Level(level) => Value::Var(level_name(level)),
-                | Rigid::Free(name) => Value::Var(name),
-                | Rigid::Hole(hole) => Value::Hole(hole),
+            let node = match head {
+                | Rigid::Level(level) => ValueNode::Var(level_name(level)),
+                | Rigid::Free(name) => ValueNode::Var(name),
+                | Rigid::Hole(hole) => ValueNode::Hole(hole),
             };
-            values.push(Rc::new(term));
+            let id = emit_value(nbe, node)?;
+            values.push(id);
         },
         | SemValueNode::Pair(fst, snd) => {
             work.push(Task::FinishValue(ValueFinish::Pair));
@@ -437,8 +489,8 @@ fn quote_comp_task(
                 let neutral = nbe.arena().neutral(stuck)?;
                 (neutral.head().clone(), neutral.spine().to_vec())
             };
-            // The spine is applied outermost last, so the finish frames are
-            // queued in reverse: each pops the computation beneath it.
+            // The spine applies outermost last, so the finish frames are queued
+            // in reverse: each one pops the computation beneath it.
             for elim in spine.iter().rev() {
                 match *elim {
                     | Elim::Apply(arg) => {
@@ -498,9 +550,9 @@ fn queue_head(
         | NeutralHead::DataCase { scrutinee, arms } => {
             let mut names = Vec::with_capacity(arms.len());
             let mut bodies = Vec::with_capacity(arms.len());
-            for (label, cell) in arms {
-                let (binders, body) = open(nbe, cell, mode)?;
-                names.push((label, binders.first().cloned().unwrap_or_default()));
+            for arm in arms {
+                let (binders, body) = open(nbe, arm.1, mode)?;
+                names.push(binders.first().cloned().unwrap_or_default());
                 bodies.push(body);
             }
             work.push(Task::FinishComp(CompFinish::DataCase(names)));
@@ -562,32 +614,34 @@ fn queue_head(
             work.push(Task::FinishComp(CompFinish::Drop));
             work.push(Task::Value(carried));
         },
-        | NeutralHead::Perform { sig, op, payload } => {
-            work.push(Task::FinishComp(CompFinish::Perform(sig, op)));
+        | NeutralHead::Perform { source, payload } => {
+            work.push(Task::FinishComp(CompFinish::Perform(source)));
             work.push(Task::Value(payload));
         },
         | NeutralHead::Handle {
-            sig,
+            source,
             scrutinee,
             ret,
             ops,
         } => {
             let (_, scrutinee) = open(nbe, scrutinee, mode)?;
             let (ret_names, ret) = open(nbe, ret, mode)?;
-            let mut clauses = Vec::with_capacity(ops.len());
+            let mut binders = Vec::with_capacity(ops.len());
             let mut bodies = Vec::with_capacity(ops.len());
-            for (label, cell) in ops {
-                let (binders, body) = open(nbe, cell, mode)?;
-                let mut binders = binders.into_iter();
-                clauses.push((
-                    label,
-                    binders.next().unwrap_or_default(),
-                    binders.next().unwrap_or_default(),
+            for cell in ops {
+                let (names, body) = open(nbe, cell, mode)?;
+                let mut names = names.into_iter();
+                binders.push((
+                    names.next().unwrap_or_default(),
+                    names.next().unwrap_or_default(),
                 ));
                 bodies.push(body);
             }
-            let finish =
-                CompFinish::Handle(sig, ret_names.first().cloned().unwrap_or_default(), clauses);
+            let finish = CompFinish::Handle(
+                source,
+                ret_names.first().cloned().unwrap_or_default(),
+                binders,
+            );
             work.push(Task::FinishComp(finish));
             for body in bodies.iter().rev() {
                 work.push(Task::Comp(*body));
@@ -627,87 +681,100 @@ fn queue_head(
     Ok(())
 }
 
-/// Reassembles one value from the results already on the stacks.
+/// Reassembles one value node from the results already on the stacks.
+///
+/// # Errors
+///
+/// Returns [`SemError`] when a stack underflows or the store is exhausted.
 fn finish_value(
+    nbe: &mut Normalizer,
     finish: ValueFinish,
-    values: &mut Vec<Rc<Value>>,
-    comps: &mut Vec<Rc<Comp>>,
-)
+    values: &mut Vec<ValueNodeId>,
+    comps: &mut Vec<CompNodeId>,
+) -> Result<(), SemError>
 {
-    let term = match finish {
+    let node = match finish {
         | ValueFinish::Pair => {
-            let snd = pop_value(values);
-            let fst = pop_value(values);
-            Value::Pair(fst, snd)
+            let snd = pop_value(nbe, values)?;
+            let fst = pop_value(nbe, values)?;
+            ValueNode::Pair(fst, snd)
         },
-        | ValueFinish::Inj(side) => Value::Inj(side, pop_value(values)),
-        | ValueFinish::Here => Value::Here(pop_value(values)),
-        | ValueFinish::Ctor(id, tag) => Value::Ctor {
+        | ValueFinish::Inj(side) => ValueNode::Inj(side, pop_value(nbe, values)?),
+        | ValueFinish::Here => ValueNode::Here(pop_value(nbe, values)?),
+        | ValueFinish::Ctor(id, tag) => ValueNode::Ctor {
             id,
             tag,
-            payload: pop_value(values),
+            payload: pop_value(nbe, values)?,
         },
         | ValueFinish::List(count) => {
             let mut elements = Vec::with_capacity(count);
             for _ in 0 .. count {
-                elements.push(pop_value(values));
+                elements.push(pop_value(nbe, values)?);
             }
             elements.reverse();
-            Value::List(elements)
+            ValueNode::List(elements)
         },
         | ValueFinish::Record(labels) => {
             let mut fields = Vec::with_capacity(labels.len());
             for _ in 0 .. labels.len() {
-                fields.push(pop_value(values));
+                fields.push(pop_value(nbe, values)?);
             }
             fields.reverse();
-            Value::Record(labels.into_iter().zip(fields).collect::<BTreeMap<_, _>>())
+            ValueNode::Record(labels.into_iter().zip(fields).collect::<BTreeMap<_, _>>())
         },
-        | ValueFinish::Thunk(grade) => Value::Thunk(grade, pop_comp(comps)),
+        | ValueFinish::Thunk(grade) => ValueNode::Thunk(grade, pop_comp(nbe, comps)?),
     };
-    values.push(Rc::new(term));
+    let id = emit_value(nbe, node)?;
+    values.push(id);
+    Ok(())
 }
 
-/// Reassembles one computation from the results already on the stacks.
+/// Reassembles one computation node from the results already on the stacks.
+///
+/// # Errors
+///
+/// Returns [`SemError`] when a stack underflows or the store is exhausted.
 fn finish_comp(
+    nbe: &mut Normalizer,
     finish: CompFinish,
-    values: &mut Vec<Rc<Value>>,
-    comps: &mut Vec<Rc<Comp>>,
-)
+    values: &mut Vec<ValueNodeId>,
+    comps: &mut Vec<CompNodeId>,
+) -> Result<(), SemError>
 {
-    let term = match finish {
-        | CompFinish::Abs(binder) => Comp::Abs(binder, None, pop_comp(comps)),
-        | CompFinish::Ret => Comp::Ret(pop_value(values)),
+    let node = match finish {
+        | CompFinish::Abs(binder) => CompNode::Abs(binder, None, pop_comp(nbe, comps)?),
+        | CompFinish::Ret => CompNode::Ret(pop_value(nbe, values)?),
         | CompFinish::With => {
-            let snd = pop_comp(comps);
-            let fst = pop_comp(comps);
-            Comp::With(fst, snd)
+            let snd = pop_comp(nbe, comps)?;
+            let fst = pop_comp(nbe, comps)?;
+            CompNode::With(fst, snd)
         },
-        | CompFinish::Force => Comp::Force(pop_value(values)),
+        | CompFinish::Force => CompNode::Force(pop_value(nbe, values)?),
         | CompFinish::Case(left, right) => {
-            let right_body = pop_comp(comps);
-            let left_body = pop_comp(comps);
-            Comp::Case(pop_value(values), (left, left_body), (right, right_body))
+            let right_body = pop_comp(nbe, comps)?;
+            let left_body = pop_comp(nbe, comps)?;
+            CompNode::Case(
+                pop_value(nbe, values)?,
+                (left, left_body),
+                (right, right_body),
+            )
         },
         | CompFinish::DataCase(names) => {
             let mut bodies = Vec::with_capacity(names.len());
             for _ in 0 .. names.len() {
-                bodies.push(pop_comp(comps));
+                bodies.push(pop_comp(nbe, comps)?);
             }
             bodies.reverse();
-            let scrutinee = pop_value(values);
-            let arms = names
-                .into_iter()
-                .map(|(_, binder)| binder)
-                .zip(bodies)
-                .collect::<Vec<_>>();
-            Comp::DataCase(scrutinee, arms)
+            CompNode::DataCase {
+                scrut: pop_value(nbe, values)?,
+                arms: names.into_iter().zip(bodies).collect::<Vec<_>>(),
+            }
         },
         | CompFinish::ListCase(head, tail) => {
-            let cons = pop_comp(comps);
-            let nil = pop_comp(comps);
-            Comp::ListCase {
-                scrut: pop_value(values),
+            let cons = pop_comp(nbe, comps)?;
+            let nil = pop_comp(nbe, comps)?;
+            CompNode::ListCase {
+                scrut: pop_value(nbe, values)?,
                 nil,
                 head,
                 tail,
@@ -715,115 +782,154 @@ fn finish_comp(
             }
         },
         | CompFinish::Split(fst_name, snd_name) => {
-            let body = pop_comp(comps);
-            Comp::Split {
-                scrut: pop_value(values),
+            let body = pop_comp(nbe, comps)?;
+            CompNode::Split {
+                scrut: pop_value(nbe, values)?,
                 fst_name,
                 snd_name,
                 motive: None,
                 body,
             }
         },
-        | CompFinish::Project(label) => Comp::RecordProj {
-            record: pop_value(values),
+        | CompFinish::Project(label) => CompNode::RecordProj {
+            record: pop_value(nbe, values)?,
             label,
         },
         | CompFinish::Walk(binder) => {
-            let body = pop_comp(comps);
-            let scrut = pop_value(values);
-            Comp::Walk {
+            let body = pop_comp(nbe, comps)?;
+            let scrut = pop_value(nbe, values)?;
+            // The motive is inert for the value computed, so readback emits the
+            // unknown motive rather than inventing one: conversion erases it,
+            // and no consumer of a normal form reads it back for typing.
+            let motive_body = nbe
+                .syntax_mut()
+                .comp_types
+                .alloc(CompTypeNode::Unknown)
+                .ok_or(SemError::SyntaxStore)?;
+            CompNode::Walk {
                 scrut,
-                motive: alloc::boxed::Box::new(crate::syntax::WalkMotive::new(
-                    "\u{ab}x\u{bb}",
-                    "\u{ab}y\u{bb}",
-                    "\u{ab}q\u{bb}",
-                    crate::types::CompType::Unknown,
-                )),
-                base: WalkBase { x: binder, body },
+                motive: WalkMotiveNode {
+                    x: String::from("\u{ab}x\u{bb}"),
+                    y: String::from("\u{ab}y\u{bb}"),
+                    q: String::from("\u{ab}q\u{bb}"),
+                    body: motive_body,
+                },
+                base: WalkBaseNode { x: binder, body },
             }
         },
         | CompFinish::Native(prim, count) => {
             let mut args = Vec::with_capacity(count);
             for _ in 0 .. count {
-                args.push(pop_value(values));
+                args.push(pop_value(nbe, values)?);
             }
             args.reverse();
-            Comp::Native { prim, args }
+            CompNode::Native { prim, args }
         },
-        | CompFinish::Dup => Comp::Dup(pop_value(values)),
-        | CompFinish::Drop => Comp::Drop(pop_value(values)),
-        | CompFinish::Perform(sig, op) => Comp::Perform(
-            alloc::boxed::Box::new(sig.as_ref().clone()),
-            op,
-            pop_value(values),
-        ),
-        | CompFinish::Handle(sig, ret_binder, clauses) => {
-            let mut bodies = Vec::with_capacity(clauses.len());
-            for _ in 0 .. clauses.len() {
-                bodies.push(pop_comp(comps));
+        | CompFinish::Dup => CompNode::Dup(pop_value(nbe, values)?),
+        | CompFinish::Drop => CompNode::Drop(pop_value(nbe, values)?),
+        | CompFinish::Perform(source) => {
+            let CompNode::Perform(sig, op, _) = syntax_comp(nbe, source)?
+            else {
+                return Err(SemError::MissingSyntaxComp(source));
+            };
+            CompNode::Perform(sig, op, pop_value(nbe, values)?)
+        },
+        | CompFinish::Handle(source, ret_binder, binders) => {
+            let CompNode::Handle { sig, ops, .. } = syntax_comp(nbe, source)?
+            else {
+                return Err(SemError::MissingSyntaxComp(source));
+            };
+            let mut bodies = Vec::with_capacity(binders.len());
+            for _ in 0 .. binders.len() {
+                bodies.push(pop_comp(nbe, comps)?);
             }
             bodies.reverse();
-            let ret_body = pop_comp(comps);
-            let scrutinee = pop_comp(comps);
-            let ops = clauses
+            let ret_body = pop_comp(nbe, comps)?;
+            let scrutinee = pop_comp(nbe, comps)?;
+            let clauses = ops
                 .into_iter()
+                .zip(binders)
                 .zip(bodies)
-                .map(|((op, payload, resume), body)| OpClause {
-                    op,
+                .map(|((clause, (payload, resume)), body)| OpClauseNode {
+                    op: clause.op,
                     payload,
                     resume,
                     body,
                 })
                 .collect::<Vec<_>>();
-            Comp::Handle {
-                sig: alloc::boxed::Box::new(sig.as_ref().clone()),
+            CompNode::Handle {
+                sig,
                 scrutinee,
                 ret: (ret_binder, ret_body),
-                ops,
+                ops: clauses,
             }
         },
         | CompFinish::Resume => {
-            let body = pop_comp(comps);
-            Comp::Resume(pop_value(values), body)
+            let body = pop_comp(nbe, comps)?;
+            CompNode::Resume(pop_value(nbe, values)?, body)
         },
-        | CompFinish::Reset => Comp::Reset(pop_comp(comps)),
-        | CompFinish::Shift(binder) => Comp::Shift(binder, pop_comp(comps)),
-        | CompFinish::Hole(hole) => Comp::Hole(hole),
+        | CompFinish::Reset => CompNode::Reset(pop_comp(nbe, comps)?),
+        | CompFinish::Shift(binder) => CompNode::Shift(binder, pop_comp(nbe, comps)?),
+        | CompFinish::Hole(hole) => CompNode::Hole(hole),
         | CompFinish::Apply => {
-            let head = pop_comp(comps);
-            Comp::App(head, pop_value(values))
+            let head = pop_comp(nbe, comps)?;
+            CompNode::App(head, pop_value(nbe, values)?)
         },
-        | CompFinish::Prj(side) => Comp::Prj(side, pop_comp(comps)),
+        | CompFinish::Prj(side) => CompNode::Prj(side, pop_comp(nbe, comps)?),
         | CompFinish::Sequence(binder) => {
-            let cont = pop_comp(comps);
-            Comp::Bind(pop_comp(comps), binder, cont)
+            let cont = pop_comp(nbe, comps)?;
+            CompNode::Bind(pop_comp(nbe, comps)?, binder, cont)
         },
     };
-    comps.push(Rc::new(term));
+    let id = emit_comp(nbe, node)?;
+    comps.push(id);
+    Ok(())
 }
 
-/// Pops one finished value off the readback stack.
+/// Pops one finished value node off the readback stack.
 ///
-/// The fallback is unreachable under the post-order balance invariant every
-/// finish frame maintains; it degenerates to the unit value rather than a
-/// panic, because indexing and unwrapping are banned in shipping code.
-fn pop_value(values: &mut Vec<Rc<Value>>) -> Rc<Value>
+/// The stack cannot underflow under the post-order balance invariant every
+/// finish frame maintains; an underflow degenerates to a fresh unit node rather
+/// than panicking, because indexing and unwrapping are banned in shipping code.
+///
+/// # Errors
+///
+/// Returns [`SemError::SyntaxStore`] when the store's id space is exhausted.
+fn pop_value(
+    nbe: &mut Normalizer,
+    values: &mut Vec<ValueNodeId>,
+) -> Result<ValueNodeId, SemError>
 {
     debug_assert!(
         !values.is_empty(),
         "readback worklist underflow (post-order balance)"
     );
-    values.pop().unwrap_or_else(|| Rc::new(Value::Unit))
+    match values.pop() {
+        | Some(id) => Ok(id),
+        | None => emit_value(nbe, ValueNode::Unit),
+    }
 }
 
-/// Pops one finished computation off the readback stack (see [`pop_value`]).
-fn pop_comp(comps: &mut Vec<Rc<Comp>>) -> Rc<Comp>
+/// Pops one finished computation node off the readback stack (see
+/// [`pop_value`]).
+///
+/// # Errors
+///
+/// Returns [`SemError::SyntaxStore`] when the store's id space is exhausted.
+fn pop_comp(
+    nbe: &mut Normalizer,
+    comps: &mut Vec<CompNodeId>,
+) -> Result<CompNodeId, SemError>
 {
     debug_assert!(
         !comps.is_empty(),
         "readback worklist underflow (post-order balance)"
     );
-    comps
-        .pop()
-        .unwrap_or_else(|| Rc::new(Comp::Ret(Rc::new(Value::Unit))))
+    match comps.pop() {
+        | Some(id) => Ok(id),
+        | None => {
+            let unit = emit_value(nbe, ValueNode::Unit)?;
+            emit_comp(nbe, CompNode::Ret(unit))
+        },
+    }
 }
