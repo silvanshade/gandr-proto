@@ -41,6 +41,16 @@
 //! | `TypeSortMismatch`         | the type position lowers to `Unknown` (no note; the `Unknown` *is* the signal) |
 //! | `MalformedNode`            | hole at the node (`HoleNote::MalformedNode`)                              |
 //!
+//! An **unmolded token** — source text the melder attached to no form — is the
+//! one damage with no consuming position to recover it: the walk descends by
+//! field and so never reaches it, and `def bad = 1 ~ 2;` would otherwise lower
+//! to `bad = 1` with the stray token dropped and nothing recorded. Total mode
+//! holes the *declaration* holding such a token, at the `Syntax` row above,
+//! unless the walk already recovered that region from somewhere inside it
+//! ([`Lowerer::unrecovered_unmolded_token`]). Declaration-local is the coarsest
+//! granularity this module recovers at, and it is reserved for exactly this
+//! case; every other damage stays at its consuming position.
+//!
 //! **User-written holes** (`?` / `?name`, [`node_kinds::HOLE`]) are the one
 //! hole source that is *not* a recovered [`LowerError`]: a hole the user typed
 //! is a legitimate axiom, lowered to a [`Value::Hole`]/[`Comp::Hole`] carrying
@@ -5121,7 +5131,26 @@ impl Lowerer<'_>
                 // — independently of how many core items that item produces.
                 self.source_item = SourceItemId(source_item_count);
                 source_item_count = source_item_count.saturating_add(1);
-                match self.item(child) {
+                let mut lowered_item = self.item(child);
+                // A declaration that lowered without complaint can still hold
+                // damage nothing recovered. The walk descends by field and the
+                // melder hangs an unmolded token off no field, so an orphan
+                // beside a well-formed prefix is unreachable from every
+                // consuming position: `def bad = 1 ~ 2;` lowers to `bad = 1`
+                // and drops `~ 2` with nothing recorded anywhere. Total mode
+                // owes that declaration the module doc's `Syntax` row — a hole
+                // noted at the malformed region — so the damage stays visible,
+                // and owes the declarations after it their ordinary lowering.
+                // Recovery the walk *did* reach stays where it happened: the
+                // origin tree records it, which is what keeps this from
+                // coarsening statement-local recovery to the whole item.
+                if bool::from(self.total())
+                    && let Ok((_, ref origin)) = lowered_item
+                    && let Some(byte_range) = self.unrecovered_unmolded_token(child, origin)
+                {
+                    lowered_item = Err(LowerError::Syntax { byte_range });
+                }
+                match lowered_item {
                     | Ok((mut item, origin)) => {
                         // An explicit signature wins over any sugar-derived
                         // ascription (it is the user's stated contract).
@@ -5229,6 +5258,41 @@ impl Lowerer<'_>
             match_sites: core::mem::take(&mut self.match_sites),
             constructors,
         })
+    }
+
+    /// The span of an unmolded token inside `child` that `origin` records no
+    /// recovery for — earliest first, so a declaration holding several orphans
+    /// reports the one the strict entry would have rejected at.
+    ///
+    /// [`Oblig::UnmoldedTok`] is the one obligation class naming *authored text
+    /// attached to no form*. The absent-structure classes
+    /// ([`Oblig::MissingMeld`], [`Oblig::MissingTile`],
+    /// [`Oblig::IncompleteTile`]) name a repair the melder made in place, and
+    /// the rest ([`Oblig::InconMeld`], [`Oblig::ExtraMeld`],
+    /// [`Oblig::ReservedKeyword`], [`Oblig::AmbiguousPrec`]) name a relation
+    /// between forms the walk does visit — every one of them reaches a
+    /// consuming position, which recovers it where it occurs. An unmolded
+    /// token can reach none, which is why [`Self::source_file`] has to look
+    /// for it rather than wait for a lowering failure that never comes.
+    ///
+    /// Reaching one is still the common case (`@@@` degrouts to unmolded tokens
+    /// the enclosing position holes), so the [`OriginNode::recovers`] filter is
+    /// what keeps the item-level fallback from coarsening a statement-local
+    /// recovery to the whole declaration.
+    fn unrecovered_unmolded_token(
+        &self,
+        child: SynNode<'_>,
+        origin: &OriginNode,
+    ) -> Option<SourceRange>
+    {
+        let range = child.byte_range();
+        self.obligations
+            .iter()
+            .filter(|obligation| matches!(obligation.class, Oblig::UnmoldedTok))
+            .map(obligation_range)
+            .filter(|span| range.0.start <= span.0.start && span.0.end <= range.0.end)
+            .filter(|span| !bool::from(origin.recovers(span)))
+            .min_by_key(|span| (span.0.start, span.0.end))
     }
 
     /// Lowers one `import "URI" as name ;` declaration through the namespace

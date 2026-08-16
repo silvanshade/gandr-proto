@@ -45,7 +45,9 @@ mod tests
     use gandr_core_incremental::region::Item;
     use gandr_surface_engine::goals::Goal;
     use gandr_surface_engine::goals::goals_report;
+    use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::Lowered;
+    use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::lower::node_kinds;
     use gandr_surface_engine::origin::HoleNote;
@@ -576,6 +578,94 @@ mod tests
             // The `@@@` region degrouts to three `UnmoldedTok` obligations; the
             // item hole takes the note of the responsible one.
             assert_eq!(Some(HoleNote::UnrecognizedToken), goals[0].note);
+        }
+
+        /// The parser-recovery witness's source, carried through to the engine:
+        /// a stray token *beside a well-formed prefix*, then a valid
+        /// declaration.
+        ///
+        /// This is the damage a syntax-directed walk cannot see. `def bad = 1 ~
+        /// 2;` lowers its `value` field to `1` and reports nothing, because the
+        /// melder attaches `~ 2` to no field at all — so unlike `def b = @@@;`
+        /// ([`error_item_is_statement_local`], where the whole value region
+        /// degrouts and the consuming position holes it), no lowering position
+        /// ever reaches the orphan. Recovery is declaration-local: `bad`
+        /// becomes a hole noted at the malformed region and keeps its
+        /// name, `good` lowers and types ordinarily in source order,
+        /// and strict mode still rejects at the same byte.
+        #[test]
+        fn a_malformed_declaration_holes_and_the_later_one_lowers_intact()
+        {
+            let source = "def bad = 1 ~ 2;\ndef good = 2;";
+            let stray = 12 .. 13;
+            assert_eq!(
+                Some("~"),
+                source.get(stray.clone()),
+                "the pinned range is the stray token"
+            );
+
+            assert!(
+                matches!(
+                    lower_source(source.into()),
+                    Err(LowerError::Syntax { ref byte_range }) if byte_range.0 == stray
+                ),
+                "strict lowering keeps rejecting at the stray token, got {:?}",
+                lower_source(source.into())
+            );
+
+            let lowered = lower_total(source);
+            assert_eq!(
+                2,
+                lowered.items.len(),
+                "recovery is declaration-local: the malformed declaration neither \
+                 consumes `good` nor collapses the file into one hole, got {:?}",
+                lowered.items
+            );
+
+            assert_eq!(
+                Some("bad"),
+                lowered.items[0].name.as_deref(),
+                "the malformed declaration keeps its name, so a signature still attaches"
+            );
+            assert!(
+                matches!(lowered.items[0].term, Term::Value(Value::Hole(_))),
+                "the malformed declaration is a hole, not the silently repaired `bad = 1` a \
+                 field-directed walk produces, got {:?}",
+                lowered.items[0].term
+            );
+
+            assert_eq!(
+                Some("good"),
+                lowered.items[1].name.as_deref(),
+                "the later declaration survives in source order"
+            );
+            assert_eq!(
+                Term::Value(Value::Int(2)),
+                lowered.items[1].term,
+                "the later declaration lowers intact, not as a hole"
+            );
+            assert_eq!(
+                Ok(Ty::Value(ValueType::integer())),
+                type_item_both(&lowered.items[1]),
+                "the later declaration types through the existing path"
+            );
+
+            let goals = goals_report(&lowered, &prelude_ctx());
+            assert_eq!(
+                1,
+                goals.len(),
+                "one goal: the malformed declaration, got {goals:?}"
+            );
+            assert_eq!(0, goals[0].item, "the goal belongs to the first item");
+            assert_eq!(
+                Some(HoleNote::UnrecognizedToken),
+                goals[0].note,
+                "the note names what the melder could not mold"
+            );
+            assert_eq!(
+                stray, goals[0].byte_range,
+                "the goal's range identifies the malformed region"
+            );
         }
 
         /// A string literal lowers to `Value::Str` with the grammar's escape

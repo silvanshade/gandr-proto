@@ -25,6 +25,7 @@ mod tests
     use gandr_core_checker::types::ValueType;
     use gandr_core_incremental::boundary::AdoptionDecision;
     use gandr_core_incremental::stream::SynthesisEvent;
+    use gandr_surface_engine::diag::Span;
     use gandr_surface_engine::namespace::DottedName;
     use gandr_surface_engine::namespace::NamePath;
     use gandr_surface_engine::session::ItemOutcome;
@@ -88,6 +89,77 @@ mod tests
                 );
             },
             | ref outcome => panic!("second item should return `greeting`, got {outcome:?}"),
+        }
+    }
+
+    /// A malformed declaration ahead of a valid one is declined at the item it
+    /// damages, and the valid declaration behind it types, binds, and stays
+    /// usable on a later line.
+    ///
+    /// The parser's recovery witness proves `def bad = 1 ~ 2;` and `def good =
+    /// 2;` survive as distinct regions; this carries that boundary to the
+    /// session seam. The stray `~` hangs off no CST field, so `bad` reaches the
+    /// session as a hole item the parse-completeness validator declines rather
+    /// than evaluates — while `good` is an ordinary definition, which is the
+    /// whole point of localizing the damage instead of failing the submission.
+    #[test]
+    fn a_malformed_declaration_is_declined_and_the_later_definition_binds()
+    {
+        let mut session = Session::new();
+        let submission = session
+            .submit("def bad = 1 ~ 2;\ndef good = 2;")
+            .expect("a malformed declaration is recovered, not an infrastructure failure");
+
+        assert_eq!(
+            2,
+            submission.outcomes.len(),
+            "the damaged declaration neither consumes `good` nor collapses the submission, got \
+             {:?}",
+            submission.outcomes
+        );
+        assert_eq!(
+            ItemOutcome::Holey,
+            submission.outcomes[0],
+            "the damaged declaration is declined for its hole, not evaluated"
+        );
+        match submission.outcomes[1] {
+            | ItemOutcome::Definition {
+                ref name,
+                ref ty,
+                bound,
+            } => {
+                assert_eq!("good", name, "the later item defines `good`");
+                assert_eq!(ty, &Ty::Value(ValueType::integer()), "`good : Integer`");
+                assert!(bound, "`good` enters scope from behind the damaged item");
+            },
+            | ref outcome => panic!("second item should define `good`, got {outcome:?}"),
+        }
+
+        assert_eq!(
+            1,
+            submission.report.goals.len(),
+            "one goal, for the damaged declaration, got {:?}",
+            submission.report.goals
+        );
+        assert_eq!(
+            0, submission.report.goals[0].item,
+            "the goal is reported against the damaged item, not the recovered one"
+        );
+        assert_eq!(
+            Span { start: 12, end: 13 },
+            submission.report.goals[0].span,
+            "the goal's span is the stray token's, so the report points at the damage"
+        );
+
+        match sole_outcome(&mut session, "good") {
+            | ItemOutcome::Expression { ref value, .. } => {
+                assert_eq!(
+                    value,
+                    &Eval::Value(Comp::ret(Value::int(2))),
+                    "`good` carries across lines exactly as an undamaged definition does"
+                );
+            },
+            | ref outcome => panic!("`good` should evaluate on a later line, got {outcome:?}"),
         }
     }
 

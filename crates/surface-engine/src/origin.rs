@@ -29,6 +29,7 @@ use crate::boundary::ItemIndex;
 use crate::boundary::OriginEntryCount;
 use crate::boundary::OriginMapEmpty;
 use crate::boundary::OriginNodeOrdinal;
+use crate::boundary::RecoveredSpanFlag;
 use crate::boundary::SourceRange;
 use crate::boundary::SyntaxKind;
 
@@ -607,6 +608,34 @@ impl OriginNode
     pub(crate) fn leaf(entry: OriginEntry) -> Self
     {
         Self::new(entry, Vec::new())
+    }
+
+    /// Whether this shadow tree already records a recovery over `span`: an
+    /// entry carrying a [`HoleNote`] whose byte range overlaps or touches it.
+    ///
+    /// A recovery hole's entry is the only origin total-mode lowering leaves at
+    /// a damaged region, so a caller holding a freshly lowered subtree reads
+    /// this as *some consuming position reached that damage* — which is what
+    /// [`crate::lower`] needs in order to tell an already-recovered region from
+    /// one the walk never reached. The overlap-or-touch join is the one
+    /// `Lowerer::responsible_obligation` uses, for the same reason: the
+    /// melder's span conventions differ by obligation class.
+    pub(crate) fn recovers(
+        &self,
+        span: &SourceRange,
+    ) -> RecoveredSpanFlag
+    {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if node.entry.note.is_some()
+                && node.entry.byte_range.0.start <= span.0.end
+                && span.0.start <= node.entry.byte_range.0.end
+            {
+                return RecoveredSpanFlag(true);
+            }
+            pending.extend(node.children.iter());
+        }
+        RecoveredSpanFlag(false)
     }
 
     /// Flattens this shadow tree into `map`, assigning a fresh stable ID to

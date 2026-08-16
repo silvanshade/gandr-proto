@@ -252,6 +252,10 @@ semantic_copy!(
     pub struct GroutPresence(bool);
 );
 semantic_copy!(
+    /// Whether a lowered origin subtree already records a recovery over a span.
+    pub struct RecoveredSpanFlag(bool);
+);
+semantic_copy!(
     /// Whether a tile is a shell redirection operator.
     pub struct ShellRedirectionFlag(bool);
 );
