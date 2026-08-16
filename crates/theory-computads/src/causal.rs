@@ -301,13 +301,12 @@ impl<A: CellAlphabet> EventOrder<A>
     ///   layers to bite. It has two residues — "maximum over every earlier
     ///   dependence" versus the nearest or the first one, and the `1 +` on the
     ///   prior depth — and a two-layer derivation separates neither, because
-    ///   with one dependence apiece every variant agrees.
-    /// - hypothesis: a depth read off the earlier step's *position index*
-    ///   instead of its depth is still a valid topological layering, so it
-    ///   survives every fixture whose dependence order is a single chain. It is
-    ///   separated by shift-invariance across two recorded orders of two
-    ///   interleaved chains, where the index-based variant gives one trace
-    ///   class two schedules.
+    ///   with one dependence apiece every variant agrees. A further residue: a
+    ///   depth read off the earlier step's *position index* instead of its
+    ///   depth is still a valid topological layering, so it survives every
+    ///   fixture whose dependence order is a single chain. It is separated by
+    ///   shift-invariance across two recorded orders of two interleaved chains,
+    ///   where the index-based variant gives one trace class two schedules.
     /// - witness: `normal_form::tests::the_dependence_edges_are_the_pairs_the_guard_refuses`
     /// - witness: `normal_form::tests::a_three_layer_derivation_gives_three_layers`
     /// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
@@ -493,8 +492,8 @@ impl<A: CellAlphabet> EventOrder<A>
     /// - hypothesis: L3 pointwise — the decision surface is reachability rather
     ///   than adjacency, separated by a pair joined only through an intervening
     ///   event (positive here, negative at [`EventOrder::depends_directly`]),
-    ///   by the same pair asked backwards, and by an event against itself.
-    /// - hypothesis: the order laws are asserted as **properties** rather than
+    ///   by the same pair asked backwards, and by an event against itself. The
+    ///   order laws themselves are asserted as **properties** rather than
     ///   pointwise, over generated derivations: a relation that got
     ///   transitivity or asymmetry wrong on some shape a fixture does not have
     ///   would pass every pointwise test and fail those.
@@ -558,11 +557,10 @@ impl<A: CellAlphabet> EventOrder<A>
     /// # Adequacy
     /// - hypothesis: L3 pointwise — the decision surface is the conjunction of
     ///   two precedence questions plus the reflexive case, separated by a
-    ///   dependent pair, an independent pair, and one event against itself.
-    /// - hypothesis: the load-bearing property is that events sharing a depth
-    ///   are pairwise concurrent, which is a theorem about the recurrence
-    ///   rather than a fixture's accident, so it is asserted over generated
-    ///   derivations.
+    ///   dependent pair, an independent pair, and one event against itself. The
+    ///   load-bearing property is that events sharing a depth are pairwise
+    ///   concurrent, which is a theorem about the recurrence rather than a
+    ///   fixture's accident, so it is asserted over generated derivations.
     /// - witness: `causal::tests::an_event_is_never_concurrent_with_itself`
     /// - witness: `causal::tests::an_out_of_range_index_depends_on_nothing`
     /// - witness: `normal_form::tests::events_sharing_a_layer_are_pairwise_concurrent`
@@ -607,10 +605,10 @@ impl<A: CellAlphabet> EventOrder<A>
     ///   independently: the depth by a layered derivation whose dependent step
     ///   must stay last, and the address tie-break by a layer with two
     ///   occupants, whose declared ascending order is observable in the result.
-    /// - hypothesis: the totality claim is asserted as a property over
-    ///   generated derivations rather than argued, because a key that ties
-    ///   would make the canonical order depend on the recorded one and so make
-    ///   the normal form non-canonical.
+    ///   The totality claim is asserted as a property over generated
+    ///   derivations rather than argued, because a key that ties would make the
+    ///   canonical order depend on the recorded one and so make the normal form
+    ///   non-canonical.
     /// - witness: `normal_form::tests::a_three_layer_derivation_orders_each_layer_by_content_address`
     /// - witness: `normal_form::tests::the_canonical_key_never_ties`
     #[inline]
@@ -651,10 +649,10 @@ impl<A: CellAlphabet> EventOrder<A>
     ///   ends and the next begins, separated by a three-layer derivation with a
     ///   two-occupant first layer and singleton layers after it, so a grouping
     ///   that split on every event or never split is caught by the layer count
-    ///   as well as by the contents.
-    /// - hypothesis: that the concatenation is the canonical order, and that
-    ///   each layer is an antichain, are asserted as properties over generated
-    ///   derivations — a grouping can be wrong on a shape no fixture has.
+    ///   as well as by the contents. That the concatenation is the canonical
+    ///   order, and that each layer is an antichain, are asserted as properties
+    ///   over generated derivations — a grouping can be wrong on a shape no
+    ///   fixture has.
     /// - witness: `normal_form::tests::a_three_layer_derivation_gives_three_layers`
     /// - witness: `normal_form::tests::the_layers_concatenate_to_the_canonical_order`
     /// - witness: `normal_form::tests::events_sharing_a_layer_are_pairwise_concurrent`
@@ -716,12 +714,11 @@ impl<A: CellAlphabet> EventOrder<A>
     ///   target order. Both `- fails:` modes own a decision surface separated
     ///   by a fixture that triggers only it: a target holding an event the
     ///   source does not for the first, and a target that inverts a dependent
-    ///   pair for the second.
-    /// - hypothesis: the load-bearing claim is that the canonical order is
-    ///   always reachable — that the canonical key is a linear extension of the
-    ///   causal order — which is asserted over generated derivations rather
-    ///   than at a fixture, because a key that inverted a dependent pair on
-    ///   some shape would pass every hand-written case.
+    ///   pair for the second. The load-bearing claim is that the canonical
+    ///   order is always reachable — that the canonical key is a linear
+    ///   extension of the causal order — which is asserted over generated
+    ///   derivations rather than at a fixture, because a key that inverted a
+    ///   dependent pair on some shape would pass every hand-written case.
     /// - witness: `causal::tests::the_exchange_witness_carries_the_recorded_order_to_the_canonical_one`
     /// - witness: `causal::tests::a_target_that_is_not_a_rearrangement_is_refused`
     /// - witness: `causal::tests::a_target_inverting_a_dependent_pair_is_refused`
@@ -855,8 +852,7 @@ impl<A: CellAlphabet> EventOrder<A>
 ///   warrant, which is a missing input rather than a missing assertion.
 ///   Symmetry is **not** separated by any fixture and is not claimed to be:
 ///   swapping the arguments is an equivalent mutation, because the guard is
-///   symmetric.
-/// - hypothesis: the relation's soundness is conditional on a premise no
+///   symmetric. The relation's soundness is conditional on a premise no
 ///   conjunct checks and this function cannot see — that the alphabet's term
 ///   algebra is **local**. The only thing standing between an alphabet that
 ///   breaks it and a wrong identification is

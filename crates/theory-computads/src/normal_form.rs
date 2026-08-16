@@ -634,14 +634,13 @@ where
 ///   path is replayed and must reach its own join). **All six** `- fails:`
 ///   modes own a decision surface separated by a fixture that triggers only it.
 ///   Three are reached over a shipped alphabet: a fabricated identifier, a step
-///   at a position carrying no redex, and a retargeted join.
-/// - hypothesis: the other three are reached only over an **adversarial
-///   alphabet**, because each fires exactly when an implementor of
-///   [`CellAlphabet`] gives an answer the two shipped alphabets cannot give,
-///   and the fix for that gap is an input rather than an assertion. The two
-///   kill-signal modes fire when the independence relation licenses a
-///   transposition the semantics does not have: an alphabet reporting a nesting
-///   pair as incomparable reaches
+///   at a position carrying no redex, and a retargeted join. The other three
+///   are reached only over an **adversarial alphabet**, because each fires
+///   exactly when an implementor of [`CellAlphabet`] gives an answer the two
+///   shipped alphabets cannot give, and the fix for that gap is an input rather
+///   than an assertion. The two kill-signal modes fire when the independence
+///   relation licenses a transposition the semantics does not have: an alphabet
+///   reporting a nesting pair as incomparable reaches
 ///   [`NormalFormObstruction::ShiftedScheduleDoesNotFire`], and an alphabet
 ///   whose splice is non-local — the one defect no conjunct of the guard can
 ///   see, since the guard reads positions and cell contents and neither records
@@ -821,11 +820,11 @@ where
 /// - hypothesis: L1 evidence — the order is built from a run of the recorded
 ///   path rather than from a prediction about it, and its two `- fails:` modes
 ///   are separated by a fabricated identifier and a position carrying no redex,
-///   shared with [`run_recording`]'s own witnesses.
-/// - hypothesis: that this order is the *same* order the normalizer uses is
-///   load-bearing — a second copy of the layering would let the two drift — and
-///   is separated by asserting the canonical order here against the schedule
-///   [`normalize`] produced from the same derivation.
+///   shared with [`run_recording`]'s own witnesses. That this order is the
+///   *same* order the normalizer uses is load-bearing — a second copy of the
+///   layering would let the two drift — and is separated by asserting the
+///   canonical order here against the schedule [`normalize`] produced from the
+///   same derivation.
 /// - witness: `crate::tests::causal::the_order_taken_alone_agrees_with_the_normalizers`
 /// - witness: `causal::tests::a_dependent_chain_is_its_own_canonical_order`
 #[inline]
@@ -972,13 +971,12 @@ where
 ///   store, asserted rather than assumed. The L3 residue is the cross-store
 ///   direction proper, separated by one derivation built twice in two stores
 ///   whose insertion orders differ, where [`nf_equal`] answers negative and
-///   this answers positive.
-/// - hypothesis: each conjunct owns a decision surface — the boundary separated
-///   by two peaks reaching one join, the schedule by a different factorization
-///   over one boundary, the multiplicity by a repeated primitive, and the
-///   resolved content by two stores holding *different* cells at the same
-///   handle. The `- fails:` mode is separated by a factor naming an absent
-///   cell.
+///   this answers positive. Each conjunct owns a decision surface — the
+///   boundary separated by two peaks reaching one join, the schedule by a
+///   different factorization over one boundary, the multiplicity by a repeated
+///   primitive, and the resolved content by two stores holding *different*
+///   cells at the same handle. The `- fails:` mode is separated by a factor
+///   naming an absent cell.
 /// - witness: `normal_form::tests::one_derivation_built_in_two_stores_compares_equal_across_them`
 /// - witness: `normal_form::tests::across_stores_agrees_with_nf_equal_on_one_store`
 /// - witness: `normal_form::tests::two_stores_holding_different_cells_at_one_handle_compare_unequal`
