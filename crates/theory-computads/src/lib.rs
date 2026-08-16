@@ -56,6 +56,15 @@
 //!   (`spec:implementation/circuit-terms.md`, `circuit-terms-spike-07`) and
 //!   carrying the convexity conjunct's discharge as a certificate rather than a
 //!   recomputed sweep.
+//! - [`instantiate`] — the **circuit rule application site**, where that
+//!   identification is well-posed. A circuit rule is a schema whose body
+//!   applies rewrite-*sorted ports*, so a two-redex body names no cell pair to
+//!   ask the guard about and [`gandr_theory_levitation::elaborate_body`] defers
+//!   the question rather than answering it. Here each port is instantiated by a
+//!   stored cell, the two positions are read from the block's own occurrence
+//!   record rather than fabricated, and [`shift::derive_shift_equivalence`]
+//!   decides the pair — with the composite replayed under both
+//!   sequentializations before the identification is handed back.
 //! - [`causal`] — the **finite event partial order** of a recorded derivation:
 //!   its events, the dependence edges the [`shift`] guard decides, the causal
 //!   precedence order, the layering, and the **exchange witness** carrying one
@@ -133,6 +142,7 @@ pub mod compose;
 pub mod elaborate;
 pub mod flow;
 pub mod footprint;
+pub mod instantiate;
 pub mod linearity;
 pub mod normal_form;
 pub mod overlap;
@@ -180,6 +190,7 @@ pub use crate::boundary::PeakOccurrenceIndex;
 pub use crate::boundary::PositionRootStatus;
 pub use crate::boundary::PositionStep;
 pub use crate::boundary::PrimMultiplicity;
+pub use crate::boundary::RedexOccurrenceCount;
 pub use crate::boundary::SchedulePosition;
 pub use crate::boundary::ShiftReplay;
 pub use crate::boundary::StepIndependence;
@@ -228,6 +239,10 @@ pub use crate::footprint::FootprintObstruction;
 pub use crate::footprint::MatchFootprint;
 pub use crate::footprint::footprint_independence;
 pub use crate::footprint::match_footprint;
+pub use crate::instantiate::CircuitShift;
+pub use crate::instantiate::CircuitShiftObstruction;
+pub use crate::instantiate::RewriteBinding;
+pub use crate::instantiate::instantiate_two_redex_rule;
 pub use crate::linearity::NonLinearPattern;
 pub use crate::linearity::admit_linear_cell;
 pub use crate::linearity::copied_hole;

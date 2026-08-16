@@ -187,6 +187,11 @@ copy_wrapper!(
     "Whether a command pattern contains no metavariables."
 );
 copy_wrapper!(
+    RedexOccurrenceCount,
+    usize,
+    "Number of redex occurrences a circuit rule's body unfolds to."
+);
+copy_wrapper!(
     NormalizationBudget,
     usize,
     "Maximum number of rewrite steps for normalization."

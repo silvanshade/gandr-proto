@@ -5,6 +5,8 @@ mod adversarial_alphabet;
 #[cfg(test)]
 mod asynchronous_axioms;
 #[cfg(test)]
+mod circuit_instantiation;
+#[cfg(test)]
 mod composition;
 #[cfg(test)]
 mod differential;
