@@ -16,6 +16,8 @@ name = "differential"
 path = "tests/lib.rs"
 
 [dependencies]
+# BLAKE3 gives persisted checkpoint identities a stable content address.
+blake3.workspace = true
 # The core CBPV vocabulary an item carries and the typing machine that types it:
 # `syntax::Term`, `types::Ty`, `ctx::Ctx`, `error::TypeError`, and `machine`.
 gandr-core-checker.workspace = true

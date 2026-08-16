@@ -605,6 +605,7 @@ dependencies = [
 name = "gandr-core-incremental"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "gandr-core-checker",
  "gandr-theory-orders",
  "proptest",

@@ -203,6 +203,18 @@ pub struct Resume
 
 impl Resume
 {
+    /// Creates a resume result from a validated checkpoint set with no
+    /// adoptions.
+    #[must_use]
+    pub fn from_checkpoints(checkpoints: Checkpoints) -> Self
+    {
+        let adopted = alloc::vec![false; checkpoints.items.len()];
+        Self {
+            checkpoints,
+            adopted,
+        }
+    }
+
     /// Borrows the edited program's per-item typings in source order.
     ///
     /// # Contract

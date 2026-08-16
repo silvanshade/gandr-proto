@@ -69,4 +69,7 @@ extern crate alloc;
 pub mod boundary;
 pub mod checkpoint;
 pub mod footprint;
+pub mod persistence;
 pub mod region;
+pub mod session;
+pub mod stream;
