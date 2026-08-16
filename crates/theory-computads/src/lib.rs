@@ -56,6 +56,12 @@
 //!   (`spec:implementation/circuit-terms.md`, `circuit-terms-spike-07`) and
 //!   carrying the convexity conjunct's discharge as a certificate rather than a
 //!   recomputed sweep.
+//! - [`causal`] — the **finite event partial order** of a recorded derivation:
+//!   its events, the dependence edges the [`shift`] guard decides, the causal
+//!   precedence order, the layering, and the **exchange witness** carrying one
+//!   sequentialization to another as licensed adjacent transpositions. The
+//!   canonical schedule is one projection of it, so what used to be an argument
+//!   about shift-invariance is a value a caller can check.
 //! - [`normal_form`] — the **tracelet normal form**: a canonical form on
 //!   certificate data (unique primitive factorization by content address,
 //!   integer-graded multiplicities, and a causal canonical schedule) whose
@@ -115,6 +121,7 @@ extern crate alloc;
 pub mod alphabet;
 pub mod boundary;
 pub mod bridge;
+pub mod causal;
 pub mod cell;
 pub mod completion;
 pub mod compose;
@@ -147,6 +154,11 @@ pub use crate::boundary::CompletionStepBudget;
 pub use crate::boundary::DeclinedCircuitIndex;
 pub use crate::boundary::DeclinedFaceIndex;
 pub use crate::boundary::DeclinedOpIndex;
+pub use crate::boundary::EventConcurrency;
+pub use crate::boundary::EventCount;
+pub use crate::boundary::EventDependence;
+pub use crate::boundary::EventIndex;
+pub use crate::boundary::EventPrecedence;
 pub use crate::boundary::FiringPermission;
 pub use crate::boundary::FlowEquality;
 pub use crate::boundary::FlowPortIndex;
@@ -160,6 +172,7 @@ pub use crate::boundary::PeakOccurrenceIndex;
 pub use crate::boundary::PositionRootStatus;
 pub use crate::boundary::PositionStep;
 pub use crate::boundary::PrimMultiplicity;
+pub use crate::boundary::SchedulePosition;
 pub use crate::boundary::ShiftReplay;
 pub use crate::boundary::StepIndependence;
 pub use crate::boundary::SubstitutionBindingCount;
@@ -167,7 +180,13 @@ pub use crate::boundary::SubstitutionDecision;
 pub use crate::boundary::SubstitutionEmptyStatus;
 pub use crate::boundary::TraceletEquivalence;
 pub use crate::boundary::TraceletReplay;
+pub use crate::boundary::TranspositionCount;
 pub use crate::boundary::VarianceFlowRole;
+pub use crate::causal::DerivationEvent;
+pub use crate::causal::EventOrder;
+pub use crate::causal::ExchangeObstruction;
+pub use crate::causal::ExchangeWitness;
+pub use crate::causal::Transposition;
 pub use crate::cell::Cell;
 pub use crate::cell::CellId;
 pub use crate::cell::CellStore;
@@ -202,17 +221,23 @@ pub use crate::footprint::match_footprint;
 pub use crate::linearity::NonLinearPattern;
 pub use crate::linearity::admit_linear_cell;
 pub use crate::linearity::copied_hole;
-// NOTE: `normal_form::normalize` is deliberately NOT re-exported here —
-// `rewrite::normalize` (budgeted term normalization) already owns that name at
-// the crate root, and the two are different operations on different objects.
-// The normal form's entry point is spelled `normal_form::normalize`.
 pub use crate::normal_form::CellAddress;
 pub use crate::normal_form::NormalFormObstruction;
 pub use crate::normal_form::PrimCert;
 pub use crate::normal_form::PrimId;
+pub use crate::normal_form::ReplayWitness;
 pub use crate::normal_form::TraceletNf;
 pub use crate::normal_form::cell_address;
+pub use crate::normal_form::certified_nf_equal;
+pub use crate::normal_form::event_order;
 pub use crate::normal_form::nf_equal;
+pub use crate::normal_form::nf_equal_across_stores;
+// NOTE: `normal_form::normalize` is deliberately NOT re-exported here —
+// `rewrite::normalize` (budgeted term normalization) already owns that name at
+// the crate root, and the two are different operations on different objects.
+// The normal form's entry point is spelled `normal_form::normalize`.
+// `normalize_certified` carries no such collision and is re-exported below.
+pub use crate::normal_form::normalize_certified;
 pub use crate::normal_form::prim_address;
 pub use crate::normal_form::tracelets_nf_equal;
 pub use crate::overlap::Overlap;

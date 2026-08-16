@@ -98,6 +98,31 @@
 //! the same position is always dependent on itself, so a repeat sits at a
 //! strictly greater depth.
 //!
+//! **The layering is a [`crate::causal::EventOrder`], and this module reads one
+//! projection of it.** The schedule is
+//! [`crate::causal::EventOrder::canonical_order`] flattened; the layers, the
+//! precedence order, and the exchange witness carrying a recorded order to the
+//! canonical one all live there, because a schedule cannot express which steps
+//! could have fired *together*. The argument in the paragraph above is also
+//! *checkable* there rather than only stated here:
+//! [`crate::causal::EventOrder::exchange_to_canonical`] produces the licensed
+//! adjacent transpositions that do the rearrangement, each one asked of the
+//! same independence relation.
+//!
+//! # The receipt is a value, not a caller's promise
+//!
+//! [`normalize`] returns a [`TraceletNf`], whose fields are public and which is
+//! `Clone` — so the "this was replayed" property lives in [`nf_equal`]'s
+//! `- requires:` clause and is discharged by a caller's own bookkeeping.
+//! [`normalize_certified`] returns a [`ReplayWitness`] instead: private fields,
+//! one constructor, no way to assemble or edit one. A consumer that must not
+//! trust its caller takes that and compares with [`certified_nf_equal`].
+//!
+//! Two normal forms taken against **different** stores are compared by
+//! [`nf_equal_across_stores`], which resolves each side's cells in its own
+//! store and compares content rather than handles — the one premise a receipt
+//! cannot carry, because a [`PrimCert`] names its cell by store identifier.
+//!
 //! # And the canonicalization is checked, not trusted
 //!
 //! The canonical schedule is **replayed** from the peak before the normal form
@@ -156,17 +181,16 @@ use alloc::vec::Vec;
 
 use crate::alphabet::CellAlphabet;
 use crate::alphabet::ConvexityDischarge;
-use crate::boundary::CausalDepth;
 use crate::boundary::NormalFormEquality;
 use crate::boundary::PrimMultiplicity;
-use crate::boundary::StepIndependence;
+use crate::causal::DerivationEvent;
+use crate::causal::EventOrder;
 use crate::cell::Cell;
 use crate::cell::CellId;
 use crate::cell::CellStore;
 use crate::rewrite::CellApp;
 use crate::rewrite::rewrite_at;
 use crate::sequent::SequentAlphabet;
-use crate::shift::check_shift_guard;
 use crate::tracelet::Tracelet;
 
 /// The FNV-1a offset basis of the 128-bit primitive content digest.
@@ -294,6 +318,122 @@ impl<A: CellAlphabet> TraceletNf<A>
             path.push(graded.0.0.clone());
         }
         Some(path)
+    }
+}
+
+/// A **replay receipt** for one recorded derivation — its normal form, its
+/// causal structure, and the fact that [`normalize_certified`] confirmed both.
+///
+/// # What this type is for
+///
+/// [`TraceletNf`] carries the *data* of a normal form and cannot carry its
+/// *provenance*: its fields are public and it is `Clone`, so a value can be
+/// assembled, or edited after the fact, with no replay behind it. The receipt
+/// property therefore survives only as [`nf_equal`]'s `- requires:` clause — an
+/// obligation a caller discharges by its own bookkeeping, which is exactly the
+/// kind of obligation that is dropped at a crate boundary.
+///
+/// A `ReplayWitness` closes that: its fields are private,
+/// [`normalize_certified`] is its only constructor, and no method hands out a
+/// mutable interior. So **possessing one is possessing the receipt**, and a
+/// consumer that must not trust its caller — a certificate consumer at a kernel
+/// boundary above all — takes this rather than a bare normal form.
+///
+/// # What it does not promise
+///
+/// It is still a receipt for one derivation against **one store**, because a
+/// [`PrimCert`] names its cell by store identifier. Two witnesses taken against
+/// different stores are compared by [`nf_equal_across_stores`], which resolves
+/// the cells rather than trusting the handles. And it remains a statement about
+/// a *presentation*: NF-equal implies replay-equal and the converse is false,
+/// which no amount of provenance changes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReplayWitness<A: CellAlphabet = SequentAlphabet>
+{
+    /// The normal form the recorded derivation was confirmed to have.
+    normal_form: TraceletNf<A>,
+    /// The causal structure the canonical schedule is a linear extension of.
+    order: EventOrder<A>,
+}
+
+impl<A: CellAlphabet> ReplayWitness<A>
+{
+    /// The normal form this receipt certifies.
+    #[inline]
+    #[must_use]
+    pub const fn normal_form(&self) -> &TraceletNf<A>
+    {
+        &self.normal_form
+    }
+
+    /// The normal form, taken out of the receipt.
+    ///
+    /// The receipt is consumed rather than copied, so a caller that wants the
+    /// data alone gives up the provenance in the same expression — which is the
+    /// point: dropping the evidence should be visible in the source.
+    #[inline]
+    #[must_use]
+    pub fn into_normal_form(self) -> TraceletNf<A>
+    {
+        self.normal_form
+    }
+
+    /// The finite event partial order of the certified derivation.
+    #[inline]
+    #[must_use]
+    pub const fn event_order(&self) -> &EventOrder<A>
+    {
+        &self.order
+    }
+
+    /// The term the certified derivation starts from, as recorded.
+    #[inline]
+    #[must_use]
+    pub const fn peak(&self) -> &A::Cmd
+    {
+        &self.normal_form.peak
+    }
+
+    /// The term the certified derivation reaches, as recorded.
+    #[inline]
+    #[must_use]
+    pub const fn joins_at(&self) -> &A::Cmd
+    {
+        &self.normal_form.joins_at
+    }
+
+    /// The canonical schedule as a runnable path.
+    ///
+    /// Unlike [`TraceletNf::canonical_path`] this is **total**: it reads the
+    /// event order rather than resolving addresses through the factorization,
+    /// so there is no missing-address case to answer for.
+    ///
+    /// # Contract
+    /// - ensures: the steps of [`crate::causal::EventOrder::canonical_order`],
+    ///   in that order — the path [`normalize_certified`] replayed before
+    ///   handing out this receipt.
+    /// - provides: the compressed certificate's decompression, without the
+    ///   partiality the map-resolved spelling carries.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 agreement — the answer is checked against the
+    ///   independently-computed [`TraceletNf::canonical_path`] on the same
+    ///   receipt, so a divergence between the two spellings of "the canonical
+    ///   path" fails rather than accumulating.
+    /// - witness: `normal_form::tests::a_replay_witness_carries_its_own_boundary_and_order`
+    #[inline]
+    #[must_use]
+    pub fn canonical_path(&self) -> Vec<CellApp<A>>
+    {
+        let order = self.order.canonical_order();
+        let mut path = Vec::with_capacity(order.len());
+        for index in order {
+            if let Some(event) = self.order.event(index) {
+                path.push(event.step().clone());
+            }
+        }
+        path
     }
 }
 
@@ -539,6 +679,60 @@ pub fn normalize<A>(
 where
     A: CellAlphabet,
 {
+    let witness = normalize_certified(store, peak, joins_at, path)?;
+    Ok(witness.into_normal_form())
+}
+
+/// **Normalize** a recorded derivation to a [`ReplayWitness`], or refuse it.
+///
+/// This is [`normalize`] with the receipt kept rather than discarded: the same
+/// computation, returning the value whose *existence* is the evidence instead
+/// of the value a caller then has to vouch for. [`normalize`] is this function
+/// with the witness projected away, so the two can never diverge.
+///
+/// # Contract
+/// - requires: `path` is the derivation recorded from `peak` to `joins_at`
+///   against `store` — the same triple [`crate::tracelet::Tracelet::replay`]
+///   would be given.
+/// - ensures: `Ok(witness)` only under [`normalize`]'s own conditions — the
+///   recorded path fires step by step from the skolemized `peak` and reaches
+///   the skolemized `joins_at`, and the canonical schedule does the same. The
+///   witness additionally carries the derivation's [`EventOrder`], which is the
+///   causal structure the canonical schedule is a linear extension of.
+/// - provides: an **unforgeable** replay receipt. The type's fields are private
+///   and this is its only constructor, so a value of it cannot be assembled by
+///   a consumer and cannot be edited after the fact — which is what
+///   [`certified_nf_equal`] needs and what [`nf_equal`] can only ask for in
+///   prose.
+/// - fails: [`NormalFormObstruction`], exactly as [`normalize`] does.
+/// - panics: none.
+/// - intension: one replay of the recorded path, one replay of the canonical
+///   schedule, and a number of independence questions quadratic in the
+///   surviving path length.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the witness is validated against the input
+///   rather than against a predicted answer, by the two replays [`normalize`]
+///   already performs. What this function adds over [`normalize`] is the
+///   *provenance* of the returned value, whose decision surface is that no
+///   other constructor exists — a claim the type system carries and a test
+///   cannot state, so it is separated instead by the observation that the
+///   witness's boundary and canonical path agree with the normal form's.
+/// - witness: `normal_form::tests::a_replay_witness_carries_its_own_boundary_and_order`
+/// - witness: `normal_form::tests::a_certified_pair_is_equal_exactly_when_its_normal_forms_are`
+#[inline]
+pub fn normalize_certified<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    joins_at: &A::Cmd,
+    path: &[CellApp<A>],
+) -> Result<ReplayWitness<A>, NormalFormObstruction<A>>
+where
+    A: CellAlphabet,
+{
     let start = A::skolemize(peak);
     let target = A::skolemize(joins_at);
     let survivors = run_recording(store, &start, path)?;
@@ -549,13 +743,18 @@ where
         });
     }
     let convexity = A::convexity_discharge(store);
-    let occurrences = layer_causally(store, survivors.steps, convexity);
+    let order = EventOrder::of_events(store, survivors.steps, convexity);
+    let canonical_order = order.canonical_order();
     let mut primitives: BTreeMap<PrimId, (PrimCert<A>, PrimMultiplicity)> = BTreeMap::new();
-    let mut schedule = Vec::with_capacity(occurrences.len());
-    let mut canonical = Vec::with_capacity(occurrences.len());
-    for occurrence in occurrences {
-        let cert = PrimCert(occurrence.step.clone());
-        match primitives.entry(occurrence.address) {
+    let mut schedule = Vec::with_capacity(canonical_order.len());
+    let mut canonical = Vec::with_capacity(canonical_order.len());
+    for index in canonical_order {
+        let Some(event) = order.event(index)
+        else {
+            continue;
+        };
+        let cert = PrimCert(event.step().clone());
+        match primitives.entry(event.address()) {
             | Entry::Vacant(slot) => {
                 slot.insert((cert, PrimMultiplicity::from(1_u32)));
             },
@@ -563,7 +762,7 @@ where
                 let graded = slot.get_mut();
                 if graded.0 != cert {
                     return Err(NormalFormObstruction::ContentAddressCollision {
-                        address: occurrence.address,
+                        address: event.address(),
                         held: Box::new(graded.0.clone()),
                         offered: Box::new(cert),
                     });
@@ -571,8 +770,8 @@ where
                 graded.1 = PrimMultiplicity::from(u32::from(graded.1).saturating_add(1_u32));
             },
         }
-        schedule.push(occurrence.address);
-        canonical.push(occurrence.step);
+        schedule.push(event.address());
+        canonical.push(event.step().clone());
     }
     let shifted = run_schedule(store, &start, &canonical)?;
     if shifted != target {
@@ -580,13 +779,68 @@ where
             reached: Box::new(shifted),
         });
     }
-    Ok(TraceletNf {
-        peak: peak.clone(),
-        joins_at: joins_at.clone(),
-        convexity,
-        primitives,
-        schedule,
+    Ok(ReplayWitness {
+        normal_form: TraceletNf {
+            peak: peak.clone(),
+            joins_at: joins_at.clone(),
+            convexity,
+            primitives,
+            schedule,
+        },
+        order,
     })
+}
+
+/// The **finite event partial order** of a recorded derivation, without
+/// normalizing it.
+///
+/// The order needs no join: it reads the steps that moved the term and the
+/// independence relation between them, and says nothing about where the
+/// derivation lands. A caller that also wants the boundary checked calls
+/// [`normalize_certified`] and reads [`ReplayWitness::event_order`].
+///
+/// # Contract
+/// - requires: `path` is the derivation recorded from `peak` against `store`.
+/// - ensures: `Ok(order)` over the steps of `path` that moved the term, in
+///   recorded order, when every recorded step's cell resolves and fires.
+/// - provides: the causal structure of one derivation — its events, its
+///   dependence edges, its precedence order, its layers, and the exchange
+///   witnesses between its sequentializations.
+/// - fails: [`NormalFormObstruction::UnknownCell`] for a stale identifier and
+///   [`NormalFormObstruction::StepDoesNotFire`] for a position carrying no
+///   redex. The four remaining variants cannot arise: nothing here compares a
+///   join, addresses a factorization, or replays a schedule.
+/// - panics: none.
+/// - intension: one replay of the recorded path and a number of independence
+///   questions quadratic in the surviving path length.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the order is built from a run of the recorded
+///   path rather than from a prediction about it, and its two `- fails:` modes
+///   are separated by a fabricated identifier and a position carrying no redex,
+///   shared with [`run_recording`]'s own witnesses.
+/// - hypothesis: that this order is the *same* order the normalizer uses is
+///   load-bearing — a second copy of the layering would let the two drift — and
+///   is separated by asserting the canonical order here against the schedule
+///   [`normalize`] produced from the same derivation.
+/// - witness: `crate::tests::causal::the_order_taken_alone_agrees_with_the_normalizers`
+/// - witness: `causal::tests::a_dependent_chain_is_its_own_canonical_order`
+#[inline]
+pub fn event_order<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    path: &[CellApp<A>],
+) -> Result<EventOrder<A>, NormalFormObstruction<A>>
+where
+    A: CellAlphabet,
+{
+    let start = A::skolemize(peak);
+    let survivors = run_recording(store, &start, path)?;
+    let convexity = A::convexity_discharge(store);
+    Ok(EventOrder::of_events(store, survivors.steps, convexity))
 }
 
 /// Whether two normal forms are the **same normal form**.
@@ -632,6 +886,146 @@ where
     A: CellAlphabet,
 {
     NormalFormEquality::from(left == right)
+}
+
+/// Whether two **receipts** certify the same normal form.
+///
+/// This is [`nf_equal`] with its `- requires:` clause discharged by the types
+/// instead of by the caller: a [`ReplayWitness`] cannot be assembled, so both
+/// sides are necessarily values [`normalize_certified`] returned.
+///
+/// # Contract
+/// - requires: both receipts were taken against the **same** store, because a
+///   [`PrimCert`] names its cell by store identifier. This is the one premise
+///   the receipt cannot carry, and [`nf_equal_across_stores`] is what removes
+///   it.
+/// - ensures: positive iff [`nf_equal`] holds of the two normal forms.
+/// - provides: **the sound direction only**, exactly as [`nf_equal`] does — a
+///   positive answer means the two derivations are the same transformation, so
+///   [`crate::tracelet::replay_equivalent`] holds; a negative answer means
+///   nothing. What is added is that the positive answer no longer rests on a
+///   caller's word about where its inputs came from.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — the oracle is [`nf_equal`] on the projected
+///   normal forms, so the decision surface is only that this function projects
+///   and delegates rather than deciding again; separated by a receipt pair that
+///   agrees and one that does not, each also asserted through [`nf_equal`].
+/// - witness: `normal_form::tests::a_certified_pair_is_equal_exactly_when_its_normal_forms_are`
+#[inline]
+#[must_use]
+pub fn certified_nf_equal<A>(
+    left: &ReplayWitness<A>,
+    right: &ReplayWitness<A>,
+) -> NormalFormEquality
+where
+    A: CellAlphabet,
+{
+    nf_equal(&left.normal_form, &right.normal_form)
+}
+
+/// Whether two normal forms taken against **different stores** are the same
+/// normal form.
+///
+/// # Why this is not [`nf_equal`] with two stores
+///
+/// [`nf_equal`] compares [`PrimCert`]s, and a `PrimCert` names its cell by
+/// [`CellId`] — a dense insertion-order handle into one store. Two stores that
+/// hold the same cell in a different insertion order give it different
+/// identifiers, so structural comparison answers *unequal* for two derivations
+/// that are the same transformation. That is why [`nf_equal`] requires one
+/// store, and it is a real limitation the moment certificates come from two
+/// sessions.
+///
+/// This resolves each side's cells in **its own** store and compares the cells'
+/// content, so the answer depends on what the cells *are* and not on where they
+/// happen to sit. Identity still never rests on a content address: the schedule
+/// and the factorization keys are digests, and every key that matches has its
+/// two [`PrimCert`]s' positions and resolved cell contents compared as well —
+/// so a digest collision costs a negative answer, never a false positive.
+///
+/// # Contract
+/// - requires: `left` came from [`normalize`] against `left_store` and `right`
+///   from [`normalize`] against `right_store`, so both are replay receipts.
+/// - ensures: `Ok(positive)` iff the two agree on peak, join, convexity
+///   warrant, canonical schedule, and a factorization compared by multiplicity,
+///   position, and resolved cell **content**.
+/// - provides: **the sound direction only**, as [`nf_equal`] does — a positive
+///   answer means the two derivations are the same transformation, because
+///   replay reads a cell's content and never its handle, so content-identical
+///   factorizations over equal boundaries replay identically. A negative answer
+///   means nothing.
+/// - fails: [`NormalFormObstruction::UnknownCell`] when a factor names a cell
+///   its own store does not hold, which cannot happen for a normal form that
+///   store produced.
+/// - panics: none.
+/// - intension: one map walk with two store lookups per shared factor; no
+///   replay, because both sides are already receipts.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — the oracle is [`nf_equal`] on a single store,
+///   which this must agree with whenever both sides are read against the same
+///   store, asserted rather than assumed. The L3 residue is the cross-store
+///   direction proper, separated by one derivation built twice in two stores
+///   whose insertion orders differ, where [`nf_equal`] answers negative and
+///   this answers positive.
+/// - hypothesis: each conjunct owns a decision surface — the boundary separated
+///   by two peaks reaching one join, the schedule by a different factorization
+///   over one boundary, the multiplicity by a repeated primitive, and the
+///   resolved content by two stores holding *different* cells at the same
+///   handle. The `- fails:` mode is separated by a factor naming an absent
+///   cell.
+/// - witness: `normal_form::tests::one_derivation_built_in_two_stores_compares_equal_across_them`
+/// - witness: `normal_form::tests::across_stores_agrees_with_nf_equal_on_one_store`
+/// - witness: `normal_form::tests::two_stores_holding_different_cells_at_one_handle_compare_unequal`
+/// - witness: `normal_form::tests::a_factor_naming_an_absent_cell_is_refused_across_stores`
+#[inline]
+pub fn nf_equal_across_stores<A>(
+    left_store: &CellStore<A>,
+    left: &TraceletNf<A>,
+    right_store: &CellStore<A>,
+    right: &TraceletNf<A>,
+) -> Result<NormalFormEquality, NormalFormObstruction<A>>
+where
+    A: CellAlphabet,
+{
+    if left.peak != right.peak
+        || left.joins_at != right.joins_at
+        || left.convexity != right.convexity
+        || left.schedule != right.schedule
+        || left.primitives.len() != right.primitives.len()
+    {
+        return Ok(NormalFormEquality::from(false));
+    }
+    for (address, graded) in &left.primitives {
+        let Some(counterpart) = right.primitives.get(address)
+        else {
+            return Ok(NormalFormEquality::from(false));
+        };
+        if graded.1 != counterpart.1 || graded.0.0.at != counterpart.0.0.at {
+            return Ok(NormalFormEquality::from(false));
+        }
+        let Some(held) = left_store.get(graded.0.0.cell)
+        else {
+            return Err(NormalFormObstruction::UnknownCell {
+                cell: graded.0.0.cell,
+            });
+        };
+        let Some(offered) = right_store.get(counterpart.0.0.cell)
+        else {
+            return Err(NormalFormObstruction::UnknownCell {
+                cell: counterpart.0.0.cell,
+            });
+        };
+        if held != offered {
+            return Ok(NormalFormEquality::from(false));
+        }
+    }
+    Ok(NormalFormEquality::from(true))
 }
 
 /// The **certificate-level fast path**: whether two tracelets are certified
@@ -707,37 +1101,15 @@ where
     )
 }
 
-/// One surviving step of a run, with its content address.
-#[derive(Clone, Debug)]
-struct RunStep<A: CellAlphabet>
-{
-    /// The step, as recorded.
-    step: CellApp<A>,
-    /// The content address of the primitive it applies.
-    address: PrimId,
-}
-
-/// The outcome of running a recorded path: the surviving steps and the term
-/// reached.
+/// The outcome of running a recorded path: the surviving steps, as events, and
+/// the term reached.
 #[derive(Clone, Debug)]
 struct RunSurvivors<A: CellAlphabet>
 {
     /// The steps that moved the term, in recorded order (unit steps dropped).
-    steps: Vec<RunStep<A>>,
+    steps: Vec<DerivationEvent<A>>,
     /// The term the whole recorded path reached.
     reached: A::Cmd,
-}
-
-/// One surviving step placed in the causal layering.
-#[derive(Clone, Debug)]
-struct Occurrence<A: CellAlphabet>
-{
-    /// The step, as recorded.
-    step: CellApp<A>,
-    /// The content address of the primitive it applies.
-    address: PrimId,
-    /// Its layer in the dependence order.
-    depth: CausalDepth,
 }
 
 /// Run `path` from `start`, dropping the steps that leave the term unchanged.
@@ -793,10 +1165,10 @@ where
         if next == current {
             continue;
         }
-        steps.push(RunStep {
-            step: step.clone(),
-            address: prim_address(cell, &step.at),
-        });
+        steps.push(DerivationEvent::new(
+            step.clone(),
+            prim_address(cell, &step.at),
+        ));
         current = next;
     }
     Ok(RunSurvivors {
@@ -856,164 +1228,6 @@ where
         current = next;
     }
     Ok(current)
-}
-
-/// Place the surviving steps in the causal layering and sort them canonically.
-///
-/// # Contract
-/// - ensures: each step takes the depth `1 + max` over the earlier steps it
-///   depends on (zero when it depends on none), and the result is stably sorted
-///   by `(depth, address)`. Because a repeat of one primitive always depends on
-///   its earlier occurrence, no two entries can tie on both keys, so the order
-///   is total and the result is a canonical representative of the shift class.
-/// - provides: `equiv_S`, decided through the crate's single independence
-///   relation rather than a second copy of it.
-/// - panics: none.
-/// - intension: quadratic in the number of surviving steps, one independence
-///   question per ordered pair.
-///
-/// # Adequacy
-/// - hypothesis: L3 pointwise, and it needs **three** layers to bite. The
-///   recurrence has two residues — "maximum over every earlier dependence"
-///   versus the nearest or the first one, and the `1 + ` on the prior depth —
-///   and a two-layer derivation separates neither, because with one dependence
-///   apiece every variant agrees. The separating fixture is a step whose
-///   nearest and first earlier dependences both sit at depth zero while its
-///   deepest sits at depth one, arranged so the collapsed layering emits a
-///   schedule that cannot fire. The tie-break arm is separated by a layer with
-///   two occupants, whose declared ascending address order is observable in
-///   [`TraceletNf::schedule`].
-/// - hypothesis: the recurrence's remaining residue is that a depth taken from
-///   the earlier step's *position index* instead of its depth is still a valid
-///   topological layering — it increases strictly along every dependence edge,
-///   so it fires and reaches the join — and therefore survives every fixture
-///   whose dependence order is a single chain. It is separated not by
-///   inspecting a depth but by **shift-invariance across two recorded orders**:
-///   over two interleaved chains (`x` depending on `a`, `y` on `b`, with `a`,
-///   `b` independent and `x`, `y` independent) the index-based variant gives
-///   the two recorded orders of one trace class two different schedules, while
-///   the depth recurrence gives them one. So the flattened schedule *can* carry
-///   this residue after all, and what stays unobservable is narrower than the
-///   whole class: only a depth assignment that flattens to the same sequence
-///   for **every** recorded order. [`CausalDepth`] is still computed and never
-///   surfaced — the schedule flattens the layering — so a layer-grouped
-///   schedule remains the better projection for a consumer that wants the
-///   parallel batches, but it is not what this residue needed.
-/// - hypothesis: two mutations of the loop are **equivalent (semantic)** and
-///   are excluded here rather than tested. Sorting with
-///   [`slice::sort_unstable_by`] instead of [`slice::sort_by`] changes nothing
-///   observable, because the key is total by the `- ensures:` argument above
-///   and a total key leaves stability nothing to decide. Extending the inner
-///   range to include the step itself also changes nothing: a step is always
-///   dependent on itself (its position order with itself is
-///   [`crate::alphabet::PositionOrder::Same`], never `Incomparable`) and its
-///   own depth is not yet recorded, so the self-comparison contributes exactly
-///   `1` and the recurrence's unique solution shifts from `d` to `d + 1`
-///   uniformly — an order-preserving relabelling of the layers.
-/// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
-/// - witness: `normal_form::tests::a_three_layer_derivation_orders_each_layer_by_content_address`
-/// - witness: `normal_form::tests::two_interleaved_dependence_chains_layer_by_depth_and_not_by_position`
-/// - witness: `normal_form::tests::a_shuffled_independent_schedule_has_one_normal_form`
-#[inline]
-fn layer_causally<A>(
-    store: &CellStore<A>,
-    steps: Vec<RunStep<A>>,
-    convexity: ConvexityDischarge,
-) -> Vec<Occurrence<A>>
-where
-    A: CellAlphabet,
-{
-    let mut depths: Vec<CausalDepth> = Vec::with_capacity(steps.len());
-    for (index, current) in steps.iter().enumerate() {
-        let mut depth = 0_usize;
-        for (earlier, prior) in steps.iter().enumerate().take(index) {
-            if bool::from(step_independence(store, prior, current, convexity)) {
-                continue;
-            }
-            let prior_depth = depths.get(earlier).copied().unwrap_or_default();
-            depth = depth.max(usize::from(prior_depth).saturating_add(1_usize));
-        }
-        depths.push(CausalDepth::from(depth));
-    }
-    let mut occurrences: Vec<Occurrence<A>> = steps
-        .into_iter()
-        .zip(depths)
-        .map(|(entry, depth)| Occurrence {
-            step: entry.step,
-            address: entry.address,
-            depth,
-        })
-        .collect();
-    occurrences.sort_by(|left, right| {
-        left.depth
-            .cmp(&right.depth)
-            .then_with(|| left.address.cmp(&right.address))
-    });
-    occurrences
-}
-
-/// Whether two recorded steps are licensed to commute.
-///
-/// The question is delegated to the crate's single shift guard
-/// ([`check_shift_guard`]) rather than restated, and **any** refusal — a
-/// comparable position, a genuine overlap, an undischarged convexity conjunct,
-/// or an unresolvable identifier — is read as dependence. That direction is the
-/// conservative one: refusing to commute keeps the recorded order, which is
-/// always a valid derivation.
-///
-/// The relation is **symmetric**, which the causal layering depends on and
-/// which is a fact about [`check_shift_guard`] rather than an assumption here:
-/// its first conjunct answers [`crate::alphabet::PositionOrder::Incomparable`]
-/// for a pair exactly when it does for the swapped pair, its second asks the
-/// overlap enumerator in *both* ordered directions, and its third does not read
-/// the pair at all. Were it asymmetric, a licensed transposition could change
-/// which pairs count as dependent and the layering's depths would stop being a
-/// property of the derivation.
-///
-/// # Contract
-/// - ensures: a positive answer exactly when the guard's three conjuncts hold
-///   of the pair under `convexity`; the answer does not depend on which of the
-///   two steps is passed as `left`.
-/// - provides: the independence relation the causal layering quotients by.
-/// - panics: none.
-///
-/// # Adequacy
-/// - hypothesis: L1 evidence — the relation is not restated here, so its
-///   conjuncts are witnessed at [`check_shift_guard`]'s own suite; what this
-///   wrapper adds is the direction of the collapse, separated by an overlapping
-///   pair at incomparable positions whose two orders demonstrably reach one
-///   term and which the quotient still refuses. The third conjunct's
-///   contribution reaches this wrapper only over an alphabet that withholds the
-///   warrant, which is a missing input rather than a missing assertion: both
-///   shipped alphabets discharge convexity for every store, so nothing else can
-///   tell whether [`normalize`] asks the alphabet, layers under the answer it
-///   got, and records the warrant it used. Symmetry is **not** separated by any
-///   fixture and is not claimed to be: swapping the arguments is an equivalent
-///   mutation, because the guard is symmetric.
-/// - hypothesis: the relation's soundness is conditional on a premise no
-///   conjunct checks and this wrapper cannot see — that the alphabet's term
-///   algebra is **local**, so a rewrite at one position leaves every
-///   incomparable position alone ([`CellAlphabet::splice_cmd_at`]'s own `-
-///   ensures:`). Two applications can satisfy all three conjuncts honestly and
-///   still fail to commute if that clause is broken, and the only thing
-///   standing between such an alphabet and a wrong identification is
-///   [`normalize`]'s replay of its own canonical schedule. That is the sharpest
-///   statement of why the replay is not redundant, and it has a witness.
-/// - witness: `normal_form::tests::an_overlapping_pair_keeps_its_recorded_order`
-/// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
-/// - witness: `normal_form::tests::a_withheld_convexity_warrant_empties_the_shift_quotient`
-/// - witness: `normal_form::tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join`
-#[inline]
-fn step_independence<A>(
-    store: &CellStore<A>,
-    left: &RunStep<A>,
-    right: &RunStep<A>,
-    convexity: ConvexityDischarge,
-) -> StepIndependence
-where
-    A: CellAlphabet,
-{
-    StepIndependence::from(check_shift_guard(store, &left.step, &right.step, convexity).is_ok())
 }
 
 /// A deterministic 128-bit FNV-1a digest over [`core::hash::Hash`] writes.
@@ -1081,6 +1295,7 @@ mod tests
     use gandr_core_sequent::il::Polarity;
 
     use super::*;
+    use crate::boundary::EventCount;
     use crate::cell::Cell;
     use crate::overlap::OverlapKind;
     use crate::overlap::enumerate_overlaps;
@@ -1470,6 +1685,225 @@ mod tests
         assert_ne!(
             primitive, position_free,
             "the domain separators keep the two digests of one cell apart"
+        );
+    }
+
+    /// The ground peak `⟨Succ(Succ(Zero)) | add(Zero; ⊤)⟩` of the two-step
+    /// `add-S` chain.
+    fn chain_peak() -> CmdPat
+    {
+        CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Succ", [ProdPat::ctor("Succ", [ProdPat::ctor("Zero", [])])]),
+            ConsPat::op("add", [ProdPat::ctor("Zero", [])], ConsPat::Top),
+        )
+    }
+
+    /// Run a recorded path from `start`, or fail the test naming the step.
+    fn run_path(
+        store: &CellStore,
+        start: &CmdPat,
+        path: &[CellApp],
+    ) -> CmdPat
+    {
+        let mut current = start.clone();
+        for step in path {
+            let cell = store.get(step.cell).expect("the step names a stored cell");
+            current = rewrite_at(cell, &current, &step.at)
+                .expect("the step fires at its recorded position");
+        }
+        current
+    }
+
+    /// Complete a chain fixture around a store that already holds `add-S`
+    /// under `add`: the peak, the join the two root steps reach, and the steps.
+    fn finish_chain(
+        store: CellStore,
+        add: CellId,
+    ) -> (CellStore, CmdPat, CmdPat, [CellApp; 2])
+    {
+        let peak = chain_peak();
+        let steps = [
+            CellApp {
+                cell: add,
+                at: Pos::root(),
+            },
+            CellApp {
+                cell: add,
+                at: Pos::root(),
+            },
+        ];
+        let start = <SequentAlphabet as CellAlphabet>::skolemize(&peak);
+        let joins_at = run_path(&store, &start, &steps);
+        (store, peak, joins_at, steps)
+    }
+
+    /// The two-step `add-S` chain against a store holding **only** `add-S`, so
+    /// the rule takes the first identifier the store hands out.
+    fn chain_fixture() -> (CellStore, CmdPat, CmdPat, [CellApp; 2])
+    {
+        let mut store = CellStore::new();
+        let add = store.insert(add_s());
+        finish_chain(store, add)
+    }
+
+    /// The same chain against a store holding an unrelated cell **first**, so
+    /// `add-S` takes a different identifier for the same content.
+    ///
+    /// This is the whole point of the cross-store comparison: two stores that
+    /// hold one cell under two handles are two presentations of one rule set.
+    fn chain_fixture_behind_a_decoy() -> (CellStore, CmdPat, CmdPat, [CellApp; 2])
+    {
+        let mut store = CellStore::new();
+        let decoy = store.insert(reflexive_cell());
+        let add = store.insert(add_s());
+        assert_ne!(
+            decoy, add,
+            "the two cells are distinct, so the store keeps both"
+        );
+        finish_chain(store, add)
+    }
+
+    #[test]
+    fn a_replay_witness_carries_its_own_boundary_and_order()
+    {
+        let (store, peak, joins_at, steps) = chain_fixture();
+        let witness = normalize_certified(&store, &peak, &joins_at, &steps)
+            .expect("the two-step chain replays, so it normalizes");
+        assert_eq!(
+            &peak,
+            witness.peak(),
+            "the receipt records the boundary it was verified across"
+        );
+        assert_eq!(&joins_at, witness.joins_at(), "join included");
+        assert_eq!(
+            EventCount::from(2_usize),
+            witness.event_order().event_count(),
+            "both steps moved the term, so both are events"
+        );
+        assert_eq!(
+            witness.normal_form().canonical_path(),
+            Some(witness.canonical_path()),
+            "and the two spellings of the canonical path agree"
+        );
+    }
+
+    #[test]
+    fn a_certified_pair_is_equal_exactly_when_its_normal_forms_are()
+    {
+        let (store, peak, joins_at, steps) = chain_fixture();
+        let left =
+            normalize_certified(&store, &peak, &joins_at, &steps).expect("the chain normalizes");
+        let right = normalize_certified(&store, &peak, &joins_at, &steps)
+            .expect("and normalizes the same way twice");
+        assert!(
+            bool::from(certified_nf_equal(&left, &right)),
+            "one derivation certifies equal to itself"
+        );
+        let start = <SequentAlphabet as CellAlphabet>::skolemize(&peak);
+        let prefix = [steps[0].clone()];
+        let prefix_join = run_path(&store, &start, &prefix);
+        let short = normalize_certified(&store, &peak, &prefix_join, &prefix)
+            .expect("the one-step prefix is a derivation of its own");
+        assert!(
+            !bool::from(certified_nf_equal(&left, &short)),
+            "and a derivation reaching a different join does not"
+        );
+        assert_eq!(
+            bool::from(nf_equal(left.normal_form(), short.normal_form())),
+            bool::from(certified_nf_equal(&left, &short)),
+            "the certified equality delegates rather than deciding again"
+        );
+    }
+
+    #[test]
+    fn one_derivation_built_in_two_stores_compares_equal_across_them()
+    {
+        // THE CROSS-STORE DIRECTION. One derivation, one rule, two stores that
+        // number that rule differently. Comparing the handles says the two are
+        // different; comparing what the handles resolve to says they are the
+        // same, which is the answer replay would give.
+        let (plain, peak, joins_at, steps) = chain_fixture();
+        let (decoyed, decoy_peak, decoy_join, decoy_steps) = chain_fixture_behind_a_decoy();
+        assert_eq!(peak, decoy_peak, "the two fixtures share a peak");
+        assert_eq!(joins_at, decoy_join, "and a join");
+        let left = normalize(&plain, &peak, &joins_at, &steps).expect("the chain normalizes");
+        let right = normalize(&decoyed, &decoy_peak, &decoy_join, &decoy_steps)
+            .expect("and so does its twin behind the decoy");
+        assert_ne!(
+            steps[0].cell, decoy_steps[0].cell,
+            "the same rule really does carry two identifiers"
+        );
+        assert!(
+            !bool::from(nf_equal(&left, &right)),
+            "the handle-comparing equality separates the two presentations"
+        );
+        let across = nf_equal_across_stores(&plain, &left, &decoyed, &right)
+            .expect("every factor resolves in its own store");
+        assert!(
+            bool::from(across),
+            "and the content-comparing equality identifies them"
+        );
+    }
+
+    #[test]
+    fn across_stores_agrees_with_nf_equal_on_one_store()
+    {
+        let (store, peak, joins_at, steps) = chain_fixture();
+        let left = normalize(&store, &peak, &joins_at, &steps).expect("the chain normalizes");
+        let same =
+            nf_equal_across_stores(&store, &left, &store, &left).expect("every factor resolves");
+        assert_eq!(
+            bool::from(nf_equal(&left, &left)),
+            bool::from(same),
+            "read against one store the two equalities are the same equality"
+        );
+        let start = <SequentAlphabet as CellAlphabet>::skolemize(&peak);
+        let prefix = [steps[0].clone()];
+        let prefix_join = run_path(&store, &start, &prefix);
+        let short = normalize(&store, &peak, &prefix_join, &prefix).expect("the prefix normalizes");
+        let differing =
+            nf_equal_across_stores(&store, &left, &store, &short).expect("every factor resolves");
+        assert_eq!(
+            bool::from(nf_equal(&left, &short)),
+            bool::from(differing),
+            "and they agree on the negative direction too"
+        );
+    }
+
+    #[test]
+    fn two_stores_holding_different_cells_at_one_handle_compare_unequal()
+    {
+        // The decision surface is that the cells are RESOLVED and compared. One
+        // normal form is read against two stores whose first cell differs, so
+        // everything the comparison reads from the normal forms is identical
+        // and only the resolved content separates them.
+        let (plain, peak, joins_at, steps) = chain_fixture();
+        let left = normalize(&plain, &peak, &joins_at, &steps).expect("the chain normalizes");
+        let mut swapped = CellStore::new();
+        let held = swapped.insert(reflexive_cell());
+        assert_eq!(
+            steps[0].cell, held,
+            "the two stores put different cells under one identifier"
+        );
+        let across = nf_equal_across_stores(&plain, &left, &swapped, &left)
+            .expect("the handle resolves in both stores");
+        assert!(
+            !bool::from(across),
+            "so the comparison answers negative on the content it resolved"
+        );
+    }
+
+    #[test]
+    fn a_factor_naming_an_absent_cell_is_refused_across_stores()
+    {
+        let (plain, peak, joins_at, steps) = chain_fixture();
+        let left = normalize(&plain, &peak, &joins_at, &steps).expect("the chain normalizes");
+        let empty = CellStore::new();
+        let refusal = nf_equal_across_stores(&plain, &left, &empty, &left);
+        assert!(
+            matches!(refusal, Err(NormalFormObstruction::UnknownCell { .. })),
+            "a factor whose identifier resolves to nothing is refused, not answered"
         );
     }
 }

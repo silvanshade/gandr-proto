@@ -87,6 +87,41 @@ copy_wrapper!(
     "Layer of a recorded step in the dependence order of a derivation."
 );
 copy_wrapper!(
+    EventIndex,
+    usize,
+    "Index of one event in a derivation's finite event order, in recorded order."
+);
+copy_wrapper!(
+    EventCount,
+    usize,
+    "Number of events in a derivation's finite event order."
+);
+copy_wrapper!(
+    EventDependence,
+    bool,
+    "Whether one event of a derivation depends directly on an earlier one."
+);
+copy_wrapper!(
+    EventPrecedence,
+    bool,
+    "Whether one event of a derivation causally precedes another."
+);
+copy_wrapper!(
+    EventConcurrency,
+    bool,
+    "Whether two distinct events of a derivation are causally unordered."
+);
+copy_wrapper!(
+    SchedulePosition,
+    usize,
+    "Index of one position in a sequentialization of a derivation's events."
+);
+copy_wrapper!(
+    TranspositionCount,
+    usize,
+    "Number of adjacent transpositions an exchange witness performs."
+);
+copy_wrapper!(
     CompletionStepBudget,
     usize,
     "Maximum number of completion worklist steps."
