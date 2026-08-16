@@ -485,6 +485,78 @@ mod tests
     }
 
     #[test]
+    fn a_pattern_solution_is_the_most_general_one()
+    {
+        // The equation does not use the spine variable, so the most general
+        // solution ignores it. A solution that mentioned the variable anyway
+        // would still replay green, which is exactly why generality needs its
+        // own witness rather than resting on the replay.
+        let (certificate, replay) =
+            run_and_replay(context(&[(HoleId::from(0_u32), MetaSort::Comp)]), vec![
+                comps(
+                    Comp::lam(
+                        "x",
+                        Comp::app(Comp::Hole(0), Value::var(NameRef::from("x"))),
+                    ),
+                    Comp::lam("x", Comp::ret(Value::Int(1))),
+                ),
+            ]);
+        let binder = level_name(crate::boundary::VariableLevel::from(0));
+        assert_eq!(
+            certificate
+                .comp_solution(HoleId::from(0_u32))
+                .map(AsRef::as_ref),
+            Some(&Comp::Abs(binder, None, Rc::new(Comp::ret(Value::Int(1)))))
+        );
+        assert_eq!(replay, Replay::Validated);
+    }
+
+    #[test]
+    fn an_intersection_solution_drops_every_position_the_spines_disagree_on()
+    {
+        // `?a x y` against `?a y x` agrees nowhere, so the most general
+        // solution takes both arguments and uses neither: the body is a bare
+        // fresh metavariable under two abstractions, with no application left.
+        let (certificate, _replay) =
+            run_and_replay(context(&[(HoleId::from(0_u32), MetaSort::Comp)]), vec![
+                comps(
+                    Comp::lam(
+                        "x",
+                        Comp::lam(
+                            "y",
+                            Comp::app(
+                                Comp::app(Comp::Hole(0), Value::var(NameRef::from("x"))),
+                                Value::var(NameRef::from("y")),
+                            ),
+                        ),
+                    ),
+                    Comp::lam(
+                        "x",
+                        Comp::lam(
+                            "y",
+                            Comp::app(
+                                Comp::app(Comp::Hole(0), Value::var(NameRef::from("y"))),
+                                Value::var(NameRef::from("x")),
+                            ),
+                        ),
+                    ),
+                ),
+            ]);
+        let solution = certificate
+            .comp_solution(HoleId::from(0_u32))
+            .expect("the intersection must bind the metavariable");
+        let Comp::Abs(_, _, ref outer) = *solution.as_ref()
+        else {
+            panic!("the solution must abstract over the first spine position");
+        };
+        let Comp::Abs(_, _, ref inner) = *outer.as_ref()
+        else {
+            panic!("the solution must abstract over the second spine position");
+        };
+        assert!(matches!(*inner.as_ref(), Comp::Hole(_)));
+    }
+
+    #[test]
     fn a_thunk_metavariable_under_force_replays_at_its_declared_grade()
     {
         let (certificate, replay) = run_and_replay(
