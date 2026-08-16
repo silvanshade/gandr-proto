@@ -997,6 +997,64 @@ fn an_unclosed_delimiter_yields_to_every_declaration_family() -> Result<(), Box<
     }
     Ok(())
 }
+#[test]
+fn malformed_input_continues_into_a_later_definition() -> Result<(), Box<dyn Error>>
+{
+    let source = "def bad = 1 ~ 2;\ndef good = 2;";
+    let first = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        first
+            .obligations()
+            .iter()
+            .any(|obligation| obligation.class == Oblig::UnmoldedTok),
+        "the stray token remains an explicit recovery obligation"
+    );
+    let root = first.cst().node(first.cst().root())?;
+    assert_eq!(
+        root.kind(),
+        NodeKind::Wald,
+        "recovery still commits the documented Wald root"
+    );
+    let declarations: Vec<(NodeId, Vec<String>)> = root
+        .children()?
+        .iter()
+        .copied()
+        .filter_map(|id| {
+            let view = first.cst().node(id).ok()?;
+            (view.kind() == NodeKind::Meld).then(|| (id, direct_tiles(first.cst(), id)))
+        })
+        .collect();
+    let bad_index = declarations.iter().position(|entry| {
+        entry.1.iter().any(|tile| tile == "def") && entry.1.iter().any(|tile| tile == "bad")
+    });
+    let good_index = declarations.iter().position(|entry| {
+        entry.1.iter().any(|tile| tile == "def") && entry.1.iter().any(|tile| tile == "good")
+    });
+    assert!(
+        bad_index.is_some() && good_index.is_some(),
+        "the malformed and recovered definitions remain top-level melds: {declarations:?}"
+    );
+    assert!(
+        bad_index < good_index,
+        "the recovered `def good` follows the malformed `def bad` boundary"
+    );
+    assert!(
+        find_meld_with_tile(first.cst(), first.cst().root(), TileText::from("good")).is_some(),
+        "recovery must preserve the later definition instead of forming a parse wall"
+    );
+    let second = parse(built(), SourceSlice::from(source))?;
+    assert_eq!(
+        first.obligations(),
+        second.obligations(),
+        "recovery obligations are deterministic"
+    );
+    assert_eq!(
+        first.cst().hash(first.cst().root())?,
+        second.cst().hash(second.cst().root())?,
+        "recovery CST is deterministic"
+    );
+    Ok(())
+}
 
 #[test]
 fn corpus_parses_totally() -> Result<(), Box<dyn Error>>
