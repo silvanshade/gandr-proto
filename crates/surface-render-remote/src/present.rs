@@ -317,6 +317,89 @@ impl MarkSpan
     }
 }
 
+/// The identity tier of an inspected entity attribute.
+#[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "codecs", serde(rename_all = "lowercase"))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AttrTier
+{
+    /// Metadata that does not change the entity's identity.
+    Inert,
+    /// A transformation that participates in the entity's identity.
+    Semantic,
+}
+
+/// An inspected entity attribute's stable id — the annotated item's index in
+/// `Lowered::items` upstream, wrapped so the wire surface never exposes the
+/// bare index.
+#[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "codecs", serde(transparent))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct AttrNode(usize);
+
+impl From<usize> for AttrNode
+{
+    #[inline]
+    fn from(node: usize) -> Self
+    {
+        Self(node)
+    }
+}
+
+impl From<AttrNode> for usize
+{
+    #[inline]
+    fn from(node: AttrNode) -> Self
+    {
+        node.0
+    }
+}
+
+/// One inspected entity attribute projected for a renderer.
+#[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttrCard
+{
+    /// The annotated item's stable id.
+    pub node: AttrNode,
+    /// The resolved schema name.
+    pub schema: String,
+    /// The checked payload, already rendered by the pipeline.
+    pub payload: String,
+    /// Whether this attribute changes entity identity.
+    pub tier: AttrTier,
+    /// The source byte span of the attribute block.
+    pub span: Range<ByteOffset>,
+}
+
+impl AttrCard
+{
+    /// An attribute card from its renderer-facing parts.
+    ///
+    /// # Contract
+    /// - ensures: fields are stored verbatim.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn new(
+        node: AttrNode,
+        schema: String,
+        payload: String,
+        tier: AttrTier,
+        span: Range<ByteOffset>,
+    ) -> Self
+    {
+        Self {
+            node,
+            schema,
+            payload,
+            tier,
+            span,
+        }
+    }
+}
+
 /// One diagnostic card: a fail-fast typing diagnostic with its partial
 /// derivation.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
@@ -569,6 +652,8 @@ pub struct PreviewFrame
     /// The parse's recovery obligations, in source order; empty for a clean
     /// parse.
     pub obligations: Vec<ObligationCard>,
+    /// Inspected entity attributes, in source order.
+    pub attributes: Box<[AttrCard]>,
     /// Type under the cursor byte the preview was requested with.
     pub cursor: Option<CursorTy>,
     /// Completion candidates (session bindings; prelude and user definitions).
@@ -750,6 +835,9 @@ pub fn byte_of_pos(
 #[cfg(test)]
 mod tests
 {
+    use super::AttrCard;
+    use super::AttrNode;
+    use super::AttrTier;
     use super::ByteOffset;
     use super::Candidate;
     use super::CursorTy;
@@ -802,6 +890,18 @@ mod tests
             "while checking f".to_owned(),
             "in application".to_owned(),
         ]);
+        let attr = AttrCard::new(
+            AttrNode::from(0),
+            "doc".to_owned(),
+            "Str(\"squares\")".to_owned(),
+            AttrTier::Inert,
+            ByteOffset::from(5) .. ByteOffset::from(22),
+        );
+        assert_eq!(0, usize::from(attr.node));
+        assert_eq!("doc", attr.schema);
+        assert_eq!("Str(\"squares\")", attr.payload);
+        assert_eq!(AttrTier::Inert, attr.tier);
+        assert_eq!(ByteOffset::from(5) .. ByteOffset::from(22), attr.span);
 
         let goal = GoalCard::new(
             "?0".to_owned(),
@@ -917,6 +1017,27 @@ mod tests
             vec!["x : Nat".to_owned()],
             ByteOffset::from(10) .. ByteOffset::from(12),
         );
+        let attr = AttrCard::new(
+            AttrNode::from(0),
+            "doc".to_owned(),
+            "Str(\"squares\")".to_owned(),
+            AttrTier::Inert,
+            ByteOffset::from(5) .. ByteOffset::from(22),
+        );
+        let attr_json = serde_json::to_value(&attr).expect("serialize attribute");
+        assert_eq!(
+            serde_json::json!({
+                "node": 0_usize,
+                "schema": "doc",
+                "payload": "Str(\"squares\")",
+                "tier": "inert",
+                "span": {"start": 5_usize, "end": 22_usize},
+            }),
+            attr_json
+        );
+        let decoded_attr: AttrCard =
+            serde_json::from_value(attr_json).expect("deserialize attribute");
+        assert_eq!(attr, decoded_attr);
         let goal_json = serde_json::to_value(&goal).expect("serialize goal");
         assert_eq!(
             serde_json::json!({

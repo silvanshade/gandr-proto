@@ -237,4 +237,39 @@ mod tests
             built.diagnostics
         );
     }
+
+    #[cfg(feature = "codecs")]
+    #[test]
+    fn report_json_is_deterministic_for_inspected_attributes()
+    {
+        let source = "@[doc(\"a\")]\n@[license(\"MIT\")]\ndef f = 42;\n";
+        let lowered = lower_source_total(source.into()).unwrap();
+        let first = report(&lowered, &prelude_ctx())
+            .to_json()
+            .expect("first report serializes");
+        let second = report(&lowered, &prelude_ctx())
+            .to_json()
+            .expect("second report serializes");
+        assert_eq!(first, second);
+        let parsed: serde_json::Value = serde_json::from_str(&first).expect("valid report JSON");
+        assert_eq!(
+            parsed["attributes"],
+            serde_json::json!([
+                {
+                    "node": 0_usize,
+                    "schema": "doc",
+                    "payload": "Str(\"a\")",
+                    "tier": "inert",
+                    "span": {"start": 0_usize, "end": 11_usize}
+                },
+                {
+                    "node": 0_usize,
+                    "schema": "license",
+                    "payload": "Str(\"MIT\")",
+                    "tier": "inert",
+                    "span": {"start": 12_usize, "end": 29_usize}
+                }
+            ])
+        );
+    }
 }

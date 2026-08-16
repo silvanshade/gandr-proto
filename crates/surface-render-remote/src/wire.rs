@@ -37,6 +37,7 @@
 
 use core::fmt;
 
+use crate::present::AttrCard;
 use crate::present::DiagCard;
 use crate::present::GoalCard;
 use crate::present::HlSpan;
@@ -681,6 +682,8 @@ pub struct ReportView
     /// The parse's recovery obligations, in source order; empty for a clean
     /// parse.
     pub obligations: Vec<ObligationCard>,
+    /// Inspected entity attributes, in source order.
+    pub attributes: Box<[AttrCard]>,
 }
 
 /// The reified machine-state projection carried by a [`FrameBody::Frame`]
@@ -1165,6 +1168,11 @@ mod tests
     use super::SessionBadges;
     use super::WIRE_SCHEMA_VERSION;
     #[cfg(feature = "codecs")]
+    use crate::present::AttrCard;
+    use crate::present::AttrNode;
+    #[cfg(feature = "codecs")]
+    use crate::present::AttrTier;
+    #[cfg(feature = "codecs")]
     use crate::present::ByteOffset;
     #[cfg(feature = "codecs")]
     use crate::present::ObligationClass;
@@ -1314,6 +1322,11 @@ mod tests
         assert_eq!(DirView::Infer, DirView::default());
         assert_eq!(LayerView::Value, LayerView::default());
     }
+    #[test]
+    fn report_view_defaults_without_attributes()
+    {
+        assert!(ReportView::default().attributes.is_empty());
+    }
 
     #[cfg(feature = "codecs")]
     #[test]
@@ -1330,7 +1343,17 @@ mod tests
             RenderFrame::frame(
                 "file:///a.gandr".to_owned(),
                 DocVersion::from(2_i32),
-                ReportView::default(),
+                ReportView {
+                    attributes: vec![AttrCard::new(
+                        AttrNode::from(0),
+                        "doc".to_owned(),
+                        "Str(\"squares\")".to_owned(),
+                        AttrTier::Inert,
+                        5.into() .. 22.into(),
+                    )]
+                    .into_boxed_slice(),
+                    ..ReportView::default()
+                },
                 MachineView::default(),
             ),
             RenderFrame::delta(
