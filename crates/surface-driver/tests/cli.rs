@@ -8,6 +8,7 @@
 #[cfg(test)]
 mod tests
 {
+    use std::path::Path;
     use std::path::PathBuf;
     use std::process::Command;
     use std::process::Output;
@@ -115,6 +116,39 @@ mod tests
         }
     }
 
+    /// The exact filename used by the fixture source on this target.
+    fn fixture_library_name() -> PathBuf
+    {
+        if cfg!(target_os = "windows") {
+            PathBuf::from("testlib.dll")
+        }
+        else if cfg!(target_os = "macos") {
+            PathBuf::from("testlib.dylib")
+        }
+        else {
+            PathBuf::from("testlib.so")
+        }
+    }
+
+    /// Copy the build-script-produced fixture under the source's exact path.
+    fn copy_fixture(fixture_dir: &Path)
+    {
+        std::fs::copy(
+            gandr_runtime_ffi::hermetic_testlib_path(),
+            fixture_dir.join(fixture_library_name()),
+        )
+        .expect("the FFI fixture library must be copied");
+    }
+
+    /// Rewrite the corpus source to the copied target-specific fixture path.
+    fn native_ffi_script() -> String
+    {
+        include_str!("../../surface-corpus/examples/model/21-ffi-native-call.gandr").replace(
+            "\"./testlib\"",
+            &format!("\"./{}\"", fixture_library_name().display()),
+        )
+    }
+
     /// The command that runs the built driver with `arguments`.
     fn driver<Arguments>(arguments: Arguments) -> Command
     where
@@ -155,6 +189,22 @@ mod tests
     {
         driver(arguments)
             .env("PATH", &tools.path)
+            .output()
+            .expect("the built driver must be spawnable")
+    }
+
+    /// Run the built driver from a fixture directory.
+    fn drive_in<Arguments>(
+        directory: &std::path::Path,
+        arguments: Arguments,
+    ) -> Output
+    where
+        Arguments: IntoIterator,
+        Arguments::Item: AsRef<std::ffi::OsStr>,
+    {
+        Command::new(env!("CARGO_BIN_EXE_gandr"))
+            .current_dir(directory)
+            .args(arguments)
             .output()
             .expect("the built driver must be spawnable")
     }
@@ -306,6 +356,104 @@ mod tests
         assert_eq!(
             output.stdout, b"Int(42)\n",
             "a completed run routes its returned result to the caller"
+        );
+    }
+
+    #[test]
+    fn the_native_ffi_corpus_script_runs_through_the_cli()
+    {
+        let fixture_dir = std::env::temp_dir().join(format!(
+            "gandr-driver-ffi-fixture-{}-{}",
+            std::process::id(),
+            NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&fixture_dir).expect("the FFI fixture directory must be creatable");
+        copy_fixture(&fixture_dir);
+        let script_text = native_ffi_script();
+        let script = ScratchScript::write("ffi", script_text.as_str());
+        let output = drive_in(&fixture_dir, [&script.path]);
+        drop(std::fs::remove_dir_all(&fixture_dir));
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(0_i32)),
+            "the hermetic FFI script must complete successfully"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("42") && stdout.contains('5'),
+            "the native result must reach the CLI caller; got {stdout}"
+        );
+    }
+
+    #[test]
+    fn an_ffi_library_load_failure_is_a_failed_run()
+    {
+        let script = ScratchScript::write(
+            "ffi-load-failure",
+            "extern \"c\" from \"missing_library\" {\n  def missing() -> i32;\n}\n\nmissing_library.missing()\n",
+        );
+        let output = drive([&script.path]);
+        assert_eq!(status_of(&output), ProcessStatus(Some(1_i32)));
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("could not be loaded"),
+            "loader failures are host failures: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn an_ffi_missing_symbol_is_a_failed_run()
+    {
+        let fixture_dir = std::env::temp_dir().join(format!(
+            "gandr-driver-ffi-symbol-{}-{}",
+            std::process::id(),
+            NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&fixture_dir).expect("the FFI fixture directory must be creatable");
+        copy_fixture(&fixture_dir);
+        let script = ScratchScript::write(
+            "ffi-symbol-failure",
+            format!(
+                "extern \"c\" from \"./{}\" as testlib {{\n  def missing() -> i32;\n}}\n\ntestlib.missing()\n",
+                fixture_library_name().display()
+            )
+            .as_str(),
+        );
+        let output = drive_in(&fixture_dir, [&script.path]);
+        drop(std::fs::remove_dir_all(&fixture_dir));
+        assert_eq!(status_of(&output), ProcessStatus(Some(1_i32)));
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("ffi symbol `missing`"),
+            "symbol failures are host symbol failures: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn an_ffi_null_returned_string_is_a_failed_run()
+    {
+        let fixture_dir = std::env::temp_dir().join(format!(
+            "gandr-driver-ffi-string-{}-{}",
+            std::process::id(),
+            NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&fixture_dir).expect("the FFI fixture directory must be creatable");
+        copy_fixture(&fixture_dir);
+        let script = ScratchScript::write(
+            "ffi-string-failure",
+            format!(
+                "extern \"c\" from \"./{}\" as testlib {{\n  def gandr_null_string() -> CStr;\n}}\n\ntestlib.gandr_null_string()\n",
+                fixture_library_name().display()
+            )
+            .as_str(),
+        );
+        let output = drive_in(&fixture_dir, [&script.path]);
+        drop(std::fs::remove_dir_all(&fixture_dir));
+        assert_eq!(status_of(&output), ProcessStatus(Some(1_i32)));
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("invalid returned C string"),
+            "invalid returned strings are host failures: {}",
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 

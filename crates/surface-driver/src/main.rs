@@ -1,10 +1,10 @@
 //! The gandr toolchain driver — the script-runner face.
 //!
 //! `gandr <file>` runs one gandr source file: the driver hands the path to
-//! [`gandr_surface_engine::run::run_source_file`], which lowers, links,
-//! prelude-checks, and runs the program under the host-effect handler. The
-//! caller receives a rendered returned value on standard output, while the
-//! run's [`ShellOutcome`] still determines the process exit status.
+//! [`gandr_runtime_ffi::run_source_file`], which lowers, links, prelude-checks,
+//! and runs the program under the combined native/shell host. The caller
+//! receives a rendered returned value on standard output, while the run's
+//! [`gandr_runtime_ffi::FfiShellOutcome`] determines the process exit status.
 //!
 //! The REPL, `tui`, `lsp`, `mcp`, `fmt`, and `build` faces are **deferred**:
 //! the REPL waits on a line-editor decision wired to the landed grammar,
@@ -17,9 +17,10 @@ use std::io::Write as _;
 use std::process::ExitCode;
 
 use gandr_core_checker::outcome::Eval;
-use gandr_runtime_effects::ShellOutcome;
-use gandr_surface_engine::run::RunFileError;
-use gandr_surface_engine::run::run_source_file;
+use gandr_core_checker::syntax::Comp;
+use gandr_runtime_ffi::FfiRunError;
+use gandr_runtime_ffi::FfiShellOutcome;
+use gandr_runtime_ffi::run_source_file;
 /// Route a completed returned value to the process caller.
 ///
 /// # Contract
@@ -28,9 +29,9 @@ use gandr_surface_engine::run::run_source_file;
 ///   implementation; non-returning outcomes produce no result output.
 /// - provides: caller-visible script results without changing status reporting.
 /// - panics: none.
-fn announce_result(outcome: &ShellOutcome)
+fn announce_result(outcome: &FfiShellOutcome)
 {
-    if let Some(value) = outcome.returned() {
+    if let &FfiShellOutcome::Completed(Eval::Value(Comp::Ret(ref value))) = outcome {
         let rendered = format!("{value:?}\n");
         announce(rendered.as_str());
     }
@@ -276,20 +277,24 @@ where
 /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
 /// - witness: `cli::tests::a_script_that_blames_leaves_with_a_failure_status`
 /// - witness: `cli::tests::a_script_whose_tool_cannot_spawn_leaves_with_a_failure_status`
-fn classify(outcome: &ShellOutcome) -> ExitStatus
+fn classify(outcome: &FfiShellOutcome) -> ExitStatus
 {
-    match *outcome {
-        | ShellOutcome::Completed(Eval::Value(_)) => EXIT_COMPLETED,
-        | ShellOutcome::Completed(Eval::Blame(blame)) => {
+    match outcome {
+        | &FfiShellOutcome::Completed(Eval::Value(_)) => EXIT_COMPLETED,
+        | &FfiShellOutcome::Completed(Eval::Blame(ref blame)) => {
             report(&format!("gandr: the program blamed: {blame:?}\n"));
             EXIT_FAILED
         },
-        | ShellOutcome::Completed(Eval::Stuck(ref reason)) => {
+        | &FfiShellOutcome::Completed(Eval::Stuck(ref reason)) => {
             report(&format!("gandr: the program stuck: {reason:?}\n"));
             EXIT_FAILED
         },
-        | ShellOutcome::Exited { code } => ExitStatus(code),
-        | ShellOutcome::HostFailed(ref error) => {
+        | &FfiShellOutcome::Exited { code } => ExitStatus(code),
+        | &FfiShellOutcome::ShellFailed(ref error) => {
+            report(&format!("gandr: {error}\n"));
+            EXIT_FAILED
+        },
+        | &FfiShellOutcome::FfiFailed(ref error) => {
             report(&format!("gandr: {error}\n"));
             EXIT_FAILED
         },
@@ -312,7 +317,7 @@ fn classify(outcome: &ShellOutcome) -> ExitStatus
 /// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 /// - witness: `cli::tests::a_script_with_no_program_is_refused`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
-fn refusal(error: &RunFileError) -> String
+fn refusal(error: &FfiRunError) -> String
 {
     format!("gandr: {error}\n")
 }

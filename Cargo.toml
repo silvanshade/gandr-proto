@@ -10,6 +10,7 @@ members = [
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-effects",
+  "crates/runtime-ffi",
   "crates/storage-artifact",
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
@@ -75,6 +76,8 @@ features = ["std"]
 [workspace.dependencies.cc]
 version = "1.2.62"
 default-features = false
+# consumers:
+# - gandr-runtime-ffi (build)
 
 # clippy's lint-authoring utility library (git-pinned to match the workspace
 # nightly's rustc_private API).
@@ -185,10 +188,18 @@ path = "crates/kernel-strata"
 # Headless host-effect runtime (Exec/Fs/Proc/Env handlers) driven by the L machine.
 # consumers:
 # - gandr
+# - gandr-runtime-ffi
 # - gandr-surface-corpus
 # - gandr-surface-engine
 [workspace.dependencies.gandr-runtime-effects]
 path = "crates/runtime-effects"
+
+# Native FFI execution path: a libffi + libloading handler at the host seam.
+# consumers:
+# - gandr
+# - gandr-surface-corpus
+[workspace.dependencies.gandr-runtime-ffi]
+path = "crates/runtime-ffi"
 
 # Outer-layer CAS wiring: v1 export artifacts with canonical BLAKE3 manifest identity.
 # consumers:
@@ -332,16 +343,20 @@ path = "crates/workflow-gates"
 version = "1.48.0"
 default-features = false
 
-# The interpreter FFI execution path (`gandr-ffi`, proposal-ffi.md §5.1). libffi
-# builds a call frame from a runtime `ffi_type` description, so any extern
-# signature is callable without per-function codegen; the pin matches the
-# proposal. libffi-sys builds the bundled C libffi via `cc`.
+# The native FFI call-frame builder (`gandr-runtime-ffi`, proposal-ffi.md
+# §5.1). libffi assembles a call frame from a runtime `ffi_type` description,
+# so any extern signature is callable without per-function codegen.
+# consumers:
+# - gandr-runtime-ffi
 [workspace.dependencies.libffi]
 version = "5.1.1"
 default-features = false
 
-# Dynamic symbol resolution for the FFI handler (`gandr-ffi`): `dlopen`/`dlsym`
-# over the platform loader, resolving each extern block's `from "lib"` target.
+# Dynamic symbol resolution for the FFI handler (`gandr-runtime-ffi`):
+# `dlopen`/`dlsym` over the platform loader, resolving each extern block's
+# `from "lib"` target.
+# consumers:
+# - gandr-runtime-ffi
 [workspace.dependencies.libloading]
 version = "0.9.0"
 default-features = false

@@ -1,0 +1,31 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-runtime-ffi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Least-authority native C ABI host over the gandr effect seam"
+license.workspace = true
+build = "build.rs"
+publish.workspace = true
+
+[dependencies]
+gandr-core-checker.workspace = true
+gandr-core-sequent.workspace = true
+gandr-runtime-effects.workspace = true
+gandr-surface-engine.workspace = true
+libffi.workspace = true
+libloading.workspace = true
+thiserror = { workspace = true }
+
+[build-dependencies]
+cc.workspace = true
+
+[features]
+default = []
+native-fixture = []
+
+[lints]
+workspace = true

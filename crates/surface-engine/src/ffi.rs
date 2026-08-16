@@ -144,20 +144,22 @@ impl ForeignFn
     }
 }
 
-/// A foreign module — one `extern "abi" from "library" { … }` block
-/// (proposal-ffi.md §2), binding its members as the FFI contract module
-/// members under the namespace named by its `library` string.
+/// A foreign module — one `extern "abi" from "library" [as name] { … }` block
+/// (proposal-ffi.md §2).
+///
+/// It binds members under `name`, or under `library` when `as` is omitted.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ForeignModule
 {
-    /// The module namespace (`m` in `m.cos`), taken from the `library` string;
-    /// also the [`EffectSig::name`] the native handler dispatches on.
+    /// The module namespace (`m` in `m.cos`), taken from the optional `as`
+    /// alias or, when omitted, the `library` string; this is also the
+    /// [`EffectSig::name`] the native handler dispatches on.
     pub name: String,
     /// The ABI string (`"c"` in the MVP; the slot where `"c-unwind"` / `"wasm"`
     /// grow, §2).
     pub abi: String,
-    /// The library the symbols resolve from — the `dlopen`/`dlsym` target of
-    /// the interpreter path (§5.1).
+    /// The library path the symbols resolve from — the `dlopen`/`dlsym` target
+    /// of the interpreter path (§5.1).
     pub library: String,
     /// The opaque handle types declared in the block (`type Db;`, §4.4).
     pub types: Vec<String>,

@@ -448,11 +448,7 @@ fn decode_cut(
         } => {
             let first = ps.first()?;
             let payload = decode_value(arena, origins, *first)?;
-            let head = Comp::perform(
-                effect_sig(EffectSignatureName::from(sig.as_str())),
-                op,
-                payload,
-            );
+            let head = Comp::perform(sig.clone(), op, payload);
             (Piece::Comp(head), consumer)
         },
         | ProducerNode::Lit(Lit::Hole(hole))

@@ -996,7 +996,9 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::EXTERN_BLOCK, node_kinds::FIELD_ABI) => {
                 self.nth_string_run(StringRunIndex(0))
             },
-            | (node_kinds::IMPORT_DECLARATION, node_kinds::FIELD_ALIAS) => self.after(label::AS),
+            | (node_kinds::IMPORT_DECLARATION | node_kinds::EXTERN_BLOCK, node_kinds::FIELD_ALIAS) => {
+                self.after(label::AS)
+            },
             // A package type's payload and a pack's payload each follow the
             // closing bracket of their list. An unpack's module binder is the
             // identifier after its lead tile, its ascribed signature sits

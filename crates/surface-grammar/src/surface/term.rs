@@ -731,6 +731,7 @@ fn attributes_parameters_externs(
             dq_string(),
             t(TileLabel("from")),
             dq_string(),
+            opt(seq([t(TileLabel("as")), t(TileLabel("identifier"))])),
             t(TileLabel("{")),
             repeat(alt([extern_type_inline(), extern_function_inline()])),
             t(TileLabel("}")),

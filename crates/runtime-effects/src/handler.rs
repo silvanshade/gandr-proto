@@ -10,6 +10,12 @@
 //! Dispatch keys on [`gandr_core_checker::effect::EffectSig::name`] first, then
 //! the operation name — so an operation named `read` in some *other* signature
 //! is declined, not misrouted to `Fs::read`.
+//!
+//! [`ShellHandler::dispatch`] and [`HostAction`] are public so a composing
+//! runtime (the native FFI handler, `gandr-runtime-ffi`) can run the ordinary
+//! shell host first and route an operation to the FFI host only after that
+//! dispatcher returns [`HostAction::Decline`], instead of reimplementing the
+//! built-in operation set.
 
 // `core::io::ErrorKind` exists but is unstable (feature `core_io`,
 // rust-lang/rust#154046), so `std::io` is the stable home on this toolchain.
@@ -44,12 +50,17 @@ use crate::error::ShellError;
 /// collision practically impossible).
 const MAX_TEMPDIR_ATTEMPTS: u64 = 1024;
 
-/// The driver's instruction after an intercepted operation — the internal,
-/// richer cousin of [`gandr_core_checker::effect::host::HostReply`] (which
-/// cannot express a run-truncating `exit` or a fatal abort; the
-/// [`crate::driver`] captures those two out of band).
+/// The dispatcher's instruction after an intercepted operation — the richer
+/// cousin of [`gandr_core_checker::effect::host::HostReply`].
+///
+/// `HostReply` cannot express a run-truncating `exit` or a fatal abort; a
+/// driver such as [`crate::driver`] captures those two out of band.
+///
+/// Public so a composing host runtime (the native FFI handler crate) can drive
+/// the same dispatcher and read its full verdict rather than reimplementing
+/// the shell operation set.
 #[derive(Clone, Debug)]
-pub(crate) enum HostAction
+pub enum HostAction
 {
     /// Resume the run, delivering this reply value to the performing
     /// continuation (the ordinary case).
@@ -77,15 +88,38 @@ impl From<Result<Value, ShellError>> for HostAction
 
 /// The native host handler over `std::process` / `std::fs` / `std::env`.
 ///
-/// Stateless today apart from a per-run tempdir suffix counter; owned by the
-/// driver, single-threaded, and re-created per [`crate::run_program`] call.
-#[repr(transparent)]
-#[derive(Clone, Debug, Default)]
+/// Stateless today apart from a per-run tempdir suffix counter; the canonical
+/// host signatures are built once when the handler is created, then reused for
+/// allocation-free dispatch comparisons.
+#[derive(Clone, Debug)]
 pub struct ShellHandler
 {
     /// A monotonic suffix source keeping repeated `Fs::tempdir` directory
     /// names within one run distinct.
     tempdir_counter: u64,
+    /// Canonical `Exec` signature.
+    exec_signature: effect::EffectSig,
+    /// Canonical `Fs` signature.
+    fs_signature: effect::EffectSig,
+    /// Canonical `Env` signature.
+    env_signature: effect::EffectSig,
+    /// Canonical `Proc` signature.
+    proc_signature: effect::EffectSig,
+}
+
+impl Default for ShellHandler
+{
+    #[inline]
+    fn default() -> Self
+    {
+        Self {
+            tempdir_counter: 0,
+            exec_signature: effect::host::exec(),
+            fs_signature: effect::host::fs(),
+            env_signature: effect::host::env(),
+            proc_signature: effect::host::proc(),
+        }
+    }
 }
 
 impl ShellHandler
@@ -98,18 +132,29 @@ impl ShellHandler
         Self::default()
     }
 
-    /// Dispatches one intercepted operation to its native implementation.
+    /// Dispatches one intercepted operation to its native implementation, or
+    /// declines it.
+    ///
+    /// Dispatch compares the complete canonical signature retained by this
+    /// handler before inspecting the operation name. A foreign signature that
+    /// reuses a host name cannot be routed to the built-in implementation.
+    ///
+    /// # Contract
+    /// - ensures: resumes with the operation's reply, reports a run-truncating
+    ///   exit or fatal syscall failure, or declines any operation outside the
+    ///   canonical `Exec` / `Fs` / `Env` / `Proc` signatures.
+    /// - panics: none.
     #[inline]
-    pub(crate) fn dispatch(
+    pub fn dispatch(
         &mut self,
         op: &effect::host::HostOp,
     ) -> HostAction
     {
         match op.sig.name().as_ref() {
-            | effect::host::EXEC => Self::dispatch_exec(op),
-            | effect::host::FS => self.dispatch_fs(op),
-            | effect::host::ENV => Self::dispatch_env(op),
-            | effect::host::PROC => Self::dispatch_proc(op),
+            | effect::host::EXEC if op.sig == self.exec_signature => Self::dispatch_exec(op),
+            | effect::host::FS if op.sig == self.fs_signature => self.dispatch_fs(op),
+            | effect::host::ENV if op.sig == self.env_signature => Self::dispatch_env(op),
+            | effect::host::PROC if op.sig == self.proc_signature => Self::dispatch_proc(op),
             | _ => HostAction::Decline,
         }
     }

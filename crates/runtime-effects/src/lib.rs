@@ -94,4 +94,5 @@ pub use crate::driver::ShellOutcome;
 pub use crate::driver::run_program;
 pub use crate::driver::run_program_with_prelude;
 pub use crate::error::ShellError;
+pub use crate::handler::HostAction;
 pub use crate::handler::ShellHandler;

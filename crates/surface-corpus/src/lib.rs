@@ -115,6 +115,12 @@ use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
 use gandr_runtime_effects::ShellOutcome;
+#[cfg(feature = "ffi")]
+use gandr_runtime_ffi::FfiShellOutcome;
+#[cfg(feature = "ffi")]
+use gandr_runtime_ffi::hermetic_testlib_path;
+#[cfg(feature = "ffi")]
+use gandr_runtime_ffi::run_program_with_prelude as run_ffi_program;
 use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::desc_cells::DescCells;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
@@ -462,7 +468,16 @@ where
     match case.mode {
         | Mode::Session => check_session(source, &case.expects),
         | Mode::Shell => check_shell(source, &case.expects),
-        | Mode::Ffi => check_ffi(source, &case.expects),
+        | Mode::Ffi => {
+            #[cfg(feature = "ffi")]
+            {
+                check_ffi(source, &case.expects)
+            }
+            #[cfg(not(feature = "ffi"))]
+            {
+                vec!["ffi mode reached without the `ffi` feature".to_owned()]
+            }
+        },
         | Mode::LowerOnly => check_lower_only(source, &case.expects),
         | Mode::Sequent => check_sequent(source, &case.expects),
         | Mode::Desc => check_desc(source, &case.expects),
@@ -586,11 +601,15 @@ where
             | other => return Err(format!("unknown directive key `{other}`")),
         }
     }
+    let mode = mode.unwrap_or(Mode::Session);
+    if mode == Mode::Ffi && !required_features.contains(&RequiredFeature::Ffi) {
+        required_features.push(RequiredFeature::Ffi);
+    }
     if expects.is_empty() {
         return Err("an example must declare at least one `expect*` directive".to_owned());
     }
     Ok(Case {
-        mode: mode.unwrap_or(Mode::Session),
+        mode,
         required_features,
         expects,
     })
@@ -1181,16 +1200,61 @@ fn shell_failure(
         | _ => Some("directive is not valid in shell mode".to_owned()),
     }
 }
-
-/// Keeps FFI-mode sources in the frozen corpus until the reboot FFI crate
-/// lands. Their bytes and directive shape remain covered by the corpus gates;
-/// execution is deliberately unavailable in this crate.
+#[cfg(feature = "ffi")]
+/// Runs an FFI-mode example through lowering, checking, and the combined
+/// native/shell host.
 fn check_ffi(
-    _source: PipelineSource<'_>,
-    _expects: &[Expect],
+    source: PipelineSource<'_>,
+    expects: &[Expect],
 ) -> Vec<String>
 {
-    Vec::new()
+    let mut prepared = match gandr_surface_engine::run::prepare_source(source) {
+        | Ok(prepared) => prepared,
+        | Err(error) => return vec![format!("ffi source preparation failed: {error}")],
+    };
+    for module in &mut prepared.foreign {
+        if matches!(module.library.as_str(), "testlib" | "./testlib") {
+            module.library = hermetic_testlib_path().display().to_string();
+        }
+    }
+    let run = run_ffi_program(
+        &prepared.comp,
+        prepared.prelude.as_bindings(),
+        prepared.foreign,
+    );
+    expects
+        .iter()
+        .filter_map(|expect| ffi_failure(&run, expect))
+        .collect()
+}
+
+#[cfg(feature = "ffi")]
+/// Evaluates one expectation against a combined native/shell run.
+fn ffi_failure(
+    run: &Result<FfiShellOutcome, gandr_runtime_ffi::FfiError>,
+    expect: &Expect,
+) -> Option<String>
+{
+    match *expect {
+        | Expect::FfiValue(ref expected) => match *run {
+            | Ok(FfiShellOutcome::Completed(Eval::Value(Comp::Ret(ref value)))) => {
+                let rendered = render_value(value, 0);
+                (rendered != *expected)
+                    .then(|| format!("ffi value mismatch: expected `{expected}`, got `{rendered}`"))
+            },
+            | Ok(ref other) => Some(format!("expected ffi value `{expected}`, got {other:?}")),
+            | Err(ref error) => Some(format!("ffi run failed: {error}")),
+        },
+        | Expect::FfiError(ref expected) => match *run {
+            | Ok(FfiShellOutcome::FfiFailed(ref error)) if error.to_string().contains(expected) => {
+                None
+            },
+            | Ok(ref other) => Some(format!("expected ffi error `{expected}`, got {other:?}")),
+            | Err(ref error) if error.to_string().contains(expected) => None,
+            | Err(ref error) => Some(format!("expected ffi error `{expected}`, got {error}")),
+        },
+        | _ => Some("directive is not valid in ffi mode".to_owned()),
+    }
 }
 
 /// Renders a machine [`Value`] into the harness's structural notation.
@@ -1904,6 +1968,17 @@ mod tests
             .any(|failure| failure.contains("not valid in lower-only mode")),
             "a non-lowers directive is invalid in lower-only mode"
         );
+        let parsed = parse_case(concat!(
+            "//",
+            "@ mode: ffi\n",
+            "//",
+            "@ expect-ffi-value: ()"
+        ))
+        .expect("bare ffi mode parses");
+        assert!(
+            parsed.required_features.contains(&RequiredFeature::Ffi),
+            "ffi mode derives its required feature"
+        );
         #[cfg(not(feature = "ffi"))]
         assert!(
             check_case(concat!(
@@ -1913,7 +1988,7 @@ mod tests
                 "@ expect-ffi-value: ()"
             ))
             .is_empty(),
-            "ffi mode is a clean skip when the `ffi` feature is disabled"
+            "derived ffi requirements skip when the `ffi` feature is disabled"
         );
         #[cfg(not(feature = "ffi"))]
         assert!(

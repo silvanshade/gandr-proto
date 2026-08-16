@@ -73,6 +73,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_checker::boundary::EffectSignatureName;
+use gandr_core_checker::effect::EffectSig;
 use gandr_core_checker::grade::Grade;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::OpClause;
@@ -675,11 +676,7 @@ impl Focuser
                         work.push(FocusTask::Value(value.as_ref()));
                     },
                     | Comp::Perform(ref sig, ref op, ref payload) => {
-                        work.push(FocusTask::BuildPerform {
-                            sig: sig.name(),
-                            op,
-                            cont,
-                        });
+                        work.push(FocusTask::BuildPerform { sig, op, cont });
                         work.push(FocusTask::Value(payload.as_ref()));
                     },
                     | Comp::Handle {
@@ -1133,7 +1130,7 @@ impl Focuser
                     let payload = pop_producer(&mut results);
                     let operation = self.new_producer(ProducerNode::Ctor {
                         tag: CtorTag::Op {
-                            sig: String::from(sig.as_ref()),
+                            sig: sig.clone(),
                             op: op.clone(),
                         },
                         ps: Box::from([payload]),
@@ -1591,8 +1588,8 @@ enum FocusTask<'src>
     /// continuation.
     BuildPerform
     {
-        /// The effect signature name.
-        sig: EffectSignatureName<'src>,
+        /// The complete source effect signature.
+        sig: &'src EffectSig,
         /// The operation name.
         op: &'src String,
         /// The continuation consumer.

@@ -584,7 +584,7 @@ name = "gandr"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
- "gandr-runtime-effects",
+ "gandr-runtime-ffi",
  "gandr-surface-engine",
 ]
 
@@ -650,6 +650,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-runtime-ffi"
+version = "0.0.0"
+dependencies = [
+ "cc",
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "gandr-runtime-effects",
+ "gandr-surface-engine",
+ "libffi",
+ "libloading",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-storage-artifact"
 version = "0.0.0"
 dependencies = [
@@ -682,6 +696,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-sequent",
  "gandr-runtime-effects",
+ "gandr-runtime-ffi",
  "gandr-surface-engine",
  "gandr-theory-levitation",
 ]
@@ -1056,6 +1071,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
+name = "libffi"
+version = "5.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a8d526bc07aa02e6826944ec446ecd8d228bd97b1cbd21e5bc5e3407a09a585"
+dependencies = [
+ "libc",
+ "libffi-sys",
+]
+
+[[package]]
+name = "libffi-sys"
+version = "4.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54d39d034f5ea2662814789448722078d01cc9431a2a09ff15e55f0df7120bae"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "libgit2-sys"
 version = "0.18.7+1.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1065,6 +1099,16 @@ dependencies = [
  "libc",
  "libz-sys",
  "pkg-config",
+]
+
+[[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link",
 ]
 
 [[package]]

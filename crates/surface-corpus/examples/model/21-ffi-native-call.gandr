@@ -7,17 +7,18 @@
 // pointed at C.
 //
 // An `extern` block NAMES and TYPES foreign symbols. It is a declaration, not a
-// runnable item: it populates a module namespace (here `testlib`, from the
-// library string) whose members are foreign functions. Each member is a
-// bodyless `def` — the surface tell that the callee is foreign.
+// runnable item: it populates the `testlib` namespace through the explicit
+// `as testlib` alias, while its library path remains `./testlib`. Each member
+// is a bodyless `def` — the surface tell that the callee is foreign.
 //
 // This example links the hermetic in-repo C fixture `testlib` (built by the
-// corpus crate, so the example is reproducible anywhere — proposal-ffi.md §9).
+// `gandr-runtime-ffi` build script, so the example is reproducible anywhere —
+// proposal-ffi.md §9).
 
 //@ mode: ffi
 //@ expect-ffi-value: (42i64, 5u64)
 
-extern "c" from "testlib" {
+extern "c" from "./testlib" as testlib {
   // Two `i64` scalars in, one out. The six numeric atoms (ADR-39) map to the C
   // fixed-width scalars by IDENTITY (proposal-ffi.md §4.1) — no width
   // negotiation, no implicit conversion; the boundary demands a concrete atom,

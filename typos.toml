@@ -143,3 +143,6 @@ ETBookOT = "ETBookOT"
 FoSSaCS = "FoSSaCS"
 serie = "serie"
 shortcat = "shortcat"
+
+# MSVC's `/Fo` compiler flag is a required command-line spelling, not prose.
+Fo = "Fo"

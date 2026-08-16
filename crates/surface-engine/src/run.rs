@@ -31,7 +31,45 @@ use crate::lower;
 use crate::prelude_ctx;
 use crate::prelude_env;
 
-/// Lowers, links, type-checks, and runs one source program under the host.
+/// The prepared, checked program shared by shell and native FFI runs.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PreparedSource
+{
+    /// The linked and type-checked computation.
+    pub comp: gandr_core_checker::syntax::Comp,
+    /// The ambient bindings used by the evaluator.
+    pub prelude: crate::prelude::Prelude,
+    /// Foreign modules declared by this source.
+    pub foreign: Vec<crate::ffi::ForeignModule>,
+}
+
+/// Lowers, links, and type-checks one source program without executing it.
+///
+/// # Contract
+/// - ensures: returns one checked computation, its evaluator prelude, and the
+///   source's declared foreign modules.
+/// - fails: malformed source, invalid linking, or ill-typed computation.
+/// - panics: none.
+/// # Errors
+///
+/// Returns [`RunError`] when lowering, linking, or type-checking the source.
+#[inline]
+pub fn prepare_source<'source, S>(source: S) -> Result<PreparedSource, RunError>
+where
+    S: Into<PipelineSource<'source>>,
+{
+    let lowered = lower::lower_source(source.into())?;
+    let comp = link::link_program(&lowered)?;
+    checker::infer_comp(prelude_ctx(), comp.clone())?;
+    Ok(PreparedSource {
+        comp,
+        prelude: prelude_env(),
+        foreign: lowered.foreign,
+    })
+}
+
+/// Lowers, links, type-checks, and runs one source program under the shell
+/// host.
 ///
 /// # Errors
 ///
@@ -50,11 +88,11 @@ pub fn run_source<'source, S>(source: S) -> Result<ShellOutcome, RunError>
 where
     S: Into<PipelineSource<'source>>,
 {
-    let lowered = lower::lower_source(source.into())?;
-    let comp = link::link_program(&lowered)?;
-    checker::infer_comp(prelude_ctx(), comp.clone())?;
-    let prelude = prelude_env();
-    Ok(run_program_with_prelude(&comp, prelude.as_bindings()))
+    let prepared = prepare_source(source)?;
+    Ok(run_program_with_prelude(
+        &prepared.comp,
+        prepared.prelude.as_bindings(),
+    ))
 }
 
 /// A failure preparing a source program for [`run_source`].

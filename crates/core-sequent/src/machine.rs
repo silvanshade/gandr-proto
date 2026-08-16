@@ -82,11 +82,9 @@
 //! presents. On a resume the reply flows into the perform's continuation
 //! (deep); a decline is the same `PerformNoHandler` blame. The seam is realized
 //! at the driver — the L machine's configuration is the run loop's locals, not
-//! a reified state — so the offered signature carries its name only and the
-//! payload is read back over the public surface through the un-focusing
-//! readback `𝓕⁻¹` ([`crate::unfocus`], §7a) — exact on the first-order fragment
-//! AND on higher-order payloads (a thunk closure closes under its captured
-//! environment).
+//! a reified state — and carries the complete source signature through the
+//! focused operation constructor. The payload is read back over the public
+//! surface through the un-focusing readback `𝓕⁻¹` ([`crate::unfocus`], §7a).
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
@@ -94,7 +92,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_checker::boundary::ContinuationName;
-use gandr_core_checker::boundary::EffectSignatureName;
 use gandr_core_checker::boundary::FieldName;
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::boundary::OperationName;
@@ -482,9 +479,8 @@ enum Flow
     /// the bare machine's behavior is unchanged.
     Host
     {
-        /// The signature (effect) name the operation belongs to (the focused IL
-        /// retains the name only; `𝓕` erases the operation list).
-        sig: String,
+        /// The complete source effect signature carried by the operation.
+        sig: EffectSig,
         /// The operation's name.
         op: String,
         /// The already-evaluated payload, read back to the public [`Value`]
@@ -653,10 +649,10 @@ impl LMachine
     ///
     /// # Residues (ADR-35 D4 seam over the L representation)
     ///
-    /// - **Signature.** The focused IL retains only the signature *name* (`𝓕`
-    ///   erases the operation list), so the offered [`EffectSig`] carries the
-    ///   name and an empty operation list. The observable seam contract is
-    ///   `(name, operation, payload)`, which both machines present identically.
+    /// - **Signature.** The focused operation constructor carries the complete
+    ///   source [`EffectSig`], so the host receives the declared operation list
+    ///   unchanged. The observable seam contract is `(signature, operation,
+    ///   payload)`, which both machines present identically.
     /// - **Payload.** The payload is read back over the public [`Value`]
     ///   surface through the un-focusing readback `𝓕⁻¹`
     ///   ([`crate::unfocus::unfocus_value`], §7a): exact on the first-order
@@ -715,11 +711,7 @@ impl LMachine
                         let payload =
                             crate::unfocus::unfocus_value(&payload, &self.arena, &self.origins)
                                 .unwrap_or_else(|| Value::hole(0));
-                        let host_op = HostOp::new(
-                            EffectSig::new(EffectSignatureName::from(sig.as_str()), Vec::new()),
-                            OperationName::from(op.as_str()),
-                            payload,
-                        );
+                        let host_op = HostOp::new(sig, OperationName::from(op.as_str()), payload);
                         match handler.handle(&host_op.sig, &host_op.op, &host_op.payload) {
                             | HostReply::Resume(reply) => {
                                 // Deliver the reply to the perform's continuation

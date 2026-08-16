@@ -609,7 +609,9 @@ fn ctor_tag(tag: &CtorTag) -> String
         | CtorTag::Nil => String::from("Nil"),
         | CtorTag::Cons => String::from("Cons"),
         | CtorTag::Record(ref labels) => format!("Record{{{}}}", labels.join(", ")),
-        | CtorTag::Op { ref sig, ref op } => format!("Op[{sig}.{op}]"),
+        | CtorTag::Op { ref sig, ref op } => {
+            format!("Op[{}.{}]", sig.name().as_ref(), op)
+        },
         | CtorTag::Here => String::from("Here"),
         | CtorTag::Data(tag) => format!("Data[{tag}]"),
     }

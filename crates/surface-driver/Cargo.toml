@@ -23,11 +23,17 @@ gandr-core-checker.workspace = true
 # The host seam that runs a script: `ShellOutcome` classifies the run the
 # engine's source entry hands back, so the driver reads the outcome the same
 # way every other host consumer does.
-gandr-runtime-effects.workspace = true
-# The language-level source entry: `run::run_source_file` composes lowering,
-# linking, and prelude-aware checking with the host seam, so the driver never
-# reimplements the pipeline it fronts.
+# The combined source entry: ordinary shell operations and declared native FFI
+# operations share one prepared lowering seam and one host driver.
+gandr-runtime-ffi.workspace = true
+# The language-level source entry: retained for the shell-facing API and
+# preparation types.
 gandr-surface-engine.workspace = true
+
+[dev-dependencies]
+gandr-runtime-ffi = { workspace = true, features = [
+  "native-fixture",
+] }
 
 # The faces below are DEFERRED, not parked-and-ready. Their names are
 # recorded here so the dependency surface reads in current terms rather than

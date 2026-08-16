@@ -3,4 +3,4 @@
 ; sexp-b3sum: b4282e3a5ec319d50e8c2c16a3b7797acaa63e5432fe1c93b1eb784514643303
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
-Ret(Thunk(Omega, Abs("env", None, Perform(EffectSig { name: "Env", ops: [] }, "get", Str("HOME")))))
+Ret(Thunk(Omega, Abs("env", None, Perform(EffectSig { name: "Env", ops: [EffectOp { name: "get", payload: Atom("String"), reply: Atom("String") }, EffectOp { name: "path", payload: Unit, reply: List(Atom("String")) }] }, "get", Str("HOME")))))

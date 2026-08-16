@@ -5371,14 +5371,15 @@ impl Lowerer<'_>
         }
     }
 
-    /// Lowers one `extern "abi" from "library" { … }` block to a
-    /// [`ForeignModule`] (proposal-ffi.md §2). The block's `library` string is
-    /// the module namespace; each `type Name;` is an opaque handle type (§4.4)
-    /// and each bodyless `def name(params) -> T;` is a foreign function whose
-    /// members bind as the lowering contract module members.
+    /// Lowers one `extern "abi" from "library" [as name] { … }` block to a
+    /// [`ForeignModule`] (proposal-ffi.md §2). The optional `name` alias is
+    /// the module namespace; when omitted, the `library` string supplies it.
+    /// Each `type Name;` is an opaque handle type (§4.4) and each bodyless
+    /// `def name(params) -> T;` is a foreign function whose members bind as
+    /// the lowering contract module members.
     ///
     /// # Contract
-    /// - ensures: on success, a [`ForeignModule`] named by the `library`
+    /// - ensures: on success, a [`ForeignModule`] named by the alias or library
     ///   string, carrying the declared opaque types and foreign functions with
     ///   their [`CType`] boundary mapping (§4).
     /// - fails: a malformed block node, or (strict mode) an out-of-boundary
@@ -5392,9 +5393,14 @@ impl Lowerer<'_>
     ) -> LowerResult<ForeignModule>
     {
         let abi = self.quoted_string_field(node, node_kinds::FIELD_ABI)?;
-        let name = self.quoted_string_field(node, node_kinds::FIELD_LIBRARY)?;
-        // First collect the opaque handle types, so a later member signature
-        // referencing one resolves it to a `Ptr` rather than a rejected atom.
+        let library = self.quoted_string_field(node, node_kinds::FIELD_LIBRARY)?;
+        let name = node
+            .child_by_field_name(node_kinds::FIELD_ALIAS)
+            .map(|alias| self.text(alias))
+            .transpose()?
+            .map_or_else(|| library.clone(), NodeText::to_owned);
+        // First collect opaque handle types, so a later member signature
+        // referencing one resolves to a `Ptr` rather than a rejected atom.
         let mut types: Vec<String> = Vec::new();
         for member in named_non_extra_children(node) {
             if member.kind() == node_kinds::EXTERN_TYPE {
@@ -5420,7 +5426,7 @@ impl Lowerer<'_>
         Ok(ForeignModule {
             name,
             abi,
-            library: self.quoted_string_field(node, node_kinds::FIELD_LIBRARY)?,
+            library,
             types,
             functions,
         })
@@ -7640,6 +7646,34 @@ mod tests
             c_type: CType::F64,
         }]);
         assert_eq!(CType::F64, cos.result);
+        Ok(())
+    }
+
+    #[test]
+    fn extern_block_alias_separates_namespace_from_library_path() -> Result<(), String>
+    {
+        let source = "extern \"c\" from \"./testlib\" as testlib {\n  def add(left: i32, \
+                     right: i32) -> i32;\n}\ntestlib.add(2, 3)";
+        let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
+        let module = lowered
+            .foreign
+            .first()
+            .ok_or_else(|| "the aliased module must be registered".to_owned())?;
+        assert_eq!("testlib", module.name);
+        assert_eq!("./testlib", module.library);
+        let item = lowered
+            .items
+            .first()
+            .ok_or_else(|| "the aliased call must remain runnable".to_owned())?;
+        let &Term::Comp(Comp::Perform(ref sig, ref op, _)) = &item.term
+        else {
+            return Err(format!(
+                "the aliased call must perform, got {:?}",
+                item.term
+            ));
+        };
+        assert_eq!("testlib", sig.name().as_ref());
+        assert_eq!("add", op);
         Ok(())
     }
 

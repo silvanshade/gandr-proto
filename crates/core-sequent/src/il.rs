@@ -148,8 +148,8 @@ pub enum CtorTag
     /// (Adaptation A-PERFORM; §6 — the operation flows to its handler as data).
     Op
     {
-        /// The signature (effect) name the operation belongs to.
-        sig: String,
+        /// The complete source effect signature.
+        sig: gandr_core_checker::effect::EffectSig,
         /// The operation's own name.
         op: String,
     },
@@ -795,7 +795,10 @@ mod tests
             CtorTag::Cons,
             CtorTag::Record(Box::from([String::from("a"), String::from("b")])),
             CtorTag::Op {
-                sig: String::from("State"),
+                sig: gandr_core_checker::effect::EffectSig::new(
+                    gandr_core_checker::boundary::EffectSignatureName::from("State"),
+                    Vec::new(),
+                ),
                 op: String::from("get"),
             },
             CtorTag::Here,

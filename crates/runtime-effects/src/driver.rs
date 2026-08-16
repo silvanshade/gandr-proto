@@ -195,9 +195,10 @@ impl effect::host::HostHandler for ShellDriver
     where
         O: Into<OperationName<'source>>,
     {
-        // The L seam offers a name-only signature (`𝓕` erases the operation
-        // list); `ShellHandler::dispatch` keys on the signature *name* and the
-        // operation name only, so the erased ops list is immaterial.
+        // The L seam carries the complete signature on each offer. The shell
+        // handler compares it with its cached canonical signatures before
+        // dispatching by operation name, so same-named foreign signatures
+        // remain available to other hosts.
         let host_op = effect::host::HostOp::new(sig.clone(), op.into(), payload.clone());
         match self.handler.dispatch(&host_op) {
             | HostAction::Resume(reply) => effect::host::HostReply::Resume(reply),

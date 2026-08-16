@@ -23,15 +23,14 @@ path = "tests/lib.rs"
 gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
 gandr-runtime-effects.workspace = true
+gandr-runtime-ffi.workspace = true
 gandr-surface-engine.workspace = true
 gandr-theory-levitation.workspace = true
 
 [features]
 default = []
-# The fixtures remain frozen and hash-checked, but native FFI execution stays
-# parked until the FFI crate lands in the reboot.
-ffi = []
-full = ["regex"]
+ffi = ["gandr-runtime-ffi/native-fixture"]
+full = ["ffi", "regex"]
 regex = [
   "gandr-core-checker/gandr_feat_regex",
   "gandr-surface-engine/regex",

@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x739f_8d9e_cc5e_34b2);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x953f_2c0e_987c_0d89);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -139,7 +139,7 @@ mod contracts
     /// the `@[ … ]` block outside the member it decorates; that costs one copy
     /// of the definition tail. And the manifest type component `type T = τ`
     /// adds four `=` molds, one per signature occurrence.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2014);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2016);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -208,7 +208,7 @@ mod contracts
         ("]", 17),
         ("_", 31),
         ("acquire", 20),
-        ("as", 82),
+        ("as", 83),
         ("at", 1),
         ("block_comment", 1),
         ("block_comment_content", 1),
@@ -250,7 +250,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 305),
+        ("identifier", 306),
         ("if", 2),
         ("import", 1),
         ("in", 1),
