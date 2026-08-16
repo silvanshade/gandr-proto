@@ -161,19 +161,22 @@ fn main() -> ExitCode
 /// - provides: the driver's complete argument-to-status behaviour, separated
 ///   from the process boundary so a test can drive it.
 /// - fails: a malformed command line prints [`USAGE`] to standard error and
-///   reports [`EXIT_REFUSED`]; a source that never reached the machine prints
-///   its typed error and reports [`EXIT_REFUSED`].
+///   reports [`EXIT_REFUSED`]; a source that never reached the machine —
+///   unreadable, or refused by the checker — prints its typed error and reports
+///   [`EXIT_REFUSED`].
 /// - panics: none — a diagnostic that cannot be written is dropped rather than
 ///   escalated, since the status still carries the outcome.
 ///
 /// # Adequacy
 /// - hypothesis: L3 only — the four statuses are separated by four inputs: no
 ///   argument, a script returning a value, a script performing `proc.exit`, and
-///   an absent path.
+///   an absent path; the checker refusal is pinned beside the absent path
+///   because it shares the refusal status without sharing its cause.
 /// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
 /// - witness: `cli::tests::a_script_that_returns_a_value_leaves_successfully`
 /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
 /// - witness: `cli::tests::an_absent_script_is_refused_by_path`
+/// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
 fn serve<Arguments>(arguments: Arguments) -> ExitStatus
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -266,10 +269,13 @@ where
 /// # Adequacy
 /// - hypothesis: L3 only — the completed, exited, and failed arms are separated
 ///   by three scripts: one returning a value, one performing `proc.exit`, and
-///   one blaming on an unhandled `perform`.
+///   one blaming on an unhandled `perform`; the failed arm's fatal host abort
+///   is pinned separately because it reaches the same status through a
+///   different diagnostic.
 /// - witness: `cli::tests::a_script_that_returns_a_value_leaves_successfully`
 /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
 /// - witness: `cli::tests::a_script_that_blames_leaves_with_a_failure_status`
+/// - witness: `cli::tests::a_script_whose_tool_cannot_spawn_leaves_with_a_failure_status`
 fn classify(outcome: &ShellOutcome) -> ExitStatus
 {
     match *outcome {
@@ -300,9 +306,12 @@ fn classify(outcome: &ShellOutcome) -> ExitStatus
 ///
 /// # Adequacy
 /// - hypothesis: L3 only — the read arm and the source arm are separated by an
-///   absent path and a source with no runnable program.
+///   absent path and a source with no runnable program; the checker refusal is
+///   the source arm's second cause, pinned because it shares the rendering
+///   shape without sharing the failure stage.
 /// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 /// - witness: `cli::tests::a_script_with_no_program_is_refused`
+/// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
 fn refusal(error: &RunFileError) -> String
 {
     format!("gandr: {error}\n")

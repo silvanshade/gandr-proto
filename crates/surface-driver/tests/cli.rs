@@ -68,14 +68,93 @@ mod tests
         }
     }
 
+    /// A scratch directory that removes itself when the test drops it.
+    #[repr(transparent)]
+    struct ScratchDirectory
+    {
+        /// The path the directory was created at.
+        path: PathBuf,
+    }
+
+    impl ScratchDirectory
+    {
+        /// Create a fresh empty directory at a path named after `label`,
+        /// clearing any residue a previous run of this process id left behind.
+        fn create<'text, Label>(label: Label) -> Self
+        where
+            Label: Into<TestText<'text>>,
+        {
+            let label = label.into().0;
+            let suffix = NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "gandr-driver-cli-{label}-{}-{suffix}",
+                std::process::id()
+            ));
+            drop(std::fs::remove_dir_all(&path));
+            // `create_dir` (not `create_dir_all`) is deliberate, as it is in the
+            // host's own `Fs::tempdir`: its fail-on-exists is what leaves the
+            // directory provably fresh, and an empty search path is this
+            // fixture's whole guarantee — `create_dir_all` would accept a
+            // pre-existing directory with anything at all in it.
+            #[expect(
+                clippy::create_dir,
+                reason = "the fixture needs create_dir's fail-on-exists to guarantee an EMPTY \
+                          search path"
+            )]
+            let created = std::fs::create_dir(&path);
+            created.expect("the scratch directory must be creatable");
+            Self { path }
+        }
+    }
+
+    impl Drop for ScratchDirectory
+    {
+        fn drop(&mut self)
+        {
+            drop(std::fs::remove_dir_all(&self.path));
+        }
+    }
+
+    /// The command that runs the built driver with `arguments`.
+    fn driver<Arguments>(arguments: Arguments) -> Command
+    where
+        Arguments: IntoIterator,
+        Arguments::Item: AsRef<std::ffi::OsStr>,
+    {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_gandr"));
+        command.args(arguments);
+        command
+    }
+
     /// Run the built driver with `arguments` and capture its output.
     fn drive<Arguments>(arguments: Arguments) -> Output
     where
         Arguments: IntoIterator,
         Arguments::Item: AsRef<std::ffi::OsStr>,
     {
-        Command::new(env!("CARGO_BIN_EXE_gandr"))
-            .args(arguments)
+        driver(arguments)
+            .output()
+            .expect("the built driver must be spawnable")
+    }
+
+    /// Run the built driver with `arguments`, with `tools` as the whole of the
+    /// search path a tool the script runs is looked up in.
+    ///
+    /// A driven tool is spawned by name, so which program that name reaches is
+    /// decided by the driver's own `PATH`. Handing the driver one directory the
+    /// test owns makes the tool surface of the run a fixture rather than a
+    /// property of the machine, which is what lets a case pin what happens when
+    /// a name resolves to nothing.
+    fn drive_with_tools<Arguments>(
+        arguments: Arguments,
+        tools: &ScratchDirectory,
+    ) -> Output
+    where
+        Arguments: IntoIterator,
+        Arguments::Item: AsRef<std::ffi::OsStr>,
+    {
+        driver(arguments)
+            .env("PATH", &tools.path)
             .output()
             .expect("the built driver must be spawnable")
     }
@@ -278,6 +357,68 @@ mod tests
         assert!(
             stderr.contains("blamed"),
             "a blame must be reported; got {stderr}"
+        );
+    }
+
+    #[test]
+    fn an_ill_typed_script_is_refused_by_the_checker()
+    {
+        // The source parses and links, so only the checker's refusal stands
+        // between it and the machine: a checker failure is a refusal (2), the
+        // status a run failure (1) must never take, because nothing ran.
+        let script = ScratchScript::write("ill-typed", "{ ret (\"five\" : Integer) }\n");
+        let output = drive([&script.path]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(2_i32)),
+            "an ill-typed script never reaches the machine"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("type checking failed"),
+            "the refusal names the checker as its source; got {stderr}"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "a refused script routes no result; got {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    #[test]
+    fn a_script_whose_tool_cannot_spawn_leaves_with_a_failure_status()
+    {
+        // A spawn the host cannot perform is a fatal host failure, not a
+        // representable reply: the run aborts, so the status is a failure (1)
+        // and the caller reads the host error, distinct from a blame and from
+        // a refusal.
+        //
+        // The tool is unspawnable by construction rather than by hope: the
+        // driver runs with a fresh empty directory as the whole of its search
+        // path, so the name reaches no program whatever this machine has
+        // installed. Naming a plausibly-absent binary and trusting the ambient
+        // path would make the case a claim about the developer's machine, and
+        // one `cargo install` away from testing the opposite thing.
+        let tools = ScratchDirectory::create("no-tools");
+        let script = ScratchScript::write(
+            "unspawnable",
+            "{\n  run r <- #!{ gandr-absent-tool };\n  ret r\n}\n",
+        );
+        let output = drive_with_tools([&script.path], &tools);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(1_i32)),
+            "a fatal host failure is a run failure, not a refusal"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("could not spawn"),
+            "the caller reads the host's own error; got {stderr}"
+        );
+        assert!(
+            stderr.contains("gandr-absent-tool"),
+            "the host error names the tool that would not spawn, so the failure \
+             is this script's and not some other spawn's; got {stderr}"
         );
     }
 
