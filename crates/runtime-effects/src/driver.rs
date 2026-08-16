@@ -375,14 +375,40 @@ mod tests
     #[test]
     fn exec_unspawnable_program_aborts_the_run()
     {
+        // The program is unspawnable by construction rather than by hope: an
+        // absolute path inside a fresh scratch directory this test owns and
+        // asserts empty of it. An absolute path is never resolved through
+        // `PATH`, so nothing installed can answer to it and the case states a
+        // property of the handler rather than of this machine. A bare name
+        // would state the machine's: one `cargo install` away from spawning
+        // something and pinning the opposite outcome. `PATH` cannot be fenced
+        // instead here — this driver runs in-process, so the fence would be a
+        // process-global `set_var` racing every other test thread.
+        let absent = AbsentProgram::reserve();
+        let program = absent.program();
         let outcome = run_op(
             effect::host::exec(),
             effect::host::EXEC_RUN,
-            command("gandr-runtime-effects-no-such-binary-zzq", &[]),
+            command(&program, &[]),
+        );
+        let ShellOutcome::HostFailed(ShellError::Spawn {
+            program: ref blamed,
+            ref detail,
+        }) = outcome
+        else {
+            panic!("a spawn failure aborts the run: {outcome:?}");
+        };
+        // The variant alone leaves the payload untested, and the payload is the
+        // whole caller-visible content of a fatal spawn: which program, and the
+        // host's own reason.
+        assert_eq!(
+            blamed.as_str(),
+            program.as_str(),
+            "the fatal error names the program that would not spawn"
         );
         assert!(
-            matches!(outcome, ShellOutcome::HostFailed(ShellError::Spawn { .. })),
-            "a spawn failure aborts the run: {outcome:?}"
+            !detail.is_empty(),
+            "the fatal error carries the host's own reason for refusing to spawn"
         );
     }
 
@@ -975,6 +1001,56 @@ mod tests
             .map(<&str>::from)
             .expect("tempdir replies with a path string")
             .to_owned()
+    }
+
+    /// An absolute path that names no program, and the scratch directory it is
+    /// reserved in — removed when the test drops it.
+    ///
+    /// `Fs::tempdir` hands out a fresh directory whose name carries OS-seeded
+    /// randomness, so a leaf reserved inside it is absent for the run and
+    /// cannot be pre-created by anything that does not already know the name.
+    #[repr(transparent)]
+    struct AbsentProgram
+    {
+        /// The scratch directory holding the reserved leaf.
+        directory: String,
+    }
+
+    impl AbsentProgram
+    {
+        /// The leaf name reserved inside the scratch directory. Nothing ever
+        /// creates it, which is what makes the composed path unspawnable.
+        const LEAF: &str = "gandr-absent-tool";
+
+        /// Reserve a fresh scratch directory and check that its leaf is absent,
+        /// so a run that spawned something would fail here rather than pass
+        /// quietly.
+        fn reserve() -> Self
+        {
+            let reserved = Self {
+                directory: scratch_dir(),
+            };
+            let program = reserved.program();
+            assert!(
+                !std::path::Path::new(&program).exists(),
+                "the reserved program path must name nothing: {program}"
+            );
+            reserved
+        }
+
+        /// The absolute path no program occupies.
+        fn program(&self) -> String
+        {
+            format!("{}/{}", self.directory, Self::LEAF)
+        }
+    }
+
+    impl Drop for AbsentProgram
+    {
+        fn drop(&mut self)
+        {
+            drop(std::fs::remove_dir_all(&self.directory));
+        }
     }
 
     /// Runs `perform effect::host::op payload >>= reply. ret reply`, so the
