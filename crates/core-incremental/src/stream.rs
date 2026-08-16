@@ -13,13 +13,17 @@ pub enum SynthesisEvent
     /// Marks the beginning of a stream for a fixed item count.
     Started
     {
-        item_count: usize
+        /// Number of items in the stream.
+        item_count: usize,
     },
     /// Carries one item typing and whether its checkpoint was reused.
     Item
     {
+        /// Source-order index.
         index: usize,
+        /// Validated typing result.
         typing: ItemTyping,
+        /// Whether the prior checkpoint was adopted.
         adopted: AdoptionDecision,
     },
     /// Marks successful completion after all items were emitted.
@@ -30,7 +34,9 @@ pub enum SynthesisEvent
 #[derive(Clone, Debug)]
 pub struct SynthesisStream
 {
+    /// Ordered synthesis events.
     events: Vec<SynthesisEvent>,
+    /// Next event cursor.
     cursor: usize,
 }
 
@@ -38,6 +44,7 @@ impl SynthesisStream
 {
     /// Creates a stream from one validated resume result.
     #[must_use]
+    #[inline]
     pub fn from_resume(resume: &Resume) -> Self
     {
         let item_count = resume.typings().len();
@@ -59,6 +66,7 @@ impl Iterator for SynthesisStream
 {
     type Item = SynthesisEvent;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item>
     {
         let event = self.events.get(self.cursor).cloned();

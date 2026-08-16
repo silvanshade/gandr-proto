@@ -206,6 +206,7 @@ impl Resume
     /// Creates a resume result from a validated checkpoint set with no
     /// adoptions.
     #[must_use]
+    #[inline]
     pub fn from_checkpoints(checkpoints: Checkpoints) -> Self
     {
         let adopted = alloc::vec![false; checkpoints.items.len()];

@@ -14,8 +14,11 @@ use crate::stream::SynthesisStream;
 /// Stateful incremental checking session over ordered lowered programs.
 pub struct IncrementalSession<S>
 {
+    /// Persistence backend for complete checkpoint sets.
     store: S,
+    /// Backend artifact identity required for reuse.
     backend: BackendArtifact,
+    /// Most recently validated resume result.
     last_resume: Option<Resume>,
 }
 
@@ -23,6 +26,7 @@ impl<S> IncrementalSession<S>
 {
     /// Creates a session with no submitted revision.
     #[must_use]
+    #[inline]
     pub fn new(
         store: S,
         backend: BackendArtifact,
@@ -34,11 +38,32 @@ impl<S> IncrementalSession<S>
             last_resume: None,
         }
     }
+    /// Reopens a session from a previously validated resume.
+    #[must_use]
+    #[inline]
+    pub fn reopen(
+        store: S,
+        backend: BackendArtifact,
+        resume: Resume,
+    ) -> Self
+    {
+        Self {
+            store,
+            backend,
+            last_resume: Some(resume),
+        }
+    }
 
     /// Submits a lowered revision, reusing the previous validated checkpoints.
+    ///
+    /// # Errors
+    ///
+    /// Returns the persistence error when storing the resulting checkpoints
+    /// fails.
+    #[inline]
     pub fn submit<O>(
         &mut self,
-        program: Program,
+        program: &Program,
         observer: &mut O,
     ) -> Result<Resume, CheckpointStoreError>
     where
@@ -46,12 +71,12 @@ impl<S> IncrementalSession<S>
         O: CheckpointObserver,
     {
         let resume = match self.last_resume.as_ref() {
-            | Some(previous) => resume(previous.checkpoints(), &program),
-            | None => Resume::from_checkpoints(checkpoint_program(&program)),
+            | Some(previous) => resume(previous.checkpoints(), program),
+            | None => Resume::from_checkpoints(checkpoint_program(program)),
         };
         persist(
             &mut self.store,
-            &program,
+            program,
             self.backend,
             resume.checkpoints().clone(),
             observer,
@@ -62,6 +87,7 @@ impl<S> IncrementalSession<S>
 
     /// Streams the most recently submitted validated result in item order.
     #[must_use]
+    #[inline]
     pub fn stream(&self) -> Option<SynthesisStream>
     {
         self.last_resume.as_ref().map(SynthesisStream::from_resume)
@@ -69,6 +95,7 @@ impl<S> IncrementalSession<S>
 
     /// Returns the backing store after the session is finished.
     #[must_use]
+    #[inline]
     pub fn into_store(self) -> S
     {
         self.store
@@ -79,6 +106,7 @@ impl<S> IncrementalSession<S>
 mod tests
 {
     use super::*;
+    use crate::persistence::FileCheckpointStore;
     use crate::persistence::MemoryCheckpointStore;
 
     #[derive(Default)]
@@ -97,7 +125,7 @@ mod tests
         );
         let mut observer = Observer;
         let first = session
-            .submit(Program::default(), &mut observer)
+            .submit(&Program::default(), &mut observer)
             .expect("submit");
         assert_eq!(usize::from(first.adopted_count()), 0);
         let events: alloc::vec::Vec<_> = session.stream().expect("stream").collect();
@@ -105,5 +133,19 @@ mod tests
             crate::stream::SynthesisEvent::Started { item_count: 0 },
             crate::stream::SynthesisEvent::Completed,
         ]);
+    }
+    #[test]
+    fn reopened_file_session_streams_validated_resume()
+    {
+        let root = std::env::temp_dir().join(format!("gandr-session-{}", std::process::id()));
+        drop(std::fs::remove_dir_all(&root));
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let mut first = IncrementalSession::new(FileCheckpointStore::open(&root).unwrap(), backend);
+        let mut observer = Observer;
+        let resume = first.submit(&Program::default(), &mut observer).unwrap();
+        let reopened =
+            IncrementalSession::reopen(FileCheckpointStore::open(&root).unwrap(), backend, resume);
+        assert!(reopened.stream().is_some());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
