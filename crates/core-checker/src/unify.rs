@@ -285,6 +285,7 @@ mod tests
     use crate::subst::HoleRepl;
     use crate::subst::HoleSubstitution;
     use crate::syntax::Side;
+    use crate::types::ValueType;
     use crate::unify::scan;
 
     // ── fixtures ────────────────────────────────────────────────────────────
@@ -336,6 +337,22 @@ mod tests
     ) -> Constraint
     {
         Constraint::Values(lhs, rhs)
+    }
+
+    /// An atom as one package elimination minted it.
+    fn seal(serial: crate::boundary::TypeSerial) -> crate::types::SealId
+    {
+        crate::types::SealId::new(
+            serial,
+            crate::boundary::SealDeclarationName::from("module"),
+            crate::boundary::SealComponentName::from("component"),
+        )
+    }
+
+    /// A one-component packed module `pack ⟨Integer⟩ payload`.
+    fn packed(payload: Value) -> Rc<Value>
+    {
+        Rc::new(Value::pack([ValueType::integer()], payload))
     }
 
     /// A computation-sorted equation.
@@ -880,6 +897,77 @@ mod tests
         assert_eq!(certificate.verdict(), Verdict::Refuted(Refutation::Clash));
     }
 
+    #[test]
+    fn a_pack_congruence_solves_through_the_payload_and_replays()
+    {
+        // Both sides carry the same interned witness, so the id fast-path
+        // answers the witness comparison and the payload is the one residual
+        // equation.
+        let (certificate, replay) =
+            run_and_replay(context(&[(HoleId::from(0_u32), MetaSort::Value)]), vec![
+                values(packed(Value::Hole(0)), packed(Value::Int(3))),
+            ]);
+        assert_eq!(certificate.verdict(), Verdict::Solved);
+        assert_eq!(
+            certificate
+                .value_solution(HoleId::from(0))
+                .map(AsRef::as_ref),
+            Some(&Value::Int(3))
+        );
+        assert_eq!(replay, Replay::Validated);
+    }
+
+    #[test]
+    fn alpha_variant_witnesses_and_convertible_payloads_solve_and_replay()
+    {
+        // The witnesses differ only in how they spell the abstract component —
+        // distinct interned types, one canonical key — and the payloads are
+        // α-distinct spellings of one thunk. Neither difference is one a
+        // substitution repairs; both are what the comparison is defined to see
+        // through.
+        let signature = |label: &str| ValueType::Package {
+            grade: Grade::ONE,
+            abstracts: vec![label.to_owned()],
+            payload: Rc::new(ValueType::Thunk(
+                Grade::ONE,
+                Rc::new(crate::types::CompType::returner(ValueType::atom(label))),
+            )),
+        };
+        let packed_identity = |witness: ValueType, binder: &str| {
+            Rc::new(Value::pack(
+                [witness],
+                Value::Thunk(
+                    Grade::ONE,
+                    Rc::new(Comp::lam(
+                        binder,
+                        Comp::ret(Value::var(NameRef::from(binder))),
+                    )),
+                ),
+            ))
+        };
+        let (certificate, replay) =
+            run_and_replay(context(&[(HoleId::from(0_u32), MetaSort::Value)]), vec![
+                values(
+                    Rc::new(Value::Pair(
+                        packed_identity(signature("left"), "x"),
+                        value_hole(0),
+                    )),
+                    Rc::new(Value::Pair(
+                        packed_identity(signature("right"), "y"),
+                        int(7),
+                    )),
+                ),
+            ]);
+        assert_eq!(certificate.verdict(), Verdict::Solved);
+        assert_eq!(
+            certificate
+                .value_solution(HoleId::from(0))
+                .map(AsRef::as_ref),
+            Some(&Value::Int(7))
+        );
+        assert_eq!(replay, Replay::Validated);
+    }
+
     // ── refutations ─────────────────────────────────────────────────────────
 
     #[test]
@@ -918,6 +1006,38 @@ mod tests
                 ),
             ]);
         assert_eq!(certificate.verdict(), Verdict::Refuted(Refutation::Escape));
+    }
+
+    #[test]
+    fn a_pack_witness_mismatch_is_a_clash_no_solution_can_justify()
+    {
+        // The witnesses are types and no substitution rewrites a type, so the
+        // mismatch decides the pair even with a metavariable still open — the
+        // solver's clash and conversion's refusal are the one verdict.
+        let left = packed(Value::Hole(0));
+        let right = Rc::new(Value::pack([ValueType::Unit], Value::Hole(0)));
+        let (mut nbe, _solver, certificate) =
+            run(context(&[(HoleId::from(0_u32), MetaSort::Value)]), vec![
+                values(Rc::clone(&left), Rc::clone(&right)),
+            ]);
+        assert_eq!(certificate.verdict(), Verdict::Refuted(Refutation::Clash));
+        assert!(!bool::from(nbe.converts(&left, &right)));
+    }
+
+    #[test]
+    fn matching_witnesses_with_mismatched_payloads_fail_in_solver_and_conversion()
+    {
+        // The open metavariable elsewhere keeps the solver on the walking
+        // path, so the payload clash is the solver's own verdict, reached
+        // through the pack congruence — and conversion refuses the same pair.
+        let left = Rc::new(Value::Pair(packed(Value::Int(1)), value_hole(0)));
+        let right = Rc::new(Value::Pair(packed(Value::Int(2)), int(9)));
+        let (mut nbe, _solver, certificate) =
+            run(context(&[(HoleId::from(0_u32), MetaSort::Value)]), vec![
+                values(Rc::clone(&left), Rc::clone(&right)),
+            ]);
+        assert_eq!(certificate.verdict(), Verdict::Refuted(Refutation::Clash));
+        assert!(!bool::from(nbe.converts(&left, &right)));
     }
 
     #[test]
@@ -1413,6 +1533,48 @@ mod tests
         ));
     }
 
+    #[test]
+    fn a_substitution_reaches_an_unpack_body_only_past_a_different_binder()
+    {
+        let unpack = |scrut: Value, body: Comp| {
+            Value::Thunk(
+                Grade::ONE,
+                Rc::new(Comp::unpack(
+                    scrut,
+                    ValueType::integer(),
+                    [seal(crate::boundary::TypeSerial::from(0))],
+                    "m",
+                    body,
+                )),
+            )
+        };
+        // The module binder differs: the substitution reaches the scrutinee
+        // and the body.
+        let reached = crate::subst::subst_value(
+            &unpack(
+                Value::var(NameRef::from("x")),
+                Comp::ret(Value::var(NameRef::from("x"))),
+            ),
+            "x",
+            &Value::Int(3),
+        );
+        assert_eq!(reached, unpack(Value::Int(3), Comp::ret(Value::Int(3))));
+        // The module binder rebinds the name: the body is blocked, and the
+        // scrutinee — outside the binder's scope — is not.
+        let blocked = crate::subst::subst_value(
+            &unpack(
+                Value::var(NameRef::from("m")),
+                Comp::ret(Value::var(NameRef::from("m"))),
+            ),
+            "m",
+            &Value::Int(3),
+        );
+        assert_eq!(
+            blocked,
+            unpack(Value::Int(3), Comp::ret(Value::var(NameRef::from("m"))))
+        );
+    }
+
     // ── the occurrence scan ─────────────────────────────────────────────────
 
     #[test]
@@ -1461,6 +1623,36 @@ mod tests
         let found = scan::scan_comp(&term, ceiling, &[]);
         assert!(bool::from(found.escapes()));
         assert!(bool::from(found.mentions(HoleId::from(3))));
+    }
+
+    #[test]
+    fn a_scan_reaches_through_a_pack_and_an_unpack()
+    {
+        let ceiling = crate::boundary::VariableLevel::from(2);
+        let escaped = level_name(crate::boundary::VariableLevel::from(1));
+        // The pack's payload is the one term child: the hole inside it is
+        // found, and a disallowed level inside it is flagged.
+        let found = scan::scan_value(&packed(Value::Hole(0)), ceiling, &[]);
+        assert!(bool::from(found.mentions(HoleId::from(0))));
+        let found = scan::scan_value(
+            &packed(Value::var(NameRef::from(escaped.as_str()))),
+            ceiling,
+            &[],
+        );
+        assert!(bool::from(found.escapes()));
+        // The unpack's term children are the scrutinee and the body: the hole
+        // in the scrutinee is found and the body's disallowed level is
+        // flagged, past the signature, the atoms, and the module binder.
+        let term = Comp::unpack(
+            Value::Hole(0),
+            ValueType::integer(),
+            [seal(crate::boundary::TypeSerial::from(0))],
+            "m",
+            Comp::ret(Value::var(NameRef::from(escaped.as_str()))),
+        );
+        let found = scan::scan_comp(&term, ceiling, &[]);
+        assert!(bool::from(found.mentions(HoleId::from(0))));
+        assert!(bool::from(found.escapes()));
     }
 
     // ── the agreement property ──────────────────────────────────────────────

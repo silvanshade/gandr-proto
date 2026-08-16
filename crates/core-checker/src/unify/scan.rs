@@ -248,10 +248,14 @@ impl<'term, 'query> Scan<'term, 'query>
                 self.work.push(Node::Value(fst.as_ref()));
                 self.work.push(Node::Value(snd.as_ref()));
             },
+            // A pack's witnesses and an annotation's type are types, and a
+            // type is not a place this scan looks; each of these forms has
+            // exactly one value child.
             | Value::Inj(_, ref payload)
             | Value::Here(ref payload)
             | Value::Annot(ref payload, _)
-            | Value::Ctor { ref payload, .. } => self.work.push(Node::Value(payload.as_ref())),
+            | Value::Ctor { ref payload, .. }
+            | Value::Pack { ref payload, .. } => self.work.push(Node::Value(payload.as_ref())),
             | Value::List(ref elements) => {
                 for element in elements {
                     self.work.push(Node::Value(element.as_ref()));
@@ -312,7 +316,17 @@ impl<'term, 'query> Scan<'term, 'query>
                 self.work.push(Node::Comp(nil.as_ref()));
                 self.work.push(Node::Comp(cons.as_ref()));
             },
+            // An unpack's ascribed signature is a type and its atoms are
+            // minted identities — neither is a place this scan looks, and the
+            // module binder is a name the shadowing-free discipline of the
+            // module doc already covers. Its term children are the scrutinee
+            // and the body, exactly as a split's are.
             | Comp::Split {
+                ref scrut,
+                ref body,
+                ..
+            }
+            | Comp::Unpack {
                 ref scrut,
                 ref body,
                 ..

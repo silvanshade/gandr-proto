@@ -16,7 +16,10 @@
 //!   replaced by a pair of fresh ones with no choice taken.
 //! - **Same-constructor congruence** over the positive structure, with record
 //!   fields compared in canonical order, no width rule, no permutation rule,
-//!   and thunk grades compared exactly.
+//!   and thunk grades compared exactly. A packed module decomposes by the same
+//!   congruence: its witness types are compared by α-identity of their syntax —
+//!   exactly the comparison ordinary conversion states — and its payload is the
+//!   one residual equation.
 //! - **Rigid-rigid same-head spine decomposition**, and `Return` congruence.
 //!
 //! # What is outside it, and why
@@ -66,9 +69,9 @@ pub enum PostponeReason
     /// A spine repeats a variable, so the solution is undetermined at the
     /// repeated position.
     RepeatedSpineVariable,
-    /// A spine argument is a positive constructor. Inverting it would define
-    /// the solution only on that constructor's image and leave the rest to a
-    /// guess.
+    /// A spine argument is a positive constructor or a packed module — an
+    /// inert canonical form either way. Inverting it would define the solution
+    /// only on that form's image and leave the rest to a guess.
     ConstructorInSpine,
     /// A spine carries a sequencing continuation, which is not an eliminator
     /// the pattern discipline can invert.
@@ -218,7 +221,8 @@ pub(crate) fn classify_spine(
             | SemValueNode::List(_)
             | SemValueNode::Record(_)
             | SemValueNode::Here(_)
-            | SemValueNode::Ctor { .. } => {
+            | SemValueNode::Ctor { .. }
+            | SemValueNode::Pack { .. } => {
                 return Ok(SpineShape::Blocked(PostponeReason::ConstructorInSpine));
             },
         };

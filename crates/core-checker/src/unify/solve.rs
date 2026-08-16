@@ -50,6 +50,7 @@ use crate::nbe::Normalizer;
 use crate::nbe::conv;
 use crate::nbe::eval;
 use crate::nbe::eval::ForceMode;
+use crate::nbe::intern::canonically_equal_value_types;
 use crate::nbe::quote::QuoteMode;
 use crate::nbe::quote::level_name;
 use crate::nbe::quote::quote_comp;
@@ -736,6 +737,41 @@ fn step_value(
         },
         | (&SemValueNode::Here(left), &SemValueNode::Here(right)) => {
             machine.push_value(goal, left, right);
+            return Ok(Step::Pushed);
+        },
+        | (
+            &SemValueNode::Pack {
+                witnesses: ref left_witnesses,
+                payload: left_payload,
+            },
+            &SemValueNode::Pack {
+                witnesses: ref right_witnesses,
+                payload: right_payload,
+            },
+        ) => {
+            // The witnesses are compared, not erased — through the one shared
+            // embedded-identity comparison conversion itself uses, so the
+            // solver and conversion stay the same relation on the one input
+            // neither evaluates. They are types, so no solution can rewrite
+            // them: a mismatch is a clash outright, and a match leaves the
+            // payloads as the one residual equation. Without this arm a pack
+            // pair falls through to the residual case and reads as a clash
+            // between *different* constructors, which two packs are not — the
+            // one refutation the evidence here does not license.
+            if left_witnesses.len() != right_witnesses.len() {
+                return Ok(Step::Refute(Refutation::Clash));
+            }
+            let store = nbe.syntax();
+            let aligned = left_witnesses
+                .iter()
+                .zip(right_witnesses.iter())
+                .all(|(left, right)| {
+                    bool::from(canonically_equal_value_types(store, *left, *right))
+                });
+            if !aligned {
+                return Ok(Step::Refute(Refutation::Clash));
+            }
+            machine.push_value(goal, left_payload, right_payload);
             return Ok(Step::Pushed);
         },
         | (

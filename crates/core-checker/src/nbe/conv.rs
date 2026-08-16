@@ -70,7 +70,7 @@ use crate::nbe::eval::rerun_spine;
 use crate::nbe::eval::syntax_comp;
 use crate::nbe::eval::value;
 use crate::nbe::intern::canonical_stack_key;
-use crate::nbe::intern::canonical_value_type_key;
+use crate::nbe::intern::canonically_equal_value_types;
 use crate::nbe::sem::ClosureId;
 use crate::nbe::sem::CompUnfold;
 use crate::nbe::sem::Elim;
@@ -416,9 +416,7 @@ fn value_goal(
                 .iter()
                 .zip(right_witnesses.iter())
                 .all(|(left, right)| {
-                    left == right
-                        || canonical_value_type_key(store, *left)
-                            == canonical_value_type_key(store, *right)
+                    bool::from(canonically_equal_value_types(store, *left, *right))
                 });
             if !aligned {
                 return Ok(ValueEquality::from(false));
@@ -1137,9 +1135,11 @@ fn same_package_head(
         ) => {
             let store = nbe.syntax();
             left_atoms == right_atoms
-                && (left_signature == right_signature
-                    || canonical_value_type_key(store, left_signature)
-                        == canonical_value_type_key(store, right_signature))
+                && bool::from(canonically_equal_value_types(
+                    store,
+                    left_signature,
+                    right_signature,
+                ))
         },
         | _ => false,
     };

@@ -56,6 +56,7 @@ use crate::boundary::BinderScope;
 use crate::boundary::InternedSyntaxCount;
 use crate::boundary::SemanticHash;
 use crate::boundary::SemanticNodeCount;
+use crate::boundary::ValueEquality;
 use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
@@ -371,6 +372,30 @@ pub fn canonical_value_type_key(
 ) -> CanonicalKey
 {
     key_from(arena, KeyTask::ValueType(ty))
+}
+
+/// Whether two value types carried inside terms are the same type: identical
+/// ids, or α-identical syntax through the canonical key.
+///
+/// This is **embedded canonical witness identity** — the one comparison every
+/// engine that meets a type inside a value performs, because such a type is
+/// never evaluated and the key is the only equality on offer: conversion on a
+/// packed module's witnesses and on an unpack's ascribed signature
+/// ([`crate::nbe::conv`]), and the unifier's pack congruence
+/// ([`crate::unify`]). Sharing the one function is what keeps the solver's
+/// verdict and conversion's verdict the same relation on this input.
+#[inline]
+#[must_use]
+pub(crate) fn canonically_equal_value_types(
+    arena: &FlatArena,
+    left: ValueTypeNodeId,
+    right: ValueTypeNodeId,
+) -> ValueEquality
+{
+    ValueEquality::from(
+        left == right
+            || canonical_value_type_key(arena, left) == canonical_value_type_key(arena, right),
+    )
 }
 
 /// Drains the canonical-key traversal from one root task.

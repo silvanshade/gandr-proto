@@ -572,7 +572,7 @@ impl<'src> Subst<'src>
             } => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendValue(scrut.as_ref()));
-                if binder != self.name {
+                if self.shadowed != Some(NameRef::from(binder.as_str())) {
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
             },
@@ -790,7 +790,7 @@ impl<'src> Subst<'src>
                 ..
             } => {
                 let scrut = self.take_value();
-                let body_sub = if binder == self.name {
+                let body_sub = if self.shadowed == Some(NameRef::from(binder.as_str())) {
                     Rc::clone(body)
                 }
                 else {
