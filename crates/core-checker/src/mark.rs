@@ -185,9 +185,10 @@ impl Boundary
 /// One semantic mark on a node — the localized image of a [`TypeError`] abort,
 /// reconciled with the syntactic empty-hole mark into a single discipline.
 ///
-/// Every kind except [`Mark::EmptyHole`] is an **error** mark
-/// ([`Mark::is_error`]); the empty hole is a *complete-but-incomplete* node
-/// (the program is well-typed, the hole is simply unfilled).
+/// Every kind except [`Mark::EmptyHole`] and [`Mark::PatternHole`] is an
+/// **error** mark ([`Mark::is_error`]); the two hole marks are
+/// *complete-but-incomplete* nodes (the program is well-typed, the hole is
+/// simply unfilled).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Mark
 {
@@ -195,6 +196,32 @@ pub enum Mark
     /// syntactic hole into the one discipline. **Not** an error: the checker
     /// accepts holes (they infer `Unknown` and check against anything).
     EmptyHole(
+        /// The hole's identifier.
+        HoleId,
+    ),
+    /// An empty hole `?u` standing in **pattern** position — the position mark
+    /// this discipline was missing, and the only thing that distinguishes an
+    /// unfinished pattern from an unfinished expression once both are marks.
+    ///
+    /// **Not** an error, for the same reason [`Mark::EmptyHole`] is not: an
+    /// unfilled pattern leaves the program well-typed and merely incomplete,
+    /// so checking proceeds and the branches beside it still land.
+    ///
+    /// The kinds are kept apart because what a consumer may conclude from each
+    /// is different. An expression hole stands for a *value* and infers
+    /// `Unknown`; a pattern hole stands for a *test*, and the only sound
+    /// reading of an unfinished test is that it might succeed and might fail.
+    /// That indeterminacy is what a live match analysis propagates — a branch
+    /// carrying one is neither satisfied nor refuted — and collapsing the two
+    /// kinds would hand it an expression's reading of a pattern's hole.
+    ///
+    /// This module's own marker never emits it: the core calculus compiles
+    /// patterns away before it is reached (`Comp::DataCase` carries tag-indexed
+    /// arms, not patterns), so the mark is minted where patterns still exist,
+    /// by the surface's pattern analysis. It lives here because the mark
+    /// taxonomy is one taxonomy, and a second one on the surface side would be
+    /// a fork of the discipline rather than an extension of it.
+    PatternHole(
         /// The hole's identifier.
         HoleId,
     ),
@@ -257,17 +284,25 @@ pub enum Mark
 
 impl Mark
 {
-    /// Whether this mark is an **error** (every kind but the empty hole).
+    /// Whether this mark is an **error** (every kind but the two hole marks).
     ///
     /// # Contract
-    /// - ensures: returns `false` for [`Mark::EmptyHole`] (a complete-but-
-    ///   incomplete node the checker accepts), `true` for every other kind.
+    /// - ensures: returns `false` for [`Mark::EmptyHole`] and
+    ///   [`Mark::PatternHole`] (complete-but-incomplete nodes the checker
+    ///   accepts), `true` for every other kind.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the hole kinds and the error kinds are distinguished
+    ///   by this predicate alone, so a pattern hole classified as an error
+    ///   would make an unfinished pattern block its item — the failure the live
+    ///   analysis exists to avoid.
+    /// - witness: `mark::tests::pattern_holes_are_incomplete_not_erroneous`
     #[inline]
     #[must_use]
     pub fn is_error(&self) -> ErrorStatus
     {
-        (!matches!(*self, Self::EmptyHole(_))).into()
+        (!matches!(*self, Self::EmptyHole(_) | Self::PatternHole(_))).into()
     }
 }
 
@@ -7263,6 +7298,33 @@ mod tests
                 .iter()
                 .any(|mark| matches!(mark, Mark::EmptyHole(_))),
             "the hole carries an EmptyHole mark"
+        );
+    }
+
+    /// A pattern-position hole is complete-but-incomplete exactly as an
+    /// expression-position one is, and the two remain distinguishable — the
+    /// property a live match analysis rests on, since an unfinished *test*
+    /// admits a reading an unfinished *value* does not.
+    #[test]
+    fn pattern_holes_are_incomplete_not_erroneous()
+    {
+        let pattern = Mark::PatternHole(7);
+        assert!(
+            !bool::from(pattern.is_error()),
+            "a pattern hole leaves the program well-typed and merely unfinished"
+        );
+        assert_ne!(
+            pattern,
+            Mark::EmptyHole(7),
+            "the pattern position is part of the mark's identity, not a detail"
+        );
+        assert!(
+            !bool::from(Mark::EmptyHole(7).is_error()),
+            "the expression hole's classification is unchanged"
+        );
+        assert!(
+            bool::from(Mark::Stuck { hint: "" }.is_error()),
+            "every other kind stays an error mark"
         );
     }
 

@@ -431,6 +431,7 @@ mod tests
         {
             match *detail {
                 | MarkDetail::EmptyHole { .. } => "EmptyHole".into(),
+                | MarkDetail::PatternHole { .. } => "PatternHole".into(),
                 | MarkDetail::TypeMismatch { .. } => "TypeMismatch".into(),
                 | MarkDetail::EffectRowMismatch { .. } => "EffectRowMismatch".into(),
                 | MarkDetail::ShapeMismatch { .. } => "ShapeMismatch".into(),

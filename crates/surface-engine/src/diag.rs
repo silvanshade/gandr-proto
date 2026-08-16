@@ -428,6 +428,15 @@ pub enum MarkDetail
         /// The hole's identifier.
         hole: u32,
     },
+    /// An empty hole `?u` in **pattern** position — complete-but-incomplete,
+    /// **not** an error ([`Mark::PatternHole`]). Kept apart from
+    /// [`MarkDetail::EmptyHole`] because an unfinished test and an unfinished
+    /// value license different conclusions.
+    PatternHole
+    {
+        /// The hole's identifier.
+        hole: u32,
+    },
     /// Subsumption failed: the synthesized type is not a consistent subtype of
     /// the analyzed type (the typed error-boundary `{t}_{actual ⇐ expected}`;
     /// [`Mark::TypeMismatch`]).
@@ -1535,6 +1544,7 @@ fn mark_detail(mark: &Mark) -> MarkDetail
 {
     match *mark {
         | Mark::EmptyHole(hole) => MarkDetail::EmptyHole { hole },
+        | Mark::PatternHole(hole) => MarkDetail::PatternHole { hole },
         | Mark::TypeMismatch(ref boundary) => MarkDetail::TypeMismatch {
             expected: format!("{:?}", boundary.expected),
             actual: format!("{:?}", boundary.actual),
