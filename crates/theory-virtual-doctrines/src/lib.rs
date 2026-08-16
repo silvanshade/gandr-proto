@@ -16,6 +16,8 @@
 //!   its [`CellStoreVdc`] instance: the dictionary reading of ADR-68 D1
 //!   realized as the cell store realizes it ([`SignatureRef`], [`SigMorphism`],
 //!   [`RelationRef`], [`Derivation`]).
+//! - [`cartesian`] — checked W-actions and deterministic witnesses for
+//!   projection, diagonal, and complete product-structure preservation.
 //! - [`syntax`] — the reflected judgment layer: [`Protype`]s and [`Proterm`]s
 //!   (`FVDblTT`'s four judgment families), **first-order, no dependent types**,
 //!   with [`Proterm::Cert`] embedding an engine derivation.
@@ -58,6 +60,7 @@
 extern crate alloc;
 
 pub mod boundary;
+pub mod cartesian;
 pub mod check;
 pub mod directed;
 pub mod iso;
@@ -65,6 +68,9 @@ pub mod query;
 pub mod syntax;
 pub mod vdc;
 
+pub use crate::boundary::CartesianDiagonalPreservation;
+pub use crate::boundary::CartesianProjectionPreservation;
+pub use crate::boundary::CartesianStructurePreservation;
 pub use crate::boundary::CertificateInvertibility;
 pub use crate::boundary::CheckContextDeclaration;
 pub use crate::boundary::CutCoherence;
@@ -87,6 +93,9 @@ pub use crate::boundary::RewriteStepBudget;
 pub use crate::boundary::RoundTripIdentity;
 pub use crate::boundary::SigMorphismIdentity;
 pub use crate::boundary::VdcCellEquality;
+pub use crate::cartesian::CartesianLawError;
+pub use crate::cartesian::CartesianWitness;
+pub use crate::cartesian::WCartesianAction;
 pub use crate::check::CheckError;
 pub use crate::check::Checker;
 pub use crate::check::Context;

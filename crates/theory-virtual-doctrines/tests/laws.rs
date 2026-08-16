@@ -52,6 +52,7 @@ mod tests
     use gandr_theory_levitation::Name;
     use gandr_theory_levitation::NameRef;
     use gandr_theory_levitation::NominalId;
+    use gandr_theory_virtual_doctrines::CartesianLawError;
     use gandr_theory_virtual_doctrines::CellStoreVdc;
     use gandr_theory_virtual_doctrines::CheckError;
     use gandr_theory_virtual_doctrines::Checker;
@@ -71,6 +72,7 @@ mod tests
     use gandr_theory_virtual_doctrines::SignatureRef;
     use gandr_theory_virtual_doctrines::TermRef;
     use gandr_theory_virtual_doctrines::Vdc as _;
+    use gandr_theory_virtual_doctrines::WCartesianAction;
 
     // ---- §3 law 1: tight category ----------------------------------------
 
@@ -266,6 +268,84 @@ mod tests
             checker.check_protype(&Context::new(), &product),
             "a product of well-formed protypes is well-formed pointwise"
         );
+    }
+
+    #[test]
+    fn w_cartesian_action_preserves_projections_diagonal_and_structure()
+    {
+        let nat = nat_sig();
+        let source = SignatureRef::product(Box::from([nat.clone(), nat.clone()]));
+        let target = source.clone();
+        let components = vec![
+            SigMorphism::identity(nat.clone()),
+            SigMorphism::identity(nat),
+        ];
+        let action = WCartesianAction::new(source, target, components);
+        let witness = action
+            .checked_witness()
+            .expect("the componentwise identity action is cartesian");
+        assert!(bool::from(witness.projections));
+        assert!(bool::from(witness.diagonal));
+        assert!(bool::from(witness.structure));
+    }
+
+    #[test]
+    fn w_cartesian_action_rejects_projection_defect()
+    {
+        let first = SignatureRef::single(NominalId::new(0_u64.into(), "First"));
+        let second = SignatureRef::single(NominalId::new(1_u64.into(), "Second"));
+        let source = SignatureRef::product(Box::from([first, second.clone()]));
+        let target = source.clone();
+        let action = WCartesianAction::new(source, target, vec![
+            SigMorphism::identity(second.clone()),
+            SigMorphism::identity(second),
+        ]);
+        let Err(CartesianLawError::Violation(witness)) = action.checked_witness()
+        else {
+            panic!("a factor-boundary mismatch must fail the projection law");
+        };
+        assert!(!bool::from(witness.projections));
+        assert!(bool::from(witness.diagonal));
+        assert!(!bool::from(witness.structure));
+    }
+
+    #[test]
+    fn w_cartesian_action_rejects_diagonal_defect()
+    {
+        let first = SignatureRef::single(NominalId::new(0_u64.into(), "First"));
+        let second = SignatureRef::single(NominalId::new(1_u64.into(), "Second"));
+        let source = SignatureRef::product(Box::from([first.clone(), second.clone()]));
+        let target = source.clone();
+        let action = WCartesianAction::new(source, target, vec![
+            SigMorphism::identity(first),
+            SigMorphism::identity(second),
+        ]);
+        let Err(CartesianLawError::Violation(witness)) = action.checked_witness()
+        else {
+            panic!("distinct component actions must fail diagonal preservation");
+        };
+        assert!(bool::from(witness.projections));
+        assert!(!bool::from(witness.diagonal));
+        assert!(!bool::from(witness.structure));
+    }
+
+    #[test]
+    fn w_cartesian_action_rejects_product_structure_defect()
+    {
+        let nat = nat_sig();
+        let source = SignatureRef::product(Box::from([nat.clone(), nat.clone()]));
+        let target = SignatureRef::product(Box::from([nat.clone()]));
+        let action = WCartesianAction::new(source, target, vec![
+            SigMorphism::identity(nat.clone()),
+            SigMorphism::identity(nat),
+        ]);
+        let Err(CartesianLawError::Violation(witness)) = action.checked_witness()
+        else {
+            panic!("a width-changing action must fail the cartesian structure law");
+        };
+        assert!(!bool::from(witness.projections));
+        assert!(!bool::from(witness.diagonal));
+        assert!(!bool::from(witness.structure));
     }
 
     // ---- §3 law 5: units (path induction) --------------------------------
