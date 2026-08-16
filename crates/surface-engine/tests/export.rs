@@ -18,10 +18,22 @@
 #[cfg(test)]
 mod tests
 {
+    use gandr_core_incremental::persistence::BackendArtifact;
+    use gandr_core_incremental::persistence::CheckpointObserver;
+    use gandr_core_incremental::persistence::FileCheckpointStore;
+    use gandr_core_incremental::persistence::restore;
+    use gandr_core_incremental::region::Program;
     use gandr_storage_artifact::ArtifactRecordCount;
     use gandr_storage_prolly_trees::InMemoryBlockStore;
     use gandr_storage_prolly_trees::TreeParams;
     use gandr_surface_engine::session::Session;
+
+    #[derive(Default)]
+    struct Observer;
+
+    impl CheckpointObserver for Observer
+    {
+    }
 
     /// The real session path exports the session's own admitted environment:
     /// the exported artifact commits one record per admission, and its
@@ -158,5 +170,69 @@ mod tests
             built.manifest().record_count(),
             "no admissions, so no records"
         );
+    }
+
+    /// The shipping session operation persists through the durable checkpoint
+    /// backend, reopens the canonical payload, and rejects a tampered file.
+    #[test]
+    fn session_persists_and_reopens_file_checkpoint()
+    {
+        let root =
+            std::env::temp_dir().join(format!("gandr-surface-session-{}", std::process::id()));
+        drop(std::fs::remove_dir_all(&root));
+
+        let session = Session::new();
+        let mut artifact_store = InMemoryBlockStore::new();
+        let mut checkpoint_store = FileCheckpointStore::open(&root).expect("open checkpoint store");
+        let mut observer = Observer;
+        let (built, address) = session
+            .persist_kernel_checkpoint(
+                TreeParams::default(),
+                &mut artifact_store,
+                &mut checkpoint_store,
+                &mut observer,
+            )
+            .expect("persist the session checkpoint");
+        let manifest = built.manifest().encode();
+        let backend = BackendArtifact::from_bytes(manifest.as_ref());
+        drop(checkpoint_store);
+
+        let mut reopened = FileCheckpointStore::open(&root).expect("reopen checkpoint store");
+        assert!(
+            restore(
+                &mut reopened,
+                &Program::default(),
+                address,
+                backend,
+                &mut observer
+            )
+            .expect("load the persisted checkpoint")
+            .is_some()
+        );
+
+        let path = std::fs::read_dir(&root)
+            .expect("read checkpoint directory")
+            .next()
+            .expect("one checkpoint file")
+            .expect("read checkpoint directory entry")
+            .path();
+        let mut bytes = std::fs::read(&path).expect("read checkpoint file");
+        let last = bytes
+            .len()
+            .checked_sub(1)
+            .expect("non-empty checkpoint file");
+        bytes[last] ^= 1;
+        std::fs::write(&path, bytes).expect("tamper checkpoint file");
+        assert_eq!(
+            restore(
+                &mut reopened,
+                &Program::default(),
+                address,
+                backend,
+                &mut observer
+            ),
+            Err(gandr_core_incremental::persistence::CheckpointStoreError::Corrupt)
+        );
+        std::fs::remove_dir_all(root).expect("remove checkpoint directory");
     }
 }

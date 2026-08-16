@@ -96,6 +96,12 @@ use gandr_core_checker::types::Ty;
 use gandr_core_incremental::checkpoint::Checkpoints;
 use gandr_core_incremental::checkpoint::ItemTyping;
 use gandr_core_incremental::checkpoint::resume_with;
+use gandr_core_incremental::persistence::BackendArtifact;
+use gandr_core_incremental::persistence::CheckpointAddress;
+use gandr_core_incremental::persistence::CheckpointObserver;
+use gandr_core_incremental::persistence::CheckpointStore;
+use gandr_core_incremental::persistence::CheckpointStoreError;
+use gandr_core_incremental::persistence::persist;
 use gandr_core_incremental::region::Item;
 use gandr_core_incremental::region::Program;
 use gandr_core_sequent::machine::run_comp_with_prelude;
@@ -124,6 +130,18 @@ use crate::namespace::Scope;
 use crate::prelude::Prelude;
 use crate::prelude_ctx;
 use crate::prelude_env;
+
+/// Why a session checkpoint export failed.
+#[derive(Debug, thiserror::Error)]
+pub enum SessionPersistenceError
+{
+    /// The kernel environment could not be exported as a storage artifact.
+    #[error("kernel artifact export failed")]
+    Artifact(#[from] ArtifactError),
+    /// The canonical checkpoint could not be persisted.
+    #[error("checkpoint persistence failed: {0:?}")]
+    Checkpoint(CheckpointStoreError),
+}
 
 /// The outcome of one lowered item in a [`Submission`], in source order.
 ///
@@ -284,14 +302,13 @@ impl Session
     ///   parameter commitment, the record count, the root node hash, and the
     ///   inner kernel export format version, with [`BuiltArtifact::identity`]
     ///   the BLAKE3 digest of that manifest. The build is a deterministic
-    ///   function of the admitted record set — history-independent — so two
-    ///   sessions that admitted the same definitions mint the same identity.
+    ///   function of the admitted record set, so two sessions that admitted the
+    ///   same definitions mint the same identity.
     /// - provides: the shipping session export path: the outer
     ///   content-addressed identity of the environment this session's admitted
     ///   definitions accumulated. The identity authenticates the bytes;
     ///   validity is re-derived at replay from the canonical inner encoding,
-    ///   never from the hash (the two-walls discipline `gandr-storage-artifact`
-    ///   documents).
+    ///   never from the hash.
     /// - fails: [`ArtifactError`], as [`gandr_storage_artifact::build`].
     /// - panics: none.
     ///
@@ -299,12 +316,9 @@ impl Session
     /// [`ArtifactError`].
     ///
     /// # Adequacy
-    /// - hypothesis: L2 — the session-level differentials pin that the path
-    ///   exports this session's real environment (identity and record count
-    ///   match a direct build over it), that two independently built sessions
-    ///   with the same admitted definitions mint byte-equal identities, and
-    ///   that changed environment content changes the identity; the L3 residue
-    ///   is the empty session's zero-record artifact.
+    /// - hypothesis: L2 — the session-level differentials pin that this path
+    ///   exports the real environment, equal environments mint equal
+    ///   identities, and changed content changes the identity.
     /// - witness: `export::tests::the_session_export_path_exports_the_admitted_environment`
     /// - witness: `export::tests::independently_built_sessions_mint_byte_equal_identities`
     /// - witness: `export::tests::changed_environment_content_changes_the_identity`
@@ -319,6 +333,58 @@ impl Session
         S: BlockStore + ?Sized,
     {
         gandr_storage_artifact::build_from_environment(self.kernel.environment(), params, store)
+    }
+
+    /// Exports the session environment and persists its validated checkpoints.
+    ///
+    /// # Contract
+    /// - requires: `params` is supported by the artifact tree, and both stores
+    ///   remain available for the duration of the operation.
+    /// - ensures: the artifact is built through
+    ///   [`Self::export_kernel_artifact`] and the checkpoints are stored under
+    ///   the program address and the artifact manifest identity.
+    /// - provides: the built artifact and checkpoint address for a later call
+    ///   to [`gandr_core_incremental::persistence::restore`].
+    /// - fails: returns [`SessionPersistenceError::Artifact`] when artifact
+    ///   construction fails, or [`SessionPersistenceError::Checkpoint`] when
+    ///   checkpoint encoding, verification, or storage fails.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// [`SessionPersistenceError`].
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the production path preserves the canonical manifest
+    ///   identity, durable checkpoint encoding, and explicit codec rejection
+    ///   boundary as one operation.
+    /// - witness: `export::tests::session_persists_and_reopens_file_checkpoint`
+    /// - witness:
+    ///   `gandr_core_incremental::persistence::tests::nested_process_local_and_opaque_forms_report_exact_errors`
+    #[inline]
+    pub fn persist_kernel_checkpoint<B, S, O>(
+        &self,
+        params: TreeParams,
+        artifact_store: &mut B,
+        checkpoint_store: &mut S,
+        observer: &mut O,
+    ) -> Result<(BuiltArtifact, CheckpointAddress), SessionPersistenceError>
+    where
+        B: BlockStore + ?Sized,
+        S: CheckpointStore,
+        O: CheckpointObserver,
+    {
+        let artifact = self.export_kernel_artifact(params, artifact_store)?;
+        let manifest = artifact.manifest().encode();
+        let backend = BackendArtifact::from_bytes(manifest.as_ref());
+        let address = persist(
+            checkpoint_store,
+            &self.program,
+            backend,
+            self.checkpoints.clone(),
+            observer,
+        )
+        .map_err(SessionPersistenceError::Checkpoint)?;
+        Ok((artifact, address))
     }
 
     /// The declared constructor name for a value `Ctor { id, tag, … }` — the
