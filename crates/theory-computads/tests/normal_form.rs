@@ -703,33 +703,21 @@ mod tests
         // The last assertion is the one the two-layer fixture cannot make: with
         // two occupants in layer 0, the declared `(depth, address)` order is
         // observable, and it must ascend.
-        let mut store = CellStore::new();
-        let c = store.insert(toy_cell(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero));
-        let peak = Toy::add(
-            Toy::add(Toy::Zero, Toy::Zero),
-            Toy::add(Toy::Zero, Toy::add(Toy::Zero, Toy::Zero)),
-        );
-        let inner = CellApp {
-            cell: c,
-            at: at([1, 1]),
-        };
-        let middle = CellApp {
-            cell: c,
-            at: at([1]),
-        };
-        let branch = CellApp {
-            cell: c,
-            at: at([0]),
-        };
-        let root = CellApp {
-            cell: c,
-            at: at([]),
-        };
-        let recorded = alloc::vec![inner.clone(), middle.clone(), branch.clone(), root.clone()];
-        let join = run(&store, &peak, &recorded);
-        assert_eq!(Toy::Zero, join, "the four steps collapse the whole peak");
-        let normal = normalized(&store, &peak, &join, &recorded);
-        let cell = store.get(c).expect("the cell is stored");
+        let fixture = three_layer_fixture();
+        let ThreeLayer {
+            ref store,
+            ref peak,
+            ref join,
+            ref inner,
+            ref middle,
+            ref branch,
+            ref root,
+            ..
+        } = fixture;
+        let recorded = fixture.recorded();
+        assert_eq!(&Toy::Zero, join, "the four steps collapse the whole peak");
+        let normal = normalized(store, peak, join, &recorded);
+        let cell = store.get(fixture.cell).expect("the cell is stored");
         // NON-VACUITY. The fixture only separates "maximum over dependences"
         // from "nearest" or "first" because the root primitive's content
         // address sorts BEFORE the middle one's: a recurrence that collapsed
@@ -777,13 +765,13 @@ mod tests
         );
         // And the layer really is free: permuting its two occupants in the
         // recorded derivation leaves one normal form.
-        let permuted = alloc::vec![branch, inner, middle, root];
+        let permuted = alloc::vec![branch.clone(), inner.clone(), middle.clone(), root.clone()];
         assert_eq!(
             join,
-            run(&store, &peak, &permuted),
+            &run(store, peak, &permuted),
             "the permuted derivation reaches the same term to begin with"
         );
-        let permuted_nf = normalized(&store, &peak, &join, &permuted);
+        let permuted_nf = normalized(store, peak, join, &permuted);
         assert!(
             bool::from(nf_equal(&normal, &permuted_nf)),
             "so the two recorded orders are one normal form"
@@ -1624,41 +1612,70 @@ mod tests
         recorded
     }
 
-    /// The four-step, three-layer derivation the deterministic causal fixtures
-    /// share: the store, the peak, the join, and the recorded path
-    /// `[inner, middle, branch, root]`.
+    /// The four-step, three-layer derivation the deterministic fixtures share,
+    /// with each application named by its role.
     ///
-    /// The dependence order is position containment alone: `inner @ [1,1]` and
-    /// `branch @ [0]` depend on nothing, `middle @ [1]` encloses `inner`, and
-    /// `root @ []` encloses all three.
-    fn three_layer_fixture() -> (CellStore<ToyAlphabet>, Toy, Toy, Vec<CellApp<ToyAlphabet>>)
+    /// The dependence order is position containment alone, because `c` overlaps
+    /// nothing: `inner @ [1,1]` and `branch @ [0]` depend on nothing,
+    /// `middle @ [1]` encloses `inner`, and `root @ []` encloses all three. So
+    /// the layering is `{inner, branch}`, then `{middle}`, then `{root}`.
+    struct ThreeLayer
+    {
+        /// The store holding `c`.
+        store: CellStore<ToyAlphabet>,
+        /// The identifier `c` took in that store.
+        cell: CellId,
+        /// The term the derivation starts from.
+        peak: Toy,
+        /// The term the four steps reach.
+        join: Toy,
+        /// The innermost application, at `[1,1]`.
+        inner: CellApp<ToyAlphabet>,
+        /// The application enclosing `inner`, at `[1]`.
+        middle: CellApp<ToyAlphabet>,
+        /// The application incomparable with both, at `[0]`.
+        branch: CellApp<ToyAlphabet>,
+        /// The application enclosing all three, at the root.
+        root: CellApp<ToyAlphabet>,
+    }
+
+    impl ThreeLayer
+    {
+        /// The recorded derivation `[inner, middle, branch, root]`.
+        fn recorded(&self) -> Vec<CellApp<ToyAlphabet>>
+        {
+            alloc::vec![
+                self.inner.clone(),
+                self.middle.clone(),
+                self.branch.clone(),
+                self.root.clone()
+            ]
+        }
+    }
+
+    /// Build the three-layer fixture, checking that the recorded order really
+    /// is a derivation before anything reads it.
+    fn three_layer_fixture() -> ThreeLayer
     {
         let mut store = CellStore::new();
-        let c = store.insert(c_cell());
+        let cell = store.insert(c_cell());
         let peak = Toy::add(
             Toy::add(Toy::Zero, Toy::Zero),
             Toy::add(Toy::Zero, Toy::add(Toy::Zero, Toy::Zero)),
         );
-        let recorded = alloc::vec![
-            CellApp {
-                cell: c,
-                at: at([1, 1]),
-            },
-            CellApp {
-                cell: c,
-                at: at([1]),
-            },
-            CellApp {
-                cell: c,
-                at: at([0]),
-            },
-            CellApp {
-                cell: c,
-                at: at([]),
-            },
-        ];
-        let join = run(&store, &peak, &recorded);
-        (store, peak, join, recorded)
+        let step = |position: ToyPos| CellApp { cell, at: position };
+        let mut fixture = ThreeLayer {
+            store,
+            cell,
+            peak,
+            join: Toy::Zero,
+            inner: step(at([1, 1])),
+            middle: step(at([1])),
+            branch: step(at([0])),
+            root: step(at([])),
+        };
+        fixture.join = run(&fixture.store, &fixture.peak, &fixture.recorded());
+        fixture
     }
 
     #[test]
@@ -1670,8 +1687,9 @@ mod tests
         // story. A relation that collapsed to "everything depends on
         // everything earlier" or to "nothing depends on anything" fails here on
         // the first assertion it reaches.
-        let (store, peak, _join, recorded) = three_layer_fixture();
-        let order = event_order(&store, &peak, &recorded).expect("the derivation replays");
+        let fixture = three_layer_fixture();
+        let order = event_order(&fixture.store, &fixture.peak, &fixture.recorded())
+            .expect("the derivation replays");
         let inner = EventIndex::from(0_usize);
         let middle = EventIndex::from(1_usize);
         let branch = EventIndex::from(2_usize);
@@ -1711,8 +1729,9 @@ mod tests
     #[test]
     fn a_three_layer_derivation_gives_three_layers()
     {
-        let (store, peak, _join, recorded) = three_layer_fixture();
-        let order = event_order(&store, &peak, &recorded).expect("the derivation replays");
+        let fixture = three_layer_fixture();
+        let order = event_order(&fixture.store, &fixture.peak, &fixture.recorded())
+            .expect("the derivation replays");
         let layers = order.layers();
         assert_eq!(
             3,
@@ -1746,8 +1765,9 @@ mod tests
         // so bringing it to the front costs two licensed adjacent swaps — and
         // the rest of the order is left exactly as recorded, because the inner
         // and middle applications are dependent and may not be reordered.
-        let (store, peak, _join, recorded) = three_layer_fixture();
-        let order = event_order(&store, &peak, &recorded).expect("the derivation replays");
+        let fixture = three_layer_fixture();
+        let order = event_order(&fixture.store, &fixture.peak, &fixture.recorded())
+            .expect("the derivation replays");
         let target = alloc::vec![
             EventIndex::from(2_usize),
             EventIndex::from(0_usize),
@@ -1775,8 +1795,9 @@ mod tests
         // THE EXCHANGE KILL SIGNAL over the toy alphabet, where dependence is
         // position CONTAINMENT rather than the sequent alphabet's single
         // command position — a different reason for the same refusal.
-        let (store, peak, _join, recorded) = three_layer_fixture();
-        let order = event_order(&store, &peak, &recorded).expect("the derivation replays");
+        let fixture = three_layer_fixture();
+        let order = event_order(&fixture.store, &fixture.peak, &fixture.recorded())
+            .expect("the derivation replays");
         let inner = EventIndex::from(0_usize);
         let middle = EventIndex::from(1_usize);
         let refusal = order.exchange_between(&order.recorded_order(), &alloc::vec![
@@ -1802,9 +1823,11 @@ mod tests
         // normalizer layers by the same object rather than by a second copy of
         // the relation. If the two ever diverged the schedules would, and this
         // is where that shows.
-        let (store, peak, join, recorded) = three_layer_fixture();
-        let order = event_order(&store, &peak, &recorded).expect("the derivation replays");
-        let normal = normalized(&store, &peak, &join, &recorded);
+        let fixture = three_layer_fixture();
+        let recorded = fixture.recorded();
+        let order =
+            event_order(&fixture.store, &fixture.peak, &recorded).expect("the derivation replays");
+        let normal = normalized(&fixture.store, &fixture.peak, &fixture.join, &recorded);
         let addresses: Vec<PrimId> = order
             .canonical_order()
             .into_iter()
@@ -1814,7 +1837,7 @@ mod tests
             normal.schedule, addresses,
             "the normal form's schedule is this order's canonical order, flattened"
         );
-        let witness = normalize_certified(&store, &peak, &join, &recorded)
+        let witness = normalize_certified(&fixture.store, &fixture.peak, &fixture.join, &recorded)
             .expect("the derivation normalizes");
         assert_eq!(
             &order,
