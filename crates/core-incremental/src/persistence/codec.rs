@@ -133,7 +133,11 @@ pub(super) fn decode_checkpoints(bytes: &[u8]) -> Result<Checkpoints, Checkpoint
     if nodes.len() != 1 {
         return Err(CheckpointStoreError::Corrupt);
     }
-    pop_checkpoints(&mut nodes)
+    let checkpoints = pop_checkpoints(&mut nodes)?;
+    if encode_checkpoints(&checkpoints)? != bytes {
+        return Err(CheckpointStoreError::NonCanonical);
+    }
+    Ok(checkpoints)
 }
 
 /// Deferred encoder work used to avoid recursion on semantic trees.

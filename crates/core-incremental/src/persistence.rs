@@ -81,6 +81,8 @@ pub enum CheckpointStoreError
     UnsupportedPersistence(UnsupportedPersistence),
     /// A file artifact is truncated or has an invalid schema.
     Corrupt,
+    /// A valid semantic payload used a non-canonical byte representation.
+    NonCanonical,
     /// The backing store could not complete an operating-system request.
     Io,
 }
@@ -304,7 +306,8 @@ pub fn encode_checkpoints(checkpoints: &Checkpoints) -> Result<Vec<u8>, Checkpoi
 /// # Errors
 ///
 /// Returns [`CheckpointStoreError::Corrupt`] for malformed, truncated, or
-/// trailing bytes.
+/// trailing bytes, and [`CheckpointStoreError::NonCanonical`] when a valid
+/// semantic payload has another byte representation.
 #[inline]
 pub fn decode_checkpoints(bytes: &[u8]) -> Result<Checkpoints, CheckpointStoreError>
 {
@@ -799,6 +802,27 @@ mod tests
         assert_eq!(
             decode_checkpoints(&trailing),
             Err(CheckpointStoreError::Corrupt)
+        );
+    }
+
+    #[test]
+    fn checkpoint_decoder_rejects_parseable_noncanonical_payload()
+    {
+        let mut checkpoints = checkpoint(Term::Value(Value::Unit), None);
+        let footprint = &mut checkpoints.items[0].footprint;
+        let _inserted = footprint.names.insert(String::from("a"));
+        let _inserted = footprint.names.insert(String::from("b"));
+        let mut noncanonical = encode_checkpoints(&checkpoints).unwrap();
+        let encoded_b = [1, 0, 0, 0, b'b'];
+        let offset = noncanonical
+            .windows(encoded_b.len())
+            .position(|window| window == encoded_b)
+            .expect("encoded footprint label");
+        noncanonical[offset + encoded_b.len() - 1] = b'a';
+
+        assert_eq!(
+            decode_checkpoints(&noncanonical),
+            Err(CheckpointStoreError::NonCanonical)
         );
     }
 
