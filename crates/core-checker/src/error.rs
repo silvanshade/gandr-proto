@@ -118,7 +118,8 @@ pub mod text
     /// A package's own grade and its payload thunk's grade are the same `r`
     /// rather than two independent annotations, so a payload graded otherwise
     /// is a malformed signature rather than a subtyping question. Fills the
-    /// [`TypeError::ShapeMismatch`] `expected` slot ("expected {this}").
+    /// [`TypeError::ShapeMismatch`](crate::error::TypeError::ShapeMismatch)
+    /// `expected` slot ("expected {this}").
     pub const SHAPE_PACKAGE_PAYLOAD: &str = "a thunk graded exactly as the package itself";
     /// Expected shape of a `pack`'s expectation and an `unpack`'s ascription.
     pub const SHAPE_PACKAGE: &str = "a package type";

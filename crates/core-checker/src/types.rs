@@ -544,8 +544,8 @@ pub enum ValueType
     /// outside its fragment by construction. `Package` is that shape, admitted
     /// at exactly one place: the module boundary, where **both directions are
     /// annotated** so no rule ever guesses it. Packing supplies its witness
-    /// types explicitly ([`Value::Pack`](crate::syntax::Value::Pack),
-    /// check-only) and unpacking supplies the signature it eliminates at
+    /// types explicitly ([`Value::Pack`], check-only) and unpacking supplies
+    /// the signature it eliminates at
     /// ([`Comp::Unpack`](crate::syntax::Comp::Unpack), check-only). Checking a
     /// given large type is easy; guessing one is fenced, and the fence is what
     /// keeps the frozen core's decidability where it was.
