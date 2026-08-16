@@ -488,7 +488,9 @@ impl SynTree
             | MoldPayload::Tile(mold) => {
                 grammar().mold(mold).ok().map(|def| TileSpelling(def.label))
             },
-            | MoldPayload::Grout { .. } | MoldPayload::Space => None,
+            | MoldPayload::Grout { .. } | MoldPayload::GhostClose { .. } | MoldPayload::Space => {
+                None
+            },
         }
     }
 
@@ -506,7 +508,9 @@ impl SynTree
         .payload()
         {
             | MoldPayload::Tile(mold) => grammar().mold(mold).ok().map(|def| def.sort),
-            | MoldPayload::Grout { sort, .. } => Sort::try_from_tag(sort).ok(),
+            | MoldPayload::Grout { sort, .. } | MoldPayload::GhostClose { sort, .. } => {
+                Sort::try_from_tag(sort).ok()
+            },
             | MoldPayload::Space => None,
         }
     }

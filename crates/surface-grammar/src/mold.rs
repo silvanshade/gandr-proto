@@ -16,6 +16,8 @@
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 
+use gandr_surface_syntax::ClosingClass;
+use gandr_surface_syntax::DelimSpelling;
 use gandr_surface_syntax::GrammarFingerprint;
 pub use gandr_surface_syntax::MoldId;
 use gandr_theory_graphs::Bound;
@@ -181,6 +183,14 @@ pub struct MoldTable
     /// Not folded into the fingerprint (derived, like
     /// `form_first`).
     form_last: Vec<MoldId>,
+    /// Each mold's **form-level closing class**, indexed by [`MoldId`].
+    ///
+    /// `Some(c)` when every completion path from that mold ends in a paired
+    /// closer of class `c`, `None` otherwise — the datum a force-close needs to
+    /// say which closer its minted ghost stood in for. Derived per rule, so a
+    /// completion path never leaves the form it started in. Not folded into the
+    /// fingerprint (derived, like `form_first` / `form_last`).
+    closing: Vec<Option<ClosingClass>>,
     /// Deterministic PBG fingerprint folding the precedence DAG and the
     /// mold/context tables; scopes the CST identity.
     fingerprint: GrammarFingerprint,
@@ -226,12 +236,17 @@ impl MoldTable
         let mut adjacent_keys: BTreeSet<(TileKey, TileKey)> = BTreeSet::new();
         let mut first_keys: BTreeSet<TileKey> = BTreeSet::new();
         let mut last_keys: BTreeSet<TileKey> = BTreeSet::new();
+        let mut closing: Vec<Option<ClosingClass>> = Vec::new();
 
         for rule in rules {
             let mut occurrences = Vec::new();
             let facet = collect_occurrences(rule, &mut interner, &mut occurrences);
             first_keys.extend(facet.first.iter().copied());
             last_keys.extend(facet.last.iter().copied());
+            // Derived per rule, before the adjacency set is drained into the
+            // table-wide one: the class is a property of THIS form's completion
+            // paths, and a table-wide walk would cross into other rules.
+            closing.extend(closing_classes(&occurrences, &facet));
             adjacent_keys.extend(facet.adjacent);
             for occurrence in occurrences {
                 let rctx = occurrence.rctx;
@@ -294,6 +309,7 @@ impl MoldTable
             adjacencies,
             form_first,
             form_last,
+            closing,
             fingerprint,
         })
     }
@@ -470,6 +486,17 @@ impl MoldTable
         &self.form_last
     }
 
+    /// Return `id`'s form-level closing class, if its completions agree on one.
+    #[inline]
+    pub(crate) fn closing_class(
+        &self,
+        id: MoldId,
+    ) -> Option<ClosingClass>
+    {
+        let index = usize::try_from(u32::from(id)).ok()?;
+        self.closing.get(index).copied().flatten()
+    }
+
     /// Return the number of mold definitions.
     #[inline]
     #[must_use]
@@ -604,6 +631,70 @@ fn collect_occurrences(
         interner,
         out,
     )
+}
+
+/// Derive each occurrence's **form-level closing class** within one rule.
+///
+/// `Some(c)` exactly when every completion path from that occurrence ends in a
+/// paired closer of class `c`; `None` otherwise. Read the three conditions as
+/// three ways to be unsure, because unsure is the safe answer here — a minted
+/// close that names no class simply never pairs, and the cost of `None` is a
+/// suppression not applied rather than one applied wrongly.
+///
+/// - **Terminals, not neighbours.** The completions of an occurrence are the
+///   rule's LAST tiles reachable from it through the rule's own tile adjacency.
+///   A repeat is therefore interior by construction: stepping `; → def → … → ;`
+///   around a member list changes nothing about where the paths end, so a
+///   member's `=` inside `module M { … }` still reaches only `}`.
+/// - **Alternatives intersect.** Reaching two different terminal classes, or
+///   any terminal that spells no closer at all, is divergence and yields
+///   `None`. This is what keeps `def name = E ;` unclassed: its completions end
+///   at `;`, which closes nothing.
+/// - **Paired, not merely closing.** A terminal `}` counts only when the rule
+///   also writes an opener of that class, so a rule that closes something it
+///   never opened claims no class.
+fn closing_classes(
+    occurrences: &[Occurrence],
+    facet: &TileFacet,
+) -> Vec<Option<ClosingClass>>
+{
+    // Classes the rule actually opens; a terminal closer of any other class is
+    // unpaired within this form.
+    let opened: BTreeSet<ClosingClass> = occurrences
+        .iter()
+        .filter_map(|occurrence| ClosingClass::opening(DelimSpelling(occurrence.label)))
+        .collect();
+    occurrences
+        .iter()
+        .map(|occurrence| {
+            let start = TileKey::new(TileLabel(occurrence.label), occurrence.rctx);
+            let mut seen: BTreeSet<TileKey> = BTreeSet::new();
+            let mut frontier = vec![start];
+            let mut class: Option<ClosingClass> = None;
+            while let Some(key) = frontier.pop() {
+                if !seen.insert(key) {
+                    continue;
+                }
+                let mut successors = facet
+                    .adjacent
+                    .iter()
+                    .filter(|&&(left, _)| left == key)
+                    .map(|&(_, right)| right)
+                    .peekable();
+                if successors.peek().is_none() || facet.last.contains(&key) {
+                    // A completion ends here. Every one of them must agree.
+                    let found = ClosingClass::closing(DelimSpelling(key.label().0))
+                        .filter(|reached| opened.contains(reached))?;
+                    if class.is_some_and(|held| held != found) {
+                        return None;
+                    }
+                    class = Some(found);
+                }
+                frontier.extend(successors);
+            }
+            class
+        })
+        .collect()
 }
 
 /// Iteratively walk a regex, interning each tile occurrence's context and
@@ -866,6 +957,14 @@ impl TileKey
     ) -> Self
     {
         Self((label, rctx))
+    }
+
+    /// The tile label this key pairs.
+    #[inline]
+    #[must_use]
+    const fn label(self) -> TileLabel
+    {
+        self.0.0
     }
 }
 

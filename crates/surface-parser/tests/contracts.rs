@@ -25,6 +25,7 @@ use gandr_surface_syntax::MoldId;
 use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::NodeKind;
 use gandr_surface_syntax::SourceSlice;
+use gandr_surface_syntax::TextOffset;
 use proptest::prelude::*;
 
 /// The real built-in grammar, built once and shared across proptest cases.
@@ -633,6 +634,52 @@ proptest! {
         prop_assert_eq!(
             cst.hash(cst.root()).expect("root hash"),
             replayed.hash(replayed.root()).expect("replayed root hash")
+        );
+    }
+
+    /// The declaration boundary is a property of the grammar, not of the
+    /// whitespace that happens to sit on it: every layout separating the two
+    /// declarations must yield the same two items and confine the repair to
+    /// the first of them.
+    #[test]
+    fn declaration_boundary_stays_stable_under_layout(
+        separator in prop_oneof![
+            Just(" "),
+            Just("\n"),
+            Just("\n\n"),
+            Just(" \n "),
+        ]
+    ) {
+        let source = format!("def bad = ( 1 ;{separator}def good = 2;");
+        let boundary = TextOffset(
+            u32::try_from(source.find("def good").unwrap_or(source.len())).unwrap_or(u32::MAX),
+        );
+        let result = parse(built(), SourceSlice::from(source.as_str()))
+            .expect("total parser commit");
+        let significant: Vec<NodeId> = result
+            .cst()
+            .children(result.cst().root())
+            .expect("root children")
+            .iter()
+            .copied()
+            .filter(|&child| {
+                result
+                    .cst()
+                    .node(child)
+                    .is_ok_and(|view| view.material() != Material::Space)
+            })
+            .collect();
+        prop_assert_eq!(significant.len(), 2);
+        prop_assert!(!bool::from(result.is_clean()));
+        let damaged = result.cst().node(significant[0]).expect("first item");
+        prop_assert!(damaged.range().end() <= boundary);
+        let survivor = result.cst().node(significant[1]).expect("second item");
+        prop_assert_eq!(survivor.range().start(), boundary);
+        prop_assert!(
+            result
+                .obligations()
+                .iter()
+                .all(|obligation| obligation.span.end() <= boundary)
         );
     }
 }

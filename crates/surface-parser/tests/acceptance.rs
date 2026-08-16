@@ -831,6 +831,172 @@ fn malformed_programs_repair_predictably() -> Result<(), Box<dyn Error>>
     }
     Ok(())
 }
+/// An unclosed value delimiter must be repaired at the declaration boundary,
+/// so a following definition remains a distinct top-level item.
+///
+/// The absorbing behaviour this pins against is not merely "one item instead of
+/// two": the melder's repair for an unclosed `(` is a ghost end tile appended
+/// wherever the form finally closes, so an unbounded repair puts that ghost —
+/// and the whole `def good` declaration it swallowed — inside the first
+/// definition's meld. Each half is asserted separately: the first declaration
+/// carries every ghost and every obligation, and the second carries none and
+/// covers exactly the text it was written with.
+#[test]
+fn unclosed_definition_delimiter_does_not_absorb_following_definition() -> Result<(), Box<dyn Error>>
+{
+    let source = "def bad = ( 1 ;\ndef good = 2;";
+    let result = parse(built(), SourceSlice::from(source))?;
+    let significant: Vec<NodeId> = result
+        .cst()
+        .children(result.cst().root())?
+        .iter()
+        .copied()
+        .filter(|&child| {
+            result
+                .cst()
+                .node(child)
+                .is_ok_and(|view| view.material() != Material::Space)
+        })
+        .collect();
+    assert_eq!(
+        2,
+        significant.len(),
+        "the malformed and valid definitions remain distinct items"
+    );
+    let second_start = TextOffset(
+        u32::try_from(source.find("def good").unwrap_or(source.len())).unwrap_or(u32::MAX),
+    );
+
+    // The damaged declaration: it holds `bad`, it stops at the boundary, and
+    // every ghost the repair minted lands inside it.
+    let damaged = result.cst().node(significant[0])?;
+    let damaged_ghosts = descendant_grout_ends(result.cst(), significant[0]);
+    assert!(
+        descendant_tiles(result.cst(), significant[0])
+            .iter()
+            .any(|tile| tile == "bad"),
+        "the first item remains the `bad` definition"
+    );
+    assert!(
+        damaged.range().end() <= second_start,
+        "the repaired first definition must not extend past the declaration boundary"
+    );
+    assert!(
+        !bool::from(result.is_clean()),
+        "the malformed first definition retains a recovery obligation"
+    );
+    assert!(
+        !damaged_ghosts.is_empty(),
+        "the repair must mint a ghost end for the unclosed delimiter"
+    );
+    assert!(
+        damaged_ghosts.iter().all(|&end| end <= second_start),
+        "every ghost the repair minted stays before the valid sibling"
+    );
+    assert!(
+        result
+            .obligations()
+            .iter()
+            .all(|obligation| obligation.span.end() <= second_start),
+        "recovery obligations stay before the valid sibling"
+    );
+
+    // The surviving declaration: whole, ghost-free, and starting exactly where
+    // the damaged one stopped.
+    let survivor = result.cst().node(significant[1])?;
+    let survivor_text = survivor.text()?;
+    assert_eq!(
+        second_start,
+        survivor.range().start(),
+        "the valid sibling starts at the declaration boundary"
+    );
+    assert_eq!(
+        "def good = 2;",
+        AsRef::<str>::as_ref(&survivor_text),
+        "the valid sibling covers exactly the text it was written with"
+    );
+    assert!(
+        descendant_tiles(result.cst(), significant[1])
+            .iter()
+            .any(|tile| tile == "good"),
+        "the second item remains the `good` definition"
+    );
+    assert!(
+        descendant_grout_ends(result.cst(), significant[1]).is_empty(),
+        "no ghost may reach into the valid sibling"
+    );
+    Ok(())
+}
+/// The declaration boundary belongs to item position, not to the `def`
+/// keyword: a repair bounded before a surviving `def` must be bounded before
+/// every other declaration head too.
+///
+/// Every row keeps the same damaged first declaration and varies only the
+/// family that follows it. A boundary rule keyed on the literal label `def`
+/// passes the first row and absorbs every other one into the damaged
+/// definition, so this is what distinguishes the declaration-head trigger from
+/// a `def`-only trigger.
+#[test]
+fn an_unclosed_delimiter_yields_to_every_declaration_family() -> Result<(), Box<dyn Error>>
+{
+    for survivor in [
+        "def good = 2;",
+        "data Good { }",
+        "codata Good { }",
+        "module Good { }",
+        "sign Good { }",
+        "import \"good\" as good ;",
+    ] {
+        let source = format!("def bad = ( 1 ;\n{survivor}");
+        let result = parse(built(), SourceSlice::from(source.as_str()))?;
+        let significant: Vec<NodeId> = result
+            .cst()
+            .children(result.cst().root())?
+            .iter()
+            .copied()
+            .filter(|&child| {
+                result
+                    .cst()
+                    .node(child)
+                    .is_ok_and(|view| view.material() != Material::Space)
+            })
+            .collect();
+        assert_eq!(
+            2,
+            significant.len(),
+            "the damaged definition must not absorb a following {survivor:?}"
+        );
+        let boundary = TextOffset(
+            u32::try_from(source.len().saturating_sub(survivor.len())).unwrap_or(u32::MAX),
+        );
+        let damaged = result.cst().node(significant[0])?;
+        let surviving = result.cst().node(significant[1])?;
+        let surviving_text = surviving.text()?;
+        assert!(
+            damaged.range().end() <= boundary,
+            "the repair must stop at the boundary before {survivor:?}"
+        );
+        assert_eq!(
+            boundary,
+            surviving.range().start(),
+            "the surviving {survivor:?} must start at the declaration boundary"
+        );
+        assert_eq!(
+            survivor,
+            AsRef::<str>::as_ref(&surviving_text),
+            "the surviving declaration must cover exactly its own text"
+        );
+        assert!(
+            descendant_grout_ends(result.cst(), significant[1]).is_empty(),
+            "no ghost may reach into the surviving {survivor:?}"
+        );
+        assert!(
+            !bool::from(result.is_clean()),
+            "the damaged definition must still carry its recovery obligation"
+        );
+    }
+    Ok(())
+}
 
 #[test]
 fn corpus_parses_totally() -> Result<(), Box<dyn Error>>
@@ -1379,6 +1545,30 @@ fn descendant_tiles(
                 && let Ok(text) = view.text()
             {
                 out.push(text.as_ref().to_owned());
+            }
+            for child in view.children().unwrap_or(&[]).iter().rev() {
+                pending.push(*child);
+            }
+        }
+    }
+    out
+}
+/// The end offset of every grout (ghost) token under `id`, in tree order.
+///
+/// A repair's extent is only visible through its ghosts: the melder appends a
+/// [`Material::Grout`] end tile for each form it force-closes, so where those
+/// ghosts land is what "bounded at the declaration boundary" means concretely.
+fn descendant_grout_ends(
+    cst: &Cst,
+    id: NodeId,
+) -> Vec<TextOffset>
+{
+    let mut out = Vec::new();
+    let mut pending = vec![id];
+    while let Some(next) = pending.pop() {
+        if let Ok(view) = cst.node(next) {
+            if view.kind() == NodeKind::Token && view.material() == Material::Grout {
+                out.push(view.range().end());
             }
             for child in view.children().unwrap_or(&[]).iter().rev() {
                 pending.push(*child);

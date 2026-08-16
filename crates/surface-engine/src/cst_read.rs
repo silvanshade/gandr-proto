@@ -131,7 +131,9 @@ impl<'tree> Reader<'tree>
             | MoldPayload::Tile(mold) => {
                 self.pbg.mold(mold).ok().map(|def| TileSpelling(def.label))
             },
-            | MoldPayload::Grout { .. } | MoldPayload::Space => None,
+            | MoldPayload::Grout { .. } | MoldPayload::GhostClose { .. } | MoldPayload::Space => {
+                None
+            },
         }
     }
 

@@ -1,0 +1,4 @@
+// An unclosed delimiter stays local to its definition while the next definition survives.
+
+def bad = ( 1 ;
+def good = 2;

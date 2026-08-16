@@ -8,6 +8,7 @@ use core::fmt::Display;
 use core::fmt::Formatter;
 use core::fmt::Result as FmtResult;
 
+use gandr_surface_syntax::ClosingClass;
 use gandr_surface_syntax::GrammarFingerprint;
 use gandr_surface_syntax::GroutSort;
 use gandr_theory_graphs::Bound;
@@ -1341,6 +1342,38 @@ impl Pbg
     pub fn form_last(&self) -> &[MoldId]
     {
         self.molds.form_last()
+    }
+
+    /// Return `mold`'s **form-level closing class**, if every completion path
+    /// from it ends in a paired closer of one class.
+    ///
+    /// This is what lets a force-close say which closer its minted ghost stood
+    /// in for. `None` is the honest answer whenever the form's completions
+    /// disagree, end at something that closes nothing, or close a class the
+    /// form never opened — and `None` fails closed downstream: a ghost with no
+    /// class pairs with nothing and suppresses nothing.
+    ///
+    /// # Contract
+    /// - requires: `mold` was assigned by this grammar's table.
+    /// - ensures: returns `Some(c)` exactly when every completion path from
+    ///   `mold` within its own rule ends at a paired closer of class `c`;
+    ///   `None` for an unknown mold.
+    /// - provides: the carried-class source for minted closes.
+    /// - fails: never.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a container member inside a repeat, a form ending at
+    ///   a non-closer, and divergent alternatives distinguish the derivation.
+    /// - witness: `gandr_surface_grammar::contracts::closing_class_is_form_level`
+    #[inline]
+    #[must_use]
+    pub fn closing_class(
+        &self,
+        mold: MoldId,
+    ) -> Option<ClosingClass>
+    {
+        self.molds.closing_class(mold)
     }
 
     /// Return the fingerprint of this grammar's mold and context tables.

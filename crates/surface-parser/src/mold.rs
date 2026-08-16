@@ -567,6 +567,7 @@ impl<'pbg> Molder<'pbg>
         let text = TokenText::from(AsRef::<str>::as_ref(&slice));
         self.settle_shadowing(state, token, &source);
         self.gather(state, token, &source);
+        state.settle_declaration_boundary(&self.candidates);
         let best = self.choose(state, text);
         Self::push_choice(state, best, text);
     }
@@ -624,6 +625,7 @@ impl<'pbg> Molder<'pbg>
                 let text = TokenText::from(AsRef::<str>::as_ref(&slice));
                 self.settle_shadowing(state, token, &source);
                 self.gather(state, token, &source);
+                state.settle_declaration_boundary(&self.candidates);
                 let best = self.choose_stream(state, tokens, TokenIndex::from(index), &source);
                 Self::push_choice(state, best, text);
             }

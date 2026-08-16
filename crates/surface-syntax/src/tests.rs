@@ -6,6 +6,7 @@ use fixture_support::assert_build_error;
 use fixture_support::changed_first_identifier_mold_tree;
 use fixture_support::child_probe_hash;
 use fixture_support::fixed_tree;
+use fixture_support::ghost_close_token_hash;
 use fixture_support::grout_token_hash;
 use fixture_support::ident;
 use fixture_support::kw_let;
@@ -15,6 +16,7 @@ use fixture_support::space;
 use fixture_support::tile;
 
 use super::BuildError;
+use super::ClosingClass;
 use super::Cst;
 use super::GrammarFingerprint;
 use super::GroutShape;
@@ -294,6 +296,39 @@ fn grout_shape_and_sort_participate_in_hash() -> TestResult
 
     assert_ne!(base, other_shape, "grout shape must reach the hash");
     assert_ne!(base, other_sort, "grout sort must reach the hash");
+    Ok(())
+}
+
+/// A minted close hashes as itself: distinct from ordinary grout, and
+/// class-sensitive within its own variant.
+///
+/// Both halves matter and they pull opposite ways. Ordinary grout must hash
+/// exactly as it always did, because a shared frame byte would move every
+/// recorded hash of every existing tree — that is what makes the variant
+/// additive rather than a format break. And two minted closes differing only in
+/// class must hash differently, because the class is the whole content the
+/// variant exists to carry; hashing it away would let a `Paren` ghost and a
+/// `Brace` ghost be treated as the same subtree by the structural diff.
+#[test]
+fn a_minted_close_hashes_distinctly_from_grout_and_by_class() -> TestResult
+{
+    let grout = grout_token_hash(GroutShape::Postfix, GroutSort(5))?;
+    let paren = ghost_close_token_hash(GroutSort(5), ClosingClass::Paren)?;
+    let brace = ghost_close_token_hash(GroutSort(5), ClosingClass::Brace)?;
+    let other_sort = ghost_close_token_hash(GroutSort(6), ClosingClass::Paren)?;
+
+    assert_ne!(
+        grout, paren,
+        "a minted close frames under its own tag, so ordinary grout keeps its hash"
+    );
+    assert_ne!(
+        paren, brace,
+        "the carried class must reach the hash — it is the content of the variant"
+    );
+    assert_ne!(
+        paren, other_sort,
+        "a minted close still carries its grout sort, exactly as grout does"
+    );
     Ok(())
 }
 
@@ -723,6 +758,24 @@ mod fixture_support
             | Ok(_value) => panic!("builder unexpectedly succeeded"),
             | Err(error) => assert_eq!(&error, expected),
         }
+    }
+
+    use super::ClosingClass;
+
+    pub(super) fn ghost_close_token_hash(
+        sort: GroutSort,
+        class: ClosingClass,
+    ) -> Result<StableHash, BuildError>
+    {
+        let mut builder = CstBuilder::new(SourceText::from(""), GRAMMAR_FP);
+        let ghost_range = range(TextOffset(0), TextOffset(0))?;
+        let ghost = builder.token(
+            Material::Grout,
+            MoldPayload::GhostClose { sort, class },
+            ghost_range,
+        )?;
+        let cst = builder.finish(ghost)?;
+        cst.hash(ghost)
     }
 
     pub(super) fn grout_token_hash(

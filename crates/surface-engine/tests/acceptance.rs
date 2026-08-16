@@ -1810,6 +1810,227 @@ mod tests
                 );
             }
         }
+        /// A repaired container keeps its own member: the damage is bounded at
+        /// the member, and the module closes where the author closed it.
+        ///
+        /// This is the invariant a module body being its own sort buys. Members
+        /// inhabit [`Sort::ModuleMember`] and are held by reference, so a
+        /// member with an unclosed delimiter is a form the melder can
+        /// force-close on its own — the enclosing module is never
+        /// dragged shut with it, and `good` stays where it was written
+        /// instead of surfacing as a sibling of `M`.
+        ///
+        /// Each assertion below is one half of that. Exactly one Paren close is
+        /// minted, and no Brace: a Brace would mean the module itself was
+        /// force-closed. No bare closer survives at the root: one would mean
+        /// the author's `}` arrived after the melder had already closed
+        /// the module. `M` is one item and `good` is not a top-level
+        /// binding. And the authentic top-level `good` supplies the
+        /// answer, so the program returns 7 and never the module
+        /// member's 2.
+        #[test]
+        fn a_repaired_container_keeps_its_member()
+        {
+            use gandr_runtime_effects::run_program_with_prelude;
+            use gandr_surface_engine::link::link_program;
+            use gandr_surface_engine::prelude_env;
+            use gandr_surface_grammar::built_in;
+            use gandr_surface_parser::parse as parse_source;
+            use gandr_surface_syntax::ClosingClass;
+            use gandr_surface_syntax::DelimSpelling;
+            use gandr_surface_syntax::Material;
+            use gandr_surface_syntax::NodeKind;
+
+            let source = "module M { def bad = ( 1 ; def good = 2; }\ndef good = 7;\ngood\n";
+
+            // Exactly one Paren minted, no Brace, and no stray closer left at
+            // the root — the module was repaired from the inside.
+            let pbg = built_in().expect("the built-in grammar assembles");
+            let parsed = parse_source(&pbg, source.into()).expect("the parse is total");
+            assert_eq!(
+                vec![ClosingClass::Paren],
+                parsed.minted_close_classes(),
+                "only the unclosed `(` is repaired; a Brace would mean the module was closed too"
+            );
+            let stray_closers = parsed
+                .cst()
+                .children(parsed.cst().root())
+                .expect("root children")
+                .iter()
+                .filter(|&&child| {
+                    parsed.cst().node(child).is_ok_and(|view| {
+                        // A bare tile at the root is ordinary — the final `good`
+                        // run target is one. Only a bare CLOSER there means the
+                        // melder had already closed what the author was closing.
+                        view.kind() == NodeKind::Token
+                            && view.material() == Material::Tile
+                            && view.text().is_ok_and(|text| {
+                                ClosingClass::closing(DelimSpelling(AsRef::<str>::as_ref(&text)))
+                                    .is_some()
+                            })
+                    })
+                })
+                .count();
+            assert_eq!(
+                0, stray_closers,
+                "the author's `}}` closed the module, so no closer is stranded at the root"
+            );
+
+            let lowered = lower_source_total(source.into())
+                .expect("total lowering must recover the damaged member");
+
+            // `M` survives as one item, and `good` is its member rather than a
+            // sibling: exactly one top-level `good`, the authentic one.
+            assert_eq!(
+                1,
+                lowered
+                    .items
+                    .iter()
+                    .filter(|item| item.name.as_deref() == Some("M"))
+                    .count(),
+                "the container survives as a single item"
+            );
+            assert_eq!(
+                1,
+                lowered
+                    .items
+                    .iter()
+                    .filter(|item| item.name.as_deref() == Some("good"))
+                    .count(),
+                "the module's `good` stays inside it; only the authentic one is top-level"
+            );
+
+            // The answer is the authentic declaration's.
+            //
+            // Driven through the TOTAL path rather than `run_source`, which
+            // lowers strictly and refuses the first syntactic obligation — a
+            // repaired source has one by construction, so the strict entry
+            // could never reach an answer here whatever the repair did.
+            let program = link_program(&lowered).expect("the recovered program links");
+            let outcome = run_program_with_prelude(&program, prelude_env().as_bindings());
+            assert_eq!(
+                Some(&Value::Int(7)),
+                outcome.returned(),
+                "the top-level `good` supplies the answer: {outcome:?}"
+            );
+            assert_ne!(
+                Some(&Value::Int(2)),
+                outcome.returned(),
+                "the module member's value must never be the answer: {outcome:?}"
+            );
+        }
+        /// Total lowering preserves a valid sibling after repairing an earlier
+        /// definition with an unclosed delimiter.
+        ///
+        /// Item count alone would pass on a lowering that quietly discarded the
+        /// damage, so the recovery notes are read back too: at least one must
+        /// exist, and every one must end at or before the second declaration.
+        /// A repair that runs past the boundary shows up here as a noted span
+        /// covering `def good`, which is the absorption this pins against.
+        #[test]
+        fn total_lowering_repairs_one_definition_and_continues_to_its_sibling()
+        {
+            use gandr_surface_grammar::built_in;
+            use gandr_surface_parser::parse as parse_source;
+
+            let source = read_corpus_example("pathological/delimiter-boundary.gandr");
+            let boundary = source
+                .find("def good")
+                .expect("the fixture must declare a valid sibling");
+            let lowered = lower_source_total(source.as_str().into())
+                .expect("total lowering must recover the malformed first definition");
+
+            // (i) Two items lower, and the sibling is named and intact.
+            assert_eq!(
+                2,
+                lowered.items.len(),
+                "recovery must preserve two top-level definitions"
+            );
+            assert_eq!(Some("bad"), lowered.items[0].name.as_deref());
+            assert_eq!(
+                Some("good"),
+                lowered.items[1].name.as_deref(),
+                "the valid sibling must remain a named item, in source order"
+            );
+            let good = &lowered.items[1];
+            assert!(
+                matches!(&good.term, Term::Value(Value::Int(2))),
+                "the valid sibling must retain its value: {:?}",
+                good.term
+            );
+            let Term::Value(ref good_value) = good.term
+            else {
+                panic!("the valid sibling must lower to a value: {:?}", good.term);
+            };
+            let checked = checker::infer_value(prelude_ctx(), good_value.clone());
+            assert!(
+                checked.is_ok(),
+                "the valid sibling must remain checkable: {checked:?}"
+            );
+
+            // (ii) The damaged declaration keeps the shape recovery built for
+            // it. Total recovery is structure-preserving: the repair supplies
+            // the missing delimiter and the definition still means something,
+            // so holing it here would discard exactly what recovery exists to
+            // save.
+            let bad = &lowered.items[0];
+            assert!(
+                !matches!(bad.term, Term::Value(Value::Hole(_))),
+                "the damaged declaration keeps its recovered shape, never a hole: {:?}",
+                bad.term
+            );
+            assert!(
+                matches!(&bad.term, Term::Value(Value::Int(1))),
+                "the damaged declaration recovers the value it was written with: {:?}",
+                bad.term
+            );
+
+            // (iii) The damage is reported, and it is reported HERE. At least
+            // one obligation, its span inside the damaged declaration and
+            // disjoint from the sibling — which is what "reports the damage
+            // rather than absorbing the rest of the file" means once the items
+            // themselves are known to be distinct.
+            let pbg = built_in().expect("the built-in grammar assembles");
+            let parsed = parse_source(&pbg, source.as_str().into()).expect("the parse is total");
+            assert!(
+                !bool::from(parsed.is_clean()),
+                "the repaired source must publish obligations"
+            );
+            let spans: Vec<(usize, usize)> = parsed
+                .obligations()
+                .iter()
+                .map(|obligation| {
+                    (
+                        usize::try_from(u32::from(obligation.span.start())).unwrap_or(usize::MAX),
+                        usize::try_from(u32::from(obligation.span.end())).unwrap_or(usize::MAX),
+                    )
+                })
+                .collect();
+            assert!(
+                !spans.is_empty(),
+                "the damage must be reported, not absorbed"
+            );
+            assert!(
+                spans.iter().all(|&(_start, end)| end <= boundary),
+                "every obligation stays inside the damaged declaration: {spans:?}"
+            );
+            assert!(
+                spans.iter().all(|&(start, _end)| start < boundary),
+                "no obligation may reach into the intact sibling: {spans:?}"
+            );
+
+            // (iv) and (v) The clean twin publishes none, so across the pair a
+            // source is damaged exactly when its obligations are non-empty.
+            let twin = "def bad = ( 1 );\ndef good = 2;";
+            for (candidate, damaged) in [(source.as_str(), true), (twin, false)] {
+                let result = parse_source(&pbg, candidate.into()).expect("the parse is total");
+                assert_eq!(
+                    damaged,
+                    !result.obligations().is_empty(),
+                    "damage and a non-empty obligation set must coincide for {candidate:?}"
+                );
+            }
+        }
 
         /// Command substitution parses as its named form, then declines through
         /// the shell lowerer's existing unsupported-form path.

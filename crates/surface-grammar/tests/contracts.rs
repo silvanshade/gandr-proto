@@ -14,13 +14,18 @@ mod tests
     use gandr_surface_grammar::PrecDag;
     use gandr_surface_grammar::PrecName;
     use gandr_surface_grammar::PrecSpec;
+    use gandr_surface_grammar::Regex;
+    use gandr_surface_grammar::Rule;
+    use gandr_surface_grammar::RuleName;
     use gandr_surface_grammar::Sort;
     use gandr_surface_grammar::TREE_SITTER_NAMED_KINDS;
+    use gandr_surface_grammar::TileLabel;
     use gandr_surface_grammar::built_in;
     use gandr_surface_grammar::built_in_prec_table;
     use gandr_surface_grammar::named_kind_parity;
     use gandr_surface_grammar::named_kind_realization;
     use gandr_surface_parser::parse;
+    use gandr_surface_syntax::ClosingClass;
     use gandr_surface_syntax::GroutSort;
     use gandr_surface_syntax::SourceSlice;
 
@@ -243,6 +248,140 @@ mod tests
             Err(PbgError::InvalidSort { sort: 6 }),
             Sort::try_from_tag(GroutSort(6))
         );
+    }
+
+    /// The closing class is a property of a form's completion paths, not of the
+    /// tile that carries it.
+    ///
+    /// Three obligations, one per way the derivation can be wrong. A repeat
+    /// must stay interior, so a container member reaching `}` only after
+    /// arbitrarily many further members still derives `Brace` — that is the
+    /// case the whole minted-close mechanism rests on. A form whose
+    /// completions end at something that closes nothing must derive nothing,
+    /// which is what keeps `def name = E ;` from claiming a class it has no
+    /// right to. And every container family in production today must derive a
+    /// class, so this also pins future degradation: adding a container whose
+    /// completions diverge will fail here rather than silently stop
+    /// suppressing.
+    #[test]
+    fn closing_class_is_form_level() -> Result<(), Box<dyn Error>>
+    {
+        let pbg = built_in()?;
+
+        // Every brace opener in production derives Brace. A container that
+        // stopped deriving one would silently stop being repairable.
+        // A brace either derives Brace or derives nothing; it must never
+        // derive a class it does not close. Deriving nothing is the safe
+        // answer, and it is load-bearing downstream: an unclassed minted close
+        // pairs with nothing rather than pairing wrongly.
+        for &mold in pbg.candidates(TileLabel("{")) {
+            assert!(
+                matches!(pbg.closing_class(mold), Some(ClosingClass::Brace) | None),
+                "a `{{` never derives a class it does not close, mold {mold:?}"
+            );
+        }
+
+        // Every module body derives Brace. This is the container family the
+        // repair discipline depends on: members inhabit `Sort::ModuleMember`
+        // and are held by reference, and a member force-closed on its own must
+        // name the closer it stood in for.
+        for &mold in pbg.candidates(TileLabel("{")) {
+            let Ok(def) = pbg.mold(mold)
+            else {
+                continue;
+            };
+            if def.sort != Sort::ModuleMember {
+                continue;
+            }
+            assert_eq!(
+                Some(ClosingClass::Brace),
+                pbg.closing_class(mold),
+                "every module body must derive Brace, mold {mold:?}"
+            );
+        }
+
+        // Exactly two item-sort braces derive nothing today. Pinned as a count
+        // rather than asserted away: if a container family stops deriving its
+        // class, or a new one arrives already unclassed, this moves and the
+        // change is examined rather than absorbed.
+        let unclassed = pbg
+            .candidates(TileLabel("{"))
+            .iter()
+            .filter(|&&mold| pbg.closing_class(mold).is_none())
+            .count();
+        assert_eq!(
+            2, unclassed,
+            "the unclassed-brace inventory is pinned; a change here is a container-family change"
+        );
+
+        // A repeat is interior: the module member's `=` reaches `}` only across
+        // an unbounded member list, and must still derive Brace. `def name = E
+        // ;` shares the label and must derive nothing, because its completions
+        // end at `;`. Both readings therefore exist among the `=` molds, and
+        // the pair is what distinguishes a form-level walk from a local one.
+        let equals: Vec<Option<ClosingClass>> = pbg
+            .candidates(TileLabel("="))
+            .iter()
+            .map(|&mold| pbg.closing_class(mold))
+            .collect();
+        assert!(
+            equals.contains(&Some(ClosingClass::Brace)),
+            "a container member's `=` must reach its `}}` across the member repeat: {equals:?}"
+        );
+        assert!(
+            equals.contains(&None),
+            "a definition's `=` completes at `;` and must claim no class: {equals:?}"
+        );
+
+        // A `;` is where the two readings part most sharply, so both must be
+        // present. A statement terminator IS its form's terminal and closes no
+        // bracketing pair, so it derives nothing. A container member's `;` is
+        // mid-form — every completion past it still reaches the container `}` —
+        // so it derives Brace. Asserting either alone would pass on a
+        // derivation that had collapsed to a constant.
+        let semis: Vec<Option<ClosingClass>> = pbg
+            .candidates(TileLabel(";"))
+            .iter()
+            .map(|&mold| pbg.closing_class(mold))
+            .collect();
+        assert!(
+            semis.contains(&None),
+            "a statement-terminating `;` closes nothing and must derive no class: {semis:?}"
+        );
+        assert!(
+            semis.contains(&Some(ClosingClass::Brace)),
+            "a container member's `;` completes at the container `}}`: {semis:?}"
+        );
+        assert!(
+            semis
+                .iter()
+                .all(|class| matches!(class, None | Some(ClosingClass::Brace))),
+            "a `;` never derives a class it does not complete into: {semis:?}"
+        );
+
+        // Divergent alternatives intersect to nothing: one tail closes the
+        // bracket, the other ends at a tile that closes nothing, so the shared
+        // opener can name no single class.
+        let mut spec = PrecSpec::new();
+        let atom = spec.insert("atom", None)?;
+        let dag = PrecDag::build(&spec)?;
+        let divergent = Pbg::build(dag, vec![Rule::new(
+            RuleName("divergent"),
+            Sort::Item,
+            atom,
+            Regex::seq([
+                Regex::tile(TileLabel("(")),
+                Regex::alt([Regex::tile(TileLabel(")")), Regex::tile(TileLabel("!"))]),
+            ]),
+        )])?;
+        for &mold in divergent.candidates(TileLabel("(")) {
+            assert_eq!(
+                None,
+                divergent.closing_class(mold),
+                "alternatives that disagree on their terminal claim no class"
+            );
+        }
+        Ok(())
     }
 
     #[test]

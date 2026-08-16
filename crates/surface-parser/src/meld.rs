@@ -37,6 +37,8 @@ use gandr_surface_grammar::PrecIndex;
 use gandr_surface_grammar::Sort;
 use gandr_surface_grammar::StepSym;
 use gandr_surface_syntax::BuildError;
+use gandr_surface_syntax::ClosingClass;
+use gandr_surface_syntax::ClosingClassTag;
 use gandr_surface_syntax::Cst;
 use gandr_surface_syntax::CstBuilder;
 use gandr_surface_syntax::GrammarFingerprint;
@@ -418,6 +420,14 @@ primitive_copy_wrapper!(
 primitive_copy_wrapper!(
     /// Whether a successor mold has one of the candidate token labels.
     struct SuccessorLabelPresence(bool);
+);
+primitive_copy_wrapper!(
+    /// Whether a grammar sort is an item position.
+    struct ItemPosition(bool);
+);
+primitive_copy_wrapper!(
+    /// Whether a mold can open an item-position declaration at a fresh slot.
+    struct DeclarationStart(bool);
 );
 primitive_copy_wrapper!(
     /// Whether a stack cell is an operand.
@@ -859,6 +869,25 @@ impl FormTable
     }
 }
 
+/// Return whether `sort` is an **item position** — a slot whose residents are
+/// declarations rather than values.
+///
+/// Two sorts qualify, and the second is why this is a function rather than an
+/// equality. [`Sort::Item`] is the file's own top level. [`Sort::ModuleMember`]
+/// is a module body, which holds its members *by reference* so that nesting
+/// costs one rule instead of one copy per admitted level — members are forms in
+/// their own right there, not tiles of the enclosing declaration.
+///
+/// Both are positions where an open form legitimately reaches past a fresh
+/// declaration head and takes it as a member, which is exactly the case a
+/// boundary repair must not fire on.
+#[inline]
+#[must_use]
+const fn is_item_position(sort: Sort) -> ItemPosition
+{
+    ItemPosition(matches!(sort, Sort::Item | Sort::ModuleMember))
+}
+
 /// A resumable, first-order push machine over a checked PBG.
 ///
 /// See the module docs for the three push rules and the append-only emission
@@ -1227,6 +1256,159 @@ impl<'pbg> MeldState<'pbg>
     pub fn has_open_form(&self) -> OpenFormPresence
     {
         OpenFormPresence::from(self.nearest_open_form().is_some())
+    }
+    /// Close an unfinished declaration before a fresh declaration head is
+    /// pushed.
+    ///
+    /// The damage this settles is an **unclosed value or type delimiter** — the
+    /// `def bad = ( 1 ;` shape — whose ghost end would otherwise be appended
+    /// wherever the form finally closes, at end of input, swallowing every
+    /// later declaration into the one that opened the delimiter. Collapsing at
+    /// the boundary puts the ghost inside the damaged declaration instead, so
+    /// the next declaration is a distinct item and the obligation stays local.
+    ///
+    /// The trigger is a **declaration head**, not the `def` keyword: any mold
+    /// that can open an item-position form at a fresh slot
+    /// ([`Self::opens_declaration`]) marks the boundary, so `data`, `codata`,
+    /// `module`, `sign`, `import`, `op`, `rec`, `extern`, the `@` attribute
+    /// block, and the keyword-led statement heads all bound a repair exactly as
+    /// `def` does. The damaged declaration and the surviving one need not be
+    /// the same family.
+    ///
+    /// Two guards keep the widened trigger from firing on well-formed source,
+    /// and both are load-bearing:
+    ///
+    /// - **No candidate may continue the open frontier.** The molder gathers
+    ///   every mold sharing the token's label, across every rule context, and
+    ///   only one of them will be chosen — so a decision taken per candidate
+    ///   acts on readings that lose. A `sign` block's `rule c : ( … data x :
+    ///   Nat … )` member holds a `data` tile inside an open `(`, where the
+    ///   *declaration* `data` mold continues nothing and the *member* `data`
+    ///   mold continues the `(` frontier. Sixteen corpus files depend on the
+    ///   member reading, so the whole candidate set has to agree that nothing
+    ///   continues before anything is force-closed.
+    /// - **The innermost open form must not be [`Sort::Item`].** An open item
+    ///   form legitimately reaches past this point: a container (`module`,
+    ///   `data`, `sign`) holds the next head as a **member** of its own rule,
+    ///   and a declaration whose own frontier is innermost has no interior
+    ///   damage to bound. Only a non-item frontier is unfinished value syntax.
+    ///
+    /// The floor is the nearest open frontier whose form **starts** at a
+    /// declaration head, so a declaration opened inside an enclosing form's
+    /// content region closes without closing that form; with no such frontier
+    /// the floor is the slope base.
+    ///
+    /// Known bound: a container whose own member carries the damage — the
+    /// `module M { def bad = ( 1 ; def good = 2; }` shape — force-closes the
+    /// container too, so `good` is emitted as a sibling of `M` rather than a
+    /// member of it. The member is tiles of the container's rule rather than a
+    /// form of its own, so there is no member-level ghost to close it with, and
+    /// telling a container apart from a declaration needs a rule identity the
+    /// mold table does not retain — a mold definition carries label, rule
+    /// context, precedence, and sort, never the rule it came from. Both
+    /// declarations survive as distinct items; what the repair does not
+    /// preserve is which one owns the later declaration.
+    ///
+    /// # Contract
+    /// - requires: `candidates` are molds of this state's PBG.
+    /// - ensures: when some candidate opens a declaration, no candidate
+    ///   continues the open frontier, and the innermost open form is non-item,
+    ///   force-closes every form at or above the nearest declaration-started
+    ///   frontier (the slope base when there is none); the state is untouched
+    ///   otherwise, and at most one collapse runs per token.
+    /// - provides: declaration-bounded ghost repair.
+    /// - fails: never; invalid molds are ignored.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — an unclosed value delimiter before a fresh
+    ///   declaration head distinguishes bounded repair from sibling absorption,
+    ///   across the delimiter's sort and the surviving head's family.
+    /// - witness: `gandr_surface_parser::acceptance::unclosed_definition_delimiter_does_not_absorb_following_definition`
+    /// - witness: `gandr_surface_parser::acceptance::an_unclosed_delimiter_yields_to_every_declaration_family`
+    /// - witness: `gandr_surface_parser::contracts::declaration_boundary_stays_stable_under_layout`
+    #[inline]
+    pub fn settle_declaration_boundary(
+        &mut self,
+        candidates: &[MoldId],
+    )
+    {
+        // Every candidate is consulted before anything is force-closed: one
+        // that continues the open frontier is a live reading of this token, and
+        // acting on a losing candidate would close a form the winner needs.
+        let mut saw_declaration_head = false;
+        for &mold in candidates {
+            if bool::from(self.would_continue_form(mold)) {
+                return;
+            }
+            saw_declaration_head = saw_declaration_head || bool::from(self.opens_declaration(mold));
+        }
+        if !saw_declaration_head {
+            return;
+        }
+        let innermost_is_value_form = self
+            .nearest_open_form()
+            .and_then(|index| self.stack.get(usize::from(index)))
+            .is_some_and(
+                |cell| matches!(cell.role, Role::FormTile { sort, .. } if !bool::from(is_item_position(sort))),
+            );
+        if !innermost_is_value_form {
+            return;
+        }
+        let floor = self
+            .open_declaration_frontier()
+            .map_or_else(|| StackIndex::from(0), StackIndex::from);
+        self.collapse(StackFloor::from(floor));
+    }
+
+    /// Return whether `mold` can open an item-position declaration at a fresh
+    /// slot.
+    ///
+    /// Three conditions, each excluding a distinct near-miss. [`Sort::Item`]
+    /// is the item position itself. Membership in the grammar's FIRST set is
+    /// what `admits_at` already means by "opens at a fresh slot", and it
+    /// excludes a head inlined as a container's member tile — a module body's
+    /// `def` is a tile of `module_declaration`, never a form of its own.
+    /// Having a `≐`-successor excludes the bare `;` of `expression_statement`:
+    /// holes are tile-transparent when the FIRST set is computed, so that `;`
+    /// is the rule's first tile and is item-sorted, yet it terminates a
+    /// statement rather than opening one.
+    fn opens_declaration(
+        &self,
+        mold: MoldId,
+    ) -> DeclarationStart
+    {
+        let Ok(def) = self.pbg.mold(mold)
+        else {
+            return DeclarationStart::from(false);
+        };
+        DeclarationStart::from(
+            bool::from(is_item_position(def.sort))
+                && bool::from(self.forms.is_form_first(mold))
+                && bool::from(self.forms.has_succ(mold)),
+        )
+    }
+
+    /// Return the nearest open frontier whose form starts at a declaration
+    /// head.
+    ///
+    /// A frontier cell carries the mold of its form's **most recent** tile, not
+    /// its first: `continue_form` advances the frontier onto each continuing
+    /// tile, so an open `def id = …` sits on the `=` tile. The search therefore
+    /// resolves every frontier down to its form-start before testing it, and
+    /// testing the frontier's own mold would find a declaration-started form
+    /// only in the degenerate `def def` case.
+    fn open_declaration_frontier(&self) -> Option<FrontierIndex>
+    {
+        self.frontiers.iter().rev().find_map(|&index| {
+            let start = self.form_start_index(StackIndex::from(index))?;
+            let role = self.stack.get(usize::from(start)).map(|cell| cell.role)?;
+            let Role::FormTile { mold, .. } = role
+            else {
+                return None;
+            };
+            bool::from(self.opens_declaration(mold)).then_some(FrontierIndex::from(index))
+        })
     }
 
     /// Return whether pushing `mold` is admissible given a precomputed
@@ -2222,15 +2404,28 @@ impl<'pbg> MeldState<'pbg>
         };
 
         // Append a ghost end tile so the form reads as a completed shape.
+        //
+        // When the grammar says every completion of this frontier ends at a
+        // paired closer of one class, the ghost carries that class and becomes
+        // a minted close a later consumer can pair against the closer the
+        // author actually wrote. When it says nothing — the completions
+        // disagree, or end at something that closes nothing, as `def x = E ;`
+        // does at its `;` — the ghost stays ordinary grout, byte-identical to
+        // what it has always been. That asymmetry is deliberate: an unclassed
+        // ghost pairs with nothing, so the failure mode is a suppression not
+        // applied rather than one applied to the wrong declaration.
         let ghost_span = SourceSpan::point(SourceOffset::from(frontier_cell.end));
-        let ghost = self.emit_token(
-            Material::Grout,
+        let payload = self.pbg.closing_class(frontier_mold).map_or(
             MoldPayload::Grout {
                 shape: GroutShape::Postfix,
                 sort: sort.as_u16(),
             },
-            ghost_span,
+            |class| MoldPayload::GhostClose {
+                sort: sort.as_u16(),
+                class,
+            },
         );
+        let ghost = self.emit_token(Material::Grout, payload, ghost_span);
         self.push_cell(Cell {
             emit: ghost,
             start: frontier_cell.end,
@@ -3799,6 +3994,22 @@ fn read_payload(reader: &mut Reader<'_>) -> Result<MoldPayload, CheckpointError>
             let mold = u32::from(wire_mold);
             Ok(MoldPayload::Tile(MoldId::from(mold)))
         },
+        // Tag 3 is additive: tags 0..=2 decode byte-for-byte as they always
+        // did, so every checkpoint written before minted closes existed reads
+        // back unchanged. A reader that predates this tag reaches its own
+        // `BadTag` arm and refuses the artifact rather than guessing a class.
+        | 3 => {
+            let wire_sort = reader.u16()?;
+            let sort = GroutSort(u16::from(wire_sort));
+            let wire_class = reader.u8()?;
+            let Some(class) = ClosingClass::from_tag(ClosingClassTag(u8::from(wire_class)))
+            else {
+                return Err(CheckpointError::BadTag {
+                    tag: u8::from(wire_class),
+                });
+            };
+            Ok(MoldPayload::GhostClose { sort, class })
+        },
         | tag => Err(CheckpointError::BadTag { tag }),
     }
 }
@@ -3831,6 +4042,14 @@ fn write_payload(
         | MoldPayload::Tile(mold) => {
             writer.u8(WireByte::from(2));
             writer.u32(WireU32::from(u32::from(mold)));
+        },
+        // Canonical order: tag, then the sort every grout already carried, then
+        // the class. Only a node that actually carries a class writes tag 3, so
+        // an unchanged parse writes an unchanged byte stream.
+        | MoldPayload::GhostClose { sort, class } => {
+            writer.u8(WireByte::from(3));
+            writer.u16(WireU16::from(u16::from(sort)));
+            writer.u8(WireByte::from(class.tag().0));
         },
     }
 }
@@ -4156,6 +4375,97 @@ mod tests
             Checkpoint::from_bytes(CheckpointBytesRef::from(truncated)),
             Err(CheckpointError::Truncated | CheckpointError::Malformed)
         ));
+        Ok(())
+    }
+
+    /// A minted close survives the checkpoint wire, and every way of getting it
+    /// wrong fails closed.
+    ///
+    /// Three properties, and the first two are what make the tag *additive*
+    /// rather than a format break. A payload carrying a class round-trips
+    /// canonically. A stream truncated inside the new payload is refused rather
+    /// than half-read — the class is the last field written, so a stream that
+    /// stops after the sort is exactly the dangerous case. And a class byte the
+    /// reader does not know is refused rather than defaulted: guessing a class
+    /// would pair a ghost against a closer that never answered it, which is the
+    /// one error worse than not pairing at all.
+    #[test]
+    fn minted_close_round_trips_and_refuses_unknown_class() -> Result<(), Box<dyn Error>>
+    {
+        for class in [
+            super::ClosingClass::Paren,
+            super::ClosingClass::Bracket,
+            super::ClosingClass::Brace,
+        ] {
+            let payload = super::MoldPayload::GhostClose {
+                sort: super::GroutSort(7),
+                class,
+            };
+            let mut writer = super::Writer { bytes: Vec::new() };
+            super::write_payload(&mut writer, payload);
+            let encoded = writer.bytes;
+
+            let mut reader = super::Reader {
+                bytes: CheckpointBytesRef::from(encoded.as_slice()),
+                pos: 0,
+            };
+            assert_eq!(
+                payload,
+                super::read_payload(&mut reader)?,
+                "a minted close must round-trip canonically: {class:?}"
+            );
+
+            // Stopping short of the class byte must refuse, not default.
+            let short = encoded
+                .get(.. encoded.len().saturating_sub(1))
+                .unwrap_or(&[]);
+            let mut reader = super::Reader {
+                bytes: CheckpointBytesRef::from(short),
+                pos: 0,
+            };
+            assert!(
+                super::read_payload(&mut reader).is_err(),
+                "a stream truncated before the class must fail closed: {class:?}"
+            );
+        }
+
+        // An unknown class byte is refused. Tag 3 with a class the reader does
+        // not know must not decode as some other class.
+        let mut writer = super::Writer { bytes: Vec::new() };
+        super::write_payload(&mut writer, super::MoldPayload::GhostClose {
+            sort: super::GroutSort(7),
+            class: super::ClosingClass::Paren,
+        });
+        let mut encoded = writer.bytes;
+        if let Some(last) = encoded.last_mut() {
+            *last = 200;
+        }
+        let mut reader = super::Reader {
+            bytes: CheckpointBytesRef::from(encoded.as_slice()),
+            pos: 0,
+        };
+        assert!(
+            matches!(
+                super::read_payload(&mut reader),
+                Err(CheckpointError::BadTag { tag: 200 })
+            ),
+            "an unknown class byte must be refused, never defaulted"
+        );
+
+        // Ordinary grout is untouched by the addition: it still writes and
+        // reads exactly as before.
+        let grout = super::MoldPayload::Grout {
+            shape: super::GroutShape::Postfix,
+            sort: super::GroutSort(7),
+        };
+        let mut writer = super::Writer { bytes: Vec::new() };
+        super::write_payload(&mut writer, grout);
+        let encoded = writer.bytes;
+        let mut reader = super::Reader {
+            bytes: CheckpointBytesRef::from(encoded.as_slice()),
+            pos: 0,
+        };
+        assert_eq!(grout, super::read_payload(&mut reader)?);
         Ok(())
     }
 

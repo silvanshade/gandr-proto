@@ -12,7 +12,11 @@
 use alloc::vec::Vec;
 
 use gandr_surface_grammar::Pbg;
+use gandr_surface_syntax::ClosingClass;
 use gandr_surface_syntax::Cst;
+use gandr_surface_syntax::MoldPayload;
+use gandr_surface_syntax::NodeId;
+use gandr_surface_syntax::NodeKind;
 use gandr_surface_syntax::SourceSlice;
 
 use crate::MeldError;
@@ -110,6 +114,61 @@ impl ParseResult
     pub fn is_clean(&self) -> ParseCleanStatus
     {
         ParseCleanStatus::from(self.obligations.is_empty())
+    }
+
+    /// Return the class of every minted close in the whole tree, in tree
+    /// order.
+    ///
+    /// A ghost's class is **carried**, never reconstructed: the melder records
+    /// it when it mints the ghost, from the form-level closing class the
+    /// grammar derives, and a ghost whose form has no single such class carries
+    /// none. Reading the sequence back is what distinguishes *no ghost was
+    /// minted* from *a ghost was minted and carried no class* — which a repair
+    /// witness must tell apart, because only the second says the grammar could
+    /// not name the closer.
+    ///
+    /// # Contract
+    /// - requires: none.
+    /// - ensures: returns one entry per [`MoldPayload::GhostClose`] token, in
+    ///   tree order; unclassed ghosts contribute nothing.
+    /// - provides: the minted-close surface a witness reads directly.
+    /// - fails: never.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a two-class repair, an unclassed repair, and a clean
+    ///   parse distinguish the sequence.
+    /// - witness: `gandr_surface_parser::acceptance::a_repaired_container_keeps_its_member`
+    #[inline]
+    #[must_use]
+    pub fn minted_close_classes(&self) -> Vec<ClosingClass>
+    {
+        self.minted_closes(self.cst.root())
+    }
+
+    /// Collect the carried class of every minted close in the subtree at `id`.
+    #[inline]
+    fn minted_closes(
+        &self,
+        id: NodeId,
+    ) -> Vec<ClosingClass>
+    {
+        let mut classes = Vec::new();
+        let mut pending = vec![id];
+        while let Some(next) = pending.pop() {
+            let Ok(view) = self.cst.node(next)
+            else {
+                continue;
+            };
+            if view.kind() == NodeKind::Token
+                && let MoldPayload::GhostClose { class, .. } = view.payload()
+            {
+                classes.push(class);
+            }
+            let children = view.children().unwrap_or(&[]);
+            pending.extend(children.iter().rev().copied());
+        }
+        classes
     }
 
     /// Consume the result and return the committed tree.

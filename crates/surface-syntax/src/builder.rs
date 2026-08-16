@@ -36,6 +36,13 @@ const FRAME_GROUT: u8 = b'G';
 /// Frame byte for a tile token hash.
 const FRAME_TILE: u8 = b'T';
 
+/// Frame byte for a minted-close token hash.
+///
+/// Distinct from [`FRAME_GROUT`] on purpose: an ordinary grout node keeps the
+/// exact hash it had before minted closes existed, so no recorded hash and no
+/// persisted artifact moves under this addition.
+const FRAME_GHOST_CLOSE: u8 = b'C';
+
 /// Frame byte for an interior node hash.
 const FRAME_INTERIOR: u8 = b'I';
 
@@ -649,7 +656,9 @@ fn validate_material_payload(
 {
     match (material, payload) {
         | (Material::Space, MoldPayload::Space)
-        | (Material::Grout, MoldPayload::Grout { .. })
+        // A minted close is grout: it carries a tag and a mold but no source
+        // bytes, exactly as ordinary grout does. Only its payload is richer.
+        | (Material::Grout, MoldPayload::Grout { .. } | MoldPayload::GhostClose { .. })
         | (Material::Tile, MoldPayload::Tile(_)) => Ok(payload),
         | (Material::Space | Material::Grout | Material::Tile, _) => {
             Err(BuildError::MoldPayloadMismatch { material })
@@ -676,6 +685,15 @@ fn hash_token(
             state.write_byte(HashByte(FRAME_GROUT));
             state.write_byte(shape.tag());
             state.write_grout_sort(sort);
+        },
+        // A minted close frames under its own tag rather than reusing
+        // `FRAME_GROUT`, so an ordinary grout node's hash is bit-for-bit what
+        // it was before this variant existed, and two minted closes differing
+        // only in class hash differently.
+        | (Material::Grout, MoldPayload::GhostClose { sort, class }) => {
+            state.write_byte(HashByte(FRAME_GHOST_CLOSE));
+            state.write_grout_sort(sort);
+            state.write_byte(HashByte(class.tag().0));
         },
         | (Material::Tile, MoldPayload::Tile(mold)) => {
             state.write_byte(HashByte(FRAME_TILE));
@@ -794,6 +812,14 @@ impl StableHasher
             | MoldPayload::Tile(mold) => {
                 self.write_byte(HashByte(2));
                 self.write_mold_id(mold);
+            },
+            // Tag 3 is fresh, so no previously written payload can collide with
+            // a minted close, and the class is hashed after the sort so two
+            // ghosts differing only in class hash differently.
+            | MoldPayload::GhostClose { sort, class } => {
+                self.write_byte(HashByte(3));
+                self.write_grout_sort(sort);
+                self.write_byte(HashByte(class.tag().0));
             },
         }
     }

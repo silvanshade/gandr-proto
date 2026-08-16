@@ -508,6 +508,94 @@ pub enum Material
     Tile,
 }
 
+/// The spelling of a delimiter, as written in source.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct DelimSpelling<'text>(pub &'text str);
+
+/// A [`ClosingClass`]'s dense wire tag.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ClosingClassTag(pub u8);
+
+/// The bracketing family a paired closing delimiter belongs to.
+///
+/// Carried on a [`MoldPayload::GhostClose`] so a minted close says which closer
+/// it stood in for. Pairing a minted close against a closer the author actually
+/// wrote is only sound within one family: a stray `}` contradicts a ghost `}`,
+/// and says nothing whatever about a ghost `)` still missing its own answer.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ClosingClass
+{
+    /// `(` … `)`.
+    Paren,
+    /// `[` … `]`.
+    Bracket,
+    /// `{` … `}`, including the record opener `#{`.
+    Brace,
+}
+
+impl ClosingClass
+{
+    /// Return the class `text` opens, if it opens a paired delimiter.
+    #[inline]
+    #[must_use]
+    pub fn opening(text: DelimSpelling<'_>) -> Option<Self>
+    {
+        match text.0 {
+            | "(" => Some(Self::Paren),
+            | "[" => Some(Self::Bracket),
+            | "{" | "#{" => Some(Self::Brace),
+            | _ => None,
+        }
+    }
+
+    /// Return the class `text` closes, if it closes a paired delimiter.
+    #[inline]
+    #[must_use]
+    pub fn closing(text: DelimSpelling<'_>) -> Option<Self>
+    {
+        match text.0 {
+            | ")" => Some(Self::Paren),
+            | "]" => Some(Self::Bracket),
+            | "}" => Some(Self::Brace),
+            | _ => None,
+        }
+    }
+
+    /// Return this class's dense wire tag.
+    ///
+    /// Stable by contract: the checkpoint codec and the stable hash both read
+    /// it, so a renumbering would silently reinterpret persisted artifacts.
+    #[inline]
+    #[must_use]
+    pub const fn tag(self) -> ClosingClassTag
+    {
+        ClosingClassTag(match self {
+            | Self::Paren => 0,
+            | Self::Bracket => 1,
+            | Self::Brace => 2,
+        })
+    }
+
+    /// Return the class for a dense wire tag, or `None` when unknown.
+    ///
+    /// An unknown tag is refused rather than defaulted: a reader that does not
+    /// understand a class must not guess one, because a wrong class pairs a
+    /// ghost with a closer that never answered it.
+    #[inline]
+    #[must_use]
+    pub const fn from_tag(tag: ClosingClassTag) -> Option<Self>
+    {
+        match tag.0 {
+            | 0 => Some(Self::Paren),
+            | 1 => Some(Self::Bracket),
+            | 2 => Some(Self::Brace),
+            | _ => None,
+        }
+    }
+}
+
 /// Opaque reference into the producing grammar's mold-definition table.
 ///
 /// A `MoldId` names a mold `{rctx, prec, sort}` — a zipper into the grammar —
@@ -633,6 +721,25 @@ pub enum MoldPayload
     },
     /// Tile: an opaque reference into the producing grammar's mold table.
     Tile(MoldId),
+    /// A **minted close**: the postfix grout a force-close supplied in place of
+    /// a paired closer the author never wrote, carrying the class of that
+    /// closer alongside the ordinary grout sort tag.
+    ///
+    /// Additive by construction. It is a distinct variant rather than a widened
+    /// [`Self::Grout`] so every artifact written before it — every persisted
+    /// checkpoint, every recorded hash — decodes and hashes exactly as it did;
+    /// only a node that actually carries a class is new. A minted close whose
+    /// form has no single paired closing class stays an ordinary
+    /// [`Self::Grout`], because a ghost that cannot name its closer must not
+    /// pretend to: it pairs with nothing and mints no region, which fails
+    /// closed against suppressing a declaration wrongly.
+    GhostClose
+    {
+        /// Grammar sort tag, carried exactly as on [`Self::Grout`].
+        sort: GroutSort,
+        /// The class of the closer this ghost stood in for.
+        class: ClosingClass,
+    },
 }
 
 /// Crate-private arena node payload.
