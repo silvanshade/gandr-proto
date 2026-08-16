@@ -239,6 +239,51 @@ mod tests
         );
     }
 
+    /// A rejection that surfaces after the lowering has already minted nodes —
+    /// the pair type's `Integer` half is minted before the machine-numeric
+    /// half is rejected — leaves the environment byte-identical to one that
+    /// never saw the rejected definition: the staged builder's rollback
+    /// reclaims the partial content the choke point never reached.
+    #[test]
+    fn a_partially_lowered_rejection_leaves_no_arena_content()
+    {
+        let mut session = Session::new();
+        let submission = submit(&mut session, "def wide = (3, 1u32);\ndef narrow = 3;");
+        let verdicts = &submission.kernel;
+        let Some((first, rest)) = verdicts.split_first()
+        else {
+            panic!("expected two verdicts, got {verdicts:?}");
+        };
+        assert!(
+            matches!(*first, KernelVerdict::OutsideS1 { .. }),
+            "the pair's machine-numeric half has no S1 image, got {first:?}"
+        );
+        assert_eq!(
+            &[KernelVerdict::Admitted {
+                position: 0_usize.into(),
+            }][..],
+            rest,
+            "the admitted definition takes position zero, so the partial lowering \
+             left nothing behind"
+        );
+
+        let mut clean = Session::new();
+        let clean_submission = submit(&mut clean, "def narrow = 3;");
+        assert_eq!(
+            &[KernelVerdict::Admitted {
+                position: 0_usize.into(),
+            }][..],
+            clean_submission.kernel,
+            "the clean session admits the same definition at position zero"
+        );
+        assert_eq!(
+            write(session.kernel().environment()),
+            write(clean.kernel().environment()),
+            "the environment is byte-identical to one that never saw the rejected \
+             definition"
+        );
+    }
+
     /// A session's own definitions produce a kernel artifact that round-trips
     /// byte-identically through the export format — the crossing reaching the
     /// persisted form rather than stopping at the choke point.

@@ -72,15 +72,12 @@ mod tests
     use gandr_core_checker::checker::infer_value;
     use gandr_core_checker::ctx::Ctx;
     use gandr_core_checker::kernel_bridge::BridgeContext;
-    use gandr_core_checker::kernel_bridge::lower_comp;
     use gandr_core_checker::kernel_bridge::lower_computation_definition;
-    use gandr_core_checker::kernel_bridge::lower_value;
     use gandr_core_checker::kernel_bridge::lower_value_definition;
     use gandr_core_checker::syntax::Term;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::LevelParamCount;
     use gandr_kernel_core::LevelSignature;
-    use gandr_kernel_core::TermArena;
     use gandr_kernel_core::decode;
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
@@ -381,22 +378,12 @@ mod tests
     /// returning the admitted environment when it is S1-eligible or `None`
     /// otherwise (an out-of-S1 node, a free name, a typing failure, or a choke-
     /// point rejection). The happy path of `kernel_corpus_partition::classify`,
-    /// specialized to the gate's needs.
+    /// specialized to the gate's needs. Every failure abandons the staged
+    /// builder, whose rollback truncates whatever the partial lowering minted
+    /// — the discarded environment holds no orphan content.
     fn admit_eligible(term: &Term) -> Option<Environment>
     {
         let context = BridgeContext::new();
-        // Structural / free-name probe: an out-of-S1 node or open name loses to
-        // any later typing verdict (the S1-eligibility criterion).
-        match *term {
-            | Term::Value(ref value) => {
-                let mut scratch = TermArena::new();
-                lower_value(&context, &mut scratch, value).ok()?;
-            },
-            | Term::Comp(ref comp) => {
-                let mut scratch = TermArena::new();
-                lower_comp(&context, &mut scratch, comp).ok()?;
-            },
-        }
         let mut environment = Environment::new();
         let mut builder = environment.stage();
         let ids = match *term {

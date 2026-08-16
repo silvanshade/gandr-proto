@@ -43,19 +43,15 @@
 //! referring to the first. A single-item harness cannot exercise that path at
 //! all, because its naming environment is always empty.
 //!
-//! # Why an admitting definition is lowered twice
+//! # A rejected lowering leaves nothing behind
 //!
-//! [`Environment::stage`] mints content directly into the environment's arena
-//! and offers no way to discard it: only [`Environment::add_decl`] truncates,
-//! and a bridge rejection happens before there is a declaration to admit. A
-//! definition that failed to lower halfway would leave orphan nodes behind in
-//! the environment the artifact writer later walks.
-//!
-//! [`KernelAdmissions::offer`] therefore lowers the whole definition into a
-//! throwaway [`TermArena`] first, and stages into the environment only once
-//! that probe has succeeded. The bridge is a pure function of the naming
-//! environment and the term — it reads no arena state — so the two lowerings
-//! agree and the second cannot fail where the first did not.
+//! [`Environment::stage`] mints content directly into the environment's
+//! arena, and a staged builder that is dropped without a finisher truncates
+//! the arena back to its content-start watermark (the builder's rollback —
+//! [`DeclarationBuilder::discard`] is its explicit form). A bridge rejection
+//! therefore abandons the partial lowering in place: the definition is
+//! lowered exactly once, and the environment the artifact writer later walks
+//! holds only admitted content.
 //!
 //! # Levels
 //!
@@ -64,6 +60,7 @@
 //! and its explicit lifts stay kernel-native and are never reached from here.
 //!
 //! [`CheckedId`]: gandr_kernel_core::CheckedId
+//! [`DeclarationBuilder::discard`]: gandr_kernel_core::DeclarationBuilder::discard
 
 use alloc::string::String;
 use alloc::string::ToString as _;
@@ -291,10 +288,10 @@ impl KernelAdmissions
     ///   reported type does not determine as
     ///   [`WithheldReason::IndeterminateDeclaredType`].
     /// - panics: none.
-    /// - intension: an admitting definition is lowered twice — once into a
-    ///   throwaway arena to decide, once into the environment to keep — because
-    ///   staged content has no discard path (see the module doc). The bridge
-    ///   reads no arena state, so the two lowerings agree.
+    /// - intension: the definition lowers exactly once, into the staged
+    ///   environment arena; a rejection abandons the staged builder, whose
+    ///   rollback truncates the partial mint (see the module doc), so the
+    ///   rejection the bridge returned is the verdict this function returns.
     ///
     /// # Adequacy
     /// - hypothesis: L3 — the verdicts this function returns are separated by
@@ -320,26 +317,13 @@ impl KernelAdmissions
     /// - witness: `kernel::an_untyped_item_is_withheld`
     /// - witness: `kernel::a_returner_definition_is_withheld`
     /// - witness: `kernel::a_rejected_definition_leaves_the_environment_unchanged`
+    /// - witness: `kernel::a_partially_lowered_rejection_leaves_no_arena_content`
     #[inline]
     pub fn offer(
         &mut self,
         offer: DefinitionOffer<'_>,
     ) -> KernelVerdict
     {
-        let probe = {
-            let mut scratch = TermArena::new();
-            lower_definition(&self.context, &mut scratch, offer)
-        };
-        match probe {
-            | Some(Ok(_)) => (),
-            | Some(Err(rejection)) => return KernelVerdict::OutsideS1 { rejection },
-            | None => {
-                return KernelVerdict::Withheld {
-                    reason: WithheldReason::IndeterminateDeclaredType,
-                };
-            },
-        }
-
         let Self {
             ref mut environment,
             ref mut context,
@@ -349,9 +333,9 @@ impl KernelAdmissions
         let staged = lower_definition(context, builder.arena(), offer);
         let ids = match staged {
             | Some(Ok(ids)) => ids,
-            // Unreachable: the probe above lowered this definition against this
-            // naming environment and succeeded, and the bridge reads no arena
-            // state. Written as a total match, not as a live failure mode.
+            // A rejection abandons the staged builder here, and its rollback
+            // truncates whatever the partial lowering minted — the environment
+            // is unchanged, and the rejection is the verdict returned.
             | Some(Err(rejection)) => return KernelVerdict::OutsideS1 { rejection },
             | None => {
                 return KernelVerdict::Withheld {
@@ -379,12 +363,11 @@ impl KernelAdmissions
 /// the polarity the reported type determines.
 ///
 /// # Contract
-/// - requires: `arena` is the arena the returned roots are to live in — a
-///   throwaway one for the eligibility probe, or the environment's staged one.
+/// - requires: `arena` is the environment's staged arena; a rejection leaves
+///   whatever was minted to the staged builder's rollback.
 /// - ensures: `Some(Ok(roots))` with the S1 declared-type and body roots when
 ///   the whole definition lowers.
-/// - provides: the one place the value/computation dispatch is written, so the
-///   probe and the staged lowering cannot drift apart.
+/// - provides: the one place the value/computation dispatch is written.
 /// - fails: `Some(Err(rejection))` for an out-of-S1 form, and [`None`] for the
 ///   polarity the reported type does not determine — a computation term
 ///   reported at a value type, which is

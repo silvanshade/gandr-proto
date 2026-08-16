@@ -28,6 +28,7 @@
 //! ([`crate::arena`], [`Environment::add_decl`](crate::Environment::add_decl)).
 
 use alloc::vec::Vec;
+use core::mem::ManuallyDrop;
 
 use gandr_kernel_strata::LandmarkConstraint;
 
@@ -243,17 +244,35 @@ impl Declaration
 /// It lends the environment arena for minting the declared type and body, then
 /// finalizes a [`Declaration`] carrying the recorded content-start watermark.
 ///
+/// **Abandoning a builder rolls the arena back.** A builder dropped without a
+/// finisher — scope exit on a failure path, or an explicit [`Self::discard`] —
+/// truncates the arena to the content-start watermark, so a lowering that
+/// fails partway leaves no orphan content behind and no probe-before-stage
+/// discipline is owed. A finisher consumes the builder *without* truncating:
+/// the minted content becomes the declaration's.
+///
 /// # Contract
 /// - requires: content for exactly one declaration is minted through
-///   [`Self::arena`] between construction and a `def`/`axiom` finisher, with no
-///   other allocation into the arena interleaved (the content-start watermark
-///   records the arena length at construction).
-/// - ensures: the finisher yields a [`Declaration`] whose content roots and
-///   watermark describe a contiguous suffix of the arena.
+///   [`Self::arena`] between construction and a finisher, with no other
+///   allocation into the arena interleaved (the content-start watermark records
+///   the arena length at construction).
+/// - ensures: a finisher yields a [`Declaration`] whose content roots and
+///   watermark describe a contiguous suffix of the arena; dropping the builder
+///   before a finisher restores the arena to that watermark.
 /// - provides: the minimal construction surface tests and the checker-to-kernel
-///   bridge use.
+///   bridge use, plus the rollback every abandonment path gets by construction.
 /// - fails: never — minting is total.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the rollback is a flat per-family `Vec` truncation to a
+///   watermark the borrow discipline keeps valid (the arena cannot shrink while
+///   the builder lives), and the abandonment witnesses pin both the scope-exit
+///   and the explicit-discard paths; the L3 residue is a finisher path, pinned
+///   by the admission witnesses on
+///   [`Environment::add_decl`](crate::Environment::add_decl).
+/// - witness: `env::tests::an_abandoned_staging_restores_the_arena`
+/// - witness: `env::tests::a_discarded_staging_restores_the_arena`
 pub struct DeclarationBuilder<'arena>
 {
     /// The borrowed environment arena.
@@ -283,6 +302,27 @@ impl<'arena> DeclarationBuilder<'arena>
         self.arena
     }
 
+    /// Discard the staged content, restoring the arena to the content-start
+    /// watermark.
+    ///
+    /// This is the explicit form of what [`Drop`] does on scope exit; name it
+    /// where the abandonment is the point of the path rather than the tail of
+    /// an error return.
+    ///
+    /// # Contract
+    /// - requires: nothing.
+    /// - ensures: the arena holds exactly the nodes it held at construction;
+    ///   every id minted through this builder dangles, and none is reachable —
+    ///   no finisher ran, so no declaration roots it.
+    /// - provides: the named abandonment path.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    pub fn discard(self)
+    {
+        // Dropping `self` truncates the arena to the content-start watermark.
+    }
+
     /// Finalize a definition over an already-minted declared type and body.
     #[inline]
     #[must_use]
@@ -293,10 +333,11 @@ impl<'arena> DeclarationBuilder<'arena>
         body: ValueId,
     ) -> Declaration
     {
+        let this = ManuallyDrop::new(self);
         Declaration {
             levels,
             content: DeclarationContent::Def { declared, body },
-            content_start: self.content_start,
+            content_start: this.content_start,
             provenance: Vec::new(),
         }
     }
@@ -324,10 +365,11 @@ impl<'arena> DeclarationBuilder<'arena>
         provenance: Vec<ConstantIndex>,
     ) -> Declaration
     {
+        let this = ManuallyDrop::new(self);
         Declaration {
             levels,
             content: DeclarationContent::Def { declared, body },
-            content_start: self.content_start,
+            content_start: this.content_start,
             provenance,
         }
     }
@@ -341,10 +383,11 @@ impl<'arena> DeclarationBuilder<'arena>
         declared: ValueTypeId,
     ) -> Declaration
     {
+        let this = ManuallyDrop::new(self);
         Declaration {
             levels,
             content: DeclarationContent::Axiom { declared },
-            content_start: self.content_start,
+            content_start: this.content_start,
             provenance: Vec::new(),
         }
     }
@@ -372,11 +415,24 @@ impl<'arena> DeclarationBuilder<'arena>
         kind: ValueTypeId,
     ) -> Declaration
     {
+        let this = ManuallyDrop::new(self);
         Declaration {
             levels,
             content: DeclarationContent::AbstractType { kind },
-            content_start: self.content_start,
+            content_start: this.content_start,
             provenance: Vec::new(),
         }
+    }
+}
+
+impl Drop for DeclarationBuilder<'_>
+{
+    /// Roll the arena back to the content-start watermark: a builder that
+    /// never reached a finisher owns no content, so nothing it minted may
+    /// survive it.
+    #[inline]
+    fn drop(&mut self)
+    {
+        self.arena.truncate_to(self.content_start);
     }
 }

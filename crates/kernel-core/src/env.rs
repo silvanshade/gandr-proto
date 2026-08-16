@@ -186,7 +186,12 @@ impl Environment
     ///   declaration's content, then finalized and passed to `add_decl` /
     ///   `add_decl_unchecked` before any further arena mutation (the content-
     ///   start watermark records the arena length now).
-    /// - ensures: a [`DeclarationBuilder`] borrowing the arena.
+    /// - ensures: a [`DeclarationBuilder`] borrowing the arena. If the producer
+    ///   abandons the staging — an error return with the builder still live, or
+    ///   an explicit [`DeclarationBuilder::discard`] — the builder's `Drop`
+    ///   truncates the arena back to the content-start watermark, so no
+    ///   partially minted content survives and no probe-before-stage discipline
+    ///   is owed.
     /// - provides: the minimal construction surface tests and the
     ///   checker-to-kernel bridge use to build arena-resident declarations.
     /// - fails: never.
@@ -668,6 +673,62 @@ mod tests
                 index: ConstantIndex::from(1_usize),
             }),
             "the rejected declaration left no entry at position 1"
+        );
+    }
+
+    /// A producer that abandons a staged builder — the error return before any
+    /// finisher — leaves no orphan content: the builder's `Drop` truncates the
+    /// partial mint back to the content-start watermark.
+    #[test]
+    fn an_abandoned_staging_restores_the_arena()
+    {
+        let mut environment = Environment::new();
+        let _first = admit_identity(&mut environment).unwrap();
+        let before = environment.arena().watermark();
+        {
+            let mut builder = environment.stage();
+            let arena = builder.arena();
+            let _declared = arena.value_type_base(BaseType::Integer);
+            let _body = arena.value_unit();
+            // Scope exit without a finisher: the producer's failure path.
+        }
+        assert_eq!(
+            environment.arena().watermark(),
+            before,
+            "an abandoned builder truncates what it minted"
+        );
+        // The environment is fully usable afterwards: the next admitted
+        // declaration takes the next position.
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_unit();
+        let next = builder.def(LevelSignature::monomorphic(), declared, body);
+        let next = environment.add_decl(next).unwrap();
+        assert_eq!(
+            next.position(),
+            ConstantIndex::from(1_usize),
+            "the abandonment left nothing behind"
+        );
+    }
+
+    /// The explicit discard path restores the arena exactly as scope exit
+    /// does.
+    #[test]
+    fn a_discarded_staging_restores_the_arena()
+    {
+        let mut environment = Environment::new();
+        let _first = admit_identity(&mut environment).unwrap();
+        let before = environment.arena().watermark();
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let _declared = arena.value_type_base(BaseType::Integer);
+        let _body = arena.value_unit();
+        builder.discard();
+        assert_eq!(
+            environment.arena().watermark(),
+            before,
+            "discard truncates what the builder minted"
         );
     }
 

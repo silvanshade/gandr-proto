@@ -32,13 +32,12 @@ mod tests
     use gandr_core_checker::ctx::Ctx;
     use gandr_core_checker::kernel_bridge::BridgeContext;
     use gandr_core_checker::kernel_bridge::lower_comp;
-    use gandr_core_checker::kernel_bridge::lower_computation_definition;
+    use gandr_core_checker::kernel_bridge::lower_comp_type;
     use gandr_core_checker::kernel_bridge::lower_value;
-    use gandr_core_checker::kernel_bridge::lower_value_definition;
+    use gandr_core_checker::kernel_bridge::lower_value_type;
     use gandr_core_checker::syntax::Term;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::LevelSignature;
-    use gandr_kernel_core::TermArena;
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
 
@@ -102,58 +101,66 @@ mod tests
     /// the admitted environment when it is S1-eligible or the exclusion-class
     /// tag otherwise.
     ///
-    /// The term's bridgeability (structural stock and closedness) is probed
+    /// The term's bridgeability (structural stock and closedness) is taken
     /// first, so an out-of-S1 node or a free name wins the classification over
     /// a later typing failure — the S1-eligibility criterion is exactly
-    /// "the lowered core form uses only S1 stock".
+    /// "the lowered core form uses only S1 stock". The body lowers into the
+    /// staged arena itself rather than a throwaway probe: a later failure
+    /// abandons the builder, whose rollback truncates what was minted, so the
+    /// discarded environment holds no orphan content.
     fn classify(term: &Term) -> Result<Environment, String>
     {
         let context = BridgeContext::new();
-        // 1. Structural / free-name verdict from lowering the term alone.
-        match *term {
-            | Term::Value(ref value) => {
-                let mut scratch = TermArena::new();
-                if let Err(rejection) = lower_value(&context, &mut scratch, value) {
-                    return Err(String::from(rejection.exclusion_class().as_ref()));
-                }
-            },
-            | Term::Comp(ref comp) => {
-                let mut scratch = TermArena::new();
-                if let Err(rejection) = lower_comp(&context, &mut scratch, comp) {
-                    return Err(String::from(rejection.exclusion_class().as_ref()));
-                }
-            },
-        }
-        // 2. Type inference (empty context) + admission (value-polarity Def).
         let mut environment = Environment::new();
         let mut builder = environment.stage();
-        let ids = match *term {
+        let (declared_id, body_id) = match *term {
             | Term::Value(ref value) => {
+                // 1. Structural / free-name verdict from lowering the term.
+                let body_id = match lower_value(&context, builder.arena(), value) {
+                    | Ok(id) => id,
+                    | Err(rejection) => {
+                        return Err(String::from(rejection.exclusion_class().as_ref()));
+                    },
+                };
+                // 2. Type inference (empty context).
                 let Ok(core_type) = infer_value(Ctx::new(), value.clone())
                 else {
                     return Err(String::from("not-typeable"));
                 };
-                match lower_value_definition(&context, builder.arena(), value, &core_type) {
-                    | Ok(ids) => ids,
+                // 3. The declared type's own structural verdict.
+                let declared_id = match lower_value_type(&context, builder.arena(), &core_type) {
+                    | Ok(id) => id,
                     | Err(rejection) => {
                         return Err(String::from(rejection.exclusion_class().as_ref()));
                     },
-                }
+                };
+                (declared_id, body_id)
             },
             | Term::Comp(ref comp) => {
+                // As the value arm, with the computation definition entering
+                // as a thunk (the value-polarity declaration convention).
+                let computation = match lower_comp(&context, builder.arena(), comp) {
+                    | Ok(id) => id,
+                    | Err(rejection) => {
+                        return Err(String::from(rejection.exclusion_class().as_ref()));
+                    },
+                };
                 let Ok(core_type) = infer_comp(Ctx::new(), comp.clone())
                 else {
                     return Err(String::from("not-typeable"));
                 };
-                match lower_computation_definition(&context, builder.arena(), comp, &core_type) {
-                    | Ok(ids) => ids,
+                let comp_type = match lower_comp_type(&context, builder.arena(), &core_type) {
+                    | Ok(id) => id,
                     | Err(rejection) => {
                         return Err(String::from(rejection.exclusion_class().as_ref()));
                     },
-                }
+                };
+                let arena = builder.arena();
+                let declared_id = arena.value_type_thunk(comp_type);
+                let body_id = arena.value_thunk(computation);
+                (declared_id, body_id)
             },
         };
-        let (declared_id, body_id) = ids;
         let declaration = builder.def(LevelSignature::monomorphic(), declared_id, body_id);
         if environment.add_decl(declaration).is_err() {
             return Err(String::from("kernel-rejected"));
