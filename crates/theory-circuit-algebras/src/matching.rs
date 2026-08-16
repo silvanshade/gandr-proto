@@ -149,12 +149,12 @@
 //! not here and is not this rung's.
 //!
 //! The rung's 2026-08-16 increment added the certificate discipline's reader
-//! half and the multi-admission diagnostic. [`Embedding::check`] independently
-//! re-derives every conjunct a claimed embedding asserts — validity as a
-//! property the reader refutes, never one the producer asserts — with each
-//! failure a typed [`EmbeddingObstruction`], and [`Matching::ambiguity`]
-//! reports a deterministic diagnostic naming where several admitted readings
-//! of one pattern diverge.
+//! half and the multi-admission diagnostic. [`Embedding::check`] returns `Ok`
+//! only after independently re-deriving every conjunct a claimed embedding
+//! asserts — validity as a property the reader refutes, never one the producer
+//! asserts — and refuses at the first failed conjunct, a typed
+//! [`EmbeddingObstruction`]; [`Matching::ambiguity`] reports a deterministic
+//! diagnostic naming where several admitted readings of one pattern diverge.
 //!
 //! [`Wiring::assemble`]: crate::interface::Wiring::assemble
 
@@ -319,10 +319,12 @@ impl Embedding
     ///
     /// This is the reader half of the certificate discipline for matching: an
     /// [`Embedding`] is evidence, and evidence is something its consumer
-    /// *refutes* rather than something its producer asserts. Every conjunct the
-    /// search's own contract promises is re-derived here from the two diagrams
-    /// and the certificate alone — nothing is inherited from the fact that a
-    /// search happened to produce the value.
+    /// *refutes* rather than something its producer asserts. The check returns
+    /// `Ok` only after re-deriving every conjunct the search's own contract
+    /// promises from the two diagrams and the certificate alone — nothing is
+    /// inherited from the fact that a search happened to produce the value —
+    /// and a certificate that fails a conjunct is refused at the first one, in
+    /// the stated order.
     ///
     /// # Contract
     /// - requires: both diagrams are monogamous, boundary-honest and acyclic,
@@ -345,10 +347,16 @@ impl Embedding
     ///   the first colliding pair in pattern order; the wire map's totality,
     ///   range, and exactness in pattern wire order; the seam, inputs half
     ///   before outputs; the warrant; and finally the convexity sweep. The
-    ///   sweep **always runs**: the discharge is a producer-side economy and
-    ///   never a reader-side assumption, so a certificate claiming
-    ///   [`ConvexityWarrant::LeftConnectedOverAcyclicTarget`] is swept exactly
-    ///   as any other.
+    ///   sweep is unconditional in the warrant: the discharge is a
+    ///   producer-side economy and never a reader-side assumption, so a
+    ///   certificate claiming
+    ///   [`ConvexityWarrant::LeftConnectedOverAcyclicTarget`] that reaches the
+    ///   final conjunct is swept exactly as any other. Early refusal is sound
+    ///   and required by the first-failing-conjunct precedence: the sweep runs
+    ///   last and only for certificates surviving the structural and warrant
+    ///   conjuncts, because it needs a structurally valid image, and sweeping a
+    ///   malformed certificate would be target-sized work whose verdict means
+    ///   nothing.
     ///
     /// # Errors
     /// See the `- fails:` clause above.
