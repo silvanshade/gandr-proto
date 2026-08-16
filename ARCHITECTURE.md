@@ -71,8 +71,9 @@ tier 4   theory-computads → core-sequent, theory-graphs, theory-levitation
 tier 5   theory-circuit-algebras → theory-computads
          theory-virtual-doctrines → theory-computads, theory-levitation
          surface-engine → core-checker, core-incremental, core-sequent, kernel-core,
-         runtime-effects, surface-grammar, surface-parser, surface-syntax,
-         theory-computads, theory-levitation, theory-nominal-automata, theory-recursion
+         runtime-effects, surface-grammar, surface-parser, surface-render-remote,
+         surface-syntax, theory-computads, theory-levitation, theory-nominal-automata,
+         theory-recursion
 tier 6   surface-corpus → core-checker, core-sequent, runtime-effects, surface-engine, theory-levitation
 off-tier workflow-gates, workflow-dylint — tooling; depend on no workspace crate
          (the doc-class tool workflow-docs is parked: commented out of the workspace, no tier)

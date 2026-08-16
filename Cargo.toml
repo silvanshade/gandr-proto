@@ -253,6 +253,7 @@ path = "crates/surface-parser"
 
 # Leaf wire-protocol types for the typing-machine inspection render bus.
 # consumers:
+# - gandr-surface-engine
 # - gandr-surface-grammar
 [workspace.dependencies.gandr-surface-render-remote]
 path = "crates/surface-render-remote"

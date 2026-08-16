@@ -27,6 +27,8 @@ mod diag_attr;
 #[cfg(test)]
 mod diag_frames;
 #[cfg(test)]
+mod diag_obligations;
+#[cfg(test)]
 mod edit;
 #[cfg(test)]
 mod edit_extra;

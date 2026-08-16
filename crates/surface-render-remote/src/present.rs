@@ -409,6 +409,78 @@ impl GoalCard
     }
 }
 
+/// A parser recovery obligation class, declared low severity to high.
+///
+/// This is the renderer-facing vocabulary of the parser's obligation taxonomy:
+/// the repair classes a recovering parse records, named once here so the
+/// structured report and the render bus project the same eight names (the
+/// arrangement [`HlRole`] already has for highlight roles). A producer maps its
+/// own taxonomy onto these variants; this crate parses nothing and classifies
+/// nothing.
+///
+/// The variant order **is** the severity order, so `derive(Ord)` ranks
+/// [`Self::MissingMeld`] least severe and [`Self::AmbiguousPrec`] most severe.
+/// A producer whose taxonomy is also severity-ordered therefore projects the
+/// ladder as well as the names — a correspondence the producer witnesses, since
+/// this crate cannot see the taxonomy it mirrors.
+#[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ObligationClass
+{
+    /// Convex grout: no term where one was expected.
+    MissingMeld,
+    /// Ghost tile: an absent delimiter.
+    MissingTile,
+    /// A partially typed keyword.
+    IncompleteTile,
+    /// A token outside the grammar.
+    UnmoldedTok,
+    /// Pre/postfix grout: a term of the wrong sort.
+    InconMeld,
+    /// Infix grout: two terms where one was expected.
+    ExtraMeld,
+    /// A reserved keyword used as an ordinary name.
+    ReservedKeyword,
+    /// Precedence-incomparable operators, at maximum severity.
+    AmbiguousPrec,
+}
+
+/// One obligation card: a repair the parse made, with the source bytes
+/// responsible for it.
+///
+/// The pair is the whole row — a class and an exact byte range, carrying no
+/// rendered prose and no escape-hatch payload — so a renderer decides how to
+/// spell the class and where to draw it, and a machine consumer reads the class
+/// as data.
+#[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObligationCard
+{
+    /// The obligation class.
+    pub class: ObligationClass,
+    /// The smallest source byte range responsible for the obligation.
+    pub range: Range<ByteOffset>,
+}
+
+impl ObligationCard
+{
+    /// An obligation card from its parts (the named constructor external
+    /// callers — the producer bridge, tests — come through).
+    ///
+    /// # Contract
+    /// - ensures: fields are stored verbatim.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn new(
+        class: ObligationClass,
+        range: Range<ByteOffset>,
+    ) -> Self
+    {
+        Self { class, range }
+    }
+}
+
 /// The type information under the cursor.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -494,6 +566,9 @@ pub struct PreviewFrame
     pub diags: Vec<DiagCard>,
     /// Hole goals, in source order.
     pub goals: Vec<GoalCard>,
+    /// The parse's recovery obligations, in source order; empty for a clean
+    /// parse.
+    pub obligations: Vec<ObligationCard>,
     /// Type under the cursor byte the preview was requested with.
     pub cursor: Option<CursorTy>,
     /// Completion candidates (session bindings; prelude and user definitions).
@@ -684,6 +759,8 @@ mod tests
     use super::HlSpan;
     use super::MarkIsError;
     use super::MarkSpan;
+    use super::ObligationCard;
+    use super::ObligationClass;
     use super::OutKind;
     use super::Pos;
     use super::PositionColumn;
@@ -738,6 +815,16 @@ mod tests
         assert_eq!(Some("Nat"), goal.expected.as_deref());
         assert_eq!(goal.ctx, vec!["x : Nat".to_owned()]);
         assert_eq!(ByteOffset::from(10) .. ByteOffset::from(12), goal.range);
+
+        let obligation = ObligationCard::new(
+            ObligationClass::UnmoldedTok,
+            ByteOffset::from(10) .. ByteOffset::from(11),
+        );
+        assert_eq!(ObligationClass::UnmoldedTok, obligation.class);
+        assert_eq!(
+            ByteOffset::from(10) .. ByteOffset::from(11),
+            obligation.range
+        );
 
         let cursor = CursorTy::new(Some("Nat".to_owned()), Some("Int".to_owned()));
         assert_eq!(Some("Nat"), cursor.synthesized.as_deref());
@@ -843,6 +930,47 @@ mod tests
         );
         let decoded_goal: GoalCard = serde_json::from_value(goal_json).expect("deserialize goal");
         assert_eq!(goal, decoded_goal);
+
+        let obligation = ObligationCard::new(
+            ObligationClass::MissingTile,
+            ByteOffset::from(4) .. ByteOffset::from(5),
+        );
+        let obligation_json = serde_json::to_value(&obligation).expect("serialize obligation");
+        assert_eq!(
+            serde_json::json!({
+                "class": "MissingTile",
+                "range": {"start": 4_usize, "end": 5_usize},
+            }),
+            obligation_json
+        );
+        let decoded_obligation: ObligationCard =
+            serde_json::from_value(obligation_json).expect("deserialize obligation");
+        assert_eq!(obligation, decoded_obligation);
+    }
+
+    #[test]
+    fn obligation_classes_are_declared_low_severity_to_high()
+    {
+        // The declaration order is the severity order, so a producer projecting
+        // a severity-ordered taxonomy onto these names projects the ladder too.
+        let ladder = [
+            ObligationClass::MissingMeld,
+            ObligationClass::MissingTile,
+            ObligationClass::IncompleteTile,
+            ObligationClass::UnmoldedTok,
+            ObligationClass::InconMeld,
+            ObligationClass::ExtraMeld,
+            ObligationClass::ReservedKeyword,
+            ObligationClass::AmbiguousPrec,
+        ];
+        for pair in ladder.windows(2) {
+            if let &[lower, higher] = pair {
+                assert!(
+                    lower < higher,
+                    "{lower:?} must rank below {higher:?} on the severity ladder"
+                );
+            }
+        }
     }
 
     #[test]

@@ -35,6 +35,12 @@ gandr-storage-artifact.workspace = true
 gandr-storage-prolly-trees.workspace = true
 gandr-surface-grammar.workspace = true
 gandr-surface-parser.workspace = true
+# The renderer-facing presentation vocabulary: the obligation class names and
+# the obligation card the structured report and the render bus both project, so
+# the report and the bus name the same eight classes instead of two mirrors of
+# the parser taxonomy. Its codecs ride this crate's own `codecs` feature,
+# because the report's wire image embeds them.
+gandr-surface-render-remote.workspace = true
 gandr-surface-syntax.workspace = true
 gandr-theory-computads.workspace = true
 gandr-theory-levitation.workspace = true
@@ -50,7 +56,11 @@ proptest.workspace = true
 
 [features]
 default = []
-codecs = ["dep:serde", "dep:serde_json"]
+codecs = [
+  "dep:serde",
+  "dep:serde_json",
+  "gandr-surface-render-remote/codecs",
+]
 full = ["codecs", "regex"]
 regex = [
   "gandr-core-checker/gandr_feat_regex",

@@ -28,10 +28,10 @@
 //! # `report` — the present projection, not the pipeline report
 //!
 //! [`FrameBody::Frame`] carries a [`ReportView`] — the [`crate::present`]
-//! projection (highlight/mark spans, diagnostic and goal cards) — rather than a
-//! re-export of the engine's structured report. This keeps the crate a true
-//! leaf (no pipeline dependency), and the view is exactly the renderer-facing
-//! shape an in-process renderer consumes. The structured report
+//! projection (highlight/mark spans, diagnostic, goal, and obligation cards) —
+//! rather than a re-export of the engine's structured report. This keeps the
+//! crate a true leaf (no pipeline dependency), and the view is exactly the
+//! renderer-facing shape an in-process renderer consumes. The structured report
 //! (`gandr-surface-engine`'s `diag` module) remains the editor-channel and
 //! agent-JSON surface.
 
@@ -41,6 +41,7 @@ use crate::present::DiagCard;
 use crate::present::GoalCard;
 use crate::present::HlSpan;
 use crate::present::MarkSpan;
+use crate::present::ObligationCard;
 
 /// The render-bus wire schema version number.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
@@ -124,10 +125,15 @@ impl fmt::Display for DocumentUri<'_>
 /// [`RenderFrame::schema_version`] against this before decoding a stream.
 ///
 /// This is distinct from the structured report's own schema version (the
-/// engine's `diag` envelope, at version 2): that versions the
-/// diagnostics/goals/marks JSON envelope on the editor channel; this versions
-/// the render-bus envelope.
-pub const WIRE_SCHEMA_VERSION: WireSchemaVersion = WireSchemaVersion(1);
+/// engine's `diag` envelope, at version 3): that versions the
+/// diagnostics/goals/marks/obligations JSON envelope on the editor channel;
+/// this versions the render-bus envelope.
+///
+/// `2` — the `obligations` capability changed meaning, from "obligation deltas
+/// are populated" (a channel that was never built) to "report views carry typed
+/// obligation rows" ([`ServerCaps::obligations`], [`ReportView::obligations`]);
+/// a meaning change, hence a bump.
+pub const WIRE_SCHEMA_VERSION: WireSchemaVersion = WireSchemaVersion(2);
 
 /// One bus message: the frame envelope of proposal §4.
 ///
@@ -342,10 +348,14 @@ impl RenderFrame
     /// A full projection for one document version: the present-projection
     /// [`ReportView`] plus the [`MachineView`] machine state.
     ///
+    /// The machine state is boxed inside the body (it is much the largest thing
+    /// the message set carries, and every other variant would otherwise pay its
+    /// size); callers pass it by value and the wire image is unaffected.
+    ///
     /// # Contract
     /// - ensures: `schema_version` is [`WIRE_SCHEMA_VERSION`]; the routing keys
     ///   are `Some(doc_uri)` / `Some(doc_version)`; the body is
-    ///   [`FrameBody::Frame`].
+    ///   [`FrameBody::Frame`] carrying `report` and `machine` unchanged.
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -360,7 +370,10 @@ impl RenderFrame
             schema_version: WIRE_SCHEMA_VERSION,
             doc_uri: Some(doc_uri),
             doc_version: Some(doc_version),
-            body: FrameBody::Frame { report, machine },
+            body: FrameBody::Frame {
+                report,
+                machine: Box::new(machine),
+            },
         }
     }
 
@@ -448,20 +461,22 @@ pub enum FrameBody
     {
         /// The documents the server tracks, with their current versions.
         docs: Vec<DocId>,
-        /// What the server can stream (deltas, obligations, sessions).
+        /// What the server can stream (deltas, obligation rows, sessions).
         caps: ServerCaps,
     },
     /// A full projection for one document version (the MVP always sends whole
     /// frames).
     Frame
     {
-        /// The present-projection diagnostics/goals/marks/highlights.
+        /// The present-projection diagnostics/goals/marks/obligations/
+        /// highlights.
         report: ReportView,
-        /// The reified machine-state projection.
-        machine: MachineView,
+        /// The reified machine-state projection, boxed: it is the largest
+        /// payload in the message set, and the control messages beside it would
+        /// otherwise carry its size. The wire image is the unboxed object.
+        machine: Box<MachineView>,
     },
-    /// A node-id-keyed patch against a prior frame (the growth path; obligation
-    /// deltas ride here once the reserved slot populates).
+    /// A node-id-keyed patch against a prior frame (the growth path).
     Delta
     {
         /// The acknowledged version this patch applies against.
@@ -530,14 +545,14 @@ impl From<DeltaStreaming> for bool
     }
 }
 
-/// Whether obligation deltas are populated in render-bus messages.
+/// Whether the server's [`ReportView`]s carry typed obligation rows.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "codecs", serde(transparent))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct ObligationDeltas(bool);
+pub struct ObligationRows(bool);
 
-impl From<bool> for ObligationDeltas
+impl From<bool> for ObligationRows
 {
     #[inline]
     fn from(enabled: bool) -> Self
@@ -546,10 +561,10 @@ impl From<bool> for ObligationDeltas
     }
 }
 
-impl From<ObligationDeltas> for bool
+impl From<ObligationRows> for bool
 {
     #[inline]
-    fn from(enabled: ObligationDeltas) -> Self
+    fn from(enabled: ObligationRows) -> Self
     {
         enabled.0
     }
@@ -583,9 +598,11 @@ impl From<SessionBadges> for bool
 /// What a bus server can stream, advertised in [`FrameBody::Hello`].
 ///
 /// The MVP posture ([`Self::mvp`]) is whole-frame only: no deltas, no
-/// obligations, no session badges. Each flag graduates independently as its
-/// backing machinery lands (deltas/obligations, A4 for
-/// sessions).
+/// obligation rows, no session badges. Each flag graduates independently as its
+/// backing machinery lands (deltas, A4 for sessions), and a server advertises a
+/// flag only when it has the machinery behind it — a server whose projection
+/// fills [`ReportView::obligations`] sets [`Self::obligations`], and one that
+/// leaves the field empty does not.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ServerCaps
@@ -595,9 +612,9 @@ pub struct ServerCaps
     /// Whether the server may send [`FrameBody::Delta`] frames (proposal Axis
     /// B; `false` in the MVP).
     pub deltas: DeltaStreaming,
-    /// Whether obligation deltas are populated (the reserved slot; `false`
-    /// today).
-    pub obligations: ObligationDeltas,
+    /// Whether the server's [`ReportView`]s carry typed obligation rows
+    /// ([`ReportView::obligations`]).
+    pub obligations: ObligationRows,
     /// Whether derivation nodes carry session [`ProtocolBadge`]s (A4; `false`
     /// today).
     pub sessions: SessionBadges,
@@ -614,7 +631,7 @@ impl ServerCaps
     #[must_use]
     pub fn new(
         deltas: DeltaStreaming,
-        obligations: ObligationDeltas,
+        obligations: ObligationRows,
         sessions: SessionBadges,
     ) -> Self
     {
@@ -626,7 +643,8 @@ impl ServerCaps
         }
     }
 
-    /// The Wave-1 MVP posture: whole frames only.
+    /// The Wave-1 MVP posture: whole frames only, with no projection behind any
+    /// capability.
     ///
     /// # Contract
     /// - ensures: `schema_version` is [`WIRE_SCHEMA_VERSION`]; every capability
@@ -641,13 +659,13 @@ impl ServerCaps
 }
 
 /// The present-projection view carried by a [`FrameBody::Frame`]: the
-/// renderer-facing diagnostics, goals, marks, and highlights.
+/// renderer-facing diagnostics, goals, marks, obligations, and highlights.
 ///
 /// This is the serialized image of the fields an in-process renderer consumes
 /// (a [`crate::present::PreviewFrame`] minus its cursor-local and generation
-/// fields, which are editor-channel / in-process concerns). Obligations
-/// are reserved: they arrive via [`FrameBody::Delta`] once the pipeline's
-/// reserved slot populates.
+/// fields, which are editor-channel / in-process concerns). Obligation rows
+/// ride the whole frame beside the other projections; a server that fills them
+/// says so in [`ServerCaps::obligations`].
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ReportView
@@ -660,6 +678,9 @@ pub struct ReportView
     pub diagnostics: Vec<DiagCard>,
     /// Hole goals, in source order.
     pub goals: Vec<GoalCard>,
+    /// The parse's recovery obligations, in source order; empty for a clean
+    /// parse.
+    pub obligations: Vec<ObligationCard>,
 }
 
 /// The reified machine-state projection carried by a [`FrameBody::Frame`]
@@ -999,7 +1020,9 @@ impl From<FrameStackDepth> for u32
     }
 }
 
-/// Outstanding obligation count in the machine summary.
+/// Outstanding *typing-machine* obligation count in the machine summary — the
+/// constraints the solver still owes, unrelated to the parser recovery
+/// obligations [`ReportView::obligations`] carries.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "codecs", serde(transparent))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -1065,7 +1088,8 @@ pub struct MachineSummary
     /// The frame-stack depth (`typing-machine.md` §"The state record" `stack`
     /// length).
     pub frame_depth: FrameStackDepth,
-    /// The outstanding-obligation count (the reserved slot; `0` today).
+    /// The solver's outstanding-constraint count (reserved; `0` until the
+    /// solver lands, and never the parser's recovery obligations).
     pub obligations: OutstandingObligationCount,
     /// The solver trail depth (`typing-machine.md` §"The solver as a separate
     /// machine" `trail` length).
@@ -1077,7 +1101,9 @@ pub struct MachineSummary
 ///
 /// The MVP never emits deltas; this shape is the transparent scaling lever the
 /// same frame envelope carries once the incremental machinery lands. Obligation
-/// deltas are a future additive variant (the enum is `non_exhaustive`).
+/// rows are not patched here: they ride the whole-frame projection
+/// ([`ReportView::obligations`]), which is what [`ServerCaps::obligations`]
+/// advertises.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "codecs",
@@ -1115,6 +1141,7 @@ mod tests
 {
     use super::ControlView;
     use super::CtxBinding;
+    use super::DeltaStreaming;
     use super::DirView;
     use super::DocId;
     use super::DocVersion;
@@ -1128,11 +1155,19 @@ mod tests
     use super::NodeId;
     #[cfg(feature = "codecs")]
     use super::NodeStep;
+    #[cfg(feature = "codecs")]
+    use super::ObligationCard;
+    use super::ObligationRows;
     use super::ProtocolBadge;
     use super::RenderFrame;
     use super::ReportView;
     use super::ServerCaps;
+    use super::SessionBadges;
     use super::WIRE_SCHEMA_VERSION;
+    #[cfg(feature = "codecs")]
+    use crate::present::ByteOffset;
+    #[cfg(feature = "codecs")]
+    use crate::present::ObligationClass;
 
     #[test]
     fn projection_part_constructors_store_fields_verbatim()
@@ -1201,6 +1236,75 @@ mod tests
         assert!(!bool::from(caps.deltas));
         assert!(!bool::from(caps.obligations));
         assert!(!bool::from(caps.sessions));
+    }
+
+    #[test]
+    fn the_obligation_capability_is_the_row_capability()
+    {
+        // A server that fills `ReportView::obligations` advertises the flag;
+        // the flag says nothing about the delta channel, which stays its own
+        // capability.
+        let caps = ServerCaps::new(
+            DeltaStreaming::from(false),
+            ObligationRows::from(true),
+            SessionBadges::from(false),
+        );
+        assert!(bool::from(caps.obligations));
+        assert!(!bool::from(caps.deltas));
+        assert_eq!(WIRE_SCHEMA_VERSION, caps.schema_version);
+    }
+
+    #[cfg(feature = "codecs")]
+    #[test]
+    fn frames_round_trip_obligation_rows_and_an_empty_row_set()
+    {
+        // Non-empty: class and exact byte range survive the codec, in the order
+        // the projection carried them.
+        let rows = vec![
+            ObligationCard::new(
+                ObligationClass::UnmoldedTok,
+                ByteOffset::from(10) .. ByteOffset::from(11),
+            ),
+            ObligationCard::new(
+                ObligationClass::MissingMeld,
+                ByteOffset::from(11) .. ByteOffset::from(11),
+            ),
+        ];
+        let populated = RenderFrame::frame(
+            "file:///a.gandr".to_owned(),
+            DocVersion::from(2_i32),
+            ReportView {
+                obligations: rows.clone(),
+                ..ReportView::default()
+            },
+            MachineView::default(),
+        );
+        let json = serde_json::to_string(&populated).expect("serialize");
+        let back: RenderFrame = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(populated, back, "round-trip preserves the obligation rows");
+        let FrameBody::Frame { ref report, .. } = *back.body()
+        else {
+            panic!("the frame body is a frame");
+        };
+        assert_eq!(rows, report.obligations);
+
+        // Empty: a clean projection carries an empty row set, which is not the
+        // same message as a populated one.
+        let clean = RenderFrame::frame(
+            "file:///a.gandr".to_owned(),
+            DocVersion::from(2_i32),
+            ReportView::default(),
+            MachineView::default(),
+        );
+        let clean_json = serde_json::to_string(&clean).expect("serialize");
+        let clean_back: RenderFrame = serde_json::from_str(&clean_json).expect("deserialize");
+        assert_eq!(clean, clean_back);
+        assert_ne!(populated, clean_back);
+        let FrameBody::Frame { ref report, .. } = *clean_back.body()
+        else {
+            panic!("the frame body is a frame");
+        };
+        assert!(report.obligations.is_empty());
     }
 
     #[test]

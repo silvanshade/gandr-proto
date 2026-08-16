@@ -12,8 +12,11 @@
 //! *marks* slot is **populated** ([`marks`]): one [`MarkReport`] per node
 //! mark from the total semantic marking layer
 //! ([`gandr_core_checker::mark`]), source-ranged through the same
-//! `OriginMap`. The *obligations* slot stays reserved (empty) so the schema
-//! is forward-compatible.
+//! `OriginMap`. The *obligations* slot is populated too ([`obligations`]): one
+//! [`ObligationReport`] per repair the melder made while recovering the source,
+//! carried from the parse through [`Lowered`] with its class and responsible
+//! byte span intact. It is the envelope's one syntactic surface — every other
+//! field describes the tree that recovery produced.
 //!
 //! The marks and the diagnostics are **complementary** realizations of the same
 //! type system: the diagnostics are the machine's fail-fast derivation view
@@ -95,6 +98,9 @@ use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
 use gandr_core_incremental::region::Item;
+use gandr_surface_parser::Oblig;
+use gandr_surface_parser::ObligationInstance;
+use gandr_surface_render_remote::present::ObligationClass;
 
 use crate::attributes;
 use crate::boundary::AttributeName;
@@ -109,6 +115,7 @@ use crate::goals::goal_item_flags;
 use crate::goals::goals_report_with_contexts;
 use crate::goals::initial_state;
 use crate::lower::Lowered;
+use crate::lower::obligation_range;
 use crate::origin::TermRef;
 use crate::origin::resolve;
 use crate::render;
@@ -120,7 +127,11 @@ use crate::render;
 ///
 /// `2` — the reserved `marks` slot changed from an opaque `serde_json::Value`
 /// array to a typed [`MarkReport`] array; a meaning change, hence a bump.
-pub const SCHEMA_VERSION: u32 = 2;
+///
+/// `3` — the reserved `obligations` slot, always `[]`, became the parse's live
+/// recovery obligations as a typed [`ObligationReport`] array; a meaning change
+/// on the same precedent, hence a bump.
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// A byte span `[start, end)` in the source.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -575,14 +586,31 @@ pub struct AttrReport
     pub span: Span,
 }
 
-/// Reserved obligation payload for the agent stream.
+/// One parser recovery obligation: the class of repair the melder made, and the
+/// source bytes responsible for it.
 ///
-/// This zero-variant type keeps reports usable as Rust values when codecs are
-/// disabled. With codecs enabled, the empty `Vec<ObligationReport>` serializes
-/// to the same JSON `[]` reserved slot as the former `Vec<serde_json::Value>`.
+/// The row is the melder's [`ObligationInstance`] projected to the wire — the
+/// class name from the shared renderer vocabulary ([`ObligationClass`]) and the
+/// exact responsible byte span, with nothing rendered and nothing opaque. A
+/// consumer reads the class as data and spells it itself.
+///
+/// The rows are the agent stream's *syntactic* half: they say what the parse
+/// had to repair to produce a tree at all, where [`Diagnostic`] and
+/// [`MarkReport`] say what typing found in the tree that resulted. A recovery
+/// hole's [`GoalReport`] is the same repair seen from the term side — the hole
+/// the lowerer put where the damage was — so a row and a goal can name one
+/// region without either being derived from the other.
+///
+/// [`ObligationInstance`]: gandr_surface_parser::ObligationInstance
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObligationReport {}
+pub struct ObligationReport
+{
+    /// The obligation's class.
+    pub class: ObligationClass,
+    /// The smallest source span responsible for the obligation.
+    pub span: Span,
+}
 
 /// The versioned agent-stream envelope: diagnostics, goals, marks, and
 /// attributes for one lowered file, with a reserved slot for obligations.
@@ -606,8 +634,9 @@ pub struct Report
     /// additive field (no [`SCHEMA_VERSION`] bump): a consumer that ignores it
     /// reads the report unchanged.
     pub attributes: Vec<AttrReport>,
-    /// Reserved for *obligations* (empty; the report decision reserves the
-    /// slot).
+    /// The parse's recovery *obligations*: one [`ObligationReport`] per repair
+    /// the melder made, in source order ([`obligations`]). Empty for a source
+    /// that parsed clean.
     pub obligations: Vec<ObligationReport>,
 }
 
@@ -701,7 +730,108 @@ pub fn report(
             .collect(),
         marks,
         attributes: attr_pass.resolved.iter().map(attr_to_report).collect(),
-        obligations: Vec::new(),
+        obligations: obligations(lowered),
+    }
+}
+
+/// Computes the parse's recovery obligation rows: one [`ObligationReport`] per
+/// repair the melder made, in source order.
+///
+/// The rows are a projection of [`Lowered::obligations`] — the parse's own
+/// buffer, carried through lowering — so this function invents no obligation,
+/// drops none, and re-spans none. What it adds is the *order*: the parse
+/// buffers by severity (the minimization order it selects repairs under), which
+/// is the wrong order to read a file in, so the rows are sorted by start, then
+/// end, then class. That comparison is total on the row content, so two runs
+/// over one source produce byte-identical rows.
+///
+/// # Contract
+/// - requires: none.
+/// - ensures: returns one row per obligation in `lowered`, each carrying the
+///   class and the exact responsible byte span; the rows are ordered by span
+///   start, then span end, then class severity; the result is empty exactly
+///   when the parse was clean.
+/// - provides: the report envelope's obligation surface, and the source-ordered
+///   view a renderer or agent reads.
+/// - fails: never.
+/// - panics: none.
+/// - intension: the order is a total comparison over `(start, end, class)`, so
+///   it is deterministic without depending on the sort's stability or on the
+///   melder's buffering order.
+///
+/// # Adequacy
+/// - hypothesis: L4 — a recovering source (non-empty rows with exact class and
+///   span), a clean source (empty rows), a source whose severity order and
+///   source order disagree (the sort is observed, not inherited), and a
+///   repeated lowering (determinism) each exercise a distinct decision.
+/// - witness: `diag_obligations::tests::rows::rows_carry_the_class_and_the_exact_span`
+/// - witness: `diag_obligations::tests::rows::a_clean_source_reports_no_obligations`
+/// - witness: `diag_obligations::tests::rows::rows_are_in_source_order_not_severity_order`
+/// - witness: `diag_obligations::tests::rows::rows_are_deterministic_across_lowerings`
+#[inline]
+#[must_use]
+pub fn obligations(lowered: &Lowered) -> Vec<ObligationReport>
+{
+    let mut rows: Vec<ObligationReport> = lowered
+        .obligations()
+        .iter()
+        .map(obligation_report)
+        .collect();
+    rows.sort_by(|left, right| {
+        left.span
+            .start
+            .cmp(&right.span.start)
+            .then_with(|| left.span.end.cmp(&right.span.end))
+            .then_with(|| left.class.cmp(&right.class))
+    });
+    rows
+}
+
+/// Projects one buffered melder obligation onto its report row.
+fn obligation_report(instance: &ObligationInstance) -> ObligationReport
+{
+    ObligationReport {
+        class: obligation_class(instance.class),
+        span: Span::from(obligation_range(instance)),
+    }
+}
+
+/// Maps the parser's obligation taxonomy onto the shared renderer vocabulary.
+///
+/// This is the single crossing between the two: [`Oblig`] stays the semantic
+/// authority (the melder minimizes over it), and [`ObligationClass`] is the
+/// name the report and the render bus publish. The match is exhaustive by
+/// construction, so a class added upstream is a compile error here rather than
+/// a row that silently loses its class.
+///
+/// # Contract
+/// - requires: none.
+/// - ensures: returns the same-named class; the mapping is a bijection onto
+///   [`ObligationClass`] and preserves the severity ladder, because both
+///   enumerations declare the classes in the same low-to-high order.
+/// - provides: the report and render-bus class vocabulary for a parser
+///   obligation.
+/// - fails: never.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — mapping every [`Oblig`] class and comparing the images
+///   pairwise separates a swapped pair (name preservation) from a reordered
+///   ladder (severity preservation).
+/// - witness: `diag_obligations::tests::authority::every_parser_class_maps_to_its_own_name_and_rank`
+#[inline]
+#[must_use]
+pub const fn obligation_class(class: Oblig) -> ObligationClass
+{
+    match class {
+        | Oblig::MissingMeld => ObligationClass::MissingMeld,
+        | Oblig::MissingTile => ObligationClass::MissingTile,
+        | Oblig::IncompleteTile => ObligationClass::IncompleteTile,
+        | Oblig::UnmoldedTok => ObligationClass::UnmoldedTok,
+        | Oblig::InconMeld => ObligationClass::InconMeld,
+        | Oblig::ExtraMeld => ObligationClass::ExtraMeld,
+        | Oblig::ReservedKeyword => ObligationClass::ReservedKeyword,
+        | Oblig::AmbiguousPrec => ObligationClass::AmbiguousPrec,
     }
 }
 

@@ -148,6 +148,7 @@ pub mod namespace;
 pub mod origin;
 pub mod prelude;
 pub mod recognition;
+pub mod remote;
 pub mod render;
 pub mod run;
 pub mod session;

@@ -937,6 +937,9 @@ pub struct Lowered
     /// once at the end of lowering so every match sees the same table whatever
     /// order the source put them in.
     pub constructors: live_match::ConstructorTable,
+    /// The parse's syntactic obligations, carried verbatim from the melder (see
+    /// [`Self::obligations`]).
+    obligations: Vec<ObligationInstance>,
 }
 
 impl Lowered
@@ -988,6 +991,44 @@ impl Lowered
         self.recognition.shadowed()
     }
 
+    /// The parse's syntactic obligations — every repair the melder made while
+    /// recovering this source, class and responsible span preserved exactly.
+    ///
+    /// This is the lowering's carried image of
+    /// [`gandr_surface_parser::ParseResult::obligations`], not a second
+    /// derivation of it: the melder is the sole authority on what obligations a
+    /// source has, and nothing between the parse and here adds, drops, or
+    /// re-spans a row. The order is the parse's own — severity first (highest
+    /// first), then span — because reordering here would put a second
+    /// convention in front of the authority's; the report projection
+    /// ([`crate::diag::obligations`]) is where a source-ordered view is minted.
+    ///
+    /// A clean parse carries none, in either lowering mode. Strict lowering
+    /// rejects a source with obligations before a [`Lowered`] exists, so a
+    /// strict result's slice is empty by construction; total lowering carries
+    /// whatever the recovery needed.
+    ///
+    /// # Contract
+    /// - requires: none.
+    /// - ensures: returns the parse's obligations, class and span byte-exact,
+    ///   in the parse's severity order; empty exactly when the parse was clean.
+    /// - provides: the single in-engine obligation surface — the recovery-hole
+    ///   note resolution and the report rows both read this one buffer.
+    /// - fails: never.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a recovering source and a clean source separate the
+    ///   non-empty and empty slice, and comparing the slice against the
+    ///   parser's own result separates "carried" from "re-derived".
+    /// - witness: `diag_obligations::tests::authority::lowered_carries_the_parse_obligations_verbatim`
+    /// - witness: `diag_obligations::tests::authority::a_clean_source_carries_no_obligations`
+    #[inline]
+    #[must_use]
+    pub fn obligations(&self) -> &[ObligationInstance]
+    {
+        &self.obligations
+    }
     /// A deterministic rendering for golden tests: items in debug format
     /// plus the [`OriginMap::snapshot`] (which records each entry's
     /// reproducible merkle `cst_hash` and omits the positional CST arena
@@ -1361,8 +1402,11 @@ fn obligation_hole_note(
     }
 }
 
-/// The `usize` byte range of an obligation's source span.
-fn obligation_range(obligation: &ObligationInstance) -> SourceRange
+/// The `usize` byte range of an obligation's source span — the one spelling of
+/// that conversion, shared with the report projection
+/// ([`crate::diag::obligations`]) so a row and a recovery hole cannot disagree
+/// about where an obligation is.
+pub(crate) fn obligation_range(obligation: &ObligationInstance) -> SourceRange
 {
     let start = usize::try_from(u32::from(obligation.span.start())).unwrap_or(0);
     let end = usize::try_from(u32::from(obligation.span.end())).unwrap_or(start);
@@ -5257,6 +5301,7 @@ impl Lowerer<'_>
             recognition: self.recognition.clone(),
             match_sites: core::mem::take(&mut self.match_sites),
             constructors,
+            obligations: core::mem::take(&mut self.obligations),
         })
     }
 
