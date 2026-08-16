@@ -1,5 +1,12 @@
 //! Content-addressed checkpoint persistence and backend-aware reuse.
-
+#![allow(
+    unknown_lints,
+    reason = "The durable boundary has toolchain-specific lint names."
+)]
+#![allow(
+    primitive_signature,
+    reason = "Raw bytes are the content-addressed serialization boundary."
+)]
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -12,6 +19,8 @@ use std::path::PathBuf;
 
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+/// Fixed byte length of the file-artifact header.
+const FILE_HEADER_LEN: usize = 76;
 
 use crate::checkpoint::Checkpoints;
 use crate::region::Program;
@@ -131,6 +140,7 @@ pub trait CheckpointStore
 /// A deterministic in-memory store useful for process-reopen and contract
 /// tests.
 #[derive(Clone, Debug, Default)]
+#[repr(transparent)]
 pub struct MemoryCheckpointStore
 {
     /// In-memory records keyed by content and backend identity.
@@ -210,18 +220,21 @@ impl CheckpointStore for FileCheckpointStore
         else {
             return Ok(None);
         };
-        if bytes.len() < 76
+        if bytes.len() < FILE_HEADER_LEN
             || bytes.get(.. 8) != Some(b"GFILE\0\0\0")
             || bytes.get(8 .. 12) != Some(&1_u32.to_le_bytes())
             || bytes.get(12 .. 44) != Some(&address.0)
         {
             return Err(CheckpointStoreError::Corrupt);
         }
-        if bytes.get(44 .. 76) != Some(&backend.0) {
+        if bytes.get(44 .. FILE_HEADER_LEN) != Some(&backend.0) {
             return Ok(None);
         }
-        let payload = bytes.get(76 ..).ok_or(CheckpointStoreError::Corrupt)?;
-        Ok(Some(decode_checkpoints(payload)?))
+        let payload = bytes
+            .get(FILE_HEADER_LEN ..)
+            .ok_or(CheckpointStoreError::Corrupt)?;
+        let decoded = decode_checkpoints(payload)?;
+        Ok(Some(decoded))
     }
 
     #[inline]
@@ -374,7 +387,7 @@ fn artifact_bytes(
     payload: &[u8],
 ) -> Vec<u8>
 {
-    let mut bytes = Vec::with_capacity(76_usize.saturating_add(payload.len()));
+    let mut bytes = Vec::with_capacity(FILE_HEADER_LEN.saturating_add(payload.len()));
     bytes.extend_from_slice(b"GFILE\0\0\0");
     bytes.extend_from_slice(&1_u32.to_le_bytes());
     bytes.extend_from_slice(&address.0);
@@ -396,6 +409,7 @@ fn hex(bytes: [u8; 32]) -> String
 }
 
 #[derive(Default)]
+#[repr(transparent)]
 /// Incremental hash input used to derive a BLAKE3 checkpoint address.
 struct DigestHasher
 {
