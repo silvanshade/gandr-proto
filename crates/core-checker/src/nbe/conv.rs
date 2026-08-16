@@ -70,6 +70,7 @@ use crate::nbe::eval::rerun_spine;
 use crate::nbe::eval::syntax_comp;
 use crate::nbe::eval::value;
 use crate::nbe::intern::canonical_stack_key;
+use crate::nbe::intern::canonical_value_type_key;
 use crate::nbe::sem::ClosureId;
 use crate::nbe::sem::CompUnfold;
 use crate::nbe::sem::Elim;
@@ -386,6 +387,40 @@ fn value_goal(
             },
         ) => {
             if left_id != right_id || left_tag != right_tag {
+                return Ok(ValueEquality::from(false));
+            }
+            goals.push(Frame::Value(left_payload, right_payload, state));
+            return Ok(ValueEquality::from(true));
+        },
+        | (
+            &SemValueNode::Pack {
+                witnesses: ref left_witnesses,
+                payload: left_payload,
+            },
+            &SemValueNode::Pack {
+                witnesses: ref right_witnesses,
+                payload: right_payload,
+            },
+        ) => {
+            // **The witnesses are compared, not erased.** They are types, and a
+            // type inside a value is compared the way a reified stack is —
+            // alpha-identity of its syntax through the canonical key — because
+            // that is the equality this engine already offers on syntax it does
+            // not evaluate. Erasing them would equate two packs at different
+            // representations, which decides a parametricity fact judgmentally.
+            if left_witnesses.len() != right_witnesses.len() {
+                return Ok(ValueEquality::from(false));
+            }
+            let store = nbe.syntax();
+            let aligned = left_witnesses
+                .iter()
+                .zip(right_witnesses.iter())
+                .all(|(left, right)| {
+                    left == right
+                        || canonical_value_type_key(store, *left)
+                            == canonical_value_type_key(store, *right)
+                });
+            if !aligned {
                 return Ok(ValueEquality::from(false));
             }
             goals.push(Frame::Value(left_payload, right_payload, state));
@@ -822,6 +857,35 @@ fn head_goal(
             Ok(ValueEquality::from(true))
         },
         | (
+            &NeutralHead::Unpack {
+                source: left_source,
+                scrutinee: left_scrutinee,
+                body: left_body,
+            },
+            &NeutralHead::Unpack {
+                source: right_source,
+                scrutinee: right_scrutinee,
+                body: right_body,
+            },
+        ) => {
+            // The ascribed signature and the minted atoms live on the source
+            // nodes, so congruence reads them back rather than carrying copies
+            // — the `Perform` and `Handle` discipline.
+            if !bool::from(same_package_head(nbe, left_source, right_source)?) {
+                return Ok(ValueEquality::from(false));
+            }
+            closures_goal(
+                nbe,
+                left_body,
+                right_body,
+                ClosureArity::from(1_usize),
+                state,
+                goals,
+            )?;
+            goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
+            Ok(ValueEquality::from(true))
+        },
+        | (
             &NeutralHead::Project {
                 record: left_record,
                 label: ref left_label,
@@ -1031,6 +1095,51 @@ fn same_effect_head(
                     .iter()
                     .zip(right_ops.iter())
                     .all(|(left, right)| left.op == right.op)
+        },
+        | _ => false,
+    };
+    Ok(ValueEquality::from(decided))
+}
+
+/// Whether two frustrated package eliminations agree on their annotation half:
+/// the atoms they minted and the signature they ascribe.
+///
+/// Both are read off their source nodes, exactly as [`same_effect_head`] reads
+/// a signature and its labels. The atoms are compared by **identity**, which is
+/// the whole point of minting them: a sealed atom is nominal, so two
+/// eliminations that minted different atoms opened different abstractions and
+/// congruence must not merge them.
+///
+/// # Errors
+///
+/// Returns [`SemError`] when a source node does not resolve.
+fn same_package_head(
+    nbe: &Normalizer,
+    lhs: crate::syntax::CompNodeId,
+    rhs: crate::syntax::CompNodeId,
+) -> Result<ValueEquality, SemError>
+{
+    if lhs == rhs {
+        return Ok(ValueEquality::from(true));
+    }
+    let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
+        | (
+            crate::syntax::CompNode::Unpack {
+                signature: left_signature,
+                atoms: left_atoms,
+                ..
+            },
+            crate::syntax::CompNode::Unpack {
+                signature: right_signature,
+                atoms: right_atoms,
+                ..
+            },
+        ) => {
+            let store = nbe.syntax();
+            left_atoms == right_atoms
+                && (left_signature == right_signature
+                    || canonical_value_type_key(store, left_signature)
+                        == canonical_value_type_key(store, right_signature))
         },
         | _ => false,
     };

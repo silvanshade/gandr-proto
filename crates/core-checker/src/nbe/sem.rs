@@ -94,6 +94,7 @@ use crate::syntax::NumLit;
 use crate::syntax::Side;
 use crate::syntax::StackNodeId;
 use crate::syntax::ValueNodeId;
+use crate::syntax::ValueTypeNodeId;
 use crate::types::DataId;
 
 /// Defines a transparent arena id with its explicit conversions and its
@@ -594,6 +595,25 @@ pub enum SemValueNode
         /// The constructor's field-tuple payload.
         payload: SemValueId,
     },
+    /// A packed module `pack ⟨witnesses⟩ payload`: the package former's
+    /// introduction, inert exactly as a constructor value is.
+    ///
+    /// The witnesses are **types**, so they stay syntax ids: this domain has no
+    /// semantic type former to evaluate them into, and nothing about a package
+    /// asks for one — the abstraction step every package rule performs
+    /// ([`crate::package::instantiate`]) is a typing operation with no
+    /// term-level residue. Naming syntax rather than copying it is the
+    /// [`Self::Reified`] discipline, and retaining it rather than dropping
+    /// it is what keeps two packs at different representations
+    /// distinguishable.
+    Pack
+    {
+        /// The witness type ids, positionally discharging the signature's
+        /// abstract components.
+        witnesses: Vec<ValueTypeNodeId>,
+        /// The evaluated payload.
+        payload: SemValueId,
+    },
     /// A reified stack: opaque to conversion by construction, named by its
     /// syntax node and compared as syntax.
     Reified(StackNodeId),
@@ -775,6 +795,23 @@ pub enum NeutralHead
         /// The neutral scrutinee.
         scrutinee: SemValueId,
         /// The body, binding both components.
+        body: ClosureId,
+    },
+    /// A package elimination frustrated on its scrutinee.
+    ///
+    /// The ascribed signature and the minted atoms stay on the **source node**,
+    /// which this head names rather than copies — the [`Self::Perform`]
+    /// discipline, and here it is load-bearing rather than economical. An atom
+    /// is a nominal identity: readback cannot emit an unknown one the way it
+    /// emits an unknown motive for [`Self::Walk`], so a head that dropped the
+    /// atoms could not rebuild the elimination it came from.
+    Unpack
+    {
+        /// The syntax node this elimination came from.
+        source: CompNodeId,
+        /// The neutral scrutinee.
+        scrutinee: SemValueId,
+        /// The body, binding the module variable.
         body: ClosureId,
     },
     /// A record projection frustrated on its record — the structure-projection

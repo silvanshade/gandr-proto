@@ -579,6 +579,10 @@ mod tests
     use crate::boundary::GradeBound;
     use crate::boundary::IntegerLiteral;
     use crate::boundary::NameRef;
+    use crate::boundary::SealComponentName;
+    use crate::boundary::SealDeclarationName;
+    use crate::boundary::TypeAtomName;
+    use crate::boundary::TypeSerial;
     use crate::effect::EffectSig;
     use crate::grade::Grade;
     use crate::nbe::defs::Transparency;
@@ -641,6 +645,63 @@ mod tests
     ) -> crate::syntax::ValueNodeId
     {
         nbe.lower_input(term).expect("lowering must succeed")
+    }
+
+    /// A one-component package signature `Package_1 ⟨component⟩ U_1 (F
+    /// payload)`.
+    fn package_type(
+        component: TypeAtomName<'_>,
+        payload: ValueType,
+    ) -> ValueType
+    {
+        ValueType::Package {
+            grade: Grade::ONE,
+            abstracts: alloc::vec![String::from(component.as_ref())],
+            payload: Rc::new(ValueType::Thunk(
+                Grade::ONE,
+                Rc::new(CompType::returner(payload)),
+            )),
+        }
+    }
+
+    /// An atom an elimination minted for a package component.
+    fn seal(
+        serial: TypeSerial,
+        component: SealComponentName<'_>,
+    ) -> crate::types::SealId
+    {
+        crate::types::SealId::new(serial, SealDeclarationName::from("module"), component)
+    }
+
+    /// A package signature whose payload names its own abstract component in a
+    /// path carrier, over an endpoint **value** variable named separately.
+    ///
+    /// The two names are spelled by the caller so a test can make them collide:
+    /// `label` binds a type atom and `endpoint` is a free value variable, and
+    /// nothing may let the first capture the second.
+    fn endpoint_signature(
+        label: TypeAtomName<'_>,
+        endpoint: NameRef<'_>,
+    ) -> ValueType
+    {
+        ValueType::Package {
+            grade: Grade::ONE,
+            abstracts: alloc::vec![String::from(label.as_ref())],
+            payload: Rc::new(ValueType::Thunk(
+                Grade::ONE,
+                Rc::new(CompType::returner(ValueType::Path {
+                    ty: Rc::new(ValueType::atom(label)),
+                    lhs: var(endpoint),
+                    rhs: var(endpoint),
+                })),
+            )),
+        }
+    }
+
+    /// A unit value ascribed at `ty`, so a type is observable through a term.
+    fn ascribed(ty: ValueType) -> Rc<Value>
+    {
+        Rc::new(Value::Annot(Rc::new(Value::Unit), Rc::new(ty)))
     }
 
     /// The trivial effect signature the quarantine tests perform against.
@@ -1190,6 +1251,10 @@ mod tests
                 (FieldName::from("b"), int(IntegerLiteral::from(2_i64))),
             ]),
             Rc::new(Value::Here(int(IntegerLiteral::from(5_i64)))),
+            Rc::new(Value::pack(
+                [ValueType::integer()],
+                Value::Thunk(Grade::ONE, Rc::new(Comp::ret(Value::Int(6)))),
+            )),
         ] {
             let node = lower(&mut nbe, &term);
             let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
@@ -1490,6 +1555,273 @@ mod tests
             )),
         ));
         assert!(bool::from(nbe.converts(&performed, &reducible)));
+    }
+
+    // ── the package former ──────────────────────────────────────────────────
+
+    #[test]
+    fn unpacking_a_packed_module_binds_the_payload()
+    {
+        let mut nbe = Normalizer::new();
+        // `unpack (pack ⟨Integer⟩ thunk_1 (ret 7)) : σ as ⟨a⟩ m in force m`.
+        // The witness discharges the signature's abstract component and the
+        // atom is what the body would meet it at — neither reaches the term, so
+        // what fires is the binding of the module variable and nothing else.
+        let redex = thunk(Comp::unpack(
+            Value::pack(
+                [ValueType::integer()],
+                Value::Thunk(Grade::ONE, Rc::new(Comp::ret(Value::Int(7)))),
+            ),
+            package_type(TypeAtomName::from("component"), ValueType::integer()),
+            [seal(
+                TypeSerial::from(1_u64),
+                SealComponentName::from("component"),
+            )],
+            "opened",
+            Comp::force(Value::var(NameRef::from("opened"))),
+        ));
+        assert!(
+            bool::from(nbe.converts(&redex, &thunk(Comp::ret(Value::Int(7))))),
+            "the package elimination did not fire on a packed module"
+        );
+    }
+
+    #[test]
+    fn unpacking_a_neutral_package_stays_stuck_and_keeps_its_annotation_half()
+    {
+        let mut nbe = Normalizer::new();
+        let signature = package_type(TypeAtomName::from("component"), ValueType::integer());
+        let atoms = [seal(
+            TypeSerial::from(3_u64),
+            SealComponentName::from("component"),
+        )];
+        let stuck = thunk(Comp::unpack(
+            Value::var(NameRef::from("unknown")),
+            signature.clone(),
+            atoms.clone(),
+            "opened",
+            Comp::force(Value::var(NameRef::from("opened"))),
+        ));
+        let normal = nbe.normalize(&stuck).unwrap();
+        let Value::Thunk(_, ref body) = *normal
+        else {
+            panic!("normalizing a thunk did not produce one");
+        };
+        let Comp::Unpack {
+            scrut: ref read_scrut,
+            signature: ref read_signature,
+            atoms: ref read_atoms,
+            ..
+        } = **body
+        else {
+            panic!("an unpack of a neutral package did not stay stuck");
+        };
+        // Readback rebuilds the elimination it came from: the signature and the
+        // atoms are read off the source rather than invented, so the minted
+        // identities survive a round trip through the semantic domain.
+        assert_eq!(**read_scrut, Value::Var(String::from("unknown")));
+        assert_eq!(**read_signature, signature);
+        assert_eq!(read_atoms.as_slice(), atoms.as_slice());
+        // Stuck reflexivity, and the normal form re-enters as the same neutral.
+        assert!(bool::from(nbe.converts(&stuck, &stuck)));
+        assert!(bool::from(nbe.converts(&stuck, &normal)));
+        assert_eq!(*nbe.normalize(&normal).unwrap(), *normal);
+    }
+
+    #[test]
+    fn stuck_unpacks_are_congruent_in_the_scrutinee_and_generative_in_the_atoms()
+    {
+        let mut nbe = Normalizer::new();
+        let signature = package_type(TypeAtomName::from("component"), ValueType::integer());
+        let stuck = |atom: crate::types::SealId, scrut: Value| {
+            thunk(Comp::unpack(
+                scrut,
+                signature.clone(),
+                [atom],
+                "opened",
+                Comp::force(Value::var(NameRef::from("opened"))),
+            ))
+        };
+        let plain = stuck(
+            seal(
+                TypeSerial::from(3_u64),
+                SealComponentName::from("component"),
+            ),
+            Value::var(NameRef::from("unknown")),
+        );
+        // Congruence: a scrutinee that is a redex is compared by the
+        // normalizer, so an ascription on it changes nothing.
+        let annotated = stuck(
+            seal(
+                TypeSerial::from(3_u64),
+                SealComponentName::from("component"),
+            ),
+            Value::Annot(var(NameRef::from("unknown")), Rc::new(ValueType::integer())),
+        );
+        assert!(bool::from(nbe.converts(&plain, &annotated)));
+        // Generativity: two eliminations that minted different atoms opened
+        // different abstractions, and congruence must not merge them.
+        let regenerated = stuck(
+            seal(
+                TypeSerial::from(4_u64),
+                SealComponentName::from("component"),
+            ),
+            Value::var(NameRef::from("unknown")),
+        );
+        assert!(
+            !bool::from(nbe.converts(&plain, &regenerated)),
+            "two unpacks with distinct minted atoms were merged"
+        );
+    }
+
+    #[test]
+    fn pack_conversion_reads_its_witnesses_up_to_alpha_and_no_further()
+    {
+        let mut nbe = Normalizer::new();
+        let payload = Value::Thunk(Grade::ONE, Rc::new(Comp::ret(Value::Unit)));
+        // Witnesses are content: two packs at different representations are
+        // different values, whatever their payloads agree on.
+        let integer = Rc::new(Value::pack([ValueType::integer()], payload.clone()));
+        let string = Rc::new(Value::pack([ValueType::string()], payload.clone()));
+        assert!(
+            !bool::from(nbe.converts(&integer, &string)),
+            "the witness types were erased"
+        );
+        assert!(bool::from(nbe.converts(&integer, &integer)));
+        // And they are content up to alpha: a witness that is itself a package
+        // signature relates to its renaming, which is the relation subtyping
+        // already decides by instantiating both sides at canonical binders.
+        let left = Rc::new(Value::pack(
+            [package_type(
+                TypeAtomName::from("a"),
+                ValueType::atom(TypeAtomName::from("a")),
+            )],
+            payload.clone(),
+        ));
+        let right = Rc::new(Value::pack(
+            [package_type(
+                TypeAtomName::from("b"),
+                ValueType::atom(TypeAtomName::from("b")),
+            )],
+            payload,
+        ));
+        assert!(
+            bool::from(nbe.converts(&left, &right)),
+            "alpha-variant witnesses were treated as distinct"
+        );
+    }
+
+    #[test]
+    fn a_package_binder_binds_type_atoms_without_capturing_a_value_variable()
+    {
+        let mut nbe = Normalizer::new();
+        // `Package_1 ⟨t⟩ U_1 (F (Path t x x))`: the label binds the type atom
+        // `t`, and the path endpoints are a free VALUE variable that may be
+        // spelled the same way without being the same thing.
+        let bound = ascribed(endpoint_signature(
+            TypeAtomName::from("t"),
+            NameRef::from("x"),
+        ));
+        let renamed = ascribed(endpoint_signature(
+            TypeAtomName::from("s"),
+            NameRef::from("x"),
+        ));
+        let collided = ascribed(endpoint_signature(
+            TypeAtomName::from("s"),
+            NameRef::from("s"),
+        ));
+        // Renaming the abstract component is alpha, so one entry answers for
+        // both — the interner shares them.
+        assert_eq!(lower(&mut nbe, &bound), lower(&mut nbe, &renamed));
+        // Capturing the endpoint is NOT alpha: the two terms have different
+        // free value variables, so their keys must differ. A single shared
+        // binder scope makes these one key, and the interner then hands one
+        // term back in place of the other.
+        let bound_node = lower(&mut nbe, &bound);
+        let collided_node = lower(&mut nbe, &collided);
+        let bound_key = canonical_key(nbe.syntax(), bound_node);
+        let collided_key = canonical_key(nbe.syntax(), collided_node);
+        assert_ne!(
+            bound_key, collided_key,
+            "a package binder captured a free value variable of the same name"
+        );
+        // The same law where conversion can see it. An ascription is erased
+        // before conversion reaches it, so a witness position is where a type
+        // is actually compared: alpha-renaming the component relates, and
+        // capturing the endpoint does not.
+        let payload = Value::Thunk(Grade::ONE, Rc::new(Comp::ret(Value::Unit)));
+        let packed = |signature: ValueType| Rc::new(Value::pack([signature], payload.clone()));
+        assert!(bool::from(nbe.converts(
+            &packed(endpoint_signature(
+                TypeAtomName::from("t"),
+                NameRef::from("x")
+            )),
+            &packed(endpoint_signature(
+                TypeAtomName::from("s"),
+                NameRef::from("x")
+            ))
+        )));
+        assert!(
+            !bool::from(nbe.converts(
+                &packed(endpoint_signature(
+                    TypeAtomName::from("t"),
+                    NameRef::from("x")
+                )),
+                &packed(endpoint_signature(
+                    TypeAtomName::from("s"),
+                    NameRef::from("s")
+                ))
+            )),
+            "conversion let a package binder capture a free value variable"
+        );
+    }
+
+    #[test]
+    fn definition_height_sees_through_a_packed_module_and_its_elimination()
+    {
+        let mut nbe = Normalizer::new();
+        nbe.define(NameRef::from("a"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        // A witness type is not a value, so the payload is where a definition
+        // can be mentioned — and it is reached.
+        nbe.define(
+            NameRef::from("packed"),
+            &Value::pack([ValueType::integer()], Value::var(NameRef::from("a"))),
+        )
+        .unwrap();
+        assert_eq!(
+            u32::from(
+                nbe.definitions()
+                    .lookup(NameRef::from("packed"))
+                    .unwrap()
+                    .height()
+            ),
+            2
+        );
+        // An elimination reaches one through its scrutinee and through its body.
+        nbe.define(
+            NameRef::from("opened"),
+            &thunk(Comp::unpack(
+                Value::var(NameRef::from("packed")),
+                package_type(TypeAtomName::from("component"), ValueType::integer()),
+                [seal(
+                    TypeSerial::from(5_u64),
+                    SealComponentName::from("component"),
+                )],
+                "module",
+                Comp::ret(Value::var(NameRef::from("module"))),
+            )),
+        )
+        .unwrap();
+        assert_eq!(
+            u32::from(
+                nbe.definitions()
+                    .lookup(NameRef::from("opened"))
+                    .unwrap()
+                    .height()
+            ),
+            3
+        );
     }
 
     // ── readback ────────────────────────────────────────────────────────────

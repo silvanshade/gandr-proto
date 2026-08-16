@@ -34,6 +34,14 @@
 //! no session datum, and nothing about any output the normalizer produced; the
 //! **syntax node ids it walks never enter it**, only the content they name.
 //!
+//! **Two binder namespaces, two scopes.** Terms bind value variables and a
+//! package signature binds abstract type components, and the traversal keeps a
+//! scope for each. Collapsing them is not a rounding error: a package binding
+//! `t` would capture a *value* variable named `t` occurring in an identity
+//! endpoint inside its payload, and two terms whose free value variables differ
+//! would then intern to one entry — which, in a table that replaces a term with
+//! its canonical representative, is a wrong answer rather than a missed hit.
+//!
 //! The table is a deduplicator, not an equality oracle. It is disjoint from the
 //! type interner ([`crate::intern`]) and it takes nothing into the trusted
 //! base.
@@ -260,12 +268,17 @@ enum KeyTask<'term>
     ValueType(ValueTypeNodeId),
     /// Emit the tokens of a computation type node.
     CompType(CompTypeNodeId),
-    /// Push one binder onto the canonical scope.
+    /// Push one binder onto the canonical value scope.
     PushOne(&'term str),
-    /// Push two binders onto the canonical scope, the second innermost.
+    /// Push two binders onto the canonical value scope, the second innermost.
     PushTwo(&'term str, &'term str),
-    /// Pop this many binders off the canonical scope.
+    /// Pop this many binders off the canonical value scope.
     Pop(usize),
+    /// Push these type binders onto the canonical type scope, in order, the
+    /// last innermost.
+    PushTypes(&'term [String]),
+    /// Pop this many binders off the canonical type scope.
+    PopTypes(usize),
     /// Emit a name's bytes.
     Name(&'term str),
 }
@@ -307,6 +320,13 @@ mod tag
 ///   no session datum — only the content the ids name.
 /// - panics: none.
 ///
+/// # Adequacy
+/// - hypothesis: L3 for the two binder namespaces, separated pointwise: one
+///   term renaming a package's abstract component, which must key the same, and
+///   one renaming the free value variable it could capture, which must not.
+/// - witness: `nbe::tests::interning_shares_alpha_equivalent_terms_within_a_face`
+/// - witness: `nbe::tests::a_package_binder_binds_type_atoms_without_capturing_a_value_variable`
+///
 /// # Termination
 /// - reason: the traversal drains an explicit task stack over one finite node
 ///   graph.
@@ -336,7 +356,33 @@ pub fn canonical_stack_key(
     key_from(arena, KeyTask::Stack(stack))
 }
 
+/// The canonical key of a value type — how a type carried inside a term is
+/// compared without a type-level equality of its own.
+///
+/// The package former puts types inside values in two places: the witnesses a
+/// packed module carries, and the signature a package elimination ascribes.
+/// Neither is evaluated, so both are compared exactly as a reified stack is —
+/// alpha-identity of syntax, through this one key builder.
+#[inline]
+#[must_use]
+pub fn canonical_value_type_key(
+    arena: &FlatArena,
+    ty: ValueTypeNodeId,
+) -> CanonicalKey
+{
+    key_from(arena, KeyTask::ValueType(ty))
+}
+
 /// Drains the canonical-key traversal from one root task.
+///
+/// # The two scopes are disjoint, and that is a correctness property
+///
+/// Value variables and type binders are separate namespaces, so the traversal
+/// carries a scope for each. Sharing one stack would not merely blur an index:
+/// a package binding `t` would put `t` in scope for a **value** occurrence of
+/// `t` in a [`ValueTypeNode::Path`] endpoint inside its payload, so two terms
+/// whose free value variables genuinely differ would emit one stream — and a
+/// key hit is where this table substitutes one term for the other.
 fn key_from(
     arena: &FlatArena,
     root: KeyTask<'_>,
@@ -344,6 +390,7 @@ fn key_from(
 {
     let mut tokens = Vec::new();
     let mut scope: Vec<&str> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
     let mut work = alloc::vec![root];
     while let Some(task) = work.pop() {
         match task {
@@ -361,6 +408,14 @@ fn key_from(
             | KeyTask::Pop(count) => {
                 for _ in 0 .. count {
                     scope.pop();
+                }
+            },
+            | KeyTask::PushTypes(binders) => {
+                types.extend(binders.iter().map(String::as_str));
+            },
+            | KeyTask::PopTypes(count) => {
+                for _ in 0 .. count {
+                    types.pop();
                 }
             },
             | KeyTask::Value(id) => match arena.values.get(id) {
@@ -381,7 +436,12 @@ fn key_from(
                 | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
             },
             | KeyTask::ValueType(id) => match arena.value_types.get(id) {
-                | Some(node) => visit_value_type(node, &mut tokens, &mut work),
+                | Some(node) => visit_value_type(
+                    node,
+                    BinderScope::from(types.as_slice()),
+                    &mut tokens,
+                    &mut work,
+                ),
                 | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
             },
             | KeyTask::CompType(id) => match arena.comp_types.get(id) {
@@ -523,6 +583,20 @@ fn visit_value<'term>(
             length(tokens, SemanticNodeCount::from(constructor));
             work.push(KeyTask::Value(carried));
         },
+        | ValueNode::Pack {
+            ref witnesses,
+            payload,
+        } => {
+            // The witnesses are content, not annotation: two packs at different
+            // representations are different terms, so the arity and every
+            // witness type enter the stream ahead of the payload.
+            tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(14)));
+            length(tokens, SemanticNodeCount::from(witnesses.len()));
+            work.push(KeyTask::Value(payload));
+            for witness in witnesses.iter().rev() {
+                work.push(KeyTask::ValueType(*witness));
+            }
+        },
     }
 }
 
@@ -611,6 +685,26 @@ fn visit_comp<'term>(
             work.push(KeyTask::Pop(2));
             work.push(KeyTask::Comp(body));
             work.push(KeyTask::PushTwo(fst_name.as_str(), snd_name.as_str()));
+            work.push(KeyTask::Value(scrut));
+        },
+        | CompNode::Unpack {
+            scrut,
+            signature,
+            ref atoms,
+            ref binder,
+            body,
+        } => {
+            // The atoms are nominal identities the elaborator minted, so they
+            // are content and are folded in; the ascribed signature is a term
+            // child like any other type child. The module variable is the one
+            // binder this node opens, and it binds a **value**.
+            tokens.push(CanonicalToken::from(tag::COMP.saturating_add(22)));
+            length(tokens, SemanticNodeCount::from(atoms.len()));
+            for atom in atoms {
+                hashed(tokens, atom);
+            }
+            under(work, BinderName::from(binder.as_str()), body);
+            work.push(KeyTask::ValueType(signature));
             work.push(KeyTask::Value(scrut));
         },
         | CompNode::RecordProj { record, ref label } => {
@@ -731,16 +825,38 @@ fn visit_stack<'term>(
 }
 
 /// Emits the canonical tokens of one value type node and queues its children.
+///
+/// `types` is the **type**-binder scope, disjoint from the value scope the
+/// term walk carries: the only binder over types is a package's abstract
+/// component list, and the only occurrence it binds is an
+/// [`ValueTypeNode::Atom`].
 fn visit_value_type<'term>(
     node: &'term ValueTypeNode,
+    types: BinderScope<'_>,
     tokens: &mut Vec<CanonicalToken>,
     work: &mut Vec<KeyTask<'term>>,
 )
 {
     match *node {
         | ValueTypeNode::Atom(ref name) => {
-            tokens.push(CanonicalToken::from(tag::VALUE_TYPE));
-            work.push(KeyTask::Name(name.as_str()));
+            // An atom is a rigid type name until a package binds it, so the
+            // occurrence resolves exactly as a variable does: bound occurrences
+            // emit their index and free ones emit their name.
+            let bound = types
+                .as_ref()
+                .iter()
+                .rev()
+                .position(|open| *open == name.as_str());
+            match bound {
+                | Some(index) => {
+                    tokens.push(CanonicalToken::from(tag::BOUND));
+                    length(tokens, SemanticNodeCount::from(index));
+                },
+                | None => {
+                    tokens.push(CanonicalToken::from(tag::VALUE_TYPE));
+                    work.push(KeyTask::Name(name.as_str()));
+                },
+            }
         },
         | ValueTypeNode::Unit => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(1)));
@@ -812,6 +928,24 @@ fn visit_value_type<'term>(
         | ValueTypeNode::Sealed(ref id) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(12)));
             hashed(tokens, id);
+        },
+        | ValueTypeNode::Package {
+            grade,
+            ref abstracts,
+            payload,
+        } => {
+            // The abstract components are binders over the payload, discharged
+            // by `crate::package::instantiate`, so the labels never reach the
+            // stream: they open the type scope and their occurrences emit an
+            // index. Two signatures that differ only in how they spell a
+            // component are one key, which is the same relation subtyping
+            // decides by instantiating both sides at canonical binders.
+            tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(14)));
+            hashed(tokens, &grade);
+            length(tokens, SemanticNodeCount::from(abstracts.len()));
+            work.push(KeyTask::PopTypes(abstracts.len()));
+            work.push(KeyTask::ValueType(payload));
+            work.push(KeyTask::PushTypes(abstracts.as_slice()));
         },
         | ValueTypeNode::Unknown => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(13)));

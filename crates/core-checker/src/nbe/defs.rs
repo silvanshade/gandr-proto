@@ -216,6 +216,7 @@ impl Definitions
     ///   mentions nothing and a body that mentions a definition of known
     ///   height, each observed as an exact height.
     /// - witness: `nbe::tests::definition_height_is_one_above_what_the_body_mentions`
+    /// - witness: `nbe::tests::definition_height_sees_through_a_packed_module_and_its_elimination`
     #[inline]
     pub fn define<'source, N>(
         &mut self,
@@ -376,6 +377,11 @@ fn mentioned_names(
                         work.extend(fields.values().map(|field| Task::Value(*field)));
                     },
                     | ValueNode::Thunk(_, body) => work.push(Task::Comp(body)),
+                    // A packed module's witnesses are types, and this scan
+                    // walks no type at all — an ascription's is skipped for the
+                    // same reason. Heights order *definitions*, and a
+                    // definition binds a value name.
+                    | ValueNode::Pack { payload, .. } => work.push(Task::Value(payload)),
                     | ValueNode::Annot(inner, _) => work.push(Task::Value(inner)),
                 }
             },
@@ -418,7 +424,11 @@ fn mentioned_names(
                         work.push(Task::Comp(nil));
                         work.push(Task::Comp(cons));
                     },
-                    | CompNode::Split { scrut, body, .. } => {
+                    // A package elimination reaches a name through its scrutinee
+                    // and its body; its signature is a type and its atoms are
+                    // nominal identities, so neither can name a definition.
+                    | CompNode::Split { scrut, body, .. }
+                    | CompNode::Unpack { scrut, body, .. } => {
                         work.push(Task::Value(scrut));
                         work.push(Task::Comp(body));
                     },

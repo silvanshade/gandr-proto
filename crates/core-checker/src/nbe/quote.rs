@@ -190,6 +190,8 @@ enum ValueFinish
     Here,
     /// Rebuild a constructor value.
     Ctor(DataId, usize),
+    /// Rebuild a packed module over these witness types.
+    Pack(Vec<crate::syntax::ValueTypeNodeId>),
     /// Rebuild a thunk from the computation on the computation stack.
     Thunk(Grade),
 }
@@ -213,6 +215,9 @@ enum CompFinish
     ListCase(String, String),
     /// Rebuild a pair elimination over its two binders.
     Split(String, String),
+    /// Rebuild a package elimination over its module binder, reading its
+    /// signature and its minted atoms off the source.
+    Unpack(CompNodeId, String),
     /// Rebuild a record projection at this label.
     Project(String),
     /// Rebuild an identity elimination over the diagonal binder.
@@ -431,6 +436,10 @@ fn quote_value_task(
             work.push(Task::FinishValue(ValueFinish::Ctor(id, usize::from(tag))));
             work.push(Task::Value(payload));
         },
+        | SemValueNode::Pack { witnesses, payload } => {
+            work.push(Task::FinishValue(ValueFinish::Pack(witnesses)));
+            work.push(Task::Value(payload));
+        },
         | SemValueNode::List(elements) => {
             work.push(Task::FinishValue(ValueFinish::List(elements.len())));
             for element in elements.iter().rev() {
@@ -589,6 +598,17 @@ fn queue_head(
             work.push(Task::Comp(body));
             work.push(Task::Value(scrutinee));
         },
+        | NeutralHead::Unpack {
+            source,
+            scrutinee,
+            body,
+        } => {
+            let (names, body) = open(nbe, body, mode)?;
+            let finish = CompFinish::Unpack(source, names.first().cloned().unwrap_or_default());
+            work.push(Task::FinishComp(finish));
+            work.push(Task::Comp(body));
+            work.push(Task::Value(scrutinee));
+        },
         | NeutralHead::Project { record, label } => {
             work.push(Task::FinishComp(CompFinish::Project(label)));
             work.push(Task::Value(record));
@@ -706,6 +726,10 @@ fn finish_value(
             tag,
             payload: pop_value(nbe, values)?,
         },
+        | ValueFinish::Pack(witnesses) => ValueNode::Pack {
+            witnesses,
+            payload: pop_value(nbe, values)?,
+        },
         | ValueFinish::List(count) => {
             let mut elements = Vec::with_capacity(count);
             for _ in 0 .. count {
@@ -788,6 +812,27 @@ fn finish_comp(
                 fst_name,
                 snd_name,
                 motive: None,
+                body,
+            }
+        },
+        | CompFinish::Unpack(source, binder) => {
+            // The ascribed signature and the minted atoms are read off the
+            // source node, the `Perform` and `Handle` discipline. An atom is a
+            // nominal identity: there is no unknown one to emit the way the
+            // walk motive emits an unknown type, and inventing one would mint
+            // an abstraction the elaborator never made.
+            let CompNode::Unpack {
+                signature, atoms, ..
+            } = syntax_comp(nbe, source)?
+            else {
+                return Err(SemError::MissingSyntaxComp(source));
+            };
+            let body = pop_comp(nbe, comps)?;
+            CompNode::Unpack {
+                scrut: pop_value(nbe, values)?,
+                signature,
+                atoms,
+                binder,
                 body,
             }
         },

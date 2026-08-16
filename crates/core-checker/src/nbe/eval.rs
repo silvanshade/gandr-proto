@@ -81,6 +81,7 @@ use crate::syntax::CompNodeId;
 use crate::syntax::Side;
 use crate::syntax::ValueNode;
 use crate::syntax::ValueNodeId;
+use crate::syntax::ValueTypeNodeId;
 
 /// How far a force drives its subject.
 ///
@@ -182,6 +183,8 @@ mod kind
     pub const LAZY_PAIR: u64 = 16;
     /// The tag of a neutral computation.
     pub const NEUTRAL: u64 = 17;
+    /// The tag of a packed module.
+    pub const PACK: u64 = 18;
 }
 
 /// Reads one syntax value node out of the store.
@@ -303,6 +306,20 @@ fn value_guard(
                 SemanticHash::from(u64::try_from(usize::from(tag)).unwrap_or(u64::MAX)),
             ));
             base.fold(arena.value(payload)?.guard())
+        },
+        | SemValueNode::Pack {
+            ref witnesses,
+            payload,
+        } => {
+            // The witness types are syntax this guard does not walk, so the word
+            // hashes the arity it can see and then declines rigidity: claiming a
+            // distinctness it cannot see is the one thing a guard may never do,
+            // and a reified stack declines it for the same reason.
+            let base = Guard::leaf(mix_word(
+                seed(SemanticHash::from(kind::PACK)),
+                SemanticHash::from(u64::try_from(witnesses.len()).unwrap_or(u64::MAX)),
+            ));
+            base.fold(arena.value(payload)?.guard()).with_unfolding()
         },
         | SemValueNode::Reified(_) => {
             Guard::leaf(seed(SemanticHash::from(kind::REIFIED))).with_unfolding()
@@ -495,6 +512,8 @@ enum ValueFinish
     Here,
     /// Rebuild a constructor value.
     Ctor(crate::types::DataId, ConstructorTag),
+    /// Rebuild a packed module over these witness types.
+    Pack(Vec<ValueTypeNodeId>),
 }
 
 /// One pending step of the value walk.
@@ -656,6 +675,14 @@ fn visit_value(
             work.push(ValueTask::Finish(term, finish));
             work.push(ValueTask::Visit(payload));
         },
+        | ValueNode::Pack { witnesses, payload } => {
+            // A packed module is inert, exactly as a constructor value is: the
+            // payload evaluates and the witness types ride along as the syntax
+            // they are. Nothing here discharges a binder — instantiation is a
+            // typing step, and it leaves no residue in the term.
+            work.push(ValueTask::Finish(term, ValueFinish::Pack(witnesses)));
+            work.push(ValueTask::Visit(payload));
+        },
         | ValueNode::List(elements) => {
             work.push(ValueTask::Finish(term, ValueFinish::List(elements.len())));
             for element in elements.iter().rev() {
@@ -740,6 +767,16 @@ fn finish_value(
                 SemValueNode::Ctor {
                     id,
                     tag,
+                    payload: payload.id,
+                },
+                bool::from(payload.retained),
+            )
+        },
+        | ValueFinish::Pack(witnesses) => {
+            let payload = pop(done);
+            (
+                SemValueNode::Pack {
+                    witnesses,
                     payload: payload.id,
                 },
                 bool::from(payload.retained),
@@ -918,6 +955,8 @@ fn head_face(
 /// - witness: `nbe::tests::beta_fires_for_every_positive_eliminator`
 /// - witness: `nbe::tests::record_projection_reduces_and_stays_spine_local`
 /// - witness: `nbe::tests::walk_beta_fires_on_here`
+/// - witness: `nbe::tests::unpacking_a_packed_module_binds_the_payload`
+/// - witness: `nbe::tests::unpacking_a_neutral_package_stays_stuck_and_keeps_its_annotation_half`
 /// - witness: `nbe::tests::the_quarantine_leaves_effects_neutral`
 #[inline]
 pub fn eval_comp(
@@ -1307,6 +1346,50 @@ fn descend(
                 | None => {
                     let face = head_face(nbe, scrut)?;
                     let head = NeutralHead::Split {
+                        scrutinee: scrut,
+                        body: cell,
+                    };
+                    Ok(Phase::Unwind(neutral(nbe, head, face)?))
+                },
+            }
+        },
+        | CompNode::Unpack {
+            scrut,
+            binder,
+            body,
+            ..
+        } => {
+            // The package eliminator, on the `Split` shape: stuck on its
+            // scrutinee, firing the moment that scrutinee is a packed module.
+            //
+            // **What fires is the term half of the rule, and that is the whole
+            // of it here.** The typing rule discharges the signature's binders
+            // at freshly minted atoms, and the term rule binds the module
+            // variable to the payload; the atom substitution reaches types
+            // alone, and this engine erases every type it meets — an
+            // ascription, an abstraction's annotation, and both eliminator
+            // motives. So no witness is consulted and no atom is substituted,
+            // and the residue of the typing half is exactly nothing.
+            //
+            // The signature and the atoms are not dropped: they stay on this
+            // source node, which the neutral head names, so readback rebuilds
+            // the elimination it came from rather than inventing one.
+            let scrut = eval_value(nbe, env, scrut)?;
+            let scrut = force_value(nbe, scrut, mode)?;
+            let packed = match *nbe.arena().value(scrut)?.node() {
+                | SemValueNode::Pack { payload, .. } => Some(payload),
+                | _ => None,
+            };
+            let cell = closure(nbe, env, alloc::vec![binder], body)?;
+            match packed {
+                | Some(payload) => {
+                    let (env, body) = enter(nbe, cell, &[payload])?;
+                    Ok(Phase::Descend(env, body))
+                },
+                | None => {
+                    let face = head_face(nbe, scrut)?;
+                    let head = NeutralHead::Unpack {
+                        source: node,
                         scrutinee: scrut,
                         body: cell,
                     };
