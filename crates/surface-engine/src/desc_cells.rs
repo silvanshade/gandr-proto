@@ -77,6 +77,14 @@ pub struct DescCells
 ///   `rule` cell; one diagnostic per declined `op` member and per declined
 ///   `rule` face, in description order and within a description, operations
 ///   before faces.
+/// - ensures: **the cell identities are a function of the source alone.** A
+///   [`gandr_theory_computads::CellId`] is an insertion-order address and the
+///   insertion order is the declaration order this pass walks — constructors,
+///   then written faces, then circuit rules, each in the order the block wrote
+///   them — so the same descriptions always lower to the same ids, and
+///   reordering two faces reorders exactly their two cells. A face declared
+///   twice is one cell: [`CellStore::insert`] deduplicates on structural
+///   identity, so the store's length counts distinct cells.
 /// - provides: the seam between the description layer and the fusion engines —
 ///   the first consumer of `gandr-theory-computads` outside that crate's own
 ///   tests.
@@ -87,11 +95,18 @@ pub struct DescCells
 /// - hypothesis: L3 — a description whose single-output `op` and `rule` produce
 ///   cells is separated from one whose many-out `op` produces a decline by the
 ///   store's cell count and by the presence of a diagnostic naming the
-///   operation.
+///   operation; the determinism clause is separated from mere repeatability by
+///   a source whose two faces are swapped, which moves exactly two ids.
 /// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
 ///   `a_declared_single_output_operation_lets_its_rule_become_a_cell`
 /// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
 ///   `a_many_out_operation_is_a_well_formed_description_and_an_unrepresentable_cell`
+/// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
+///   `cell_identities_are_a_deterministic_function_of_the_source`
+/// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
+///   `declaration_order_is_the_cell_order`
+/// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
+///   `a_face_declared_twice_is_one_cell`
 ///
 /// [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 #[inline]
