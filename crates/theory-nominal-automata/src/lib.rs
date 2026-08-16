@@ -105,6 +105,7 @@
 extern crate alloc;
 
 pub mod catalogue;
+pub mod classical;
 pub mod dropping;
 pub mod handle;
 pub mod letter;
@@ -117,6 +118,13 @@ pub use crate::catalogue::CatalogueEntry;
 pub use crate::catalogue::Model;
 pub use crate::catalogue::Problem;
 pub use crate::catalogue::Status;
+pub use crate::classical::BoundedLetter;
+pub use crate::classical::NameIndex;
+pub use crate::classical::Nfa;
+pub use crate::classical::RestrictionError;
+pub use crate::classical::SRestriction;
+pub use crate::classical::StateId;
+pub use crate::classical::WordWitness;
 pub use crate::dropping::name_dropping;
 pub use crate::handle::Arity;
 pub use crate::handle::AutomatonError;
