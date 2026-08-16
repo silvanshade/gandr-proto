@@ -493,7 +493,10 @@ pub enum CircuitElaborationError
     /// **incomparable** positions are horizontal composition, which is licensed
     /// exactly on disjoint positions where the two readings are shift-equal and
     /// never any earlier or any wider — the earned witness, not this
-    /// elaboration, is what grants it. Two at **comparable** positions are
+    /// elaboration, is what grants it, and it is earned where the rule is
+    /// *applied* rather than where it is declared, against the cells its
+    /// rewrite-sorted ports are instantiated by ([`redex_occurrences`] is what
+    /// carries the two positions there). Two at **comparable** positions are
     /// sequential composition, which the boundary language spells `ρ then ρ′`.
     ManyRedexOccurrences
     {
@@ -680,12 +683,26 @@ fn whisker_along(
 /// Enumerate the redex occurrences the declared output port unfolds to, each
 /// with its position in the derived boundary.
 ///
+/// This is the block's **occurrence record**, and it is public because
+/// [`elaborate_body`] is not its only consumer. A body with two occurrences has
+/// no single whiskered composite and is declined one
+/// ([`CircuitElaborationError::ManyRedexOccurrences`]), but the two positions
+/// are exactly what a *rule application* needs: the shift-equivalence licence a
+/// horizontal composite rests on is not well-posed at a schema's declaration —
+/// asking there asks whether every instantiation commutes — and becomes
+/// well-posed where the rule is applied, against the cells its rewrite-sorted
+/// ports are instantiated by. The record is what carries the two argument paths
+/// to that site, so the positions an application fires at are read rather than
+/// fabricated (`gandr-theory-computads`'s `instantiate` module).
+///
 /// # Contract
 /// - requires: none.
 /// - ensures: one entry per redex occurrence reached by the source reading's
 ///   unfolding of the declared output port, in left-to-right order, positioned
 ///   by the argument-index path the unfolding took; a wire consumed twice
 ///   contributes two entries.
+/// - provides: the positions a two-redex body's applications sit at, for the
+///   instantiation site that earns their identification.
 /// - fails: [`CircuitDerivationError::CyclicWiring`] on a port reachable from
 ///   itself other than as a redex's own opaque endpoint — the same guard the
 ///   derivation runs, so the walk stays total on a wiring the derivation
@@ -694,7 +711,19 @@ fn whisker_along(
 ///   the derivation runs under and is charged here too because this is a
 ///   *second* traversal of the same reconvergence.
 /// - panics: none.
-fn redex_occurrences(body: &CircuitBody) -> Result<Vec<RedexOccurrence>, CircuitDerivationError>
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the walk's two outputs are the occurrence list and its
+///   order, separated by a two-redex body whose two occurrences read
+///   left-to-right and by a reconvergent body where one rewrite occurs twice.
+/// - witness: `elaborate::tests::two_disjoint_redexes_decline_with_incomparable_positions`
+/// - witness: `elaborate::tests::a_reconvergent_redex_is_two_occurrences_of_one_rewrite`
+#[inline]
+pub fn redex_occurrences(body: &CircuitBody)
+-> Result<Vec<RedexOccurrence>, CircuitDerivationError>
 {
     /// One step of the occurrence worklist.
     enum Walk<'body>

@@ -217,6 +217,7 @@ pub use crate::elaborate::RedexOccurrence;
 pub use crate::elaborate::RewritePort;
 pub use crate::elaborate::WhiskeredCell;
 pub use crate::elaborate::elaborate_body;
+pub use crate::elaborate::redex_occurrences;
 pub use crate::generic::DescValue;
 pub use crate::generic::Payload;
 pub use crate::generic::Side;
