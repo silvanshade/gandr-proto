@@ -384,6 +384,31 @@ mod tests
         Ok(())
     }
 
+    /// The grammar build stays cheap enough for a process-per-test suite.
+    ///
+    /// Nextest runs every test in its own process, and each grammar-touching
+    /// component keeps its own `OnceLock<Pbg>`, so `built_in()` is paid at
+    /// least once per test process. The closing-class derivation once
+    /// rescanned the whole adjacency list at every search step — cubic on the
+    /// alternation-heavy family rules, measured at 2.8s per build, ~8s per
+    /// engine test, 277s for the suite against a healthy 30s (gandr-a3ms).
+    /// The bound is ten times the ~100ms a healthy dev-profile build measures
+    /// and a third of the regressed cost, so it separates the two cleanly.
+    #[test]
+    fn built_in_builds_fast_enough_for_process_per_test_suites() -> Result<(), Box<dyn Error>>
+    {
+        let start = std::time::Instant::now();
+        let pbg = built_in()?;
+        let elapsed = start.elapsed();
+        std::hint::black_box(&pbg);
+        assert!(
+            elapsed < std::time::Duration::from_secs(1),
+            "built_in() took {elapsed:?}; the derivation must stay near-linear \
+             (healthy ~100ms, regressed 2812ms)"
+        );
+        Ok(())
+    }
+
     #[test]
     fn built_in_precedence_bands_are_exact() -> Result<(), Box<dyn Error>>
     {

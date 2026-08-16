@@ -664,6 +664,17 @@ fn closing_classes(
         .iter()
         .filter_map(|occurrence| ClosingClass::opening(DelimSpelling(occurrence.label)))
         .collect();
+    // Successor index, built once per rule. Each per-occurrence search below
+    // visits every key reachable from its start, so computing successors by
+    // rescanning the adjacency list per pop costs O(occurrences x keys x
+    // pairs) per rule — cubic on the alternation-heavy family rules, and
+    // measured at 1.4s for `sign_declaration` alone (gandr-a3ms). Each entry
+    // preserves adjacency order, so a search traverses exactly the successors
+    // the scan would yield.
+    let mut successors: BTreeMap<TileKey, Vec<TileKey>> = BTreeMap::new();
+    for &(left, right) in &facet.adjacent {
+        successors.entry(left).or_default().push(right);
+    }
     occurrences
         .iter()
         .map(|occurrence| {
@@ -675,13 +686,8 @@ fn closing_classes(
                 if !seen.insert(key) {
                     continue;
                 }
-                let mut successors = facet
-                    .adjacent
-                    .iter()
-                    .filter(|&&(left, _)| left == key)
-                    .map(|&(_, right)| right)
-                    .peekable();
-                if successors.peek().is_none() || facet.last.contains(&key) {
+                let next = successors.get(&key);
+                if next.is_none() || facet.last.contains(&key) {
                     // A completion ends here. Every one of them must agree.
                     let found = ClosingClass::closing(DelimSpelling(key.label().0))
                         .filter(|reached| opened.contains(reached))?;
@@ -690,7 +696,9 @@ fn closing_classes(
                     }
                     class = Some(found);
                 }
-                frontier.extend(successors);
+                if let Some(next) = next {
+                    frontier.extend(next.iter().copied());
+                }
             }
             class
         })
