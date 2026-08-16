@@ -53,6 +53,8 @@ mod seam;
 #[cfg(test)]
 mod session;
 #[cfg(test)]
+mod share;
+#[cfg(test)]
 mod surface;
 #[cfg(test)]
 mod total;

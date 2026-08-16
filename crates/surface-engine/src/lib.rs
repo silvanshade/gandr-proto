@@ -55,6 +55,13 @@
 //!   §"pipeline-decision-04"). It needs neither the checkpoint engine nor a
 //!   solver, so it stands as the seam they consume.
 //!
+//! - **The sharing overlay** ([`share`]): the engine value domain's
+//!   sharing-bearing reduction syntax — a four-family arena overlay carrying
+//!   the sharing former, nameless occurrence references, and grafts, with a
+//!   total, policy-free erasure back to the ordinary unshared spelling (the
+//!   first rung of the staged sharing adoption: nothing is serialized, and the
+//!   trusted base is untouched).
+//!
 //! The streaming driver is designed and not built; `gandr-core-incremental`
 //! owns the item-granular checkpoint engine, and per-term-node solver-coupled
 //! granularity above its item-level base is likewise designed direction.
@@ -136,6 +143,7 @@ pub mod prelude;
 pub mod render;
 pub mod run;
 pub mod session;
+pub mod share;
 pub mod synnode;
 
 pub use crate::prelude::prelude_ctx;
