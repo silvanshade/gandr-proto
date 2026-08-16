@@ -28,10 +28,34 @@
 //! content) or to **content-start** on rejection (dropping both). The
 //! `a_rejected_declaration_leaves_the_environment_unchanged` witness asserts
 //! the arena length is restored on rejection.
+//!
+//! # The admission floor (why rejection clamps its rollback)
+//!
+//! A [`Declaration`] outlives the builder's borrow, so **the order content is
+//! staged in need not be the order it is admitted in**: a producer may stage
+//! one declaration, admit a second, and only then offer the first. Its
+//! content-start mark then lies *below* content the environment has already
+//! admitted, and a rejection that truncated to it would delete an admitted
+//! declaration's nodes — leaving `entries` intact but its content roots
+//! dangling. That is the rejection path corrupting state the caller can
+//! observe, which is precisely what the ratified invariant forbids.
+//!
+//! The environment therefore carries a third mark, the **admission floor**: the
+//! arena watermark as of the most recent admission, checked or bypassed. A
+//! rejection truncates to this declaration's content-start **clamped into
+//! `[admission floor, content-end]`** ([`ArenaWatermark::clamped_into`]), so it
+//! never reaches below committed content and never leaves a checker
+//! intermediate behind. For the ordinary stage-then-admit producer the
+//! content-start mark already lies inside that interval and the clamp changes
+//! nothing; for the out-of-order producer the rejected declaration's nodes are
+//! retained as unreachable orphans, which no admitted entry, audit, or export
+//! walk can observe. **Retaining garbage is the failure this trades for
+//! deleting evidence.**
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use crate::arena::ArenaWatermark;
 use crate::arena::CompTypeId;
 use crate::arena::TermArena;
 use crate::arena::ValueId;
@@ -167,6 +191,12 @@ pub struct Environment
     arena: TermArena,
     /// The admitted declarations, in admission order.
     entries: Vec<AdmittedDeclaration>,
+    /// The **admission floor**: the arena watermark as of the most recent
+    /// admission, checked or bypassed. No rejection truncates below it, so an
+    /// admitted declaration's content survives every later error return
+    /// whatever order the rejected declaration was staged in (the module's
+    /// admission-floor section). The default is the empty arena's watermark.
+    admission_floor: ArenaWatermark,
 }
 
 impl Environment
@@ -220,10 +250,15 @@ impl Environment
     /// - ensures: `Ok(id)` with an unforgeable [`CheckedId`] exactly when the
     ///   declaration's level signature admits, its declared type is
     ///   well-formed, and (for a `Def`) its body checks against that type; the
-    ///   declaration is appended, its audit precomputed, and the arena holds
-    ///   prior content plus this declaration's content (checker intermediates
-    ///   truncated). On any failure the arena is truncated to the content-start
-    ///   watermark, so the environment is left unchanged.
+    ///   declaration is appended, its audit precomputed, the arena holds prior
+    ///   content plus this declaration's content (checker intermediates
+    ///   truncated), and the admission floor rises to that watermark. On any
+    ///   failure the arena is truncated to this declaration's content-start
+    ///   watermark **clamped into `[admission floor, checker-entry mark]`**, so
+    ///   every caller-observable face of the environment — the entries, their
+    ///   content, the audit, the export image — is exactly what it was before
+    ///   the call, whatever order the declaration was staged in (the module's
+    ///   admission-floor section).
     /// - provides: the K3 choke point — the only checked entry into the kernel.
     /// - fails: any [`KernelError`] the level admission or the checker
     ///   surfaces.
@@ -241,6 +276,8 @@ impl Environment
     /// - witness: `env::tests::a_definition_referencing_a_prior_one_checks`
     /// - witness: `env::tests::a_forward_constant_reference_is_unbound`
     /// - witness: `env::tests::a_rejected_declaration_leaves_the_environment_unchanged`
+    /// - witness: `env::tests::a_rejection_keeps_a_prior_admission_resolvable`
+    /// - witness: `env::tests::a_rejection_keeps_bypassed_content_resolvable`
     #[inline]
     pub fn add_decl(
         &mut self,
@@ -248,15 +285,20 @@ impl Environment
     ) -> Result<CheckedId, KernelError>
     {
         let position = ConstantIndex::from(self.entries.len());
-        let content_start = declaration.content_start();
         let content_end = self.arena.watermark();
+        // The rejection mark: this declaration's content-start, clamped into
+        // `[admission floor, content-end]` so a rollback can neither delete an
+        // admitted declaration's content nor retain a checker intermediate.
+        let rejected = declaration
+            .content_start()
+            .clamped_into(self.admission_floor, content_end);
         let levels = match LevelContext::admit(
             declaration.levels().params(),
             declaration.levels().constraints().to_vec(),
         ) {
             | Ok(levels) => levels,
             | Err(error) => {
-                self.arena.truncate_to(content_start);
+                self.arena.truncate_to(rejected);
                 return Err(error);
             },
         };
@@ -264,6 +306,7 @@ impl Environment
             let Self {
                 ref mut arena,
                 ref entries,
+                admission_floor: _,
             } = *self;
             check::check_declaration(arena, entries, &levels, &declaration)
         };
@@ -272,6 +315,7 @@ impl Environment
                 // Keep this declaration's content; drop the checker intermediates
                 // that allocated past it.
                 self.arena.truncate_to(content_end);
+                self.admission_floor = content_end;
                 let rested_on =
                     self.transitive_rest(declaration.content(), position, Admission::Checked);
                 self.entries.push(AdmittedDeclaration {
@@ -282,8 +326,9 @@ impl Environment
                 Ok(CheckedId::new(position))
             },
             | Err(error) => {
-                // Drop both the intermediates and this declaration's content.
-                self.arena.truncate_to(content_start);
+                // Drop both the intermediates and this declaration's content,
+                // down to the admission floor and no further.
+                self.arena.truncate_to(rejected);
                 Err(error)
             },
         }
@@ -308,7 +353,9 @@ impl Environment
     /// - ensures: the declaration is appended, marked [`Admission::Unchecked`],
     ///   and included in the audit of every dependent; a [`CheckedId`] is
     ///   returned. The arena is unchanged (the bypass mints no intermediates,
-    ///   so the built content is exactly what persists).
+    ///   so the built content is exactly what persists) and the admission floor
+    ///   rises to its watermark, so a later rejection cannot truncate through
+    ///   what the bypass committed.
     /// - provides: the tracked, warned bypass of K3.
     /// - fails: never — the bypass does not check.
     /// - panics: none.
@@ -319,6 +366,11 @@ impl Environment
     ) -> CheckedId
     {
         let position = ConstantIndex::from(self.entries.len());
+        // The bypass commits whatever content the arena holds, so the floor
+        // rises to the current watermark — which never sits below the floor,
+        // because every truncation clamps to it. Without this, a later
+        // rejection could truncate through bypassed content.
+        self.admission_floor = self.arena.watermark();
         let rested_on = self.transitive_rest(declaration.content(), position, Admission::Unchecked);
         self.entries.push(AdmittedDeclaration {
             declaration,
@@ -599,6 +651,14 @@ mod tests
         environment.add_decl(declaration)
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, this admission is asserted to succeed, and no state outlives the test"
+        )
+    )]
     #[test]
     fn a_definition_referencing_a_prior_one_checks()
     {
@@ -621,6 +681,14 @@ mod tests
         );
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn a_forward_constant_reference_is_unbound()
     {
@@ -639,6 +707,14 @@ mod tests
         );
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it restores the pre-call arena is what this test exists to do"
+        )
+    )]
     #[test]
     fn a_rejected_declaration_leaves_the_environment_unchanged()
     {
@@ -673,6 +749,123 @@ mod tests
                 index: ConstantIndex::from(1_usize),
             }),
             "the rejected declaration left no entry at position 1"
+        );
+    }
+
+    /// **A rejection never truncates through a prior admission.** A producer
+    /// may stage one declaration, admit a second, and only then offer the
+    /// first, because a [`Declaration`](crate::Declaration) outlives the
+    /// builder's borrow — and the stale declaration's content-start mark then
+    /// lies below content the environment has already admitted. Rolling back
+    /// to that mark would delete the admitted declaration's nodes while its
+    /// entry survived, leaving its content roots dangling; the admission floor
+    /// is what stops the rollback there.
+    ///
+    /// Both assertions fail if the floor clamp is removed from the rejection
+    /// path (the arena is truncated to the empty watermark, so the admitted
+    /// definition stops resolving), and the first fails if the rejection stops
+    /// rolling back at all (the checker intermediates survive).
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it stops at the admission floor is what this test exists to do"
+        )
+    )]
+    #[test]
+    fn a_rejection_keeps_a_prior_admission_resolvable()
+    {
+        let mut environment = Environment::new();
+        // Staged first and held back: an ill-typed def whose content-start mark
+        // is the empty arena's.
+        let stale = {
+            let mut builder = environment.stage();
+            let arena = builder.arena();
+            let declared = arena.value_type_base(BaseType::Integer);
+            let body = arena.value_unit();
+            builder.def(LevelSignature::monomorphic(), declared, body)
+        };
+        let first = admit_identity(&mut environment).unwrap();
+        let after_admission = environment.arena().watermark();
+        assert!(
+            environment.add_decl(stale).is_err(),
+            "the stale ill-typed def is still rejected"
+        );
+        assert_eq!(
+            environment.arena().watermark(),
+            after_admission,
+            "the rejection rolled back to the admission floor and no further"
+        );
+        // The admitted definition is still resolvable: a later definition may
+        // reference it by constant, which reads its declared type out of the
+        // arena the rejection would otherwise have truncated.
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let domain = arena.value_type_unit();
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let arrow = arena.comp_type_arrow(domain, returner);
+        let declared = arena.value_type_thunk(arrow);
+        let body = arena.value_constant(first.position());
+        let referencing = builder.def(LevelSignature::monomorphic(), declared, body);
+        assert!(
+            environment.add_decl(referencing).is_ok(),
+            "the admitted definition's content survived the rejection"
+        );
+    }
+
+    /// The admission floor rises at the **warned bypass** too: content admitted
+    /// through [`Environment::add_decl_unchecked`] is committed exactly as
+    /// checked content is, so a later rejection cannot truncate through it.
+    ///
+    /// Both assertions fail if the bypass stops raising the floor: the stale
+    /// declaration's content-start mark is the empty arena's, so the rejection
+    /// would empty the arena and strand the bypassed axiom's declared type.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it stops at the floor the bypass raised is what this test exists to do"
+        )
+    )]
+    #[test]
+    fn a_rejection_keeps_bypassed_content_resolvable()
+    {
+        let mut environment = Environment::new();
+        // Staged first and held back, as above.
+        let stale = {
+            let mut builder = environment.stage();
+            let arena = builder.arena();
+            let declared = arena.value_type_base(BaseType::Integer);
+            let body = arena.value_unit();
+            builder.def(LevelSignature::monomorphic(), declared, body)
+        };
+        let bypassed = {
+            let mut builder = environment.stage();
+            let declared = builder.arena().value_type_unit();
+            let axiom = builder.axiom(LevelSignature::monomorphic(), declared);
+            environment.add_decl_unchecked(axiom)
+        };
+        let after_bypass = environment.arena().watermark();
+        assert!(
+            environment.add_decl(stale).is_err(),
+            "the stale ill-typed def is still rejected"
+        );
+        assert_eq!(
+            environment.arena().watermark(),
+            after_bypass,
+            "the rejection rolled back to the floor the bypass raised"
+        );
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_constant(bypassed.position());
+        let referencing = builder.def(LevelSignature::monomorphic(), declared, body);
+        assert!(
+            environment.add_decl(referencing).is_ok(),
+            "the bypassed axiom's declared type survived the rejection"
         );
     }
 
@@ -789,6 +982,14 @@ mod tests
 
     /// A sealed member's body is **certified** against its atom: the identity
     /// `U (t → F t)` checks without the kernel ever unfolding `t`.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, this admission is asserted to succeed, and no state outlives the test"
+        )
+    )]
     #[test]
     fn a_sealed_member_checks_at_its_atom()
     {
@@ -821,6 +1022,14 @@ mod tests
     /// conversion arm relating it to `Unit`, so the ordinary mode-switch
     /// conversion refuses. Opacity falls out of the closed vocabulary rather
     /// than out of a guard someone remembered to write.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn a_value_of_the_representation_does_not_inhabit_the_atom()
     {
@@ -843,6 +1052,14 @@ mod tests
     /// An atom reference naming an ordinary definition is refused: being an
     /// atom is resolved against the environment, never asserted by the
     /// reference.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn an_atom_naming_a_definition_is_refused()
     {
@@ -863,6 +1080,14 @@ mod tests
 
     /// An atom reference to a position not yet admitted — including its own —
     /// is refused, so no atom can be self-referential or forward.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn a_forward_atom_reference_is_refused()
     {
@@ -882,6 +1107,14 @@ mod tests
 
     /// An abstract type whose kind is not a universe is refused, so every
     /// atom's level is a lookup rather than an inference.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn an_atom_kind_must_be_a_universe()
     {
@@ -901,6 +1134,14 @@ mod tests
     /// Sealing provenance is **re-derived**: an atom claimed but not projected
     /// onto is refused, so the slot cannot record a projection that left no
     /// trace in the type.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn sealing_provenance_must_occur_in_the_declared_type()
     {
@@ -926,6 +1167,14 @@ mod tests
     /// Sealing provenance must be strictly ascending, so a repeat cannot
     /// inflate a projection's apparent extent and one provenance has one
     /// spelling.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
+        )
+    )]
     #[test]
     fn sealing_provenance_must_be_strictly_ascending()
     {

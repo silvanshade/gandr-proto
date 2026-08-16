@@ -52,6 +52,12 @@
 //! commit-on-success overlay of the Idris-2 `branchDepth`/`staging` context,
 //! adapted to the flat arena.
 //!
+//! The rejection mark is **clamped** ([`ArenaWatermark::clamped_into`]) into
+//! the interval between the environment's admission floor and the content-end
+//! mark, because staging order need not be admission order: a content-start
+//! mark below already-admitted content would otherwise delete it. The
+//! environment's admission-floor section carries the argument.
+//!
 //! [`DeclarationBuilder`]: crate::DeclarationBuilder
 //! [`KernelError::ArenaFault`]: crate::KernelError::ArenaFault
 //! [`KernelError::CheckerRegisterFault`]: crate::KernelError::CheckerRegisterFault
@@ -132,11 +138,37 @@ fn id_offset(index: ArenaIndex) -> ArenaLength
     ArenaLength(usize::try_from(index.0).unwrap_or(usize::MAX))
 }
 
+/// Clamp one family length into an inclusive length interval.
+///
+/// # Contract
+/// - requires: nothing — `low` above `high` is admissible and resolves to
+///   `low`, so the result is defined on every input rather than on a
+///   precondition the caller would have to carry.
+/// - ensures: `low` when `value` is below it, `high` when `value` is above it,
+///   and `value` otherwise.
+/// - provides: the per-family step of [`ArenaWatermark::clamped_into`].
+/// - fails: never.
+/// - panics: none — unlike [`Ord::clamp`], which panics on an inverted
+///   interval.
+#[inline]
+const fn clamp_length(
+    value: ArenaLength,
+    low: ArenaLength,
+    high: ArenaLength,
+) -> ArenaLength
+{
+    let capped = if value.0 < high.0 { value.0 } else { high.0 };
+    ArenaLength(if capped > low.0 { capped } else { low.0 })
+}
+
 /// A snapshot of the four family lengths — the admission watermark.
 ///
 /// Restoring an arena to a watermark ([`TermArena::truncate_to`]) drops exactly
 /// the nodes allocated after it, in flat `Vec` truncations.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+///
+/// The default is the empty arena's watermark, which is the admission floor an
+/// [`Environment`](crate::Environment) starts at.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ArenaWatermark
 {
     /// The [`Value`] family length.
@@ -147,6 +179,66 @@ pub struct ArenaWatermark
     value_types: usize,
     /// The [`CompType`] family length.
     comp_types: usize,
+}
+
+impl ArenaWatermark
+{
+    /// Clamp this watermark, family by family, into the inclusive interval
+    /// `[low, high]`.
+    ///
+    /// This is the choke point's **rollback mark**: a rejection truncates to
+    /// this declaration's content-start clamped into
+    /// `[admission floor, checker-entry mark]`, so the truncation can neither
+    /// reach below content a prior admission committed nor leave a checker
+    /// intermediate behind when the content-start mark is not the one this
+    /// arena grew from.
+    ///
+    /// # Contract
+    /// - requires: nothing — every combination is defined, including a `low`
+    ///   above `high` (which yields `low`), so no caller carries an ordering
+    ///   precondition.
+    /// - ensures: each family length is `low`'s when this one is below it,
+    ///   `high`'s when this one is above it, and this one otherwise; `self`
+    ///   unchanged when `low ≤ self ≤ high` in every family.
+    /// - provides: [`Environment::add_decl`](crate::Environment::add_decl)'s
+    ///   rejection rollback mark.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub(crate) const fn clamped_into(
+        self,
+        low: Self,
+        high: Self,
+    ) -> Self
+    {
+        Self {
+            values: clamp_length(
+                ArenaLength(self.values),
+                ArenaLength(low.values),
+                ArenaLength(high.values),
+            )
+            .0,
+            computations: clamp_length(
+                ArenaLength(self.computations),
+                ArenaLength(low.computations),
+                ArenaLength(high.computations),
+            )
+            .0,
+            value_types: clamp_length(
+                ArenaLength(self.value_types),
+                ArenaLength(low.value_types),
+                ArenaLength(high.value_types),
+            )
+            .0,
+            comp_types: clamp_length(
+                ArenaLength(self.comp_types),
+                ArenaLength(low.comp_types),
+                ArenaLength(high.comp_types),
+            )
+            .0,
+        }
+    }
 }
 
 /// The append-only arena owning every S1 term and type node of one environment.

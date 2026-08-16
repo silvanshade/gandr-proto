@@ -1354,6 +1354,14 @@ mod tests
         );
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
+        )
+    )]
     #[test]
     fn injection_checks_against_its_sum()
     {
@@ -1378,6 +1386,14 @@ mod tests
         );
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
+        )
+    )]
     #[test]
     fn pair_propagates_into_a_checking_component()
     {
@@ -1497,6 +1513,14 @@ mod tests
         );
     }
 
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        allow(
+            unknown_lints,
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
+        )
+    )]
     #[test]
     fn case_propagates_the_expected_type()
     {
