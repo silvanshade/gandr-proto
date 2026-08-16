@@ -224,42 +224,31 @@ mod tests
             ProcessStatus(Some(0_i32)),
             "a completed run succeeds"
         );
-        assert!(
-            output.stdout.is_empty(),
-            "a successful run prints nothing of its own; got {}",
-            String::from_utf8_lossy(&output.stdout)
+        assert_eq!(
+            output.stdout, b"Int(42)\n",
+            "a completed run routes its returned result to the caller"
         );
     }
 
     #[test]
-    fn a_scripts_shell_output_is_captured_for_the_program_and_not_relayed()
+    fn a_script_routes_its_result_after_captured_tool_calls()
     {
-        // A `#!{ … }` block always lowers with the captured spawn mode, and no
-        // source-level surface reaches the inheriting one or writes to standard
-        // output. So a script's command output is a value the PROGRAM can compute
-        // over and is invisible to the CALLER. That is the current contract, pinned
-        // here rather than left to be rediscovered: a long-running command under
-        // `gandr <file>` is silent until it finishes.
-        //
-        // Exit 3 witnesses that the reply carried the text; an empty standard
-        // output witnesses that the caller never saw it. When a printing capability
-        // lands, this case fails and states exactly what changed.
+        // Two host calls must each resume their own continuation; the second
+        // result is the returned value routed to the caller.
         let script = ScratchScript::write(
             "output",
-            "{\n  run said <- #!{ printf 'ran under the driver\\n'; };\n  run code <- (if \
-             string.contains(said.stdout, \"under the driver\") { ret 3 } else { ret 4 } : F \
-             Integer);\n  proc.exit(code)\n}\n",
+            "{\n  run first <- #!{ printf 'first\\n'; };\n  run second <- #!{ \
+             printf 'second\\n'; };\n  ret second.stdout\n}\n",
         );
         let output = drive([&script.path]);
         assert_eq!(
             status_of(&output),
-            ProcessStatus(Some(3_i32)),
-            "the program must be able to compute over its command's captured output"
+            ProcessStatus(Some(0_i32)),
+            "the program must complete after multiple captured tool calls"
         );
-        assert!(
-            output.stdout.is_empty(),
-            "a captured command's output does not reach the caller; got {}",
-            String::from_utf8_lossy(&output.stdout)
+        assert_eq!(
+            output.stdout, b"Str(\"second\\n\")\n",
+            "the caller receives the owning second result, not the first tool result"
         );
     }
 

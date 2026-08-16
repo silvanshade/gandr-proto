@@ -2,16 +2,9 @@
 //!
 //! `gandr <file>` runs one gandr source file: the driver hands the path to
 //! [`gandr_surface_engine::run::run_source_file`], which lowers, links,
-//! prelude-checks, and runs the program under the host-effect handler, and then
-//! turns the run's [`ShellOutcome`] into a process exit status. The driver owns
-//! no pipeline of its own; it is the process boundary and nothing else.
-//!
-//! **A successful run prints nothing.** A script says what it has to say
-//! through its own host effects — the shell blocks and `fs`/`env`/`proc` module
-//! calls it performs — so the driver adding a rendering of the returned value
-//! would put a second, rival value printer in the tree beside the corpus
-//! harness's deliberately structural one. The returned value reaches the
-//! process as an exit status only.
+//! prelude-checks, and runs the program under the host-effect handler. The
+//! caller receives a rendered returned value on standard output, while the
+//! run's [`ShellOutcome`] still determines the process exit status.
 //!
 //! The REPL, `tui`, `lsp`, `mcp`, `fmt`, and `build` faces are **deferred**:
 //! the REPL waits on a line-editor decision wired to the landed grammar,
@@ -27,6 +20,21 @@ use gandr_core_checker::outcome::Eval;
 use gandr_runtime_effects::ShellOutcome;
 use gandr_surface_engine::run::RunFileError;
 use gandr_surface_engine::run::run_source_file;
+/// Route a completed returned value to the process caller.
+///
+/// # Contract
+/// - ensures: a returned value is written exactly once to standard output in
+///   the stable structural representation supplied by its `Debug`
+///   implementation; non-returning outcomes produce no result output.
+/// - provides: caller-visible script results without changing status reporting.
+/// - panics: none.
+fn announce_result(outcome: &ShellOutcome)
+{
+    if let Some(value) = outcome.returned() {
+        let rendered = format!("{value:?}\n");
+        announce(rendered.as_str());
+    }
+}
 
 /// The exit status of a run whose program completed normally.
 const EXIT_COMPLETED: ExitStatus = ExitStatus(0_i64);
@@ -141,9 +149,9 @@ fn main() -> ExitCode
 /// Parse `arguments`, serve the request, and report the status to leave with.
 ///
 /// An explicit help request is not an error, so [`USAGE`] goes to standard
-/// output when it was asked for and to standard error when it is a complaint
-/// about the command line. Nothing else the driver writes reaches standard
-/// output, so a script's own output reaches its consumer unmixed.
+/// output when it was asked for and to standard error when it is a complaint.
+/// A completed script routes its returned value to standard output exactly once
+/// before [`classify`] reports the process status.
 ///
 /// # Contract
 /// - requires: `arguments` begins with the executable name.
@@ -176,7 +184,10 @@ where
             EXIT_COMPLETED
         },
         | Some(Request::Run(path)) => match run_source_file(std::path::Path::new(&path)) {
-            | Ok(outcome) => classify(&outcome),
+            | Ok(outcome) => {
+                announce_result(&outcome);
+                classify(&outcome)
+            },
             | Err(error) => {
                 report(&refusal(&error));
                 EXIT_REFUSED
