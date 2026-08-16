@@ -462,6 +462,63 @@ mod tests
         )
         .expect("valid test NFA")
     }
+    fn tree_automaton(
+        finals: BTreeSet<StateId>,
+        transitions: BTreeMap<(TreeSymbol, Vec<StateId>), BTreeSet<StateId>>,
+    ) -> Nfta
+    {
+        Nfta::new(
+            BTreeSet::from([StateId(0), StateId(1)]),
+            finals,
+            transitions,
+        )
+        .expect("valid test NFTA")
+    }
+
+    #[test]
+    fn nfta_emptiness_returns_a_verifiable_bottom_up_witness()
+    {
+        let leaf = TreeSymbol::from(0);
+        let unary = TreeSymbol::from(1);
+        let automaton = tree_automaton(
+            BTreeSet::from([StateId(1)]),
+            BTreeMap::from([
+                ((leaf, Vec::new()), BTreeSet::from([StateId(0)])),
+                ((unary, vec![StateId(0)]), BTreeSet::from([StateId(1)])),
+            ]),
+        );
+
+        let witness = automaton.emptiness_witness().expect("accepted tree");
+        assert_eq!(
+            Tree::Node {
+                symbol: unary,
+                children: vec![Tree::Node {
+                    symbol: leaf,
+                    children: Vec::new(),
+                }],
+            },
+            *witness.tree()
+        );
+    }
+
+    #[test]
+    fn nfta_emptiness_rejects_final_states_without_a_bottom_up_run()
+    {
+        let leaf = TreeSymbol::from(0);
+        let unary = TreeSymbol::from(1);
+        let automaton = tree_automaton(
+            BTreeSet::from([StateId(1)]),
+            BTreeMap::from([
+                ((leaf, Vec::new()), BTreeSet::from([StateId(0)])),
+                ((unary, vec![StateId(1)]), BTreeSet::from([StateId(1)])),
+            ]),
+        );
+
+        assert!(
+            automaton.emptiness_witness().is_none(),
+            "a final state is not accepting unless its children have bottom-up witnesses"
+        );
+    }
 
     #[test]
     fn s_restriction_orders_atoms_and_encodes_letters()
