@@ -334,6 +334,36 @@ pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt
     /// - panics: none.
     fn root_position() -> Self::Pos;
 
+    /// The position addressing the child-index `path`, read from the root
+    /// outward.
+    ///
+    /// This is [`CellAlphabet::root_position`] extended by one step per index,
+    /// and it is the inverse of the reading [`CellAlphabet::position_order`]
+    /// takes: an alphabet whose positions are child-index paths (which every
+    /// alphabet's are, by the [`CellAlphabet::Pos`] contract) builds it from
+    /// the path directly.
+    ///
+    /// It exists because a position can arrive from **outside** the store: a
+    /// circuit block's elaborated redex occurrences address the block's derived
+    /// boundary by argument-index path
+    /// ([`gandr_theory_levitation::RedexOccurrence`]), and an application site
+    /// that reads those paths into positions is reading the record rather than
+    /// fabricating positions of its own
+    /// ([`crate::instantiate::instantiate_two_redex_rule`]).
+    ///
+    /// # Contract
+    /// - requires: `path` reads the child indices from the root outward.
+    /// - ensures: the empty path is [`CellAlphabet::root_position`]; two
+    ///   positions built here relate under [`CellAlphabet::position_order`]
+    ///   exactly as their two paths relate under [`path_order`]; the position
+    ///   addresses a subterm ([`CellAlphabet::subterm_cmd_at`] is `Some`) iff
+    ///   the term has one at that path, and a path off the term is a position
+    ///   that addresses nothing rather than a panic.
+    /// - provides: the seam an external record's positions enter the engines
+    ///   through.
+    /// - panics: none.
+    fn position_at_path(path: &[PositionStep]) -> Self::Pos;
+
     /// How two positions relate — whether one addresses a subtree containing
     /// the other, or the two address **disjoint** subtrees.
     ///

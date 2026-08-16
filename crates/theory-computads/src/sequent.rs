@@ -663,6 +663,18 @@ impl CellAlphabet for SequentAlphabet
     }
 
     #[inline]
+    fn position_at_path(path: &[PositionStep]) -> Self::Pos
+    {
+        Pos::from_indices(
+            path.iter()
+                .copied()
+                .map(usize::from)
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        )
+    }
+
+    #[inline]
     fn position_order(
         left: &Self::Pos,
         right: &Self::Pos,

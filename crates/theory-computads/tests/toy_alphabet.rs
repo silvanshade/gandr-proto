@@ -430,6 +430,11 @@ mod tests
             ToyPos::default()
         }
 
+        fn position_at_path(path: &[PositionStep]) -> Self::Pos
+        {
+            ToyPos(path.iter().copied().map(usize::from).collect())
+        }
+
         fn position_order(
             left: &Self::Pos,
             right: &Self::Pos,

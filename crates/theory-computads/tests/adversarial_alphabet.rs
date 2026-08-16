@@ -55,6 +55,7 @@ mod tests
     use gandr_theory_computads::ConvexityDischarge;
     use gandr_theory_computads::FiringPermission;
     use gandr_theory_computads::PositionOrder;
+    use gandr_theory_computads::PositionStep;
     use gandr_theory_computads::SeamRole;
     use gandr_theory_computads::SubstitutionDecision;
     use gandr_theory_computads::rewrite::rewrite_at;
@@ -342,6 +343,11 @@ mod tests
         fn root_position() -> Self::Pos
         {
             ToyAlphabet::root_position()
+        }
+
+        fn position_at_path(path: &[PositionStep]) -> Self::Pos
+        {
+            ToyAlphabet::position_at_path(path)
         }
 
         fn position_order(
