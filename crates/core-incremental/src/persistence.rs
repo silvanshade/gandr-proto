@@ -68,6 +68,15 @@ pub enum UnsupportedPersistence
     OpaqueStack,
     /// An inline effect signature is deliberately representation-opaque.
     OpaqueEffectSignature,
+    /// The first-class package former has no byte representation in this codec.
+    ///
+    /// Distinct from the two serial forms above, and deliberately so: a package
+    /// type and a packed module carry nothing process-local — their binder
+    /// labels and witness types are ordinary structural data, and a seal serial
+    /// inside one is already caught as [`Self::SealIdSerial`] on the way down.
+    /// What is missing is the encoding, so classifying either as process-local
+    /// would name the wrong obstacle.
+    PackageFormer,
 }
 
 /// A persistence failure that leaves the caller with no partially trusted
@@ -963,6 +972,52 @@ mod tests
             encode_checkpoints(&checkpoint(Term::Comp(effect), None)),
             Err(CheckpointStoreError::UnsupportedPersistence(
                 UnsupportedPersistence::OpaqueEffectSignature
+            ))
+        );
+
+        // The three package forms, each named separately: a packed module and a
+        // package type report the missing encoding, while an elimination
+        // reports the process-local atoms it minted.
+        let packed = Value::Pair(
+            Rc::new(Value::Unit),
+            Rc::new(Value::pack([ValueType::Unit], Value::Unit)),
+        );
+        assert_eq!(
+            encode_checkpoints(&checkpoint(Term::Value(packed), None)),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::PackageFormer
+            ))
+        );
+
+        let package = ValueType::prod(ValueType::Unit, ValueType::Package {
+            grade: Grade::ONE,
+            abstracts: alloc::vec![String::from("component")],
+            payload: Rc::new(ValueType::Thunk(
+                Grade::ONE,
+                Rc::new(CompType::returner(ValueType::Unit)),
+            )),
+        });
+        assert_eq!(
+            encode_checkpoints(&checkpoint(
+                Term::Value(Value::Unit),
+                Some(Ty::Value(package))
+            )),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::PackageFormer
+            ))
+        );
+
+        let opened = Comp::reset(Comp::unpack(
+            Value::var("module"),
+            ValueType::Unknown,
+            [SealId::new(2_u64, "module", "component")],
+            "opened",
+            Comp::ret(Value::var("opened")),
+        ));
+        assert_eq!(
+            encode_checkpoints(&checkpoint(Term::Comp(opened), None)),
+            Err(CheckpointStoreError::UnsupportedPersistence(
+                UnsupportedPersistence::SealIdSerial
             ))
         );
     }

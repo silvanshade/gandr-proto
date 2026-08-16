@@ -369,6 +369,9 @@ impl<'value> Encoder<'value>
             | Value::Ctor { .. } => {
                 return Err(unsupported(UnsupportedPersistence::DataIdSerial));
             },
+            | Value::Pack { .. } => {
+                return Err(unsupported(UnsupportedPersistence::PackageFormer));
+            },
             | _ => {},
         }
         self.work.push(Work::EmitValue(value));
@@ -402,7 +405,8 @@ impl<'value> Encoder<'value>
             | Value::Num(_)
             | Value::Hole(_)
             | Value::Stk(_)
-            | Value::Ctor { .. } => {},
+            | Value::Ctor { .. }
+            | Value::Pack { .. } => {},
         }
         Ok(())
     }
@@ -420,6 +424,9 @@ impl<'value> Encoder<'value>
             },
             | ValueType::Sealed(_) => {
                 return Err(unsupported(UnsupportedPersistence::SealIdSerial));
+            },
+            | ValueType::Package { .. } => {
+                return Err(unsupported(UnsupportedPersistence::PackageFormer));
             },
             | _ => {},
         }
@@ -458,7 +465,8 @@ impl<'value> Encoder<'value>
             | ValueType::Universe
             | ValueType::Unknown
             | ValueType::Data { .. }
-            | ValueType::Sealed(_) => {},
+            | ValueType::Sealed(_)
+            | ValueType::Package { .. } => {},
         }
         Ok(())
     }
@@ -500,6 +508,12 @@ impl<'value> Encoder<'value>
         match *value {
             | Comp::Perform { .. } | Comp::Handle { .. } => {
                 return Err(unsupported(UnsupportedPersistence::OpaqueEffectSignature));
+            },
+            // The atoms an elimination minted are mint-order seal serials, so
+            // this one is process-local for exactly the reason a sealed type is
+            // — the encoding gap is the second obstacle, not the first.
+            | Comp::Unpack { .. } => {
+                return Err(unsupported(UnsupportedPersistence::SealIdSerial));
             },
             | _ => {},
         }
@@ -581,7 +595,8 @@ impl<'value> Encoder<'value>
                 self.work.push(Work::CompType(&motive.body));
                 self.work.push(Work::Value(scrut));
             },
-            | Comp::Hole(_) | Comp::Perform { .. } | Comp::Handle { .. } => {},
+            | Comp::Hole(_) | Comp::Perform { .. } | Comp::Handle { .. } | Comp::Unpack { .. } => {
+            },
         }
         Ok(())
     }
@@ -788,7 +803,9 @@ impl<'value> Encoder<'value>
                 self.bytes.extend_from_slice(&hole.to_le_bytes());
             },
             | Value::Here(_) => self.byte(VALUE_HERE),
-            | Value::Stk(_) | Value::Ctor { .. } => return Err(CheckpointStoreError::Rejected),
+            | Value::Stk(_) | Value::Ctor { .. } | Value::Pack { .. } => {
+                return Err(CheckpointStoreError::Rejected);
+            },
         }
         Ok(())
     }
@@ -827,7 +844,7 @@ impl<'value> Encoder<'value>
                 self.string(binder)?;
             },
             | ValueType::Unknown => self.byte(VT_UNKNOWN),
-            | ValueType::Data { .. } | ValueType::Sealed(_) => {
+            | ValueType::Data { .. } | ValueType::Sealed(_) | ValueType::Package { .. } => {
                 return Err(CheckpointStoreError::Rejected);
             },
         }
@@ -937,7 +954,7 @@ impl<'value> Encoder<'value>
                 self.string(&motive.q)?;
                 self.string(&base.x)?;
             },
-            | Comp::Perform { .. } | Comp::Handle { .. } => {
+            | Comp::Perform { .. } | Comp::Handle { .. } | Comp::Unpack { .. } => {
                 return Err(CheckpointStoreError::Rejected);
             },
         }
