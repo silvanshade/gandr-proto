@@ -22,6 +22,7 @@ use gandr_surface_parser::parse;
 use gandr_surface_syntax::Cst;
 use gandr_surface_syntax::Material;
 use gandr_surface_syntax::MoldId;
+use gandr_surface_syntax::MoldPayload;
 use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::NodeKind;
 use gandr_surface_syntax::SourceSlice;
@@ -143,6 +144,85 @@ fn nested_module_members_mold_zero_obligation() -> Result<(), Box<dyn Error>>
     let root = result.cst().node(result.cst().root())?;
     assert_eq!(NodeKind::Wald, root.kind());
     Ok(())
+}
+
+/// A typed hole written in a pattern slot molds at `Sort::Pattern`, and one
+/// written in an expression slot still molds at `Sort::Expression`.
+///
+/// **Cleanliness alone proves nothing here, which is the whole reason this test
+/// asserts the sort.** Before the pattern-position rule existed, every source
+/// below already parsed with zero obligations — the melder admitted the
+/// *expression* hole into the pattern slot, so the committed tile said
+/// `Expression` while the page said pattern. Nothing downstream could tell the
+/// difference by looking, and a sort-directed consumer would have read a
+/// pattern hole as a stray expression. So the witness is the recorded sort of
+/// the `?` tile at each position, never the obligation count.
+#[test]
+fn holes_mold_at_the_sort_of_the_slot_they_stand_in() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    // Each case pairs a source with the sorts its `?` tiles must carry, in
+    // source order.
+    let cases: [(&str, &[Sort]); 6] = [
+        ("def f = case c { ? => 0 };", &[Sort::Pattern]),
+        ("def f = case c { ?arm => 0 };", &[Sort::Pattern]),
+        ("def f = case m { Just(?) => 0 };", &[Sort::Pattern]),
+        ("def f = case c { ? | ?other => 0 };", &[
+            Sort::Pattern,
+            Sort::Pattern,
+        ]),
+        ("def f = case c { ? as whole => 0 };", &[Sort::Pattern]),
+        // The scrutinee's hole is an expression, the arm's is a pattern, and
+        // the arm body's is an expression again — one spelling, three slots.
+        ("def f = case ? { ? => ?body };", &[
+            Sort::Expression,
+            Sort::Pattern,
+            Sort::Expression,
+        ]),
+    ];
+    for (src, expected) in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "pattern-hole source {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+        let cst = result.into_cst();
+        assert_eq!(
+            expected,
+            hole_tile_sorts(pbg, &cst)?.as_slice(),
+            "the `?` tiles of {src:?} carry the sorts of the slots they stand in"
+        );
+    }
+    Ok(())
+}
+
+/// The grammar sort of every `?` tile in a committed tree, in source order.
+fn hole_tile_sorts(
+    pbg: &Pbg,
+    cst: &Cst,
+) -> Result<Vec<Sort>, Box<dyn Error>>
+{
+    let mut sorts = Vec::new();
+    let mut pending = vec![cst.root()];
+    while let Some(id) = pending.pop() {
+        let view = cst.node(id)?;
+        if view.kind() == NodeKind::Token
+            && view.material() == Material::Tile
+            && view.text().is_ok_and(|slice| slice.as_ref() == "?")
+            && let MoldPayload::Tile(mold) = view.payload()
+        {
+            sorts.push(pbg.mold(mold)?.sort);
+        }
+        for child in view.children().unwrap_or(&[]).iter().rev() {
+            pending.push(*child);
+        }
+    }
+    Ok(sorts)
 }
 
 /// The opaque ascription `:>` parses cleanly, with an abstract type component

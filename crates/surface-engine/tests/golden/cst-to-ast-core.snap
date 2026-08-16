@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #d6d797fafef0e879 [DefFunctionSugar]
-[0, 0] => 0..53 #d6d797fafef0e879 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #839546c11286b28c [BindHoist]
-[0, 0, 0, 0] => 45..50 #ca5e959b1d179978 [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #ca5e959b1d179978 [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #fcfc97766bc8c9d3 [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #fcfc97766bc8c9d3 [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #e0581eb617f188e6
-[0, 0, 0, 0, 1] => 49..50 #e0581eb617f188e6
-[0, 0, 0, 1] => 40..51 #839546c11286b28c
-[0, 0, 0, 1, 0] => 44..51 #a6dea2f1254f5c96 [BindHoist]
-[1] => 55..99 #4f308f96b5d08180
-[1, 0] => 65..97 #e0b2467d0b4c6152 [IfSugar]
-[1, 0, 0] => 68..72 #1bad59d2ebbb0134 [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #1bad59d2ebbb0134 [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #1bad59d2ebbb0134 [BoolLiteral]
-[1, 0, 1] => 75..80 #b5dc49415ce7a2b3
-[1, 0, 1, 0] => 79..80 #e0581eb617f188e6
-[1, 0, 2] => 90..95 #a4b243a0db703e2e
-[1, 0, 2, 0] => 94..95 #133eb31d5b81fea2
+[0] => 0..53 #a71ce0f5f68cd6de [DefFunctionSugar]
+[0, 0] => 0..53 #a71ce0f5f68cd6de [DefFunctionSugar]
+[0, 0, 0] => 40..51 #d5fffb251c212e12 [BindHoist]
+[0, 0, 0, 0] => 45..50 #453a6d9d810a4632 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #453a6d9d810a4632 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #63899542ca01094d [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #63899542ca01094d [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #ac875193aef809a4
+[0, 0, 0, 0, 1] => 49..50 #ac875193aef809a4
+[0, 0, 0, 1] => 40..51 #d5fffb251c212e12
+[0, 0, 0, 1, 0] => 44..51 #3391165278ea5673 [BindHoist]
+[1] => 55..99 #95e5492aea6e0620
+[1, 0] => 65..97 #0597d78fb580e9a8 [IfSugar]
+[1, 0, 0] => 68..72 #e7c18e78fe210f7a [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #e7c18e78fe210f7a [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #e7c18e78fe210f7a [BoolLiteral]
+[1, 0, 1] => 75..80 #4a8433312c3a209b
+[1, 0, 1, 0] => 79..80 #ac875193aef809a4
+[1, 0, 2] => 90..95 #821798b71bee173b
+[1, 0, 2, 0] => 94..95 #df6d55faf2878ab0

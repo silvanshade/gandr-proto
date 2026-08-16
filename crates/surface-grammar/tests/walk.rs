@@ -72,7 +72,10 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x3c00_3754_6fec_8b55);
+    /// The pattern-position typed hole then added the `?` tile and its optional
+    /// `hole_name` tail at `pattern.atom`, so a hole written in a pattern slot
+    /// is molded at `Sort::Pattern` instead of borrowing the expression mold.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xc09b_f734_3167_f60c);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -86,8 +89,9 @@ mod contracts
     /// `subshell_close` bracket tiles, while the deleted composite shell rules
     /// (`command`, `argument`, `redirection`, and the standalone
     /// `command_name`) keep their placeholder tiles out of the count.
-    /// First-class holes keep `hole_name` at a single mold (the `?` hole's
-    /// optional tail); the `number.type` Type-sort atom adds the `number`
+    /// First-class holes keep `hole_name` folded to the `?` hole's optional
+    /// tail — one mold per hole form, never a standalone atom; the
+    /// `number.type` Type-sort atom adds the `number`
     /// lexeme's type realisation; and the `module M (: #{ … })? { def … }`
     /// Item form contributes its keyword-led opener, inline record-type
     /// ascription, and body-local non-recursive definition/signature family.
@@ -141,7 +145,12 @@ mod contracts
     /// the `@[ … ]` block outside the member it decorates; that costs one copy
     /// of the definition tail. And the manifest type component `type T = τ`
     /// adds four `=` molds, one per signature occurrence.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2149);
+    /// The pattern-position typed hole adds the last **two** — the `?` tile and
+    /// its optional `hole_name` tail, declared once at `pattern.atom`. Both
+    /// labels widen from single- to multi-mold, and that widening is the point
+    /// rather than a cost: the pattern hole must carry `Sort::Pattern`, which a
+    /// mold shared with the expression hole cannot do.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2151);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -192,7 +201,7 @@ mod contracts
         (">&", 1),
         (">=", 1),
         (">>", 1),
-        ("?", 2),
+        ("?", 3),
         ("@[", 4),
         ("Any", 1),
         ("Boolean", 1),
@@ -249,7 +258,7 @@ mod contracts
         // former standalone `hole_name` Expression atom (a second, fresh-slot
         // mold) is folded away; it tied with every bare `identifier` and, at a
         // smaller `MoldId`, would have won.
-        ("hole_name", 1),
+        ("hole_name", 2),
         ("i32", 1),
         ("i64", 1),
         ("identifier", 338),
@@ -758,8 +767,14 @@ mod contracts
         );
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
+        // The pattern-position typed hole adds one. `?` was already multi-mold,
+        // so only `hole_name` crosses: it now has the pattern hole's optional
+        // tail beside the expression hole's. Both remain reachable only while a
+        // `?` frontier is open, which is the property the fold protects — the
+        // count moves because a second hole form exists, not because the tail
+        // became a standalone atom competing with the identifier menu.
         assert_eq!(
-            76,
+            77,
             multi,
             "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0

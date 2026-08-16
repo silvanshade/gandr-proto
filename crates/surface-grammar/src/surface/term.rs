@@ -953,6 +953,33 @@ fn patterns(
             t(TileLabel("false")),
         ]),
     ));
+    // The pattern-position typed hole `?` / `?name`, the SAME tile pair the
+    // expression hole is built from ([`primary_expressions`]), molded at
+    // `pattern.atom`. It is a distinct mold rather than a shared one because a
+    // mold carries its sort: without this rule the melder still admits `?` in a
+    // pattern slot, but it admits the *Expression* mold, so the committed tile
+    // records `Sort::Expression` and every sort-directed consumer reads a
+    // pattern hole as an expression that wandered into pattern position. The
+    // rule makes the hole a pattern atom in the tree as well as on the page.
+    //
+    // The `hole_name` tail rides along for the same reason it does in
+    // expression position — a named hole is how the goal stream addresses one —
+    // and it stays folded (an inline `opt` occurrence, never a standalone
+    // Pattern atom), so it remains reachable only while a `?` frontier is open
+    // and never competes with the bare pattern-variable menu.
+    let mut hole = r(
+        RuleName("hole.pattern"),
+        Provenance("hole"),
+        s,
+        atom,
+        seq([t(TileLabel("?")), opt(t(TileLabel("hole_name")))]),
+    );
+    hole.adaptations.push(Adaptation::new(
+        RuleName("hole.pattern"),
+        SurfaceForm("hole_name"),
+        AdaptationReason("folded into the pattern hole, exactly as into the expression hole: the `hole_name` tile is the `?` hole's optional name tail, realised as an inline `opt(hole_name)` occurrence rather than a standalone Pattern atom that would tie with every bare pattern variable"),
+    ));
+    out.push(hole);
     out.push(r(
         RuleName("or_pattern"),
         Provenance("or_pattern"),
