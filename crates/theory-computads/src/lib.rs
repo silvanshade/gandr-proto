@@ -61,7 +61,12 @@
 //!   precedence order, the layering, and the **exchange witness** carrying one
 //!   sequentialization to another as licensed adjacent transpositions. The
 //!   canonical schedule is one projection of it, so what used to be an argument
-//!   about shift-invariance is a value a caller can check.
+//!   about shift-invariance is a value a caller can check. The owner's
+//!   2026-08-16 ruling binds that projection: it is the lexicographic sort by
+//!   causal depth and a content-derived [`causal::EventKey`] that reads neither
+//!   arrival order nor store-local indices, with union-find component
+//!   pre-grouping declined, and its injectivity **enforced** rather than
+//!   assumed.
 //! - [`normal_form`] — the **tracelet normal form**: a canonical form on
 //!   certificate data (unique primitive factorization by content address,
 //!   integer-graded multiplicities, and a causal canonical schedule) whose
@@ -183,9 +188,11 @@ pub use crate::boundary::TraceletReplay;
 pub use crate::boundary::TranspositionCount;
 pub use crate::boundary::VarianceFlowRole;
 pub use crate::causal::DerivationEvent;
+pub use crate::causal::EventKey;
 pub use crate::causal::EventOrder;
 pub use crate::causal::ExchangeObstruction;
 pub use crate::causal::ExchangeWitness;
+pub use crate::causal::KeyCollision;
 pub use crate::causal::Transposition;
 pub use crate::cell::Cell;
 pub use crate::cell::CellId;
@@ -221,12 +228,14 @@ pub use crate::footprint::match_footprint;
 pub use crate::linearity::NonLinearPattern;
 pub use crate::linearity::admit_linear_cell;
 pub use crate::linearity::copied_hole;
+pub use crate::normal_form::CausalPast;
 pub use crate::normal_form::CellAddress;
 pub use crate::normal_form::NormalFormObstruction;
 pub use crate::normal_form::PrimCert;
 pub use crate::normal_form::PrimId;
 pub use crate::normal_form::ReplayWitness;
 pub use crate::normal_form::TraceletNf;
+pub use crate::normal_form::causal_past_address;
 pub use crate::normal_form::cell_address;
 pub use crate::normal_form::certified_nf_equal;
 pub use crate::normal_form::event_order;

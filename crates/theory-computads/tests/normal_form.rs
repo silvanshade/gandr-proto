@@ -138,6 +138,28 @@
 //!   check: the order built without a join must be the order the normalizer
 //!   layered by, or the crate has two copies of one relation.
 //!
+//! # The canonical-schedule ruling, checked clause by clause
+//!
+//! The owner ruled on 2026-08-16 that causal layering — earliest causal
+//! position — is the arc's canonical schedule, and declined union-find
+//! component pre-grouping. Three fixtures check the clauses of the invariant
+//! that ruling binds, because each is a claim a green suite would otherwise
+//! carry on argument alone.
+//!
+//! - [`the_depth_is_the_longest_chain_strictly_below`] checks the depth against
+//!   the ruling's own definition — the longest chain under the **transitive
+//!   closure** — rather than against the recurrence that computes it over
+//!   direct edges.
+//! - [`every_adjacent_independent_transposition_leaves_the_canonical_order_fixed`]
+//!   checks that the order reads only the labeled causal partial order, by
+//!   performing every licensed adjacent transposition of the recorded
+//!   derivation and comparing the canonical **key** sequence, which a
+//!   renumbering cannot disturb.
+//! - [`the_canonical_order_is_the_same_in_two_differently_ordered_stores`] is
+//!   the store-locality obligation: the same rule interned under two
+//!   identifiers gives one key sequence and one schedule, so nothing
+//!   arrival-ordered or store-local reached the key.
+//!
 //! # The fixtures that need an adversarial alphabet
 //!
 //! Four of the normal form's `- fails:` modes fire only when an alphabet gives
@@ -194,6 +216,9 @@
 //! [`the_order_taken_alone_agrees_with_the_normalizers`]: tests::the_order_taken_alone_agrees_with_the_normalizers
 //! [`an_independent_pair_is_reordered_by_licensed_transpositions`]: tests::an_independent_pair_is_reordered_by_licensed_transpositions
 //! [`a_containment_dependent_pair_refuses_its_transposition`]: tests::a_containment_dependent_pair_refuses_its_transposition
+//! [`the_depth_is_the_longest_chain_strictly_below`]: tests::the_depth_is_the_longest_chain_strictly_below
+//! [`every_adjacent_independent_transposition_leaves_the_canonical_order_fixed`]: tests::every_adjacent_independent_transposition_leaves_the_canonical_order_fixed
+//! [`the_canonical_order_is_the_same_in_two_differently_ordered_stores`]: tests::the_canonical_order_is_the_same_in_two_differently_ordered_stores
 
 #[cfg(test)]
 mod tests
@@ -209,6 +234,8 @@ mod tests
     use gandr_theory_computads::ConvexityDischarge;
     use gandr_theory_computads::DerivationEvent;
     use gandr_theory_computads::EventIndex;
+    use gandr_theory_computads::EventKey;
+    use gandr_theory_computads::EventOrder;
     use gandr_theory_computads::ExchangeObstruction;
     use gandr_theory_computads::NormalFormObstruction;
     use gandr_theory_computads::Overlap;
@@ -1585,6 +1612,23 @@ mod tests
         (store, c, tree(height), tree_layers(height))
     }
 
+    /// The tree fixture behind an unrelated cell, so the same rule is interned
+    /// under a different identifier.
+    ///
+    /// It is what makes the store-locality claim checkable: if any arrival
+    /// index or interning handle reached the event key, the two stores would
+    /// disagree.
+    fn tree_fixture_behind_a_decoy(
+        height: TreeHeight
+    ) -> (CellStore<ToyAlphabet>, CellId, Toy, Vec<Vec<ToyPos>>)
+    {
+        let mut store = CellStore::new();
+        let decoy = store.insert(nop_cell());
+        let c = store.insert(c_cell());
+        assert_ne!(decoy, c, "the decoy and the rule are distinct cells");
+        (store, c, tree(height), tree_layers(height))
+    }
+
     /// A recorded derivation over the tree fixture, firing each layer in turn
     /// and ordering inside a layer by the supplied keys.
     ///
@@ -1813,6 +1857,53 @@ mod tests
             }),
             refusal,
             "the middle application encloses the inner one, so they do not commute"
+        );
+    }
+
+    #[test]
+    fn the_canonical_order_is_the_same_in_two_differently_ordered_stores()
+    {
+        // OBLIGATION (a) over a layered derivation. The rule is interned under
+        // a different identifier in each store, and every observable the
+        // canonical order is built from — the keys, the order itself, and the
+        // schedule the normalizer emits — agrees. A key that had picked up an
+        // arrival index or a store handle would separate them.
+        let height = TreeHeight(2_usize);
+        let keys = alloc::vec![LayerSortKey::default(); 7_usize];
+        let (plain, plain_cell, peak, layers) = tree_fixture(height);
+        let (decoyed, decoy_cell, decoy_peak, decoy_layers) = tree_fixture_behind_a_decoy(height);
+        assert_ne!(
+            plain_cell, decoy_cell,
+            "the same rule carries two identifiers"
+        );
+        assert_eq!(peak, decoy_peak, "and the two peaks are one term");
+        let recorded = tree_path(plain_cell, layers, &keys);
+        let decoy_recorded = tree_path(decoy_cell, decoy_layers, &keys);
+        let here = event_order(&plain, &peak, &recorded).expect("the derivation replays");
+        let there =
+            event_order(&decoyed, &decoy_peak, &decoy_recorded).expect("and so does its twin");
+        let key_sequence = |order: &EventOrder<ToyAlphabet>| -> Vec<EventKey> {
+            order
+                .canonical_order()
+                .into_iter()
+                .filter_map(|index| order.key(index))
+                .collect()
+        };
+        assert_eq!(
+            7,
+            key_sequence(&here).len(),
+            "a height-two tree has seven events, so the comparison is not vacuous"
+        );
+        assert_eq!(
+            key_sequence(&here),
+            key_sequence(&there),
+            "the canonical key sequence is the same in both stores"
+        );
+        let join = run(&plain, &peak, &recorded);
+        assert_eq!(
+            normalized(&plain, &peak, &join, &recorded).schedule,
+            normalized(&decoyed, &decoy_peak, &join, &decoy_recorded).schedule,
+            "and so is the schedule the normalizer emits from it"
         );
     }
 
@@ -2087,6 +2178,109 @@ mod tests
                 order.canonical_order(),
                 current,
                 "and the swaps land on the canonical order"
+            );
+        }
+
+        /// Depth is the length of the longest dependence chain strictly below
+        /// the event, under the **transitive closure** of dependence.
+        ///
+        /// The recurrence computes it over the direct edges. The two agree
+        /// because taking the transitive closure of a finite acyclic relation
+        /// adds only shortcuts, and a shortcut is never longer than the chain
+        /// it skips — but that is an argument, and this is the check.
+        #[test]
+        fn the_depth_is_the_longest_chain_strictly_below(
+            (height, keys) in tree_case()
+        )
+        {
+            let (store, cell, peak, layers) = tree_fixture(height);
+            let recorded = tree_path(cell, layers, &keys);
+            let order = event_order(&store, &peak, &recorded)
+                .expect("the layered derivation replays, so it has an event order");
+            let events = usize::from(order.event_count());
+            for later in 0 .. events {
+                let later = EventIndex::from(later);
+                let mut longest = 0_usize;
+                for earlier in 0 .. events {
+                    let earlier = EventIndex::from(earlier);
+                    if !bool::from(order.precedes(earlier, later)) {
+                        continue;
+                    }
+                    let below = usize::from(order.depth(earlier).unwrap_or_default());
+                    longest = longest.max(below.saturating_add(1_usize));
+                }
+                prop_assert_eq!(
+                    Some(CausalDepth::from(longest)),
+                    order.depth(later),
+                    "the depth is the longest chain strictly below under precedence"
+                );
+            }
+        }
+
+        /// Transposing **any** adjacent independent pair of the recorded
+        /// derivation leaves the canonical order fixed.
+        ///
+        /// This is the ruling's fourth clause checked directly: the canonical
+        /// order depends only on the labeled causal partial order, and an
+        /// adjacent independent transposition is exactly the move that changes
+        /// the presentation without changing that order. The comparison is over
+        /// the canonical **key** sequence rather than over event indices,
+        /// because a transposition renumbers the events.
+        #[test]
+        fn every_adjacent_independent_transposition_leaves_the_canonical_order_fixed(
+            (height, keys) in tree_case()
+        )
+        {
+            let (store, cell, peak, layers) = tree_fixture(height);
+            let recorded = tree_path(cell, layers, &keys);
+            let join = run(&store, &peak, &recorded);
+            let order = event_order(&store, &peak, &recorded)
+                .expect("the layered derivation replays, so it has an event order");
+            let expected: Vec<EventKey> = order
+                .canonical_order()
+                .into_iter()
+                .filter_map(|index| order.key(index))
+                .collect();
+            let events = usize::from(order.event_count());
+            let mut exercised = 0_usize;
+            for below in 0 .. events {
+                let above = below.saturating_add(1_usize);
+                if above >= events {
+                    continue;
+                }
+                if !bool::from(
+                    order.independent(EventIndex::from(below), EventIndex::from(above)),
+                ) {
+                    continue;
+                }
+                exercised = exercised.saturating_add(1_usize);
+                let mut swapped = recorded.clone();
+                swapped.swap(below, above);
+                prop_assert_eq!(
+                    &join,
+                    &run(&store, &peak, &swapped),
+                    "an independent transposition reaches the same term to begin with"
+                );
+                let shifted = event_order(&store, &peak, &swapped)
+                    .expect("and the transposed derivation has an event order too");
+                let actual: Vec<EventKey> = shifted
+                    .canonical_order()
+                    .into_iter()
+                    .filter_map(|index| shifted.key(index))
+                    .collect();
+                prop_assert_eq!(
+                    &expected,
+                    &actual,
+                    "so the canonical order reads only the labeled causal order"
+                );
+            }
+            // NON-VACUITY. Every tree above the degenerate one opens with a
+            // layer of at least two events, which are adjacent in the recorded
+            // order and independent — so a run that transposed nothing would
+            // be a run whose independence relation had gone silent.
+            prop_assert!(
+                events < 2_usize || exercised > 0_usize,
+                "a derivation with more than one event has an adjacent independent pair"
             );
         }
     }

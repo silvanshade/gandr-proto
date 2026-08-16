@@ -78,7 +78,9 @@ use crate::boundary::SchedulePosition;
 use crate::boundary::StepIndependence;
 use crate::boundary::TranspositionCount;
 use crate::cell::CellStore;
+use crate::normal_form::CausalPast;
 use crate::normal_form::PrimId;
+use crate::normal_form::causal_past_address;
 use crate::rewrite::CellApp;
 use crate::sequent::SequentAlphabet;
 use crate::shift::check_shift_guard;
@@ -148,9 +150,76 @@ pub struct EventOrder<A: CellAlphabet = SequentAlphabet>
     dependences: Vec<Vec<EventIndex>>,
     /// For each event, its layer in the dependence order.
     depths: Vec<CausalDepth>,
+    /// For each event, its intrinsic sort key.
+    keys: Vec<EventKey>,
     /// The warrant the independence relation's convexity conjunct was decided
     /// under, carried rather than recomputed.
     convexity: ConvexityDischarge,
+}
+
+/// The **intrinsic key** of an event — the content-derived value that orders
+/// two events sharing a causal depth.
+///
+/// It is the primitive's content address refined by a digest of the event's
+/// labeled causal past, compared in that order. The refinement matters because
+/// the address alone is not injective: [`core::hash::Hash`] never promises
+/// injectivity, so an alphabet may legally give two applications at different
+/// sites one address, and where those two sit over different causes the past
+/// digest separates them.
+///
+/// **Neither component reads arrival order or a store-local index.** The
+/// address digests the resolved cell's *content* and the position, never the
+/// [`crate::cell::CellId`] the cell was interned under; the past digest folds
+/// addresses over the **sorted** predecessor digests, so it cannot see which
+/// linear extension was recorded. So the key is a function of the labeled
+/// causal order, which is what makes the canonical order one too.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct EventKey
+{
+    /// The content address of the primitive the event applies.
+    address: PrimId,
+    /// The digest of the event's labeled causal past.
+    past: CausalPast,
+}
+
+impl EventKey
+{
+    /// The content address of the primitive the event applies.
+    #[inline]
+    #[must_use]
+    pub const fn address(&self) -> PrimId
+    {
+        self.address
+    }
+
+    /// The digest of the event's labeled causal past.
+    #[inline]
+    #[must_use]
+    pub const fn past(&self) -> CausalPast
+    {
+        self.past
+    }
+}
+
+/// Two distinct events that **tie** on the canonical sort key.
+///
+/// A tie means the canonical order is not determined by the labeled causal
+/// order: the sort would fall back on its own stability and so on the arrival
+/// order, which would make the normal form depend on which sequentialization
+/// happened to be recorded. Refusing is the conservative direction, and it is
+/// the same direction [`crate::normal_form`] takes for a content-address
+/// collision.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct KeyCollision
+{
+    /// The earlier of the two tying events, in recorded order.
+    pub earlier: EventIndex,
+    /// The later of them.
+    pub later: EventIndex,
+    /// The depth both sit at.
+    pub depth: CausalDepth,
+    /// The key both carry.
+    pub key: EventKey,
 }
 
 /// Why an **exchange** between two sequentializations was refused.
@@ -322,6 +391,7 @@ impl<A: CellAlphabet> EventOrder<A>
     {
         let mut dependences: Vec<Vec<EventIndex>> = Vec::with_capacity(events.len());
         let mut depths: Vec<CausalDepth> = Vec::with_capacity(events.len());
+        let mut keys: Vec<EventKey> = Vec::with_capacity(events.len());
         for (index, current) in events.iter().enumerate() {
             let mut edges: Vec<EventIndex> = Vec::new();
             let mut depth = 0_usize;
@@ -338,6 +408,18 @@ impl<A: CellAlphabet> EventOrder<A>
                 let prior_depth = depths.get(earlier).copied().unwrap_or_default();
                 depth = depth.max(usize::from(prior_depth).saturating_add(1_usize));
             }
+            let mut inherited: Vec<CausalPast> = Vec::with_capacity(edges.len());
+            for earlier in &edges {
+                let past = keys
+                    .get(usize::from(*earlier))
+                    .map(EventKey::past)
+                    .unwrap_or_default();
+                inherited.push(past);
+            }
+            keys.push(EventKey {
+                address: current.address,
+                past: causal_past_address(current.address, &inherited),
+            });
             dependences.push(edges);
             depths.push(CausalDepth::from(depth));
         }
@@ -345,6 +427,7 @@ impl<A: CellAlphabet> EventOrder<A>
             events,
             dependences,
             depths,
+            keys,
             convexity,
         }
     }
@@ -385,6 +468,81 @@ impl<A: CellAlphabet> EventOrder<A>
     ) -> Option<CausalDepth>
     {
         self.depths.get(usize::from(at)).copied()
+    }
+
+    /// The intrinsic sort key of the event at `at`, or `None` when the index
+    /// names no event.
+    #[inline]
+    #[must_use]
+    pub fn key(
+        &self,
+        at: EventIndex,
+    ) -> Option<EventKey>
+    {
+        self.keys.get(usize::from(at)).copied()
+    }
+
+    /// Refuse this order if two distinct events **tie** on the canonical sort
+    /// key.
+    ///
+    /// # Contract
+    /// - ensures: `Ok(())` exactly when `(depth, key)` is a strict total order
+    ///   on the events, which is what makes [`EventOrder::canonical_order`] a
+    ///   function of the labeled causal order rather than of the recorded one.
+    /// - provides: the **enforcement** of the injectivity the canonical order
+    ///   claims. Every [`EventOrder`] reachable from outside this crate has
+    ///   passed it, because both public constructors
+    ///   ([`crate::normal_form::event_order`] and
+    ///   [`crate::normal_form::normalize_certified`]) call it before returning.
+    /// - fails: [`KeyCollision`], naming both events, the depth they share, and
+    ///   the key they share.
+    /// - panics: none.
+    /// - intension: one pass over the canonical order, because a tie in a
+    ///   sorted sequence is necessarily between neighbours.
+    ///
+    /// # Errors
+    /// See the `- fails:` clause above.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — the decision surface is the neighbour
+    ///   comparison, separated by an order whose keys are distinct, one whose
+    ///   two events share a key at one depth, and one whose two events share a
+    ///   key at **different** depths (which is not a tie and must pass, since
+    ///   that is exactly the graded-multiplicity case every repeated primitive
+    ///   produces). The tying inputs are built by hand rather than derived:
+    ///   over both shipped alphabets a shared address forces a shared position,
+    ///   which forces dependence and so distinct depths, so no derivation over
+    ///   them can reach this refusal — that is a fact about those alphabets and
+    ///   not evidence the check is redundant, and it is why the witnesses
+    ///   assemble the order directly.
+    /// - witness: `causal::tests::an_order_whose_keys_are_distinct_is_accepted`
+    /// - witness: `causal::tests::two_events_tying_on_depth_and_key_are_refused`
+    /// - witness: `causal::tests::a_repeated_primitive_at_two_depths_is_not_a_tie`
+    #[inline]
+    pub(crate) fn refuse_key_collisions(&self) -> Result<(), KeyCollision>
+    {
+        let order = self.canonical_order();
+        let mut held: Option<(EventIndex, CausalDepth, EventKey)> = None;
+        for index in order {
+            let depth = self.depth(index).unwrap_or_default();
+            let Some(key) = self.key(index)
+            else {
+                continue;
+            };
+            if let Some(previous) = held
+                && previous.1 == depth
+                && previous.2 == key
+            {
+                return Err(KeyCollision {
+                    earlier: previous.0.min(index),
+                    later: previous.0.max(index),
+                    depth,
+                    key,
+                });
+            }
+            held = Some((index, depth, key));
+        }
+        Ok(())
     }
 
     /// The warrant this order's independence relation was decided under.
@@ -590,27 +748,75 @@ impl<A: CellAlphabet> EventOrder<A>
 
     /// The events in **canonical** order — the causal layering, flattened.
     ///
+    /// # The binding invariant
+    ///
+    /// Owner ruling, 2026-08-16, on the arc's decision queue
+    /// (`gandr-5lf.18-question-01`): **causal layering — earliest causal
+    /// position — is the canonical schedule, and union-find component
+    /// pre-grouping is declined.** The invariant that ruling binds this
+    /// function to has four clauses, and every one of them is checked rather
+    /// than asserted:
+    ///
+    /// 1. The order is the **lexicographic** sort by `(causal depth, intrinsic
+    ///    event key)`.
+    /// 2. **Depth** is the length of the longest dependence chain strictly
+    ///    below the event under the transitive closure of dependence. The
+    ///    recurrence at [`EventOrder::of_events`] computes it over the *direct*
+    ///    edges, which is the same number: taking the transitive closure of a
+    ///    finite acyclic relation adds only shortcuts, and a shortcut is never
+    ///    longer than the chain it skips.
+    /// 3. The **key** is content-derived, total, injective over the events of
+    ///    one derivation, and independent of arrival order and of store-local
+    ///    indices. [`EventKey`] carries the first, the third and the fourth by
+    ///    construction; injectivity is not free and is **enforced** at
+    ///    [`EventOrder::refuse_key_collisions`], which every public constructor
+    ///    of an [`EventOrder`] runs before returning one.
+    /// 4. The result therefore depends **only on the labeled causal partial
+    ///    order**, and that is checked by exchange witnesses over adjacent
+    ///    independent pairs: transposing such a pair in the recorded derivation
+    ///    leaves this order unchanged.
+    ///
+    /// The declined alternative is recorded rather than forgotten, because it
+    /// stays cheap to reverse. Union-find over the dependence relation yields
+    /// components, and concatenating whole components in content-key order is
+    /// also a canonical form — it is sound and cheap, and it differs from this
+    /// one by delaying a whole component behind another instead of putting
+    /// every event at the earliest layer its causes allow. Switching to it
+    /// would replace the depth-and-key sort here and nothing else; the
+    /// soundness contract does not move, because the canonical schedule is
+    /// replayed and verified before any normal form is returned either way.
+    /// What makes the switch grow more expensive over time is a consumer that
+    /// reads [`EventOrder::layers`] as parallel batches, which
+    /// component-major order does not expose.
+    ///
     /// # Contract
-    /// - ensures: a stable sort of the recorded order by `(depth, address)`. No
-    ///   two events can tie on both keys, because two occurrences sharing an
-    ///   address are the same primitive at the same position and so are
-    ///   dependent, hence at strictly different depths — so the key is total
-    ///   and the result is a canonical representative of the shift class.
+    /// - ensures: the recorded order sorted by `(depth, key)`. The sort is
+    ///   stable, and its stability is **unobservable**: an order that reaches
+    ///   this function has passed [`EventOrder::refuse_key_collisions`], so no
+    ///   two events tie and the key is a strict total order.
     /// - provides: the linear extension of the causal order that
-    ///   [`crate::normal_form::TraceletNf`]'s schedule is built from.
+    ///   [`crate::normal_form::TraceletNf`]'s schedule is built from — a
+    ///   canonical representative of the shift class, determined by the labeled
+    ///   causal order alone.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 pointwise — the two key components are separated
+    /// - hypothesis: L3 pointwise — the key's components are separated
     ///   independently: the depth by a layered derivation whose dependent step
-    ///   must stay last, and the address tie-break by a layer with two
-    ///   occupants, whose declared ascending order is observable in the result.
-    ///   The totality claim is asserted as a property over generated
-    ///   derivations rather than argued, because a key that ties would make the
-    ///   canonical order depend on the recorded one and so make the normal form
-    ///   non-canonical.
+    ///   must stay last, the address by a layer with two occupants whose
+    ///   declared ascending order is observable in the result, and the causal
+    ///   past by two events sharing an address over different causes, which the
+    ///   address alone cannot separate. The two structural claims are asserted
+    ///   as **properties** over generated derivations rather than argued: that
+    ///   the depth agrees with the longest chain under the transitive closure,
+    ///   and that transposing any adjacent independent pair leaves this order
+    ///   fixed.
     /// - witness: `normal_form::tests::a_three_layer_derivation_orders_each_layer_by_content_address`
     /// - witness: `normal_form::tests::the_canonical_key_never_ties`
+    /// - witness: `normal_form::tests::the_depth_is_the_longest_chain_strictly_below`
+    /// - witness: `normal_form::tests::every_adjacent_independent_transposition_leaves_the_canonical_order_fixed`
+    /// - witness: `normal_form::tests::the_canonical_order_is_the_same_in_two_differently_ordered_stores`
+    /// - witness: `causal::tests::the_causal_past_separates_two_events_sharing_an_address`
     #[inline]
     #[must_use]
     pub fn canonical_order(&self) -> Vec<EventIndex>
@@ -619,11 +825,9 @@ impl<A: CellAlphabet> EventOrder<A>
         order.sort_by(|left, right| {
             let left_depth = self.depth(*left).unwrap_or_default();
             let right_depth = self.depth(*right).unwrap_or_default();
-            let left_address = self.event(*left).map(DerivationEvent::address);
-            let right_address = self.event(*right).map(DerivationEvent::address);
             left_depth
                 .cmp(&right_depth)
-                .then_with(|| left_address.cmp(&right_address))
+                .then_with(|| self.key(*left).cmp(&self.key(*right)))
         });
         order
     }
@@ -883,7 +1087,9 @@ mod tests
 
     use super::*;
     use crate::cell::Cell;
+    use crate::cell::CellId;
     use crate::normal_form::event_order;
+    use crate::normal_form::prim_address;
     use crate::pattern::CmdPat;
     use crate::pattern::ConsPat;
     use crate::pattern::Pos;
@@ -1087,6 +1293,178 @@ mod tests
             Err(ExchangeObstruction::NotARearrangement),
             foreign,
             "and neither is a target naming an event the source does not hold"
+        );
+    }
+
+    /// An event order assembled directly from depths and keys.
+    ///
+    /// The refusal it exercises cannot be reached through a derivation over
+    /// either shipped alphabet: an equal address forces an equal position,
+    /// which forces `PositionOrder::Same`, which forces dependence and so
+    /// strictly different depths. That is a fact about those alphabets rather
+    /// than evidence the check is redundant — the moment an alphabet's
+    /// `Hash` maps two sites to one address, the tie is reachable — so the
+    /// witnesses assemble the order instead of deriving it.
+    fn assembled_order(entries: &[(CellApp, CausalDepth, EventKey)]) -> EventOrder
+    {
+        EventOrder {
+            events: entries
+                .iter()
+                .map(|entry| DerivationEvent::new(entry.0.clone(), entry.2.address()))
+                .collect(),
+            dependences: entries.iter().map(|_entry| Vec::new()).collect(),
+            depths: entries.iter().map(|entry| entry.1).collect(),
+            keys: entries.iter().map(|entry| entry.2).collect(),
+            convexity: ConvexityDischarge::LeftConnectedOverAcyclicTarget,
+        }
+    }
+
+    /// Two distinct content addresses, taken over two distinct cells.
+    fn two_addresses() -> (CellStore, PrimId, PrimId)
+    {
+        let mut store = CellStore::new();
+        let first = store.insert(add_s());
+        let second = store.insert(Cell::new(
+            CmdPat::cut(Polarity::Positive, ProdPat::ctor("Zero", []), ConsPat::Top),
+            CmdPat::cut(Polarity::Positive, ProdPat::ctor("Zero", []), ConsPat::Top),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        ));
+        let left = store.get(first).expect("the first cell is stored");
+        let right = store.get(second).expect("the second cell is stored");
+        let addresses = (
+            prim_address(left, &Pos::root()),
+            prim_address(right, &Pos::root()),
+        );
+        assert_ne!(
+            addresses.0, addresses.1,
+            "the two cells differ in content, so their addresses differ"
+        );
+        (store, addresses.0, addresses.1)
+    }
+
+    #[test]
+    fn an_order_whose_keys_are_distinct_is_accepted()
+    {
+        let (_store, left, right) = two_addresses();
+        let step = CellApp {
+            cell: CellId(0_usize),
+            at: Pos::root(),
+        };
+        let order = assembled_order(&[
+            (step.clone(), CausalDepth::from(0_usize), EventKey {
+                address: left,
+                past: causal_past_address(left, &[]),
+            }),
+            (step, CausalDepth::from(0_usize), EventKey {
+                address: right,
+                past: causal_past_address(right, &[]),
+            }),
+        ]);
+        assert_eq!(
+            Ok(()),
+            order.refuse_key_collisions(),
+            "two events at one depth with different keys are totally ordered"
+        );
+    }
+
+    #[test]
+    fn two_events_tying_on_depth_and_key_are_refused()
+    {
+        // THE INJECTIVITY ENFORCEMENT. Two events at one depth carrying one
+        // key: the sort would fall back on its own stability and so on the
+        // arrival order, which would make the canonical order a property of
+        // the presentation rather than of the trace. It is refused instead.
+        let (_store, address, _other) = two_addresses();
+        let step = CellApp {
+            cell: CellId(0_usize),
+            at: Pos::root(),
+        };
+        let key = EventKey {
+            address,
+            past: causal_past_address(address, &[]),
+        };
+        let order = assembled_order(&[
+            (step.clone(), CausalDepth::from(1_usize), key),
+            (step, CausalDepth::from(1_usize), key),
+        ]);
+        assert_eq!(
+            Err(KeyCollision {
+                earlier: EventIndex::from(0_usize),
+                later: EventIndex::from(1_usize),
+                depth: CausalDepth::from(1_usize),
+                key,
+            }),
+            order.refuse_key_collisions(),
+            "the refusal names both events, the shared depth, and the shared key"
+        );
+    }
+
+    #[test]
+    fn a_repeated_primitive_at_two_depths_is_not_a_tie()
+    {
+        // The graded-multiplicity case, which must NOT be refused: a repeated
+        // primitive shares its address by design, and what separates the two
+        // occurrences is the depth. A check written on the key alone would
+        // reject every derivation that fires one primitive twice.
+        let (_store, address, _other) = two_addresses();
+        let step = CellApp {
+            cell: CellId(0_usize),
+            at: Pos::root(),
+        };
+        let key = EventKey {
+            address,
+            past: causal_past_address(address, &[]),
+        };
+        let order = assembled_order(&[
+            (step.clone(), CausalDepth::from(0_usize), key),
+            (step, CausalDepth::from(1_usize), key),
+        ]);
+        assert_eq!(
+            Ok(()),
+            order.refuse_key_collisions(),
+            "one primitive at two depths is two events the depth already separates"
+        );
+    }
+
+    #[test]
+    fn the_causal_past_separates_two_events_sharing_an_address()
+    {
+        // WHY THE KEY IS NOT THE ADDRESS ALONE. Two events at one depth with
+        // one address — which an alphabet may produce legally, since
+        // `core::hash::Hash` promises no injectivity — are separated by what
+        // they sit over. Drop the past component and this pair ties.
+        let (_store, address, other) = two_addresses();
+        let step = CellApp {
+            cell: CellId(0_usize),
+            at: Pos::root(),
+        };
+        let rootless = EventKey {
+            address,
+            past: causal_past_address(address, &[]),
+        };
+        let caused = EventKey {
+            address,
+            past: causal_past_address(address, &[causal_past_address(other, &[])]),
+        };
+        assert_ne!(
+            rootless.past(),
+            caused.past(),
+            "one address over two different causal pasts gives two keys"
+        );
+        assert_eq!(
+            rootless.address(),
+            caused.address(),
+            "and the address component alone cannot tell them apart"
+        );
+        let order = assembled_order(&[
+            (step.clone(), CausalDepth::from(0_usize), rootless),
+            (step, CausalDepth::from(0_usize), caused),
+        ]);
+        assert_eq!(
+            Ok(()),
+            order.refuse_key_collisions(),
+            "so the pair is totally ordered rather than refused"
         );
     }
 

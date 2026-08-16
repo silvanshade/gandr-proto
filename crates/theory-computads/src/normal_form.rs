@@ -181,6 +181,7 @@ use alloc::vec::Vec;
 
 use crate::alphabet::CellAlphabet;
 use crate::alphabet::ConvexityDischarge;
+use crate::boundary::CausalDepth;
 use crate::boundary::NormalFormEquality;
 use crate::boundary::PrimMultiplicity;
 use crate::causal::DerivationEvent;
@@ -209,6 +210,10 @@ const PRIMITIVE_DOMAIN: &[u8] = b"gandr.tracelet.primitive.v1";
 /// over the same cell at the root position.
 const CELL_DOMAIN: &[u8] = b"gandr.tracelet.cell.v1";
 
+/// The domain separator mixed in before an event's **labeled causal past**, so
+/// a past digest cannot collide with either address domain.
+const CAUSAL_DOMAIN: &[u8] = b"gandr.tracelet.causal-past.v1";
+
 /// A **content address** of a primitive certificate — a 128-bit digest over the
 /// resolved cell's content and the position it fires at.
 ///
@@ -233,6 +238,21 @@ pub struct PrimId(u128);
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CellAddress(u128);
+
+/// A digest of an event's **labeled causal past** — its own primitive address
+/// folded with the past digests of the events it directly depends on.
+///
+/// It refines [`PrimId`] into a key that separates two events a shared address
+/// cannot: [`core::hash::Hash`] never promises injectivity, so an alphabet may
+/// legally give two applications at different sites one address, and where
+/// those two sit over different causes this digest tells them apart. It is a
+/// function of the labeled causal order alone — the fold is taken over the
+/// **sorted** predecessor digests, so it cannot see which linear extension the
+/// derivation was recorded in — and it carries [`prim_address`]'s
+/// non-portability caveat verbatim.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CausalPast(u128);
 
 /// A **primitive certificate** — one indecomposable factor of a normalized
 /// derivation.
@@ -491,6 +511,31 @@ pub enum NormalFormObstruction<A: CellAlphabet = SequentAlphabet>
         /// The canonical step that failed to fire.
         step: Box<CellApp<A>>,
     },
+    /// Two distinct events **tie** on the canonical sort key.
+    ///
+    /// The canonical order is then not determined by the labeled causal order:
+    /// the sort would fall back on its own stability, and so on whichever
+    /// sequentialization happened to be recorded, which would make the normal
+    /// form depend on the derivation's presentation rather than on its trace.
+    ///
+    /// It is refused for the same reason
+    /// [`NormalFormObstruction::ContentAddressCollision`] is: a digest is an
+    /// ordering device and never an identity witness, so where two events
+    /// cannot be told apart the honest outcome is to decline the normal form.
+    /// Separating events that differ only in their *future* would need a
+    /// canonical form for labeled posets — graph canonicalization — and this
+    /// module does not attempt one; [`crate::causal::EventKey`] refines the
+    /// address by the labeled causal *past*, and this arm is what happens when
+    /// even that does not separate them.
+    CanonicalKeyCollision
+    {
+        /// The earlier of the two tying events, as a primitive.
+        earlier: Box<PrimCert<A>>,
+        /// The later of them.
+        later: Box<PrimCert<A>>,
+        /// The depth both sit at.
+        depth: CausalDepth,
+    },
     /// **Kill signal.** The canonical schedule fires throughout and reaches a
     /// term other than the one the recorded path reached.
     ///
@@ -590,6 +635,52 @@ where
     core::hash::Hasher::write(&mut hasher, CELL_DOMAIN);
     core::hash::Hash::hash(cell, &mut hasher);
     hasher.cell_digest()
+}
+
+/// The **labeled causal past** digest of one event, from its own address and
+/// the past digests of the events it directly depends on.
+///
+/// # Contract
+/// - requires: `predecessors` are the past digests of exactly the events
+///   `address`'s event depends on directly.
+/// - ensures: equal `(address, predecessor multiset)` pairs give equal digests,
+///   and the answer does **not** depend on the order `predecessors` arrives in
+///   — the fold sorts a local copy first. That is what makes the result a
+///   function of the labeled causal order rather than of the recorded one,
+///   because the predecessors of an event are listed in whichever linear
+///   extension was recorded.
+/// - provides: the refinement of [`PrimId`] that
+///   [`crate::causal::EventOrder::canonical_order`] breaks its remaining ties
+///   with.
+/// - panics: none.
+/// - intension: FNV-1a over 128 bits, domain-separated against both address
+///   domains, and `O(d log d)` in the number of direct predecessors for the
+///   sort. The digest is stable for one build of one target and no further, for
+///   the reason [`prim_address`] states; nothing may persist or transport one.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — the decision surface is "same address and same
+///   predecessor multiset, same digest; different either way, different digest,
+///   and never the arrival order", separated by one address against two
+///   predecessor sets, two addresses against one predecessor set, and the same
+///   predecessor set offered in both orders.
+/// - witness: `normal_form::tests::the_causal_past_digest_reads_the_multiset_and_not_the_order`
+#[inline]
+#[must_use]
+pub fn causal_past_address(
+    address: PrimId,
+    predecessors: &[CausalPast],
+) -> CausalPast
+{
+    let mut sorted = predecessors.to_vec();
+    sorted.sort_unstable();
+    let mut hasher = ContentHasher::new();
+    core::hash::Hasher::write(&mut hasher, CAUSAL_DOMAIN);
+    core::hash::Hash::hash(&address, &mut hasher);
+    for past in &sorted {
+        core::hash::Hash::hash(past, &mut hasher);
+    }
+    hasher.past_digest()
 }
 
 /// **Normalize** a recorded derivation to its tracelet normal form, or refuse
@@ -743,6 +834,7 @@ where
     }
     let convexity = A::convexity_discharge(store);
     let order = EventOrder::of_events(store, survivors.steps, convexity);
+    refuse_key_collisions(&order)?;
     let canonical_order = order.canonical_order();
     let mut primitives: BTreeMap<PrimId, (PrimCert<A>, PrimMultiplicity)> = BTreeMap::new();
     let mut schedule = Vec::with_capacity(canonical_order.len());
@@ -839,7 +931,62 @@ where
     let start = A::skolemize(peak);
     let survivors = run_recording(store, &start, path)?;
     let convexity = A::convexity_discharge(store);
-    Ok(EventOrder::of_events(store, survivors.steps, convexity))
+    let order = EventOrder::of_events(store, survivors.steps, convexity);
+    refuse_key_collisions(&order)?;
+    Ok(order)
+}
+
+/// Refuse an event order whose canonical sort key is not a strict total order,
+/// resolving the tying indices to the primitives they apply.
+///
+/// It exists so the two public constructors of an [`EventOrder`] enforce the
+/// invariant identically: an order handed out by this crate has passed the
+/// check, which is what lets
+/// [`crate::causal::EventOrder::canonical_order`] promise its sort's stability
+/// is unobservable.
+///
+/// # Contract
+/// - ensures: `Ok(())` exactly when
+///   [`crate::causal::EventOrder::refuse_key_collisions`] accepts `order`.
+/// - fails: [`NormalFormObstruction::CanonicalKeyCollision`], carrying both
+///   primitives and the depth they share.
+/// - panics: none.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the decision is delegated rather than restated,
+///   so what this adds is the resolution of two indices into two primitives;
+///   separated by asserting the refusal names the primitives rather than the
+///   indices, and by the accepting path, which every normalization fixture
+///   exercises.
+/// - witness: `causal::tests::two_events_tying_on_depth_and_key_are_refused`
+/// - witness: `normal_form::tests::a_recorded_derivation_normalizes_to_a_replay_receipt`
+#[inline]
+fn refuse_key_collisions<A>(order: &EventOrder<A>) -> Result<(), NormalFormObstruction<A>>
+where
+    A: CellAlphabet,
+{
+    let Err(collision) = order.refuse_key_collisions()
+    else {
+        return Ok(());
+    };
+    let earlier = order
+        .event(collision.earlier)
+        .map(|event| PrimCert(event.step().clone()));
+    let later = order
+        .event(collision.later)
+        .map(|event| PrimCert(event.step().clone()));
+    let (Some(earlier), Some(later)) = (earlier, later)
+    else {
+        return Ok(());
+    };
+    Err(NormalFormObstruction::CanonicalKeyCollision {
+        earlier: Box::new(earlier),
+        later: Box::new(later),
+        depth: collision.depth,
+    })
 }
 
 /// Whether two normal forms are the **same normal form**.
@@ -1263,6 +1410,12 @@ impl ContentHasher
     {
         CellAddress(self.state)
     }
+
+    /// The digest accumulated so far, as an event's causal-past digest.
+    const fn past_digest(&self) -> CausalPast
+    {
+        CausalPast(self.state)
+    }
 }
 
 impl core::hash::Hasher for ContentHasher
@@ -1294,6 +1447,8 @@ mod tests
 
     use super::*;
     use crate::boundary::EventCount;
+    use crate::causal::EventKey;
+    use crate::causal::EventOrder;
     use crate::cell::Cell;
     use crate::overlap::OverlapKind;
     use crate::overlap::enumerate_overlaps;
@@ -1760,6 +1915,75 @@ mod tests
             "the two cells are distinct, so the store keeps both"
         );
         finish_chain(store, add)
+    }
+
+    #[test]
+    fn the_causal_past_digest_reads_the_multiset_and_not_the_order()
+    {
+        // ARRIVAL-ORDER INDEPENDENCE, at the digest. An event's direct
+        // predecessors are listed in whichever linear extension was recorded,
+        // so a fold that read that order would make the key — and through it
+        // the canonical order — a property of the presentation.
+        let (store, _peak, _join, steps) = chain_fixture();
+        let cell = store
+            .get(steps[0].cell)
+            .expect("the step names a stored cell");
+        let address = prim_address(cell, &Pos::root());
+        let left = causal_past_address(address, &[]);
+        let right = causal_past_address(address, &[
+            causal_past_address(address, &[]),
+            CausalPast::default(),
+        ]);
+        assert_ne!(
+            left, right,
+            "different predecessor sets give different digests"
+        );
+        assert_eq!(
+            right,
+            causal_past_address(address, &[
+                CausalPast::default(),
+                causal_past_address(address, &[])
+            ],),
+            "and the same set offered in the other order gives the same digest"
+        );
+        let elsewhere = store
+            .get(steps[0].cell)
+            .expect("the step names a stored cell");
+        assert_ne!(
+            left,
+            causal_past_address(prim_address(elsewhere, &Pos::root()), &[left]),
+            "one address over two different pasts is two digests"
+        );
+    }
+
+    #[test]
+    fn the_event_key_is_taken_over_content_and_never_over_arrival_order()
+    {
+        // OBLIGATION (a), witnessed rather than argued: the key digests the
+        // resolved cell's CONTENT and the position, and `Cell` holds no store
+        // index — only its two faces, its orientation, its provenance, and its
+        // derived metadata. So two stores that intern one rule under two
+        // identifiers give one key.
+        let (plain, peak, _join, steps) = chain_fixture();
+        let (decoyed, _decoy_peak, _decoy_join, decoy_steps) = chain_fixture_behind_a_decoy();
+        assert_ne!(
+            steps[0].cell, decoy_steps[0].cell,
+            "the same rule carries two identifiers"
+        );
+        let here = event_order(&plain, &peak, &steps).expect("the chain replays");
+        let there = event_order(&decoyed, &peak, &decoy_steps).expect("and so does its twin");
+        let keys = |order: &EventOrder| -> Vec<EventKey> {
+            order
+                .canonical_order()
+                .into_iter()
+                .filter_map(|index| order.key(index))
+                .collect()
+        };
+        assert_eq!(
+            keys(&here),
+            keys(&there),
+            "the keys are the same, so nothing arrival-ordered or store-local reached them"
+        );
     }
 
     #[test]
