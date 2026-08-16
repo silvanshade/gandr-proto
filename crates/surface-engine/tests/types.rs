@@ -105,11 +105,14 @@ mod tests
     {
         // `F`'s argument is value-sorted, so `F (F Unit)` is a value/computation
         // mismatch; the `->` result and `&` members are computation-sorted, so a
-        // value there is the dual mismatch.
+        // value there is the dual mismatch. The legacy `Unknown` keyword keeps
+        // its value-only reading: in a computation position it is a mismatch
+        // (the `?` atom is the computation-top spelling, gandr-89k).
         for (input, expected_sort) in [
             ("F (F Unit)", "a value type"),
             ("Unit -> Integer", "a computation type"),
             ("Unit & Unit", "a computation type"),
+            ("Unit -> Unknown", "a computation type"),
         ] {
             let result = strict_signature_ascription(input);
             assert!(
@@ -179,10 +182,14 @@ mod tests
             ("(Integer)", Ty::Value(atom("Integer"))),
             // The returner `F A` and thunk `U[r] B` computation/value formers.
             ("F Integer", Ty::Comp(CompType::returner(atom("Integer")))),
-            // Until the surface gains a standalone computation-sort hole,
-            // `F Unknown` is the explicit gradual computation ascription. A
-            // known payload still lowers to the pure empty-row returner above.
-            ("F Unknown", Ty::Comp(CompType::Unknown)),
+            // gandr-89k: `F Unknown` is restored to the pure returner over
+            // `ValueType::Unknown`; the computation-sort top is the bare `?`
+            // atom in a computation position (covered by the dedicated
+            // `unknown_type_lowers_by_consuming_position` test below).
+            (
+                "F Unknown",
+                Ty::Comp(CompType::returner(ValueType::Unknown)),
+            ),
             (
                 "U[1] (F Unit)",
                 Ty::Value(ValueType::thunk(
@@ -408,6 +415,113 @@ mod tests
             total_signature_ascription("#{ x : Integer, x : Unit }"),
             Ty::Value(ValueType::record([("x".to_owned(), ValueType::Unit)])),
             "total mode keeps the last field type for a duplicate label"
+        );
+    }
+
+    /// The `?` unknown atom (gandr-89k): one spelling, with the consuming
+    /// position deciding the sort — `ValueType::Unknown` in a value position,
+    /// `CompType::Unknown` in a computation position, and the sort-free
+    /// signature position taking the value default.
+    #[test]
+    fn unknown_type_lowers_by_consuming_position()
+    {
+        let cases: Vec<(&str, Ty)> = vec![
+            // Sort-free signature ascription: the value default.
+            ("?", Ty::Value(ValueType::Unknown)),
+            // The returner payload is a value position: `F ?` is the PURE
+            // returner over the value unknown, never the computation top.
+            ("F ?", Ty::Comp(CompType::returner(ValueType::Unknown))),
+            // Computation positions: arrow result, thunk body, lazy-product
+            // member.
+            (
+                "Integer -> ?",
+                Ty::Comp(CompType::arrow(atom("Integer"), CompType::Unknown)),
+            ),
+            (
+                "U ?",
+                Ty::Value(ValueType::thunk(Grade::OMEGA, CompType::Unknown)),
+            ),
+            (
+                "F Unit & ?",
+                Ty::Comp(CompType::with(
+                    CompType::returner(ValueType::Unit),
+                    CompType::Unknown,
+                )),
+            ),
+            // Value positions: product member, arrow parameter.
+            (
+                "? * Integer",
+                Ty::Value(ValueType::prod(ValueType::Unknown, atom("Integer"))),
+            ),
+            (
+                "? -> F Unit",
+                Ty::Comp(CompType::arrow(
+                    ValueType::Unknown,
+                    CompType::returner(ValueType::Unit),
+                )),
+            ),
+            // Parentheses are transparent: `(?)` in a computation position is
+            // still the computation top.
+            (
+                "Integer -> (?)",
+                Ty::Comp(CompType::arrow(atom("Integer"), CompType::Unknown)),
+            ),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                strict_signature_ascription(input),
+                Ok(expected.clone()),
+                "strict lowering of `{input}`"
+            );
+            assert_eq!(
+                total_signature_ascription(input),
+                expected,
+                "total lowering of `{input}` agrees"
+            );
+        }
+    }
+
+    /// Normalization: the legacy `Unknown` keyword and the `?` atom denote the
+    /// same value unknown, so the two spellings of one type lower identically.
+    #[test]
+    fn unknown_spellings_normalize_to_one_type()
+    {
+        for (legacy, ruled) in [
+            ("Unknown", "?"),
+            ("F Unknown", "F ?"),
+            ("? -> F Unknown", "? -> F ?"),
+        ] {
+            assert_eq!(
+                strict_signature_ascription(legacy),
+                strict_signature_ascription(ruled),
+                "`{legacy}` and `{ruled}` must lower identically"
+            );
+        }
+    }
+
+    /// A `def` result annotation is a computation-sorted entry point
+    /// (`lower_comp_type_node`), so `-> ?` there is the computation top.
+    #[test]
+    fn a_function_result_unknown_is_the_computation_top()
+    {
+        let lowered =
+            lower_source("def g(x: Integer) -> ? { ret x }".into()).expect("the function lowers");
+        let ascription = lowered
+            .items
+            .into_iter()
+            .find_map(|item| {
+                (item.name.as_deref() == Some("g"))
+                    .then_some(item.ascription)
+                    .flatten()
+            })
+            .expect("the `g` item carries its derived ascription");
+        assert_eq!(
+            Ty::Value(ValueType::thunk(
+                Grade::OMEGA,
+                CompType::arrow(atom("Integer"), CompType::Unknown),
+            )),
+            ascription,
+            "`def g(x: Integer) -> ?` derives the ascription `U (Integer -> ?)`"
         );
     }
 

@@ -303,6 +303,29 @@ fn add_type_rules(
             tile(TileLabel("Void")),
         ]),
     ));
+    // The gradual top `?` as a type atom (gandr-89k): one spelling for the
+    // unknown type on BOTH sorts, with the consuming position deciding the
+    // sort — a value position lowers it to `ValueType::Unknown`, a computation
+    // position to `CompType::Unknown`, and the formatter prints both back as
+    // `?`. It is a PBG-only kind (the committed tree-sitter grammar produces
+    // no type atom here), so its provenance lives in `PBG_ONLY_KINDS` and its
+    // corpus witness in `examples/surface/`.
+    //
+    // The tile is shared with two forms the sort menus and continuation
+    // discipline keep disjoint: the Expression-sort typed hole (`?` / `?name`)
+    // never competes at a Type slot, and the receive-session `?T.S` — whose
+    // `?` also molds at a Type frontier — wins exactly when a type, `.`, and a
+    // session tail follow, while a bare `?` (or one closed by `;`, `)`, `,`,
+    // or an infix operator) molds as this atom. This is the ruled alternative
+    // to overloading the term-hole spelling for the computation sort: the atom
+    // is structurally distinct from `hole`, so host escapes and nested
+    // conditional bodies keep their existing CST fields.
+    rules.push(rule(
+        RuleName("unknown_type"),
+        ty,
+        type_atom,
+        tile(TileLabel("?")),
+    ));
     rules.push(rule(
         RuleName("type_identifier"),
         ty,

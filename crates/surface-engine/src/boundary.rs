@@ -489,6 +489,10 @@ semantic_copy!(
     pub struct AscriptionPresence(bool);
 );
 semantic_copy!(
+    /// Whether a syntax node is the `?` unknown type atom.
+    pub struct UnknownAtomFlag(bool);
+);
+semantic_copy!(
     /// Whether an origin map contains no provenance entries.
     pub struct OriginMapEmpty(bool);
 );
@@ -575,6 +579,7 @@ semantic_bool!(
     DataMention,
     RecursiveMarkDepthExceeded,
     OriginMapEmpty,
+    UnknownAtomFlag,
 );
 
 /// Half-open host byte range into source text.

@@ -1232,6 +1232,12 @@ impl<'tree> SynNode<'tree>
             {
                 node_kinds::PRIMITIVE_TYPE
             },
+            // A bare `?` tile at the Type sort is the `unknown_type` atom
+            // (gandr-89k): the one-tile rule commits no Meld, so the tile
+            // itself classifies. The Expression hole's `?` (Expression sort)
+            // and the receive-session `?` (never visited standalone — its
+            // Meld classifies first) cannot reach this arm.
+            | label::HOLE if matches!(sort, Some(Sort::Type)) => node_kinds::UNKNOWN_TYPE,
             | _ => SyntaxKind(""),
         }
     }
@@ -1339,7 +1345,7 @@ impl<'tree> SynNode<'tree>
             | Some(label::LBRACKET) => node_kinds::LIST_EXPRESSION,
             | Some(label::SHELL_OPEN) => node_kinds::SHELL_BLOCK,
             | Some(label::DQUOTE) => node_kinds::STRING,
-            | Some(label::HOLE) => node_kinds::HOLE,
+            | Some(label::HOLE) => self.classify_question_lead(sort, lead_id, second_label),
             | Some(label::NEG) => node_kinds::UNARY_EXPRESSION,
             | Some(label::F) if matches!(sort, Some(Sort::Type)) => node_kinds::F_TYPE,
             | Some(label::U) if matches!(sort, Some(Sort::Type)) => node_kinds::U_TYPE,
@@ -1415,6 +1421,31 @@ impl<'tree> SynNode<'tree>
         else {
             node_kinds::PARENTHESIZED_EXPRESSION
         }
+    }
+
+    /// Classify a `?`-led Meld. Two existing forms keep the `hole` kind: the
+    /// Expression-sort typed hole (`?` / `?name`) and the Type-sort
+    /// receive-session prefix (`?T.S`, whose second tile begins the received
+    /// type). Since gandr-89k a `?`-led meld can also be the `unknown_type`
+    /// atom inside a type infix (`? * A`, `? -> B`, …): the second tile is
+    /// then a type-continuation operator and the meld takes the infix
+    /// classification, exactly as an atom-led meld would.
+    fn classify_question_lead(
+        self,
+        sort: Option<Sort>,
+        lead_id: Option<NodeId>,
+        second_label: Option<TileSpelling>,
+    ) -> SyntaxKind
+    {
+        if matches!(sort, Some(Sort::Type))
+            && matches!(
+                second_label,
+                Some(label::RIGHT_ARROW | label::STAR | label::PLUS | label::AMP)
+            )
+        {
+            return self.classify_infix(sort, lead_id, second_label);
+        }
+        node_kinds::HOLE
     }
 
     /// Classify an operand-led Meld by its second significant tile: a
@@ -3447,6 +3478,13 @@ fn is_named_terminal(label: TileSpelling) -> NamedTerminalFlag
                     | "true"
                     | "false"
                     | "ω"
+                    // The `unknown_type` atom (gandr-89k): a bare `?` token at
+                    // the Type sort is its own node (a type member, a
+                    // signature's type). The Expression hole's `?` rides its
+                    // enclosing hole Meld, which is already named, and the
+                    // receive-session `?` is never recovered as a standalone
+                    // field — so naming the token changes nothing there.
+                    | "?"
             )
         ) || PRIMITIVE_TYPES.contains(&label.as_ref()),
     )
@@ -3802,6 +3840,71 @@ mod tests
             2,
             product.children_by_field_name("member").len(),
             "the product flattens to its two members"
+        );
+
+        // The `?` unknown atom (gandr-89k) classifies as `unknown_type` at a
+        // type slot, and a `?`-led type infix keeps the infix classification
+        // with the atom as its first member.
+        assert_eq!(
+            node_kinds::UNKNOWN_TYPE,
+            {
+                let sig_type = sig_type("def u : ?;")?;
+                core::convert::identity(sig_type)
+            }
+            .1,
+            "the `?` atom classifies as unknown_type"
+        );
+        let unknown_product_owned = tree("def up : ? * A;")?;
+        let unknown_product = field(
+            {
+                let item0 = item0(&unknown_product_owned)?;
+                core::convert::identity(item0)
+            },
+            "type",
+        )?;
+        assert_eq!(
+            node_kinds::PRODUCT_TYPE,
+            unknown_product.kind(),
+            "a `?`-led product keeps the product classification"
+        );
+        let members = unknown_product.children_by_field_name("member");
+        assert_eq!(
+            Some(node_kinds::UNKNOWN_TYPE),
+            members.first().map(|node| node.kind()),
+            "the unknown atom is the product's first member"
+        );
+        assert_eq!(
+            node_kinds::FUNCTION_TYPE,
+            {
+                let sig_type = sig_type("def ua : ? -> F A;")?;
+                core::convert::identity(sig_type)
+            }
+            .1,
+            "a `?`-led arrow keeps the arrow classification"
+        );
+        // The Expression hole and the receive-session prefix keep the `hole`
+        // classification beside the new atom.
+        let hole_owned = tree("def h = ?name;")?;
+        assert_eq!(
+            node_kinds::HOLE,
+            field(
+                {
+                    let item0 = item0(&hole_owned)?;
+                    core::convert::identity(item0)
+                },
+                "value",
+            )?
+            .kind(),
+            "the term hole still classifies as hole"
+        );
+        assert_eq!(
+            node_kinds::HOLE,
+            {
+                let sig_type = sig_type("def s : ? A . end;")?;
+                core::convert::identity(sig_type)
+            }
+            .1,
+            "the receive-session prefix keeps the hole classification"
         );
         Ok(())
     }

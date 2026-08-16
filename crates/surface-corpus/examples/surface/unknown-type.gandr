@@ -1,0 +1,45 @@
+// Surface fold-in — the gradual top `?` as a type atom (gandr-89k).
+//
+// GRADUATION: the semantics LANDED with this fixture's change — strict and
+// total lowering, session typing, and kernel admission all consume the atom —
+// so the behavior is witnessed by the `gandr-surface-engine` lowering,
+// session, and kernel tests. This fixture stays parse-only because its job is
+// the SPELLING surface: `?` is the one unknown-type spelling on both sorts,
+// with the consuming position deciding the sort, and the melder must keep
+// three readings of the same tile disjoint — this atom, the Expression-sort
+// typed hole (`?` / `?name`), and the receive-session prefix (`?T.S`). The
+// ruled alternative to overloading the term-hole spelling: a structurally
+// distinct atom, so host escapes and nested conditional bodies keep their
+// existing CST fields. The legacy `Unknown` keyword stays a value-position
+// primitive beside it, and the formatter canonicalizes every unknown back to
+// `?`.
+
+// Bare ascription: the sort-free signature position takes the value default.
+def anything : ?;
+
+// The returner payload is a value position: `F ?` is the PURE returner over
+// the value unknown, never the computation top. The legacy keyword spelling
+// denotes the same type (the two lower identically).
+def pure_unknown : F ?;
+def legacy_pure_unknown : F Unknown;
+
+// Computation positions: arrow result, thunk body, lazy-product member.
+def partial : Integer -> ?;
+def suspended : U ?;
+def choice : F Unit & ?;
+
+// Value positions: product member (a `?`-led infix — the atom completes and
+// the `*` continues the type) and arrow parameter.
+def pair_left : ? * Integer;
+def takes_unknown : ? -> F Unit;
+
+// Parentheses are transparent: `(?)` is the same atom.
+def parenthesized : Integer -> (?);
+
+// The receive-session prefix keeps its own `?`-led reading: a type, `.`, and
+// a session tail following the `?` selects `?T.S`, never the atom.
+def session_receive : ? Integer . end;
+
+// The Expression-sort typed hole is untouched beside the type atom.
+def term_hole = ?;
+def named_term_hole = ?goal;

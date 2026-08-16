@@ -235,6 +235,7 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     "unpack_statement",
     "rec_block",
     "sign_declaration",
+    "unknown_type",
     "while_expression",
     // reserved / folded / diverged member surfaces (adaptation surfaces)
     "bare_type_params",

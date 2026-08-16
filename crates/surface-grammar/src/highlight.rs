@@ -741,6 +741,10 @@ pub fn role_of(
         // `?` is a typed hole only under the `hole` rule; a session receive
         // `?T.S` is not captured by `highlights.scm`.
         | ("?", "hole") => return Some(HlRole::Hole),
+        // The gradual top `?` under the PBG-only `unknown_type` rule highlights
+        // with the primitive types, mirroring the `Unknown` keyword it
+        // canonicalizes away from (gandr-89k).
+        | ("?", "unknown_type") => return Some(HlRole::TypeBuiltin),
         // Attribute-block brackets are `@punctuation.special` — captured, but the
         // grammar's role table folds that to `Other` (a real span).
         | ("@[", _) => return Some(HlRole::Other),

@@ -22,6 +22,7 @@
 #[cfg(test)]
 mod tests
 {
+    use gandr_core_checker::kernel_bridge::BridgeRejection;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
     use gandr_core_checker::types::Ty;
@@ -115,6 +116,37 @@ mod tests
             AdmittedCount::default(),
             session.kernel().admitted(),
             "a definition with no S1 image admits nothing"
+        );
+    }
+
+    /// The unknown type has no S1 image on either sort, and the bridge
+    /// reports each sort's rejection by name (gandr-89k): a `?` atom in a
+    /// computation position (the computation top) rejects as
+    /// `UnknownComputationType`, while the bare `?` ascription — the value
+    /// unknown, as is the legacy `Unknown` keyword it normalizes with —
+    /// rejects as `UnknownValueType`.
+    #[test]
+    fn unknown_ascriptions_reject_by_sort()
+    {
+        let mut session = Session::new();
+        let submission = submit(&mut session, "def g(x: Integer) -> ? { ret x }");
+        assert!(
+            matches!(only_verdict(&submission), KernelVerdict::OutsideS1 {
+                rejection: BridgeRejection::UnknownComputationType,
+            }),
+            "a computation-top result has no S1 image, got {:?}",
+            submission.kernel
+        );
+
+        let mut session = Session::new();
+        let submission = submit(&mut session, "def h : ?; def h = 1;");
+        let last = submission.kernel.last().expect("the pair carries verdicts");
+        assert!(
+            matches!(last, KernelVerdict::OutsideS1 {
+                rejection: BridgeRejection::UnknownValueType,
+            }),
+            "the value unknown has no S1 image, got {:?}",
+            submission.kernel
         );
     }
 

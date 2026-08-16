@@ -552,6 +552,67 @@ mod tests
             | _ => panic!("`1 + 2` should type-check and evaluate"),
         }
     }
+    /// The computation top `?` is a first-class result ascription (gandr-89k):
+    /// the function checks its body against the top, binds, and applies —
+    /// with the application reporting `CompType::Unknown`.
+    #[test]
+    fn computation_top_result_types_binds_and_applies()
+    {
+        let mut session = Session::new();
+        match sole_outcome(&mut session, "def g(x: Integer) -> ? { ret x }") {
+            | ItemOutcome::Definition { name, bound, .. } => {
+                assert_eq!("g", name.as_str(), "`g` is the defined name");
+                assert!(bound, "`g` enters the typing scope");
+            },
+            | outcome => panic!("`def g` should be a definition, got {outcome:?}"),
+        }
+        match sole_outcome(&mut session, "g(1)") {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    Ty::Comp(CompType::Unknown),
+                    ty,
+                    "`g(1)` reports the computation top"
+                );
+                assert_eq!(
+                    Eval::Value(Comp::ret(Value::int(1))),
+                    value,
+                    "`g(1)` still evaluates to `ret 1`"
+                );
+            },
+            | outcome => panic!("`g(1)` should evaluate, got {outcome:?}"),
+        }
+    }
+    /// The bare `?` ascription is the value unknown (gandr-89k): the
+    /// definition checks against it and stays usable at the gradual type.
+    #[test]
+    fn value_unknown_ascription_types_and_evaluates()
+    {
+        let mut session = Session::new();
+        match sole_outcome(&mut session, "def h : ?; def h = 1;") {
+            | ItemOutcome::Definition {
+                name, ty, bound, ..
+            } => {
+                assert_eq!("h", name.as_str(), "`h` is the defined name");
+                assert_eq!(
+                    Ty::Value(ValueType::Unknown),
+                    ty,
+                    "`h` binds at the value unknown"
+                );
+                assert!(bound, "`h` enters the typing scope");
+            },
+            | outcome => panic!("`def h` should be a definition, got {outcome:?}"),
+        }
+        match sole_outcome(&mut session, "h") {
+            | ItemOutcome::Expression { value, .. } => {
+                assert_eq!(
+                    Eval::Value(Comp::ret(Value::int(1))),
+                    value,
+                    "`h` evaluates to its binding"
+                );
+            },
+            | outcome => panic!("`h` should evaluate, got {outcome:?}"),
+        }
+    }
     /// List concat accepts list operands and returns a list with the gradual
     /// element type.
     #[test]

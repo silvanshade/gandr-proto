@@ -75,7 +75,9 @@ mod contracts
     /// The pattern-position typed hole then added the `?` tile and its optional
     /// `hole_name` tail at `pattern.atom`, so a hole written in a pattern slot
     /// is molded at `Sort::Pattern` instead of borrowing the expression mold.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xc09b_f734_3167_f60c);
+    /// The `unknown_type` Type-sort atom (gandr-89k) re-folds the fingerprint
+    /// again: the gradual top `?` joins the grammar as a one-tile type rule.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x2b7a_ed64_e0c7_14be);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -145,12 +147,15 @@ mod contracts
     /// the `@[ … ]` block outside the member it decorates; that costs one copy
     /// of the definition tail. And the manifest type component `type T = τ`
     /// adds four `=` molds, one per signature occurrence.
-    /// The pattern-position typed hole adds the last **two** — the `?` tile and
+    /// The pattern-position typed hole adds **two** — the `?` tile and
     /// its optional `hole_name` tail, declared once at `pattern.atom`. Both
     /// labels widen from single- to multi-mold, and that widening is the point
     /// rather than a cost: the pattern hole must carry `Sort::Pattern`, which a
     /// mold shared with the expression hole cannot do.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2151);
+    /// The `unknown_type` atom adds one: the gradual top `?`
+    /// is a third `?`-labelled occurrence beside the Expression hole and the
+    /// receive-session prefix (gandr-89k).
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2152);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -201,7 +206,7 @@ mod contracts
         (">&", 1),
         (">=", 1),
         (">>", 1),
-        ("?", 3),
+        ("?", 4),
         ("@[", 4),
         ("Any", 1),
         ("Boolean", 1),

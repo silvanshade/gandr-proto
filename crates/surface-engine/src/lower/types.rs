@@ -1,11 +1,17 @@
 //! CST type nodes → core [`ValueType`]/[`CompType`] — the covered fragment's
 //! "Types" row, in both strictness modes.
 //!
-//! Covered: atoms (`primitive_type`, `type_identifier`), `F`, `U[r]`, `->`,
-//! `*`, `+`, `&`, parenthesized. Everything else (unions, intersections,
-//! `forall`, `at`, sessions, type application, type variables) is
-//! [`LowerError::Unsupported`]. Sorts are decided structurally; a type of
-//! the wrong polarity for its position is [`LowerError::TypeSortMismatch`].
+//! Covered: atoms (`primitive_type`, `type_identifier`), the `?` unknown
+//! atom, `F`, `U[r]`, `->`, `*`, `+`, `&`, parenthesized. Everything else
+//! (unions, intersections, `forall`, `at`, sessions, type application, type
+//! variables) is [`LowerError::Unsupported`]. Sorts are decided structurally;
+//! a type of the wrong polarity for its position is
+//! [`LowerError::TypeSortMismatch`]. The one exception is `?` (gandr-89k):
+//! the unknown type has one spelling on both sorts and the consuming position
+//! decides — a value position lowers it to `ValueType::Unknown`, a
+//! computation position to `CompType::Unknown`, so `F ?` is the pure
+//! returner over the value unknown while a bare `?` in a computation
+//! position is the computation top.
 //!
 //! In [`Strictness::Total`] mode every failure lowers to the position's
 //! sort of `Unknown` instead — types cannot be holes, and the `Unknown` is
@@ -29,6 +35,7 @@ use gandr_core_checker::types::ValueType;
 use crate::boundary::PipelineSource;
 use crate::boundary::SignificantIndex;
 use crate::boundary::TypeName;
+use crate::boundary::UnknownAtomFlag;
 use crate::lower::LowerError;
 use crate::lower::LowerResult;
 use crate::lower::Strictness;
@@ -422,6 +429,14 @@ fn lower_type_tree(
                     | node_kinds::PRIMITIVE_TYPE => {
                         results.push(lower_primitive(source, node).map(Ty::Value));
                     },
+                    // The `?` atom (gandr-89k) is the unknown type. The
+                    // bottom-up walk cannot see the consuming position, so it
+                    // lowers to the sort-free value default here; a
+                    // computation-sorted consumer re-reads it as
+                    // `CompType::Unknown` at the `comp_result` coercion.
+                    | node_kinds::UNKNOWN_TYPE => {
+                        results.push(Ok(Ty::Value(ValueType::Unknown)));
+                    },
                     | node_kinds::TYPE_IDENTIFIER => {
                         results.push(node_text(source, node).map(|name| {
                             // The manifest environment answers first, so a
@@ -708,12 +723,14 @@ fn assemble_type_frame(
     match frame {
         | TypeFrame::F(argument) => {
             let child = pop_type_result(results, argument);
-            results.push(value_result(child, argument, strictness).map(|payload| {
-                Ty::Comp(match payload {
-                    | ValueType::Unknown => CompType::Unknown,
-                    | known => CompType::returner(known),
-                })
-            }));
+            // gandr-89k: the returner former is honest — `F ?` (and the legacy
+            // `F Unknown`) is the PURE returner over `ValueType::Unknown`, not
+            // the computation-sort top. The computation top is the bare `?`
+            // atom in a computation position (see `comp_result`).
+            results.push(
+                value_result(child, argument, strictness)
+                    .map(|payload| Ty::Comp(CompType::returner(payload))),
+            );
         },
         | TypeFrame::U { argument, grade } => {
             let child = pop_type_result(results, argument);
@@ -915,12 +932,40 @@ fn comp_result(
     match result {
         | Ok(Ty::Comp(comp_ty)) => Ok(comp_ty),
         | Ok(_) | Err(_) if total => Ok(CompType::Unknown),
+        // The `?` atom in a computation position IS the computation-sort
+        // unknown (gandr-89k): the consuming position decides the sort of the
+        // one spelling. The legacy `Unknown` keyword keeps its value-only
+        // reading — no existing witness places it in a computation position —
+        // so it stays a sort mismatch below.
+        | Ok(Ty::Value(ValueType::Unknown)) if is_unknown_atom(node).0 => Ok(CompType::Unknown),
         | Ok(Ty::Value(_)) => Err(LowerError::TypeSortMismatch {
             expected: SORT_COMP_TYPE,
             kind: node.kind(),
             byte_range: node.byte_range(),
         }),
         | Err(error) => Err(error),
+    }
+}
+
+/// Whether `node` is the `?` unknown atom, looking through any
+/// `parenthesized_type` wrappers (parentheses are transparent to lowering, so
+/// `(?)` in a computation position denotes the computation top exactly as `?`
+/// does). Iterative: the wrapper chain is input-scaled.
+fn is_unknown_atom(node: SynNode<'_>) -> UnknownAtomFlag
+{
+    let mut current = node;
+    loop {
+        match current.kind() {
+            | node_kinds::UNKNOWN_TYPE => return UnknownAtomFlag(true),
+            | node_kinds::PARENTHESIZED_TYPE => {
+                let Ok(inner) = required_field(current, node_kinds::FIELD_TYPE)
+                else {
+                    return UnknownAtomFlag(false);
+                };
+                current = inner;
+            },
+            | _ => return UnknownAtomFlag(false),
+        }
     }
 }
 

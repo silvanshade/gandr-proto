@@ -174,6 +174,10 @@ pub const ENVIRONMENT_ASSIGNMENT: SyntaxKind = SyntaxKind("environment_assignmen
 pub const NEGATION: SyntaxKind = SyntaxKind("negation");
 pub const PARAMETER: SyntaxKind = SyntaxKind("parameter");
 pub const PRIMITIVE_TYPE: SyntaxKind = SyntaxKind("primitive_type");
+/// The gradual top `?` as a type atom (gandr-89k): one spelling for the
+/// unknown type on both sorts; the consuming position decides whether it
+/// denotes `ValueType::Unknown` or `CompType::Unknown`.
+pub const UNKNOWN_TYPE: SyntaxKind = SyntaxKind("unknown_type");
 pub const TYPE_IDENTIFIER: SyntaxKind = SyntaxKind("type_identifier");
 pub const TYPE_APPLICATION: SyntaxKind = SyntaxKind("type_application");
 pub const RECORD_TYPE: SyntaxKind = SyntaxKind("record_type");

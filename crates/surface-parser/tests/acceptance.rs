@@ -1386,6 +1386,90 @@ fn hole_positions_mold_zero_obligation() -> Result<(), Box<dyn Error>>
 
 // ---- user holes are first-class surface ----------------------
 
+// ---- the gradual top `?` is a type atom (gandr-89k) ----------
+
+/// The `unknown_type` rule: `?` molds as a Type-sort atom with zero
+/// obligations at every type position, while the Expression-sort hole and the
+/// receive-session prefix keep their own readings of the same tile.
+#[test]
+fn unknown_type_molds_zero_obligation() -> Result<(), Box<dyn Error>>
+{
+    use gandr_surface_grammar::Sort;
+
+    let pbg = built();
+    // `?` at every type position molds clean.
+    let clean: &[&str] = &[
+        // Bare ascription: the sort-free signature position.
+        "def f : ?;",
+        // The returner payload is a value position: `F ?` is the pure
+        // returner over the value unknown, NOT the computation top.
+        "def f : F ?;",
+        // Arrow result, thunk body, lazy-product member: computation
+        // positions.
+        "def f : Integer -> ?;",
+        "def f : U ?;",
+        "def f : F Unit & ?;",
+        // Product member: the `?`-led infix shape must not confuse the
+        // classifier (the atom completes, the `*` continues the type).
+        "def f : ? * Integer;",
+        // Parenthesized.
+        "def f : (?);",
+        // The legacy keyword keeps its value-primitive reading beside the
+        // atom.
+        "def f : F Unknown;",
+        // The receive-session prefix keeps its own `?`-led reading: a type,
+        // `.`, and a session tail following the `?` selects `?T.S`.
+        "def s : ? Integer . end;",
+        // The term hole (Expression sort) is untouched by the new atom.
+        "def x = ?;",
+        "def x = ?goal;",
+    ];
+    for &src in clean {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "unknown-type source {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|o| o.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    // The atom's `?` carries a Type-sort mold; the term hole's an
+    // Expression-sort one. Same tile, different sorts — the disambiguation
+    // the ruled spelling rests on.
+    let typed = parse(pbg, SourceSlice::from("def f : ?;"))?;
+    assert_eq!(
+        Some(Sort::Type),
+        mold_sort_of(pbg, typed.cst(), typed.cst().root(), TileText::from("?")),
+        "a type-slot `?` molds at the Type sort"
+    );
+    let holed = parse(pbg, SourceSlice::from("def x = ?;"))?;
+    assert_eq!(
+        Some(Sort::Expression),
+        mold_sort_of(pbg, holed.cst(), holed.cst().root(), TileText::from("?")),
+        "an expression-slot `?` keeps the hole mold"
+    );
+
+    // The receive-session reading wins when its continuation follows: the
+    // meld carrying the `?` also carries the received type and the `.`
+    // sequencer (the session tail sits outside that meld's own span).
+    let session = parse(pbg, SourceSlice::from("def s : ? Integer . end;"))?;
+    let session_meld =
+        find_meld_with_tile(session.cst(), session.cst().root(), TileText::from("?"))
+            .expect("a `?`-led meld");
+    let inside = descendant_tiles(session.cst(), session_meld);
+    for tile in ["Integer", "."] {
+        assert!(
+            inside.iter().any(|t| t == tile),
+            "the receive-session meld keeps {tile:?}; tiles {inside:?}"
+        );
+    }
+    Ok(())
+}
+
 // ---- corpus parses with zero obligations (THE gate) -------
 
 #[test]
@@ -1656,6 +1740,34 @@ fn mold_label_of(
             && let MoldPayload::Tile(mold) = view.payload()
         {
             return pbg.mold(mold).ok().map(|def| def.label.to_owned());
+        }
+        for child in view.children().unwrap_or(&[]).iter().rev() {
+            pending.push(*child);
+        }
+    }
+    None
+}
+/// The grammar mold sort of the first descendant tile whose text is `text`.
+fn mold_sort_of(
+    pbg: &Pbg,
+    cst: &Cst,
+    id: NodeId,
+    text: TileText<'_>,
+) -> Option<gandr_surface_grammar::Sort>
+{
+    let text = <&str>::from(text);
+    let mut pending = vec![id];
+    while let Some(next) = pending.pop() {
+        let Ok(view) = cst.node(next)
+        else {
+            continue;
+        };
+        if view.kind() == NodeKind::Token
+            && view.material() == Material::Tile
+            && view.text().is_ok_and(|slice| slice.as_ref() == text)
+            && let MoldPayload::Tile(mold) = view.payload()
+        {
+            return pbg.mold(mold).ok().map(|def| def.sort);
         }
         for child in view.children().unwrap_or(&[]).iter().rev() {
             pending.push(*child);
