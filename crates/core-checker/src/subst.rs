@@ -1,21 +1,33 @@
-//! Capture-avoiding value substitution (ADR-47 T1) — the iterative worklist
-//! engine `𝓕`'s type-side motive instantiation shares.
+//! Capture-avoiding substitution (ADR-47 T1) — the iterative worklist engine
+//! shared by motive instantiation and by hole substitution.
 //!
-//! [`subst_value`] replaces a free value variable inside a source value,
-//! respecting binder shadowing. It is the substitution the identity former's
-//! motive instantiation drives ([`crate::identity`] calls it at each
-//! [`crate::types::ValueType::Path`] endpoint). The engine ([`Subst`]) owns an
-//! explicit LIFO work stack and one result stack per syntactic sort, so
-//! substitution depth follows the heap, not the host call stack — the iterative
-//! shadow of the recursive specification (the Agda metatheory stays the oracle,
-//! ADR-47). It is a **durable** helper: it outlived the CEK evaluator that once
-//! co-hosted it (its computation-level companion, the CEK's `subst_comp`,
-//! retired with that machine).
+//! One traversal, two rules. [`subst_value`] replaces a free value variable
+//! inside a source value, respecting binder shadowing; it is what the identity
+//! former's motive instantiation drives ([`crate::identity`] calls it at each
+//! [`crate::types::ValueType::Path`] endpoint). [`subst_holes_value`] and
+//! [`subst_holes_comp`] replace **solved holes** by their solutions, which is
+//! how a unifier's certificate is applied to a term before the ordinary
+//! conversion engine re-checks it ([`crate::unify`]).
+//!
+//! The two rules differ in exactly two places and share everything else. A
+//! variable substitution is blocked by a binder of the same name; a hole
+//! substitution is blocked by nothing, because a hole is not a binder-bound
+//! name and every solution is a closed term. Sharing the traversal is what
+//! keeps one grammar-complete descent in the crate rather than two that drift.
+//!
+//! The engine ([`Subst`]) owns an explicit LIFO work stack and one result stack
+//! per syntactic sort, so substitution depth follows the heap, not the host
+//! call stack — the iterative shadow of the recursive specification (the Agda
+//! metatheory stays the oracle, ADR-47). It is a **durable** helper: it
+//! outlived the CEK evaluator that once co-hosted it (its computation-level
+//! companion, the CEK's `subst_comp`, retired with that machine).
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
+use crate::boundary::HoleId;
+use crate::boundary::HoleOccurrence;
 use crate::boundary::NameRef;
 use crate::syntax::Comp;
 use crate::syntax::OpClause;
@@ -50,10 +62,181 @@ pub(crate) fn subst_value<'source, N>(
 where
     N: Into<NameRef<'source>>,
 {
-    let mut engine = Subst::new(name.into(), repl);
+    let name = name.into();
+    let mut engine = Subst::new(Rule::Variable(repl), Some(name));
     engine.work.push(Task::DescendValue(value));
     engine.run();
     engine.take_value()
+}
+
+/// Replaces every solved hole inside a **value** by its solution, reporting
+/// whether any hole survived.
+///
+/// The survivor report is the point of the return pair. Conversion treats a
+/// hole as consistent with every value, so a term that still carries one makes
+/// a conversion verdict **vacuous** rather than conclusive, and a certificate
+/// validator has to know which it got. Computing it here costs nothing: the
+/// traversal already visits every hole.
+///
+/// # Contract
+/// - requires: every solution in `solutions` is a closed term, which is what
+///   the closed-metavariable discipline of [`crate::unify`] guarantees.
+/// - ensures: returns `value` with each hole bound in `solutions` replaced by
+///   its solution and every other node untouched, together with whether the
+///   result still carries a hole. No binder blocks the replacement, because a
+///   hole is not a bound name and a closed solution captures nothing.
+/// - provides: the substitution half of the substitute-and-re-check evidence a
+///   unification certificate offers.
+/// - panics: none (the worklist's post-order balance keeps every result pop
+///   defined; a `debug_assert` guards the invariant in test / debug builds).
+///
+/// # Adequacy
+/// - hypothesis: L3 — three decision surfaces separated pointwise: a bound hole
+///   is replaced, an unbound hole survives and sets the report, and a hole-free
+///   term reports no survivor.
+/// - witness: `unify::tests::substituting_a_solution_reports_a_hole_free_result`
+/// - witness: `unify::tests::substituting_leaves_an_unsolved_hole_and_reports_it`
+#[must_use]
+pub(crate) fn subst_holes_value(
+    value: &Value,
+    solutions: &HoleSubstitution,
+) -> (Value, HoleOccurrence)
+{
+    let mut engine = Subst::new(Rule::Holes(solutions), None);
+    engine.work.push(Task::DescendValue(value));
+    engine.run();
+    let residual = engine.residual;
+    (engine.take_value(), residual)
+}
+
+/// Replaces every solved hole inside a **computation** by its solution,
+/// reporting whether any hole survived (the computation-sorted companion of
+/// [`subst_holes_value`], with the identical contract).
+///
+/// # Contract
+/// - requires: every solution in `solutions` is a closed term.
+/// - ensures: returns `comp` with each bound hole replaced and whether the
+///   result still carries a hole.
+/// - provides: hole substitution at computation sort, which is where a
+///   higher-order metavariable solution lands.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the computation-sorted image of the value entry,
+///   separated by a solved computation hole under an application spine.
+/// - witness: `unify::tests::substituting_a_computation_solution_beta_reduces_on_replay`
+#[must_use]
+pub(crate) fn subst_holes_comp(
+    comp: &Comp,
+    solutions: &HoleSubstitution,
+) -> (Comp, HoleOccurrence)
+{
+    let mut engine = Subst::new(Rule::Holes(solutions), None);
+    engine.work.push(Task::DescendComp(comp));
+    engine.run();
+    let residual = engine.residual;
+    (engine.take_comp(), residual)
+}
+
+/// What a solved hole is replaced by, at the sort the hole occupies.
+///
+/// The two sorts share one identifier space, so the sort is what decides which
+/// occurrence a solution answers: a value solution replaces
+/// [`Value::Hole`] and never [`Comp::Hole`], and the reverse.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum HoleRepl
+{
+    /// A value-sorted solution.
+    Value(Rc<Value>),
+    /// A computation-sorted solution.
+    Comp(Rc<Comp>),
+}
+
+/// A finished map from hole identity to solution — the substitution a
+/// unification certificate carries.
+#[repr(transparent)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct HoleSubstitution
+{
+    /// The solutions, keyed by hole identity in canonical order.
+    entries: BTreeMap<HoleId, HoleRepl>,
+}
+
+impl HoleSubstitution
+{
+    /// An empty substitution.
+    #[inline]
+    #[must_use]
+    pub(crate) fn new() -> Self
+    {
+        Self {
+            entries: BTreeMap::new(),
+        }
+    }
+
+    /// Binds `hole` to `repl`, replacing any earlier binding.
+    ///
+    /// # Contract
+    /// - requires: `repl` is a closed term at the sort `hole` occupies.
+    /// - ensures: a later lookup of `hole` at that sort returns `repl`.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn bind(
+        &mut self,
+        hole: HoleId,
+        repl: HoleRepl,
+    )
+    {
+        self.entries.insert(hole, repl);
+    }
+
+    /// The value-sorted solution of `hole`, when it has one.
+    #[inline]
+    #[must_use]
+    pub(crate) fn value(
+        &self,
+        hole: HoleId,
+    ) -> Option<&Rc<Value>>
+    {
+        match self.entries.get(&hole) {
+            | Some(&HoleRepl::Value(ref term)) => Some(term),
+            | Some(&HoleRepl::Comp(_)) | None => None,
+        }
+    }
+
+    /// The computation-sorted solution of `hole`, when it has one.
+    #[inline]
+    #[must_use]
+    pub(crate) fn comp(
+        &self,
+        hole: HoleId,
+    ) -> Option<&Rc<Comp>>
+    {
+        match self.entries.get(&hole) {
+            | Some(&HoleRepl::Comp(ref term)) => Some(term),
+            | Some(&HoleRepl::Value(_)) | None => None,
+        }
+    }
+
+    /// The bindings, in canonical hole order.
+    #[inline]
+    pub(crate) fn entries(&self) -> impl Iterator<Item = (HoleId, &HoleRepl)>
+    {
+        self.entries.iter().map(|(&hole, repl)| (hole, repl))
+    }
+}
+
+/// Which substitution the engine is performing.
+///
+/// The engine descends one grammar and the rule decides only what a leaf
+/// occurrence becomes and whether a binder blocks it.
+#[derive(Clone, Copy, Debug)]
+enum Rule<'src>
+{
+    /// Replace every free occurrence of the shadowable name by this value.
+    Variable(&'src Value),
+    /// Replace every solved hole by its solution; nothing shadows a hole.
+    Holes(&'src HoleSubstitution),
 }
 
 /// One pending task on the substitution worklist — the defunctionalised image
@@ -93,10 +276,16 @@ enum Task<'src>
 ///   the other result stacks are empty (the post-order balance invariant).
 struct Subst<'src>
 {
-    /// The variable being replaced.
-    name: &'src str,
-    /// The replacement value (cloned at each matching free [`Value::Var`]).
-    repl: &'src Value,
+    /// Which substitution is being performed.
+    rule: Rule<'src>,
+    /// The binder name that blocks the rule, for a rule a binder can block.
+    ///
+    /// A variable substitution is blocked by a binder of the substituted name;
+    /// a hole substitution is blocked by nothing, so this is `None` and every
+    /// `Descend`/`Combine` pair takes the unshadowed branch.
+    shadowed: Option<NameRef<'src>>,
+    /// Whether a hole reached a leaf without a solution to replace it.
+    residual: HoleOccurrence,
     /// Pending tasks, processed last-in-first-out (post order).
     work: Vec<Task<'src>>,
     /// Rebuilt computations, most-recent last.
@@ -109,15 +298,16 @@ struct Subst<'src>
 
 impl<'src> Subst<'src>
 {
-    /// Builds an empty engine substituting `repl` for `name`.
+    /// Builds an empty engine applying `rule`, blocked by `shadowed`.
     fn new(
-        name: NameRef<'src>,
-        repl: &'src Value,
+        rule: Rule<'src>,
+        shadowed: Option<NameRef<'src>>,
     ) -> Self
     {
         Self {
-            name: <&str>::from(name),
-            repl,
+            rule,
+            shadowed,
+            residual: HoleOccurrence::from(false),
             work: Vec::new(),
             comps: Vec::new(),
             values: Vec::new(),
@@ -187,7 +377,7 @@ impl<'src> Subst<'src>
     {
         match *comp {
             | Comp::Abs(ref binder, _, ref body) => {
-                if binder == self.name {
+                if self.shadowed == Some(NameRef::from(binder.as_str())) {
                     self.comps.push(comp.clone());
                 }
                 else {
@@ -214,17 +404,17 @@ impl<'src> Subst<'src>
             | Comp::Bind(ref bound, ref binder, ref body) => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendComp(bound.as_ref()));
-                if binder != self.name {
+                if self.shadowed != Some(NameRef::from(binder.as_str())) {
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
             },
             | Comp::Case(ref scrut, ref arm_fst, ref arm_snd) => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendValue(scrut.as_ref()));
-                if arm_fst.0 != self.name {
+                if self.shadowed != Some(NameRef::from(arm_fst.0.as_str())) {
                     self.work.push(Task::DescendComp(arm_fst.1.as_ref()));
                 }
-                if arm_snd.0 != self.name {
+                if self.shadowed != Some(NameRef::from(arm_snd.0.as_str())) {
                     self.work.push(Task::DescendComp(arm_snd.1.as_ref()));
                 }
             },
@@ -240,7 +430,9 @@ impl<'src> Subst<'src>
                 self.work.push(Task::DescendComp(nil.as_ref()));
                 // The `cons` body is under `head`/`tail`; descend it only when
                 // neither binder rebinds `name` (the `nil` body always descends).
-                if head != self.name && tail != self.name {
+                if self.shadowed != Some(NameRef::from(head.as_str()))
+                    && self.shadowed != Some(NameRef::from(tail.as_str()))
+                {
                     self.work.push(Task::DescendComp(cons.as_ref()));
                 }
             },
@@ -257,7 +449,9 @@ impl<'src> Subst<'src>
             } => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendValue(scrut.as_ref()));
-                if fst_name != self.name && snd_name != self.name {
+                if self.shadowed != Some(NameRef::from(fst_name.as_str()))
+                    && self.shadowed != Some(NameRef::from(snd_name.as_str()))
+                {
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
             },
@@ -267,7 +461,7 @@ impl<'src> Subst<'src>
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendValue(scrut.as_ref()));
                 for arm in arms {
-                    if arm.0 != self.name {
+                    if self.shadowed != Some(NameRef::from(arm.0.as_str())) {
                         self.work.push(Task::DescendComp(arm.1.as_ref()));
                     }
                 }
@@ -295,13 +489,15 @@ impl<'src> Subst<'src>
             } => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendComp(scrutinee.as_ref()));
-                if ret_var != self.name {
+                if self.shadowed != Some(NameRef::from(ret_var.as_str())) {
                     self.work.push(Task::DescendComp(ret_body.as_ref()));
                 }
                 // Each clause body is under its own payload / resume binders;
                 // descend only the clauses neither rebinds `name`, in order.
                 for clause in ops {
-                    if clause.payload != self.name && clause.resume != self.name {
+                    if self.shadowed != Some(NameRef::from(clause.payload.as_str()))
+                        && self.shadowed != Some(NameRef::from(clause.resume.as_str()))
+                    {
                         self.work.push(Task::DescendComp(clause.body.as_ref()));
                     }
                 }
@@ -316,7 +512,7 @@ impl<'src> Subst<'src>
                 self.work.push(Task::DescendComp(body.as_ref()));
             },
             | Comp::Shift(ref k, ref body) => {
-                if k == self.name {
+                if self.shadowed == Some(NameRef::from(k.as_str())) {
                     self.comps.push(comp.clone());
                 }
                 else {
@@ -324,7 +520,21 @@ impl<'src> Subst<'src>
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
             },
-            | Comp::Hole(_) => self.comps.push(comp.clone()),
+            // The computation-sorted half of the hole rule, with the same
+            // survivor report as its value-sorted twin.
+            | Comp::Hole(hole) => {
+                let solution = match self.rule {
+                    | Rule::Holes(solutions) => solutions.comp(HoleId::from(hole)),
+                    | Rule::Variable(_) => None,
+                };
+                match solution {
+                    | Some(term) => self.comps.push(term.as_ref().clone()),
+                    | None => {
+                        self.residual = HoleOccurrence::from(true);
+                        self.comps.push(comp.clone());
+                    },
+                }
+            },
             // A native builtin carries its accumulated argument values (closed in
             // a closed program, and empty in a source term) — descend into each
             // so substitution stays total (ADR-42); the opaque `prim` is
@@ -347,7 +557,7 @@ impl<'src> Subst<'src>
             } => {
                 self.work.push(Task::CombineComp(comp));
                 self.work.push(Task::DescendValue(scrut.as_ref()));
-                if base.x != self.name {
+                if self.shadowed != Some(NameRef::from(base.x.as_str())) {
                     self.work.push(Task::DescendComp(base.body.as_ref()));
                 }
             },
@@ -390,7 +600,7 @@ impl<'src> Subst<'src>
             | Comp::Ret(_) => Comp::Ret(Rc::new(self.take_value())),
             | Comp::Bind(_, ref binder, ref body) => {
                 let bound = self.take_comp();
-                let body_sub = if binder == self.name {
+                let body_sub = if self.shadowed == Some(NameRef::from(binder.as_str())) {
                     Rc::clone(body)
                 }
                 else {
@@ -401,13 +611,13 @@ impl<'src> Subst<'src>
             | Comp::Force(_) => Comp::Force(Rc::new(self.take_value())),
             | Comp::Case(_, ref arm_fst, ref arm_snd) => {
                 let scrut = self.take_value();
-                let fst_body = if arm_fst.0 == self.name {
+                let fst_body = if self.shadowed == Some(NameRef::from(arm_fst.0.as_str())) {
                     Rc::clone(&arm_fst.1)
                 }
                 else {
                     Rc::new(self.take_comp())
                 };
-                let snd_body = if arm_snd.0 == self.name {
+                let snd_body = if self.shadowed == Some(NameRef::from(arm_snd.0.as_str())) {
                     Rc::clone(&arm_snd.1)
                 }
                 else {
@@ -427,7 +637,9 @@ impl<'src> Subst<'src>
             } => {
                 let scrut = self.take_value();
                 let nil = self.take_comp();
-                let cons_sub = if head == self.name || tail == self.name {
+                let cons_sub = if self.shadowed == Some(NameRef::from(head.as_str()))
+                    || self.shadowed == Some(NameRef::from(tail.as_str()))
+                {
                     Rc::clone(cons)
                 }
                 else {
@@ -452,7 +664,9 @@ impl<'src> Subst<'src>
                 ..
             } => {
                 let scrut = self.take_value();
-                let body_sub = if fst_name == self.name || snd_name == self.name {
+                let body_sub = if self.shadowed == Some(NameRef::from(fst_name.as_str()))
+                    || self.shadowed == Some(NameRef::from(snd_name.as_str()))
+                {
                     Rc::clone(body)
                 }
                 else {
@@ -470,7 +684,7 @@ impl<'src> Subst<'src>
                 let scrut = self.take_value();
                 let mut arms_sub = Vec::with_capacity(arms.len());
                 for arm in arms {
-                    if arm.0 == self.name {
+                    if self.shadowed == Some(NameRef::from(arm.0.as_str())) {
                         arms_sub.push((arm.0.clone(), Rc::clone(&arm.1)));
                     }
                     else {
@@ -501,7 +715,7 @@ impl<'src> Subst<'src>
                 ..
             } => {
                 let scrutinee = self.take_comp();
-                let ret_sub = if ret_var == self.name {
+                let ret_sub = if self.shadowed == Some(NameRef::from(ret_var.as_str())) {
                     Rc::clone(ret_body)
                 }
                 else {
@@ -509,7 +723,9 @@ impl<'src> Subst<'src>
                 };
                 let mut ops_sub = Vec::with_capacity(ops.len());
                 for clause in ops {
-                    if clause.payload == self.name || clause.resume == self.name {
+                    if self.shadowed == Some(NameRef::from(clause.payload.as_str()))
+                        || self.shadowed == Some(NameRef::from(clause.resume.as_str()))
+                    {
                         ops_sub.push(clause.clone());
                     }
                     else {
@@ -551,7 +767,7 @@ impl<'src> Subst<'src>
                 ..
             } => {
                 let scrut = self.take_value();
-                let base_body = if base.x == self.name {
+                let base_body = if self.shadowed == Some(NameRef::from(base.x.as_str())) {
                     Rc::clone(&base.body)
                 }
                 else {
@@ -600,15 +816,31 @@ impl<'src> Subst<'src>
     {
         match *value {
             | Value::Var(ref var) => {
-                let substituted = if var == self.name {
-                    self.repl.clone()
-                }
-                else {
-                    value.clone()
+                let substituted = match self.rule {
+                    | Rule::Variable(repl) if self.shadowed == Some(NameRef::from(var.as_str())) => {
+                        repl.clone()
+                    },
+                    | Rule::Variable(_) | Rule::Holes(_) => value.clone(),
                 };
                 self.values.push(substituted);
             },
-            | Value::Unit | Value::Int(_) | Value::Str(_) | Value::Num(_) | Value::Hole(_) => {
+            // The value-sorted half of the hole rule. An unsolved hole is
+            // rebuilt and recorded, because a survivor is what makes a later
+            // conversion verdict vacuous rather than conclusive.
+            | Value::Hole(hole) => {
+                let solution = match self.rule {
+                    | Rule::Holes(solutions) => solutions.value(HoleId::from(hole)),
+                    | Rule::Variable(_) => None,
+                };
+                match solution {
+                    | Some(term) => self.values.push(term.as_ref().clone()),
+                    | None => {
+                        self.residual = HoleOccurrence::from(true);
+                        self.values.push(value.clone());
+                    },
+                }
+            },
+            | Value::Unit | Value::Int(_) | Value::Str(_) | Value::Num(_) => {
                 self.values.push(value.clone());
             },
             | Value::Pair(ref fst, ref snd) => {
@@ -745,7 +977,7 @@ impl<'src> Subst<'src>
             },
             | Stack::Bind(ref binder, ref body, ref rest) => {
                 self.work.push(Task::CombineStack(stack));
-                if binder != self.name {
+                if self.shadowed != Some(NameRef::from(binder.as_str())) {
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
                 self.work.push(Task::DescendStack(rest.as_ref()));
@@ -772,7 +1004,7 @@ impl<'src> Subst<'src>
                 Stack::Arg(Rc::new(value), Rc::new(rest))
             },
             | Stack::Bind(ref binder, ref body, _) => {
-                let body_sub = if binder == self.name {
+                let body_sub = if self.shadowed == Some(NameRef::from(binder.as_str())) {
                     Rc::clone(body)
                 }
                 else {

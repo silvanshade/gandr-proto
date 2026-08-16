@@ -348,6 +348,42 @@ copy_wrapper!(
     "Remaining unfolding steps a conversion or readback run may spend."
 );
 copy_wrapper!(
+    ConstraintCount,
+    usize,
+    "Number of equations posed against a unification problem."
+);
+copy_wrapper!(
+    ConstraintIndex,
+    usize,
+    "Position of one equation in the unification problem that posed it."
+);
+copy_wrapper!(
+    EscapeStatus,
+    bool,
+    "Whether a candidate solution mentions a variable outside the scope it may depend on."
+);
+copy_wrapper!(
+    MetaFreedom,
+    bool,
+    "Whether a unification constraint mentions no hole at all."
+);
+copy_wrapper!(
+    MetaStatus,
+    bool,
+    "Whether a hole has been nominated as a unification metavariable."
+);
+copy_wrapper!(
+    OpaqueOccurrence,
+    bool,
+    "Whether a scanned term reaches syntax the scanner treats as opaque."
+);
+copy_wrapper!(
+    SolverBudget,
+    u32,
+    "Steps a solver-machine run may spend before it postpones what is left."
+);
+copy_wrapper!(SolverSteps, u32, "Steps a solver-machine run spent.");
+copy_wrapper!(
     DefinitionCount,
     usize,
     "Number of definitions visible in a definitional environment."

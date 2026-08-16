@@ -34,6 +34,14 @@
 //!   unparseable/unsupported regions to holes and the checker accepts every
 //!   editor state.
 //!
+//! Unification rides on the same conversion engine rather than beside it:
+//! [`unify`] is a solver-machine service over the terms this crate already
+//! defines, with metavariables nominated among existing holes so no syntactic
+//! former is added and the checker/machine agreement above is inherited rather
+//! than re-established. Its answers are certificates a caller re-checks by
+//! substituting and asking [`nbe::conv`], which is what pins its equational
+//! theory to the checker's own.
+//!
 //! Incremental re-typing rides on this crate rather than living in it:
 //! `gandr-core-incremental` carries the parser-agnostic item seam, the
 //! dependency footprints, and the validated-resume checkpoint engine, and
@@ -71,6 +79,7 @@ pub mod subst;
 pub mod subtype;
 pub mod syntax;
 pub mod types;
+pub mod unify;
 
 #[cfg(any(test, feature = "gandr_test_strategies"))]
 pub mod strategies;

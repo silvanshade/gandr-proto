@@ -108,9 +108,41 @@ impl QuoteMode
 /// parses, so a generated binder can never collide with a source name.
 #[inline]
 #[must_use]
-fn level_name(level: VariableLevel) -> String
+pub(crate) fn level_name(level: VariableLevel) -> String
 {
     format!("\u{ab}{}\u{bb}", u32::from(level))
+}
+
+/// Reads a generated binder name back to the level it renders, or `None` for
+/// any other name.
+///
+/// The inverse of [`level_name`], kept beside it so the two halves of one
+/// naming convention cannot drift. The scope check in [`crate::unify`] is what
+/// needs the inverse: it has to tell a variable the solver itself opened from
+/// an ordinary source name, and a solver holding its own copy of the format
+/// string would keep working while this one changed.
+///
+/// # Contract
+/// - ensures: `parse_level_name(level_name(level))` is `Some(level)` for every
+///   level, and the result is `None` for every name [`level_name`] cannot
+///   produce — including a bracketed name whose body is not a `u32`.
+/// - provides: the level-versus-source-name discrimination the escape check
+///   rests on.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the round trip on an ordinary level and on zero, plus
+///   four rejections separated pointwise: a source name, an unbracketed number,
+///   a half-bracketed name, and a bracketed non-number.
+/// - witness: `nbe::tests::a_level_name_round_trips_through_its_parser`
+/// - witness: `nbe::tests::a_parser_rejects_every_name_readback_cannot_produce`
+#[inline]
+#[must_use]
+pub(crate) fn parse_level_name(name: crate::boundary::NameRef<'_>) -> Option<VariableLevel>
+{
+    let name = <&str>::from(name);
+    let body = name.strip_prefix('\u{ab}')?.strip_suffix('\u{bb}')?;
+    body.parse::<u32>().ok().map(VariableLevel::from)
 }
 
 /// Allocates one value node in the syntax store.

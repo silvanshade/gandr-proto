@@ -309,6 +309,20 @@ impl Normalizer
         self.fuel = fuel;
     }
 
+    /// The level [`Self::fresh_level`] will draw next, without drawing it.
+    ///
+    /// A caller that must later tell **its own** opened variables from the
+    /// binders a readback introduced reads this as a watermark before quoting:
+    /// every level readback mints is at or above it, and every level the caller
+    /// opened is below it. That is the discrimination the unifier's scope check
+    /// rests on ([`crate::unify`]).
+    #[inline]
+    #[must_use]
+    pub fn next_level(&self) -> VariableLevel
+    {
+        VariableLevel::from(self.next_level)
+    }
+
     /// Draws the next fresh de Bruijn level.
     ///
     /// # Contract
@@ -2412,6 +2426,47 @@ mod tests
         assert!(bool::from(
             crate::nbe::conv::converts_values(&mut nbe, left, right).unwrap()
         ));
+    }
+
+    #[test]
+    fn a_level_name_round_trips_through_its_parser()
+    {
+        for raw in [0_u32, 1, 7, u32::MAX] {
+            let level = VariableLevel::from(raw);
+            let rendered = crate::nbe::quote::level_name(level);
+            assert_eq!(
+                crate::nbe::quote::parse_level_name(NameRef::from(rendered.as_str())),
+                Some(level)
+            );
+        }
+    }
+
+    #[test]
+    fn a_parser_rejects_every_name_readback_cannot_produce()
+    {
+        for raw in [
+            "x",
+            "3",
+            "\u{ab}3",
+            "3\u{bb}",
+            "\u{ab}x\u{bb}",
+            "\u{ab}\u{bb}",
+        ] {
+            assert_eq!(
+                crate::nbe::quote::parse_level_name(NameRef::from(raw)),
+                None,
+                "{raw} must not parse as a generated binder name"
+            );
+        }
+    }
+
+    #[test]
+    fn the_next_level_watermark_is_the_level_a_draw_would_return()
+    {
+        let mut nbe = Normalizer::new();
+        let watermark = nbe.next_level();
+        assert_eq!(nbe.fresh_level(), watermark);
+        assert_ne!(nbe.next_level(), watermark);
     }
 
     #[test]
