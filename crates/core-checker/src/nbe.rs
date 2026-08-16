@@ -536,6 +536,16 @@ impl Normalizer
     ///   exhausted.
     /// - panics: none.
     ///
+    /// # Adequacy
+    /// - hypothesis: L3 for the ownership half of the crossing, separated by
+    ///   direction — a deep sequencing chain, whose closures are what an
+    ///   earlier shape retained, and a deep pair chain, whose normal form is as
+    ///   deep as its input. Each releases the caller's term while the
+    ///   normalizer and its live run are still up, and then observes through a
+    ///   weak handle that nothing here kept it.
+    /// - witness: `nbe::tests::a_deep_bind_chain_teardown_is_order_independent`
+    /// - witness: `nbe::tests::a_deep_pair_chain_teardown_is_order_independent`
+    ///
     /// # Errors
     ///
     /// Returns [`SemError::SyntaxStore`] when lowering fails.
@@ -863,6 +873,59 @@ mod tests
 
     // ── ownership: the arena holds handles, never terms ─────────────────────
 
+    /// The nesting depth the deep-term witnesses below build.
+    ///
+    /// Ten thousand links is far past what an engine recursing on term depth
+    /// survives. It is **not** chosen as a stack-overflow threshold, and the
+    /// two order-independence witnesses do not rest on one: the depth at which
+    /// the abstract syntax tree's derived `Drop` overflows is shape- and
+    /// build-dependent — the machine's own deep-chain test measured a hundred
+    /// thousand `bind` links aborting and roughly fifty thousand surviving on
+    /// an 8 MiB thread stack — so a test that could fail only by aborting
+    /// would be pinning the host stack rather than the engine. Those two
+    /// observe ownership directly instead, through a weak handle that must be
+    /// dead once the caller has released its term, and that discriminates at
+    /// any depth.
+    ///
+    /// Measured, by reintroducing the retention this design removed — a strong
+    /// clone of the caller's term surviving the conversion entry — both
+    /// order-independence witnesses fail, while the two survival tests above
+    /// keep passing. That asymmetry is why the survival tests alone were not
+    /// enough to hold the invariant.
+    const TEARDOWN_DEPTH: u32 = 10_000;
+
+    /// A thunk over a [`TEARDOWN_DEPTH`]-deep sequencing chain.
+    ///
+    /// The chain nests through the continuation, so evaluation builds one
+    /// closure and one environment frame per level: this is the direction that
+    /// exercises what a closure holds.
+    fn deep_bind_thunk() -> Rc<Value>
+    {
+        let mut body = Comp::ret(Value::Int(0));
+        for index in 0 .. TEARDOWN_DEPTH {
+            let name = alloc::format!("v{index}");
+            body = Comp::bind(Comp::ret(Value::Int(1)), name.as_str(), body);
+        }
+        thunk(body)
+    }
+
+    /// A [`TEARDOWN_DEPTH`]-deep left-nested pair chain.
+    ///
+    /// Nothing in it reduces, so its normal form is as deep as it is: this is
+    /// the direction that puts a deep representative in **both** interner
+    /// faces and a deep value in the semantic arena.
+    fn deep_pair_chain() -> Rc<Value>
+    {
+        let mut term = int(IntegerLiteral::from(0_i64));
+        for _ in 0 .. TEARDOWN_DEPTH {
+            term = Rc::new(Value::Pair(
+                Rc::clone(&term),
+                int(IntegerLiteral::from(1_i64)),
+            ));
+        }
+        term
+    }
+
     #[test]
     fn a_deep_term_survives_its_input_syntax_being_dropped_first()
     {
@@ -872,12 +935,7 @@ mod tests
         // semantic arena owns that term, so this is an ordinary drop; the
         // earlier shape — a reference-counted term face — freed the chain
         // recursively here and aborted the process.
-        let mut body = Comp::ret(Value::Int(0));
-        for index in 0 .. 10_000_u32 {
-            let name = alloc::format!("v{index}");
-            body = Comp::bind(Comp::ret(Value::Int(1)), name.as_str(), body);
-        }
-        let term = thunk(body);
+        let term = deep_bind_thunk();
         let lowered = lower(&mut nbe, &term);
         release_binds(term);
         // The engine still works from its own handles after the input is gone.
@@ -894,13 +952,7 @@ mod tests
     fn a_deeply_nested_value_survives_its_input_syntax_being_dropped_first()
     {
         let mut nbe = Normalizer::new();
-        let mut term = int(IntegerLiteral::from(0_i64));
-        for _ in 0 .. 10_000_u32 {
-            term = Rc::new(Value::Pair(
-                Rc::clone(&term),
-                int(IntegerLiteral::from(1_i64)),
-            ));
-        }
+        let term = deep_pair_chain();
         let lowered = lower(&mut nbe, &term);
         let expected = canonical_key(nbe.syntax(), lowered);
         // Input released first, with no ordering care taken: the store owns its
@@ -914,12 +966,120 @@ mod tests
         drop(nbe);
     }
 
+    #[test]
+    fn a_deep_bind_chain_teardown_is_order_independent()
+    {
+        // Order one, the adversarial one: the caller drops its input FIRST,
+        // while the normalizer, its arena, and the run's result are all still
+        // live, and the normalizer goes second with no ordering care taken.
+        let mut nbe = Normalizer::new();
+        let term = deep_bind_thunk();
+        // Weak handles on the two things the pre-flat arena retained: the
+        // caller's thunk, cloned into a term face at every evaluated node, and
+        // the thunk's body, cloned into the closure the thunk evaluates to.
+        // Both must be dead the moment the caller releases the term, because
+        // an engine holding either one frees a ten-thousand-link chain
+        // recursively when *it* drops.
+        let held_body = {
+            let Value::Thunk(_, ref body) = *term
+            else {
+                panic!("the deep witness must be built as a thunk");
+            };
+            Rc::downgrade(body)
+        };
+        let held_term = Rc::downgrade(&term);
+        // Every public face the caller's term crosses: the node entry, which
+        // interns a normal form into the readback face; the conversion entry,
+        // which is the one that takes the reference-counted term itself; and
+        // the raw evaluate-then-read-back path. The last one matters most —
+        // the two entries truncate their own run behind them, so only this
+        // path leaves the run's semantic nodes ALIVE across the release below,
+        // which is the state a retaining arena is caught in.
+        let normal = nbe.normalize_node(&term).unwrap();
+        let expected = canonical_key(nbe.syntax(), normal);
+        assert!(bool::from(nbe.converts(&term, &term)));
+        let lowered = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        release_binds(term);
+        assert!(
+            held_term.upgrade().is_none(),
+            "the normalizer retained the caller's term, so its own teardown \
+             recurses through it and the release order matters"
+        );
+        assert!(
+            held_body.upgrade().is_none(),
+            "a closure retained the caller's computation, so closure teardown \
+             recurses through it and the release order matters"
+        );
+        // Both results still resolve with the input gone.
+        assert_eq!(canonical_key(nbe.syntax(), normal), expected);
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        drop(nbe);
+
+        // Order two: the normalizer goes first, its live run and all, with the
+        // caller's term still held; the input is released after it. Both
+        // orders must complete and both must agree on the answer.
+        let mut nbe = Normalizer::new();
+        let term = deep_bind_thunk();
+        let lowered = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        drop(nbe);
+        release_binds(term);
+    }
+
+    #[test]
+    fn a_deep_pair_chain_teardown_is_order_independent()
+    {
+        // The value direction of the same property. Nothing here reduces, so
+        // the normal form is as deep as the input and each interner face ends
+        // up holding a ten-thousand-link representative of its own.
+        let mut nbe = Normalizer::new();
+        let term = deep_pair_chain();
+        let held_term = Rc::downgrade(&term);
+        let normal = nbe.normalize_node(&term).unwrap();
+        let expected = canonical_key(nbe.syntax(), normal);
+        assert!(bool::from(nbe.converts(&term, &term)));
+        let lowered = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        release_pairs(term);
+        assert!(
+            held_term.upgrade().is_none(),
+            "the normalizer retained the caller's term, so its own teardown \
+             recurses through it and the release order matters"
+        );
+        // One deep representative per face, and the input face's is the node
+        // the caller's released term was copied into rather than the term.
+        assert_eq!(usize::from(nbe.interner().len(Face::ElaborationInput)), 1);
+        assert_eq!(usize::from(nbe.interner().len(Face::ReadbackNormalForm)), 1);
+        assert_eq!(canonical_key(nbe.syntax(), normal), expected);
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        drop(nbe);
+
+        // The opposite order, as above.
+        let mut nbe = Normalizer::new();
+        let term = deep_pair_chain();
+        let lowered = lower(&mut nbe, &term);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, lowered).unwrap();
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert_eq!(canonical_key(nbe.syntax(), quoted), expected);
+        drop(nbe);
+        release_pairs(term);
+    }
+
     /// Releases a deep sequencing chain one level at a time.
     ///
     /// This releases the **caller's** term, not the normalizer's: the abstract
     /// syntax tree's derived `Drop` recurses one call per reference-counted
-    /// link, which is the tree's own standing constraint. The point of the two
-    /// witnesses above is that the normalizer no longer participates in it.
+    /// link, which is the tree's own standing constraint. The point of the
+    /// witnesses above is that the normalizer no longer participates in it —
+    /// which is why they release through here and then observe, through a weak
+    /// handle, that the release actually freed the chain.
     fn release_binds(term: Rc<Value>)
     {
         let Some(Value::Thunk(_, mut body)) = Rc::into_inner(term)

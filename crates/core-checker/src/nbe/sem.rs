@@ -57,6 +57,15 @@
 //! was. A handle cannot be held that way — dropping the caller's syntax first
 //! changes nothing here, because nothing here ever owned it.
 //!
+//! Two witnesses hold that claim, one per direction, and neither reads source
+//! text: `nbe::tests::a_deep_bind_chain_teardown_is_order_independent` and
+//! `nbe::tests::a_deep_pair_chain_teardown_is_order_independent` each build a
+//! ten-thousand-link term, run it through every public face, release the
+//! caller's term **first**, and then observe through a weak handle that the
+//! release actually freed the chain — which is what distinguishes a flat arena
+//! from one whose symptom was merely ordered away. Both then drop the
+//! normalizer with its run still live, and both repeat the opposite order.
+//!
 //! [`intern`]: crate::nbe::intern
 //! [`FlatArena`]: crate::syntax::FlatArena
 
