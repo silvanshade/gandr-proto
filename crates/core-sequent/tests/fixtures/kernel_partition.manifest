@@ -1,7 +1,7 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 194
-; corpus-fixtures-b3sum: ddba82c7eb3f8b29d6df4fff543ec48aec8e73d8d9961c9914cdf0c33a56ee53
+; items: 203
+; corpus-fixtures-b3sum: e46189cb40783ec6ae952126f63b9487ba77492f01f600fde2ad0d07018d895e
 ; class declared-data: 8
 ; class effects-control: 11
 ; class eligible: 23
@@ -10,7 +10,7 @@
 ; class machine-numeric: 2
 ; class native: 7
 ; class not-typeable: 3
-; class open-free-name: 72
+; class open-free-name: 81
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -95,6 +95,14 @@ model/30-packages.gandr	4	open-free-name
 model/attributes/doc-and-deprecated.gandr	0	open-free-name
 model/attributes/module-metadata.gandr	0	eligible
 model/attributes/query-via-report.gandr	0	eligible
+model/builtins/simple-builtins.gandr	0	open-free-name
+model/builtins/simple-builtins.gandr	1	open-free-name
+model/builtins/simple-builtins.gandr	2	open-free-name
+model/builtins/simple-builtins.gandr	3	open-free-name
+model/builtins/simple-builtins.gandr	4	open-free-name
+model/builtins/simple-builtins.gandr	5	open-free-name
+model/builtins/simple-builtins.gandr	6	open-free-name
+model/builtins/simple-builtins.gandr	7	open-free-name
 model/codata/codata-observations.gandr	0	structural-stock
 model/codata/codata-observations.gandr	1	structural-stock
 model/codata/codata-parameterized.gandr	0	structural-stock
@@ -137,6 +145,7 @@ pathological/attributes/effectful-payload.gandr	0	eligible
 pathological/attributes/ill-typed-payload.gandr	0	eligible
 pathological/attributes/missing-payload.gandr	0	eligible
 pathological/attributes/unknown-attribute.gandr	0	eligible
+pathological/builtins/int-division-by-zero.gandr	0	open-free-name
 pathological/codata/missing-observation.gandr	0	structural-stock
 pathological/data/absurd-empty-match.gandr	0	declared-data
 pathological/data/field-type-mismatch.gandr	0	declared-data

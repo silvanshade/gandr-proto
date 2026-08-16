@@ -416,6 +416,220 @@ mod tests
         );
     }
 
+    // ─────────────── band-01-rung-07: division, negation, read-side builtins
+
+    /// Truncating integer division rounds toward zero (`div 7 2 -> 3`, `div
+    /// -7 2 -> -3`); same-tag sized atoms divide within their own tag.
+    #[test]
+    fn native_integer_division_truncates_toward_zero()
+    {
+        assert_eq!(
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::int(7),
+                Value::int(2)
+            )),
+            Eval::Value(Comp::ret(Value::int(3)))
+        );
+        assert_eq!(
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::int(-7),
+                Value::int(2)
+            )),
+            Eval::Value(Comp::ret(Value::int(-3))),
+            "truncation rounds toward zero"
+        );
+        assert_eq!(
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::u32(7_u32),
+                Value::u32(2_u32)
+            )),
+            Eval::Value(Comp::ret(Value::u32(3_u32))),
+            "same-tag sized atoms keep their tag"
+        );
+    }
+
+    /// A zero divisor, the overflowing `MIN / -1`, mixed numeric tags, and —
+    /// by the rung-07 scope ruling — float operands all degrade to the
+    /// gradual hole.
+    #[test]
+    fn native_division_failures_blame_via_hole()
+    {
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::int(1),
+                Value::int(0)
+            )),
+            "a zero divisor is a gradual failure"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::int(i64::MIN),
+                Value::int(-1)
+            )),
+            "the MIN / -1 overflow is a gradual failure"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::int(1),
+                Value::u32(1_u32)
+            )),
+            "mixed numeric tags are a gradual failure"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            machine::run_comp(&native_binary(
+                NativePrim::Div,
+                Value::f32(1.5_f32),
+                Value::f32(0.5_f32)
+            )),
+            "float operands stay out of this primitive (the rung-07 ruling)"
+        );
+    }
+
+    /// Truncating remainder keeps the dividend's sign (`mod -7 2 -> -1`) and
+    /// refuses a zero divisor exactly as division does.
+    #[test]
+    fn native_integer_remainder_keeps_the_dividend_sign()
+    {
+        assert_eq!(
+            machine::run_comp(&native_binary(
+                NativePrim::Mod,
+                Value::int(7),
+                Value::int(2)
+            )),
+            Eval::Value(Comp::ret(Value::int(1)))
+        );
+        assert_eq!(
+            machine::run_comp(&native_binary(
+                NativePrim::Mod,
+                Value::int(-7),
+                Value::int(2)
+            )),
+            Eval::Value(Comp::ret(Value::int(-1))),
+            "the remainder takes the dividend's sign"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            machine::run_comp(&native_binary(
+                NativePrim::Mod,
+                Value::int(1),
+                Value::int(0)
+            )),
+            "a zero divisor is a gradual failure"
+        );
+    }
+
+    /// Boolean negation flips the canonical carrier both ways; a non-boolean
+    /// argument degrades to the gradual hole.
+    #[test]
+    fn native_boolean_not_negates_and_blames_non_booleans()
+    {
+        assert_eq!(
+            run(NativePrim::Not, vec![boolean((true).into())]),
+            Eval::Value(Comp::ret(boolean((false).into())))
+        );
+        assert_eq!(
+            run(NativePrim::Not, vec![boolean((false).into())]),
+            Eval::Value(Comp::ret(boolean((true).into())))
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            run(NativePrim::Not, vec![Value::int(1)]),
+            "a non-boolean is a gradual failure"
+        );
+    }
+
+    /// `list.length` counts elements (`0` for the empty list); a non-list
+    /// subject degrades to the gradual hole.
+    #[test]
+    fn native_list_length_counts_elements()
+    {
+        assert_eq!(
+            run(NativePrim::ListLength, vec![ints((&[1, 2, 3]).into())]),
+            Eval::Value(Comp::ret(Value::int(3)))
+        );
+        assert_eq!(
+            run(NativePrim::ListLength, vec![ints((&[]).into())]),
+            Eval::Value(Comp::ret(Value::int(0))),
+            "the empty list has length zero"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            run(NativePrim::ListLength, vec![Value::int(1)]),
+            "a non-list subject is a gradual failure"
+        );
+    }
+
+    /// `list.get` reads an `Optional`: in range `Some`, out of range or a
+    /// negative index `None`; a non-list subject or non-integer index
+    /// degrades to the gradual hole.
+    #[test]
+    fn native_list_at_reads_an_optional()
+    {
+        let list = ints((&[10, 20, 30]).into());
+        assert_eq!(
+            run(NativePrim::ListAt, vec![list.clone(), Value::int(1)]),
+            Eval::Value(Comp::ret(some(Value::int(20))))
+        );
+        assert_eq!(
+            run(NativePrim::ListAt, vec![list.clone(), Value::int(3)]),
+            Eval::Value(Comp::ret(none())),
+            "an out-of-range index is None, not a hole"
+        );
+        assert_eq!(
+            run(NativePrim::ListAt, vec![list.clone(), Value::int(-1)]),
+            Eval::Value(Comp::ret(none())),
+            "a negative index names no position: None"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            run(NativePrim::ListAt, vec![Value::int(1), Value::int(0)]),
+            "a non-list subject is a gradual failure"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            run(NativePrim::ListAt, vec![list, Value::string("1")]),
+            "a non-integer index is a gradual failure"
+        );
+    }
+
+    /// `string.append` concatenates; `string.length` counts Unicode scalar
+    /// values (`"héllo"` is 5 scalars, 6 bytes). Wrong shapes degrade to the
+    /// gradual hole.
+    #[test]
+    fn native_string_append_and_length_build_and_measure()
+    {
+        assert_eq!(
+            run(NativePrim::StringAppend, vec![
+                Value::string("types are "),
+                Value::string("machines")
+            ]),
+            Eval::Value(Comp::ret(Value::string("types are machines")))
+        );
+        assert_eq!(
+            run(NativePrim::StringLength, vec![Value::string("héllo")]),
+            Eval::Value(Comp::ret(Value::int(5))),
+            "length counts scalar values, not bytes"
+        );
+        assert_eq!(
+            Eval::Blame(Blame::Hole),
+            run(NativePrim::StringAppend, vec![
+                Value::string("a"),
+                Value::int(1)
+            ]),
+            "a non-string operand is a gradual failure"
+        );
+    }
+
     /// `each inc [1,2,3] -> [2,3,4]`; the empty and singleton lists are the
     /// unroll's base and one-step cases.
     #[test]

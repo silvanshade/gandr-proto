@@ -1,0 +1,9 @@
+// A zero divisor is a DEFINED failure, not a panic: `int.div` and `int.mod`
+// are total builtins, so the impossible division evaluates to a gradual
+// hole, which the machine reports as `Blame::Hole` -- the same discipline
+// list-update-out-of-bounds pins for the update ops. The overflowing
+// `MIN / -1` blames identically (checked arithmetic, never a wrap).
+int.div(1, 0)
+
+// The harness checks:
+//@ expect-blame: hole

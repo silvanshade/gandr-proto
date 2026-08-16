@@ -572,7 +572,7 @@ fn a_sign_block_may_be_named_with_a_primitive_type_spelling() -> Result<(), Box<
 /// program to a globally-consistent **zero-obligation** reading — zero
 /// total obligations, no named residual.
 ///
-/// The model + pathological trees hold at **100 / 100** clean. The parse-gated
+/// The model + pathological trees hold at **114 / 114** clean. The parse-gated
 /// surface tree is cardinality-open but must remain non-empty and wholly clean.
 /// A regressed fixed-tree count drives a defect fix, never a re-pin.
 #[test]
@@ -583,10 +583,9 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let files = gandr_files(&examples);
     assert!(files.len() >= 50, "corpus is populated ({})", files.len());
 
-    // Per-tree accounting: model + pathological hold at 100 / 100 clean (the
-    // 99 of the nested-generator-block corpus plus the repeated-port decline
-    // golden gandr-ng9.14 adds under `circuit/`), and the
-    // surface tree must be non-empty and clean — the single gate spans all
+    // Per-tree accounting: model + pathological hold at 114 / 114 clean — 53
+    // files under `model/` and 61 under `pathological/`, counted by path — and
+    // the surface tree must be non-empty and clean; the single gate spans all
     // three trees.
     let mut clean = 0_usize;
     let mut total = 0_usize;
@@ -643,16 +642,16 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     );
     assert_eq!(clean, files.len(), "clean accounts for the whole corpus");
     assert_eq!(0, total, "the corpus carries zero total obligations");
-    // Model + pathological at 100 / 100 (54 base examples including the M1-lite
+    // Model + pathological at 114 / 114 (54 base examples including the M1-lite
     // module model + the three codata-MVP examples under `codata/` + the seven
     // supporting inspection examples under `sequent/` and `desc/` — the fifth
     // is the description → cell-store model witness, the sixth its
     // pathological many-out counterpart, and the seventh the linearity-refusal
     // pathological witness — + the six identity examples under
     // `identity/` — five model, one pathological K-rejection witness — +
-    // thirteen declared-data examples under `data/` — five model and eight
-    // pathological, the nested generator block's two retirement-decline
-    // goldens included — + the item-level data member's retirement golden
+    // twelve declared-data examples under `data/` — five model and seven
+    // pathological, the nested generator block's constructor-block retirement
+    // golden included — + the item-level data member's retirement golden
     // under `desc/` + eight module failure goldens + the type-associativity
     // pathological witness + the shell host-escape non-String failure witness
     // + the seven circuit examples under `circuit/` — the ruled rule-block
@@ -670,15 +669,22 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // abstract type component sealing has not reached, the reordered signature,
     // the declaration that takes a prelude name, and the binder that collides
     // with a host module without shadowing it.
+    // The two rung-07 simple-builtins examples under `builtins/` cover
+    // `bool.not` / `int.div` / `int.mod` / `list.length` / `list.get` /
+    // `string.append` / `string.length` and the zero-divisor blame golden.
+    // The base bucket is the forty-six top-level `model/` and `pathological/`
+    // programs this itemization does not name plus the eight attribute
+    // examples under `attributes/`.
     assert_eq!(
-        112, base_count,
-        "the model + pathological trees are 112 files (54 base + 3 codata + 7 inspection \
-         + 6 identity + 13 declared-data + 1 item-level retirement + 8 module pathologies \
-         + 7 module rung + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit)"
+        114, base_count,
+        "the model + pathological trees are 114 files (54 base + 3 codata + 7 inspection \
+         + 6 identity + 12 declared-data + 1 item-level retirement + 8 module pathologies \
+         + 7 module rung + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit \
+         + 2 builtins)"
     );
     assert_eq!(
-        112, base_clean,
-        "all 112 model + pathological files mold clean"
+        114, base_clean,
+        "all 114 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

@@ -7106,6 +7106,37 @@ mod native
     {
         CompType::arrow(integer(), CompType::returner(integer()))
     }
+
+    /// Rule Native⇑ for the band-01-rung-07 additions: each new primitive
+    /// infers its declared type, checker ≡ machine, and one application peels
+    /// exactly one arrow (`int.div 6 : Unknown → F Unknown`).
+    #[test]
+    fn rung07_primitives_infer_their_declared_types()
+    {
+        for prim in [
+            NativePrim::Div,
+            NativePrim::Mod,
+            NativePrim::Not,
+            NativePrim::ListLength,
+            NativePrim::ListAt,
+            NativePrim::StringAppend,
+            NativePrim::StringLength,
+        ] {
+            let inferred = agree_comp(&Ctx::new(), &Comp::native(prim), &Dir::Infer);
+            assert_eq!(
+                inferred,
+                Ok(Ty::Comp(prim.declared_type())),
+                "a source native infers its declared type (checker ≡ machine)"
+            );
+        }
+        let partial = Comp::app(Comp::native(NativePrim::Div), Value::int(6));
+        let expected = CompType::arrow(ValueType::Unknown, CompType::returner(ValueType::Unknown));
+        assert_eq!(
+            agree_comp(&base_ctx(), &partial, &Dir::Infer),
+            Ok(Ty::Comp(expected)),
+            "one consumed argument peels one arrow off the declared type"
+        );
+    }
 }
 
 /// The source-facing combinators (list iteration/update, record

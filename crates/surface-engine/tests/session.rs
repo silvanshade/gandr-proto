@@ -846,6 +846,159 @@ mod tests
             | _ => panic!("`string.escape(...)` should evaluate"),
         }
     }
+    /// The band-01-rung-07 simple builtins type-check and evaluate through the
+    /// full session seam (lower → link → check → run): boolean negation,
+    /// truncating integer division / remainder, the list read side, and
+    /// string construction.
+    #[test]
+    fn rung07_builtins_type_check_and_evaluate()
+    {
+        let mut session = Session::new();
+        match sole_outcome(&mut session, "bool.not(1 < 2)") {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    ty,
+                    Ty::Comp(CompType::returner(ValueType::sum(
+                        ValueType::Unit,
+                        ValueType::Unit
+                    ))),
+                    "`bool.not(...) : F (1 + 1)`"
+                );
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::inj2(Value::Unit))),
+                    "`bool.not(true)` is `false` (`Inr(())`)"
+                );
+            },
+            | other => panic!("`bool.not(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "int.div(7, 2)") {
+            | ItemOutcome::Expression { value, .. } => {
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::int(3))),
+                    "`int.div` truncates toward zero"
+                );
+            },
+            | other => panic!("`int.div(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "int.mod(-7, 2)") {
+            | ItemOutcome::Expression { value, .. } => {
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::int(-1))),
+                    "`int.mod` keeps the dividend's sign"
+                );
+            },
+            | other => panic!("`int.mod(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "list.length([1, 2, 3])") {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    ty,
+                    Ty::Comp(CompType::returner(ValueType::integer())),
+                    "`list.length(...) : F Integer`"
+                );
+                assert_eq!(value, Eval::Value(Comp::ret(Value::int(3))));
+            },
+            | other => panic!("`list.length(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "list.get([10, 20, 30], 1)") {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    ty,
+                    Ty::Comp(CompType::returner(ValueType::sum(
+                        ValueType::Unknown,
+                        ValueType::Unit
+                    ))),
+                    "`list.get(...) : F (? + 1)` — the `Optional` carrier `record.get` returns"
+                );
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::inj1(Value::int(20)))),
+                    "an in-range read is `Some 20`"
+                );
+            },
+            | other => panic!("`list.get(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "list.get([1], 5)") {
+            | ItemOutcome::Expression { value, .. } => {
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::inj2(Value::Unit))),
+                    "an out-of-range read is `None`, not a hole"
+                );
+            },
+            | other => panic!("`list.get(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "string.append(\"types are \", \"machines\")") {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    ty,
+                    Ty::Comp(CompType::returner(ValueType::string())),
+                    "`string.append(...) : F String`"
+                );
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::string("types are machines")))
+                );
+            },
+            | other => panic!("`string.append(...)` should evaluate; got {other:?}"),
+        }
+        match sole_outcome(&mut session, "string.length(\"héllo\")") {
+            | ItemOutcome::Expression { value, .. } => {
+                assert_eq!(
+                    value,
+                    Eval::Value(Comp::ret(Value::int(5))),
+                    "`string.length` counts Unicode scalar values, not bytes"
+                );
+            },
+            | other => panic!("`string.length(...)` should evaluate; got {other:?}"),
+        }
+    }
+    /// The rung-07 runtime failure mode is the established gradual-hole
+    /// blame: a zero divisor reaches evaluation (the operands type at
+    /// `Unknown`) and blames rather than panicking.
+    #[test]
+    fn rung07_builtin_failures_are_gradual_blame()
+    {
+        let mut session = Session::new();
+        for source in ["int.div(1, 0)", "int.mod(1, 0)"] {
+            match sole_outcome(&mut session, source) {
+                | ItemOutcome::Expression { value, .. } => {
+                    assert!(
+                        matches!(value, Eval::Blame(_)),
+                        "`{source}` blames a hole rather than panicking; got {value:?}"
+                    );
+                },
+                | other => panic!("`{source}` should type-check and run; got {other:?}"),
+            }
+        }
+    }
+    /// The wrong-shape calls on the precisely-typed rung-07 builtins never
+    /// reach evaluation: the checker refuses them statically (the gradually-
+    /// typed runtime holes are pinned at the machine level in
+    /// `gandr_core_sequent::conformance_soundness`).
+    #[test]
+    fn rung07_wrong_shape_calls_are_static_type_errors()
+    {
+        let mut session = Session::new();
+        for source in [
+            "bool.not(1)",
+            "list.length(1)",
+            "list.get([1], \"0\")",
+            "string.append(\"a\", 1)",
+            "string.length(1)",
+        ] {
+            assert!(
+                matches!(
+                    sole_outcome(&mut session, source),
+                    ItemOutcome::TypeError { .. }
+                ),
+                "`{source}` is a static type error, not a runtime failure"
+            );
+        }
+    }
     /// Regex builtins are exposed through module-qualified prelude names.
     #[cfg(feature = "regex")]
     #[test]

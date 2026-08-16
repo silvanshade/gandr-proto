@@ -806,6 +806,38 @@ mod tests
         assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
     }
 
+    /// The band-01-rung-07 native primitives round-trip through the checkpoint
+    /// codec: each appended tag (42–48) encodes and decodes back to its own
+    /// primitive.
+    #[test]
+    fn rung07_native_primitives_round_trip()
+    {
+        let items = [
+            NativePrim::Div,
+            NativePrim::Mod,
+            NativePrim::Not,
+            NativePrim::ListLength,
+            NativePrim::ListAt,
+            NativePrim::StringAppend,
+            NativePrim::StringLength,
+        ]
+        .into_iter()
+        .map(|prim| {
+            checkpoint_item(
+                Term::Comp(Comp::Native {
+                    prim,
+                    args: Vec::new(),
+                }),
+                None,
+                ItemTyping::Holey,
+            )
+        })
+        .collect();
+        let checkpoints = Checkpoints { items };
+        let bytes = encode_checkpoints(&checkpoints).unwrap();
+        assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
     #[test]
     fn checkpoint_decoder_rejects_truncation_corruption_and_trailing_bytes()
     {

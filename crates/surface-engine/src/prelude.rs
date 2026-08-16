@@ -87,8 +87,10 @@ impl Prelude
 /// (`I`) and `const` (`K`) — pure, total, first-order — plus source-facing
 /// `list` iteration and functional-update members, `record` access/update
 /// members, `string` helpers, `regex.extract`, and `path` helpers. The
-/// fixed-table arithmetic / comparison / boolean / list-concat operators are
-/// the unqualified prelude bindings defined by the same table.
+/// band-01-rung-07 completions add the `bool` (`not`) and `int` (`div`,
+/// `mod`) modules and the list / string read-side and construction members.
+/// The fixed-table arithmetic / comparison / boolean / list-concat operators
+/// are the unqualified prelude bindings defined by the same table.
 pub(crate) const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("prim", "id", NativePrim::Id),
     ("prim", "const", NativePrim::Const),
@@ -113,6 +115,12 @@ pub(crate) const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("list", "append", NativePrim::ListConcat),
     ("list", "concat", NativePrim::Flatten),
     ("list", "update_where", NativePrim::UpdateWhere),
+    // List read-side builtins (band-01-rung-07): the element count and the
+    // `Optional`-returning indexed read. The member is `get` — the same
+    // Optional-read name `record.get` carries — because `at` is a reserved
+    // word of the surface grammar (the session-types vocabulary).
+    ("list", "length", NativePrim::ListLength),
+    ("list", "get", NativePrim::ListAt),
     ("record", "get", NativePrim::Get),
     ("record", "insert", NativePrim::Insert),
     ("string", "escape", NativePrim::StringEscape),
@@ -121,6 +129,16 @@ pub(crate) const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("string", "ends_with", NativePrim::StringEndsWith),
     ("string", "eq", NativePrim::StringEq),
     ("string", "split", NativePrim::StringSplit),
+    // String construction (band-01-rung-07): concatenation (the string
+    // counterpart of the list `++` operator) and the scalar-value length.
+    ("string", "append", NativePrim::StringAppend),
+    ("string", "length", NativePrim::StringLength),
+    // Boolean negation (band-01-rung-07) over the canonical `Bool = 1 + 1`.
+    ("bool", "not", NativePrim::Not),
+    // Truncating integer division and remainder (band-01-rung-07); a zero
+    // divisor evaluates to a defined hole blame, never a panic.
+    ("int", "div", NativePrim::Div),
+    ("int", "mod", NativePrim::Mod),
     #[cfg(feature = "regex")]
     ("regex", "extract", NativePrim::RegexExtract),
     ("path", "join", NativePrim::PathJoin),

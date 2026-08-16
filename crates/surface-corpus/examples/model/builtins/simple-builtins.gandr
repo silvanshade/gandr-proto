@@ -1,0 +1,45 @@
+// The simple builtins round out the module layer's stock (band-01-rung-07):
+// boolean negation, truncating integer division and remainder, the list read
+// side, and string construction. Each is a native builtin hanging off the
+// module layer (ADR-42), exactly like the combinators of 08.
+//
+// `bool.not` completes the boolean algebra the `&&` / `||` operators started:
+// Bool is still the sum `1 + 1` (04), so negation flips `Inl` to `Inr`. A
+// non-boolean argument is a static type error rather than a runtime failure
+// -- `not` carries the precise `Bool -> F Bool`.
+def not_small = bool.not(1 < 2);
+
+// `int.div` / `int.mod` truncate: the quotient rounds toward zero and the
+// remainder takes the dividend's sign. Both work over the rigid Integer atom
+// and the sized integer atoms, never widening. A zero divisor is a defined
+// hole blame, never a panic (the pathological twin pins it), and floats are
+// deliberately refused -- IEEE division is not this primitive.
+def quotient = int.div(7, 2);
+def remainder = int.mod(-7, 2);
+
+// The list read side completes the update ops of 19: `length` counts the
+// elements, and `get` reads by index through the same `Optional` (`A + 1`)
+// carrier `record.get` uses (09) -- an out-of-range index is `None`, an
+// ordinary value, rather than a blame. (The member is `get`, not `at`: `at`
+// is a reserved word of the surface grammar.)
+def size = list.length([1, 2, 3]);
+def second = list.get([10, 20, 30], 1);
+
+// `string.append` is the string counterpart of the list `++` operator (the
+// operator itself stays list-only), and `string.length` counts Unicode
+// scalar values, not bytes.
+def slogan = string.append("types are ", "machines");
+def letters = string.length(slogan);
+
+string.append(slogan, "!")
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: not_small
+//@ expect-def: quotient
+//@ expect-def: remainder
+//@ expect-def: size
+//@ expect-def: second
+//@ expect-def: slogan
+//@ expect-def: letters
+//@ expect-last-value: "types are machines!"

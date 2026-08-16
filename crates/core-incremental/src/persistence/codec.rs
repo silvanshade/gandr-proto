@@ -1833,6 +1833,13 @@ fn native_tag(value: NativePrim) -> u8
         | NativePrim::PathJoin => 39,
         | NativePrim::PathBasename => 40,
         | NativePrim::PathExtension => 41,
+        | NativePrim::Div => 42,
+        | NativePrim::Mod => 43,
+        | NativePrim::Not => 44,
+        | NativePrim::ListLength => 45,
+        | NativePrim::ListAt => 46,
+        | NativePrim::StringAppend => 47,
+        | NativePrim::StringLength => 48,
     }
 }
 
@@ -1882,6 +1889,13 @@ fn decode_native(tag: u8) -> Result<NativePrim, CheckpointStoreError>
         | 39 => Ok(NativePrim::PathJoin),
         | 40 => Ok(NativePrim::PathBasename),
         | 41 => Ok(NativePrim::PathExtension),
+        | 42 => Ok(NativePrim::Div),
+        | 43 => Ok(NativePrim::Mod),
+        | 44 => Ok(NativePrim::Not),
+        | 45 => Ok(NativePrim::ListLength),
+        | 46 => Ok(NativePrim::ListAt),
+        | 47 => Ok(NativePrim::StringAppend),
+        | 48 => Ok(NativePrim::StringLength),
         | _ => Err(CheckpointStoreError::Corrupt),
     }
 }

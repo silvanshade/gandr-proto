@@ -34,6 +34,9 @@
 //! `insert_at` / `remove_at` / `push` / `append` / `concat` / `update_where`,
 //! with `append` reusing `ListConcat` and `concat` reusing `Flatten`), string
 //! helpers, `regex.extract`, and path helpers.
+//! The band-01-rung-07 pass completes the simple surface: truncating
+//! integer `div` / `mod`, boolean `not`, the list read side (`length`, the
+//! `Optional`-returning `get`), and string construction (`append`, `length`).
 //! Update primitives return a FRESH value (the state-visibility red
 //! line: no lvalue, no aliasing-visible mutation). The higher-order ones cannot
 //! be closed terms over the v0 IR
@@ -96,6 +99,16 @@ pub enum NativePrim
     Sub,
     /// Same-tag numeric multiplication.
     Mul,
+    /// Same-tag numeric truncating division (round toward zero). A zero
+    /// integer divisor — and the overflowing `MIN / -1` — degenerates to a
+    /// gradual hole, never a panic. Float operands are refused the same way:
+    /// IEEE division is deliberately not this primitive (the band-01-rung-07
+    /// scope ruling keeps float division out).
+    Div,
+    /// Same-tag numeric truncating remainder (the sign of the dividend). A
+    /// zero integer divisor degenerates to a gradual hole; float operands are
+    /// refused exactly as for [`Self::Div`].
+    Mod,
     /// Numeric equality.
     Eq,
     /// Numeric inequality.
@@ -112,6 +125,8 @@ pub enum NativePrim
     And,
     /// Boolean disjunction over the canonical `Bool = 1 + 1` encoding.
     Or,
+    /// Boolean negation over the canonical `Bool = 1 + 1` encoding.
+    Not,
     /// Same-tag numeric negation.
     Neg,
     /// Homogeneous list concatenation.
@@ -145,6 +160,16 @@ pub enum NativePrim
     /// non-orderable (a float — no total order over `NaN`) or heterogeneous
     /// list reduces to a gradual hole.
     Sort,
+    /// `length xs` — the element count of a manifest list; pure.
+    ListLength,
+    /// `get xs i` — the element at index `i` of a manifest list, as an
+    /// `Optional` (`A + 1`): in range `Some v`, out of range (a negative
+    /// index names no position) `None` — the list analogue of [`Self::Get`]
+    /// and the read-side counterpart of the functional-update ops. (The
+    /// surface member is `list.get`: `at` is a reserved word of the surface
+    /// grammar.) A non-list subject or a non-integer index degenerates to a
+    /// gradual hole.
+    ListAt,
     /// `get r ℓ` — look a **dynamic** string label `ℓ` up in a manifest record
     /// `r`, returning an `Optional` (`A + 1`). The native layer's
     /// answer to the dynamic access the static
@@ -204,6 +229,12 @@ pub enum NativePrim
     StringEq,
     /// `split s sep` — split `s` on the literal separator `sep`.
     StringSplit,
+    /// `append s t` — string concatenation: the string counterpart of the
+    /// list `++` operator.
+    StringAppend,
+    /// `length s` — the length of `s` in Unicode scalar values (`char`s; not
+    /// bytes, so a multi-byte character counts once).
+    StringLength,
     /// `extract pattern haystack` — first regex match's named captures as a
     /// record.
     RegexExtract,
@@ -231,16 +262,21 @@ impl NativePrim
         let arity = match self {
             | Self::Id
             | Self::Neg
+            | Self::Not
             | Self::Flatten
             | Self::Uniq
             | Self::Sort
+            | Self::ListLength
             | Self::StringEscape
+            | Self::StringLength
             | Self::PathBasename
             | Self::PathExtension => 1,
             | Self::Const
             | Self::Add
             | Self::Sub
             | Self::Mul
+            | Self::Div
+            | Self::Mod
             | Self::Eq
             | Self::Ne
             | Self::Lt
@@ -255,6 +291,7 @@ impl NativePrim
             | Self::Any
             | Self::All
             | Self::Get
+            | Self::ListAt
             | Self::RecordUpdate
             | Self::Push
             | Self::RemoveAt
@@ -263,6 +300,7 @@ impl NativePrim
             | Self::StringEndsWith
             | Self::StringEq
             | Self::StringSplit
+            | Self::StringAppend
             | Self::RegexExtract
             | Self::PathJoin => 2,
             | Self::Reduce
@@ -300,7 +338,9 @@ impl NativePrim
                     CompType::returner(ValueType::integer()),
                 ),
             ),
-            | Self::Add | Self::Sub | Self::Mul => unknown_binary(ValueType::Unknown),
+            | Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Mod => {
+                unknown_binary(ValueType::Unknown)
+            },
             | Self::Neg => {
                 CompType::arrow(ValueType::Unknown, CompType::returner(ValueType::Unknown))
             },
@@ -314,6 +354,7 @@ impl NativePrim
                     CompType::arrow(bool_ty.clone(), CompType::returner(bool_ty)),
                 )
             },
+            | Self::Not => CompType::arrow(bool_type(), CompType::returner(bool_type())),
             | Self::ListConcat => {
                 let list_ty = ValueType::list(ValueType::Unknown);
                 CompType::arrow(
@@ -348,6 +389,16 @@ impl NativePrim
             | Self::Flatten | Self::Uniq | Self::Sort => {
                 CompType::arrow(list_unknown(), CompType::returner(list_unknown()))
             },
+            // `length xs : List ? → F Integer`.
+            | Self::ListLength => {
+                CompType::arrow(list_unknown(), CompType::returner(ValueType::integer()))
+            },
+            // `get xs i : List ? → Integer → F (? + 1)` — the same `Optional`
+            // carrier record `get` returns.
+            | Self::ListAt => CompType::arrow(
+                list_unknown(),
+                CompType::arrow(ValueType::integer(), CompType::returner(option_type())),
+            ),
             // `get r ℓ : {} → String → F (? + 1)` — the empty record `{}` is the
             // TOP of the width order, so any record fits it (ADR-45).
             | Self::Get => CompType::arrow(
@@ -421,11 +472,15 @@ impl NativePrim
                 ValueType::string(),
                 CompType::arrow(ValueType::string(), CompType::returner(list_unknown())),
             ),
+            | Self::StringLength => CompType::arrow(
+                ValueType::string(),
+                CompType::returner(ValueType::integer()),
+            ),
             | Self::RegexExtract => CompType::arrow(
                 ValueType::string(),
                 CompType::arrow(ValueType::string(), CompType::returner(empty_record())),
             ),
-            | Self::PathJoin => CompType::arrow(
+            | Self::StringAppend | Self::PathJoin => CompType::arrow(
                 ValueType::string(),
                 CompType::arrow(ValueType::string(), CompType::returner(ValueType::string())),
             ),
@@ -502,6 +557,8 @@ impl NativePrim
             | Self::Add => numeric_binary(args, numeric_add),
             | Self::Sub => numeric_binary(args, numeric_sub),
             | Self::Mul => numeric_binary(args, numeric_mul),
+            | Self::Div => numeric_binary(args, numeric_div),
+            | Self::Mod => numeric_binary(args, numeric_mod),
             | Self::Eq => numeric_compare(args, numeric_eq),
             | Self::Ne => numeric_compare(args, |lhs, rhs| {
                 numeric_eq(lhs, rhs).map(PrimitivePredicate::negated)
@@ -512,6 +569,7 @@ impl NativePrim
             | Self::Ge => numeric_compare(args, numeric_ge),
             | Self::And => bool_binary(args, |lhs, rhs| bool::from(lhs) && bool::from(rhs)),
             | Self::Or => bool_binary(args, |lhs, rhs| bool::from(lhs) || bool::from(rhs)),
+            | Self::Not => bool_unary(args, |value| !bool::from(value)),
             | Self::Neg => numeric_unary(args, numeric_neg),
             | Self::ListConcat => list_concat(args),
             | Self::Each => native_each(args),
@@ -522,6 +580,8 @@ impl NativePrim
             | Self::Flatten => native_flatten(args),
             | Self::Uniq => native_uniq(args),
             | Self::Sort => native_sort(args),
+            | Self::ListLength => native_list_length(args),
+            | Self::ListAt => native_list_at(args),
             | Self::Get => native_get(args),
             | Self::Insert => native_insert(args),
             | Self::RecordUpdate => native_record_update(args),
@@ -543,6 +603,8 @@ impl NativePrim
             },
             | Self::StringEq => native_string_predicate(args, |lhs, rhs| lhs == rhs),
             | Self::StringSplit => native_string_split(args),
+            | Self::StringAppend => native_string_append(args),
+            | Self::StringLength => native_string_length(args),
             | Self::RegexExtract => native_regex_extract(args),
             | Self::PathJoin => native_path_join(args),
             | Self::PathBasename => native_path_basename(args),
@@ -745,6 +807,25 @@ where
     }
 }
 
+/// Applies a total boolean unary primitive to a canonical boolean.
+#[inline]
+#[must_use]
+fn bool_unary<P>(
+    args: &[Rc<Value>],
+    op: P,
+) -> Comp
+where
+    P: FnOnce(BooleanAtom) -> bool,
+{
+    match one_arg(args) {
+        | Some(value) => match as_bool(value) {
+            | Some(value) => ret_bool(op(value)),
+            | None => Comp::hole(0),
+        },
+        | None => Comp::hole(0),
+    }
+}
+
 /// Adds two same-tag numeric values without implicit widening.
 #[inline]
 #[must_use]
@@ -813,6 +894,50 @@ fn numeric_neg(value: &Value) -> Option<Value>
     match value.clone() {
         | Value::Int(value) => value.checked_neg().map(Value::int),
         | Value::Num(value) => num_neg(value).map(Value::num),
+        | _ => None,
+    }
+}
+
+/// Divides two same-tag numeric values (truncating) without implicit widening.
+/// A zero integer divisor or the overflowing `MIN / -1` yields `None` (a
+/// gradual hole), as does any float operand — IEEE division is deliberately
+/// not this primitive (the band-01-rung-07 scope ruling).
+#[inline]
+#[must_use]
+fn numeric_div(
+    lhs: Value,
+    rhs: Value,
+) -> Option<Value>
+{
+    match (lhs, rhs) {
+        | (Value::Int(lhs), Value::Int(rhs)) => checked_i64(
+            I64Literal::from(lhs),
+            I64Literal::from(rhs),
+            i64::checked_div,
+        )
+        .map(|literal| Value::int(i64::from(literal))),
+        | (Value::Num(lhs), Value::Num(rhs)) => num_div(lhs, rhs).map(Value::num),
+        | _ => None,
+    }
+}
+
+/// Takes the truncating remainder of two same-tag numeric values without
+/// implicit widening, refusing exactly the cases [`numeric_div`] refuses.
+#[inline]
+#[must_use]
+fn numeric_mod(
+    lhs: Value,
+    rhs: Value,
+) -> Option<Value>
+{
+    match (lhs, rhs) {
+        | (Value::Int(lhs), Value::Int(rhs)) => checked_i64(
+            I64Literal::from(lhs),
+            I64Literal::from(rhs),
+            i64::checked_rem,
+        )
+        .map(|literal| Value::int(i64::from(literal))),
+        | (Value::Num(lhs), Value::Num(rhs)) => num_rem(lhs, rhs).map(Value::num),
         | _ => None,
     }
 }
@@ -987,6 +1112,43 @@ fn num_neg(value: NumLit) -> Option<NumLit>
         | NumLit::I64(value) => value.checked_neg().map(NumLit::I64),
         | NumLit::F32(value) => Some(NumLit::f32(-f32::from_bits(value))),
         | NumLit::F64(value) => Some(NumLit::f64(-f64::from_bits(value))),
+    }
+}
+
+/// Divides two integer [`NumLit`] values with identical tags (truncating).
+/// A zero divisor or the overflowing `MIN / -1` yields `None`; the float
+/// tags yield `None` by scope ruling (see [`numeric_div`]).
+#[inline]
+#[must_use]
+fn num_div(
+    lhs: NumLit,
+    rhs: NumLit,
+) -> Option<NumLit>
+{
+    match (lhs, rhs) {
+        | (NumLit::U32(lhs), NumLit::U32(rhs)) => lhs.checked_div(rhs).map(NumLit::U32),
+        | (NumLit::U64(lhs), NumLit::U64(rhs)) => lhs.checked_div(rhs).map(NumLit::U64),
+        | (NumLit::I32(lhs), NumLit::I32(rhs)) => lhs.checked_div(rhs).map(NumLit::I32),
+        | (NumLit::I64(lhs), NumLit::I64(rhs)) => lhs.checked_div(rhs).map(NumLit::I64),
+        | _ => None,
+    }
+}
+
+/// Takes the truncating remainder of two integer [`NumLit`] values with
+/// identical tags, refusing exactly the cases [`num_div`] refuses.
+#[inline]
+#[must_use]
+fn num_rem(
+    lhs: NumLit,
+    rhs: NumLit,
+) -> Option<NumLit>
+{
+    match (lhs, rhs) {
+        | (NumLit::U32(lhs), NumLit::U32(rhs)) => lhs.checked_rem(rhs).map(NumLit::U32),
+        | (NumLit::U64(lhs), NumLit::U64(rhs)) => lhs.checked_rem(rhs).map(NumLit::U64),
+        | (NumLit::I32(lhs), NumLit::I32(rhs)) => lhs.checked_rem(rhs).map(NumLit::I32),
+        | (NumLit::I64(lhs), NumLit::I64(rhs)) => lhs.checked_rem(rhs).map(NumLit::I64),
+        | _ => None,
     }
 }
 
@@ -1513,6 +1675,63 @@ fn order_cmp(
     }
 }
 
+/// `length xs` — the element count of a manifest list; pure.
+#[inline]
+#[must_use]
+fn native_list_length(args: &[Rc<Value>]) -> Comp
+{
+    let Some(value) = one_arg(args)
+    else {
+        return Comp::hole(0);
+    };
+    let count = match *unannotated_ref(value) {
+        | Value::List(ref items) => items.len(),
+        | _ => return Comp::hole(0),
+    };
+    match i64::try_from(count) {
+        | Ok(length) => Comp::ret(Value::int(length)),
+        | Err(_) => Comp::hole(0),
+    }
+}
+
+/// `get xs i` — the element at index `i` of a manifest list as an `Optional`
+/// (`Some v` in range, `None` out of range — a negative index names no
+/// position). A non-list subject or a non-integer index degenerates to a
+/// gradual hole.
+#[inline]
+#[must_use]
+fn native_list_at(args: &[Rc<Value>]) -> Comp
+{
+    let Some((list, index)) = two_args(args)
+    else {
+        return Comp::hole(0);
+    };
+    let (Some(items), Some(index)) = (as_list(list), as_integer(index))
+    else {
+        return Comp::hole(0);
+    };
+    match usize::try_from(i64::from(index))
+        .ok()
+        .and_then(|position| items.get(position))
+    {
+        | Some(item) => Comp::ret(option_some((**item).clone())),
+        | None => Comp::ret(option_none()),
+    }
+}
+
+/// Reads a manifest bare integer ([`Value::Int`]), ignoring annotations.
+/// Signed, so `list.get` can tell a negative index (no position: `None`, the
+/// `Optional` miss) apart from a non-integer (no valid call: a gradual hole).
+#[inline]
+#[must_use]
+fn as_integer(value: &Value) -> Option<I64Literal>
+{
+    match unannotated(value) {
+        | Value::Int(index) => Some(I64Literal::from(index)),
+        | _ => None,
+    }
+}
+
 /// `get r ℓ` — look the dynamic string label `ℓ` up in the manifest record `r`,
 /// returning `Some v` when the field is present and `None` otherwise. A
 /// non-record subject or non-string label degenerates to a gradual hole.
@@ -1914,6 +2133,42 @@ fn native_string_split(args: &[Rc<Value>]) -> Comp
     Comp::ret(Value::List(parts))
 }
 
+/// `append s t` — concatenate two manifest strings.
+#[inline]
+#[must_use]
+fn native_string_append(args: &[Rc<Value>]) -> Comp
+{
+    let Some((head, tail)) = two_args(args)
+    else {
+        return Comp::hole(0);
+    };
+    let (Some(mut head), Some(tail)) = (as_str(head), as_str(tail))
+    else {
+        return Comp::hole(0);
+    };
+    head.push_str(&tail);
+    Comp::ret(Value::string(head.as_str()))
+}
+
+/// `length s` — the length of a manifest string in Unicode scalar values.
+#[inline]
+#[must_use]
+fn native_string_length(args: &[Rc<Value>]) -> Comp
+{
+    let Some(value) = one_arg(args)
+    else {
+        return Comp::hole(0);
+    };
+    let count = match *unannotated_ref(value) {
+        | Value::Str(ref text) => text.chars().count(),
+        | _ => return Comp::hole(0),
+    };
+    match i64::try_from(count) {
+        | Ok(length) => Comp::ret(Value::int(length)),
+        | Err(_) => Comp::hole(0),
+    }
+}
+
 /// Reads a manifest string value (a dynamic record label), ignoring
 /// annotations.
 #[inline]
@@ -2064,6 +2319,20 @@ fn unannotated(value: &Value) -> Value
         current = inner.as_ref();
     }
     current.clone()
+}
+
+/// Borrows a value with any outer type annotations stripped — the borrowed
+/// counterpart of [`unannotated`], for readers (the length lookups) that
+/// measure a value without owning a clone of it.
+#[inline]
+#[must_use]
+fn unannotated_ref(value: &Value) -> &Value
+{
+    let mut current = value;
+    while let Value::Annot(ref inner, _) = *current {
+        current = inner.as_ref();
+    }
+    current
 }
 
 /// Converts a Rust path to a gandr string, or a hole when it is not UTF-8.
