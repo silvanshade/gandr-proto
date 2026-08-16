@@ -27,6 +27,12 @@ gandr-core-sequent.workspace = true
 # inward and the kernel never learns of this crate.
 gandr-kernel-core.workspace = true
 gandr-runtime-effects.workspace = true
+# The CAS tier the session exports its kernel environment through:
+# `storage-artifact` mints the artifact and its manifest identity;
+# `storage-prolly-trees` carries the block-store boundary and tree parameters
+# the export signature exposes.
+gandr-storage-artifact.workspace = true
+gandr-storage-prolly-trees.workspace = true
 gandr-surface-grammar.workspace = true
 gandr-surface-parser.workspace = true
 gandr-surface-syntax.workspace = true

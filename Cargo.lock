@@ -694,6 +694,8 @@ dependencies = [
  "gandr-core-sequent",
  "gandr-kernel-core",
  "gandr-runtime-effects",
+ "gandr-storage-artifact",
+ "gandr-storage-prolly-trees",
  "gandr-surface-grammar",
  "gandr-surface-parser",
  "gandr-surface-syntax",

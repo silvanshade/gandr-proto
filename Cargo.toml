@@ -193,6 +193,7 @@ path = "crates/runtime-effects"
 # Outer-layer CAS wiring: v1 export artifacts with canonical BLAKE3 manifest identity.
 # consumers:
 # - gandr-core-sequent (dev)
+# - gandr-surface-engine
 [workspace.dependencies.gandr-storage-artifact]
 path = "crates/storage-artifact"
 
@@ -207,6 +208,7 @@ path = "crates/storage-chunker"
 # consumers:
 # - gandr-core-sequent (dev)
 # - gandr-storage-artifact
+# - gandr-surface-engine
 [workspace.dependencies.gandr-storage-prolly-trees]
 path = "crates/storage-prolly-trees"
 

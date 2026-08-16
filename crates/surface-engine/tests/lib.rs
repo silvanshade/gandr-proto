@@ -31,6 +31,8 @@ mod edit;
 #[cfg(test)]
 mod edit_extra;
 #[cfg(test)]
+mod export;
+#[cfg(test)]
 mod goals_extra;
 #[cfg(test)]
 mod incremental;

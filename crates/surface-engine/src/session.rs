@@ -65,7 +65,10 @@
 //! `add_decl` choke point. The ledger is where the definitions that lower into
 //! the closed S1 vocabulary accumulate as a kernel environment, and each
 //! submission reports one [`KernelVerdict`] per item beside its
-//! [`ItemOutcome`].
+//! [`ItemOutcome`]. [`Session::export_kernel_artifact`] is the storage tier's
+//! shipping consumer: it exports that environment through
+//! `gandr-storage-artifact` as a content-addressed artifact, so the manifest
+//! identity of what a session admitted is available to the caller.
 //!
 //! **The crossing is observation, never authority.** Typing comes from the
 //! resumed checkpoints and evaluation from the L machine, exactly as before: no
@@ -96,6 +99,10 @@ use gandr_core_incremental::checkpoint::resume_with;
 use gandr_core_incremental::region::Item;
 use gandr_core_incremental::region::Program;
 use gandr_core_sequent::machine::run_comp_with_prelude;
+use gandr_storage_artifact::ArtifactError;
+use gandr_storage_artifact::BuiltArtifact;
+use gandr_storage_prolly_trees::BlockStore;
+use gandr_storage_prolly_trees::TreeParams;
 
 use crate::boundary::ConstructorName;
 use crate::boundary::DefinitionBindingFlag;
@@ -264,6 +271,54 @@ impl Session
     pub fn kernel(&self) -> &KernelAdmissions
     {
         &self.kernel
+    }
+
+    /// Exports the session's kernel environment through
+    /// `gandr-storage-artifact` as a content-addressed artifact, minting its
+    /// manifest identity.
+    ///
+    /// # Contract
+    /// - requires: `params` is a supported prolly-tree parameter set.
+    /// - ensures: `Ok(built)` carries every tree node inserted into `store`
+    ///   (verified on insert) and the canonical manifest binding the chunker
+    ///   parameter commitment, the record count, the root node hash, and the
+    ///   inner kernel export format version, with [`BuiltArtifact::identity`]
+    ///   the BLAKE3 digest of that manifest. The build is a deterministic
+    ///   function of the admitted record set — history-independent — so two
+    ///   sessions that admitted the same definitions mint the same identity.
+    /// - provides: the shipping session export path: the outer
+    ///   content-addressed identity of the environment this session's admitted
+    ///   definitions accumulated. The identity authenticates the bytes;
+    ///   validity is re-derived at replay from the canonical inner encoding,
+    ///   never from the hash (the two-walls discipline `gandr-storage-artifact`
+    ///   documents).
+    /// - fails: [`ArtifactError`], as [`gandr_storage_artifact::build`].
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// [`ArtifactError`].
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the session-level differentials pin that the path
+    ///   exports this session's real environment (identity and record count
+    ///   match a direct build over it), that two independently built sessions
+    ///   with the same admitted definitions mint byte-equal identities, and
+    ///   that changed environment content changes the identity; the L3 residue
+    ///   is the empty session's zero-record artifact.
+    /// - witness: `export::tests::the_session_export_path_exports_the_admitted_environment`
+    /// - witness: `export::tests::independently_built_sessions_mint_byte_equal_identities`
+    /// - witness: `export::tests::changed_environment_content_changes_the_identity`
+    /// - witness: `export::tests::an_empty_session_exports_an_empty_record_set`
+    #[inline]
+    pub fn export_kernel_artifact<S>(
+        &self,
+        params: TreeParams,
+        store: &mut S,
+    ) -> Result<BuiltArtifact, ArtifactError>
+    where
+        S: BlockStore + ?Sized,
+    {
+        gandr_storage_artifact::build_from_environment(self.kernel.environment(), params, store)
     }
 
     /// The declared constructor name for a value `Ctor { id, tag, … }` — the
