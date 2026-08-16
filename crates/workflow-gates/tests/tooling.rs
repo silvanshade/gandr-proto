@@ -4,10 +4,6 @@
 //! default path projection, and pure plans can be observed without invoking
 //! shell scripts, workflow tasks, AFL, or other external tools.
 
-#[expect(
-    clippy::redundant_pub_crate,
-    reason = "crate-visible production parser items are redundant only because the binary is included under this private test module"
-)]
 #[path = "../src/main.rs"]
 mod cli;
 

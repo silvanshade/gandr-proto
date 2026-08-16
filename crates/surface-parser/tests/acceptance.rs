@@ -643,7 +643,7 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     );
     assert_eq!(clean, files.len(), "clean accounts for the whole corpus");
     assert_eq!(0, total, "the corpus carries zero total obligations");
-    // Model + pathological at 101 / 101 (55 base examples including the M1-lite
+    // Model + pathological at 100 / 100 (54 base examples including the M1-lite
     // module model + the three codata-MVP examples under `codata/` + the seven
     // supporting inspection examples under `sequent/` and `desc/` — the fifth
     // is the description → cell-store model witness, the sixth its
@@ -659,17 +659,17 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // model witness and its six declines: many-out node, wheel, two-redex
     // composite, cyclic wiring, shared port, and the repeated port whose
     // derived boundary reaches the linearity refusal from source). The
-    // fifty-fifth base example is the kernel-admission boundary witness, which
+    // fifty-fourth base example is the kernel-admission boundary witness, which
     // pins both sides of what the certified kernel carries.
     assert_eq!(
-        101, base_count,
-        "the model + pathological trees are 101 files (55 base + 3 codata + 7 inspection \
+        100, base_count,
+        "the model + pathological trees are 100 files (54 base + 3 codata + 7 inspection \
          + 6 identity + 13 declared-data + 1 item-level retirement + 8 module pathologies \
          + 1 type-associativity + 1 shell host escape + 7 circuit)"
     );
     assert_eq!(
-        101, base_clean,
-        "all 101 model + pathological files mold clean"
+        100, base_clean,
+        "all 100 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

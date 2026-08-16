@@ -45,8 +45,7 @@ gandr_workflow_gates::semantic_copy!(pub struct ThroughputCountCount(u64));
 /// keeping benchmark dispatch on the real command parser.
 #[expect(
     dead_code,
-    clippy::redundant_pub_crate,
-    reason = "including the binary parser brings execution paths and crate-visible items that this private benchmark module does not call"
+    reason = "including the binary parser brings execution paths that this private benchmark module does not call"
 )]
 #[path = "../src/main.rs"]
 mod driver;
@@ -170,12 +169,6 @@ const CLI_COMMANDS: &[&[&str]] = &[
         "docs-reference",
         "--manifest",
         "benches/fixtures/docs/gandr/MANIFEST.yml",
-    ],
-    &[
-        "gandr-workflow-gates",
-        "options-policy",
-        "--workspace-root",
-        "benches/fixtures/source_policy",
     ],
     &[
         "gandr-workflow-gates",
