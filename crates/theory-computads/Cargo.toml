@@ -17,6 +17,11 @@ path = "tests/lib.rs"
 
 [dependencies]
 gandr-core-sequent.workspace = true
+# The durable transport-step identity boundary (gandr-4o8a): certificates mint
+# portable step identities through storage-artifact's canonical BLAKE3 framing,
+# and this crate's transport adapter owns the canonical cell/position encoding.
+# Acyclic: storage-artifact depends on kernel-core and the storage tier only.
+gandr-storage-artifact.workspace = true
 gandr-theory-graphs.workspace = true
 gandr-theory-levitation.workspace = true
 

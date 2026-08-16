@@ -25,10 +25,14 @@
 //! it does not make a [`CellId`] a portable content address.
 //!
 //! That tradeoff remains deliberate for the hot in-process path. A persistence
-//! or transport format must never serialize [`CellId`]. It must define
-//! canonical bytes for resolved cell content and application position, use a
-//! distinct fixed-width transport address, verify it, and resolve it to a local
-//! [`CellId`] before replay.
+//! or transport format must never serialize [`CellId`]. The boundary it uses
+//! instead exists and is [`crate::transport`]: canonical bytes for resolved
+//! cell content and application position, a distinct fixed-width
+//! [`TransportStepId`] verified by exact-length ingest, and — when a
+//! persistence consumer lands — resolution back to a local [`CellId`] by
+//! content lookup before replay.
+//!
+//! [`TransportStepId`]: crate::TransportStepId
 
 use alloc::vec::Vec;
 

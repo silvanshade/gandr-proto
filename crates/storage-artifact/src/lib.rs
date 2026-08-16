@@ -38,12 +38,21 @@
 //! or insertion order yields the identical root and identity. This is a *tested
 //! claim* (the history-independence differential), pinned as a property of the
 //! outer layer here rather than left implicit.
+//!
+//! # The step-granularity sibling
+//!
+//! [`transport`] holds the durable identity of one certificate **step** — a
+//! fixed-width BLAKE3 identity over a canonical framed preimage, minted only
+//! through a streaming encoder with the versioned step-domain magic built in
+//! (tracker item `gandr-4o8a`). It lives in this crate because it shares the
+//! discipline: canonical bytes in, one digest out, validity never implied.
 
 extern crate alloc;
 
 pub mod error;
 pub mod manifest;
 pub mod record;
+pub mod transport;
 
 use gandr_kernel_core::Environment;
 use gandr_storage_prolly_trees::BlockStore;
@@ -54,6 +63,7 @@ use gandr_storage_prolly_trees::TreeRoot;
 
 pub use crate::error::ArtifactError;
 pub use crate::error::ManifestError;
+pub use crate::error::StepIdError;
 pub use crate::manifest::ARTIFACT_IDENTITY_LEN;
 pub use crate::manifest::ArtifactIdentity;
 pub use crate::manifest::ArtifactManifest;
@@ -74,6 +84,12 @@ pub use crate::record::ArtifactRecord;
 pub use crate::record::ArtifactRecordSet;
 pub use crate::record::ReassembledArtifact;
 pub use crate::record::RecordBytes;
+pub use crate::transport::CanonicalBytes;
+pub use crate::transport::CanonicalU64;
+pub use crate::transport::StepIdEncoder;
+pub use crate::transport::TRANSPORT_STEP_ID_LEN;
+pub use crate::transport::TRANSPORT_STEP_MAGIC;
+pub use crate::transport::TransportStepId;
 
 /// A built artifact: the prolly-tree root, its stored root node hash, and the
 /// canonical manifest and identity minted over them.

@@ -220,6 +220,16 @@ const CAUSAL_DOMAIN: &[u8] = b"gandr.tracelet.causal-past.v1";
 /// It orders the primitive factorization and breaks the canonical schedule's
 /// ties. It is **not** an identity witness: see the module's `equiv_A` note for
 /// how a collision is refused rather than believed.
+///
+/// It is also **process-local**: the digest runs over [`core::hash::Hash`]
+/// writes, so it is stable for one build of one target and no further, and a
+/// persistence or transport consumer never serializes one. The sanctioned
+/// portable identity of a primitive is the [`TransportStepId`] minted from
+/// canonical cell and position bytes by
+/// [`crate::transport::transport_step_id`]; there is no conversion between the
+/// two in either direction.
+///
+/// [`TransportStepId`]: crate::TransportStepId
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PrimId(u128);
@@ -234,7 +244,10 @@ pub struct PrimId(u128);
 /// different values at [`prim_address`] and [`cell_address`] and the types stop
 /// one being passed where the other is meant. Neither is an identity witness
 /// and neither is portable: both are process-local digests over an in-memory
-/// [`core::hash::Hash`] encoding, so nothing may persist or transmit one.
+/// [`core::hash::Hash`] encoding, so nothing may persist or transmit one. A
+/// portable counterpart of this position-free address deliberately does not
+/// exist: the transport boundary ([`crate::transport`]) addresses a **step** —
+/// a cell together with where it fired — and nothing else.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CellAddress(u128);
@@ -249,7 +262,9 @@ pub struct CellAddress(u128);
 /// function of the labeled causal order alone — the fold is taken over the
 /// **sorted** predecessor digests, so it cannot see which linear extension the
 /// derivation was recorded in — and it carries [`prim_address`]'s
-/// non-portability caveat verbatim.
+/// non-portability caveat verbatim: nothing may persist or transmit one, and a
+/// durable identity is minted only at the transport boundary
+/// ([`crate::transport`]).
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CausalPast(u128);

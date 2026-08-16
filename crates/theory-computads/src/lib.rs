@@ -142,6 +142,9 @@ pub mod sequent;
 pub mod shift;
 pub mod subst;
 pub mod tracelet;
+pub mod transport;
+
+pub use gandr_storage_artifact::TransportStepId;
 
 pub use crate::alphabet::CellAlphabet;
 pub use crate::alphabet::ConvexityDischarge;
@@ -284,3 +287,8 @@ pub use crate::tracelet::Tracelet;
 pub use crate::tracelet::confluence_tracelet;
 pub use crate::tracelet::derive_fused;
 pub use crate::tracelet::replay_equivalent;
+pub use crate::transport::CanonicalStepEncoding;
+pub use crate::transport::TransportStepIndex;
+pub use crate::transport::TransportStepObstruction;
+pub use crate::transport::transport_step_id;
+pub use crate::transport::transport_step_index;

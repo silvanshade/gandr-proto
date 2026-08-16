@@ -194,6 +194,7 @@ path = "crates/runtime-effects"
 # consumers:
 # - gandr-core-sequent (dev)
 # - gandr-surface-engine
+# - gandr-theory-computads
 [workspace.dependencies.gandr-storage-artifact]
 path = "crates/storage-artifact"
 

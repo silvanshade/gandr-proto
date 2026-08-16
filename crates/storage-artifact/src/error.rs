@@ -47,6 +47,31 @@ pub enum ArtifactError
     Manifest(#[from] ManifestError),
 }
 
+/// Why constructing or ingesting a transport-step identity failed.
+#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
+pub enum StepIdError
+{
+    /// A step-identity byte image was not exactly the fixed width — including
+    /// the 16-byte width of the certificate layer's in-process labels, which
+    /// can never decode as a transport identity.
+    #[error("step-identity image length {found} is not the expected {expected}")]
+    ImageLength
+    {
+        /// The image length offered.
+        found: usize,
+        /// The fixed length the reader requires.
+        expected: usize,
+    },
+
+    /// A count, length, or position step did not fit the canonical u64 width.
+    #[error("the value {found} does not fit the canonical u64 width")]
+    WidthOverflow
+    {
+        /// The offending value.
+        found: usize,
+    },
+}
+
 /// Why decoding a canonical artifact manifest failed — the outer layer's closed
 /// rejection vocabulary (E4/E5 applied at the manifest boundary).
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
