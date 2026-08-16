@@ -664,15 +664,21 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // files are the model program for the three package forms plus four failure
     // goldens: the abstraction leak, the uninferable `pack`, the grade-zero
     // opening, and the payload whose shape leaves the package no grade to read.
+    // The module rung adds seven under `modules/`: two model programs — nested
+    // modules with the paths that reach into them, and signature matching with
+    // a manifest type component — and five goldens: the missing component, the
+    // abstract type component sealing has not reached, the reordered signature,
+    // the declaration that takes a prelude name, and the binder that collides
+    // with a host module without shadowing it.
     assert_eq!(
-        105, base_count,
-        "the model + pathological trees are 105 files (54 base + 3 codata + 7 inspection \
+        112, base_count,
+        "the model + pathological trees are 112 files (54 base + 3 codata + 7 inspection \
          + 6 identity + 13 declared-data + 1 item-level retirement + 8 module pathologies \
-         + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit)"
+         + 7 module rung + 5 package + 1 type-associativity + 1 shell host escape + 7 circuit)"
     );
     assert_eq!(
-        105, base_clean,
-        "all 105 model + pathological files mold clean"
+        112, base_clean,
+        "all 112 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

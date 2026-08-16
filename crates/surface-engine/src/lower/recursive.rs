@@ -908,7 +908,7 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
 
     /// Starts one lambda-literal request.
     fn begin_lambda(
-        &self,
+        &mut self,
         node: SynNode<'tree>,
     ) -> LowerStep<'run, 'src, 'tree>
     {

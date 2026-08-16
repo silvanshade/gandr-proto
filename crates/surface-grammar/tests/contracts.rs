@@ -207,6 +207,7 @@ mod tests
         assert_has_checked_form(&pbg, Sort::Expression);
         assert_has_checked_form(&pbg, Sort::Type);
         assert_has_checked_form(&pbg, Sort::Instantiation);
+        assert_has_checked_form(&pbg, Sort::ModuleMember);
         Ok(())
     }
 
@@ -233,13 +234,14 @@ mod tests
             (2, Sort::Expression),
             (3, Sort::Type),
             (4, Sort::Instantiation),
+            (5, Sort::ModuleMember),
         ];
         for (tag, expected) in cases {
             assert_eq!(Ok(expected), Sort::try_from_tag(GroutSort(tag)));
         }
         assert_eq!(
-            Err(PbgError::InvalidSort { sort: 5 }),
-            Sort::try_from_tag(GroutSort(5))
+            Err(PbgError::InvalidSort { sort: 6 }),
+            Sort::try_from_tag(GroutSort(6))
         );
     }
 

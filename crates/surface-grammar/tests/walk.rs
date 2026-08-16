@@ -72,7 +72,7 @@ mod contracts
     /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
     /// load-bearing at sign item level, closing each member's trailing sort
     /// hole before the next member's lead can cross it.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x144d_4708_c1e2_c5d7);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x739f_8d9e_cc5e_34b2);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -91,8 +91,9 @@ mod contracts
     /// lexeme's type realisation; and the `module M (: #{ … })? { def … }`
     /// Item form contributes its keyword-led opener, inline record-type
     /// ascription, and body-local non-recursive definition/signature family.
-    /// The one-level nested-module member adds 81 molds: its keyword, name,
-    /// braces, optional inline signature, and definition-only body copy.
+    /// The nested-module member costs its own keyword, name, braces, and
+    /// optional inline signature — and nothing per level, because its body is a
+    /// hole of the sort it inhabits.
     /// The distinct `run`- and `val`-led bind rules each contribute one keyword
     /// mold in their 20 expanded statement contexts.
     /// The dedicated instantiation-sort forms add seven molds: two `<`
@@ -126,7 +127,19 @@ mod contracts
     /// leads with a keyword no other form starts with, so none of them
     /// widens a label from single- to multi-mold and the reachable
     /// multi-mold count is unchanged.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2006);
+    /// The module rung adds **eight**, which is the number worth reading. Body
+    /// members moved to a sort of their own (`Sort::ModuleMember`), so the
+    /// definition-member family is declared once and reached by reference from
+    /// the outer declaration and every nested one, where it was previously
+    /// inlined at each: **nesting became unbounded while the inventory went
+    /// down**, because an unrolled grammar pays one copy per admitted level and
+    /// a recursive one pays none. Two things add back. The attributed member is
+    /// a second rule rather than an optional prefix, because a form leading
+    /// with a repetition has no definite lead tile and the melder then leaves
+    /// the `@[ … ]` block outside the member it decorates; that costs one copy
+    /// of the definition tail. And the manifest type component `type T = τ`
+    /// adds four `=` molds, one per signature occurrence.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2014);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -169,7 +182,7 @@ mod contracts
         ("<=", 1),
         ("<=>", 13),
         ("<>", 1),
-        ("=", 73),
+        ("=", 81),
         ("==", 1),
         ("==>", 17),
         ("=>", 8),

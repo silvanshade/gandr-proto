@@ -1,6 +1,6 @@
 ; gandr pre-lowered corpus fixture (B1 phase; sequent-machines exit gate)
 ; source: model/29-modules.gandr
-; b3sum: 5cd4b831042d8cf5ec4b8b3821520b8a2756ee1c002d3c224da2ecf50167aaff
+; b3sum: d85151b5333e1843a57d041b4c74769b1cf5445a89562a4d534c42b43df896a1
 ; lowering: gandr_pipeline::lower::lower_source_total
 ; items: 4
 

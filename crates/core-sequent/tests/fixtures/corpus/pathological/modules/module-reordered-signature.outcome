@@ -1,9 +1,7 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
-; source: model/29-modules.gandr
-; sexp-b3sum: 204c01edc0a5fc1484c030ab128919a91cffb609edf1d53116dc9b6f33528162
+; source: pathological/modules/module-reordered-signature.gandr
+; sexp-b3sum: 09e00c60f1e2ed3351688bdeb9d8626d6449dce899dec6119053a5ef60da7ded
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
-; items: 4
-Ret(Int(40))
-Blame(PerformNoHandler)
-Stuck(RecordProjNonRecord)
+; items: 2
+Stuck(ForcedNonThunk)
 Stuck(RecordProjNonRecord)

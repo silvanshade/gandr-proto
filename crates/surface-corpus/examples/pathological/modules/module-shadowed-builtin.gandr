@@ -1,0 +1,11 @@
+// Edge case: prelude, host, and `extern` names are bindings in an outermost
+// scope, so a top-level declaration may take one. The default policy is
+// warn-and-allow: the declaration wins, the whole displaced subtree goes with
+// it -- `list.each` below is a projection on the user's record, not the prelude
+// builtin it would otherwise have been -- and the run reports that it happened.
+def list = #{each = 7};
+
+list.each
+
+//@ expect-diagnostic: prelude or host name
+//@ expect-last-value: 7

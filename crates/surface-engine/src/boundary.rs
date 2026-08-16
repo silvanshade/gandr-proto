@@ -337,6 +337,15 @@ semantic_borrowed_str!(
     pub struct DefinitionName;
 );
 semantic_borrowed_str!(
+    /// Borrowed one segment of an outermost-scope path: a module name, a
+    /// member name, a declaration's own name, or a value binder's.
+    pub struct ScopeSegment;
+);
+semantic_borrowed_str!(
+    /// Borrowed flat `module.member` name a prelude builtin is bound under.
+    pub struct QualifiedName;
+);
+semantic_borrowed_str!(
     /// Borrowed syntax-node text.
     pub struct NodeText;
 );
@@ -406,6 +415,18 @@ semantic_copy!(
 semantic_copy!(
     /// Number of bindings in a base typing context.
     pub struct ContextLength(usize);
+);
+semantic_copy!(
+    /// Position of one host module in the reserved host-module table.
+    pub struct HostModuleIndex(usize);
+);
+semantic_copy!(
+    /// Position of one member in its host module's member list.
+    pub struct HostMemberIndex(usize);
+);
+semantic_copy!(
+    /// Nesting depth of one module declaration below the outermost item.
+    pub struct ModuleDepth(usize);
 );
 semantic_copy!(
     /// Length of one source byte range.

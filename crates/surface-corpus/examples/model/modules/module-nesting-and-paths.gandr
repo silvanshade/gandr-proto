@@ -1,0 +1,34 @@
+// Nested modules and the paths that reach into them.
+//
+// A `module` declaration is a **module-stratum item**: it has a path, ordered
+// value components, and nested modules that are modules in the same sense.
+// Nesting is a property of what you write, not a depth the language stops at --
+// the four levels below are ordinary, and so would be forty.
+//
+// A dotted path reaches a component at any depth. `Config.limits.hard.value` is
+// resolved as a path through the module stratum, which is why it means the
+// nested component and not, say, a prelude module that happened to share a
+// name. Every component the module exports is reachable this way; a member the
+// signature hides is not, because matching removed it from the module.
+module Config {
+  def name = "gandr";
+  module limits {
+    def soft = 10;
+    module hard {
+      def value = 100;
+      module detail {
+        def note = "the innermost component";
+      }
+    }
+  }
+}
+
+def hard_limit = Config.limits.hard.value;
+def note = Config.limits.hard.detail.note;
+def soft_limit = Config.limits.soft;
+
+#{hard = hard_limit, soft = soft_limit, note = note}
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{hard = 100, note = "the innermost component", soft = 10}

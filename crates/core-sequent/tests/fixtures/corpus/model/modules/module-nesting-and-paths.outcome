@@ -1,0 +1,10 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/modules/module-nesting-and-paths.gandr
+; sexp-b3sum: f3bb7b3c5433da17d6491aee41d6b084d828f5554ac3d54afc076d6f11dd8a6f
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 5
+Ret(Record([("limits", Record([("hard", Record([("detail", Record([("note", Str("the innermost component"))])), ("value", Int(100))])), ("soft", Int(10))])), ("name", Str("gandr"))]))
+Stuck(RecordProjNonRecord)
+Stuck(RecordProjNonRecord)
+Stuck(RecordProjNonRecord)
+Ret(Record([("hard", Var("hard_limit")), ("note", Var("note")), ("soft", Var("soft_limit"))]))

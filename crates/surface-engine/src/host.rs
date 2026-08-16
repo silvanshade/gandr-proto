@@ -12,9 +12,14 @@
 //! (`host-module surface`): a call `fs.read(path)` whose head is a known host
 //! module elaborates to `perform Fs::read path` exactly as an FFI extern call
 //! does (proposal-ffi.md §3.1) — module-select ⇒ perform against a known
-//! [`EffectSig`], so the effect row records the host reach. The gate is
-//! syntactic: `fs` / `env` / `proc` are reserved module names, not scoped
-//! bindings.
+//! [`EffectSig`], so the effect row records the host reach.
+//!
+//! **The gate is no longer syntactic.** `fs` / `env` / `proc` are bindings in
+//! the outermost visible scope ([`crate::recognition`]), which reads this table
+//! once to seed them; a source declaration of the same name shadows them under
+//! the scope engine's ordinary policy. This module owns what a host module
+//! *is* — its signature, members, and parameter shapes — and decides nothing
+//! about recognition.
 //!
 //! The current surface assumes vacuous `Σ` and multi-shot resumption; the
 //! runtime host installs the ambient handler for these signatures.
@@ -53,9 +58,9 @@ pub use gandr_core_checker::effect::host::exec;
 pub use gandr_core_checker::effect::host::fs;
 pub use gandr_core_checker::effect::host::proc;
 
-use crate::boundary::HostModuleName;
+use crate::boundary::HostMemberIndex;
+use crate::boundary::HostModuleIndex;
 use crate::boundary::HostOperation;
-use crate::boundary::MatchDecision;
 
 // --- The source-level host-module surface (host-module surface)
 // -----------------------
@@ -205,34 +210,42 @@ pub const HOST_MODULES: &[HostModule] = &[
     },
 ];
 
-/// Whether `name` is a reserved host-module name (the module/prelude design D2
-/// gate: a module namespace is not a record, so `fs.x` never falls through to a
-/// structural projection).
+/// Looks up a host module by its position in [`HOST_MODULES`].
+///
+/// The index is what the outermost scope's
+/// [`crate::recognition::Recognized::HostNamespace`] binding carries, so a
+/// resolved host name reaches its signature without a second name lookup —
+/// which is the point of the graduation: one authority decides *which* module
+/// a name means, and this table says what that module is.
 ///
 /// # Contract
-/// - ensures: agrees with `host_module(name).is_some()`.
+/// - ensures: `Some` exactly when `module` indexes [`HOST_MODULES`].
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn is_host_module<'name, N>(name: N) -> MatchDecision
-where
-    N: Into<HostModuleName<'name>>,
+pub fn host_module_at(module: HostModuleIndex) -> Option<&'static HostModule>
 {
-    MatchDecision(host_module(name).is_some())
+    HOST_MODULES.get(module.0)
 }
-/// Looks up a host module by its surface name.
+
+/// Looks up one member by its position in its module's member list.
 ///
 /// # Contract
-/// - ensures: `Some` exactly when `name` is a reserved host-module name.
+/// - ensures: `Some` exactly when `module` indexes [`HOST_MODULES`] and
+///   `member` indexes that module's members.
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn host_module<'name, N>(name: N) -> Option<&'static HostModule>
-where
-    N: Into<HostModuleName<'name>>,
+pub fn host_member_at(
+    module: HostModuleIndex,
+    member: HostMemberIndex,
+) -> Option<(&'static HostModule, &'static HostMember)>
 {
-    let name = name.into();
-    HOST_MODULES.iter().find(|module| module.name == name.0)
+    let module = host_module_at(module)?;
+    module
+        .members
+        .get(member.0)
+        .map(|found| (module, core::convert::identity(found)))
 }
 
 #[cfg(test)]
@@ -320,15 +333,41 @@ mod tests
         Ok(())
     }
 
-    /// The reserved module names resolve, and non-modules do not.
+    /// Positional lookup addresses exactly the table and nothing past it, and
+    /// a member index is read against its own module.
     #[test]
-    fn host_module_lookup_is_exact()
+    fn host_lookup_by_position_is_exact()
     {
-        assert!(is_host_module("fs").0);
-        assert!(is_host_module("env").0);
-        assert!(is_host_module("proc").0);
-        assert!(!is_host_module("exec").0);
-        assert!(!is_host_module("string").0);
-        assert!(!is_host_module("").0);
+        for (index, module) in HOST_MODULES.iter().enumerate() {
+            let found = host_module_at(HostModuleIndex(index)).expect("every position resolves");
+            assert_eq!(module.name, found.name, "position {index} names its module");
+            for (member_index, member) in module.members.iter().enumerate() {
+                let (owner, found_member) =
+                    host_member_at(HostModuleIndex(index), HostMemberIndex(member_index))
+                        .expect("every member position resolves");
+                assert_eq!(
+                    module.name, owner.name,
+                    "a member resolves in its own module"
+                );
+                assert_eq!(
+                    member.op, found_member.op,
+                    "member {member_index} of {}",
+                    module.name
+                );
+            }
+            assert!(
+                host_member_at(
+                    HostModuleIndex(index),
+                    HostMemberIndex(module.members.len())
+                )
+                .is_none(),
+                "one past the last member of {} resolves to nothing",
+                module.name
+            );
+        }
+        assert!(
+            host_module_at(HostModuleIndex(HOST_MODULES.len())).is_none(),
+            "one past the last module resolves to nothing"
+        );
     }
 }

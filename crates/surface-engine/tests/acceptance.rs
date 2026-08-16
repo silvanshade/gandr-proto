@@ -559,6 +559,7 @@ mod tests
     mod lowering_shapes
     {
         use alloc::rc::Rc;
+        use core::fmt::Write as _;
 
         use gandr_core_checker::syntax::Comp;
         use gandr_core_checker::syntax::Value;
@@ -762,12 +763,24 @@ mod tests
                 "a value block tail must be wrapped in Ret, got {term:?}"
             );
         }
-        /// A user module value selected with `M.field` uses ordinary record
-        /// projection; only registered builtin/host module names are special.
+        /// A user-module selection is **governed** by the recognition scope,
+        /// while a target the scope does not bind still projects.
+        ///
+        /// The pair is the whole contract, and neither half proves it alone.
+        /// `M.field` is emitted only because the scope confirmed that `M`
+        /// exports `field`, so renaming that component in the source — moving
+        /// nothing else — must turn the very same projection into a refusal.
+        /// That is the mutant this test exists to kill: before the projection
+        /// site consulted the scope, both spellings lowered to an identical
+        /// `RecordProj` and the second failed much later, if at all.
+        ///
+        /// The free-target half is the guard on the other side. An unbound `M`
+        /// keeps the ordinary record projection it always had, which is what
+        /// stops governance from swallowing genuine record code.
         #[test]
-        fn user_module_field_selection_is_record_projection()
+        fn a_user_module_selection_is_governed_and_a_free_target_still_projects()
         {
-            let lowered = lower_ok("module M {}\ndef use_field = M.field;");
+            let lowered = lower_ok("module M { def field = 1; }\ndef use_field = M.field;");
             let item = lowered
                 .items
                 .iter()
@@ -782,6 +795,21 @@ mod tests
                 ),
                 "M.field must project field from Var(M): {:?}",
                 item.term
+            );
+
+            let error =
+                lower_source("module M { def other = 1; }\ndef use_field = M.field;".into())
+                    .expect_err("a component the module does not export is refused");
+            assert!(
+                matches!(
+                    error,
+                    LowerError::UnknownModuleComponent {
+                        ref module,
+                        ref component,
+                        ..
+                    } if module == "M" && component == "field"
+                ),
+                "the refusal names the module and the component: {error:?}"
             );
 
             let nested = sole_term("M.inner.field");
@@ -903,22 +931,6 @@ mod tests
                 checker::infer_comp(Ctx::new(), comp.clone()),
                 Ok(CompType::returner(expected_record)),
                 "the checker must accept a matching two-member module record ascription"
-            );
-
-            let missing = sole_item(
-                "module M : #{ x: Integer, y: Integer, z: Integer } { \
-                 def x = 1; def y = 2; }",
-            );
-            let Term::Comp(ref missing_comp) = missing.term
-            else {
-                panic!(
-                    "a nonempty missing-field module lowers to a computation: {:?}",
-                    missing.term
-                );
-            };
-            assert!(
-                checker::infer_comp(Ctx::new(), missing_comp.clone()).is_err(),
-                "a missing module record field must be checked by the terminal record annotation"
             );
 
             let wrong =
@@ -1073,6 +1085,388 @@ mod tests
                 checker::infer_comp(ctx, projection.clone()),
                 Ok(CompType::returner(ValueType::integer())),
                 "Outer.inner.answer must infer the nested exported field type"
+            );
+        }
+
+        /// Matching is **coercive**, so the signature's order is independent of
+        /// the body's: components are matched by name, evaluation stays in
+        /// source order, and the returned record is canonical in label order.
+        #[test]
+        fn a_reordered_signature_matches_and_canonicalizes()
+        {
+            let item = sole_item(
+                "module M : #{ second: Integer, first: Integer } { \
+                 def first = 1; def second = 2; }",
+            );
+            let Term::Comp(Comp::Bind(_, ref first, ref after_first)) = item.term
+            else {
+                panic!("the body evaluates in source order: {:?}", item.term);
+            };
+            assert_eq!("first", first, "the body's first member runs first");
+            let Comp::Bind(_, ref second, ref final_ret) = **after_first
+            else {
+                panic!("the body's second member follows: {after_first:?}");
+            };
+            assert_eq!("second", second);
+            let Comp::Ret(ref returned) = **final_ret
+            else {
+                panic!("the module returns its coerced record: {final_ret:?}");
+            };
+            let Value::Annot(ref payload, _) = **returned
+            else {
+                panic!("the coerced record keeps its annotation: {returned:?}");
+            };
+            let Value::Record(ref fields) = **payload
+            else {
+                panic!("the payload is a record: {payload:?}");
+            };
+            assert_eq!(
+                fields.keys().map(String::as_str).collect::<Vec<_>>(),
+                vec!["first", "second"],
+                "the record is canonical in label order, whatever the signature's order"
+            );
+            let Term::Comp(comp) = item.term
+            else {
+                panic!("a nonempty module is a computation");
+            };
+            assert_eq!(
+                checker::infer_comp(Ctx::new(), comp),
+                Ok(CompType::returner(ValueType::record([
+                    ("first".to_owned(), ValueType::integer()),
+                    ("second".to_owned(), ValueType::integer()),
+                ]))),
+                "a reordered signature checks"
+            );
+        }
+
+        /// Matching cannot invent a component. The missing one is named at the
+        /// signature that asked for it, rather than falling out of the record
+        /// and surfacing later as a record-type mismatch.
+        #[test]
+        fn a_missing_signature_component_is_rejected_at_the_signature()
+        {
+            let source = "module M : #{ x: Integer, y: Integer, z: Integer } { \
+                          def x = 1; def y = 2; }";
+            let error = lower_source(source.into()).expect_err("a missing component is rejected");
+            assert!(
+                matches!(error, LowerError::MissingModuleComponent { ref name, .. } if name == "z"),
+                "the rejection names the missing component: {error:?}"
+            );
+
+            let recovered = lower_source_total(source.into()).expect("total lowering recovers");
+            let item = recovered.items.first().expect("the module still lowers");
+            let Term::Comp(ref comp) = item.term
+            else {
+                panic!("the recovered module is a computation: {:?}", item.term);
+            };
+            assert!(
+                binder_chain(comp).contains(&"z".to_owned()),
+                "total mode materializes the missing component as a reachable hole: {comp:?}"
+            );
+        }
+
+        /// The binders a module's bind-chain introduces, outermost first.
+        fn binder_chain(comp: &Comp) -> Vec<String>
+        {
+            let mut out = Vec::new();
+            let mut current = comp;
+            while let Comp::Bind(_, ref binder, ref rest) = *current {
+                out.push(binder.clone());
+                current = rest;
+            }
+            out
+        }
+
+        /// A **manifest** type component `type t = τ` binds `t` over the
+        /// components that follow it, expanding to the already-elaborated `τ`.
+        /// Nothing abstract survives: the module's record type names `τ`, and a
+        /// projection off the module is convertible with it.
+        #[test]
+        fn a_manifest_type_component_expands_in_later_components()
+        {
+            let lowered = lower_ok(
+                "module M : #{ type T = Integer, value: T } { def value = 1; }\n\
+                 def used = M.value;",
+            );
+            let module = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the module item");
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([(
+                    "value".to_owned(),
+                    ValueType::integer(),
+                )]))),
+                module.ascription,
+                "the component expanded, so the signature carries `Integer` and no `t`"
+            );
+            let stratum = lowered
+                .modules
+                .iter()
+                .find(|entry| entry.values == vec!["value".to_owned()])
+                .expect("the module stratum entry");
+            assert_eq!(
+                1,
+                stratum.types.len(),
+                "the stratum records the type component"
+            );
+            assert_eq!("T", stratum.types[0].name);
+            assert_eq!(
+                ValueType::integer(),
+                stratum.types[0].definition,
+                "with the type it is manifestly equal to"
+            );
+
+            let used = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("used"))
+                .expect("the projection item");
+            let Term::Comp(ref projection) = used.term
+            else {
+                panic!("the projection is a computation: {:?}", used.term);
+            };
+            let mut ctx = Ctx::new();
+            ctx.bind(
+                "M".to_owned(),
+                ValueType::record([("value".to_owned(), ValueType::integer())]),
+            );
+            assert_eq!(
+                checker::infer_comp(ctx, projection.clone()),
+                Ok(CompType::returner(ValueType::integer())),
+                "the projection at `t` is convertible with `Integer`"
+            );
+        }
+
+        /// A manifest component is expanded **lexically, where the signature is
+        /// spelled** — so a datatype of the same name declared in the same file
+        /// cannot capture it.
+        #[test]
+        fn a_manifest_type_component_is_not_captured_by_an_ambient_datatype()
+        {
+            let captured = lower_source_total(
+                "data Thing : Type { Only : Thing; }\n\
+                 module M : #{ value: Thing } { def value : Thing; }"
+                    .into(),
+            )
+            .expect("total lowering");
+            let captured = captured
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the ambient module item");
+            let Some(Ty::Value(ValueType::Record(ref ambient))) = captured.ascription
+            else {
+                panic!(
+                    "the ambient signature is a record: {:?}",
+                    captured.ascription
+                );
+            };
+            let ambient_field = ambient.get("value").expect("the ambient field");
+            assert!(
+                matches!(**ambient_field, ValueType::Data { .. }),
+                "without a component, `Thing` means the declared datatype: {ambient_field:?}"
+            );
+
+            let lowered = lower_ok(
+                "data Thing : Type { Only : Thing; }\n\
+                 module M : #{ type Thing = Integer, value: Thing } { def value = 1; }",
+            );
+            let module = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the module item");
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([(
+                    "value".to_owned(),
+                    ValueType::integer(),
+                )]))),
+                module.ascription,
+                "the manifest component wins over the ambient datatype of the same name"
+            );
+        }
+
+        /// A **bare** `type t` is the sealed component, and sealing is not this
+        /// rung's. The decline names the component, and its siblings elaborate
+        /// as though it were absent.
+        #[test]
+        fn a_bare_type_component_declines_and_keeps_its_siblings()
+        {
+            let source = "module M : #{ type T, value: Integer } { def value = 1; }";
+            let error =
+                lower_source(source.into()).expect_err("the abstract component is declined");
+            assert!(
+                matches!(error, LowerError::BareTypeComponent { ref name, .. } if name == "T"),
+                "the decline names the component: {error:?}"
+            );
+            assert!(
+                error.to_string().contains("sealing"),
+                "and points at what would elaborate it: {error}"
+            );
+
+            let recovered = lower_source_total(source.into()).expect("total lowering recovers");
+            let module = recovered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the module still lowers");
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([(
+                    "value".to_owned(),
+                    ValueType::integer(),
+                )]))),
+                module.ascription,
+                "the sibling value component is unaffected by the declined one"
+            );
+        }
+
+        /// Nesting is a property of the source, not of the lowerer: modules
+        /// lower and register at every depth, with each component reachable by
+        /// its own path.
+        #[test]
+        fn deeply_nested_modules_lower_and_resolve_at_every_depth()
+        {
+            let depth = 8_usize;
+            let mut source = String::from("module Outer {");
+            for level in 0 .. depth {
+                write!(source, " module level{level} {{").expect("writing to a String never fails");
+            }
+            source.push_str(" def innermost = 1;");
+            for _level in 0 .. depth {
+                source.push_str(" }");
+            }
+            source.push_str(" }\n");
+            let lowered = lower_ok(source.as_str());
+            assert_eq!(
+                depth + 1,
+                lowered.modules.len(),
+                "one stratum entry per declaration, outer before nested"
+            );
+            let deepest = lowered
+                .modules
+                .last()
+                .expect("the innermost declaration is recorded last");
+            assert_eq!(
+                vec!["innermost".to_owned()],
+                deepest.values,
+                "the innermost module exports its own member"
+            );
+            assert_eq!(
+                depth + 1,
+                deepest.path.segments().len(),
+                "and its path names every enclosing declaration: {:?}",
+                deepest.path
+            );
+
+            let mut path = String::from("Outer");
+            for level in 0 .. depth {
+                write!(path, ".level{level}").expect("writing to a String never fails");
+            }
+            let projection = lower_ok(&format!("{source}def used = {path}.innermost;"));
+            assert!(
+                projection
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("used")),
+                "the innermost member is reachable by its dotted path"
+            );
+        }
+
+        /// A module path is a resolved path and not a syntactic guess, proved
+        /// through **lowering** rather than through the trie.
+        ///
+        /// Reading the scope back only shows that the bindings were written.
+        /// What has to hold is that the projection site consults them, so each
+        /// case here is a source that lowers or refuses: the exported
+        /// component projects, the member the signature hid refuses, the
+        /// nested module the signature hid refuses, and a component that was
+        /// never declared refuses. Every refusal names what it refused.
+        #[test]
+        fn a_module_path_is_governed_through_lowering_not_merely_registered()
+        {
+            const DECLARATION: &str = "module Facts : #{ total: Integer } { \
+                                       def hidden = 1; def total = 2; \
+                                       module inner { def answer = 3; } }";
+
+            let lowered = lower_ok(&format!("{DECLARATION}\ndef used = Facts.total;"));
+            assert!(
+                lowered
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("used")),
+                "the exported component lowers through its path"
+            );
+
+            // Each of these is a path the module does not have, for a
+            // different reason, and each must be refused at the projection.
+            for (selection, component, why) in [
+                ("Facts.hidden", "hidden", "matching hid the member"),
+                ("Facts.inner", "inner", "matching hid the nested module"),
+                ("Facts.never", "never", "the component was never declared"),
+            ] {
+                let error = lower_source(
+                    format!("{DECLARATION}\ndef used = {selection};")
+                        .as_str()
+                        .into(),
+                )
+                .expect_err("a path the module does not have is refused");
+                assert!(
+                    matches!(
+                        error,
+                        LowerError::UnknownModuleComponent {
+                            ref module,
+                            component: ref selected,
+                            ..
+                        } if module == "Facts" && selected == component
+                    ),
+                    "{why}: the refusal must name Facts and {component}, got {error:?}"
+                );
+            }
+        }
+
+        /// Governance follows nesting all the way down, and the depth it
+        /// reports is the depth that actually governs.
+        ///
+        /// A two-segment check would see `Facts.inner.answer` as a selection
+        /// off an unrecognizable target and guess a record projection. This
+        /// pins both halves at depth three: the real component lowers, and its
+        /// sibling that does not exist is refused **against the nested
+        /// module**, not against the outer one.
+        #[test]
+        fn a_deep_module_path_is_governed_at_the_depth_that_binds_it()
+        {
+            const DECLARATION: &str = "module Facts { \
+                                       module inner { module core { def answer = 3; } } }";
+
+            let lowered = lower_ok(&format!(
+                "{DECLARATION}\ndef used = Facts.inner.core.answer;"
+            ));
+            assert!(
+                lowered
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("used")),
+                "a depth-4 path lowers when every segment binds"
+            );
+
+            let error = lower_source(
+                format!("{DECLARATION}\ndef used = Facts.inner.core.missing;")
+                    .as_str()
+                    .into(),
+            )
+            .expect_err("an absent component of a deeply nested module is refused");
+            assert!(
+                matches!(
+                    error,
+                    LowerError::UnknownModuleComponent {
+                        ref module,
+                        ref component,
+                        ..
+                    } if module == "Facts.inner.core" && component == "missing"
+                ),
+                "the refusal must name the nested module that governs it: {error:?}"
             );
         }
 

@@ -1,0 +1,31 @@
+// Matching a module against an inline structural signature.
+//
+// An inline signature `#{ … }` is a **coercion**, and it does three separable
+// things. It **drops** what the signature does not name -- `scratch` below still
+// evaluates, and is simply not part of the module afterwards. It **reorders**
+// freely, because the signature's order and the body's order are independent:
+// the body computes `scratch`, then `double`, then `base`, while the signature
+// asks for `base` and `double` in the other order. And it **cannot invent** a
+// component the body never defined, which is the one way matching fails.
+//
+// A signature may also declare a **manifest type component** `type T = τ`. It
+// binds `T` over the components that follow it and expands to `τ` there, so
+// `scale : Ratio` below means `scale : Integer`. The expansion is lexical: `τ`
+// is elaborated once, where the signature is written, so a type declared
+// elsewhere under the same name cannot capture the component. Nothing abstract
+// is introduced -- making a component abstract is what sealing is for, and a
+// bare `type T` is declined until it lands.
+module Metrics : #{ type Ratio = Integer, base: Integer, double: Integer, scale: Ratio } {
+  def scratch = 2;
+  def double = scratch * 3;
+  def base = 7;
+  def scale = 1;
+}
+
+def visible = Metrics.base + Metrics.double + Metrics.scale;
+
+#{visible = visible}
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{visible = 14}

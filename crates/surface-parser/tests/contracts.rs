@@ -1,4 +1,5 @@
 use core::error::Error;
+use core::fmt::Write as _;
 use std::sync::OnceLock;
 
 use gandr_surface_grammar::Assoc;
@@ -180,33 +181,46 @@ fn a_transparent_ascription_admits_the_same_signature() -> Result<(), Box<dyn Er
     Ok(())
 }
 
+/// Module nesting is **unbounded in the clean grammar**, not merely deeper than
+/// it was.
+///
+/// The distinction is the point of the test and the reason the depths are
+/// generated rather than written out. An unrolled grammar admits nesting to
+/// whatever depth its unrolling was written to and recovers past it, so *some*
+/// finite depth parses dirty; a recursive one has no such depth, because the
+/// nested form inhabits the very sort its own body repeats. Sweeping a range
+/// that straddles and far exceeds any plausible unrolling separates the two:
+/// under an unrolled grammar at least one of these depths reports an
+/// obligation.
 #[test]
-fn deeper_nested_module_uses_ordinary_recovery() -> Result<(), Box<dyn Error>>
+fn module_nesting_is_unbounded_in_the_clean_grammar() -> Result<(), Box<dyn Error>>
 {
     let pbg = built();
-    let src = "module Outer { module inner { \
-               module deeper { def x = 1; } def y = 2; \
-               } }";
-    let result = parse(pbg, SourceSlice::from(src))?;
-    assert!(
-        !bool::from(result.is_clean()),
-        "the second nested rung must remain outside the clean grammar"
-    );
-    assert!(
-        result
-            .obligations()
-            .iter()
-            .all(|obligation| obligation.class != Oblig::AmbiguousPrec),
-        "the nesting ceiling must use ordinary recovery, not precedence ambiguity"
-    );
-    assert_eq!(
-        NodeKind::Wald,
-        {
-            let root = result.cst().node(result.cst().root())?;
-            root.kind()
-        },
-        "the recovered source still commits"
-    );
+    for depth in [1_usize, 2, 3, 4, 8, 16, 32] {
+        let mut src = String::from("module Outer {");
+        for level in 0 .. depth {
+            write!(src, " module level{level} {{")?;
+        }
+        src.push_str(" def innermost = 1;");
+        for _level in 0 .. depth {
+            src.push_str(" }");
+        }
+        src.push_str(" }");
+        let result = parse(pbg, SourceSlice::from(src.as_str()))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "nesting depth {depth} must parse clean, with no recovery obligation: {:?}",
+            result.obligations()
+        );
+        assert_eq!(
+            NodeKind::Wald,
+            {
+                let root = result.cst().node(result.cst().root())?;
+                root.kind()
+            },
+            "nesting depth {depth} commits a whole tree"
+        );
+    }
     Ok(())
 }
 #[test]

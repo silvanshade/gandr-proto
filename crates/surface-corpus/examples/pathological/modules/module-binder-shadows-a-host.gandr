@@ -1,0 +1,12 @@
+// Edge case: a value binder is checked against the outermost scope at its
+// introduction, but it does not shadow. A parameter named `env` collides with
+// the host module of that name and is reported -- and `env.get` inside the body
+// still resolves to the host module, because the lowerer carries no value
+// environment to bind the parameter in. The diagnostic exists precisely because
+// the two disagree.
+def lookup(env: Integer) -> F String {
+  env.get("HOME")
+}
+
+//@ mode: lower-only
+//@ expect: lowers

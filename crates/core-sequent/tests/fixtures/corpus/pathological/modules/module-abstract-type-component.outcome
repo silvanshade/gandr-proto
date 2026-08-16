@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/modules/module-abstract-type-component.gandr
+; sexp-b3sum: 1e838899b3143c0e250b7f8469559cdc7bec1209ca3e7b497c8a680f9317b3f7
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Record([("value", Int(1))]))

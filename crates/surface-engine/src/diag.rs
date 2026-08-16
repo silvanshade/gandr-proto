@@ -168,9 +168,11 @@ pub struct Binding
 
 /// The severity of a [`Diagnostic`].
 ///
-/// Only [`Severity::Error`] occurs at Stage 1 (every [`TypeError`] is fatal);
-/// the enum reserves room for warnings/hints as later stages add
-/// non-fatal marks.
+/// Every [`TypeError`] is fatal, so typing contributes only
+/// [`Severity::Error`]. [`Severity::Warning`] arrives from **recognition**: a
+/// declaration or binder that takes a prelude or host name is accepted under
+/// the warn-and-allow policy and reported at this severity, which is the whole
+/// reason the level exists rather than a reserved slot.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(rename_all = "lowercase"))]
@@ -178,12 +180,20 @@ pub enum Severity
 {
     /// A fatal typing error.
     Error,
+    /// A non-fatal finding: the program was accepted, and something about it is
+    /// worth saying anyway.
+    Warning,
 }
 
 /// The kind-specific payload of a [`Diagnostic`], tagged by `kind` with the
 /// variant data under `data`.
 ///
-/// One variant per *reachable* [`TypeError`] constructor. The machine's two
+/// One variant per *reachable* [`TypeError`] constructor, plus the two that
+/// mirror no typing failure at all: [`Self::Attribute`], from the attribute
+/// pass, and [`Self::ShadowedName`], from recognition. Both arrive after typing
+/// and carry their own payload rather than a [`FailureState`]'s.
+///
+/// The machine's two
 /// polarity-guard `ShapeMismatch` descriptions
 /// ([`text::SHAPE_VALUE`](gandr_core_checker::error::text::SHAPE_VALUE) /
 /// `SHAPE_COMP`) are unreachable by construction (`error.rs` module doc; a
@@ -247,6 +257,20 @@ pub enum DiagnosticDetail
         name: String,
         /// What is wrong with it.
         problem: AttributeProblem,
+    },
+    /// A declaration or binder took a prelude or host name, and the
+    /// warn-and-allow policy let it.
+    ///
+    /// The two cases differ in what follows, and the message says which. A
+    /// **declaration** shadows: the name and its whole subtree now mean the
+    /// declaration, so `list.each` after a `module list` is the user's
+    /// component. A **binder** does not: the lowerer carries no value
+    /// environment, so `env.get` under a parameter named `env` still resolves
+    /// to the host module, and this diagnostic is the only thing that says so.
+    ShadowedName
+    {
+        /// The path the declaration or binder took.
+        path: String,
     },
     /// A forward-compatible catch-all for a future [`TypeError`] variant; the
     /// human-readable [`Diagnostic::message`] still describes it.
@@ -658,6 +682,7 @@ pub fn report(
         push_marks_for_item(item_index.into(), item, &item_base, lowered, &mut marks);
     }
     diagnostics.extend(attr_pass.findings.iter().map(attribute_diagnostic));
+    diagnostics.extend(lowered.shadowed_builtins().iter().map(shadowed_diagnostic));
     Report {
         schema_version: SCHEMA_VERSION,
         diagnostics,
@@ -668,6 +693,40 @@ pub fn report(
         marks,
         attributes: attr_pass.resolved.iter().map(attr_to_report).collect(),
         obligations: Vec::new(),
+    }
+}
+
+/// Maps one recorded shadowing of a prelude or host name to its warning.
+///
+/// # Contract
+/// - ensures: the diagnostic carries [`Severity::Warning`], the shadowed path,
+///   and the declaration's span; it never carries a context chain, because
+///   nothing was being typed when recognition recorded it.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: the recognition record is complete enough to report without
+///   consulting the typing pass.
+/// - witness: `gandr-surface-engine` `tests/recognition.rs` —
+///   `a_shadowed_builtin_is_reported_as_a_warning`
+fn shadowed_diagnostic(shadowed: &crate::recognition::ShadowedBuiltin) -> Diagnostic
+{
+    let path = format!("{}", shadowed.path);
+    Diagnostic {
+        detail: DiagnosticDetail::ShadowedName { path: path.clone() },
+        severity: Severity::Warning,
+        message: format!(
+            "`{path}` is a prelude or host name; this declaration takes it, and the policy allows \
+             it"
+        ),
+        span: Some(Span {
+            start: shadowed.byte_range.0.start,
+            end: shadowed.byte_range.0.end,
+        }),
+        elaboration: None,
+        expr: None,
+        context_chain: Vec::new(),
+        ctx: Vec::new(),
     }
 }
 

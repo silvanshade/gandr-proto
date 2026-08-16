@@ -28,6 +28,7 @@ use gandr_core_checker::types::ValueType;
 
 use crate::boundary::PipelineSource;
 use crate::boundary::SignificantIndex;
+use crate::boundary::TypeName;
 use crate::lower::LowerError;
 use crate::lower::LowerResult;
 use crate::lower::Strictness;
@@ -77,10 +78,31 @@ pub fn lower_value_ty(
 ) -> LowerResult<ValueType>
 {
     value_result(
-        lower_type_tree(source, node, strictness, resolve),
+        lower_type_tree(source, node, strictness, resolve, &no_manifest_types),
         node,
         strictness,
     )
+}
+
+/// Resolves a module signature's **manifest type component** to the type it was
+/// declared equal to.
+///
+/// A signature's `type T = τ` elaborates `τ` once, where the signature is
+/// spelled, and every later occurrence of `T` in that signature expands to the
+/// already-elaborated `τ`. Consulting this before the declared-data resolver is
+/// what makes the expansion **manifest rather than ambient**: an enclosing
+/// datatype also called `T` cannot capture the component, because the name
+/// never reaches the ambient resolver at all.
+pub type ManifestTypes<'manifest> = &'manifest dyn Fn(TypeName<'_>) -> Option<ValueType>;
+
+/// The manifest environment everywhere outside a module signature: no
+/// component is in scope, so every type name resolves ambiently as it always
+/// did.
+#[inline]
+#[must_use]
+pub fn no_manifest_types(_name: TypeName<'_>) -> Option<ValueType>
+{
+    None
 }
 
 /// Lowers a primitive type name.
@@ -134,7 +156,7 @@ pub fn lower_comp_ty(
 ) -> LowerResult<CompType>
 {
     comp_result(
-        lower_type_tree(source, node, strictness, resolve),
+        lower_type_tree(source, node, strictness, resolve, &no_manifest_types),
         node,
         strictness,
     )
@@ -241,7 +263,44 @@ pub fn lower_ty(
     resolve: DataResolver<'_>,
 ) -> LowerResult<Ty>
 {
-    let result = lower_type_tree(source, node, strictness, resolve);
+    lower_ty_manifest(source, node, strictness, resolve, &no_manifest_types)
+}
+
+/// Lowers a type under a module signature's manifest type components.
+///
+/// Identical to [`lower_ty`] except that a bare type name matching a manifest
+/// component expands to that component's already-elaborated type **before** the
+/// declared-data resolver is consulted, so the expansion cannot be captured by
+/// an ambient declaration of the same name.
+///
+/// # Contract
+/// - ensures: a type name `manifest` answers becomes exactly the type it
+///   answers with, wherever it occurs in `node`.
+/// - ensures: every other name lowers exactly as [`lower_ty`] lowers it.
+/// - fails: as [`lower_ty`].
+/// - panics: none.
+///
+/// # Errors
+///
+/// As [`lower_ty`].
+///
+/// # Adequacy
+/// - hypothesis: consulting the manifest first, at the one type-name site,
+///   makes expansion independent of the ambient environment.
+/// - mutants: consult the data resolver first; consult the manifest only at the
+///   root.
+/// - witnesses: `gandr-surface-engine` `tests/acceptance.rs` —
+///   `a_manifest_type_component_is_not_captured_by_an_ambient_datatype`.
+#[inline]
+pub fn lower_ty_manifest(
+    source: PipelineSource<'_>,
+    node: SynNode<'_>,
+    strictness: Strictness,
+    resolve: DataResolver<'_>,
+    manifest: ManifestTypes<'_>,
+) -> LowerResult<Ty>
+{
+    let result = lower_type_tree(source, node, strictness, resolve, manifest);
     if matches!(strictness, Strictness::Total) && result.is_err() {
         return Ok(Ty::Value(ValueType::Unknown));
     }
@@ -345,6 +404,7 @@ fn lower_type_tree(
     root: SynNode<'_>,
     strictness: Strictness,
     resolve: DataResolver<'_>,
+    manifest: ManifestTypes<'_>,
 ) -> LowerResult<Ty>
 {
     let mut pending = vec![TypeTask::Node(root)];
@@ -364,10 +424,15 @@ fn lower_type_tree(
                     },
                     | node_kinds::TYPE_IDENTIFIER => {
                         results.push(node_text(source, node).map(|name| {
-                            Ty::Value(resolve(name.0).map_or_else(
-                                || ValueType::atom(name.0),
-                                |id| ValueType::data(id, Vec::new()),
-                            ))
+                            // The manifest environment answers first, so a
+                            // signature's `type T = τ` expands to `τ` even where
+                            // an ambient datatype of the same name exists.
+                            Ty::Value(manifest(TypeName(name.0)).unwrap_or_else(|| {
+                                resolve(name.0).map_or_else(
+                                    || ValueType::atom(name.0),
+                                    |id| ValueType::data(id, Vec::new()),
+                                )
+                            }))
                         }));
                     },
                     | node_kinds::F_TYPE => {
@@ -582,6 +647,19 @@ fn schedule_record_type<'tree>(
 {
     let mut fields = Vec::new();
     for field in node.named_children() {
+        // A type component declares a name and belongs to a module signature,
+        // where the module lowering reads it. Dropping it here would make
+        // `#{ type T }` and `#{}` the same record type, so an ordinary type
+        // position refuses it instead.
+        if field.kind() == node_kinds::TYPE_COMPONENT {
+            results.push(Err(LowerError::TypeSortMismatch {
+                expected: "a record field; a `type` component is only meaningful in a module \
+                           signature",
+                kind: field.kind(),
+                byte_range: field.byte_range(),
+            }));
+            return;
+        }
         if field.kind() != node_kinds::RECORD_TYPE_FIELD {
             continue;
         }

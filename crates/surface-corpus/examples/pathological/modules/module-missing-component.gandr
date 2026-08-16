@@ -1,0 +1,8 @@
+// Failure golden: matching drops and reorders, but it cannot invent. A
+// signature naming a component the body never defines is refused at the
+// signature that asked for it, rather than leaving the component out of the
+// record and surfacing later as a record-type mismatch.
+module Bad : #{ present: Integer, absent: Integer } { def present = 1; }
+
+//@ mode: shell
+//@ expect-shell-error: which the body does not define

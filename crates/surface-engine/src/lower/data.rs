@@ -607,6 +607,24 @@ impl Lowerer<'_>
         ty_lower::lower_ty(self.source, ty_node, self.strictness, &resolve)
     }
 
+    /// Lowers a type node inside a module signature, where the signature's
+    /// already-elaborated manifest type components stand ahead of the ambient
+    /// environment.
+    ///
+    /// # Contract
+    /// - ensures: a name `manifest` answers expands to that answer at any
+    ///   depth; every other name lowers as [`Self::lower_type_node`] lowers it.
+    /// - panics: none.
+    pub(super) fn lower_type_node_with_manifest(
+        &self,
+        ty_node: SynNode<'_>,
+        manifest: ty_lower::ManifestTypes<'_>,
+    ) -> LowerResult<Ty>
+    {
+        let resolve = self.data_resolver();
+        ty_lower::lower_ty_manifest(self.source, ty_node, self.strictness, &resolve, manifest)
+    }
+
     /// The value-sorted counterpart of [`Self::lower_type_node`]: a
     /// declared-datatype reference at any depth becomes the
     /// [`ValueType::Data`] nominal handle, else the ordinary

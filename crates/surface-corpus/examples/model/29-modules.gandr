@@ -1,11 +1,14 @@
-// Primitive modules: records with source-ordered, exactly-once member evaluation.
+// Primitive modules: source-ordered, exactly-once member evaluation.
 //
-// A `module` declaration builds an ordinary record value. The transparent
-// record signature explicitly repacks the returned record while every body
-// member still evaluates. The shell command member below keeps its `Exec`
-// effect, and the lowercase nested module is one source-ordered component.
-// Nested user paths such as `Facts.inner.answer` are ordinary record
-// projections after the named outer module value is linked.
+// A `module` declaration has a path, ordered value components, and nested
+// modules that are modules in the same sense. What it *runs* is bind
+// sequencing and a terminal record, because the core carries no module former,
+// and that is what makes the evaluation order below observable: every body
+// member evaluates once, in source order, including the ones the signature
+// does not export. The shell command member keeps its `Exec` effect, and the
+// nested module is one source-ordered component. A path such as
+// `Facts.inner.answer` is resolved through the module stratum and reaches the
+// nested component after the named outer module is linked.
 //
 // The surrounding shell-mode file also pins the shared source-ordered linker:
 // `seed` is linked before the module, `after` is linked after the module, and

@@ -47,6 +47,8 @@ mod packages;
 #[cfg(test)]
 mod proptest;
 #[cfg(test)]
+mod recognition;
+#[cfg(test)]
 mod run;
 #[cfg(test)]
 mod seam;

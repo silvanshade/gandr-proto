@@ -95,25 +95,22 @@
 //! );
 //! ```
 //!
-//! # Namespace graduation, prepared
+//! # Namespace graduation, landed
 //!
-//! gandr's prelude modules (`prim`, `list`, `record`, …) and host modules
-//! (`fs`, `env`, `proc`) are reserved by a **syntactic** gate as built: the
-//! lowerer asks [`crate::prelude::is_module_member`] and
-//! [`crate::host::host_module`] whether a projection head is a known table
-//! entry, and [`crate::host`]'s own documentation states the gate's nature —
-//! reserved module *names*, not scoped bindings. A script that declares its own
-//! `env` therefore collides with a reservation rather than shadowing a binding.
+//! gandr's prelude modules (`prim`, `list`, `record`, …), host modules (`fs`,
+//! `env`, `proc`), and `extern`-declared foreign modules **are** bindings in an
+//! outermost visible namespace built over [`scope::Scope::with_init_visible`].
+//! [`crate::recognition`] owns that scope: recognition is ordinary resolution
+//! against it, and "a user declaration shadows a builtin" is a shadow event
+//! whose policy is a handler — warn-and-allow by default, reject on request.
+//! The projection-site constant-table gate that preceded it is gone, so no
+//! second name authority remains beside this one.
 //!
-//! [`scope::Scope::with_init_visible`] is the shape that graduation takes: the
-//! three tables become an initial **visible** namespace over the same scope
-//! value, recognition becomes ordinary resolution against it, and "a user
-//! declaration shadows a builtin" becomes a shadow event whose policy is a
-//! handler — warn-and-allow being one, reject being another. Nothing in this
-//! change performs that graduation: the tables are untouched, the lowerer still
-//! asks the syntactic question, and the graduation waits on the module layer
-//! that owns import lowering. What lands here is that the target shape exists
-//! and is exercised, so the graduation is a rewiring rather than a redesign.
+//! Declared modules bind into the same namespace, which is what lets a module
+//! path and a builtin path be the same kind of question. What this layer still
+//! does not carry is the *inner* scopes: a `let` binder or a lambda parameter
+//! opens no section here, so it is reported at its introduction and shadows
+//! nothing.
 //!
 //! # The division of labour against the nominal machinery
 //!

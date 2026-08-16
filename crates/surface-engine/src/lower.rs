@@ -35,6 +35,9 @@
 //! | `InvalidGrade`             | the whole graded construct is a hole (`HoleNote::InvalidGrade`)           |
 //! | `DanglingSignature`        | an item whose term is a hole, ascribed the signature (`MissingDefinition`)|
 //! | `DuplicateModuleMember`    | duplicate member is elided as a hole in sequence (module keeps first field) |
+//! | `MissingModuleComponent`   | the component is a hole bound at its declared type, so the gap stays a goal |
+//! | `BareTypeComponent`        | the component is dropped and its siblings elaborate without it            |
+//! | `ShadowedBuiltin`          | **not recovered**: a refused policy is a decision about the program       |
 //! | `TypeSortMismatch`         | the type position lowers to `Unknown` (no note; the `Unknown` *is* the signal) |
 //! | `MalformedNode`            | hole at the node (`HoleNote::MalformedNode`)                              |
 //!
@@ -139,6 +142,7 @@ use gandr_theory_nominal_automata::Gensym;
 use thiserror::Error;
 
 use crate::boundary::DefinitionName;
+use crate::boundary::FieldLabel;
 use crate::boundary::FreshHoleId;
 use crate::boundary::HostEscapeFlag;
 use crate::boundary::ItemIndex;
@@ -147,6 +151,7 @@ use crate::boundary::ListCaseFlag;
 use crate::boundary::NodeText;
 use crate::boundary::OperatorText;
 use crate::boundary::PipelineSource;
+use crate::boundary::ScopeSegment;
 use crate::boundary::ShellWordContinuation;
 use crate::boundary::SignificantIndex;
 use crate::boundary::SourceOffset;
@@ -154,6 +159,7 @@ use crate::boundary::SourceRange;
 use crate::boundary::SyntaxField;
 use crate::boundary::SyntaxKind;
 use crate::boundary::TotalMode;
+use crate::boundary::TypeName;
 use crate::ffi::CType;
 use crate::ffi::ForeignFn;
 use crate::ffi::ForeignModule;
@@ -175,6 +181,12 @@ use crate::origin::HoleNote;
 use crate::origin::OriginEntry;
 use crate::origin::OriginMap;
 use crate::origin::OriginNode;
+use crate::recognition::PathResolution;
+use crate::recognition::Recognition;
+use crate::recognition::RecognitionSite;
+use crate::recognition::Recognized;
+use crate::recognition::ShadowPolicy;
+use crate::recognition::namespace_path;
 use crate::synnode::SynNode;
 use crate::synnode::SynTree;
 
@@ -372,6 +384,99 @@ pub enum LowerError
         /// The duplicated member name.
         name: String,
         /// The duplicate definition's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A signature's **abstract** type component `type T`, whose sealed
+    /// meaning is not elaborated.
+    ///
+    /// The manifest form `type T = τ` introduces no abstraction and lands here;
+    /// the bare form's whole content is that `t` is *not* its definition, which
+    /// is abstract-type sealing's, exactly as the opaque `:>` ascription is.
+    /// The decline is local to the component, so the signature's other
+    /// components still elaborate: a signature is not made unusable by one
+    /// member it cannot yet express.
+    #[error(
+        "abstract type component `type {name}` is not yet elaborated at bytes {byte_range:?}; \
+         write `type {name} = …` for a manifest component, or wait for abstract-type sealing"
+    )]
+    BareTypeComponent
+    {
+        /// The component's name.
+        name: String,
+        /// The component's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// An inline structural signature names a component the module body does
+    /// not define.
+    ///
+    /// Matching is **coercive**, not merely selective: it may drop components
+    /// the signature does not mention and it may take them in any order, but it
+    /// cannot invent one. Before the module stratum, a missing component simply
+    /// fell out of the repacked record and surfaced later as a record-type
+    /// mismatch on the terminal annotation; naming it at the match site says
+    /// which component is missing and where the signature asked for it.
+    #[error(
+        "module signature names `{name}`, which the body does not define, at bytes {byte_range:?}"
+    )]
+    MissingModuleComponent
+    {
+        /// The component the signature names.
+        name: String,
+        /// The signature's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A projection selects a component a recognized module namespace does not
+    /// export.
+    ///
+    /// This is the *use* site's counterpart to
+    /// [`Self::MissingModuleComponent`], which is the declaration site's. The
+    /// module stratum knows a module's exported components exactly, so
+    /// `M.nope` is not an open question a record projection should guess at —
+    /// recognition holds `M` and can see `nope` is not in it.
+    ///
+    /// A **hidden** member reaches this same error, and that is the point:
+    /// signature matching dropped it from the module, so the value `M` returns
+    /// has no such field and the scope deliberately never bound one. Declining
+    /// at the recognition boundary names the component and the module; falling
+    /// through to a record projection would instead fail much later, against a
+    /// record type, in terms that never mention the signature that hid it.
+    #[error("module `{module}` has no component `{component}` at bytes {byte_range:?}")]
+    UnknownModuleComponent
+    {
+        /// The dotted path of the module namespace that governs the selection.
+        module: String,
+        /// The component the projection selected.
+        component: String,
+        /// The projection's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// An inline structural signature declares one component twice — two value
+    /// components with the same label, two type components with the same name,
+    /// or a type component sharing a value component's label.
+    ///
+    /// The second declaration would silence the first, so one of the two could
+    /// never be matched against.
+    #[error("module signature declares `{name}` more than once at bytes {byte_range:?}")]
+    DuplicateModuleComponent
+    {
+        /// The component declared twice.
+        name: String,
+        /// The signature's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A source declaration shadows a prelude or host name under a policy that
+    /// forbids it.
+    #[error("recognition rejected a declaration at bytes {byte_range:?}: {error}")]
+    ShadowedBuiltin
+    {
+        /// The policy's refusal.
+        error: EventRejection,
+        /// The declaration's byte range.
         byte_range: SourceRange,
     },
 
@@ -664,6 +769,83 @@ pub struct ImportDeclaration
     pub alias: Segment,
 }
 
+/// One **manifest** type component of an inline structural module signature —
+/// `type T = τ`.
+///
+/// A component is a name and the type it is manifestly equal to. It introduces
+/// no abstraction: `τ` is elaborated once, where the signature is written, and
+/// every occurrence of `T` in that signature expands to it, so nothing named
+/// `T` survives into the record type or reaches the kernel. Recording the pair
+/// here is what a later sealing rung replaces with a freshly minted atom, at
+/// exactly this component; the abstract spelling `type T` is that rung's and is
+/// declined until it lands.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeComponent
+{
+    /// The component's name, as written in the signature.
+    pub name: String,
+    /// The type the component is manifestly equal to, already elaborated.
+    pub definition: ValueType,
+}
+
+/// One module-stratum item: what a `module` declaration *is*, beside the term
+/// that realizes it.
+///
+/// The stratum is the answer to "a module is not a record that happens to be
+/// spelled with a keyword". A record has labels and values; a module has a
+/// **path**, ordered **value components**, ordered **type components**, and
+/// nested module components that are modules in the same sense. The core has no
+/// module former — the realizing term is still bind-sequencing and a record —
+/// so this side table is where the module-level structure lives, exactly as
+/// `extern`, `data`, and `codata` declarations live in side tables beside the
+/// items they do not become.
+///
+/// Every path recorded here is also a binding in the lowering's recognition
+/// scope, which is what makes `Facts.inner.answer` a resolved path rather than
+/// a syntactic guess.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModuleStratum
+{
+    /// The declaration's path from the source root — `Facts`, then
+    /// `Facts.inner` for its nested component.
+    pub path: NamePath,
+    /// The value components the module exports, in the order the final record
+    /// canonicalizes them.
+    pub values: Vec<String>,
+    /// The manifest type components the signature declared, with the types
+    /// they are equal to, in signature order.
+    pub types: Vec<TypeComponent>,
+    /// Whether the declaration carried an inline structural signature that
+    /// matching coerced the body to.
+    pub ascribed: bool,
+}
+
+/// The declaration registries and namespaces a lowering resumes from.
+///
+/// A REPL session accumulates these across submissions, so a later line's
+/// foreign call, copattern definition, constructor application, import path, or
+/// shadowed builtin all see what earlier lines declared. Bundling them keeps
+/// the seeded entry's signature stable as registries are added.
+#[derive(Clone, Copy, Debug)]
+pub struct LoweringSeed<'seed>
+{
+    /// `extern`-declared foreign modules from earlier submissions.
+    pub foreign: &'seed BTreeMap<String, ForeignModule>,
+    /// `codata` declarations from earlier submissions.
+    pub codata: &'seed BTreeMap<String, codata::CodataDecl>,
+    /// `data` declarations from earlier submissions.
+    pub data: &'seed BTreeMap<String, data::DataDecl>,
+    /// The import namespace earlier submissions merged.
+    pub import_scope: &'seed Scope<ImportIndex, SourceRange>,
+    /// The source-order index this submission's first import takes.
+    pub import_index_base: ImportIndex,
+    /// The outermost recognition scope earlier submissions left, or `None` for
+    /// a fresh one seeded from the prelude and host tables alone.
+    pub recognition: Option<&'seed Recognition>,
+    /// How a source declaration shadowing a prelude or host name is settled.
+    pub shadow_policy: ShadowPolicy,
+}
+
 /// The result of lowering a source file: items plus the origin side table.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Lowered
@@ -715,6 +897,16 @@ pub struct Lowered
     /// the scope supplied to seeded lowering. Imports touch only its visible
     /// namespace, so the export namespace remains empty.
     import_scope: Scope<ImportIndex, SourceRange>,
+    /// Every `module` declaration in this source, outer before nested, in
+    /// source order — the module stratum. Like `extern` and `data`, a module
+    /// declaration is recorded here as well as realized as an [`Item`]; unlike
+    /// them it does yield a runnable item, because its members must evaluate.
+    pub modules: Vec<ModuleStratum>,
+    /// The outermost recognition scope after this source's declarations have
+    /// been bound over it — the graduated replacement for the projection-site
+    /// constant tables. A REPL session carries it into the next submission
+    /// exactly as it carries [`Self::import_scope`].
+    recognition: Recognition,
 }
 
 impl Lowered
@@ -746,6 +938,24 @@ impl Lowered
     pub const fn import_scope(&self) -> &Scope<ImportIndex, SourceRange>
     {
         &self.import_scope
+    }
+
+    /// The outermost recognition scope this source left — what a REPL session
+    /// resumes the next submission from.
+    #[inline]
+    #[must_use]
+    pub const fn recognition(&self) -> &Recognition
+    {
+        &self.recognition
+    }
+
+    /// Every builtin a declaration in this source shadowed, in declaration
+    /// order — the warn-and-allow policy's report.
+    #[inline]
+    #[must_use]
+    pub fn shadowed_builtins(&self) -> &[crate::recognition::ShadowedBuiltin]
+    {
+        self.recognition.shadowed()
     }
 
     /// A deterministic rendering for golden tests: items in debug format
@@ -835,15 +1045,47 @@ pub fn lower_source_with(
     strictness: Strictness,
 ) -> LowerResult<Lowered>
 {
-    lower_source_seeded(
-        source,
-        strictness,
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &Scope::new(),
-        ImportIndex(0),
-    )
+    lower_source_with_shadow_policy(source, strictness, ShadowPolicy::WarnAndAllow)
+}
+
+/// Parses and lowers `source` under an explicit builtin-shadowing policy.
+///
+/// The prelude, host, and `extern` names are bindings in the outermost visible
+/// scope ([`crate::recognition`]), so a top-level declaration of the same name
+/// shadows them. `policy` decides what that means: warn-and-allow — the default
+/// every other entry takes — lets the declaration win and records the event on
+/// [`Lowered::shadowed_builtins`], while [`ShadowPolicy::Reject`] refuses it
+/// and fails the lowering.
+///
+/// # Contract
+/// - ensures: identical to [`lower_source_with`] on every source that declares
+///   no name the outermost scope already holds.
+/// - fails: [`LowerError::ShadowedBuiltin`] under [`ShadowPolicy::Reject`] when
+///   a declaration shadows a prelude or host name — including in total mode,
+///   because a refused policy is a decision about the program rather than a
+///   damaged region to recover.
+/// - panics: none.
+///
+/// # Errors
+///
+/// As [`lower_source`] (strict) or [`lower_source_total`] (total), plus
+/// [`LowerError::ShadowedBuiltin`].
+#[inline]
+pub fn lower_source_with_shadow_policy(
+    source: PipelineSource<'_>,
+    strictness: Strictness,
+    policy: ShadowPolicy,
+) -> LowerResult<Lowered>
+{
+    lower_source_seeded(source, strictness, LoweringSeed {
+        foreign: &BTreeMap::new(),
+        codata: &BTreeMap::new(),
+        data: &BTreeMap::new(),
+        import_scope: &Scope::new(),
+        import_index_base: ImportIndex(0),
+        recognition: None,
+        shadow_policy: policy,
+    })
 }
 
 /// Parses `source` and lowers it totally, seeded with `foreign` modules
@@ -872,15 +1114,15 @@ pub fn lower_source_total_with_foreign(
     foreign: &BTreeMap<String, ForeignModule>,
 ) -> LowerResult<Lowered>
 {
-    lower_source_seeded(
-        source,
-        Strictness::Total,
+    lower_source_seeded(source, Strictness::Total, LoweringSeed {
         foreign,
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &Scope::new(),
-        ImportIndex(0),
-    )
+        codata: &BTreeMap::new(),
+        data: &BTreeMap::new(),
+        import_scope: &Scope::new(),
+        import_index_base: ImportIndex(0),
+        recognition: None,
+        shadow_policy: ShadowPolicy::WarnAndAllow,
+    })
 }
 
 /// Parses `source` and lowers it totally, seeded with both the `foreign`
@@ -906,37 +1148,30 @@ pub fn lower_source_total_with_foreign(
 #[inline]
 pub(crate) fn lower_source_total_seeded(
     source: PipelineSource<'_>,
-    foreign: &BTreeMap<String, ForeignModule>,
-    codata: &BTreeMap<String, codata::CodataDecl>,
-    data: &BTreeMap<String, data::DataDecl>,
-    import_scope: &Scope<ImportIndex, SourceRange>,
-    import_index_base: ImportIndex,
+    seed: LoweringSeed<'_>,
 ) -> LowerResult<Lowered>
 {
-    lower_source_seeded(
-        source,
-        Strictness::Total,
+    lower_source_seeded(source, Strictness::Total, seed)
+}
+
+/// The shared lowering entry, seeded with the foreign-module, declaration,
+/// import-namespace, and recognition registries (empty for the standalone
+/// [`lower_source`] / [`lower_source_total`] entries).
+fn lower_source_seeded(
+    source: PipelineSource<'_>,
+    strictness: Strictness,
+    seed: LoweringSeed<'_>,
+) -> LowerResult<Lowered>
+{
+    let LoweringSeed {
         foreign,
         codata,
         data,
         import_scope,
         import_index_base,
-    )
-}
-
-/// The shared lowering entry, seeded with foreign-module, declaration, and
-/// import-namespace registries (empty for the standalone [`lower_source`] /
-/// [`lower_source_total`] entries).
-fn lower_source_seeded(
-    source: PipelineSource<'_>,
-    strictness: Strictness,
-    foreign: &BTreeMap<String, ForeignModule>,
-    codata: &BTreeMap<String, codata::CodataDecl>,
-    data: &BTreeMap<String, data::DataDecl>,
-    import_scope: &Scope<ImportIndex, SourceRange>,
-    import_index_base: ImportIndex,
-) -> LowerResult<Lowered>
-{
+        recognition,
+        shadow_policy,
+    } = seed;
     // The melder CST front-end, viewed through the `SynNode` adapter in place
     // of the retired tree-sitter parse. The parse is total: any input yields a
     // tree plus its severity-ordered obligations.
@@ -990,8 +1225,54 @@ fn lower_source_seeded(
         import_scope: import_scope.clone(),
         import_index_base,
         seal_serial: 0,
+        recognition: match recognition {
+            | Some(previous) => Recognition::resumed(previous, shadow_policy),
+            // A caller that seeds foreign modules without a recognition scope
+            // (the `lower_source_total_with_foreign` entry) still needs their
+            // calls to resolve, so the seed is bound here rather than at the
+            // call site — quietly, because a prior submission's shadowing is
+            // not this submission's event.
+            | None => {
+                let mut fresh = Recognition::new(shadow_policy);
+                for module in foreign.values() {
+                    fresh.declare_resumed(
+                        Segment::from(module.name.clone()),
+                        seeded_foreign_namespace(module),
+                    );
+                }
+                fresh
+            },
+        },
+        modules: Vec::new(),
     }
     .source_file(tree.root())
+}
+
+/// The outermost-scope namespace of a foreign module seeded from an earlier
+/// submission: the module itself plus one binding per declared function.
+///
+/// The site is the whole seed's, not a range in *this* source, because the
+/// declaration was written somewhere this lowering cannot point at.
+fn seeded_foreign_namespace(module: &ForeignModule) -> Trie<Recognized, RecognitionSite>
+{
+    let mut namespace = Trie::empty();
+    drop(namespace.insert(
+        NamePath::root(),
+        Binding::new(
+            Recognized::ForeignNamespace,
+            RecognitionSite::Source(SourceRange(0 .. 0)),
+        ),
+    ));
+    for function in &module.functions {
+        drop(namespace.insert(
+            namespace_path(ScopeSegment(function.op.as_str())),
+            Binding::new(
+                Recognized::ForeignMember,
+                RecognitionSite::Source(SourceRange(0 .. 0)),
+            ),
+        ));
+    }
+    namespace
 }
 
 /// The obligation with the earliest start (then shortest span), the source-
@@ -1212,6 +1493,106 @@ struct ModuleBody
     bindings: Vec<ModuleBinding>,
     /// Candidate fields from which the final record is repacked.
     fields: Vec<ModuleField>,
+    /// Each nested module component's own recognition namespace, keyed by the
+    /// member name it will be grafted under.
+    nested: Vec<(String, Trie<Recognized, RecognitionSite>)>,
+}
+
+/// One module declaration open in the explicit lowering stack.
+///
+/// Module lowering is a **worklist over declaration nodes**, not a recursion
+/// over them: a nested component is opened as a new frame, closed on its own,
+/// and delivered back into the member slot its parent reserved. That keeps
+/// nesting depth off the call stack, where an adversarial input would put it.
+struct ModuleFrame<'tree>
+{
+    /// The declaration node.
+    node: SynNode<'tree>,
+    /// The declaration's path from the source root.
+    path: NamePath,
+    /// The effective ascription, explicit signature or inline.
+    ascription: Option<ModuleAscription>,
+    /// The stratum slot reserved for this declaration.
+    stratum: usize,
+    /// The body accumulated so far.
+    body: ModuleBody,
+    /// The declaration's members, in source order.
+    members: Vec<SynNode<'tree>>,
+    /// The next member to step over.
+    cursor: usize,
+    /// The nested member whose declaration is open above this frame.
+    pending: Option<PendingNested<'tree>>,
+}
+
+/// One nested module member whose declaration is being lowered.
+struct PendingNested<'tree>
+{
+    /// The member node.
+    member: SynNode<'tree>,
+    /// The member's name.
+    name: String,
+    /// The preceding member signature, when one claimed it.
+    explicit: Option<Ty>,
+}
+
+/// One lowered module declaration, at any nesting depth.
+struct LoweredModule
+{
+    /// The record ascription the item carries, when the declaration had one.
+    ascription: Option<Ty>,
+    /// The term that evaluates the members and returns the coerced record.
+    term: Term,
+    /// The term's origin shadow.
+    origin: OriginNode,
+    /// The module's recognition namespace, rooted at the declaration.
+    namespace: Trie<Recognized, RecognitionSite>,
+}
+
+/// One module declaration's effective ascription: the annotation the term
+/// carries, the coercion matching applies, and the manifest type components the
+/// signature declared.
+struct ModuleAscription
+{
+    /// The record type annotated onto the returned value.
+    ty: Option<Ty>,
+    /// The coercion, present exactly when the ascription is record-shaped.
+    coercion: Option<ModuleCoercion>,
+    /// The manifest type components, in signature order. An explicit `def m :
+    /// T;` signature declares none, because it writes a type rather than a
+    /// signature.
+    types: Vec<TypeComponent>,
+}
+
+/// One value component of an inline structural signature.
+struct SignatureComponent
+{
+    /// The component's label.
+    label: String,
+    /// The type the component is declared at, with every manifest type
+    /// component already expanded.
+    ty: ValueType,
+}
+
+/// The value components an inline structural signature coerces a module to.
+struct ModuleCoercion
+{
+    /// The components in signature order, with their expanded types.
+    values: Vec<SignatureComponent>,
+    /// The signature's byte range, where a missing component is reported.
+    byte_range: SourceRange,
+}
+
+impl ModuleCoercion
+{
+    /// The record type the coerced module's returned value carries.
+    fn record_type(&self) -> ValueType
+    {
+        ValueType::record(
+            self.values
+                .iter()
+                .map(|component| (component.label.clone(), component.ty.clone())),
+        )
+    }
 }
 
 /// A validated definition member ready for expression lowering.
@@ -1262,6 +1643,29 @@ struct ShellWord
     parts: Vec<ShellPart>,
     /// The source byte range occupied by the whole word.
     range: SourceRange,
+}
+
+/// Why a projection was refused, and therefore which error it carries.
+///
+/// The split exists because the two refusals answer to different authorities.
+/// [`Self::Structural`] is the retired constant-table gate's own disposition,
+/// held unchanged so the resolution-equivalence check keeps passing over its
+/// whole domain — a prelude or host namespace, and a bare selection of a
+/// call-only host member. [`Self::Module`] is new with the module stratum and
+/// can name the module and the component it does not have, because the
+/// recognition scope holds both.
+enum Decline
+{
+    /// Refused as the retired gate refused it: [`LowerError::Unsupported`].
+    Structural,
+    /// Refused against a module namespace that does not export the component.
+    Module
+    {
+        /// The dotted path of the governing module namespace.
+        module: String,
+        /// The component the projection selected.
+        component: String,
+    },
 }
 
 /// The value payload carried by one decoded shell command fragment.
@@ -1416,6 +1820,15 @@ struct Lowerer<'src>
     import_scope: Scope<ImportIndex, SourceRange>,
     /// Source-order index assigned to this source's first accepted import.
     import_index_base: ImportIndex,
+    /// The outermost visible scope: prelude, host, and `extern` names as
+    /// bindings, plus every top-level declaration bound over them in source
+    /// order. Every recognition question — is `prim.id` a builtin, is `fs.read`
+    /// a host call, is `Facts.inner` a module path — is a lookup here, and
+    /// there is no other name authority.
+    recognition: Recognition,
+    /// The module stratum accumulated while lowering this source's `module`
+    /// declarations, outer before nested.
+    modules: Vec<ModuleStratum>,
     /// The `codata` blocks declared in this source, keyed by codata type name
     /// (the codata-declaration contract). Built in a pre-pass at the start of
     /// [`Self::source_file`] (like [`Self::foreign`]) so a later copattern
@@ -2258,10 +2671,11 @@ impl Lowerer<'_>
     /// hoisted around the `perform`, as call arguments are.
     ///
     /// # Contract
-    /// - ensures: `Some(perform)` when `m.op` selects a declared foreign
-    ///   function with matching arity; `None` when the projection is not a
-    ///   foreign selection (a genuine record projection or module builtin falls
-    ///   through to the ordinary call path).
+    /// - ensures: `Some(perform)` when `m` resolves to a foreign namespace and
+    ///   `op` is one of its declared functions with matching arity; `None` when
+    ///   the head resolves to anything else, so a genuine record projection, a
+    ///   module builtin, and an `extern` name a later declaration displaced all
+    ///   fall through to the ordinary call path.
     /// - fails: [`LowerError::Unsupported`] for a known foreign module with an
     ///   unknown member (the lowering contract — a module namespace is not a
     ///   record) or an arity mismatch against the declared signature.
@@ -2285,7 +2699,15 @@ impl Lowerer<'_>
         let resolved = {
             let module = self.text(target_node)?;
             let op = self.text(field_node)?;
-            match self.foreign.get(module.0) {
+            // Recognition decides whether this is a foreign selection at all.
+            // The registry then supplies the signature and parameter shape:
+            // the scope says *which* module the head names, and `extern`
+            // lowering says what that module is.
+            let recognized_head = matches!(
+                self.recognition.resolve_name(ScopeSegment(module.0)),
+                Some(&Recognized::ForeignNamespace)
+            );
+            match self.foreign.get(module.0).filter(|_| recognized_head) {
                 | None => None,
                 | Some(foreign_module) => match foreign_module.function(op) {
                     | None => {
@@ -2354,13 +2776,15 @@ impl Lowerer<'_>
     /// the `perform`, as call arguments are.
     ///
     /// # Contract
-    /// - ensures: `Some(perform)` when the projection head is a reserved
-    ///   host-module name and the field one of its members with matching arity;
-    ///   `None` when the head is not a host module (a genuine record projection
-    ///   or prelude module builtin falls through to the ordinary call path).
-    /// - fails: [`LowerError::Unsupported`] for a known host module with an
-    ///   unknown member (the lowering contract — a module namespace is not a
-    ///   record) or an arity mismatch against the declared parameters.
+    /// - ensures: `Some(perform)` when the path `m.op` resolves to a host
+    ///   member with matching arity; `None` when it resolves to anything else
+    ///   or to nothing, so a genuine record projection, a prelude builtin, and
+    ///   an `extern` module that displaced the host name all fall through to
+    ///   the ordinary call path.
+    /// - fails: [`LowerError::Unsupported`] when the head resolves to a host
+    ///   namespace and the member does not (the lowering contract — a module
+    ///   namespace is not a record) or on an arity mismatch against the
+    ///   declared parameters.
     /// - panics: none.
     fn host_call(
         &mut self,
@@ -2375,27 +2799,45 @@ impl Lowerer<'_>
         }
         let field_node = required_field(function, node_kinds::FIELD_FIELD)?;
         let resolved = {
-            let module = self.text(target_node)?;
-            let op = self.text(field_node)?;
-            match crate::host::host_module(module) {
-                | None => None,
-                | Some(host_module) => match host_module.member(op) {
-                    | None => {
+            let module = self.text(target_node)?.to_owned();
+            let op = self.text(field_node)?.to_owned();
+            // The resolved binding carries the module's and member's positions
+            // in the host table, so the signature and parameter shape are read
+            // from the coordinates recognition already computed rather than
+            // looked up by name a second time.
+            match self
+                .recognition
+                .resolve_member(ScopeSegment(module.as_str()), ScopeSegment(op.as_str()))
+            {
+                | Some(&Recognized::HostMember { module, member }) => {
+                    let Some((host_module, member)) = crate::host::host_member_at(module, member)
+                    else {
                         return Err(LowerError::Unsupported {
                             kind: call_node.kind(),
                             byte_range: call_node.byte_range(),
                         });
-                    },
-                    | Some(member) => {
-                        if arguments.len() != member.params.len() {
-                            return Err(LowerError::Unsupported {
-                                kind: call_node.kind(),
-                                byte_range: call_node.byte_range(),
-                            });
-                        }
-                        Some((host_module.sig(), member.op, member.params))
-                    },
+                    };
+                    if arguments.len() != member.params.len() {
+                        return Err(LowerError::Unsupported {
+                            kind: call_node.kind(),
+                            byte_range: call_node.byte_range(),
+                        });
+                    }
+                    Some((host_module.sig(), member.op, member.params))
                 },
+                // A host module namespace with an unknown member: declined,
+                // because a module namespace is not a record value.
+                | _ if matches!(
+                    self.recognition.resolve_name(ScopeSegment(module.as_str())),
+                    Some(&Recognized::HostNamespace { .. })
+                ) =>
+                {
+                    return Err(LowerError::Unsupported {
+                        kind: call_node.kind(),
+                        byte_range: call_node.byte_range(),
+                    });
+                },
+                | _ => None,
             }
         };
         let Some((sig, op_name, param_names)) = resolved
@@ -2589,7 +3031,7 @@ impl Lowerer<'_>
     /// fragment (the motive binders are type-level; the base binder's type is
     /// the scrutinee's carrier, supplied by the typing rule).
     fn walk_lambda<'tree>(
-        &self,
+        &mut self,
         node: SynNode<'tree>,
         arity: LambdaArity,
     ) -> LowerResult<(Vec<String>, SynNode<'tree>)>
@@ -3426,9 +3868,16 @@ impl Lowerer<'_>
     /// A capitalized target token is accepted here as a variable so
     /// `Module.field` uses the same ordinary projection path as
     /// `module.field` without admitting bare constructors elsewhere. The
-    /// dispatch reaches here from [`Self::projection`] for any field name
-    /// that is neither a module member (the lowering contract module-select)
-    /// nor the structural `fst` / `snd`.
+    /// dispatch reaches here from [`Self::projection`] for any path the
+    /// outermost scope leaves **ungoverned**, and whose field is not the
+    /// structural `fst` / `snd`.
+    ///
+    /// Ungoverned is not the same as unresolved, and the difference is the
+    /// module stratum's: `M.nope` resolves to nothing and is now an error,
+    /// while `M.cfg.port` resolves `M.cfg` to a value component and hands
+    /// `port` to this path. A genuine record projection is exactly a selection
+    /// whose target the scope does not claim to know the members of — an
+    /// unbound name, a `def`, or a value component of a module.
     fn record_projection(
         &mut self,
         node: SynNode<'_>,
@@ -3467,6 +3916,60 @@ impl Lowerer<'_>
         }))
     }
 
+    /// Collects the dotted name path a projection chain spells, root first.
+    ///
+    /// `M.inner.y` parses as a projection whose target is a projection whose
+    /// target is an identifier, so the chain is walked down to its root and
+    /// reversed. This is what lets the outermost scope see a nested selection
+    /// as the one path it is.
+    ///
+    /// The root is an identifier **or a constructor token**, because a module
+    /// name is conventionally capitalized and the grammar lexes a capitalized
+    /// head as [`node_kinds::CONSTRUCTOR`]. Accepting only `IDENTIFIER` here
+    /// would silently ungovern every module the corpus actually declares —
+    /// `Facts`, `Config`, `Metrics` — which is the same reason
+    /// [`Self::record_projection`] already accepts a constructor target as a
+    /// variable.
+    ///
+    /// `None` means the expression is not a name path at all, and there are
+    /// two ways to earn it: the root is something else — a call result, a
+    /// literal, a parenthesized term — or a link is the structural `.fst` /
+    /// `.snd` rather than a member name. Recognition has nothing to say about
+    /// either, and `None` is what keeps ordinary projection reachable for them.
+    ///
+    /// # Contract
+    /// - ensures: `Some` holds at least two segments, root first, whenever the
+    ///   whole chain is a name path rooted at an identifier or a constructor.
+    /// - ensures: `None` whenever any link is structural or the root is neither
+    ///   an identifier nor a constructor.
+    /// - panics: none.
+    fn projection_path(
+        &self,
+        node: SynNode<'_>,
+    ) -> LowerResult<Option<Vec<String>>>
+    {
+        let mut segments = Vec::new();
+        let mut current = node;
+        loop {
+            if current.kind() == node_kinds::IDENTIFIER || current.kind() == node_kinds::CONSTRUCTOR
+            {
+                segments.push(self.text(current)?.0.to_owned());
+                segments.reverse();
+                return Ok(Some(segments));
+            }
+            if current.kind() != node_kinds::PROJECTION_EXPRESSION {
+                return Ok(None);
+            }
+            let field = required_field(current, node_kinds::FIELD_FIELD)?;
+            let label = self.text(field)?.0.to_owned();
+            if label == node_kinds::NAME_FST || label == node_kinds::NAME_SND {
+                return Ok(None);
+            }
+            segments.push(label);
+            current = required_field(current, node_kinds::FIELD_VALUE)?;
+        }
+    }
+
     /// Lowers `t.fst` / `t.snd` to [`Comp::Prj`], with the force sugar on a
     /// value target (same rationale as call heads: the principal premise
     /// must be a computation).
@@ -3477,52 +3980,110 @@ impl Lowerer<'_>
     {
         let field_node = required_field(node, node_kinds::FIELD_FIELD)?;
         let target_node = required_field(node, node_kinds::FIELD_VALUE)?;
-        // Module select: a `M.l` whose value is a known module name and whose
-        // field is one of its members
-        // elaborates to the flat qualified `Var("M.l")` — pure elaboration, no
-        // core change (`Value::Var` is already a `String`). Gated on BOTH
-        // halves via the prelude registry, so a genuine record projection (once
-        // records exist) still falls through to the structural / hole path
-        // below.
+        // Module select: the **whole chain** `M.inner.y` is one path in the
+        // outermost visible scope ([`crate::recognition`]), not a target plus a
+        // field. Resolving only `target.field` would see `M.inner.y` as a
+        // two-segment selection off an unrecognizable target and guess a record
+        // projection for it, which is precisely the guess the module stratum
+        // exists to replace.
+        //
+        // [`Recognition::resolve_path`] walks the chain prefix by prefix and
+        // returns one of three verdicts. A complete prelude member elaborates
+        // to the flat qualified `Var("M.l")` — pure elaboration, no core change
+        // (`Value::Var` is already a `String`). A governed path whose last
+        // segment is absent is declined here. Everything else falls through to
+        // the structural / record path below, which is what a genuine record
+        // projection has always taken.
+        //
+        // **The two declines are different errors on purpose.** A prelude or
+        // host namespace declines exactly as the retired constant-table gate
+        // did, as `Unsupported` — the resolution-equivalence check quantifies
+        // over that whole domain and pins the disposition. Only a *module*
+        // namespace, which is new here, names the module and the component it
+        // does not have.
         let field_text = self.text(field_node)?;
-        let target_is_known_module = if target_node.kind() == node_kinds::IDENTIFIER {
-            let module = self.text(target_node)?;
-            if crate::prelude::is_module_member(module, field_text).0 {
-                let mut qualified = module.to_owned();
-                qualified.push('.');
-                qualified.push_str(field_text.0);
-                return Ok(EOut::Value({
-                    let selected_value = VOut::from_legacy_value(
-                        &Value::var(&qualified),
-                        OriginNode::leaf(entry(node, Some(ElabKind::ModuleSelect))),
-                    )?;
-                    core::convert::identity(selected_value)
-                }));
+        let mut declined: Option<Decline> = None;
+        if let Some(segments) = self.projection_path(node)? {
+            let borrowed = segments
+                .iter()
+                .map(|segment| ScopeSegment(segment.as_str()))
+                .collect::<Vec<_>>();
+            match self.recognition.resolve_path(&borrowed) {
+                | PathResolution::Complete(ref found) => {
+                    if let Some(qualified) = found.prelude_qualified() {
+                        let selected = Value::var(qualified.0);
+                        return Ok(EOut::Value({
+                            let selected_value = VOut::from_legacy_value(
+                                &selected,
+                                OriginNode::leaf(entry(node, Some(ElabKind::ModuleSelect))),
+                            )?;
+                            core::convert::identity(selected_value)
+                        }));
+                    }
+                    if found.is_call_only().0 {
+                        // A host member exists only as a call, which the call
+                        // path lowers to a `perform` before reaching here, so a
+                        // bare selection of one names no value. Declined as it
+                        // was before graduation.
+                        declined = Some(Decline::Structural);
+                    }
+                    // Otherwise a recognized module component or nested module
+                    // namespace is still *reached* by projecting the record the
+                    // module declaration evaluates to — the core carries no
+                    // module former, so the access path is unchanged. What
+                    // changed is that it is now checked: the scope confirmed
+                    // the component exists before the projection was emitted.
+                },
+                | PathResolution::UnknownMember {
+                    depth,
+                    ref namespace,
+                } => {
+                    // The two lookups cannot fail for a verdict `resolve_path`
+                    // produced — `depth` is a proper prefix length by its
+                    // contract — but they are written total rather than
+                    // indexed, and an impossible miss degrades to the
+                    // structural decline instead of panicking.
+                    declined = Some(
+                        match (
+                            matches!(*namespace, Recognized::ModuleNamespace),
+                            segments.get(.. depth),
+                            segments.get(depth),
+                        ) {
+                            | (true, Some(prefix), Some(component)) => Decline::Module {
+                                module: prefix.join("."),
+                                component: component.clone(),
+                            },
+                            | _ => Decline::Structural,
+                        },
+                    );
+                },
+                | PathResolution::Ungoverned => {},
             }
-            // A host module (`fs` / `env` / `proc`) has no value-level
-            // members: its members exist only as calls (lowered by `host_call`
-            // before this path is reached), so any bare selection takes the
-            // declined path below.
-            crate::prelude::is_module(module).0 || crate::host::is_host_module(module).0
         }
-        else {
-            false
-        };
         // Otherwise it is a structural projection `t.fst` / `t.snd`, the record
-        // field projection `t.ℓ` (the lowering contract), or — for a known module with
-        // an unknown member — a declined hole (the lowering contract: a module
-        // namespace is not a record value, so a non-member is an error rather
-        // than a projection). The owned label releases the `field_text` borrow
-        // so the record path can take `&mut self`.
+        // field projection `t.ℓ` (the lowering contract), or — for a governed
+        // namespace with an unknown member — a declined hole (the lowering
+        // contract: a module namespace is not a record value, so a non-member
+        // is an error rather than a projection). The owned label releases the
+        // `field_text` borrow so the record path can take `&mut self`.
         let record_label = match field_text.0 {
             | node_kinds::NAME_FST | node_kinds::NAME_SND => None,
-            | _ if target_is_known_module => {
-                return Err(LowerError::Unsupported {
-                    kind: node.kind(),
-                    byte_range: node.byte_range(),
-                });
+            | other => match declined {
+                | Some(Decline::Module { module, component }) => {
+                    return Err(LowerError::UnknownModuleComponent {
+                        module,
+                        component,
+                        byte_range: node.byte_range(),
+                    });
+                },
+                | Some(Decline::Structural) => {
+                    return Err(LowerError::Unsupported {
+                        kind: node.kind(),
+                        byte_range: node.byte_range(),
+                    });
+                },
+                | None => Some(other.to_owned()),
             },
-            | other => Some(other.to_owned()),
         };
         if let Some(label) = record_label {
             // A `.π` whose field is a declared codata observation is an
@@ -4237,16 +4798,20 @@ impl Lowerer<'_>
     /// out of the covered fragment (the design names only "tuple pattern" and
     /// "identifier pattern").
     fn pattern_binder(
-        &self,
+        &mut self,
         node: SynNode<'_>,
     ) -> LowerResult<String>
     {
         match node.kind() {
-            | node_kinds::IDENTIFIER => Ok({
-                let text = self.text(node)?;
-                core::convert::identity(text)
-            }
-            .to_owned()),
+            | node_kinds::IDENTIFIER => {
+                let name = {
+                    let text = self.text(node)?;
+                    core::convert::identity(text)
+                }
+                .to_owned();
+                self.note_binder(ScopeSegment(name.as_str()), node)?;
+                Ok(name)
+            },
             | node_kinds::WILDCARD => Ok(node_kinds::DISCARD_BINDER.to_owned()),
             | kind => Err(LowerError::Unsupported {
                 kind,
@@ -4255,9 +4820,38 @@ impl Lowerer<'_>
         }
     }
 
+    /// Reports one value binder whose name collides with an outermost-scope
+    /// root, without shadowing it.
+    ///
+    /// The check is **order-1 and point-wise**: it looks at the binder's own
+    /// name against the visible namespace's roots and changes nothing, so
+    /// resolution after the binder is exactly what it was before. A binder
+    /// named `env` therefore gets a diagnostic *and* still sees `env.get`
+    /// resolve to the host module — the two facts together are what the
+    /// diagnostic is for, and closing that gap needs the value environment this
+    /// lowerer does not carry.
+    ///
+    /// # Contract
+    /// - ensures: recognition is unchanged, so no later resolution moves.
+    /// - fails: [`LowerError::ShadowedBuiltin`] under a refusing policy.
+    /// - panics: none.
+    fn note_binder(
+        &mut self,
+        name: ScopeSegment<'_>,
+        node: SynNode<'_>,
+    ) -> LowerResult<()>
+    {
+        self.recognition
+            .note_binder(name, node.byte_range())
+            .map_err(|error| LowerError::ShadowedBuiltin {
+                error,
+                byte_range: node.byte_range(),
+            })
+    }
+
     /// Parses a `parameters` node into `(name, annotation)` pairs.
     fn parameters(
-        &self,
+        &mut self,
         node: SynNode<'_>,
     ) -> LowerResult<Vec<(String, Option<ValueType>)>>
     {
@@ -4282,6 +4876,7 @@ impl Lowerer<'_>
                 }),
                 | None => None,
             };
+            self.note_binder(ScopeSegment(name.as_str()), name_node)?;
             params.push((name, annotation));
         }
         Ok(params)
@@ -4347,6 +4942,12 @@ impl Lowerer<'_>
                 }
                 match self.extern_block(child) {
                     | Ok(module) => {
+                        // The declaration claims its namespace in the outermost
+                        // scope, which is what makes `extern "c" from "fs"`
+                        // shadow the host `fs` — the same shadow event any
+                        // other declaration over a builtin performs, rather
+                        // than the try-foreign-then-host order it used to be.
+                        self.declare_foreign(&module, child)?;
                         self.foreign.insert(module.name.clone(), module.clone());
                         foreign.push(module);
                     },
@@ -4471,6 +5072,16 @@ impl Lowerer<'_>
                         {
                             item.ascription = Some(sig_ty);
                         }
+                        // A named top-level definition claims its name in the
+                        // outermost scope, shadowing whatever the prelude or
+                        // host held there. A module declaration bound its own
+                        // namespace while lowering, so re-binding it here would
+                        // displace the components it just registered.
+                        if child.kind() != node_kinds::MODULE_DECLARATION
+                            && let Some(name) = item.name.as_deref()
+                        {
+                            self.declare_definition(ScopeSegment(name), child)?;
+                        }
                         items.push(item);
                         origins.push(origin);
                     },
@@ -4548,6 +5159,8 @@ impl Lowerer<'_>
             origin: origin_map,
             attributes,
             import_scope: core::mem::take(&mut self.import_scope),
+            modules: core::mem::take(&mut self.modules),
+            recognition: self.recognition.clone(),
         })
     }
 
@@ -4573,6 +5186,103 @@ impl Lowerer<'_>
                 byte_range: node.byte_range(),
             })?;
         Ok((ImportDeclaration { uri, alias }, qualified))
+    }
+
+    /// Binds one `extern` block's namespace in the outermost scope.
+    ///
+    /// The block's own name and one binding per declared function, so a call
+    /// `m.op(args)` is recognized by resolving `m.op` rather than by searching
+    /// the foreign registry at the call site. A block named after a host module
+    /// displaces it here, which is where "an `extern` declaration wins over the
+    /// ambient host surface" now lives.
+    ///
+    /// # Contract
+    /// - ensures: `m` and every `m.op` resolve after the call.
+    /// - fails: [`LowerError::ShadowedBuiltin`] when the policy refuses the
+    ///   displacement of a builtin.
+    /// - panics: none.
+    fn declare_foreign(
+        &mut self,
+        module: &ForeignModule,
+        node: SynNode<'_>,
+    ) -> LowerResult<()>
+    {
+        let mut namespace = Trie::empty();
+        drop(namespace.insert(
+            NamePath::root(),
+            Binding::new(
+                Recognized::ForeignNamespace,
+                RecognitionSite::Source(node.byte_range()),
+            ),
+        ));
+        for function in &module.functions {
+            drop(namespace.insert(
+                namespace_path(ScopeSegment(function.op.as_str())),
+                Binding::new(
+                    Recognized::ForeignMember,
+                    RecognitionSite::Source(node.byte_range()),
+                ),
+            ));
+        }
+        self.recognition
+            .declare(
+                Segment::from(module.name.clone()),
+                namespace,
+                node.byte_range(),
+            )
+            .map_err(|error| LowerError::ShadowedBuiltin {
+                error,
+                byte_range: node.byte_range(),
+            })
+    }
+
+    /// Binds one top-level `def` name in the outermost scope.
+    fn declare_definition(
+        &mut self,
+        name: ScopeSegment<'_>,
+        node: SynNode<'_>,
+    ) -> LowerResult<()>
+    {
+        let mut namespace = Trie::empty();
+        drop(namespace.insert(
+            NamePath::root(),
+            Binding::new(
+                Recognized::Definition,
+                RecognitionSite::Source(node.byte_range()),
+            ),
+        ));
+        self.recognition
+            .declare(
+                Segment::from(name.0.to_owned()),
+                namespace,
+                node.byte_range(),
+            )
+            .map_err(|error| LowerError::ShadowedBuiltin {
+                error,
+                byte_range: node.byte_range(),
+            })
+    }
+
+    /// Binds one top-level `module` declaration's whole namespace — the module
+    /// itself, every value component, and every nested module component — in
+    /// the outermost scope.
+    fn declare_module(
+        &mut self,
+        name: ScopeSegment<'_>,
+        namespace: Trie<Recognized, RecognitionSite>,
+        node: SynNode<'_>,
+    ) -> LowerResult<()>
+    {
+        self.recognition
+            .declare(
+                Segment::from(name.0.to_owned()),
+                namespace,
+                node.byte_range(),
+            )
+            .map_err(|error| LowerError::ShadowedBuiltin {
+                error,
+                byte_range: node.byte_range(),
+            })
     }
 
     /// Collects the leading `@[…]` attribute blocks of one item node into
@@ -4820,82 +5530,51 @@ impl Lowerer<'_>
         }
     }
 
-    /// Lowers a checked `module M (: #{ … })? { … }` declaration to one named
-    /// item whose term is an ordinary record value, or a bind-chain returning
-    /// that record when member definitions must be sequenced.
+    /// Lowers a checked `module M (: #{ … })? { … }` declaration to one
+    /// module-stratum item.
+    ///
+    /// The declaration produces three things, and the split is the point of the
+    /// stratum. The **item** is what runs: bind-sequencing over the members and
+    /// a terminal record, because the core has no module former. The
+    /// **stratum entry** is what the module *is*: its path, its exported value
+    /// components, and its manifest type components. The **namespace** is how
+    /// it is reached: one recognition binding per path, so `M.x` and
+    /// `M.inner.y` resolve rather than being guessed at from syntax.
     ///
     /// # Contract
     /// - requires: `node` is a [`node_kinds::MODULE_DECLARATION`].
     /// - ensures: member definitions are evaluated exactly once in source
     ///   order; each non-duplicate definition contributes one binding and one
     ///   candidate record field; earlier binders scope over later definitions
-    ///   and the final record; explicit matching filters candidate fields only.
+    ///   and the final record.
+    /// - ensures: the declaration and every component it exports, at every
+    ///   nesting depth, is bound in the outermost recognition scope under the
+    ///   declaration's name.
+    /// - ensures: one [`ModuleStratum`] entry per declaration, outer before
+    ///   nested.
     /// - fails: [`LowerError::DuplicateModuleMember`] for duplicate member
     ///   definitions, [`LowerError::DanglingSignature`] for unmatched member
-    ///   signatures in strict mode, plus ordinary member/type lowering errors.
+    ///   signatures in strict mode, [`LowerError::MissingModuleComponent`] when
+    ///   matching cannot find a component the signature names,
+    ///   [`LowerError::ShadowedBuiltin`] when the declaration's name shadows a
+    ///   builtin under a refusing policy, plus ordinary member/type lowering
+    ///   errors.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: bind sequencing plus terminal repacking realizes ordered
-    ///   module evaluation without a core module constructor.
-    /// - mutants: filter bindings with exports; reverse body iteration.
-    /// - witnesses: `module_signature_repacking_hides_extra_members` and
-    ///   `nested_modules_lower_as_parent_members_and_project`.
+    /// - hypothesis: bind sequencing plus terminal coercion realizes ordered
+    ///   module evaluation without a core module constructor, and the stratum
+    ///   plus namespace carry everything the term cannot.
+    /// - mutants: filter bindings with exports; reverse body iteration; bind
+    ///   hidden members in the namespace.
+    /// - witnesses: `module_signature_repacking_hides_extra_members`,
+    ///   `nested_modules_lower_as_parent_members_and_project`,
+    ///   `a_module_path_is_governed_through_lowering_not_merely_registered`,
+    ///   and `a_deep_module_path_is_governed_at_the_depth_that_binds_it`.
     fn module_declaration(
         &mut self,
         node: SynNode<'_>,
     ) -> LowerResult<(Item, OriginNode)>
-    {
-        let (name, ascription) = self.module_header(node)?;
-        let mut body = ModuleBody::default();
-        for member in node.children_by_field_name(node_kinds::FIELD_MEMBER) {
-            let Some(plan) = self.module_member_plan(&mut body, member)?
-            else {
-                continue;
-            };
-            let recovery_ascription = plan.explicit.clone();
-            let lowered = if member.kind() == node_kinds::MODULE_DECLARATION {
-                self.nested_module_member_definition(member, plan.name, plan.explicit)
-            }
-            else {
-                self.module_member_definition(member, plan.name, plan.explicit)
-            };
-            self.push_module_member_result(
-                &mut body,
-                member,
-                recovery_ascription.as_ref(),
-                lowered,
-            )?;
-        }
-        let (term, origin) = self.finish_module_body(node, ascription.as_ref(), body)?;
-        Ok((
-            Item {
-                name: Some(name),
-                ascription,
-                term,
-            },
-            origin,
-        ))
-    }
-
-    /// Reads one module declaration's name and optional structural ascription.
-    ///
-    /// # Contract
-    /// - requires: `node` is a [`node_kinds::MODULE_DECLARATION`].
-    /// - ensures: the returned ascription is record-shaped whenever present.
-    /// - fails: ordinary required-field or type-lowering errors.
-    /// - panics: none.
-    ///
-    /// # Adequacy
-    /// - hypothesis: the declaration name and ascription are independent header
-    ///   fields and can be lowered without inspecting the body.
-    /// - mutants: read the first body identifier; accept a non-record type.
-    /// - witnesses: `recognizes_module_declaration` and
-    ///   `nonempty_module_ascription_checks_returned_record`.
-    fn module_header(
-        &self,
-        node: SynNode<'_>,
-    ) -> LowerResult<(String, Option<Ty>)>
     {
         let name_node = required_field(node, node_kinds::FIELD_NAME)?;
         let name = {
@@ -4903,38 +5582,475 @@ impl Lowerer<'_>
             core::convert::identity(text)
         }
         .to_owned();
-        Ok((name, self.module_ascription(node)?))
+        let path = NamePath::from_segments(Vec::from([Segment::from(name.clone())]));
+        let lowered = self.module_at(node, None, &path)?;
+        self.declare_module(ScopeSegment(name.as_str()), lowered.namespace, node)?;
+        Ok((
+            Item {
+                name: Some(name),
+                ascription: lowered.ascription,
+                term: lowered.term,
+            },
+            lowered.origin,
+        ))
     }
 
-    /// Lowers one module declaration's optional structural ascription.
+    /// Lowers one module declaration at `path`, to any nesting depth.
+    ///
+    /// The outer declaration and every nested component take this same path,
+    /// which is what "nested modules are modules" means operationally: there is
+    /// no leaf case and no depth ceiling. Depth lives on an **explicit
+    /// worklist** rather than on the call stack, so an adversarially deep
+    /// source costs heap and not frames.
     ///
     /// # Contract
-    /// - ensures: the returned ascription is record-shaped whenever present.
-    /// - fails: ordinary type-lowering and record-shape errors.
+    /// - requires: `node` is a [`node_kinds::MODULE_DECLARATION`]; `explicit`
+    ///   is the preceding member signature when one claimed this declaration.
+    /// - ensures: `explicit` takes precedence over the inline ascription, as it
+    ///   does for ordinary definition sugar.
+    /// - ensures: the returned namespace is rooted at the declaration itself,
+    ///   with one binding per exported component, relative to `path`.
+    /// - ensures: exactly one [`ModuleStratum`] entry is appended for this
+    ///   declaration, before any of its nested components' entries.
+    /// - fails: as [`Self::module_declaration`].
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: nested lowering can reuse an already-owned name and lower
-    ///   only the remaining header field.
-    /// - mutants: reread the member name; skip record-shape validation.
-    /// - witnesses: `nested_modules_lower_as_parent_members_and_project`.
+    /// - hypothesis: one worklist covers every depth, and the namespace
+    ///   composes by grafting each closed subtree under its member name.
+    /// - mutants: stop descending below one level; graft the nested namespace
+    ///   at the root; close a declaration before its components.
+    /// - witnesses: `nested_modules_lower_as_parent_members_and_project` and
+    ///   `deeply_nested_modules_lower_and_resolve_at_every_depth`.
+    fn module_at<'tree>(
+        &mut self,
+        node: SynNode<'tree>,
+        explicit: Option<Ty>,
+        path: &NamePath,
+    ) -> LowerResult<LoweredModule>
+    {
+        let mut stack: Vec<ModuleFrame<'tree>> = Vec::new();
+        stack.push(self.open_module(node, explicit, path.clone())?);
+        // A just-closed declaration's result, awaiting delivery into the
+        // member slot its parent reserved for it.
+        let mut delivered: Option<LowerResult<LoweredModule>> = None;
+        loop {
+            if let Some(result) = delivered.take() {
+                self.deliver_nested_module(&mut stack, result)?;
+                continue;
+            }
+            let advanced = match stack.last_mut() {
+                | Some(frame) if frame.cursor < frame.members.len() => {
+                    let member = frame.members.get(frame.cursor).copied();
+                    frame.cursor = frame.cursor.saturating_add(1);
+                    member
+                },
+                | Some(_) | None => None,
+            };
+            if let Some(member) = advanced {
+                if let Some(opened) = self.step_module_member(&mut stack, member)? {
+                    match opened {
+                        | Ok(frame) => stack.push(frame),
+                        | Err(error) => delivered = Some(Err(error)),
+                    }
+                }
+                continue;
+            }
+            let Some(frame) = stack.pop()
+            else {
+                return Err(LowerError::MalformedNode {
+                    kind: node.kind(),
+                    byte_range: node.byte_range(),
+                });
+            };
+            let closed = self.close_module(frame);
+            if stack.is_empty() {
+                return closed;
+            }
+            delivered = Some(closed);
+        }
+    }
+
+    /// Opens one module declaration: its effective ascription, its reserved
+    /// stratum slot, and its members in source order.
+    ///
+    /// The stratum slot is reserved **before** the members lower, so entries
+    /// come out outer-before-nested however deep the source goes; it is filled
+    /// at [`Self::close_module`], once the coercion has settled what the module
+    /// exports.
+    fn open_module<'tree>(
+        &mut self,
+        node: SynNode<'tree>,
+        explicit: Option<Ty>,
+        path: NamePath,
+    ) -> LowerResult<ModuleFrame<'tree>>
+    {
+        let ascription = self.module_ascription(node, explicit)?;
+        let stratum = self.modules.len();
+        self.modules.push(ModuleStratum {
+            path: path.clone(),
+            values: Vec::new(),
+            types: Vec::new(),
+            ascribed: false,
+        });
+        Ok(ModuleFrame {
+            node,
+            path,
+            ascription,
+            stratum,
+            body: ModuleBody::default(),
+            members: node.children_by_field_name(node_kinds::FIELD_MEMBER),
+            cursor: 0,
+            pending: None,
+        })
+    }
+
+    /// Takes one step over the open declaration's next member.
+    ///
+    /// An ordinary definition lowers here and is recorded. A nested module
+    /// reserves its member slot and returns the frame the caller pushes, so the
+    /// component is lowered before the slot is filled.
+    ///
+    /// # Contract
+    /// - ensures: `None` for a member consumed in place; `Some(Ok(frame))` for
+    ///   a nested declaration to open; `Some(Err(error))` when opening it
+    ///   failed, which the caller delivers into the reserved slot exactly as a
+    ///   later failure would be.
+    /// - fails: as [`Self::push_module_member_result`].
+    /// - panics: none.
+    fn step_module_member<'tree>(
+        &mut self,
+        stack: &mut [ModuleFrame<'tree>],
+        member: SynNode<'tree>,
+    ) -> LowerResult<Option<LowerResult<ModuleFrame<'tree>>>>
+    {
+        let Some(frame) = stack.last_mut()
+        else {
+            return Ok(None);
+        };
+        let Some(plan) = self.module_member_plan(&mut frame.body, member)?
+        else {
+            return Ok(None);
+        };
+        if member.kind() == node_kinds::MODULE_DECLARATION {
+            let nested_path =
+                frame
+                    .path
+                    .extended(&NamePath::from_segments(Vec::from([Segment::from(
+                        plan.name.clone(),
+                    )])));
+            let explicit = plan.explicit.clone();
+            frame.pending = Some(PendingNested {
+                member,
+                name: plan.name,
+                explicit: plan.explicit,
+            });
+            return Ok(Some(self.open_module(member, explicit, nested_path)));
+        }
+        let recovery_ascription = plan.explicit.clone();
+        let lowered = self.module_member_definition(member, plan.name, plan.explicit);
+        let Some(frame) = stack.last_mut()
+        else {
+            return Ok(None);
+        };
+        let mut body = core::mem::take(&mut frame.body);
+        let outcome = self.push_module_member_result(
+            &mut body,
+            member,
+            recovery_ascription.as_ref(),
+            lowered,
+        );
+        if let Some(frame) = stack.last_mut() {
+            frame.body = body;
+        }
+        outcome.map(|()| None)
+    }
+
+    /// Records a closed nested declaration in the member slot its parent
+    /// reserved.
+    ///
+    /// # Contract
+    /// - ensures: the nested component contributes one binding, one candidate
+    ///   field, and its namespace subtree, or the parent's total-mode recovery
+    ///   in its place.
+    /// - fails: as [`Self::push_module_member_result`].
+    /// - panics: none.
+    fn deliver_nested_module(
+        &mut self,
+        stack: &mut [ModuleFrame<'_>],
+        result: LowerResult<LoweredModule>,
+    ) -> LowerResult<()>
+    {
+        let Some(frame) = stack.last_mut()
+        else {
+            return Ok(());
+        };
+        let Some(pending) = frame.pending.take()
+        else {
+            return Ok(());
+        };
+        let lowered = result.and_then(|child| {
+            Self::nested_module_member_definition(pending.member, pending.name, child)
+        });
+        let mut body = core::mem::take(&mut frame.body);
+        let lowered = match lowered {
+            | Ok((binding, field, namespace)) => {
+                body.nested.push((binding.binder.clone(), namespace));
+                Ok((binding, field))
+            },
+            | Err(error) => Err(error),
+        };
+        let outcome = self.push_module_member_result(
+            &mut body,
+            pending.member,
+            pending.explicit.as_ref(),
+            lowered,
+        );
+        if let Some(frame) = stack.last_mut() {
+            frame.body = body;
+        }
+        outcome
+    }
+
+    /// Closes one module declaration: coerces its components, fills its
+    /// stratum slot, and builds its namespace.
+    fn close_module(
+        &mut self,
+        frame: ModuleFrame<'_>,
+    ) -> LowerResult<LoweredModule>
+    {
+        let ModuleFrame {
+            node,
+            ascription,
+            stratum,
+            mut body,
+            ..
+        } = frame;
+        let nested = core::mem::take(&mut body.nested);
+        let (exported, term, origin) = self.finish_module_body(node, ascription.as_ref(), body)?;
+        let namespace = Self::module_namespace(node, &exported, nested);
+        if let Some(entry) = self.modules.get_mut(stratum) {
+            entry.values = exported;
+            entry.types = ascription
+                .as_ref()
+                .map(|ascribed| ascribed.types.clone())
+                .unwrap_or_default();
+            entry.ascribed = ascription
+                .as_ref()
+                .is_some_and(|ascribed| ascribed.coercion.is_some());
+        }
+        Ok(LoweredModule {
+            ascription: ascription.and_then(|ascribed| ascribed.ty),
+            term,
+            origin,
+            namespace,
+        })
+    }
+
+    /// Builds one module's recognition namespace from its exported components.
+    ///
+    /// A hidden member is deliberately absent: matching removed it from the
+    /// module, so `M.hidden` is not a path the module has, and binding it would
+    /// make resolution disagree with the value the module returns.
+    fn module_namespace(
+        node: SynNode<'_>,
+        exported: &[String],
+        nested: Vec<(String, Trie<Recognized, RecognitionSite>)>,
+    ) -> Trie<Recognized, RecognitionSite>
+    {
+        let site = RecognitionSite::Source(node.byte_range());
+        let mut namespace = Trie::empty();
+        drop(namespace.insert(
+            NamePath::root(),
+            Binding::new(Recognized::ModuleNamespace, site.clone()),
+        ));
+        for label in exported {
+            drop(namespace.insert(
+                namespace_path(ScopeSegment(label.as_str())),
+                Binding::new(Recognized::ModuleComponent, site.clone()),
+            ));
+        }
+        for (label, subtree) in nested {
+            if exported.contains(&label) {
+                namespace.graft_subtree(&namespace_path(ScopeSegment(label.as_str())), subtree);
+            }
+        }
+        namespace
+    }
+
+    /// Lowers one module declaration's effective structural ascription.
+    ///
+    /// The preceding member signature, when one claimed this declaration, wins
+    /// over the inline one — the same precedence ordinary definition sugar
+    /// gives an explicit `def x : T;`.
+    ///
+    /// # Contract
+    /// - ensures: the returned ascription is record-shaped whenever present.
+    /// - ensures: an explicit signature contributes no type components, because
+    ///   `def m : T;` writes a type rather than a signature.
+    /// - fails: [`LowerError::OpaqueAscriptionUnelaborated`] for `:>`,
+    ///   [`LowerError::TypeSortMismatch`] for a non-record explicit signature,
+    ///   plus ordinary type-lowering errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: the two ascription sources reduce to one coercion, so
+    ///   matching has a single shape to consume.
+    /// - mutants: prefer the inline signature; drop the record-shape check.
+    /// - witnesses: `nested_member_signature_constrains_the_parent_binding` and
+    ///   `nonempty_module_ascription_checks_returned_record`.
     fn module_ascription(
         &self,
         node: SynNode<'_>,
-    ) -> LowerResult<Option<Ty>>
+        explicit: Option<Ty>,
+    ) -> LowerResult<Option<ModuleAscription>>
     {
+        if let Some(ty) = explicit {
+            let ty = self.module_record_ascription(ty, node)?;
+            let coercion = match ty {
+                | Ty::Value(ValueType::Record(ref fields)) => Some(ModuleCoercion {
+                    values: fields
+                        .iter()
+                        .map(|entry| SignatureComponent {
+                            label: entry.0.clone(),
+                            ty: (**entry.1).clone(),
+                        })
+                        .collect(),
+                    byte_range: node.byte_range(),
+                }),
+                | _ => None,
+            };
+            return Ok(Some(ModuleAscription {
+                ty: Some(ty),
+                coercion,
+                types: Vec::new(),
+            }));
+        }
         match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
             | Some(ascription_node) if ascription_node.kind() == node_kinds::OPAQUE_SIGNATURE => {
                 Err(LowerError::OpaqueAscriptionUnelaborated {
                     byte_range: ascription_node.byte_range(),
                 })
             },
-            | Some(ascription_node) => {
-                let ty = self.lower_type_node(ascription_node)?;
-                let ty = self.module_record_ascription(ty, ascription_node)?;
-                Ok(Some(ty))
-            },
+            | Some(ascription_node) => self.inline_signature(ascription_node).map(Some),
             | None => Ok(None),
+        }
+    }
+
+    /// Lowers one inline structural signature `#{ … }` — value components and
+    /// **manifest** type components, in source order.
+    ///
+    /// A type component `type T = τ` elaborates `τ` **once, here, where the
+    /// signature is spelled**, and binds `T` over the components that follow
+    /// it. Every later occurrence of `T` expands to that already-elaborated
+    /// `τ` rather than being resolved again in the ambient environment, so
+    /// a datatype declared elsewhere under the same name cannot capture the
+    /// component. Nothing abstract is introduced and no new type former, path
+    /// type, or conversion rule is involved: the component is gone by the time
+    /// the record type is assembled, and the kernel sees `τ`.
+    ///
+    /// A bare `type T` means the sealed component, whose elaboration is
+    /// abstract-type sealing's, and this rung declines it **by name** — the
+    /// decline is local to that component, so its siblings still elaborate.
+    ///
+    /// # Contract
+    /// - ensures: the returned coercion's value components are in signature
+    ///   order, with every manifest component expanded.
+    /// - ensures: a name declared twice — as two value components, two type
+    ///   components, or one of each — is refused rather than silently
+    ///   overwritten.
+    /// - fails: [`LowerError::BareTypeComponent`] for `type T` with no
+    ///   definition (total mode drops that component and keeps its siblings),
+    ///   [`LowerError::DuplicateModuleComponent`] for a repeated name, plus
+    ///   ordinary type-lowering errors.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: accumulating the manifest environment left to right, and
+    ///   consulting it ahead of the ambient one, makes expansion lexical.
+    /// - mutants: elaborate `τ` at each use; resolve a component name
+    ///   ambiently; accept a repeated component.
+    /// - witnesses: `a_manifest_type_component_expands_in_later_components`,
+    ///   `a_manifest_type_component_is_not_captured_by_an_ambient_datatype`,
+    ///   and `a_bare_type_component_declines_and_keeps_its_siblings`.
+    fn inline_signature(
+        &self,
+        node: SynNode<'_>,
+    ) -> LowerResult<ModuleAscription>
+    {
+        let mut manifest: BTreeMap<String, ValueType> = BTreeMap::new();
+        let mut types: Vec<TypeComponent> = Vec::new();
+        let mut values: Vec<SignatureComponent> = Vec::new();
+        for component in node.named_children() {
+            let name_node = required_field(component, node_kinds::FIELD_NAME)?;
+            let name = {
+                let text = self.text(name_node)?;
+                core::convert::identity(text)
+            }
+            .to_owned();
+            if manifest.contains_key(&name)
+                || values.iter().any(|component| component.label == name)
+            {
+                return Err(LowerError::DuplicateModuleComponent {
+                    name,
+                    byte_range: component.byte_range(),
+                });
+            }
+            if component.kind() == node_kinds::TYPE_COMPONENT {
+                let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
+                else {
+                    let error = LowerError::BareTypeComponent {
+                        name,
+                        byte_range: component.byte_range(),
+                    };
+                    if bool::from(self.total()) {
+                        // Local decline: the component contributes nothing and
+                        // its siblings elaborate as though it were absent.
+                        continue;
+                    }
+                    return Err(error);
+                };
+                let definition = self.manifest_component_type(definition_node, &manifest)?;
+                drop(manifest.insert(name.clone(), definition.clone()));
+                types.push(TypeComponent { name, definition });
+                continue;
+            }
+            let type_node = required_field(component, node_kinds::FIELD_TYPE)?;
+            let ty = self.manifest_component_type(type_node, &manifest)?;
+            values.push(SignatureComponent { label: name, ty });
+        }
+        let coercion = ModuleCoercion {
+            values,
+            byte_range: node.byte_range(),
+        };
+        Ok(ModuleAscription {
+            ty: Some(Ty::Value(coercion.record_type())),
+            coercion: Some(coercion),
+            types,
+        })
+    }
+
+    /// Lowers one signature component's type under the manifest components
+    /// declared before it.
+    ///
+    /// Everything the manifest environment answers is substituted; everything
+    /// else lowers exactly as any other type position lowers it. A
+    /// computation-sorted component is refused here rather than silently
+    /// dropped, because a module's components are values.
+    fn manifest_component_type(
+        &self,
+        node: SynNode<'_>,
+        manifest: &BTreeMap<String, ValueType>,
+    ) -> LowerResult<ValueType>
+    {
+        let expand = |name: TypeName<'_>| manifest.get(name.0).cloned();
+        match self.lower_type_node_with_manifest(node, &expand)? {
+            | Ty::Value(value_ty) => Ok(value_ty),
+            | Ty::Comp(_) => Err(LowerError::TypeSortMismatch {
+                expected: "a value type",
+                kind: node.kind(),
+                byte_range: node.byte_range(),
+            }),
         }
     }
 
@@ -5094,9 +6210,9 @@ impl Lowerer<'_>
     fn finish_module_body(
         &mut self,
         node: SynNode<'_>,
-        ascription: Option<&Ty>,
+        ascription: Option<&ModuleAscription>,
         body: ModuleBody,
-    ) -> LowerResult<(Term, OriginNode)>
+    ) -> LowerResult<(Vec<String>, Term, OriginNode)>
     {
         let ModuleBody {
             sigs,
@@ -5118,55 +6234,80 @@ impl Lowerer<'_>
             });
         }
 
-        let record_ascription = Self::value_ascription(ascription);
-        Self::module_term(node, bindings, fields, record_ascription)
+        let coercion = ascription.and_then(|ascribed| ascribed.coercion.as_ref());
+        if let Some(coercion) = coercion {
+            self.coerce_module_components(node, &mut bindings, &mut fields, coercion)?;
+        }
+        let annotation =
+            ascription.and_then(|ascribed| Self::value_ascription(ascribed.ty.as_ref()));
+        Self::module_term(node, bindings, fields, annotation)
     }
 
-    /// Lowers the definition-only body of a one-level nested module.
+    /// Applies one inline structural signature as a **coercion** on the
+    /// module's candidate components.
+    ///
+    /// Matching is coercive in three separable ways, and only the third can
+    /// fail: it **drops** components the signature does not name, it
+    /// **reorders** freely because the signature's order and the body's
+    /// order are independent, and it **cannot invent** one the body never
+    /// defined. A missing component is named at the signature rather than
+    /// left to surface downstream as a record-type mismatch.
+    ///
+    /// Total mode recovers a missing component the way a dangling member
+    /// signature recovers: a hole bound at the component's declared type, so
+    /// the gap stays a reachable goal instead of an erased field.
     ///
     /// # Contract
-    /// - requires: `node` is the nested [`node_kinds::MODULE_DECLARATION`].
-    /// - ensures: the returned term obeys the same ordering and
-    ///   record-repacking contract as a top-level module without constructing
-    ///   an unused item name; `explicit` takes precedence over the inline
-    ///   ascription.
-    /// - fails: ordinary module ascription, member, and finalization errors.
+    /// - ensures: after a successful call, every component the signature names
+    ///   has a candidate field, and no other field survives.
+    /// - ensures: evaluation order is untouched — bindings are never filtered,
+    ///   because a hidden member still runs.
+    /// - fails: [`LowerError::MissingModuleComponent`] in strict mode.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: a definition-only leaf helper enforces the grammar's
-    ///   one-level nesting bound without native recursion.
-    /// - mutants: call `module_declaration`; scan nested module members.
-    /// - witnesses: `nested_modules_lower_as_parent_members_and_project` and
-    ///   `contracts::deeper_nested_module_uses_ordinary_recovery`.
-    fn leaf_module_declaration(
+    /// - hypothesis: separating the drop from the missing check makes the
+    ///   coercion total on reordering while still refusing an unmatched name.
+    /// - mutants: drop the missing check; filter bindings alongside fields;
+    ///   match components positionally.
+    /// - witnesses: `module_signature_repacking_hides_extra_members`,
+    ///   `a_reordered_signature_matches_and_canonicalizes`, and
+    ///   `a_missing_signature_component_is_rejected_at_the_signature`.
+    fn coerce_module_components(
         &mut self,
         node: SynNode<'_>,
-        explicit: Option<Ty>,
-    ) -> LowerResult<(Option<Ty>, Term, OriginNode)>
+        bindings: &mut Vec<ModuleBinding>,
+        fields: &mut Vec<ModuleField>,
+        coercion: &ModuleCoercion,
+    ) -> LowerResult<()>
     {
-        let inline = self.module_ascription(node)?;
-        let effective = match explicit {
-            | Some(ty) => Some(self.module_record_ascription(ty, node)?),
-            | None => inline,
-        };
-        let mut body = ModuleBody::default();
-        for member in node.children_by_field_name(node_kinds::FIELD_MEMBER) {
-            let Some(plan) = self.module_member_plan(&mut body, member)?
-            else {
+        for component in &coercion.values {
+            if fields.iter().any(|field| field.label == component.label) {
                 continue;
+            }
+            let error = LowerError::MissingModuleComponent {
+                name: component.label.clone(),
+                byte_range: coercion.byte_range.clone(),
             };
-            let recovery_ascription = plan.explicit.clone();
-            let lowered = self.module_member_definition(member, plan.name, plan.explicit);
-            self.push_module_member_result(
-                &mut body,
-                member,
-                recovery_ascription.as_ref(),
-                lowered,
+            if !bool::from(self.total()) {
+                return Err(error);
+            }
+            let (binding, field) = self.missing_module_component(
+                node,
+                FieldLabel(component.label.as_str()),
+                &component.ty,
+                &error,
             )?;
+            bindings.push(binding);
+            fields.push(field);
         }
-        let (term, origin) = self.finish_module_body(node, effective.as_ref(), body)?;
-        Ok((effective, term, origin))
+        fields.retain(|field| {
+            coercion
+                .values
+                .iter()
+                .any(|component| component.label == field.label)
+        });
+        Ok(())
     }
 
     /// Validates the optional module ascription's record shape without
@@ -5293,43 +6434,85 @@ impl Lowerer<'_>
         ))
     }
 
-    /// Lowers one nested module as a single parent binding and candidate field.
+    /// Records one closed nested declaration as a parent binding, candidate
+    /// field, and namespace subtree.
     ///
     /// # Contract
-    /// - requires: `member` is a one-level nested module declaration and `name`
-    ///   is its already-read member name.
-    /// - ensures: the nested body is lowered without native recursion; a
-    ///   preceding member signature takes the same precedence over the inline
-    ///   declaration signature as for ordinary definition sugar.
-    /// - fails: ordinary nested module lowering errors.
+    /// - requires: `member` is the nested module declaration at any depth and
+    ///   `name` is its already-read member name.
+    /// - ensures: the returned namespace is the nested module's own, rooted at
+    ///   the component and ready to graft under `name`.
+    /// - fails: arena allocation/readback failures only.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: passing the consumed signature into leaf finalization
-    ///   makes it constrain both the nested binding and parent field.
-    /// - mutants: discard `explicit`; allocate the declaration name again.
-    /// - witnesses: `nested_member_signature_constrains_the_parent_binding`.
+    /// - hypothesis: a closed declaration carries everything its parent slot
+    ///   needs, so the parent never re-reads the nested body.
+    /// - mutants: drop the nested namespace; re-read the declaration name.
+    /// - witnesses: `nested_member_signature_constrains_the_parent_binding` and
+    ///   `deeply_nested_modules_lower_and_resolve_at_every_depth`.
     fn nested_module_member_definition(
-        &mut self,
         member: SynNode<'_>,
         name: String,
-        explicit: Option<Ty>,
-    ) -> LowerResult<(ModuleBinding, ModuleField)>
+        lowered: LoweredModule,
+    ) -> LowerResult<(
+        ModuleBinding,
+        ModuleField,
+        Trie<Recognized, RecognitionSite>,
+    )>
     {
-        let (effective, term, origin) = self.leaf_module_declaration(member, explicit)?;
-        let bound = match term {
+        let bound = match lowered.term {
             | Term::Value(value) => {
                 let ret = Comp::Ret(Rc::new(value));
-                let origin =
-                    OriginNode::new(entry(member, Some(ElabKind::LetValueBind)), vec![origin]);
+                let origin = OriginNode::new(entry(member, Some(ElabKind::LetValueBind)), vec![
+                    lowered.origin,
+                ]);
                 COut::from_legacy_comp(&ret, origin)?
             },
-            | Term::Comp(comp) => COut::from_legacy_comp(&comp, origin)?,
+            | Term::Comp(comp) => COut::from_legacy_comp(&comp, lowered.origin)?,
         };
-        let field = Self::module_field(name.as_str().into(), member, effective.as_ref());
+        let field = Self::module_field(name.as_str().into(), member, lowered.ascription.as_ref());
         Ok((
             ModuleBinding {
                 binder: name,
+                bound,
+            },
+            field,
+            lowered.namespace,
+        ))
+    }
+
+    /// Materializes a signature component the body never defined, in total
+    /// mode, as a hole bound at the component's declared type.
+    ///
+    /// The shape is [`Self::dangling_module_member`]'s: a binding whose value
+    /// is an annotated hole plus the candidate field selecting it, so the
+    /// missing component stays a reachable goal rather than an erased field.
+    fn missing_module_component(
+        &mut self,
+        node: SynNode<'_>,
+        label: FieldLabel<'_>,
+        component: &ValueType,
+        error: &LowerError,
+    ) -> LowerResult<(ModuleBinding, ModuleField)>
+    {
+        let hole = Value::Hole(self.fresh_hole().into());
+        let mut hole_entry = entry(node, None);
+        hole_entry.note = Some(note_of(error));
+        let hole_origin = OriginNode::leaf(hole_entry);
+        let annotated = Value::annot(hole, component.clone());
+        let bound = COut::from_legacy_comp(
+            &Comp::Ret(Rc::new(annotated)),
+            OriginNode::new(entry(node, Some(ElabKind::LetValueBind)), vec![hole_origin]),
+        )?;
+        let field = ModuleField {
+            label: label.0.to_owned(),
+            value: Value::var(label.0),
+            origin: OriginNode::leaf(entry(node, Some(ElabKind::LetValueBind))),
+        };
+        Ok((
+            ModuleBinding {
+                binder: label.0.to_owned(),
                 bound,
             },
             field,
@@ -5653,20 +6836,24 @@ impl Lowerer<'_>
     /// Builds the module item's final record term, adding generated binds only
     /// when there are member definitions to sequence.
     ///
-    /// An inline record ascription is an explicit structural matching
-    /// coercion: every body member still evaluates in source order, while the
-    /// returned record is rebuilt from only the fields named by the signature.
+    /// The candidate fields arriving here are already the coerced ones —
+    /// [`Self::coerce_module_components`] dropped what the signature does not
+    /// name and refused what the body does not define — so this step only
+    /// canonicalizes and sequences. Bindings are never filtered: a hidden
+    /// member still evaluates, which is the whole difference between hiding a
+    /// component and not having one.
     ///
     /// # Contract
     /// - ensures: bindings are nested in source order and the final record is
-    ///   canonical in label order; an ascribed record exposes exactly the
-    ///   signature's fields.
+    ///   canonical in label order.
+    /// - ensures: the returned labels are exactly the module's exported
+    ///   components, in the record's canonical order.
     /// - fails: arena allocation/readback failures only.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: filtering candidate fields before the final record and
-    ///   folding all bindings afterward separates visibility from evaluation.
+    /// - hypothesis: canonicalizing the coerced fields and folding all bindings
+    ///   afterward separates visibility from evaluation.
     /// - mutants: filter bindings with fields; fold bindings in source order.
     /// - witnesses: `module_signature_repacking_hides_extra_members`,
     ///   `dangling_member_signature_is_strict_error_and_total_hole`, and the
@@ -5676,21 +6863,17 @@ impl Lowerer<'_>
         bindings: Vec<ModuleBinding>,
         fields: Vec<ModuleField>,
         ascription: Option<ValueType>,
-    ) -> LowerResult<(Term, OriginNode)>
+    ) -> LowerResult<(Vec<String>, Term, OriginNode)>
     {
-        let exported = match ascription.as_ref() {
-            | Some(&ValueType::Record(ref fields)) => Some(fields),
-            | Some(_) | None => None,
-        };
         let mut fields_by_label: BTreeMap<String, (Value, OriginNode)> = BTreeMap::new();
         for field in fields {
-            if exported.is_none_or(|signature| signature.contains_key(&field.label)) {
-                fields_by_label.insert(field.label, (field.value, field.origin));
-            }
+            fields_by_label.insert(field.label, (field.value, field.origin));
         }
+        let mut exported = Vec::with_capacity(fields_by_label.len());
         let mut values = Vec::with_capacity(fields_by_label.len());
         let mut origins = Vec::with_capacity(fields_by_label.len());
         for (label, (value, origin)) in fields_by_label {
+            exported.push(label.clone());
             values.push((label, value));
             origins.push(origin);
         }
@@ -5700,7 +6883,7 @@ impl Lowerer<'_>
         let (record, record_origin) =
             Self::annotate_value_output(record, record_origin, ascription, node);
         if bindings.is_empty() {
-            return Ok((Term::Value(record), record_origin));
+            return Ok((exported, Term::Value(record), record_origin));
         }
         let mut acc = COut::from_legacy_comp(
             &Comp::Ret(Rc::new(record)),
@@ -5726,6 +6909,7 @@ impl Lowerer<'_>
             )?;
         }
         Ok((
+            exported,
             Term::Comp({
                 let readback_comp = acc.readback_comp()?;
                 core::convert::identity(readback_comp)
@@ -5987,6 +7171,11 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::EmptyBlock { ref byte_range }
         | LowerError::DanglingSignature { ref byte_range, .. }
         | LowerError::DuplicateModuleMember { ref byte_range, .. }
+        | LowerError::BareTypeComponent { ref byte_range, .. }
+        | LowerError::MissingModuleComponent { ref byte_range, .. }
+        | LowerError::UnknownModuleComponent { ref byte_range, .. }
+        | LowerError::DuplicateModuleComponent { ref byte_range, .. }
+        | LowerError::ShadowedBuiltin { ref byte_range, .. }
         | LowerError::OpaqueAscriptionUnelaborated { ref byte_range }
         | LowerError::PackagePayloadNotGradedThunk { ref byte_range }
         | LowerError::UnpackNeedsPackageSignature { ref byte_range }
@@ -6052,8 +7241,24 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::DanglingSignature { ref name, .. } => {
             HoleNote::MissingDefinition { name: name.clone() }
         },
-        | LowerError::DuplicateModuleMember { .. } => HoleNote::UnsupportedForm {
+        | LowerError::DuplicateModuleMember { .. }
+        | LowerError::MissingModuleComponent { .. }
+        | LowerError::DuplicateModuleComponent { .. }
+        | LowerError::ShadowedBuiltin { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::MODULE_DECLARATION,
+        },
+        | LowerError::BareTypeComponent { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::TYPE_COMPONENT,
+        },
+        // The decline happens at the projection, not at the module, so total
+        // mode stands its hole where the selection was and leaves the module
+        // declaration itself intact. The hole is the point: putting a
+        // `RecordProj` here instead would silently project a field matching
+        // had already removed. Witnessed by `gandr-surface-engine`
+        // `tests/session.rs` —
+        // `a_hidden_or_absent_user_module_component_is_declined_as_a_hole`.
+        | LowerError::UnknownModuleComponent { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::PROJECTION_EXPRESSION,
         },
         | LowerError::MalformedNode { kind, .. } => HoleNote::MalformedNode { kind },
         // Coverage gaps are handled in-band by the copattern elaborator (strict
@@ -6333,6 +7538,8 @@ mod tests
             observations: BTreeSet::new(),
             data: BTreeMap::new(),
             constructors: BTreeMap::new(),
+            recognition: Recognition::new(ShadowPolicy::WarnAndAllow),
+            modules: Vec::new(),
             obligations: Vec::new(),
         }
     }

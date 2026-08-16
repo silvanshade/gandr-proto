@@ -125,12 +125,15 @@ use crate::kernel::WithheldReason;
 use crate::lower::ImportDeclaration;
 use crate::lower::ImportIndex;
 use crate::lower::LowerError;
+use crate::lower::LoweringSeed;
 use crate::lower::lower_source_total_seeded;
 use crate::namespace::NamePath;
 use crate::namespace::Scope;
 use crate::prelude::Prelude;
 use crate::prelude_ctx;
 use crate::prelude_env;
+use crate::recognition::Recognition;
+use crate::recognition::ShadowPolicy;
 
 /// Why a session checkpoint export failed.
 #[derive(Debug, thiserror::Error)]
@@ -247,6 +250,14 @@ pub struct Session
     /// The persistent visible import namespace. Its bindings index
     /// [`Self::imports`].
     import_scope: Scope<ImportIndex, SourceRange>,
+    /// The persistent outermost recognition scope: the prelude, host, and
+    /// `extern` names plus every declaration earlier submissions bound over
+    /// them, so a `def list = 1;` on one line still shadows the prelude `list`
+    /// on the next.
+    recognition: Recognition,
+    /// How a declaration shadowing a prelude or host name is settled for this
+    /// session's submissions.
+    shadow_policy: ShadowPolicy,
     /// The kernel environment the session's S1-eligible definitions accumulate
     /// in, and the naming environment that resolves one to another.
     kernel: KernelAdmissions,
@@ -278,8 +289,35 @@ impl Session
             data: BTreeMap::new(),
             imports: Vec::new(),
             import_scope: Scope::new(),
+            recognition: Recognition::new(ShadowPolicy::WarnAndAllow),
+            shadow_policy: ShadowPolicy::WarnAndAllow,
             kernel: KernelAdmissions::new(),
         }
+    }
+
+    /// Sets how a declaration shadowing a prelude or host name is settled for
+    /// every later submission.
+    ///
+    /// # Contract
+    /// - ensures: later submissions lower under `policy`; already-submitted
+    ///   sources are untouched.
+    /// - provides: the reject-under-policy face of the recognition graduation,
+    ///   for an embedding that treats a shadowed builtin as an error.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — one decision surface (which policy the next
+    ///   submission takes), separated by submitting the same shadowing source
+    ///   under each policy and asserting the outcome exactly.
+    /// - witness: `gandr-surface-engine` `tests/recognition.rs` —
+    ///   `a_session_rejects_a_shadowed_builtin_under_policy`
+    #[inline]
+    pub const fn set_shadow_policy(
+        &mut self,
+        policy: ShadowPolicy,
+    )
+    {
+        self.shadow_policy = policy;
     }
 
     /// The kernel admissions this session has accumulated.
@@ -521,14 +559,15 @@ impl Session
     where
         S: Into<PipelineSource<'source>>,
     {
-        let lowered = lower_source_total_seeded(
-            source.into(),
-            &self.foreign,
-            &self.codata,
-            &self.data,
-            &self.import_scope,
-            ImportIndex(self.imports.len()),
-        );
+        let lowered = lower_source_total_seeded(source.into(), LoweringSeed {
+            foreign: &self.foreign,
+            codata: &self.codata,
+            data: &self.data,
+            import_scope: &self.import_scope,
+            import_index_base: ImportIndex(self.imports.len()),
+            recognition: Some(&self.recognition),
+            shadow_policy: self.shadow_policy,
+        });
         self.finish_submission(lowered)
     }
 
@@ -601,6 +640,7 @@ impl Session
         }
         self.imports.extend(lowered.imports.iter().cloned());
         self.import_scope = lowered.import_scope().clone();
+        self.recognition = lowered.recognition().clone();
         for module in lowered.foreign {
             self.foreign.insert(module.name.clone(), module);
         }

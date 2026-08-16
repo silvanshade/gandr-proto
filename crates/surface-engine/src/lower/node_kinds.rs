@@ -180,6 +180,15 @@ pub const RECORD_TYPE: SyntaxKind = SyntaxKind("record_type");
 /// exposed while the source says it is sealed — a failure with no symptom.
 pub const OPAQUE_SIGNATURE: SyntaxKind = SyntaxKind("opaque_signature");
 pub const RECORD_TYPE_FIELD: SyntaxKind = SyntaxKind("record_type_field");
+/// A signature's **type component** — the `type T` member of a `#{ … }`.
+///
+/// It is a different kind from [`RECORD_TYPE_FIELD`] because it declares a name
+/// rather than a labelled type, and because the two are separated at exactly
+/// one token: a field's `ℓ : T` never leads with the `type` tile. Ordinary
+/// record types have no type components, so one written there is refused rather
+/// than dropped — a silently ignored component would make `#{ type T }` and
+/// `#{}` the same type.
+pub const TYPE_COMPONENT: SyntaxKind = SyntaxKind("type_component");
 /// The first-class module package type `package [ T , … ] payload`.
 ///
 /// The bracketed list binds the signature's abstract type components over the

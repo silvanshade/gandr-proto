@@ -76,8 +76,14 @@
 //! eval binding-environment ([`prelude::prelude_env`]) for the operators and
 //! the module-qualified native builtins that elaboration targets.
 //! [`host`] provides the canonical host effect signatures (`Exec` / `Fs` /
-//! `Env` / `Proc`) and the reserved host modules (`fs` / `env` / `proc`)
-//! whose member calls elaborate to performs against them.
+//! `Env` / `Proc`) and the host modules (`fs` / `env` / `proc`) whose member
+//! calls elaborate to performs against them.
+//! [`recognition`] is where those two tables become **names**: the prelude
+//! modules, the host modules, and every `extern`-declared foreign module are
+//! bindings in one outermost visible [`namespace::Scope`], so the lowerer
+//! recognizes `prim.id` or `fs.read` by resolving a path rather than by
+//! consulting a constant table at the projection site, and a source
+//! declaration of the same name shadows them under a policy.
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -140,6 +146,7 @@ pub mod lower;
 pub mod namespace;
 pub mod origin;
 pub mod prelude;
+pub mod recognition;
 pub mod render;
 pub mod run;
 pub mod session;

@@ -749,9 +749,7 @@ impl<'tree> SynNode<'tree>
             | node_kinds::RECORD_EXPRESSION | node_kinds::RECORD_UPDATE_EXPRESSION => {
                 self.comma_segments(self.hash_brace_body(), node_kinds::RECORD_FIELD)
             },
-            | node_kinds::RECORD_TYPE => {
-                self.comma_segments(self.hash_brace_body(), node_kinds::RECORD_TYPE_FIELD)
-            },
+            | node_kinds::RECORD_TYPE | node_kinds::OPAQUE_SIGNATURE => self.signature_members(),
             | node_kinds::EXTERN_BLOCK => self.extern_members(),
             | node_kinds::CODATA_DECLARATION => {
                 self.member_segments(self.brace_body(), node_kinds::CODATA_OBSERVATION)
@@ -861,7 +859,9 @@ impl<'tree> SynNode<'tree>
                 | node_kinds::EXTERN_FUNCTION,
                 node_kinds::FIELD_NAME,
             ) => self.after_lead(label::DEF),
-            | (node_kinds::EXTERN_TYPE, node_kinds::FIELD_NAME) => self.after_lead(label::TYPE),
+            | (node_kinds::EXTERN_TYPE | node_kinds::TYPE_COMPONENT, node_kinds::FIELD_NAME) => {
+                self.after_lead(label::TYPE)
+            },
             | (node_kinds::CODATA_DECLARATION, node_kinds::FIELD_NAME) => {
                 self.after_lead(label::CODATA)
             },
@@ -932,7 +932,13 @@ impl<'tree> SynNode<'tree>
                 node_kinds::LET_STATEMENT | node_kinds::CO_FIELD | node_kinds::RECORD_FIELD,
                 node_kinds::FIELD_VALUE,
             )
-            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE) => self.after(label::EQUALS),
+            // A signature's manifest type component `type T = τ` joins this
+            // group: its type is the node after `=`, exactly as a `val`
+            // statement's value is. Its *absence* is the bare `type T` form,
+            // whose sealed meaning is not elaborated yet, so the lowerer
+            // declines it by name rather than reading it as some nearby form.
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE)
+            | (node_kinds::TYPE_COMPONENT, node_kinds::FIELD_TYPE) => self.after(label::EQUALS),
             | (node_kinds::BIND_STATEMENT, node_kinds::FIELD_SOURCE) => {
                 self.after(label::LEFT_ARROW)
             },
@@ -2093,6 +2099,83 @@ impl<'tree> SynNode<'tree>
         out
     }
 
+    /// The comma-separated members of a `#{ … }` signature or record type,
+    /// each classified as a value field or a **type component**.
+    ///
+    /// The two are separated at one token, exactly as the `extern` block's
+    /// members are: a segment leading with the `type` tile declares a name, and
+    /// anything else is the labelled `ℓ : T` field. No lookahead is involved,
+    /// which is the constraint the signature surface was designed under.
+    ///
+    /// # Contract
+    /// - ensures: returns one node per comma-separated member in source order,
+    ///   of kind [`node_kinds::TYPE_COMPONENT`] exactly when the member leads
+    ///   with the `type` tile and [`node_kinds::RECORD_TYPE_FIELD`] otherwise.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: lead-tile classification separates the two member shapes
+    ///   without inspecting the rest of the segment.
+    /// - mutants: classify every member as a field; look for `type` anywhere in
+    ///   the segment.
+    /// - witnesses: `recognizes_signature_type_components`.
+    fn signature_members(self) -> Vec<Self>
+    {
+        let Some((container, body)) = self.hash_brace_body()
+        else {
+            return Vec::new();
+        };
+        let sig = self.tree.sig_children(container);
+        let mut out = Vec::new();
+        let mut start = body.start;
+        let mut index = body.start;
+        while index < body.end {
+            let is_comma = sig
+                .get(index)
+                .is_some_and(|&node| self.tree.tile_label(node) == Some(label::COMMA));
+            if is_comma {
+                if index > start {
+                    out.push(self.signature_member(
+                        container,
+                        (&sig).into(),
+                        SignificantIndex(start),
+                        SignificantIndex(index),
+                    ));
+                }
+                start = index.saturating_add(1);
+            }
+            index = index.saturating_add(1);
+        }
+        if start < body.end {
+            out.push(self.signature_member(
+                container,
+                (&sig).into(),
+                SignificantIndex(start),
+                SignificantIndex(body.end),
+            ));
+        }
+        out
+    }
+
+    /// Classify one `#{ … }` member run by its lead tile.
+    fn signature_member(
+        self,
+        container: NodeId,
+        sig: SignificantChildren<'_>,
+        lo: SignificantIndex,
+        hi: SignificantIndex,
+    ) -> Self
+    {
+        let lead = sig.get(lo.0).and_then(|&node| self.tree.tile_label(node));
+        let kind = if lead == Some(label::TYPE) {
+            node_kinds::TYPE_COMPONENT
+        }
+        else {
+            node_kinds::RECORD_TYPE_FIELD
+        };
+        self.run(container, lo, hi, kind)
+    }
+
     /// Classify one `extern` member run.
     fn extern_member(
         self,
@@ -2114,22 +2197,39 @@ impl<'tree> SynNode<'tree>
         self.run(container, SignificantIndex(lo), SignificantIndex(hi), kind)
     }
 
-    /// The `module` block's ordered definition/signature and nested-module
-    /// members.
+    /// The `module` block's ordered members.
+    ///
+    /// Members inhabit their own grammar sort, so each one arrives as a node of
+    /// the melded tree rather than as a run of tiles this adapter has to
+    /// re-segment: the body is read by **taking** its named children, not by
+    /// scanning for `def` / `module` leads and matching delimiters. Their kinds
+    /// come from ordinary [`Self::classify_meld`], attribute-led members
+    /// included, and nesting needs nothing further because a nested module's
+    /// own body is read the same way.
     ///
     /// # Contract
-    /// - ensures: returns body members in source order, including one-level
-    ///   nested modules, while excluding the header ascription.
+    /// - ensures: returns one node per member in source order, at any nesting
+    ///   depth, excluding the header ascription.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: locating the module body before segmentation prevents its
-    ///   inline record signature from becoming a body member.
-    /// - mutants: segment the raw declaration window; use `brace_body`.
-    /// - witnesses: `recognizes_one_level_nested_module_member`.
+    /// - hypothesis: sort-hole fills are already one node per member, so
+    ///   segmentation is a filter rather than a scan.
+    /// - mutants: take every significant child; scan for member leads.
+    /// - witnesses: `recognizes_module_declaration` and
+    ///   `recognizes_nested_module_members_at_depth`.
     fn module_members(self) -> Vec<Self>
     {
-        self.definition_members(self.module_body())
+        let Some((container, body)) = self.module_body()
+        else {
+            return Vec::new();
+        };
+        let sig = self.tree.sig_children(container);
+        (body.start .. body.end)
+            .filter_map(|index| sig.get(index).copied())
+            .filter(|&node| self.is_named(node).0)
+            .map(|node| Self::wrap(self.tree, node))
+            .collect()
     }
 
     /// The `rec` block's ordered recursive definitions.
@@ -5048,6 +5148,7 @@ mod tests
             "second ascription field type"
         );
         let ascribed_members = ascribed_module.named_children();
+
         assert_eq!(2, ascribed_members.len(), "two ascribed module members");
         assert_eq!(
             "x",
@@ -5188,6 +5289,119 @@ mod tests
                 .text()
                 .as_ref(),
             "nested member name"
+        );
+        Ok(())
+    }
+
+    /// A signature's members separate at one token: `type` leads a type
+    /// component, anything else the labelled `ℓ : T` field. The manifest
+    /// component reaches its type through `FIELD_TYPE`; the abstract one has
+    /// none, which is exactly how the lowerer tells them apart.
+    #[test]
+    fn recognizes_signature_type_components() -> Result<(), String>
+    {
+        let parsed = tree("module M : #{ type T = Integer, value: T, type U } { def value = 1; }")?;
+        assert!(
+            parsed.obligations().is_empty(),
+            "a signature with type components molds cleanly: {:?}",
+            parsed.obligations()
+        );
+        let ascription = field(item0(&parsed)?, node_kinds::FIELD_ASCRIPTION)?;
+        let members = ascription.named_children();
+        assert_eq!(
+            members
+                .iter()
+                .map(|member| member.kind())
+                .collect::<Vec<_>>(),
+            vec![
+                node_kinds::TYPE_COMPONENT,
+                node_kinds::RECORD_TYPE_FIELD,
+                node_kinds::TYPE_COMPONENT,
+            ],
+            "the lead tile classifies each member, in source order"
+        );
+        let manifest = nth(&members, 0)?;
+        assert_eq!(
+            "T",
+            field(manifest, node_kinds::FIELD_NAME)?.text().as_ref(),
+            "a type component names itself after the `type` tile"
+        );
+        assert_eq!(
+            "Integer",
+            field(manifest, node_kinds::FIELD_TYPE)?.text().as_ref(),
+            "a manifest component reaches the type after `=`"
+        );
+        assert!(
+            nth(&members, 2)?
+                .child_by_field_name(node_kinds::FIELD_TYPE)
+                .is_none(),
+            "an abstract component has no type at all"
+        );
+        assert_eq!(
+            "value",
+            field(nth(&members, 1)?, node_kinds::FIELD_NAME)?
+                .text()
+                .as_ref(),
+            "a value component keeps its label"
+        );
+        Ok(())
+    }
+
+    /// Nesting is read at whatever depth the source has, and an attribute-led
+    /// member stays one member rather than splitting from the definition it
+    /// decorates.
+    #[test]
+    fn recognizes_nested_module_members_at_depth() -> Result<(), String>
+    {
+        let parsed = tree(
+            "module Outer { \
+             module a { \
+             module b { \
+             module c { @[doc(1)] def deep = 1; } \
+             } \
+             } \
+             }",
+        )?;
+        assert!(
+            parsed.obligations().is_empty(),
+            "deep nesting molds cleanly: {:?}",
+            parsed.obligations()
+        );
+        let mut current = item0(&parsed)?;
+        for level in ["a", "b", "c"] {
+            let members = current.children_by_field_name(node_kinds::FIELD_MEMBER);
+            assert_eq!(1, members.len(), "one member at `{level}`");
+            current = nth(&members, 0)?;
+            assert_eq!(
+                node_kinds::MODULE_DECLARATION,
+                current.kind(),
+                "`{level}` is a nested module declaration"
+            );
+            assert_eq!(
+                level,
+                field(current, node_kinds::FIELD_NAME)?.text().as_ref(),
+                "the nested declaration names itself"
+            );
+        }
+        let innermost = current.children_by_field_name(node_kinds::FIELD_MEMBER);
+        assert_eq!(1, innermost.len(), "one innermost member");
+        let member = nth(&innermost, 0)?;
+        assert_eq!(
+            node_kinds::DEF_VALUE,
+            member.kind(),
+            "an attribute-led member classifies as the definition it decorates"
+        );
+        assert_eq!(
+            "deep",
+            field(member, node_kinds::FIELD_NAME)?.text().as_ref(),
+            "the innermost member name"
+        );
+        assert_eq!(
+            1,
+            member
+                .children_by_field_name(node_kinds::FIELD_ATTRIBUTE)
+                .len(),
+            "and its attribute block rides it rather than becoming a sibling"
         );
         Ok(())
     }

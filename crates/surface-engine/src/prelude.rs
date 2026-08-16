@@ -16,9 +16,12 @@
 //!   L machine's prelude focus.
 //!
 //! The module-qualified names (`prim.id`, …) are produced by the lowerer's
-//! module-select elaboration ([`crate::lower`], gated by [`is_module_member`]);
-//! the one [`MODULE_BUILTINS`] table drives the recognition, the typing, and
-//! the evaluation together, so the three never drift.
+//! module-select elaboration ([`crate::lower`]). **This module no longer
+//! decides whether a name is recognized**: [`crate::recognition`] reads
+//! [`MODULE_BUILTINS`] once to seed the outermost visible scope, and the
+//! lowerer resolves paths against that scope. The one table still drives the
+//! recognition seed, the typing, and the evaluation together, so the three
+//! never drift.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -30,7 +33,6 @@ use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::ValueType;
 
-use crate::boundary::MatchDecision;
 use crate::boundary::PreludeMemberName;
 use crate::boundary::PreludeModuleName;
 /// Evaluation bindings consumed by the L machine's prelude focus.
@@ -75,11 +77,11 @@ impl Prelude
 }
 
 /// The module-qualified native builtins of the MVP prelude — `(module, member,
-/// primitive)`. The single source of truth for the lowerer's module-select
-/// recognition ([`is_module_member`]), the typing prelude ([`prelude_ctx`]),
-/// and the eval prelude ([`prelude_env`]); a member here both type-checks (its
-/// declared type) and evaluates (its native computation), so the three faces
-/// never drift.
+/// primitive)`. The single source of truth for the outermost scope's
+/// recognition seed ([`crate::recognition::Recognition::new`]), the typing
+/// prelude ([`prelude_ctx`]), and the eval prelude ([`prelude_env`]); a member
+/// here both type-checks (its declared type) and evaluates (its native
+/// computation), so the three faces never drift.
 ///
 /// MVP scope: the demonstrator module `prim` with the neutral combinators `id`
 /// (`I`) and `const` (`K`) — pure, total, first-order — plus source-facing
@@ -87,7 +89,7 @@ impl Prelude
 /// members, `string` helpers, `regex.extract`, and `path` helpers. The
 /// fixed-table arithmetic / comparison / boolean / list-concat operators are
 /// the unqualified prelude bindings defined by the same table.
-const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
+pub(crate) const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("prim", "id", NativePrim::Id),
     ("prim", "const", NativePrim::Const),
     ("list", "each", NativePrim::Each),
@@ -146,60 +148,6 @@ const OPERATOR_BUILTINS: &[(&str, NativePrim)] = &[
     ("neg", NativePrim::Neg),
 ];
 
-/// Whether `module.member` names a known module builtin — the lowerer's
-/// module-select gate.
-///
-/// Decided on BOTH halves, so an unknown `module.member` (a genuine record
-/// projection, once records exist) stays the structural-projection hole rather
-/// than elaborating to an unbound qualified `Var`.
-///
-/// # Contract
-/// - ensures: `true` iff `(module, member)` is an entry of [`MODULE_BUILTINS`].
-/// - panics: none.
-#[inline]
-#[must_use]
-pub fn is_module_member<'module, 'member, M, B>(
-    module: M,
-    member: B,
-) -> MatchDecision
-where
-    M: Into<PreludeModuleName<'module>>,
-    B: Into<PreludeMemberName<'member>>,
-{
-    let module = module.into();
-    let member = member.into();
-    MatchDecision(
-        MODULE_BUILTINS
-            .iter()
-            .any(|&(known_module, known_member, _)| {
-                known_module == module.0 && known_member == member.0
-            }),
-    )
-}
-
-/// Whether `name` is a known builtin module.
-///
-/// Used by the lowerer to keep `M.member` where `M` is a known module on the
-/// module path even when the member is unknown (a declined hole, the design
-/// record: a module namespace is not a record value), rather than treating it
-/// as a record projection (the module-selection contract).
-///
-/// # Contract
-/// - ensures: `true` iff some entry of [`MODULE_BUILTINS`] has module `name`.
-/// - panics: none.
-#[inline]
-#[must_use]
-pub fn is_module<'name, N>(name: N) -> MatchDecision
-where
-    N: Into<PreludeModuleName<'name>>,
-{
-    let name = name.into();
-    MatchDecision(
-        MODULE_BUILTINS
-            .iter()
-            .any(|&(known_module, ..)| known_module == name.0),
-    )
-}
 /// The typing context for the prelude.
 ///
 /// One binding per fixed-table operator
@@ -245,8 +193,9 @@ pub fn prelude_ctx() -> Ctx
 }
 
 /// The flat qualified name `"module.member"` — the key the lowerer emits as a
-/// `Var` and both preludes bind a builtin under.
-fn qualified<'module, 'member>(
+/// `Var`, both preludes bind a builtin under, and the outermost scope's
+/// [`crate::recognition::Recognized::PreludeMember`] binding carries.
+pub(crate) fn qualified<'module, 'member>(
     module: impl Into<PreludeModuleName<'module>>,
     member: impl Into<PreludeMemberName<'member>>,
 ) -> String

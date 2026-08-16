@@ -1176,12 +1176,17 @@ mod tests
         ValueType::sum(ValueType::Unit, ValueType::Unit)
     }
 
-    /// An unknown member of a known module is NOT a module-select: it falls
-    /// through to the structural-projection path and — records being undesigned
-    /// — becomes a hole, so a genuine field access stays open for the record
-    /// rung rather than being silently captured by the namespace.
+    /// An unknown member of a **prelude** namespace is declined at the
+    /// recognition boundary, and total mode recovers the decline as a hole.
+    ///
+    /// The hole is what total mode does with a refusal — it is not evidence
+    /// that record projection is unavailable. Record projection is a working
+    /// path, and a selection off an *ungoverned* target takes it. What this
+    /// pins is that `prim.bogus` is refused rather than guessed: `prim` is a
+    /// namespace whose members the scope knows exactly, so an absent one is an
+    /// error rather than an open field access.
     #[test]
-    fn an_unknown_module_member_is_declined_as_a_hole()
+    fn an_unknown_prelude_member_is_declined_as_a_hole()
     {
         let mut session = Session::new();
         let submission = session
@@ -1196,8 +1201,75 @@ mod tests
                 .outcomes
                 .iter()
                 .all(|outcome| matches!(*outcome, ItemOutcome::Holey)),
-            "an unknown module member is declined (a hole), not a value"
+            "an unknown prelude member is declined (a hole), not a value"
         );
+    }
+
+    /// A user module's hidden and absent components are declined in **total**
+    /// mode too, and the decline recovers as a hole rather than as a record
+    /// projection.
+    ///
+    /// This is the total-mode half of the module stratum's governance, and a
+    /// strict-mode refusal test cannot reach it: strict lowering returns the
+    /// error, while total lowering has to choose what to put in its place.
+    /// Putting a `RecordProj` there is the silent failure this kills —
+    /// `Facts.hidden` would become a field access on a record that matching
+    /// had already removed the field from, and the mistake would surface much
+    /// later against a record type that never mentions the signature that hid
+    /// it.
+    ///
+    /// Both reasons a component can be missing are exercised, because they
+    /// reach the scope differently: `hidden` was defined and then dropped by
+    /// matching, while `never` was never written at all. The exported
+    /// component is checked first, so the two declines are known to be about
+    /// the component rather than about the module.
+    #[test]
+    fn a_hidden_or_absent_user_module_component_is_declined_as_a_hole()
+    {
+        const DECLARATION: &str =
+            "module Facts : #{ total: Integer } { def hidden = 1; def total = 2; }";
+
+        // One session throughout, so the positive control and the two declines
+        // are known to be reading the *same* registered module. Re-declaring
+        // per case would let a silently holey declaration pass this test for
+        // the wrong reason: an unregistered `Facts` is ungoverned, and its
+        // selection would reach a hole by the record path instead.
+        let mut session = Session::new();
+        let declaration = session
+            .submit(DECLARATION)
+            .expect("the module declaration lowers");
+        assert!(
+            declaration
+                .outcomes
+                .iter()
+                .all(|outcome| !matches!(*outcome, ItemOutcome::Holey)),
+            "the declaration itself lowers cleanly, so `Facts` is registered"
+        );
+        let exported = session
+            .submit("Facts.total")
+            .expect("lowering must not fail");
+        assert!(
+            exported
+                .outcomes
+                .iter()
+                .all(|outcome| !matches!(*outcome, ItemOutcome::Holey)),
+            "the exported component is reached through its path, not declined"
+        );
+
+        for selection in ["Facts.hidden", "Facts.never"] {
+            let submission = session.submit(selection).expect("lowering must not fail");
+            assert!(
+                submission
+                    .outcomes
+                    .iter()
+                    .all(|outcome| matches!(*outcome, ItemOutcome::Holey)),
+                "`{selection}` is declined as a hole, never projected off the module record"
+            );
+            assert!(
+                !submission.report.goals.is_empty(),
+                "`{selection}` leaves a hole goal"
+            );
+        }
     }
     /// `list.where` filters by a pure predicate closure.
     #[test]

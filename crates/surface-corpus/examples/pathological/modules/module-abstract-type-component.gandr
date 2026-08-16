@@ -1,0 +1,8 @@
+// Failure golden: a bare `type T` component is the sealed one, and sealing is
+// not elaborated yet. The decline names the component and points at what would
+// elaborate it; the signature's other components are unaffected, so the refusal
+// is about that member rather than about the signature.
+module Bad : #{ type T, value: Integer } { def value = 1; }
+
+//@ mode: shell
+//@ expect-shell-error: abstract type component

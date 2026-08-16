@@ -1,0 +1,16 @@
+// Edge case: matching is by name, so the signature's order and the body's are
+// independent. The signature below asks for `third`, `first`, `second`; the
+// body computes them in the other order and keeps computing `hidden`, which the
+// signature does not name and matching therefore drops. Evaluation follows the
+// body, and the returned record is canonical in label order regardless of both.
+module Ordered : #{ third: Integer, first: Integer, second: Integer } {
+  def first = 1;
+  def hidden = 99;
+  def second = first + 1;
+  def third = second + 1;
+}
+
+#{a = Ordered.first, b = Ordered.second, c = Ordered.third}
+
+//@ expect: clean
+//@ expect-last-value: #{a = 1, b = 2, c = 3}

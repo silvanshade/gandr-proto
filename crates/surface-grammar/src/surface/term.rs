@@ -56,6 +56,7 @@ pub fn rules(precs: &PrecTable) -> Result<Vec<Rule>, PbgError>
     declarations(&mut out, item);
     attributes_parameters_externs(&mut out, item);
     statements(&mut out, item);
+    module_members(&mut out, item);
     patterns(&mut out, pat_or, pat_as, pat_atom);
     instantiations(&mut out, atom);
     expressions(&mut out, ExprPrecs {
@@ -268,7 +269,7 @@ fn declarations(
             t(TileLabel("type_identifier")),
             opt(module_ascription_tail()),
             t(TileLabel("{")),
-            repeat(module_member()),
+            repeat(h(Sort::ModuleMember)),
             t(TileLabel("}")),
         ]),
     ));
@@ -386,19 +387,29 @@ fn module_signature() -> Regex
 
 /// Build one field of a module signature.
 ///
-/// A value component `ℓ : T`, or an **abstract type component** `type T`. The
-/// two are first-token-discriminated by the `type` keyword — already a tile in
-/// this grammar, from the `extern` block's inline type members — so admitting
-/// them in one comma list costs no lookahead.
+/// A value component `ℓ : T`, or a **type component** — `type T = τ` when the
+/// component is *manifest*, `type T` when it is abstract. The value and type
+/// forms are first-token-discriminated by the `type` keyword — already a tile
+/// in this grammar, from the `extern` block's inline type members — so
+/// admitting them in one comma list costs no lookahead, and the manifest tail
+/// is one optional `=`.
 ///
-/// An abstract type component is what opaque ascription mints an atom for, so
-/// the form exists on both ascriptions and means different things: under `:`
-/// the component is a transparent name, and under `:>` it is sealed.
+/// **Both type forms parse and they mean different things.** A manifest
+/// component names the type it equals, so it introduces no abstraction and its
+/// occurrences expand to that type. An abstract component is what opaque
+/// ascription mints an atom for, so its meaning is sealing's, and the
+/// elaborator declines it by name until sealing lands: parsing it and refusing
+/// it is what makes the gap visible, where not parsing it would read as a
+/// syntax error about the wrong thing.
 fn module_signature_field() -> Regex
 {
     alt([
         seq([t(TileLabel("identifier")), t(TileLabel(":")), h(Sort::Type)]),
-        seq([t(TileLabel("type")), t(TileLabel("type_identifier"))]),
+        seq([
+            t(TileLabel("type")),
+            t(TileLabel("type_identifier")),
+            opt(seq([t(TileLabel("=")), h(Sort::Type)])),
+        ]),
     ])
 }
 
@@ -1849,21 +1860,66 @@ fn member_sep() -> Regex
     alt([t(TileLabel(";")), t(TileLabel(","))])
 }
 
-/// Build one checked module body member.
+/// Append the module-body member forms, at their own sort.
 ///
-/// The first module rung admits one level of nested structure. A nested
-/// component reuses the ordinary module declaration shape, but its body stays
-/// on the definition-only member family so this grammar does not claim
-/// arbitrary-depth nesting.
-fn module_member() -> Regex
+/// **This is where module nesting becomes unbounded.** A precedence-bounded
+/// grammar has no rule self-reference — a rule's regex names tiles and *sorts*
+/// — so the only way one form can contain itself is for the containing position
+/// to be a sort hole whose sort the form inhabits. Giving members a sort of
+/// their own is exactly that: a module body is a repetition of
+/// [`Sort::ModuleMember`] holes, and one of the forms at that sort is a nested
+/// module whose body is the same repetition. Depth is therefore a property of
+/// the input rather than of the grammar, and it costs two rules instead of one
+/// copy of the member family per admitted level.
+///
+/// Repeating a bare sort hole is safe here because **every member carries its
+/// own terminator**: a definition ends at `;` or at its body's closing brace,
+/// and a nested module ends at its closing brace. After a member the only
+/// admissible tiles are the next member's lead (`@[`, `def`, `module`) or the
+/// body's `}`, none of which competes with the hole's own content — the
+/// discrimination the member-list separator rule exists to protect.
+fn module_members(
+    out: &mut Vec<Rule>,
+    p: Prec,
+)
 {
-    alt([module_definition_member(), nested_module_member()])
+    let s = Sort::ModuleMember;
+    // The plain and attributed definition members are **two rules, not one
+    // with an optional prefix**. A form whose first symbol is a repetition has
+    // no definite lead tile, and at a sort-hole position the melder then starts
+    // the member at `def` and leaves the preceding `@[ … ]` block outside it —
+    // an attribute silently detached from the definition it decorates. Splitting
+    // on the one token that distinguishes them gives each form a definite lead
+    // and puts the block back inside the member.
+    out.push(r(
+        RuleName("module_definition_member"),
+        Provenance("module_declaration"),
+        s,
+        p,
+        seq([t(TileLabel("def")), regular_def_tail()]),
+    ));
+    out.push(r(
+        RuleName("attributed_module_definition_member"),
+        Provenance("module_declaration"),
+        s,
+        p,
+        module_definition_member(),
+    ));
+    out.push(r(
+        RuleName("nested_module_member"),
+        Provenance("module_declaration"),
+        s,
+        p,
+        nested_module_member(),
+    ));
 }
 
-/// Build one definition/signature member shared by outer and nested modules.
+/// Build one **attributed** definition/signature module member: at least one
+/// `@[ … ]` block, then the ordinary definition tail.
 fn module_definition_member() -> Regex
 {
     seq([
+        attr_block_inline(),
         repeat(attr_block_inline()),
         t(TileLabel("def")),
         regular_def_tail(),
@@ -1890,7 +1946,11 @@ fn regular_def_tail() -> Regex
     ])
 }
 
-/// Build one lowercase, one-level nested module component.
+/// Build one lowercase nested module component.
+///
+/// Its body is the same [`Sort::ModuleMember`] repetition the outer declaration
+/// takes, which is what makes nesting recursive rather than unrolled: this form
+/// inhabits the sort its own body is a repetition of.
 fn nested_module_member() -> Regex
 {
     seq([
@@ -1898,7 +1958,7 @@ fn nested_module_member() -> Regex
         t(TileLabel("identifier")),
         opt(module_ascription_tail()),
         t(TileLabel("{")),
-        repeat(module_definition_member()),
+        repeat(h(Sort::ModuleMember)),
         t(TileLabel("}")),
     ])
 }

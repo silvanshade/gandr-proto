@@ -115,6 +115,14 @@ pub enum Sort
     Type,
     /// Instantiation-slot resident grammar sort.
     Instantiation,
+    /// Module-body member grammar sort.
+    ///
+    /// A module's members inhabit a sort of their own so that a nested module
+    /// can hold members of the same sort **by reference**, which is the only
+    /// recursion a precedence-bounded grammar has: rules recur through sorts,
+    /// never through rule names. Nesting is therefore unbounded and costs one
+    /// rule rather than one copy of the member family per admitted level.
+    ModuleMember,
 }
 
 impl Sort
@@ -130,6 +138,7 @@ impl Sort
             | Self::Expression => GroutSort(2),
             | Self::Type => GroutSort(3),
             | Self::Instantiation => GroutSort(4),
+            | Self::ModuleMember => GroutSort(5),
         }
     }
 
@@ -144,6 +153,7 @@ impl Sort
             | Self::Expression => SortName("expression"),
             | Self::Type => SortName("type"),
             | Self::Instantiation => SortName("instantiation"),
+            | Self::ModuleMember => SortName("module_member"),
         }
     }
 
@@ -176,6 +186,7 @@ impl Sort
             | 2 => Ok(Self::Expression),
             | 3 => Ok(Self::Type),
             | 4 => Ok(Self::Instantiation),
+            | 5 => Ok(Self::ModuleMember),
             | other => Err(PbgError::InvalidSort { sort: other }),
         }
     }

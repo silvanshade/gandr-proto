@@ -131,12 +131,13 @@ impl<Data, Tag> Scope<Data, Tag>
 
     /// A scope whose visible namespace starts as `init_visible`.
     ///
-    /// This is the **namespace-graduation shape**: the prelude, host, and
-    /// extern tables become an initial visible namespace rather than a
+    /// This is the **namespace graduation's entry point**, and
+    /// [`crate::recognition::Recognition::new`] is its caller: the prelude,
+    /// host, and extern tables are an initial visible namespace rather than a
     /// name-table check in projection position, and a user declaration that
-    /// reaches the same path becomes a shadow event with a policy instead of a
-    /// syntactic prohibition. See [`crate::namespace`] for what that graduation
-    /// would and would not change.
+    /// reaches the same path is a shadow event with a policy instead of a
+    /// syntactic prohibition. See [`crate::namespace`] for what the graduation
+    /// does and does not change.
     ///
     /// # Contract
     /// - ensures: the visible namespace is exactly `init_visible`; the export
