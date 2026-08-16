@@ -192,9 +192,7 @@ impl Nfa
         if !initial.is_subset(&states) || !finals.is_subset(&states) {
             return None;
         }
-        if transitions.iter().any(|(key, targets)| {
-            let source = key.0;
-            let symbol = key.1;
+        if transitions.iter().any(|(&(source, symbol), targets)| {
             !states.contains(&source) || !alphabet.contains(&symbol) || !targets.is_subset(&states)
         }) {
             return None;
@@ -368,6 +366,10 @@ impl Nfta
     /// - panics: none.
     #[must_use]
     #[inline]
+    #[expect(
+        clippy::pattern_type_mismatch,
+        reason = "Dylint requires destructuring this borrowed tuple"
+    )]
     pub fn new(
         states: BTreeSet<StateId>,
         finals: BTreeSet<StateId>,
@@ -375,8 +377,7 @@ impl Nfta
     ) -> Option<Self>
     {
         if !finals.is_subset(&states)
-            || transitions.iter().any(|(key, targets)| {
-                let children = &key.1;
+            || transitions.iter().any(|((_, children), targets)| {
                 !children.iter().all(|state| states.contains(state)) || !targets.is_subset(&states)
             })
         {
