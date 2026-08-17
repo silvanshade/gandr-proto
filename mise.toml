@@ -46,7 +46,7 @@ includes = [".config/mise/tasks"]
 "cargo:typos-cli" = "1.49.0"
 "cargo:worktrunk" = "0.74.0"
 "github:numtide/treefmt" = "2.5.0"
-"github:superradcompany/microsandbox" = { version = "0.6.8", matching_regex = "^microsandbox-" }
+"github:superradcompany/microsandbox" = { version = "0.6.9", matching_regex = "^microsandbox-" }
 "github:tombi-toml/tombi" = "1.4.0"
 "npm:@commitlint/cli" = "21.2.2"
 "npm:oxfmt" = "0.63.0"
