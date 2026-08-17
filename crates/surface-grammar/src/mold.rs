@@ -22,7 +22,11 @@ use gandr_surface_syntax::GrammarFingerprint;
 pub use gandr_surface_syntax::MoldId;
 use gandr_theory_graphs::Bound;
 use gandr_theory_graphs::Dir;
+use gandr_theory_graphs::EdgeSource;
+use gandr_theory_graphs::NodeCount;
+use gandr_theory_graphs::NodeId;
 use gandr_theory_graphs::Prec;
+use gandr_theory_graphs::condensation;
 
 use crate::model::CandidateCount;
 use crate::model::MoldCount;
@@ -633,6 +637,89 @@ fn collect_occurrences(
     )
 }
 
+/// A component's folded ending constraint for the closing-class derivation.
+///
+/// The three-way shape mirrors the three ways to be unsure: no ending at all,
+/// endings that agree, and endings that do not. Both unsure answers surface as
+/// `None` for the occurrence, because an unclassed minted close pairs with
+/// nothing and the failure mode is a suppression not applied.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum EndingVerdict
+{
+    /// No reachable ending: a pure interior cycle or an exit-free tail.
+    Empty,
+    /// Every reachable ending agrees on one closing class.
+    Agree(ClosingClass),
+    /// A reachable ending closes nothing the rule opened, or two endings
+    /// disagree.
+    Divergent,
+}
+
+impl EndingVerdict
+{
+    /// Fold one more reachable ending's class into the verdict.
+    fn merge_class(
+        self,
+        class: ClosingClass,
+    ) -> Self
+    {
+        match self {
+            | Self::Empty => Self::Agree(class),
+            | Self::Agree(held) if held == class => self,
+            | Self::Agree(_) | Self::Divergent => Self::Divergent,
+        }
+    }
+
+    /// Fold an already-final successor component's verdict into this one.
+    fn merge_successor(
+        self,
+        successor: Self,
+    ) -> Self
+    {
+        match successor {
+            | Self::Empty => self,
+            | Self::Agree(class) => self.merge_class(class),
+            | Self::Divergent => Self::Divergent,
+        }
+    }
+}
+
+/// Dense successor rows over one rule's tile-adjacency graph: the
+/// [`EdgeSource`] the condensation algorithm runs against.
+#[repr(transparent)]
+struct TileGraph
+{
+    /// Outgoing successors by dense node.
+    rows: Vec<Vec<NodeId>>,
+}
+
+impl EdgeSource for TileGraph
+{
+    type Successors<'successors>
+        = core::iter::Copied<core::slice::Iter<'successors, NodeId>>
+    where
+        Self: 'successors;
+
+    #[inline]
+    fn node_count(&self) -> NodeCount
+    {
+        NodeCount::from(u32::try_from(self.rows.len()).unwrap_or(u32::MAX))
+    }
+
+    #[inline]
+    fn successors(
+        &self,
+        node: NodeId,
+    ) -> Self::Successors<'_>
+    {
+        let empty: &[NodeId] = &[];
+        usize::try_from(u32::from(node))
+            .ok()
+            .and_then(|index| self.rows.get(index))
+            .map_or_else(|| empty.iter().copied(), |row| row.iter().copied())
+    }
+}
+
 /// Derive each occurrence's **form-level closing class** within one rule.
 ///
 /// `Some(c)` exactly when every completion path from that occurrence ends in a
@@ -653,6 +740,37 @@ fn collect_occurrences(
 /// - **Paired, not merely closing.** A terminal `}` counts only when the rule
 ///   also writes an opener of that class, so a rule that closes something it
 ///   never opened claims no class.
+///
+/// The evaluation runs on the rule's condensation, not per occurrence. Every
+/// key in one strongly-connected component reaches the same endings — the
+/// component's own ending members plus whatever its exit components reach — so
+/// the fold is computed once per component in sinks-first order and shared by
+/// every occurrence starting inside it. A per-key memo with a visiting set is
+/// NOT equivalent and is deliberately not used: on a repeat-with-exit shape
+/// (`a → b`, `b → a`, `b → )`), a search that reaches the cycle through `a`
+/// would memoize `b` without the exit's class, and a later query starting at
+/// `b` would read the poisoned entry. Component membership decides sharing,
+/// not search history, so the condensation has no such order dependence.
+///
+/// # Contract
+/// - requires: `occurrences` and `facet` come from [`collect_occurrences`] on
+///   one rule, so every occurrence key and adjacency key belongs to that rule.
+/// - ensures: element `i` is `Some(c)` exactly when every completion path from
+///   occurrence `i` ends at a paired closer of class `c`, and `None` on
+///   divergence or when no completion path ends at a paired closer.
+/// - provides: the per-occurrence form-level closing classes of one rule.
+/// - fails: never; a graph-validation failure yields the safe `None` for every
+///   occurrence rather than a guessed class.
+/// - panics: none.
+/// - intension: one condensation plus one sinks-first fold — O(keys +
+///   adjacency) per rule, independent of the occurrence count.
+///
+/// # Adequacy
+/// - hypothesis: L3 — a repeat-with-exit cycle distinguishes the condensation
+///   fold from a visiting-set memo, and a divergent alternative distinguishes
+///   the poison case from the agree case.
+/// - witness: `gandr_surface_grammar::contracts::closing_class_is_form_level`
+/// - witness: `gandr_surface_grammar::contracts::closing_class_repeat_with_exit_shares_its_component_answer`
 fn closing_classes(
     occurrences: &[Occurrence],
     facet: &TileFacet,
@@ -664,43 +782,177 @@ fn closing_classes(
         .iter()
         .filter_map(|occurrence| ClosingClass::opening(DelimSpelling(occurrence.label)))
         .collect();
-    // Successor index, built once per rule. Each per-occurrence search below
-    // visits every key reachable from its start, so computing successors by
-    // rescanning the adjacency list per pop costs O(occurrences x keys x
-    // pairs) per rule — cubic on the alternation-heavy family rules, and
-    // measured at 1.4s for `sign_declaration` alone (gandr-a3ms). Each entry
-    // preserves adjacency order, so a search traverses exactly the successors
-    // the scan would yield.
-    let mut successors: BTreeMap<TileKey, Vec<TileKey>> = BTreeMap::new();
+
+    // The rule's tile graph, dense: every key the adjacency mentions, plus
+    // every occurrence's start key (an isolated occurrence is its own ending).
+    let mut all: BTreeSet<TileKey> = BTreeSet::new();
     for &(left, right) in &facet.adjacent {
-        successors.entry(left).or_default().push(right);
+        all.insert(left);
+        all.insert(right);
+    }
+    for occurrence in occurrences {
+        all.insert(TileKey::new(TileLabel(occurrence.label), occurrence.rctx));
+    }
+    let keys: Vec<TileKey> = all.into_iter().collect();
+    let dense: BTreeMap<TileKey, u32> = keys
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, key)| (key, u32::try_from(index).unwrap_or(u32::MAX)))
+        .collect();
+    let mut rows: Vec<Vec<NodeId>> = Vec::new();
+    rows.resize_with(keys.len(), Vec::new);
+    for &(left, right) in &facet.adjacent {
+        let (Some(&source), Some(&target)) = (dense.get(&left), dense.get(&right))
+        else {
+            continue;
+        };
+        let Ok(index) = usize::try_from(source)
+        else {
+            continue;
+        };
+        if let Some(row) = rows.get_mut(index) {
+            row.push(NodeId::from(target));
+        }
+    }
+    let graph = TileGraph { rows };
+
+    let Ok(condensed) = condensation(&graph)
+    else {
+        // Validation cannot fail on a graph built from the rule's own facet;
+        // if it ever does, every occurrence takes the safe answer rather than
+        // a guessed class.
+        return vec![None; occurrences.len()];
+    };
+
+    // Per-component successor and predecessor lists over the condensation DAG.
+    let component_count = condensed.components.len();
+    let mut successors: Vec<Vec<usize>> = Vec::new();
+    let mut predecessors: Vec<Vec<usize>> = Vec::new();
+    successors.resize_with(component_count, Vec::new);
+    predecessors.resize_with(component_count, Vec::new);
+    for edge in &condensed.edges {
+        let Ok(source) = usize::try_from(u32::from(edge.source))
+        else {
+            continue;
+        };
+        let Ok(target) = usize::try_from(u32::from(edge.target))
+        else {
+            continue;
+        };
+        if let Some(row) = successors.get_mut(source) {
+            row.push(target);
+        }
+        if let Some(row) = predecessors.get_mut(target) {
+            row.push(source);
+        }
+    }
+
+    // Sinks-first component order (Kahn from the sink side): a component is
+    // folded only after every successor component's verdict is final, so each
+    // component reads final inputs exactly once.
+    let mut out_degree: Vec<usize> = Vec::new();
+    out_degree.resize_with(component_count, usize::default);
+    for (index, row) in successors.iter().enumerate() {
+        if let Some(degree) = out_degree.get_mut(index) {
+            *degree = row.len();
+        }
+    }
+    let mut sinks: Vec<usize> = out_degree
+        .iter()
+        .enumerate()
+        .filter_map(|(index, &degree)| (degree == 0).then_some(index))
+        .collect();
+    let mut order: Vec<usize> = Vec::new();
+    while let Some(component) = sinks.pop() {
+        order.push(component);
+        let Some(row) = predecessors.get(component)
+        else {
+            continue;
+        };
+        for &predecessor in row {
+            let Some(degree) = out_degree.get_mut(predecessor)
+            else {
+                continue;
+            };
+            *degree = degree.saturating_sub(1);
+            if *degree == 0 {
+                sinks.push(predecessor);
+            }
+        }
+    }
+
+    // Fold each component: its own ending members first, then its successor
+    // components' verdicts. A member is an ending when it has no successors or
+    // sits in the rule's LAST set — the search's halt condition, unchanged.
+    let mut verdicts: Vec<EndingVerdict> = vec![EndingVerdict::Empty; component_count];
+    for &component in &order {
+        let mut verdict = EndingVerdict::Empty;
+        if let Some(members) = condensed.components.get(component) {
+            for &node in members {
+                let Ok(index) = usize::try_from(u32::from(node))
+                else {
+                    continue;
+                };
+                let Some(&key) = keys.get(index)
+                else {
+                    continue;
+                };
+                let has_successors = graph.rows.get(index).is_some_and(|row| !row.is_empty());
+                if has_successors && !facet.last.contains(&key) {
+                    continue;
+                }
+                // A completion ends here. Every one of them must agree.
+                verdict = match ClosingClass::closing(DelimSpelling(key.label().0))
+                    .filter(|reached| opened.contains(reached))
+                {
+                    | Some(class) => verdict.merge_class(class),
+                    | None => EndingVerdict::Divergent,
+                };
+            }
+        }
+        if let Some(row) = successors.get(component) {
+            for &successor in row {
+                if let Some(&found) = verdicts.get(successor) {
+                    verdict = verdict.merge_successor(found);
+                }
+            }
+        }
+        if let Some(slot) = verdicts.get_mut(component) {
+            *slot = verdict;
+        }
+    }
+
+    // Every occurrence shares the answer of the component it starts in.
+    let mut component_of: Vec<u32> = vec![u32::MAX; keys.len()];
+    for (component, members) in condensed.components.iter().enumerate() {
+        let Ok(component) = u32::try_from(component)
+        else {
+            continue;
+        };
+        for &node in members {
+            let Ok(index) = usize::try_from(u32::from(node))
+            else {
+                continue;
+            };
+            if let Some(slot) = component_of.get_mut(index) {
+                *slot = component;
+            }
+        }
     }
     occurrences
         .iter()
         .map(|occurrence| {
             let start = TileKey::new(TileLabel(occurrence.label), occurrence.rctx);
-            let mut seen: BTreeSet<TileKey> = BTreeSet::new();
-            let mut frontier = vec![start];
-            let mut class: Option<ClosingClass> = None;
-            while let Some(key) = frontier.pop() {
-                if !seen.insert(key) {
-                    continue;
-                }
-                let next = successors.get(&key);
-                if next.is_none() || facet.last.contains(&key) {
-                    // A completion ends here. Every one of them must agree.
-                    let found = ClosingClass::closing(DelimSpelling(key.label().0))
-                        .filter(|reached| opened.contains(reached))?;
-                    if class.is_some_and(|held| held != found) {
-                        return None;
-                    }
-                    class = Some(found);
-                }
-                if let Some(next) = next {
-                    frontier.extend(next.iter().copied());
-                }
+            let node = dense.get(&start)?;
+            let index = usize::try_from(*node).ok()?;
+            let component = component_of.get(index)?;
+            let component = usize::try_from(*component).ok()?;
+            let verdict = verdicts.get(component)?;
+            match *verdict {
+                | EndingVerdict::Agree(class) => Some(class),
+                | EndingVerdict::Empty | EndingVerdict::Divergent => None,
             }
-            class
         })
         .collect()
 }

@@ -409,6 +409,43 @@ mod tests
         Ok(())
     }
 
+    /// A repeat with an exit is the shape that separates the condensation
+    /// fold from a per-key memo with a visiting set: `a → b`, `b → a`,
+    /// `b → )`. Reached through `a`, a visiting-set memo computes `b` without
+    /// the exit's class and poisons the entry every later `b`-starting query
+    /// reads; both `a` and `b` must derive the bracket's class, whatever the
+    /// evaluation order.
+    #[test]
+    fn closing_class_repeat_with_exit_shares_its_component_answer() -> Result<(), Box<dyn Error>>
+    {
+        let mut spec = PrecSpec::new();
+        let atom = spec.insert("atom", None)?;
+        let dag = PrecDag::build(&spec)?;
+        let pbg = Pbg::build(dag, vec![Rule::new(
+            RuleName("cyclic-exit"),
+            Sort::Item,
+            atom,
+            Regex::seq([
+                Regex::tile(TileLabel("(")),
+                Regex::repeat(Regex::seq([
+                    Regex::tile(TileLabel("a")),
+                    Regex::tile(TileLabel("b")),
+                ])),
+                Regex::tile(TileLabel(")")),
+            ]),
+        )])?;
+        for label in ["(", "a", "b"] {
+            for &mold in pbg.candidates(TileLabel(label)) {
+                assert_eq!(
+                    Some(ClosingClass::Paren),
+                    pbg.closing_class(mold),
+                    "every tile of the bracketed repeat reaches the `)` exit: {label}"
+                );
+            }
+        }
+        Ok(())
+    }
+
     #[test]
     fn built_in_precedence_bands_are_exact() -> Result<(), Box<dyn Error>>
     {
