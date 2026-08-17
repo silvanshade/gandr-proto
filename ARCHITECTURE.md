@@ -8,7 +8,6 @@ It routes into the authoritative docs instead of restating them; where two docs 
 - What the design is: the specification corpus, `spec:README.md` and the four track documents under it.
   **It is not in this repository** — it is held in the maintainer's private research workspace, and this tree cites it by the `spec:` alias rather than by path.
 - Why it was decided: the project's pages in the maintainer's private research workspace and the beads tracker.
-  [PLAN.html](PLAN.html) is the 2026-07 reboot roadmap and is read as a historical record, not as a current schedule.
 
 ## The system in one paragraph
 
@@ -28,7 +27,6 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                                  |
 | `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                       |
 | `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
-| [PLAN.html](PLAN.html)                   | the 2026-07 reboot roadmap, kept as a historical record                                                          |
 | [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog; the per-crate `docs/` tier it replaced is gone                                   |
 
 Referenced by guidance but not landed: `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).

@@ -15,7 +15,7 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 
 - **Code**: local `main` only — no git remote is configured during the reboot bootstrap; once the gandr remote lands, `main` receives **signed** pushes only.
 - **Work**: beads (prefix `gandr-`) in a local Dolt database syncing out-of-band from git to DoltHub — push after every write, pull before reads ([workflow/tracker.md](workflow/tracker.md)).
-- **Design**: the specification corpus (cited as `spec:`, held outside this repository) is authoritative over every other document in this tree; during the reboot bootstrap decisions live in the approved `PLAN.html` and the `gandr-fcw` wayfinder tracker — the per-file `docs/adr/` log is deferred until a decision log is deliberately re-introduced (owner direction, `gandr-fcw`).
+- **Design**: the specification corpus (cited as `spec:`, held outside this repository) is authoritative over every other document in this tree; programme ordering lives in `gandr-e08j`, and `gandr-fcw` retains the reboot rationale while the per-file `docs/adr/` log remains deferred until a decision log is deliberately re-introduced.
   Deep design context also arrives **dispatched** from the maintainer's private research workspace (`AGENTS.md` §"Dispatched work"); what this repository relies on is restated here, and beads may cite that context as `ss-` identifiers.
 - **Contributor notes** (session plans, handoffs, research digests, adversary reports): each contributor's own private workspace, outside this tree (`AGENTS.md` §"Commits and publishable history").
 
@@ -66,7 +66,7 @@ The design corpus and its BLAKE3 registry have left this repository, so registra
 | Question                           | Answer lives in                                                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | What is the design?                | the specification corpus, cited as `spec:` and held outside this repository (`AGENTS.md`)                           |
-| Why was it decided?                | `gandr-fcw` wayfinder tracker + `PLAN.html` (reboot; `docs/adr/` deferred)                                          |
+| Why was it decided?                | the specification corpus (`spec:`) and `gandr-fcw` wayfinder tracker (`docs/adr/` deferred)                         |
 | Who decides, and where?            | the agent by default; escalations go outboard ([workflow/tracker.md](workflow/tracker.md))                          |
 | What's next, in what order?        | the tracker's programme epic `gandr-e08j` (the buildout wayfinder; see `AGENTS.md` §"Start here")                   |
 | How are docs kept trustworthy?     | the format wall ([workflow/ci.md](workflow/ci.md)) + the fidelity review ([workflow/review.md](workflow/review.md)) |

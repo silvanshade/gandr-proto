@@ -53,18 +53,14 @@
 //!
 //! # Provenance
 //!
-//! The roadmap entry is the only in-tree occurrence of the phrase "four
-//! right-lifting conditions"; the neighbouring `PLAN.html` line ("the crDC
-//! fibrational axioms staged as a property suite over the cell store") names
-//! a *different* suite — the completion-engine crDC axioms, already landed as
-//! `theory-virtual-doctrines/tests/crdc.rs`. No source in the tree spells the
-//! four conditions out, so each condition above is **reconstructed from the
-//! heap's contract**: the `store` module docs (nominal identity; per-cell
-//! interior mutability; pure-spine-only write-back), `machine::LMachine::force`
-//! (the black-hole probe, the re-entrant inline fall-back, the
-//! `Rc::clone(&whnf)` write-back), and the `Cell` equality contract (a cache
-//! is not meaning) — stated in the separation-logic shape the roadmap entry
-//! presupposes.
+//! No design source in the tree spells the four conditions out, so each
+//! condition above is **reconstructed from the heap's contract**: the `store`
+//! module docs (nominal identity; per-cell interior mutability; pure-spine-only
+//! write-back), `machine::LMachine::force` (the black-hole probe, the
+//! re-entrant inline fall-back, the `Rc::clone(&whnf)` write-back), and the
+//! `Cell` equality contract (a cache is not meaning). The completion engine's
+//! crDC axioms are a different suite, already defended by
+//! `theory-virtual-doctrines/tests/crdc.rs`.
 //!
 //! # Scope: the nominal half only
 //!

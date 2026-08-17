@@ -3,7 +3,6 @@
 ## Start here
 
 - **The buildout wayfinder is the tracker's programme epic `gandr-e08j`** (repo: unify the buildout path around the absorption programme): the current wave, the lane adjacencies, and the triage state live there.
-- `PLAN.html` — the approved reboot roadmap, retained as a historical record; it is no longer the current wayfinder.
 - The language specification corpus, cited as `spec:` — **it has migrated out of this repository** and is held in the maintainer's private research workspace; do not add specification documents here.
 - `docs/WORKFLOW.md` — the workflow routing layer.
   Read it first, then open only the task-scoped file it points to under `docs/workflow/`.

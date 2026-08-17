@@ -86,4 +86,4 @@ Realized instance (2026-07-19): 36 stale worktrees and 44 dead branches had accu
 
 The governance-doc carve-out covers gandr's `AGENTS.md`, `CLAUDE.md`, `docs/WORKFLOW.md`, the `docs/workflow/` sub-files, and `docs/adr/` once it exists — these land on `main` directly, one commit each.
 ADRs are per-decision files (`docs/adr/NNNN-slug.md`), so parallel branches no longer collide on content or manifest hash; the residual risk is a **number race** (two branches minting the same next number), which is why record-on-main-first stands as policy.
-`docs/adr/` does not exist yet — the reboot bootstrap mints no new ADRs (owner direction, `gandr-fcw`; decisions live in the approved `PLAN.html` and the wayfinder tracker until a decision log is deliberately re-introduced) — so the `adr-guard` `[pre-merge]` gate is parked and re-arms with the directory.
+`docs/adr/` does not exist yet — the reboot bootstrap mints no new ADRs (owner direction, `gandr-fcw`; the specification corpus and wayfinder tracker carry the rationale until a decision log is deliberately re-introduced) — so the `adr-guard` `[pre-merge]` gate is parked and re-arms with the directory.

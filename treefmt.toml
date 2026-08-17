@@ -49,9 +49,7 @@ includes = [
 #   - tree-sitter-generated grammar.json / node-types.json (`tree-sitter generate`);
 #   - the npm-generated package-lock.json;
 #   - the contract-fixtures manifest.json, read by a bespoke layout-sensitive
-#     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it);
-#   - PLAN.html: generated export of the approved wayfinder plan (gandr-fcw.14);
-#     reformatting balloons it and degrades the reviewed artifact.
+#     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it).
 excludes = [
   "packages/tree-sitter-gandr/src/grammar.json",
   "packages/tree-sitter-gandr/src/node-types.json",
@@ -60,7 +58,6 @@ excludes = [
   # dir name is unsettled (the crates/gandr-* prefix is retired) — restore or
   # retarget this exclude with the surface-grammar/fixtures port.
   # "crates/gandr-grammar-contract-fixtures/fixtures/manifest.json",
-  "PLAN.html",
 ]
 
 [formatter.oxlint]
@@ -87,8 +84,6 @@ includes = [
   "*.tsx",
   "*.vue",
 ]
-# PLAN.html: generated export (see oxfmt excludes) — not lintable source.
-excludes = ["PLAN.html"]
 
 # The mutating formatter takes the lower priority so `fmt` completes before
 # `check` when both cover the same markdown set (core fragment convention).
@@ -129,9 +124,7 @@ includes = ["*"]
 # Fidelity-critical greenfield / generated sources are owned by their producers.
 # *.typ: greenfield typst sources under docs/manual/ (Track C) — rendered docs,
 # not size-bounded prose; typst has no treefmt formatter (vetted-dep gate first).
-# PLAN.html: generated 550KB+ export of the approved wayfinder plan — size is
-# inherent to the artifact (embedded inventory + bibliography), not prose bloat.
-excludes = ["*.typ", "PLAN.html"]
+excludes = ["*.typ"]
 
 [formatter."tombi-format"]
 command = "tombi"
@@ -151,7 +144,4 @@ includes = ["*"]
 # not be auto-"corrected" by typos.
 # *.typ: greenfield typst sources (Track C) carry curryst/fletcher identifiers
 # and unicode math typos must not rewrite (a flagged fidelity risk).
-# PLAN.html: generated export carrying bibliography author names and register/
-# tracker ids (Tye, FoPSS, gandr-8ot, …) — the same class; mirrored in
-# typos.toml extend-exclude.
-excludes = ["*.typ", "PLAN.html"]
+excludes = ["*.typ"]
