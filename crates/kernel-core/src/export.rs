@@ -912,6 +912,10 @@ pub struct Segments<'artifact>
     next: usize,
 }
 
+/// # Adequacy
+/// - hypothesis: L3 - iteration yields each framed segment exactly once, keeps
+///   an exact remaining count, and fails closed on inconsistent framing.
+/// - witness: `tests::segment_iteration_preserves_framing_and_fails_closed`
 impl<'artifact> Iterator for Segments<'artifact>
 {
     type Item = &'artifact [u8];
@@ -1266,5 +1270,107 @@ impl From<KernelError> for ReadError
     fn from(error: KernelError) -> Self
     {
         Self::Admit(error)
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::format;
+
+    use super::*;
+
+    #[test]
+    fn metric_wrappers_round_trip_and_render_exactly()
+    {
+        let entries = TableEntryCount::from(17);
+        let work = ExpandedWork::from(23);
+
+        assert_eq!(17, usize::from(entries));
+        assert_eq!("17", format!("{entries}"));
+        assert_eq!(23, u64::from(work));
+        assert_eq!("23", format!("{work}"));
+    }
+
+    #[test]
+    fn segment_iteration_preserves_framing_and_fails_closed()
+    {
+        let bytes = [1_u8, 2, 3, 4, 5];
+        let ends = [3_usize, 5];
+        let mut segments = Segments {
+            bytes: &bytes,
+            ends: &ends,
+            start: 1,
+            next: 0,
+        };
+
+        assert_eq!((2, Some(2)), segments.size_hint());
+        assert_eq!(Some([2_u8, 3].as_slice()), segments.next());
+        assert_eq!((1, Some(1)), segments.size_hint());
+        assert_eq!(Some([4_u8, 5].as_slice()), segments.next());
+        assert_eq!(None, segments.next());
+        assert_eq!((0, Some(0)), segments.size_hint());
+
+        let mut malformed = Segments {
+            bytes: &bytes,
+            ends: &[9],
+            start: 1,
+            next: 0,
+        };
+        assert_eq!(None, malformed.next());
+    }
+
+    #[test]
+    fn closed_export_vocabularies_render_every_variant()
+    {
+        let reserved_kinds = [
+            (ReservedKind::ModuleSig, "ModuleSig"),
+            (ReservedKind::ModuleDef, "ModuleDef"),
+            (ReservedKind::FunctorDef, "FunctorDef"),
+        ];
+        for (value, expected) in reserved_kinds {
+            assert_eq!(expected, format!("{value}"));
+        }
+
+        let reserved_slots = [
+            (
+                ReservedSlot::MintedAtomTable,
+                "the reserved minted-atom table",
+            ),
+            (ReservedSlot::StructuredName, "the structured-name record"),
+            (
+                ReservedSlot::ErasureAnnotation,
+                "the erasure annotation slot",
+            ),
+            (
+                ReservedSlot::ModeGradeAnnotation,
+                "the modes/grades annotation slot",
+            ),
+            (
+                ReservedSlot::SealingProvenance,
+                "the sealing-provenance annotation slot",
+            ),
+            (
+                ReservedSlot::DirectednessVariance,
+                "the directedness/variance annotation slot",
+            ),
+        ];
+        for (value, expected) in reserved_slots {
+            assert_eq!(expected, format!("{value}"));
+        }
+
+        let tag_sites = [
+            (TagSite::Admission, "an admission mark"),
+            (TagSite::DeclarationKind, "a declaration kind"),
+            (TagSite::Node, "a subterm-table node tag"),
+            (TagSite::BaseType, "a base-type atom"),
+            (TagSite::Sign, "a literal sign"),
+            (TagSite::LiteralKind, "a literal kind"),
+            (TagSite::Side, "an injection side"),
+            (TagSite::ConstraintRelation, "a constraint relation"),
+        ];
+        for (value, expected) in tag_sites {
+            assert_eq!(expected, format!("{value}"));
+        }
     }
 }

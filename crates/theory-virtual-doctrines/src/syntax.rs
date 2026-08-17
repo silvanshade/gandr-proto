@@ -30,6 +30,11 @@ pub struct ProVar(Name);
 impl ProVar
 {
     /// A proterm variable of the given name.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — construction owns the full spelling and `name`
+    ///   returns it unchanged.
+    /// - witness: `tests::pro_variable_name_round_trips`
     #[inline]
     #[must_use]
     pub fn new(name: NameRef<'_>) -> Self
@@ -56,6 +61,11 @@ pub struct DerivationId(crate::boundary::DerivationIndex);
 impl DerivationId
 {
     /// A derivation id from an environment index.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — both explicit access and the two `From` directions
+    ///   preserve the exact environment index.
+    /// - witness: `tests::derivation_id_conversions_round_trip`
     #[inline]
     #[must_use]
     pub fn new(index: crate::boundary::DerivationIndex) -> Self
@@ -246,4 +256,29 @@ pub enum Proterm
     /// An **embedded engine certificate** — the reflection of an engine
     /// derivation as a proterm.
     Cert(DerivationId),
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use crate::boundary::DerivationIndex;
+
+    #[test]
+    fn pro_variable_name_round_trips()
+    {
+        let variable = ProVar::new(NameRef::from("hypothesis"));
+
+        assert_eq!(variable.name(), NameRef::from("hypothesis"));
+    }
+
+    #[test]
+    fn derivation_id_conversions_round_trip()
+    {
+        let index = DerivationIndex::from(17_usize);
+        let id = DerivationId::from(index);
+
+        assert_eq!(id.index(), index);
+        assert_eq!(DerivationIndex::from(id), index);
+    }
 }

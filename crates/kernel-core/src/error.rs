@@ -498,6 +498,11 @@ impl From<LevelError> for KernelError
     }
 }
 
+/// # Adequacy
+/// - hypothesis: L3 — each closed error variant and each nested shape or
+///   polarity variant has a distinct, stable diagnostic.
+/// - witness: `tests::ordinary_error_diagnostics_are_exact`
+/// - witness: `tests::snapshot_payload_accessors_preserve_roots`
 impl fmt::Display for KernelError
 {
     #[inline]
@@ -606,4 +611,170 @@ impl fmt::Display for KernelError
 
 impl Error for KernelError
 {
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::string::ToString as _;
+
+    use gandr_kernel_strata::LevelVarIndex;
+
+    use super::*;
+    use crate::term::ConstantIndex;
+    use crate::term::DeBruijnIndex;
+
+    #[test]
+    fn snapshot_payload_accessors_preserve_roots()
+    {
+        let mut value_arena = TermArena::new();
+        let expected_value = value_arena.value_type_unit();
+        let actual_value = value_arena.value_type_unit();
+        let value = ValueTypeMismatch::new(value_arena, expected_value, actual_value);
+        assert_eq!(value.expected(), expected_value);
+        assert_eq!(value.actual(), actual_value);
+        assert_eq!(
+            value.arena().value_type(expected_value),
+            Some(&crate::ValueType::Unit)
+        );
+
+        let mut comp_arena = TermArena::new();
+        let unit = comp_arena.value_type_unit();
+        let expected_comp = comp_arena.comp_type_returner(unit);
+        let actual_comp = comp_arena.comp_type_returner(unit);
+        let comp = ComputationTypeMismatch::new(comp_arena, expected_comp, actual_comp);
+        assert_eq!(comp.expected(), expected_comp);
+        assert_eq!(comp.actual(), actual_comp);
+        assert!(comp.arena().comp_type(expected_comp).is_some());
+    }
+
+    #[test]
+    fn ordinary_error_diagnostics_are_exact()
+    {
+        let mut value_arena = TermArena::new();
+        let value_root = value_arena.value_type_unit();
+        let value_snapshot = ValueTypeSnapshot::new(value_arena.clone(), value_root);
+        assert_eq!(value_snapshot.root(), value_root);
+        assert_eq!(value_snapshot.arena(), &value_arena);
+
+        let mut comp_arena = TermArena::new();
+        let unit = comp_arena.value_type_unit();
+        let comp_root = comp_arena.comp_type_returner(unit);
+        let comp_snapshot = CompTypeSnapshot::new(comp_arena.clone(), comp_root);
+        assert_eq!(comp_snapshot.root(), comp_root);
+        assert_eq!(comp_snapshot.arena(), &comp_arena);
+
+        let diagnostics = [
+            (
+                KernelError::UnboundVariable {
+                    index: DeBruijnIndex::from(3_u32),
+                },
+                "value variable 3 is unbound in the typing context",
+            ),
+            (
+                KernelError::UnboundConstant {
+                    index: ConstantIndex::from(5_usize),
+                },
+                "constant reference 5 names no prior declaration",
+            ),
+            (
+                KernelError::NotInferable {
+                    form: NonInferableForm::Injection,
+                },
+                "a sum injection has no synthesizable type; it needs an expected sum type",
+            ),
+            (
+                KernelError::NotInferable {
+                    form: NonInferableForm::Lambda,
+                },
+                "a lambda has no synthesizable type; it needs an expected function type",
+            ),
+            (
+                KernelError::ValueShapeMismatch {
+                    expected: ExpectedValueShape::Product,
+                    actual: Box::new(value_snapshot.clone()),
+                },
+                "expected a product type",
+            ),
+            (
+                KernelError::ValueShapeMismatch {
+                    expected: ExpectedValueShape::Sum,
+                    actual: Box::new(value_snapshot.clone()),
+                },
+                "expected a sum type",
+            ),
+            (
+                KernelError::ValueShapeMismatch {
+                    expected: ExpectedValueShape::Thunk,
+                    actual: Box::new(value_snapshot.clone()),
+                },
+                "expected a thunk type",
+            ),
+            (
+                KernelError::ComputationShapeMismatch {
+                    expected: ExpectedComputationShape::Arrow,
+                    actual: Box::new(comp_snapshot.clone()),
+                },
+                "expected a function type",
+            ),
+            (
+                KernelError::ComputationShapeMismatch {
+                    expected: ExpectedComputationShape::Returner,
+                    actual: Box::new(comp_snapshot),
+                },
+                "expected a returner type",
+            ),
+            (
+                KernelError::LevelVariableOutOfScope {
+                    variable: LevelVar::from(LevelVarIndex::from(2_u32)),
+                },
+                "level variable 2 exceeds the declaration's prenex parameter count",
+            ),
+            (
+                KernelError::from(LevelError::Overflow),
+                "level arithmetic stepped past the representable range",
+            ),
+            (
+                KernelError::CheckerRegisterFault(RegisterFault::ExpectedValueType),
+                "checker-machine register fault: a value-consuming frame found a non-value register",
+            ),
+            (
+                KernelError::CheckerRegisterFault(RegisterFault::ExpectedCompType),
+                "checker-machine register fault: a computation-consuming frame found a non-computation register",
+            ),
+            (
+                KernelError::ArenaFault,
+                "an arena id resolved to no node: a resolution fault, surfaced not trusted",
+            ),
+            (
+                KernelError::AbstractTypeKindNotUniverse {
+                    actual: Box::new(value_snapshot),
+                },
+                "an abstract type's kind is not a universe",
+            ),
+            (
+                KernelError::NotAnAbstractType {
+                    index: ConstantIndex::from(7_usize),
+                },
+                "abstract-type reference 7 names no admitted abstract-type declaration",
+            ),
+            (
+                KernelError::SealingProvenanceNotProjected {
+                    atom: ConstantIndex::from(11_usize),
+                },
+                "sealing provenance names atom 11 which does not occur in the declared type",
+            ),
+            (
+                KernelError::SealingProvenanceNotCanonical {
+                    atom: ConstantIndex::from(13_usize),
+                },
+                "sealing provenance is not strictly ascending at atom 13",
+            ),
+        ];
+
+        for (error, expected) in diagnostics {
+            assert_eq!(error.to_string(), expected);
+            assert!(error.source().is_none());
+        }
+    }
 }

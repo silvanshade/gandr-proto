@@ -70,6 +70,10 @@ pub enum GandrSort
     GradeVar,
 }
 
+/// # Adequacy
+/// - hypothesis: L3 — every atom-role variant and every variable-role variant
+///   must remain on opposite sides of the unifiability boundary.
+/// - witness: `tests::sort_roles_are_exhaustive_and_disjoint`
 impl Sort for GandrSort
 {
     #[inline]
@@ -80,6 +84,31 @@ impl Sort for GandrSort
                 Unifiability::ATOM_ROLE
             },
             | Self::TyVar | Self::GradeVar => Unifiability::VARIABLE_ROLE,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn sort_roles_are_exhaustive_and_disjoint()
+    {
+        let atom_roles = [
+            GandrSort::ContKey,
+            GandrSort::TmpHoist,
+            GandrSort::HoleAddr,
+            GandrSort::SealAtom,
+        ];
+        for sort in atom_roles {
+            assert_eq!(sort.is_unifiable(), Unifiability::ATOM_ROLE);
+        }
+
+        let variable_roles = [GandrSort::TyVar, GandrSort::GradeVar];
+        for sort in variable_roles {
+            assert_eq!(sort.is_unifiable(), Unifiability::VARIABLE_ROLE);
         }
     }
 }

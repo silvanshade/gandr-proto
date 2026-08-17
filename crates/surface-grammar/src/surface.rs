@@ -318,8 +318,12 @@ pub fn built_in_prec_table() -> Result<PrecTable, PbgError>
     let dag = PrecDag::build(&spec).map_err(|cycle| cycle_error(&spec, cycle))?;
     Ok(PrecTable::new(dag, names))
 }
-
 /// Look up a precedence id in a spec while building constants.
+///
+/// # Adequacy
+/// - hypothesis: L3 - every requested name either resolves to its dense id or
+///   reports the exact missing spelling.
+/// - witness: `tests::precedence_helper_failures_preserve_named_context`
 fn lookup_prec(
     spec: &PrecSpec,
     name: PrecName,
@@ -359,6 +363,11 @@ fn cycle_error(
 }
 
 /// Return the static name for a precedence id in the constant spec.
+///
+/// # Adequacy
+/// - hypothesis: L3 - cycle witnesses preserve known constant names and mark
+///   ids outside the constant table explicitly.
+/// - witness: `tests::precedence_helper_failures_preserve_named_context`
 fn static_prec_name(
     spec: &PrecSpec,
     prec: Prec,
@@ -374,4 +383,43 @@ fn static_prec_name(
         }
     }
     PrecName("<unknown-precedence>")
+}
+
+#[cfg(test)]
+mod tests
+{
+    use gandr_theory_graphs::PrecIndex;
+
+    use super::*;
+
+    #[test]
+    fn precedence_helper_failures_preserve_named_context()
+    {
+        let mut spec = PrecSpec::new();
+        let custom = spec
+            .insert("custom", None)
+            .expect("one custom precedence should insert");
+        let invalid = Prec::new(PrecIndex::from(7));
+
+        assert!(matches!(
+            lookup_prec(&spec, PrecName("missing")),
+            Err(PbgError::MissingPrec { name: "missing" })
+        ));
+        assert_eq!(
+            PrecName("<unknown-precedence>"),
+            static_prec_name(&spec, custom)
+        );
+        assert_eq!(
+            PrecName("<invalid-precedence>"),
+            static_prec_name(&spec, invalid)
+        );
+        assert_eq!(
+            PbgError::PrecedenceCycle {
+                witness: vec!["<unknown-precedence>", "<invalid-precedence>"],
+            },
+            cycle_error(&spec, PrecCycle {
+                witness: vec![custom, invalid],
+            })
+        );
+    }
 }

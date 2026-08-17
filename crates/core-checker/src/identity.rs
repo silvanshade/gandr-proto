@@ -52,6 +52,12 @@ use crate::types::ValueType;
 /// - ensures: returns `ty` with every free `name` in an `Path` endpoint (at any
 ///   depth) replaced by `repl`; identical to `ty` when `name` does not occur.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — each value-type former is rebuilt without changing
+///   binder-free structure, while only `Path` endpoints substitute.
+/// - witness: the identity conformance tests for endpoint substitution
+/// - witness: `tests::stack_types_rebuild_both_computation_children`
 #[inline]
 #[must_use]
 /// # Termination
@@ -450,4 +456,23 @@ fn pop_comp_type(comps: &mut Vec<CompType>) -> CompType
         "subst_type worklist underflow (post-order balance)"
     );
     comps.pop().unwrap_or(CompType::Unknown)
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn stack_types_rebuild_both_computation_children()
+    {
+        let consumes = CompType::Unknown;
+        let delivers = CompType::F(Rc::new(ValueType::Unit), EffectRow::EMPTY);
+        let stack = ValueType::Stk(Rc::new(consumes), Rc::new(delivers));
+
+        assert_eq!(
+            subst_valuetype(&stack, NameRef::from("absent"), &Value::Unit),
+            stack
+        );
+    }
 }

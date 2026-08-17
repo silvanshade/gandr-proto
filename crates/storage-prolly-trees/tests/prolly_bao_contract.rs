@@ -1332,6 +1332,10 @@ mod tests
         );
     }
 
+    /// The public store-backed wrapper delegates every query and proof face to
+    /// the same portable tree whose snapshot bytes are checked below. This
+    /// separates a wrapper that only stores nodes from one that preserves the
+    /// complete in-memory query contract.
     #[test]
     fn snapshot_bytes_materialize_and_verify_with_real_bao()
     {
@@ -1380,6 +1384,40 @@ mod tests
             portable_bytes.as_ref(),
             "tree wrapper append API should match portable snapshot bytes"
         );
+
+        assert_eq!(
+            tree.lookup((b"c").into()),
+            Some((b"charlie").into()),
+            "tree wrapper lookup should delegate to the portable tree"
+        );
+        let range = KeyRangeRef::new(KeyBound::included(b"b"), KeyBound::included(b"d"))
+            .expect("wrapper fixture range should be valid");
+        assert_eq!(
+            keys(
+                tree.range(range)
+                    .expect("tree wrapper range should delegate")
+                    .as_ref()
+            ),
+            vec![
+                b"b".as_slice().into(),
+                b"c".as_slice().into(),
+                b"d".as_slice().into(),
+            ]
+        );
+        tree.prove_membership((b"c").into())
+            .expect("tree wrapper should prove an existing key");
+        tree.prove_non_membership((b"cc").into())
+            .expect("tree wrapper should prove an absent key");
+        tree.prove_range(range)
+            .expect("tree wrapper should prove a valid range");
+
+        let opened = ProllyTree::open(tree.root().clone(), tree.root_node_hash(), &store)
+            .expect("stored root should open");
+        assert_eq!(opened.root(), tree.root());
+        assert_eq!(opened.root_node_hash(), tree.root_node_hash());
+        opened
+            .verify_root_present(&store)
+            .expect("opened root should remain present");
 
         assert_bao_verifies_snapshot((portable_bytes.as_ref()).into());
         let verified = verify_snapshot_bytes(
