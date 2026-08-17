@@ -453,6 +453,11 @@ pub struct PrecSpec
 {
     /// Group names in dense id order.
     names: Vec<String>,
+    /// Duplicate-name index mirroring `names`: the linear scan it replaces
+    /// made bulk insertion quadratic. A `BTreeSet` keeps [`PrecSpec::new`]
+    /// const (a `HashSet` cannot be const-initialized); lookups are
+    /// order-insensitive, so the ordered set's iteration is never observed.
+    name_index: BTreeSet<String>,
     /// Group associativity in dense id order; `None` is non-associative.
     assocs: Vec<Option<Assoc>>,
     /// Canonical sorted tighter-to-looser edge pairs.
@@ -468,6 +473,7 @@ impl PrecSpec
     {
         Self {
             names: Vec::new(),
+            name_index: BTreeSet::new(),
             assocs: Vec::new(),
             edges: Vec::new(),
         }
@@ -507,13 +513,14 @@ impl PrecSpec
         N: Into<String>,
     {
         let name = name.into();
-        if self.names.iter().any(|candidate| candidate == &name) {
+        if self.name_index.contains(&name) {
             return Err(PrecSpecError::DuplicateName { name });
         }
         let id = u16::try_from(self.names.len()).map_err(|conversion_error| {
             let _ = conversion_error;
             PrecSpecError::CapacityExceeded
         })?;
+        self.name_index.insert(name.clone());
         self.names.push(name);
         self.assocs.push(assoc);
         Ok(Prec::new(PrecIndex::from(id)))
@@ -530,8 +537,8 @@ impl PrecSpec
     /// - fails: returns [`PrecSpecError::InvalidEdge`] when either endpoint is
     ///   not currently valid.
     /// - panics: none.
-    /// - intension: the edge vector is sorted and deduplicated after each
-    ///   successful insertion so later fingerprints are insertion-order
+    /// - intension: the edge vector stays sorted and deduplicated through
+    ///   binary-search insertion, so later fingerprints are insertion-order
     ///   neutral.
     ///
     /// # Errors
@@ -556,9 +563,11 @@ impl PrecSpec
                 node_count: self.node_count(),
             });
         }
-        self.edges.push((tighter, looser));
-        self.edges.sort_unstable();
-        self.edges.dedup();
+        let edge = (tighter, looser);
+        match self.edges.binary_search(&edge) {
+            | Ok(_found) => {},
+            | Err(position) => self.edges.insert(position, edge),
+        }
         Ok(())
     }
 

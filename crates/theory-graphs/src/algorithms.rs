@@ -445,8 +445,11 @@ where
 /// - provides: canonical component rows as [`StronglyConnectedComponents`].
 /// - fails: returns [`GraphValidationError`] for invalid boundaries.
 /// - panics: none.
-/// - intension: computes components with petgraph [`kosaraju_scc`] through
-///   [`View`], then sorts row members and component rows by dense node order.
+/// - intension: computes components with petgraph [`kosaraju_scc`] over an
+///   owned [`DiGraph`] materialized from validated adjacency (the zero-copy
+///   [`View`] answers kosaraju's incoming-neighbor queries with a full-graph
+///   scan each, quadratic on large graphs), then sorts row members and
+///   component rows by dense node order.
 ///
 /// # Errors
 /// Returns [`GraphValidationError`] when a successor target is out of bounds or
@@ -464,9 +467,19 @@ pub fn strongly_connected_components<G>(
 where
     G: EdgeSource,
 {
-    adjacency_rows(graph)?;
-    let view = View::new(graph);
-    let mut components = kosaraju_scc(&view);
+    let adjacency = adjacency_rows(graph)?;
+    let owned = owned_petgraph_from_adjacency::<DefaultIx>(&adjacency, graph.node_count())?;
+    // Kosaraju's second pass needs incoming neighbors; the zero-copy View
+    // answers those by scanning every source's successors per query (O(n·e)
+    // on a 20k-node chain), while the owned graph indexes both directions.
+    let mut components = kosaraju_scc(&owned)
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .filter_map(|index| owned.node_weight(index).copied())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
     canonicalize_components(&mut components);
     Ok(StronglyConnectedComponents { components })
 }
