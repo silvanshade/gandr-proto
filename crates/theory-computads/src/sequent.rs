@@ -194,6 +194,51 @@ impl CellVariance
     }
 }
 
+/// How a hole is used on a cell's **contractum side** — the step-growth half
+/// of the strict-linearity discipline, complementing [`CellVarMeta::linear`]'s
+/// redex-side count.
+///
+/// The classes are the deep-inference reading of what a rewrite does to
+/// information: `Once` preserves it, `Erased` weakens it away, `Repeated`
+/// contracts (duplicates) it. Only the last two change a term's instance
+/// content, and the duplication class is the one the sharing overlay's
+/// policy layer is meant to own — which is why this derivation *reports*
+/// rather than refuses: the admission boundary
+/// ([`crate::linearity::admit_linear_cell`]) governs the redex side alone,
+/// and whether contractum growth should also be governed is a separate
+/// question this report makes visible.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum CellContractumUse
+{
+    /// The `(name, category)` pair does not occur on the right-hand side: the
+    /// step drops the hole — weakening.
+    Erased,
+    /// The pair occurs exactly once on the right-hand side: the step
+    /// preserves the hole.
+    Once,
+    /// The pair occurs more than once on the right-hand side: the step
+    /// duplicates the hole — contraction.
+    Repeated,
+}
+
+/// The whole-step classification [`CellMeta::step_growth`] reports — the join
+/// of the per-hole [`CellContractumUse`] verdicts.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum StepGrowth
+{
+    /// Every hole is used exactly once on each side: the step is
+    /// information-preserving — the strictly-linear fragment on which
+    /// per-step amplification bounds are trivially dischargable.
+    StrictlyLinear,
+    /// No hole is duplicated, and at least one is dropped: the step weakens.
+    Erasing,
+    /// At least one hole is duplicated: the step grows — in the
+    /// strictly-linear reading this is exactly the growth that belongs in an
+    /// isolated expansion layer (the sharing overlay's policy rungs), not in
+    /// the rule vocabulary.
+    Duplicating,
+}
+
 /// Derived **metadata for one cell metavariable** (VDC addendum §A): its
 /// metavariable, variance role, and linearity (whether it occurs exactly once
 /// in the left-hand side).
@@ -212,6 +257,12 @@ pub struct CellVarMeta
     /// hole worn at two polarities linear: that is one occurrence at each
     /// polarity — the dinaturality seam — and not a copy.
     pub linear: CellLinearity,
+    /// How `var`'s own `(name, category)` pair is used on the right-hand
+    /// side — dropped, preserved, or duplicated. The contractum-side
+    /// complement of [`CellVarMeta::linear`]: linearity asks what the redex
+    /// *copies*, this asks what the step *does with* the hole, and the join
+    /// over all holes is [`CellMeta::step_growth`].
+    pub contractum: CellContractumUse,
 }
 
 /// Derived **cell metadata** (VDC addendum §A) — the per-metavariable variance
@@ -264,19 +315,24 @@ impl CellMeta
     ///   / `Consumer` / `Mixed` according to the categories the name is worn
     ///   with across both faces; `linear` true iff the `(name, category)` pair
     ///   of `var` occurs exactly once in `lhs` (the redex-side occurrence count
-    ///   matching consults, taken per pair rather than per name); `var` is the
-    ///   first occurrence's [`MetaVar`] as the representative, `invertible`
-    ///   carried through verbatim.
+    ///   matching consults, taken per pair rather than per name); `contractum`
+    ///   is [`CellContractumUse::Erased`] / [`CellContractumUse::Once`] /
+    ///   [`CellContractumUse::Repeated`] as the same pair occurs zero, one, or
+    ///   more times in `rhs`; `var` is the first occurrence's [`MetaVar`] as
+    ///   the representative, `invertible` carried through verbatim.
     /// - panics: none.
     ///
     /// # Adequacy
     /// - hypothesis: L2 only — the variance join and the per-pair linearity
     ///   count are separated by three shapes: an all-linear cell with a
     ///   producer-only and a consumer-only hole, a same-polarity repeat, and a
-    ///   two-polarity seam that must come out `Mixed` **and** linear.
+    ///   two-polarity seam that must come out `Mixed` **and** linear; the
+    ///   contractum classification is separated by one cell carrying all three
+    ///   uses.
     /// - witness: `sequent::tests::metadata_tracks_variance_and_linearity`
     /// - witness: `sequent::tests::a_repeated_metavariable_is_nonlinear`
     /// - witness: `sequent::tests::a_hole_at_both_polarities_is_a_linear_seam`
+    /// - witness: `sequent::tests::the_contractum_use_reports_erased_once_and_repeated`
     #[inline]
     #[must_use]
     pub fn derive(
@@ -316,16 +372,67 @@ impl CellMeta
                 .take(lhs_occurrences)
                 .filter(|other| other.name == mv.name && other.cat == mv.cat)
                 .count();
+            let rhs_count = occurrences
+                .iter()
+                .skip(lhs_occurrences)
+                .filter(|other| other.name == mv.name && other.cat == mv.cat)
+                .count();
+            let contractum = match rhs_count {
+                | 0 => CellContractumUse::Erased,
+                | 1 => CellContractumUse::Once,
+                | _ => CellContractumUse::Repeated,
+            };
             vars.push(CellVarMeta {
                 var: mv.clone(),
                 variance,
                 linear: CellLinearity::from(lhs_count == 1),
+                contractum,
             });
         }
         Self {
             vars: vars.into_boxed_slice(),
             invertible,
         }
+    }
+
+    /// The **whole-step growth classification** — the join of the per-hole
+    /// contractum uses: [`StepGrowth::Duplicating`] when any hole is repeated
+    /// on the right-hand side, else [`StepGrowth::Erasing`] when any is
+    /// dropped, else [`StepGrowth::StrictlyLinear`].
+    ///
+    /// Duplication dominates erasure in the join because it dominates in
+    /// cost: a dropped hole shrinks the term, a repeated one can amplify it,
+    /// and the strictly-linear discipline's budget question is exactly
+    /// "where can a step grow".
+    ///
+    /// # Contract
+    /// - ensures: the join over [`CellVarMeta::contractum`] as above; a cell
+    ///   with no metavariables at all is [`StepGrowth::StrictlyLinear`]
+    ///   (vacuously information-preserving).
+    /// - provides: the one-word verdict an admission report or a budget
+    ///   discharge reads instead of re-walking the per-hole metadata.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the three outcomes own separate decision surfaces,
+    ///   separated by the Peano successor cell (strictly linear), a cell
+    ///   dropping one of two holes (erasing), and a cell duplicating one hole
+    ///   (duplicating, with the erasure-domination case covered by a cell both
+    ///   dropping and duplicating).
+    /// - witness: `sequent::tests::the_step_growth_join_names_duplication_erasure_and_strict_linearity`
+    #[inline]
+    #[must_use]
+    pub fn step_growth(&self) -> StepGrowth
+    {
+        let mut growth = StepGrowth::StrictlyLinear;
+        for var in &self.vars {
+            match var.contractum {
+                | CellContractumUse::Repeated => return StepGrowth::Duplicating,
+                | CellContractumUse::Erased => growth = StepGrowth::Erasing,
+                | CellContractumUse::Once => {},
+            }
+        }
+        growth
     }
 }
 
@@ -930,6 +1037,104 @@ mod tests
         assert!(
             bool::from(r.linear),
             "one occurrence at each polarity is a seam, not a copy"
+        );
+    }
+
+    #[test]
+    fn the_contractum_use_reports_erased_once_and_repeated()
+    {
+        // One cell carrying all three uses: `x` preserved once, `y`
+        // duplicated, `z` dropped, and `alpha` kept.
+        let lhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("T", [
+                ProdPat::meta("x"),
+                ProdPat::meta("y"),
+                ProdPat::meta("z"),
+            ]),
+            ConsPat::meta("alpha"),
+        );
+        let rhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("U", [
+                ProdPat::meta("x"),
+                ProdPat::meta("y"),
+                ProdPat::meta("y"),
+            ]),
+            ConsPat::meta("alpha"),
+        );
+        let meta = CellMeta::derive(&lhs, &rhs, CellInvertibility::from(false));
+        let use_of = |name: &str| {
+            meta.vars
+                .iter()
+                .find(|v| &*v.var.name == name)
+                .map(|v| v.contractum)
+                .expect("the hole is present")
+        };
+        assert_eq!(CellContractumUse::Once, use_of("x"), "preserved once");
+        assert_eq!(CellContractumUse::Repeated, use_of("y"), "duplicated");
+        assert_eq!(CellContractumUse::Erased, use_of("z"), "dropped");
+        assert_eq!(
+            CellContractumUse::Once,
+            use_of("alpha"),
+            "the continuation is kept, per pair as ever"
+        );
+    }
+
+    #[test]
+    fn the_step_growth_join_names_duplication_erasure_and_strict_linearity()
+    {
+        // The Peano successor cell: every hole used exactly once on each
+        // side — the strictly-linear fragment.
+        let add_s_lhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Succ", [ProdPat::meta("m")]),
+            ConsPat::op("add", [ProdPat::meta("n")], ConsPat::meta("alpha")),
+        );
+        let add_s_rhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::meta("m"),
+            ConsPat::op(
+                "add",
+                [ProdPat::meta("n")],
+                ConsPat::op("Succ⁻", [], ConsPat::meta("alpha")),
+            ),
+        );
+        let linear = CellMeta::derive(&add_s_lhs, &add_s_rhs, CellInvertibility::from(false));
+        assert_eq!(
+            StepGrowth::StrictlyLinear,
+            linear.step_growth(),
+            "every hole preserved exactly once"
+        );
+        // Dropping one of two holes, duplicating none: erasing.
+        let drop_lhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Pair", [ProdPat::meta("x"), ProdPat::meta("y")]),
+            ConsPat::meta("alpha"),
+        );
+        let drop_rhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::meta("x"),
+            ConsPat::meta("alpha"),
+        );
+        let erasing = CellMeta::derive(&drop_lhs, &drop_rhs, CellInvertibility::from(false));
+        assert_eq!(
+            StepGrowth::Erasing,
+            erasing.step_growth(),
+            "a dropped hole with no duplication weakens"
+        );
+        // Duplicating one hole while dropping another: duplication dominates,
+        // because it dominates in cost.
+        let dup_rhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Pair", [ProdPat::meta("x"), ProdPat::meta("x")]),
+            ConsPat::meta("alpha"),
+        );
+        let duplicating = CellMeta::derive(&drop_lhs, &dup_rhs, CellInvertibility::from(false));
+        assert_eq!(
+            StepGrowth::Duplicating,
+            duplicating.step_growth(),
+            "a repeated hole makes the step growth, whatever else it drops"
         );
     }
 

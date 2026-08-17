@@ -1180,6 +1180,63 @@ mod tests
         );
     }
 
+    #[test]
+    fn a_duplicating_contractum_is_admitted_and_reported()
+    {
+        // THE STRICT-LINEARITY GAP, pinned as a fixture. The admission
+        // boundary governs the redex side alone, so a surface rule whose
+        // right-hand side duplicates one hole and drops another is admitted
+        // today — growth entering the rule vocabulary by the back door,
+        // where the discipline wants it confined to the sharing overlay's
+        // policy layer. What the audit adds is that the entry is now
+        // *reported*: the cell's derived metadata classifies the step as
+        // Duplicating, so the growth is visible where it was silent.
+        let desc = nat_with(
+            [
+                op("f", [SortRef::new("x", "Nat"), SortRef::new("y", "Nat")]),
+                op("h", [SortRef::new("u", "Nat"), SortRef::new("v", "Nat")]),
+            ],
+            [face(
+                FreeTerm::op("f", [FreeTerm::var("x"), FreeTerm::var("y")]),
+                FreeTerm::op("h", [FreeTerm::var("x"), FreeTerm::var("x")]),
+            )],
+        );
+        let elaborated = elaborate_data_desc(&desc);
+        assert!(
+            elaborated.declined_faces.is_empty(),
+            "the duplicating rule is admitted — the boundary governs the redex side alone"
+        );
+        let rule_cell = elaborated
+            .store
+            .iter()
+            .map(|(_id, cell)| cell)
+            .find(|cell| matches!(cell.provenance, crate::sequent::CellProvenance::SurfaceRule))
+            .expect("the rule cell is in the store");
+        assert_eq!(
+            crate::sequent::StepGrowth::Duplicating,
+            rule_cell.meta.step_growth(),
+            "and its growth is now reported rather than silent"
+        );
+        let use_of = |name: &str| {
+            rule_cell
+                .meta
+                .vars
+                .iter()
+                .find(|v| &*v.var.name == name)
+                .map(|v| v.contractum)
+        };
+        assert_eq!(
+            Some(crate::sequent::CellContractumUse::Repeated),
+            use_of("x"),
+            "the duplicated hole is named"
+        );
+        assert_eq!(
+            Some(crate::sequent::CellContractumUse::Erased),
+            use_of("y"),
+            "and the dropped hole is named beside it"
+        );
+    }
+
     fn face(
         lhs: FreeTerm,
         rhs: FreeTerm,
