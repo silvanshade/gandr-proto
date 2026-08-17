@@ -1736,6 +1736,7 @@ fn plug_host(
 /// - witness: `share::tests::opaque_value_erases_to_itself`
 /// - witness: `share::tests::a_bound_resolves_to_the_shared_value`
 /// - witness: `share::tests::repeated_occurrences_plug_the_same_erasure`
+/// - witness: `share::tests::value_grafts_plug_through_every_composite_shape`
 /// - witness: `share::tests::under_binder_sharing_erases_capture_permitting`
 /// - witness: `share::tests::a_dangling_bound_fails_closed`
 #[inline]
@@ -4764,6 +4765,62 @@ mod tests
             Ok(()),
             "arity two with first-occurrence positions 0 then 1 is canonical"
         );
+    }
+    #[test]
+    fn value_grafts_plug_through_every_composite_shape()
+    {
+        let child = int(41);
+        let templates = vec![
+            (
+                Value::pair(Value::Var(seam(0)), Value::Unit),
+                Value::pair(child.clone(), Value::Unit),
+            ),
+            (Value::inj1(Value::Var(seam(0))), Value::inj1(child.clone())),
+            (
+                Value::list(vec![Value::Var(seam(0)), Value::Unit]),
+                Value::list(vec![child.clone(), Value::Unit]),
+            ),
+            (
+                Value::record([(String::from("field"), Value::Var(seam(0)))]),
+                Value::record([(String::from("field"), child.clone())]),
+            ),
+            (
+                Value::thunk(Grade::OMEGA, Comp::ret(Value::Var(seam(0)))),
+                Value::thunk(Grade::OMEGA, Comp::ret(child.clone())),
+            ),
+            (
+                Value::annot(Value::Var(seam(0)), ValueType::integer()),
+                Value::annot(child.clone(), ValueType::integer()),
+            ),
+            (
+                Value::pack([ValueType::integer()], Value::Var(seam(0))),
+                Value::pack([ValueType::integer()], child.clone()),
+            ),
+            (Value::here(Value::Var(seam(0))), Value::here(child.clone())),
+        ];
+
+        for (template, expected) in templates {
+            let mut arena = ShareArena::new();
+            let child_id = arena
+                .value_opaque(child.clone())
+                .expect("mint value opaque");
+            let root = arena
+                .value_graft(Graft {
+                    template,
+                    children: vec![AnyShareId::from(child_id)],
+                })
+                .expect("mint value graft");
+            assert_eq!(
+                erase_value(&arena, root),
+                Ok(expected),
+                "the seam child survives every composite value reconstruction"
+            );
+            assert_eq!(
+                validate(&arena, AnyShareId::from(root)),
+                Ok(()),
+                "every reconstructed graft remains a valid overlay"
+            );
+        }
     }
 
     #[test]
