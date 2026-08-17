@@ -1,0 +1,78 @@
+# Repository nextest configuration.
+#
+# nextest dispatches tests in list order within one priority tier, so a slow
+# test listed late forms a serial tail at the end of the run. The overrides
+# below give the measured-slow tests explicit priority (higher runs sooner,
+# stable within a tier) so they start in the first wave instead.
+#
+# Durations and completion positions measured 2026-08-16 from a full-suite
+# dev-profile run (2603 tests, 38.4s wall): the two theory-graphs tests below
+# finished at completion positions 2602/2603 and 2603/2603, a ~21s near-serial
+# tail. The tier values follow measured duration; re-derive from a fresh
+# sorted PASS-duration listing when the suite's cost profile shifts.
+
+[[profile.default.overrides]]
+# 16.4s, finished 2603/2603.
+filter = "test(capacity_beyond_u16_is_typed)"
+priority = 100
+
+[[profile.default.overrides]]
+# 15.4s.
+filter = "test(a_repeated_diamond_dag_is_rejected_before_the_checker)"
+priority = 95
+
+[[profile.default.overrides]]
+# 14.9s.
+filter = "test(a_many_segment_amplification_is_rejected_before_the_checker)"
+priority = 94
+
+[[profile.default.overrides]]
+# 14.1s, finished 2602/2603.
+filter = "test(deep_acyclic_chain_uses_iterative_graph_algorithms)"
+priority = 90
+
+[[profile.default.overrides]]
+# 9.7s.
+filter = "test(the_table_size_boundary_accepts_at_the_cap_and_rejects_over)"
+priority = 80
+
+[[profile.default.overrides]]
+# 9.4s. Scoped to surface-engine: gandr-core-incremental has a fast (0.1s)
+# test of the same name.
+filter = "package(gandr-surface-engine) and test(incremental_equals_from_scratch)"
+priority = 78
+
+[[profile.default.overrides]]
+# 7.5s.
+filter = "test(corpus_partition_matches_the_manifest)"
+priority = 70
+
+[[profile.default.overrides]]
+# 7.2s.
+filter = "test(apply_of_diff_reproduces_new)"
+priority = 68
+
+[[profile.default.overrides]]
+# 7.0s.
+filter = "test(the_kernel_export_exit_gate_holds)"
+priority = 66
+
+[[profile.default.overrides]]
+# 6.4s.
+filter = "test(walk_lengths_respect_the_chain_cap)"
+priority = 60
+
+[[profile.default.overrides]]
+# 6.0s.
+filter = "test(walks_terminate_for_every_symbol_pair)"
+priority = 58
+
+[[profile.default.overrides]]
+# 4.8s, finished 2597/2603.
+filter = "test(confluence_cospans_factor_uniquely)"
+priority = 50
+
+[[profile.default.overrides]]
+# 4.3s, finished 2578/2603.
+filter = "test(composition_cospans_factor_uniquely)"
+priority = 48
