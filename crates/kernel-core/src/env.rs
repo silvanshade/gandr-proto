@@ -501,11 +501,20 @@ fn collect_constants(
 ) -> BTreeSet<ConstantIndex>
 {
     let mut found = BTreeSet::new();
+    // Each arena node is expanded once: the walk computes the SET of reachable
+    // constants, and re-walking a shared subtree can only re-derive what is
+    // already recorded. Without the memo the walk tree-expands the DAG — a
+    // 28-level repeated-pair diamond visited its bottom node 2^29 times.
+    let mut seen_values = BTreeSet::new();
+    let mut seen_computations = BTreeSet::new();
     let mut values: Vec<ValueId> = Vec::new();
     let mut computations: Vec<crate::arena::ComputationId> = Vec::new();
     values.push(root);
     loop {
         while let Some(id) = values.pop() {
+            if !seen_values.insert(id) {
+                continue;
+            }
             let Some(value) = arena.value(id)
             else {
                 continue;
@@ -527,6 +536,9 @@ fn collect_constants(
         else {
             break;
         };
+        if !seen_computations.insert(id) {
+            continue;
+        }
         let Some(computation) = arena.computation(id)
         else {
             continue;
@@ -578,11 +590,18 @@ fn collect_type_constants(
 ) -> BTreeSet<ConstantIndex>
 {
     let mut found = BTreeSet::new();
+    // Same sharing memo as `collect_constants`: without it the type walk also
+    // tree-expands a shared DAG, exponentially in sharing depth.
+    let mut seen_value_types = BTreeSet::new();
+    let mut seen_comp_types = BTreeSet::new();
     let mut value_types: Vec<ValueTypeId> = Vec::new();
     let mut comp_types: Vec<CompTypeId> = Vec::new();
     value_types.push(root);
     loop {
         while let Some(id) = value_types.pop() {
+            if !seen_value_types.insert(id) {
+                continue;
+            }
             let Some(value_type) = arena.value_type(id)
             else {
                 continue;
@@ -604,6 +623,9 @@ fn collect_type_constants(
         else {
             break;
         };
+        if !seen_comp_types.insert(id) {
+            continue;
+        }
         let Some(comp_type) = arena.comp_type(id)
         else {
             continue;
