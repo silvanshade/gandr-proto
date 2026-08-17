@@ -68,15 +68,20 @@
 //! every future one: full unsharing duplicates by definition, whatever the
 //! reduction-time policy later says about copying.
 //!
-//! # The policy seat
+//! # The policy parameter
 //!
-//! [`DuplicationPolicy`] is the named parameter every future duplication
-//! entry takes as a runtime argument — which part of a shared abstraction is
+//! [`DuplicationPolicy`] is the named parameter every duplication entry
+//! takes as a runtime argument — which part of a shared abstraction is
 //! copied when it is forced into a redex stays policy, never a hardcoded
-//! whole-value clone. It is uninhabited at this rung because no duplication
-//! entry exists; it is `#[non_exhaustive]` so installing the first policy is
-//! not a breaking change. It stands beside the sharing former and is not a
-//! generic, a trait, or a node descriptor.
+//! whole-value clone. It is a **closed set** of two stances:
+//! [`DuplicationPolicy::EraseAndClone`], the conservative baseline,
+//! behaviorally the unshared pipeline of today; and
+//! [`DuplicationPolicy::Spinal`], the staged path's fourth rung, gated
+//! behind the uninhabited [`SpinalSeat`] until the conversion trace seam
+//! exists to certify the strategy's results. The parameter enters through
+//! [`duplicate_value`] and [`duplicate_comp`]; the erasure path takes no
+//! policy and is invariant under every stance, because the baseline's
+//! result *is* the erasure and every other stance replays against it.
 //!
 //! # Validation
 //!
@@ -104,6 +109,13 @@
 //!   Lambda-Calculus: A Typed Lambda-Calculus with Explicit Sharing", LICS
 //!   2013, pp. 311–320, `doi:10.1109/LICS.2013.37` — the closure calculus the
 //!   overlay's syntax follows.
+//! * Fanny He, "The Atomic Lambda-Mu Calculus", `PhD` thesis, University of
+//!   Bath, 2018,
+//!   `https://researchportal.bath.ac.uk/en/studentTheses/the-atomic-lambda-mu-calculus`
+//!   — the sharing discipline carried over classical control: the
+//!   μ-distributor the spinal stance's control-construct arms follow
+//!   (duplicating a stack-capturing abstraction freezes the constructor and
+//!   duplicates the body tuple-wise), chapters 2 and 7.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
@@ -651,16 +663,56 @@ pub enum ShareNode<L>
     Graft(Graft<L>),
 }
 
-/// The duplication-policy seat: which part of a shared abstraction is copied
-/// when it is forced into a redex.
+/// The duplication policy: which part of a shared abstraction is copied when
+/// it is forced into a redex.
 ///
-/// Uninhabited at this rung — no duplication entry exists, so no function
-/// takes one — and `#[non_exhaustive]`, so installing the first policy is not
-/// a breaking change. Every future duplication entry takes it as a runtime
-/// argument; nothing here hardcodes a whole-value clone.
-#[non_exhaustive]
-#[derive(Clone, Copy, Debug)]
-pub enum DuplicationPolicy {}
+/// A **closed set** of two stances, taken as a runtime argument by every
+/// duplication entry ([`duplicate_value`], [`duplicate_comp`]); nothing here
+/// hardcodes a whole-value clone. The erasure path stays policy-free and
+/// total: the baseline stance's result *is* the erasure, and every other
+/// stance's results replay against it, so the unshared pipeline remains the
+/// reference implementation whatever the parameter says.
+///
+/// The control-construct arms the second stance installs at its rung follow
+/// Fanny He's atomic λμ-calculus (the module's References): duplicating a
+/// stack-capturing abstraction freezes the constructor and duplicates the
+/// body tuple-wise, never a whole-abstraction clone.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DuplicationPolicy
+{
+    /// The conservative baseline: erase and clone. Duplicating under it is
+    /// the total erasure the overlay already owes — every occurrence
+    /// receives the same unshared spelling — so it is behaviorally the
+    /// pipeline that exists today, and the default stance.
+    EraseAndClone,
+    /// The spinal policy of the staged path's fourth rung: maximal free
+    /// subexpressions stay shared and only binder-to-occurrence paths copy.
+    /// The stance is **gated** — [`SpinalSeat`] is uninhabited until the
+    /// conversion trace seam exists to certify the strategy's results — so
+    /// naming it is impossible today, and installing it is a deliberate
+    /// change to that type rather than an accident of construction.
+    Spinal(SpinalSeat),
+}
+
+/// The spinal stance's seat: uninhabited until the conversion trace seam
+/// lands, at which point this type gains the seat the replayed trace
+/// certifies through.
+///
+/// An empty enum is the mechanical form of "not constructible": no function
+/// can receive [`DuplicationPolicy::Spinal`] today, and a `match` over the
+/// seat stays total with no unreachable arm.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpinalSeat {}
+
+impl Default for DuplicationPolicy
+{
+    /// The baseline stance — behaviorally the pipeline that exists today.
+    #[inline]
+    fn default() -> Self
+    {
+        Self::EraseAndClone
+    }
+}
 
 /// A typed failure while appending an overlay node.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1781,6 +1833,99 @@ pub fn erase_comp_type(
     match erase_root(arena, AnyShareId::CompType(root))? {
         | AnyHost::CompType(comp_type) => Ok(comp_type),
         | _ => Err(EraseError::TraversalInvariant),
+    }
+}
+
+/// A typed failure of a duplication entry.
+///
+/// Refusal is data, as it is for the projection and the erasure: a policy
+/// answers negatively where it cannot produce a result, never by panic.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DuplicateError
+{
+    /// The baseline stance's erasure failed: the overlay did not erase, so
+    /// there is no unshared spelling to hand the caller.
+    Erase(EraseError),
+}
+
+/// Duplicate a shared value under the installed policy.
+///
+/// The parameter every duplication entry takes as a runtime argument, and
+/// the first entry to take it: under [`DuplicationPolicy::EraseAndClone`]
+/// the result is the total erasure — one owned unshared spelling, cloned by
+/// the caller per occurrence, behaviorally the pipeline that exists today.
+/// [`DuplicationPolicy::Spinal`] is unanswerable today because its seat is
+/// uninhabited; the arm stays total with no `unreachable!`, and the fourth
+/// rung installs the strategy into this signature without breaking callers.
+///
+/// Only the two evaluation families gain an entry: duplication is what a
+/// forced redex does to a **term**, and types are never forced into
+/// redexes, so the type families keep their policy-free erasure alone.
+///
+/// # Contract
+/// - requires: `root` resolves in `arena` (else [`DuplicateError::Erase`] from
+///   the baseline's erasure).
+/// - ensures: under the baseline stance, exactly [`erase_value`]'s result — the
+///   reference spelling every later stance's result replays against.
+/// - provides: the dispatch site the policy parameter enters through.
+/// - fails: [`DuplicateError`], per the variant.
+/// - panics: none.
+///
+/// # Errors
+/// [`DuplicateError`], per the variant.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the one answerable stance is separated by a
+///   share-carrying pair whose duplication must equal its erasure, and by the
+///   default-stance check that keeps the baseline the stance an engine gets
+///   without asking.
+/// - witness: `share::tests::erase_and_clone_duplicates_a_value_by_erasure`
+/// - witness: `share::tests::the_baseline_policy_is_the_default`
+#[inline]
+pub fn duplicate_value(
+    arena: &ShareArena,
+    root: ShareId<Value>,
+    policy: DuplicationPolicy,
+) -> Result<Value, DuplicateError>
+{
+    match policy {
+        | DuplicationPolicy::EraseAndClone => {
+            erase_value(arena, root).map_err(DuplicateError::Erase)
+        },
+        | DuplicationPolicy::Spinal(seat) => match seat {},
+    }
+}
+
+/// Duplicate a shared computation under the installed policy.
+///
+/// # Contract
+/// - requires: `root` resolves in `arena` (else [`DuplicateError::Erase`] from
+///   the baseline's erasure).
+/// - ensures: under the baseline stance, exactly [`erase_comp`]'s result.
+/// - provides: the computation-family dispatch site, the [`duplicate_value`]
+///   discipline mirrored.
+/// - fails: [`DuplicateError`], per the variant.
+/// - panics: none.
+///
+/// # Errors
+/// [`DuplicateError`], per the variant.
+///
+/// # Adequacy
+/// - hypothesis: L3 — separated by a shared computation whose duplication must
+///   equal its erasure.
+/// - witness: `share::tests::erase_and_clone_duplicates_a_comp_by_erasure`
+#[inline]
+pub fn duplicate_comp(
+    arena: &ShareArena,
+    root: ShareId<Comp>,
+    policy: DuplicationPolicy,
+) -> Result<Comp, DuplicateError>
+{
+    match policy {
+        | DuplicationPolicy::EraseAndClone => {
+            erase_comp(arena, root).map_err(DuplicateError::Erase)
+        },
+        | DuplicationPolicy::Spinal(seat) => match seat {},
     }
 }
 
