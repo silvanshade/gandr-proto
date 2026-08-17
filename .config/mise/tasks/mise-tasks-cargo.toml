@@ -169,6 +169,12 @@ cargo dylint \
 ["cargo:doc"]
 description = "Generate documentation"
 run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+RUSTDOCFLAGS="-D warnings"
+export RUSTDOCFLAGS
+
 cargo doc --workspace --features=full --no-deps --document-private-items --open
 """
 
