@@ -15,6 +15,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
+use std::collections::HashMap;
 
 use gandr_surface_syntax::ClosingClass;
 use gandr_surface_syntax::DelimSpelling;
@@ -287,18 +288,40 @@ impl MoldTable
             .iter()
             .map(|mold| bounds_for(mold, &rctxs))
             .collect::<Vec<_>>();
-        let adjacencies = resolve_adjacencies(&molds, &adjacent_keys);
-        let form_first = resolve_keys(&molds, &first_keys);
-        let form_last = resolve_keys(&molds, &last_keys);
-        let has_pred: BTreeSet<MoldId> = adjacencies.iter().map(|&(_, right)| right).collect();
-        let first: BTreeSet<MoldId> = form_first.iter().copied().collect();
+        let index = tile_index(&molds);
+        let adjacencies = resolve_adjacencies(&index, &adjacent_keys);
+        let form_first = resolve_keys(&index, &first_keys);
+        let form_last = resolve_keys(&index, &last_keys);
+        // Dense per-mold flags: the fresh-menu filter probes each set once per
+        // mold, and a tree set charges a comparison walk per probe.
+        let mut has_pred = vec![false; molds.len()];
+        for &(_, right) in &adjacencies {
+            if let Ok(raw) = usize::try_from(u32::from(right))
+                && let Some(slot) = has_pred.get_mut(raw)
+            {
+                *slot = true;
+            }
+        }
+        let mut is_first = vec![false; molds.len()];
+        for &mold in &form_first {
+            if let Ok(raw) = usize::try_from(u32::from(mold))
+                && let Some(slot) = is_first.get_mut(raw)
+            {
+                *slot = true;
+            }
+        }
         let fresh = candidates
             .iter()
             .map(|(&label, label_molds)| {
                 let fresh = label_molds
                     .iter()
                     .copied()
-                    .filter(|mold| !has_pred.contains(mold) || first.contains(mold))
+                    .filter(|mold| {
+                        let at = usize::try_from(u32::from(*mold)).unwrap_or(usize::MAX);
+                        let pred = has_pred.get(at).copied().unwrap_or(true);
+                        let first = is_first.get(at).copied().unwrap_or(false);
+                        !pred || first
+                    })
                     .collect::<Vec<_>>();
                 (label, fresh)
             })
@@ -540,8 +563,12 @@ struct Occurrence
 /// Interner assigning [`RCtxId`]s to canonical context keys.
 struct ContextInterner
 {
-    /// Canonical key to dense context id.
-    keys: BTreeMap<String, u32>,
+    /// Canonical key to dense context id. Lookup-only — iteration order is
+    /// never observed, so a hash map suffices over the ordered map. (A custom
+    /// FNV hasher was measured against the std `SipHash` default and loses in
+    /// a dev-profile build: byte-at-a-time mixing beats neither its 8-byte
+    /// rounds nor its vectorizable inner loop without optimization.)
+    keys: HashMap<String, u32>,
     /// Context data in dense id order.
     data: Vec<RCtxData>,
 }
@@ -552,7 +579,7 @@ impl ContextInterner
     fn new() -> Self
     {
         Self {
-            keys: BTreeMap::new(),
+            keys: HashMap::new(),
             data: Vec::new(),
         }
     }
@@ -1021,13 +1048,51 @@ fn walk_regex(
                 },
                 | Regex::Seq(ref items) => {
                     frames.push(WalkFrame::FinishSeq { count: items.len() });
+                    // Per-child faces and canonical forms are computed once,
+                    // up front: folding them per position would re-walk every
+                    // sibling subtree for every item — quadratic in the
+                    // sequence length, and the dominant cost of the whole
+                    // mold-table build on the alternation-heavy rules.
+                    let child_faces = items.iter().map(face_of).collect::<Vec<_>>();
+                    let child_canons = items.iter().map(canon).collect::<Vec<_>>();
+                    // Entry i of each table is the compose_seq fold from
+                    // empty() over items[..i] (before) and items[i..] (after):
+                    // the per-position slices the old walk recomputed, shared
+                    // by prefix and suffix (compose_seq is associative with
+                    // empty() as identity).
+                    let capacity = items.len().saturating_add(1);
+                    let mut before_face = Vec::with_capacity(capacity);
+                    before_face.push(FaceCtx::empty());
+                    for face in &child_faces {
+                        let previous = before_face.last().cloned().unwrap_or_else(FaceCtx::empty);
+                        before_face.push(compose_seq(&previous, face));
+                    }
+                    let mut after_face = Vec::with_capacity(capacity);
+                    after_face.push(FaceCtx::empty());
+                    for face in child_faces.iter().rev() {
+                        let previous = after_face.last().cloned().unwrap_or_else(FaceCtx::empty);
+                        after_face.push(compose_seq(face, &previous));
+                    }
+                    after_face.reverse();
                     for (index, item) in items.iter().enumerate().rev() {
-                        let before = items.get(.. index).unwrap_or(&[]);
-                        let after = items.get(index.saturating_add(1) ..).unwrap_or(&[]);
-                        let child_left = compose_seq(&node_left, &face_of_slice(before));
-                        let child_right = compose_seq(&face_of_slice(after), &node_right);
-                        let frame_tag =
-                            format!("Q{}\x1e{}", canon_slice(before), canon_slice(after));
+                        let before = before_face
+                            .get(index)
+                            .cloned()
+                            .unwrap_or_else(FaceCtx::empty);
+                        let after = after_face
+                            .get(index.saturating_add(1))
+                            .cloned()
+                            .unwrap_or_else(FaceCtx::empty);
+                        let child_left = compose_seq(&node_left, &before);
+                        let child_right = compose_seq(&after, &node_right);
+                        let frame_tag = format!(
+                            "Q{}\x1e{}",
+                            child_canons.get(.. index).unwrap_or(&[]).join(","),
+                            child_canons
+                                .get(index.saturating_add(1) ..)
+                                .unwrap_or(&[])
+                                .join(",")
+                        );
                         let child_path = format!("{node_path}\x1f{frame_tag}");
                         frames.push(WalkFrame::Enter {
                             regex: item,
@@ -1039,14 +1104,18 @@ fn walk_regex(
                 },
                 | Regex::Alt(ref items) => {
                     frames.push(WalkFrame::FinishAlt { count: items.len() });
+                    // One canonical form per branch, computed once; the tag for
+                    // position `index` is the sorted join of every sibling's
+                    // canon but its own.
+                    let child_canons = items.iter().map(canon).collect::<Vec<_>>();
                     for (index, item) in items.iter().enumerate().rev() {
-                        let mut siblings = Vec::new();
-                        for (other_index, other) in items.iter().enumerate() {
-                            if other_index != index {
-                                siblings.push(canon(other));
-                            }
-                        }
-                        siblings.sort();
+                        let mut siblings: Vec<&str> = child_canons
+                            .iter()
+                            .enumerate()
+                            .filter(|&(other_index, _)| other_index != index)
+                            .map(|(_, child)| child.as_str())
+                            .collect();
+                        siblings.sort_unstable();
                         let frame_tag = format!("A{}", siblings.join("\x1d"));
                         let child_path = format!("{node_path}\x1f{frame_tag}");
                         frames.push(WalkFrame::Enter {
@@ -1113,11 +1182,10 @@ fn walk_regex(
 /// the shared resolver for both the form-first (FIRST) and form-last (LAST)
 /// mold sets.
 fn resolve_keys(
-    molds: &[MoldDef],
+    index: &BTreeMap<TileKey, MoldId>,
     keys: &BTreeSet<TileKey>,
 ) -> Vec<MoldId>
 {
-    let index = tile_index(molds);
     let mut ids: Vec<MoldId> = keys
         .iter()
         .filter_map(|key| index.get(key).copied())
@@ -1129,11 +1197,10 @@ fn resolve_keys(
 
 /// Resolve `(label, rctx)` adjacency pairs to sorted, unique [`MoldId`] pairs.
 fn resolve_adjacencies(
-    molds: &[MoldDef],
+    index: &BTreeMap<TileKey, MoldId>,
     keys: &BTreeSet<(TileKey, TileKey)>,
 ) -> Vec<(MoldId, MoldId)>
 {
-    let index = tile_index(molds);
     let mut pairs: Vec<(MoldId, MoldId)> = keys
         .iter()
         .filter_map(|&(left, right)| {
@@ -1323,16 +1390,6 @@ fn compose_seq(
     }
 }
 
-/// Summarise the concatenation of a regex slice.
-fn face_of_slice(items: &[Regex]) -> FaceCtx
-{
-    let mut acc = FaceCtx::empty();
-    for item in items {
-        acc = compose_seq(&acc, &face_of(item));
-    }
-    acc
-}
-
 /// Summarise a regex's first/last crossable symbols and nullability.
 fn face_of(regex: &Regex) -> FaceCtx
 {
@@ -1440,12 +1497,6 @@ const fn side_bound(
     else {
         Bound::Root
     }
-}
-
-/// Canonically serialise a regex slice as a comma-joined sequence.
-fn canon_slice(items: &[Regex]) -> String
-{
-    items.iter().map(canon).collect::<Vec<_>>().join(",")
 }
 
 /// Canonically serialise a regex, treating alternation branches as unordered.
