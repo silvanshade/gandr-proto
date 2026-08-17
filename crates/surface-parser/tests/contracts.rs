@@ -1,6 +1,5 @@
 use core::error::Error;
 use core::fmt::Write as _;
-use std::sync::OnceLock;
 
 use gandr_surface_grammar::Assoc;
 use gandr_surface_grammar::Pbg;
@@ -29,8 +28,8 @@ use gandr_surface_syntax::SourceSlice;
 use gandr_surface_syntax::TextOffset;
 use proptest::prelude::*;
 
-/// The real built-in grammar, built once and shared across proptest cases.
-static BUILT_IN: OnceLock<Pbg> = OnceLock::new();
+use crate::common::built;
+
 /// Count of CST nodes reachable from a root.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
@@ -343,12 +342,6 @@ fn malformed_module_member_uses_ordinary_recovery() -> Result<(), Box<dyn Error>
     );
     Ok(())
 }
-/// Return the shared built-in grammar.
-fn built() -> &'static Pbg
-{
-    BUILT_IN.get_or_init(|| built_in().expect("built-in grammar assembles"))
-}
-
 #[test]
 fn trace_left_associates_like_figure_24() -> Result<(), Box<dyn Error>>
 {

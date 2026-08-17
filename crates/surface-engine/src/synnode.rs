@@ -30,7 +30,7 @@
 //! read adapter over the parser's committed tree.
 
 use alloc::vec::Vec;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use gandr_surface_grammar::Pbg;
 use gandr_surface_grammar::Sort;
@@ -313,18 +313,31 @@ const KIND_ARGUMENTS: SyntaxKind = SyntaxKind("arguments");
 /// lowerer dispatch kind — the lowerer only iterates its named children.
 const KIND_PARAMETERS: SyntaxKind = SyntaxKind("parameters");
 
+/// The process-wide cached built-in grammar, shared by every consumer in the
+/// crate.
+///
+/// `built_in` is deterministic and fingerprint-pinned, so the ids in a
+/// [`SynTree::parse`] CST resolve against this instance's table (both are the
+/// same checked artifact). One cache owns the build for the whole process:
+/// nextest runs every test in its own process, and a second cache elsewhere
+/// in the crate used to double the ~100ms `built_in()` cost each grammar-
+/// touching test process paid.
+pub(crate) fn shared_grammar() -> Option<&'static Pbg>
+{
+    /// The cached grammar (or [`None`] if the checked artifact fails to build —
+    /// unreachable once a parse has succeeded).
+    static GRAMMAR: LazyLock<Option<Pbg>> = LazyLock::new(|| built_in().ok());
+    GRAMMAR.as_ref()
+}
+
 /// The process-wide built-in grammar, checked and cached on first use.
 fn grammar() -> &'static Pbg
 {
-    /// The process-wide cached grammar.
-    static GRAMMAR: OnceLock<Pbg> = OnceLock::new();
-    GRAMMAR.get_or_init(|| {
-        #[expect(
-            clippy::expect_used,
-            reason = "the built-in grammar is a compile-pinned checked artifact (checked-PBG front-end design); a build failure is caught by gandr-surface-grammar's own contract tests, never at pipeline runtime"
-        )]
-        built_in().expect("the built-in grammar is checked")
-    })
+    #[expect(
+        clippy::expect_used,
+        reason = "the built-in grammar is a compile-pinned checked artifact (checked-PBG front-end design); a build failure is caught by gandr-surface-grammar's own contract tests, never at pipeline runtime"
+    )]
+    shared_grammar().expect("the built-in grammar is checked")
 }
 
 /// An owned parse result the [`SynNode`] views borrow from: the committed CST

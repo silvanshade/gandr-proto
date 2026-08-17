@@ -8,10 +8,8 @@ use core::error::Error;
 use core::fmt;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::OnceLock;
 
 use gandr_surface_grammar::Pbg;
-use gandr_surface_grammar::built_in;
 use gandr_surface_parser::Expected;
 use gandr_surface_parser::MeldState;
 use gandr_surface_parser::Molder;
@@ -28,6 +26,9 @@ use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::NodeKind;
 use gandr_surface_syntax::SourceSlice;
 use gandr_surface_syntax::TextOffset;
+
+use crate::common::built;
+
 /// Number of labeled tokens to push from a source prefix.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
@@ -1576,12 +1577,6 @@ fn expected_completion_names_the_next_tile_or_hole()
         bool::from(complete.expected().is_complete()),
         "a bare atom is complete"
     );
-}
-/// The shared built-in grammar.
-fn built() -> &'static Pbg
-{
-    static BUILT_IN: OnceLock<Pbg> = OnceLock::new();
-    BUILT_IN.get_or_init(|| built_in().expect("built-in grammar assembles"))
 }
 /// The workspace root (two parents up from this crate manifest).
 fn workspace_root() -> PathBuf

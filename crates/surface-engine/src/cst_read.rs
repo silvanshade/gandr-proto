@@ -18,10 +18,7 @@
 //! which member family it belongs to, which sub-run is a type — is the
 //! consuming pass's, and each adds its own inherent methods to [`Reader`].
 
-use std::sync::OnceLock;
-
 use gandr_surface_grammar::Pbg;
-use gandr_surface_grammar::built_in;
 use gandr_surface_syntax::Cst;
 use gandr_surface_syntax::Material;
 use gandr_surface_syntax::MoldPayload;
@@ -38,17 +35,15 @@ use crate::boundary::TileSpelling;
 /// The process-wide cached built-in grammar, for resolving the CST's `MoldId`s
 /// to tile labels and sorts.
 ///
-/// `built_in` is deterministic and fingerprint-pinned, so the ids in a
-/// [`SynTree::parse`] CST resolve against this instance's table (both are the
-/// same checked artifact).
+/// The one cache lives in [`crate::synnode::shared_grammar`]: `built_in` is
+/// deterministic and fingerprint-pinned, so the ids in a [`SynTree::parse`]
+/// CST resolve against that instance's table (both are the same checked
+/// artifact).
 ///
 /// [`SynTree::parse`]: crate::synnode::SynTree::parse
 pub fn grammar() -> Option<&'static Pbg>
 {
-    /// The cached grammar (or [`None`] if the checked artifact fails to build —
-    /// unreachable once a parse has succeeded).
-    static GRAMMAR: OnceLock<Option<Pbg>> = OnceLock::new();
-    GRAMMAR.get_or_init(|| built_in().ok()).as_ref()
+    crate::synnode::shared_grammar()
 }
 
 /// The empty provenance span used when a CST lookup misses unexpectedly, or
