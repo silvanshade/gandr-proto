@@ -22,7 +22,6 @@
 //! [`Checkpoint`] records the log length and the (small, first-order) slope, so
 //! rollback is log truncation and checkpoints are cheap and serializable.
 
-use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
@@ -786,7 +785,7 @@ enum Rel
 }
 
 /// The precomputed same-form `≐`-membership table, derived from `Pbg`
-/// adjacencies.
+/// The form-membership queries over the checked PBG's `≐` relation.
 ///
 /// A tile mold participates in a multi-tile form when it has a `≐`-predecessor,
 /// a `≐`-successor, or both (paper Fig. 15's equal face; `Pbg::adjacencies`).
@@ -796,76 +795,53 @@ enum Rel
 /// both (`=`, `else`, a repeated `,`); and everything else is a single-tile
 /// operator or a bare operand. The actual `≐` between two molds is checked
 /// against the sorted adjacency relation directly ([`MeldState::adjacent`]).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct FormTable
-{
-    /// Molds that have at least one `≐`-predecessor.
-    has_pred: BTreeSet<MoldId>,
-    /// Molds that have at least one `≐`-successor.
-    has_succ: BTreeSet<MoldId>,
-    /// Molds that can be a form's first tile (the grammar's FIRST set).
-    form_first: BTreeSet<MoldId>,
-    /// Molds that can be a form's last tile (the grammar's LAST set) — a
-    /// completable frontier whose remaining tail is nullable.
-    form_last: BTreeSet<MoldId>,
-}
+///
+/// Membership itself lives in the grammar: [`Pbg::mold_has_predecessor`] and
+/// [`Pbg::mold_has_successor`] read dense flags derived at table build, and
+/// the form-first/form-last tests binary-search the stored sorted lists. This
+/// facade carries no state — the per-parse (and per-restore) rebuild of four
+/// `BTreeSet<MoldId>` membership sets it replaced cost O(adjacencies) tree
+/// inserts on every parse.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct FormTable;
 
 impl FormTable
 {
-    /// Build the form-membership table from a checked PBG's `≐` relation.
-    fn build(pbg: &Pbg) -> Self
-    {
-        let mut has_pred: BTreeSet<MoldId> = BTreeSet::new();
-        let mut has_succ: BTreeSet<MoldId> = BTreeSet::new();
-        for &(left, right) in pbg.adjacencies() {
-            has_succ.insert(left);
-            has_pred.insert(right);
-        }
-        let form_first = pbg.form_first().iter().copied().collect();
-        let form_last = pbg.form_last().iter().copied().collect();
-        Self {
-            has_pred,
-            has_succ,
-            form_first,
-            form_last,
-        }
-    }
-
     /// Return whether `mold` has a same-form `≐`-predecessor.
     fn has_pred(
-        &self,
+        pbg: &Pbg,
         mold: MoldId,
     ) -> MoldHasPredecessor
     {
-        MoldHasPredecessor::from(self.has_pred.contains(&mold))
+        MoldHasPredecessor::from(bool::from(pbg.mold_has_predecessor(mold)))
     }
 
     /// Return whether `mold` has a same-form `≐`-successor.
     fn has_succ(
-        &self,
+        pbg: &Pbg,
         mold: MoldId,
     ) -> MoldHasSuccessor
     {
-        MoldHasSuccessor::from(self.has_succ.contains(&mold))
+        MoldHasSuccessor::from(bool::from(pbg.mold_has_successor(mold)))
     }
 
     /// Return whether `mold` can be a form's first tile (its FIRST set).
     fn is_form_first(
-        &self,
+        pbg: &Pbg,
         mold: MoldId,
     ) -> FormFirstMembership
     {
-        FormFirstMembership::from(self.form_first.contains(&mold))
+        FormFirstMembership::from(bool::from(pbg.mold_is_form_first(mold)))
     }
 
     /// Return whether `mold` can be a form's last tile (its LAST set) — a
     /// completable frontier whose remaining form tail is nullable.
     fn is_form_last(
-        &self,
+        pbg: &Pbg,
         mold: MoldId,
     ) -> FormLastMembership
     {
-        FormLastMembership::from(self.form_last.contains(&mold))
+        FormLastMembership::from(bool::from(pbg.mold_is_form_last(mold)))
     }
 }
 
@@ -921,8 +897,6 @@ pub struct MeldState<'pbg>
 {
     /// The grammar this state melds against.
     pbg: &'pbg Pbg,
-    /// The precomputed same-form `≐`-membership table.
-    forms: FormTable,
     /// The assembled source buffer (grows as tiles are pushed).
     source: String,
     /// The append-only emission log, replayed at commit.
@@ -975,7 +949,6 @@ impl<'pbg> MeldState<'pbg>
     {
         Self {
             pbg,
-            forms: FormTable::build(pbg),
             source: String::new(),
             emit: Vec::new(),
             stack: Vec::new(),
@@ -1384,8 +1357,8 @@ impl<'pbg> MeldState<'pbg>
         };
         DeclarationStart::from(
             bool::from(is_item_position(def.sort))
-                && bool::from(self.forms.is_form_first(mold))
-                && bool::from(self.forms.has_succ(mold)),
+                && bool::from(FormTable::is_form_first(self.pbg, mold))
+                && bool::from(FormTable::has_succ(self.pbg, mold)),
         )
     }
 
@@ -1449,7 +1422,8 @@ impl<'pbg> MeldState<'pbg>
                 frontier
                     .open
                     .is_some_and(|open| bool::from(self.adjacent(open, mold)))
-                    || (frontier.open.is_none() && bool::from(self.forms.is_form_first(mold)))
+                    || (frontier.open.is_none()
+                        && bool::from(FormTable::is_form_first(self.pbg, mold)))
             },
             // A left-absorbing form-start (a call `(`, an instantiation `[`)
             // continues the head operand and is gated on it; the operand-
@@ -1696,7 +1670,7 @@ impl<'pbg> MeldState<'pbg>
             }
             // Only a completable frontier closes here; a form still awaiting a
             // required tile stays open for the force-close repair path.
-            if !bool::from(self.forms.is_form_last(head_mold)) {
+            if !bool::from(FormTable::is_form_last(self.pbg, head_mold)) {
                 break;
             }
             self.close_form(StackIndex::from(frontier));
@@ -1746,7 +1720,7 @@ impl<'pbg> MeldState<'pbg>
             else {
                 break;
             };
-            if !bool::from(self.forms.is_form_last(head_mold)) {
+            if !bool::from(FormTable::is_form_last(self.pbg, head_mold)) {
                 break;
             }
             // Keep the frontier open when the upcoming token could be its
@@ -1801,7 +1775,7 @@ impl<'pbg> MeldState<'pbg>
             role: Role::FormTile {
                 mold,
                 sort,
-                open: bool::from(self.forms.has_succ(mold)),
+                open: bool::from(FormTable::has_succ(self.pbg, mold)),
                 start: true,
                 absorb_left: bool::from(absorb_left),
             },
@@ -1870,7 +1844,7 @@ impl<'pbg> MeldState<'pbg>
                 role: Role::FormTile {
                     mold,
                     sort,
-                    open: bool::from(self.forms.has_succ(mold)),
+                    open: bool::from(FormTable::has_succ(self.pbg, mold)),
                     start: true,
                     absorb_left: false,
                 },
@@ -2125,8 +2099,8 @@ impl<'pbg> MeldState<'pbg>
     {
         let (left, right) = self.pbg.bounds(mold).unwrap_or((Bound::Root, Bound::Root));
         let left_hole = matches!(left, Bound::Value(_));
-        let has_pred = self.forms.has_pred(mold);
-        let has_succ = self.forms.has_succ(mold);
+        let has_pred = FormTable::has_pred(self.pbg, mold);
+        let has_succ = FormTable::has_succ(self.pbg, mold);
         match (bool::from(has_pred), bool::from(has_succ)) {
             | (false, true) => Kind::FormStart {
                 absorb_left: left_hole,
@@ -2387,7 +2361,7 @@ impl<'pbg> MeldState<'pbg>
         // form. Content above it stays a sibling.
         if let Some(Role::FormTile { mold, .. }) =
             self.stack.get(frontier_index).map(|cell| cell.role)
-            && bool::from(self.forms.is_form_last(mold))
+            && bool::from(FormTable::is_form_last(self.pbg, mold))
         {
             self.close_form(StackIndex::from(frontier));
             return;
@@ -2811,7 +2785,7 @@ impl<'pbg> MeldState<'pbg>
                     // complete form: commit closes it cleanly, so `finalize`
                     // reports neither an expected tile nor an obligation for it
                     // — mirroring `force_close_form`.
-                    if bool::from(self.forms.is_form_last(mold)) {
+                    if bool::from(FormTable::is_form_last(self.pbg, mold)) {
                         continue;
                     }
                     // An open form frontier expects its `≐`-continuation; commit
@@ -3115,7 +3089,6 @@ impl<'pbg> MeldState<'pbg>
     {
         let mut state = Self {
             pbg,
-            forms: FormTable::build(pbg),
             source: cp.source.clone(),
             emit: cp.emit.clone(),
             stack: cp.stack.clone(),

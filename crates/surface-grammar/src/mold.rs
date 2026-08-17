@@ -152,6 +152,98 @@ struct RCtxData
     right_steps: Vec<RCtxStep>,
 }
 
+/// Whether a mold has at least one same-form `≐`-predecessor.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MoldHasPredecessor(bool);
+
+impl From<bool> for MoldHasPredecessor
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<MoldHasPredecessor> for bool
+{
+    #[inline]
+    fn from(value: MoldHasPredecessor) -> Self
+    {
+        value.0
+    }
+}
+
+/// Whether a mold has at least one same-form `≐`-successor.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MoldHasSuccessor(bool);
+
+impl From<bool> for MoldHasSuccessor
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<MoldHasSuccessor> for bool
+{
+    #[inline]
+    fn from(value: MoldHasSuccessor) -> Self
+    {
+        value.0
+    }
+}
+
+/// Whether a mold can be a form's first tile (its regex FIRST set).
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MoldIsFormFirst(bool);
+
+impl From<bool> for MoldIsFormFirst
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<MoldIsFormFirst> for bool
+{
+    #[inline]
+    fn from(value: MoldIsFormFirst) -> Self
+    {
+        value.0
+    }
+}
+
+/// Whether a mold can be a form's last tile (its regex LAST set).
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MoldIsFormLast(bool);
+
+impl From<bool> for MoldIsFormLast
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<MoldIsFormLast> for bool
+{
+    #[inline]
+    fn from(value: MoldIsFormLast) -> Self
+    {
+        value.0
+    }
+}
+
 /// The authoritative mold and interned-context tables for a checked PBG.
 #[derive(Clone, Debug)]
 pub struct MoldTable
@@ -176,6 +268,14 @@ pub struct MoldTable
     fresh: BTreeMap<&'static str, Vec<MoldId>>,
     /// Consecutive same-form tile pairs (the `≐` adjacency), sorted and unique.
     adjacencies: Vec<(MoldId, MoldId)>,
+    /// Per-mold flag: the mold has at least one `≐`-predecessor, indexed by
+    /// [`MoldId`]. Derived from `adjacencies`; not folded into the fingerprint
+    /// (derived, like `form_first`).
+    has_pred: Vec<bool>,
+    /// Per-mold flag: the mold has at least one `≐`-successor, indexed by
+    /// [`MoldId`]. Derived from `adjacencies`; not folded into the fingerprint
+    /// (derived, like `form_first`).
+    has_succ: Vec<bool>,
     /// Molds that can be a form's first tile (its regex FIRST set, holes
     /// skipped), sorted and unique.
     form_first: Vec<MoldId>,
@@ -293,9 +393,18 @@ impl MoldTable
         let form_first = resolve_keys(&index, &first_keys);
         let form_last = resolve_keys(&index, &last_keys);
         // Dense per-mold flags: the fresh-menu filter probes each set once per
-        // mold, and a tree set charges a comparison walk per probe.
+        // mold, and a tree set charges a comparison walk per probe. Both flag
+        // vectors are stored on the table: the parser's form-membership
+        // queries read them directly instead of re-deriving the sets per
+        // parse.
         let mut has_pred = vec![false; molds.len()];
-        for &(_, right) in &adjacencies {
+        let mut has_succ = vec![false; molds.len()];
+        for &(left, right) in &adjacencies {
+            if let Ok(raw) = usize::try_from(u32::from(left))
+                && let Some(slot) = has_succ.get_mut(raw)
+            {
+                *slot = true;
+            }
             if let Ok(raw) = usize::try_from(u32::from(right))
                 && let Some(slot) = has_pred.get_mut(raw)
             {
@@ -334,6 +443,8 @@ impl MoldTable
             candidates,
             fresh,
             adjacencies,
+            has_pred,
+            has_succ,
             form_first,
             form_last,
             closing,
@@ -483,6 +594,67 @@ impl MoldTable
         &self.adjacencies
     }
 
+    /// Return whether `mold` has at least one same-form `≐`-predecessor.
+    ///
+    /// Dense lookup over the flags derived from `adjacencies` at build; an
+    /// out-of-range id answers `false` (no mold has it as predecessor).
+    #[inline]
+    #[must_use]
+    pub(crate) fn has_predecessor(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasPredecessor
+    {
+        let held = usize::try_from(u32::from(mold))
+            .ok()
+            .and_then(|raw| self.has_pred.get(raw))
+            .copied()
+            .unwrap_or(false);
+        MoldHasPredecessor::from(held)
+    }
+
+    /// Return whether `mold` has at least one same-form `≐`-successor.
+    ///
+    /// Dense lookup over the flags derived from `adjacencies` at build; an
+    /// out-of-range id answers `false`.
+    #[inline]
+    #[must_use]
+    pub(crate) fn has_successor(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasSuccessor
+    {
+        let held = usize::try_from(u32::from(mold))
+            .ok()
+            .and_then(|raw| self.has_succ.get(raw))
+            .copied()
+            .unwrap_or(false);
+        MoldHasSuccessor::from(held)
+    }
+
+    /// Return whether `mold` can be a form's first tile: membership in the
+    /// sorted [`form_first`](Self::form_first) list by binary search.
+    #[inline]
+    #[must_use]
+    pub(crate) fn is_form_first(
+        &self,
+        mold: MoldId,
+    ) -> MoldIsFormFirst
+    {
+        MoldIsFormFirst::from(self.form_first.binary_search(&mold).is_ok())
+    }
+
+    /// Return whether `mold` can be a form's last tile: membership in the
+    /// sorted [`form_last`](Self::form_last) list by binary search.
+    #[inline]
+    #[must_use]
+    pub(crate) fn is_form_last(
+        &self,
+        mold: MoldId,
+    ) -> MoldIsFormLast
+    {
+        MoldIsFormLast::from(self.form_last.binary_search(&mold).is_ok())
+    }
     /// Return the molds that can be a form's first tile (its regex FIRST set,
     /// recursive-sort holes skipped), sorted and unique.
     ///

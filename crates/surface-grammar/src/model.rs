@@ -97,7 +97,11 @@ pub struct CandidateCount(pub usize);
 use crate::check::validate_assumption_3;
 use crate::check::validate_operator_form;
 use crate::mold::MoldDef;
+use crate::mold::MoldHasPredecessor;
+use crate::mold::MoldHasSuccessor;
 use crate::mold::MoldId;
+use crate::mold::MoldIsFormFirst;
+use crate::mold::MoldIsFormLast;
 use crate::mold::MoldTable;
 use crate::mold::RCtxId;
 use crate::mold::RCtxStep;
@@ -1342,6 +1346,88 @@ impl Pbg
     pub fn form_last(&self) -> &[MoldId]
     {
         self.molds.form_last()
+    }
+
+    /// Return whether `mold` has at least one same-form `≐`-predecessor.
+    ///
+    /// # Contract
+    /// - requires: none; an out-of-range id answers `false`.
+    /// - ensures: the answer is the build-time flag derived from
+    ///   [`adjacencies`](Self::adjacencies), not a per-call recomputation.
+    /// - provides: the melder's form-membership test without a per-parse
+    ///   derived table.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn mold_has_predecessor(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasPredecessor
+    {
+        self.molds.has_predecessor(mold)
+    }
+
+    /// Return whether `mold` has at least one same-form `≐`-successor.
+    ///
+    /// # Contract
+    /// - requires: none; an out-of-range id answers `false`.
+    /// - ensures: the answer is the build-time flag derived from
+    ///   [`adjacencies`](Self::adjacencies), not a per-call recomputation.
+    /// - provides: the melder's form-membership test without a per-parse
+    ///   derived table.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn mold_has_successor(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasSuccessor
+    {
+        self.molds.has_successor(mold)
+    }
+
+    /// Return whether `mold` can be a form's first tile: membership in
+    /// [`form_first`](Self::form_first).
+    ///
+    /// # Contract
+    /// - requires: none.
+    /// - ensures: binary-searches the stored sorted list; no per-call
+    ///   recomputation.
+    /// - provides: the melder's form-start test without a per-parse derived
+    ///   table.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn mold_is_form_first(
+        &self,
+        mold: MoldId,
+    ) -> MoldIsFormFirst
+    {
+        self.molds.is_form_first(mold)
+    }
+
+    /// Return whether `mold` can be a form's last tile: membership in
+    /// [`form_last`](Self::form_last).
+    ///
+    /// # Contract
+    /// - requires: none.
+    /// - ensures: binary-searches the stored sorted list; no per-call
+    ///   recomputation.
+    /// - provides: the melder's form-completable test without a per-parse
+    ///   derived table.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn mold_is_form_last(
+        &self,
+        mold: MoldId,
+    ) -> MoldIsFormLast
+    {
+        self.molds.is_form_last(mold)
     }
 
     /// Return `mold`'s **form-level closing class**, if every completion path
