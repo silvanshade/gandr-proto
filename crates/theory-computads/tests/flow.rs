@@ -41,6 +41,29 @@
 //!   [`flow_equality_implies_replay_equivalence`] checks the implication
 //!   pairwise over every certificate the suite builds.
 //!
+//! # The fourth relation: the declined games quotient, measured
+//!
+//! The certificate algebra declined the asynchronous-games quotient —
+//! identification by a matching step-index bijection — and the projection's
+//! design record suspected it sat strictly inside flow equality, which would
+//! have extended the chain leftward into a decision already taken. The
+//! fixtures here measure that suspicion against the discharge class and
+//! refute it in reverse:
+//!
+//! - [`the_games_quotient_identifies_two_firings_the_peak_anchor_separates`]
+//!   and [`the_games_quotient_identifies_a_tile_the_flow_declines_a_canonical_form`]
+//!   are the two separating families — the quotient identifies what flow
+//!   equality separates or declines, so the quotient is **not** contained in
+//!   flow equality. The second family is vocabulary-robust: it needs no
+//!   commitment about what a step's identity is, because the two legs record
+//!   the very same steps.
+//! - [`flow_equality_sits_inside_the_games_quotient_on_the_discharge_class`]
+//!   checks the surviving containment on every flow-equal leg pair the suite
+//!   builds. The measured verdict is that **flow equality is strictly finer
+//!   than the games quotient on the discharge class** — the chain does not
+//!   extend leftward, and the template-identity story sits to the quotient's
+//!   right.
+//!
 //! [`the_two_legs_of_a_permutation_tile_have_one_flow`]: tests::the_two_legs_of_a_permutation_tile_have_one_flow
 //! [`disjoint_steps_share_no_thread`]: tests::disjoint_steps_share_no_thread
 //! [`the_shift_guard_refuses_a_pair_the_projection_identifies`]: tests::the_shift_guard_refuses_a_pair_the_projection_identifies
@@ -48,6 +71,9 @@
 //! [`replay_equivalent_certificates_can_carry_different_flows`]: tests::replay_equivalent_certificates_can_carry_different_flows
 //! [`equal_flows_over_different_boundaries_are_not_one_certificate`]: tests::equal_flows_over_different_boundaries_are_not_one_certificate
 //! [`flow_equality_implies_replay_equivalence`]: tests::flow_equality_implies_replay_equivalence
+//! [`the_games_quotient_identifies_two_firings_the_peak_anchor_separates`]: tests::the_games_quotient_identifies_two_firings_the_peak_anchor_separates
+//! [`the_games_quotient_identifies_a_tile_the_flow_declines_a_canonical_form`]: tests::the_games_quotient_identifies_a_tile_the_flow_declines_a_canonical_form
+//! [`flow_equality_sits_inside_the_games_quotient_on_the_discharge_class`]: tests::flow_equality_sits_inside_the_games_quotient_on_the_discharge_class
 //! [`overlaps_between`]: gandr_theory_computads::overlaps_between
 //! [`replay_equivalent`]: gandr_theory_computads::replay_equivalent
 
@@ -61,8 +87,11 @@ mod tests
     use gandr_theory_computads::CellId;
     use gandr_theory_computads::CellStore;
     use gandr_theory_computads::ConvexityDischarge;
+    use gandr_theory_computads::Flow;
     use gandr_theory_computads::FlowEnd;
+    use gandr_theory_computads::FlowEquality;
     use gandr_theory_computads::FlowObstruction;
+    use gandr_theory_computads::FlowVertexIndex;
     use gandr_theory_computads::OverlapKind;
     use gandr_theory_computads::Tracelet;
     use gandr_theory_computads::cell_address;
@@ -92,6 +121,102 @@ mod tests
         ToyPos(steps.into_iter().collect::<Vec<_>>().into_boxed_slice())
     }
 
+    /// Every permutation of the flow's vertex indices, built iteratively by
+    /// insertion.
+    ///
+    /// The quotient check brute-forces the step-index bijection; the suite's
+    /// legs never exceed three steps, so the factorial enumeration is the
+    /// honest implementation rather than a matching algorithm.
+    fn index_permutations(flow: &Flow) -> Vec<Vec<FlowVertexIndex>>
+    {
+        let mut permutations: Vec<Vec<FlowVertexIndex>> = alloc::vec![Vec::new()];
+        for item in 0 .. flow.labels.len() {
+            let item = FlowVertexIndex::from(item);
+            let mut next: Vec<Vec<FlowVertexIndex>> = Vec::new();
+            for permutation in &permutations {
+                for slot in 0 ..= permutation.len() {
+                    let mut candidate = permutation.clone();
+                    candidate.insert(slot, item);
+                    next.push(candidate);
+                }
+            }
+            permutations = next;
+        }
+        permutations
+    }
+
+    /// Whether `earlier` reaches `later` through the flow's vertex-to-vertex
+    /// threads — the dependence order the recorded leg induces, read off the
+    /// projection rather than re-derived from the alphabet.
+    fn depends_before(
+        flow: &Flow,
+        earlier: FlowVertexIndex,
+        later: FlowVertexIndex,
+    ) -> FlowEquality
+    {
+        let mut reached: Vec<FlowVertexIndex> = alloc::vec![earlier];
+        let mut work: Vec<FlowVertexIndex> = alloc::vec![earlier];
+        while let Some(current) = work.pop() {
+            for thread in &flow.threads {
+                let (FlowEnd::Vertex { vertex: up, .. }, FlowEnd::Vertex { vertex: lo, .. }) =
+                    (thread.up, thread.lo)
+                else {
+                    continue;
+                };
+                if up == current && !reached.contains(&lo) {
+                    if lo == later {
+                        return FlowEquality::from(true);
+                    }
+                    reached.push(lo);
+                    work.push(lo);
+                }
+            }
+        }
+        FlowEquality::from(false)
+    }
+
+    /// Whether two legs are identified by the **asynchronous-games quotient**
+    /// — the relation the certificate algebra declined, stated over the
+    /// flow's own data: some bijection on step indices matches the
+    /// position-free cell content of each pair of matched steps and
+    /// preserves the dependence order both ways.
+    ///
+    /// `project_flow` emits `labels` in recorded order, so a flow carries
+    /// the leg's steps indexed exactly as the quotient reads them; the
+    /// recorded `CellApp`s are not needed separately.
+    fn games_equivalent(
+        left: &Flow,
+        right: &Flow,
+    ) -> FlowEquality
+    {
+        if left.labels.len() != right.labels.len() {
+            return FlowEquality::from(false);
+        }
+        let matched = index_permutations(left).into_iter().any(|permutation| {
+            let labels_match = left.labels.iter().enumerate().all(|(index, label)| {
+                permutation
+                    .get(index)
+                    .and_then(|mapped| right.labels.get(usize::from(*mapped)))
+                    == Some(label)
+            });
+            let order_preserved = (0 .. left.labels.len()).all(|earlier| {
+                (0 .. left.labels.len()).all(|later| {
+                    let mapped = |at: usize| permutation.get(at).copied().unwrap_or_default();
+                    let (earlier, later) =
+                        (FlowVertexIndex::from(earlier), FlowVertexIndex::from(later));
+                    bool::from(depends_before(left, earlier, later))
+                        == bool::from(depends_before(
+                            right,
+                            mapped(usize::from(earlier)),
+                            mapped(usize::from(later)),
+                        ))
+                })
+            });
+            labels_match && order_preserved
+        });
+        FlowEquality::from(matched)
+    }
+
     /// (f): `Succ(Zero) ~> Zero` — the rule the left redex node carries.
     fn f_cell() -> Cell<ToyAlphabet>
     {
@@ -102,6 +227,16 @@ mod tests
     fn g_cell() -> Cell<ToyAlphabet>
     {
         toy_cell(Toy::succ(Toy::succ(Toy::Zero)), Toy::Zero)
+    }
+
+    /// (dup): `x ~> Add(x, x)` — the duplicating rule the tie fixture fires
+    /// once, so that its two copies can each carry an `f` firing.
+    fn dup_cell() -> Cell<ToyAlphabet>
+    {
+        toy_cell(
+            Toy::var(ToyNameRef("x")),
+            Toy::add(Toy::var(ToyNameRef("x")), Toy::var(ToyNameRef("x"))),
+        )
     }
 
     /// (add-Z): `Add(Zero, x) ~> x`.
@@ -186,6 +321,197 @@ mod tests
             ConvexityDischarge::LeftConnectedOverAcyclicTarget,
             forward.convexity,
             "and the flow carries the fence its soundness rests on, as the shift witness does"
+        );
+    }
+
+    #[test]
+    fn the_games_quotient_identifies_two_firings_the_peak_anchor_separates()
+    {
+        // THE LEFTWARD EXTENSION FAILS, first separating family. The
+        // certificate algebra declined the asynchronous-games quotient —
+        // identification by a matching step-index bijection — and the
+        // projection page suspected it sat strictly inside flow equality. It
+        // does not: one cell fired at two different positions of one peak is
+        // ONE play to the quotient (one step, one label, no order to
+        // preserve), while the flow's peak anchor keeps the two firings
+        // apart. The quotient is therefore not contained in flow equality.
+        let (store, f, _g) = cong2_store();
+        let peak = Toy::add(Toy::succ(Toy::Zero), Toy::succ(Toy::Zero));
+        let left = project_flow(&store, &peak, &alloc::vec![CellApp {
+            cell: f,
+            at: at([0]),
+        }])
+        .expect("f fires at the left argument");
+        let right = project_flow(&store, &peak, &alloc::vec![CellApp {
+            cell: f,
+            at: at([1]),
+        }])
+        .expect("f fires at the right argument");
+        assert_eq!(
+            ConvexityDischarge::LeftConnectedOverAcyclicTarget,
+            left.convexity,
+            "the pair sits on the discharge class the experiment is scoped to"
+        );
+        assert!(
+            bool::from(games_equivalent(&left, &right)),
+            "the step-index bijection matches trivially: one step, one label, an empty order"
+        );
+        assert!(
+            !bool::from(flows_equal(&left, &right)),
+            "but the flows differ at the peak anchor, so the quotient is not inside flow equality"
+        );
+    }
+
+    #[test]
+    fn the_games_quotient_identifies_a_tile_the_flow_declines_a_canonical_form()
+    {
+        // THE LEFTWARD EXTENSION FAILS on the tile class itself, and this
+        // family is vocabulary-robust. `dup` duplicates a subterm; firing `f`
+        // under each copy yields two vertices at one depth, under one label,
+        // consuming nothing from the peak — a tie the canonical form declines
+        // rather than orders. The two recorded orders of that independent
+        // pair are one play under ANY step-identity finer than the recorded
+        // steps themselves (the legs record the very same three steps), so no
+        // refinement of the bijection's vocabulary escapes the separation:
+        // the quotient identifies the tile, and flow equality declines it —
+        // negatively, reflexively, and on the permutation-tile class where it
+        // otherwise decides the shift identification.
+        let mut store = CellStore::new();
+        let dup = store.insert(dup_cell());
+        let f = store.insert(f_cell());
+        let peak = Toy::succ(Toy::Zero);
+        let forward_path = alloc::vec![
+            CellApp {
+                cell: dup,
+                at: at([]),
+            },
+            CellApp {
+                cell: f,
+                at: at([0]),
+            },
+            CellApp {
+                cell: f,
+                at: at([1]),
+            },
+        ];
+        let backward_path = alloc::vec![
+            CellApp {
+                cell: dup,
+                at: at([]),
+            },
+            CellApp {
+                cell: f,
+                at: at([1]),
+            },
+            CellApp {
+                cell: f,
+                at: at([0]),
+            },
+        ];
+        let forward = project_flow(&store, &peak, &forward_path)
+            .expect("dup then the two f firings is a derivation of the peak");
+        let backward = project_flow(&store, &peak, &backward_path)
+            .expect("the two f firings commute under the duplicated frame");
+        assert_eq!(
+            ConvexityDischarge::LeftConnectedOverAcyclicTarget,
+            forward.convexity,
+            "the pair sits on the discharge class the experiment is scoped to"
+        );
+        assert!(
+            forward.canonical().is_none() && backward.canonical().is_none(),
+            "two same-labelled vertices at one depth tie the key, and the tie is refused an order"
+        );
+        assert!(
+            bool::from(games_equivalent(&forward, &backward)),
+            "the quotient identifies the two orders of the tile — the bijection exists"
+        );
+        assert!(
+            !bool::from(flows_equal(&forward, &backward)),
+            "and the flow declines the identification the quotient makes"
+        );
+        // The certificate-level reading agrees: a tracelet recording the two
+        // orders replays, and its two legs still have no shared canonical
+        // form to compare.
+        let (_fixture_store, composition) = fusion_fixture();
+        let mut carrier = composition;
+        carrier.peak = peak;
+        let tracelet = Tracelet {
+            overlap: carrier,
+            path_a: forward_path,
+            path_b: backward_path,
+            joins_at: Toy::add(Toy::Zero, Toy::Zero),
+        };
+        assert!(
+            bool::from(tracelet.replay(&store)),
+            "both orders are derivations of the recorded boundary"
+        );
+        assert!(
+            !bool::from(
+                legs_flow_equal(&tracelet, &store).expect("both legs project and reach the join")
+            ),
+            "so the certificate-level relation declines the tile the shift witness would license"
+        );
+    }
+
+    #[test]
+    fn flow_equality_sits_inside_the_games_quotient_on_the_discharge_class()
+    {
+        // THE CONTAINMENT THAT SURVIVES, checked rather than argued: every
+        // flow-equal leg pair this suite builds admits the matching
+        // bijection. Canonical equality re-indexes vertices so that equal
+        // canonical forms carry the same labels and the same thread
+        // structure, and a thread-structure isomorphism is a
+        // dependence-preserving step-index bijection — so flow equality is
+        // contained in the games quotient on the discharge class, and the two
+        // separating families above make the containment strict. Measured:
+        // flow equality is strictly FINER than the quotient the page
+        // suspected was finer than it.
+        let (store, f, g) = cong2_store();
+        let peak = cong2_body();
+        let (first, second) = cong2_pair(f, g);
+        let witness = derive_shift_equivalence(&store, &peak, &first, &second)
+            .expect("the cong2 pair earns its shift witness");
+        let forward = project_flow(&store, &peak, &witness.first_then_second())
+            .expect("f then g is a derivation of the peak");
+        let backward = project_flow(&store, &peak, &witness.second_then_first())
+            .expect("g then f is a derivation of the peak");
+        assert!(
+            bool::from(flows_equal(&forward, &backward)),
+            "the permutation tile is flow-equal, as the suite already pins"
+        );
+        assert!(
+            bool::from(games_equivalent(&forward, &backward)),
+            "and the flow-equal pair admits the matching bijection"
+        );
+        // The guard-refused pair — the first strictness's witness — is the
+        // suite's other flow-equal leg pair, over a peak whose two cells the
+        // shift guard refuses to commute.
+        let mut store = CellStore::new();
+        let z = store.insert(add_z());
+        let s = store.insert(add_s());
+        let peak = Toy::add(
+            Toy::add(Toy::Zero, Toy::succ(Toy::Zero)),
+            Toy::add(Toy::succ(Toy::Zero), Toy::Zero),
+        );
+        let first = CellApp {
+            cell: z,
+            at: at([0]),
+        };
+        let second = CellApp {
+            cell: s,
+            at: at([1]),
+        };
+        let forward = project_flow(&store, &peak, &alloc::vec![first.clone(), second.clone()])
+            .expect("add-Z then add-S is a derivation of the peak");
+        let backward = project_flow(&store, &peak, &alloc::vec![second, first])
+            .expect("add-S then add-Z is a derivation of the peak");
+        assert!(
+            bool::from(flows_equal(&forward, &backward)),
+            "the pair the guard refuses is flow-equal, as the suite already pins"
+        );
+        assert!(
+            bool::from(games_equivalent(&forward, &backward)),
+            "and it too admits the matching bijection"
         );
     }
 
