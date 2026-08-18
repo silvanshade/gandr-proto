@@ -48,6 +48,7 @@ gandr-surface-parser.workspace = true
 # because the report's wire image embeds them.
 gandr-surface-render-remote.workspace = true
 gandr-surface-syntax.workspace = true
+gandr-theory-circuit-algebras.workspace = true
 gandr-theory-computads.workspace = true
 gandr-theory-levitation.workspace = true
 gandr-theory-nominal-automata.workspace = true

@@ -123,6 +123,7 @@ use crate::desc_elab::ElabDiagnostic;
 use crate::synnode::SynTree;
 
 pub(crate) mod desc;
+pub mod embed;
 pub(crate) mod shape;
 
 /// The circuit surface check's verdict: every decline the source earned, in

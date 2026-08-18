@@ -15,6 +15,8 @@ mod circuit;
 #[cfg(test)]
 mod circuit_desc;
 #[cfg(test)]
+mod circuit_embed;
+#[cfg(test)]
 mod circuit_ports;
 #[cfg(test)]
 mod desc_cells;

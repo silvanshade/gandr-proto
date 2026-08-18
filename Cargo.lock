@@ -766,6 +766,7 @@ dependencies = [
  "gandr-surface-parser",
  "gandr-surface-render-remote",
  "gandr-surface-syntax",
+ "gandr-theory-circuit-algebras",
  "gandr-theory-computads",
  "gandr-theory-levitation",
  "gandr-theory-nominal-automata",

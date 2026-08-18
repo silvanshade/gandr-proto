@@ -11,6 +11,9 @@
 - **The session.** `Session::submit` types each item, carries declarations and imports forward across submissions, maintains one typing checkpoint per item, and offers every typed definition to the certified kernel through the bridge — where the crossing observes and never decides.
 - **Diagnostics.** One versioned report joins typing failures, hole goals, and entity attributes into the envelope the inspection surface projects from.
 - **The item seam.** The melder-and-lowering front end implements the incremental typer's item source, so incremental checking runs against real source without depending on this crate or naming a parser.
+- **The description route and the matcher seam.** A `data`, `codata` or `sign` block elaborates to a description, and the description elaborates into the cell engine's store: a frame cell per constructor, a cell per admitted `rule` member, the cell a circuit rule's wiring derives, and the η cell a declaration licenses.
+  This crate is also the **supply point** at which the circuit-algebra crate's embedding matcher reaches that route: a circuit rule's body is read as a wiring diagram and matched into the other rules of its own description, so the route records where one rule occurs inside another.
+  The seam lives here because it is the one place above both crates — the matcher crate depends on the engine crate, so the reverse edge is impossible rather than merely forbidden.
 - **Annotated surfaces.** The check-only eliminators take an optional answer type after the scrutinee (`if c -> B { … } else { … }`, `case v -> B { … }`), and the computation bind takes an optional annotation on its source (`run p : B <- t ;`).
   Both lower through the computation ascription, so they add spellings and no checker behaviour.
 
@@ -26,10 +29,11 @@
 
 ## Theoretical ideas it relies on
 
-Call-by-push-value, bidirectional typing, elaboration to a core calculus with typed holes, and error localization and recovery as a total procedure.
+Call-by-push-value, bidirectional typing, elaboration to a core calculus with typed holes, error localization and recovery as a total procedure, and wiring diagrams with embedding-based sub-diagram matching.
 
 ## Primary resources
 
 - Paul Blain Levy, _Call-By-Push-Value: A Functional/Imperative Synthesis_, Springer Netherlands, 2003, `doi:10.1007/978-94-007-0954-6` — the value/computation split the core IR and this crate's sort-directed lowering are organized by.
 - Eric Zhao, Raef Maroof, Anand Dukkipati, Andrew Blinn, Zhiyi Pan and Cyrus Omar, _Total Type Error Localization and Recovery with Holes_, 2024, `doi:10.1145/3632910` — the marked-expression discipline behind total lowering and the no-meaningless-states posture.
 - Jana Dunfield and Neel Krishnaswami, _Bidirectional Typing_, 2019, arXiv:1908.05839 — the check/synthesize discipline that makes `if` and `case` check-only here, which is what the answer-type slot exists to serve.
+- Filippo Bonchi, Fabio Gadducci, Aleks Kissinger, Paweł Sobociński and Fabio Zanasi, _String Diagram Rewrite Theory I: Rewriting with Frobenius Structure_, _Journal of the ACM_ 69:2 (2022), article 14, `doi:10.1145/3502719` — the convex sub-diagram matching discipline the circuit matcher this crate supplies is built on.

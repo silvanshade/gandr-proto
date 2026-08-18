@@ -323,7 +323,8 @@ path = "crates/surface-syntax"
 
 # Circuit-algebra machinery over the cell-alphabet seam (interface bookkeeping,
 # embedding matching, diagram normal form).
-# consumers: none (top of the circuit-terms lane)
+# consumers:
+# - gandr-surface-engine
 [workspace.dependencies.gandr-theory-circuit-algebras]
 path = "crates/theory-circuit-algebras"
 

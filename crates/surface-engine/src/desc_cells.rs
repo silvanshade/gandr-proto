@@ -31,6 +31,8 @@
 //! [`SignDesc`]: gandr_theory_levitation::SignDesc
 //! [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 
+use gandr_theory_circuit_algebras::matching::MatchBudget;
+use gandr_theory_circuit_algebras::matching::MatchCount;
 use gandr_theory_computads::CellId;
 use gandr_theory_computads::CellStore;
 use gandr_theory_computads::DeclinedCircuitIndex;
@@ -40,12 +42,14 @@ use gandr_theory_computads::OpElaborateError;
 use gandr_theory_computads::elaborate_data_desc;
 use gandr_theory_levitation::CircuitDerivationError;
 use gandr_theory_levitation::CircuitElaborationError;
+use gandr_theory_levitation::Name;
 use gandr_theory_levitation::RedexOccurrence;
 use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::TermPositionIndex;
 use gandr_theory_levitation::WhiskeredCell;
 
 use crate::boundary::DeclineReason;
+use crate::circuit::embed::embed_circuit_rule;
 use crate::cst_read::empty_surface_span;
 use crate::desc_elab::ElabDiagnostic;
 
@@ -66,6 +70,10 @@ pub struct DescCells
     /// The **η cells** each description licensed, by their id in that
     /// description's store, in description order.
     pub eta: Vec<Vec<CellId>>,
+    /// Where each circuit rule's diagram sits inside each circuit rule of its
+    /// own description, in description order — the **redex-occurrence records**
+    /// the embedding matcher computes.
+    pub circuit_sites: Vec<CircuitSite>,
     /// Why a description licensed no η cell, in description order, one entry
     /// per description that licensed none.
     ///
@@ -157,6 +165,7 @@ pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
                 .diagnostics
                 .push(circuit_decline_diagnostic(desc, index, error));
         }
+        cells.circuit_sites.extend(circuit_sites(desc));
         if let Some(ref declined) = elaborated.declined_eta {
             cells
                 .eta_declines
@@ -167,6 +176,78 @@ pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
         cells.stores.push(elaborated.store);
     }
     cells
+}
+
+/// **Where one circuit rule's diagram sits inside another's** — one record per
+/// ordered pair of a description's circuit rules whose bodies both read as
+/// diagrams.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CircuitSite
+{
+    /// The rule whose diagram was sought.
+    pub pattern: Name,
+    /// The rule whose body it was sought in.
+    pub target: Name,
+    /// How many embeddings the matcher admitted.
+    pub admitted: MatchCount,
+}
+
+/// The **matching budget** the description route runs the embedding search
+/// under.
+///
+/// A declared circuit body is author-sized and small, so the ceiling is set
+/// well above any realistic body rather than tuned: what it is for is turning a
+/// pathological search into a decline instead of a hang, and a decline here
+/// drops the record rather than failing the elaboration, because a missing
+/// redex-occurrence record is not a reason to refuse a description.
+const CIRCUIT_MATCH_BUDGET: usize = 4_096_usize;
+
+/// Every redex-occurrence record a description's circuit rules yield.
+///
+/// This is the **matcher seam in production**: the embedding matcher lives in
+/// `gandr-theory-circuit-algebras`, the cell engine in
+/// `gandr-theory-computads`, and neither names the other. This crate sits above
+/// both and supplies the first to a question the second cannot pose — where a
+/// many-in, many-out, possibly disconnected diagram occurs inside another one.
+///
+/// # Contract
+/// - ensures: one record per ordered pair of circuit rules of `desc` whose
+///   bodies both read as diagrams, in declaration order, pattern-major; a pair
+///   whose search declines on its budget, or either of whose bodies is not a
+///   diagram, contributes no record.
+/// - provides: the circuit-algebra crate's shipping consumer — the record is
+///   computed on the descriptions a source actually declares.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — a description whose two circuit rules stand in a
+///   containment separates a found occurrence from the reflexive one every rule
+///   has in itself, and a body that is not a diagram separates the dropped
+///   record from a zero-count one.
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `the_description_route_records_where_one_rule_occurs_in_another`
+#[inline]
+fn circuit_sites(desc: &SignDesc) -> Vec<CircuitSite>
+{
+    let mut sites = Vec::new();
+    for pattern in &desc.circuits {
+        for target in &desc.circuits {
+            let Ok(matching) = embed_circuit_rule(
+                &pattern.body,
+                &target.body,
+                MatchBudget(CIRCUIT_MATCH_BUDGET),
+            )
+            else {
+                continue;
+            };
+            sites.push(CircuitSite {
+                pattern: pattern.name.clone(),
+                target: target.name.clone(),
+                admitted: matching.admitted_count(),
+            });
+        }
+    }
+    sites
 }
 
 /// The human-readable reason an operation earned its cell-layer decline.

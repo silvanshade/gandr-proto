@@ -164,6 +164,14 @@ pub enum GeneratorSort
     /// A closed terminal — the sequent alphabet's `★`, which is a generator
     /// consuming a wire and producing none, never an open port.
     Terminal,
+    /// An applied **rewrite** — a declared circuit rule fired at a position,
+    /// which a circuit body writes as a redex line.
+    ///
+    /// It is a role of its own for the same reason the others are: a rewrite
+    /// and an operation of one spelling are two different boxes, so a reading
+    /// that collapsed them would let a pattern's redex match a target's
+    /// operation frame.
+    Rewrite,
 }
 
 /// The **label** a hyperedge carries: a name together with the role it is worn
