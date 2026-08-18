@@ -41,6 +41,7 @@ mod tests
     use gandr_surface_engine::origin::resolve;
     use gandr_surface_engine::run::RunError;
     use gandr_surface_engine::run::run_source;
+    use gandr_surface_engine::session::ItemOutcome;
     use gandr_surface_engine::session::Session;
 
     use crate::common::TestInteger;
@@ -120,26 +121,38 @@ mod tests
 
     // --- What filling it does -------------------------------------------------
 
-    /// **A filled hole produces the same result as a source that carried the
-    /// pattern from the start.**
+    /// **Filling the hole changes exactly the branches it shadowed, and
+    /// nothing else.**
     ///
-    /// This is the contract that makes fill-and-resume meaningful: filling is
-    /// re-entry through the same typed pattern seam, not a second compilation
-    /// path with its own behaviour.
+    /// The differential is between the unfilled program and the filled one at
+    /// every constructor: `Red` is settled before the hole and answers the
+    /// same either way, while `Green` and `Blue` move from stopped to
+    /// answered. A test comparing the filled program against itself would pass
+    /// on an implementation that never compiled the hole at all, which is why
+    /// the unfilled side is the one carrying the claim.
     #[test]
-    fn filling_the_hole_agrees_with_writing_the_pattern_outright()
+    fn filling_the_hole_changes_exactly_the_branches_it_shadowed()
     {
-        for (scrutinee, expected) in [("Red", 0), ("Green", 1), ("Blue", 2)] {
-            let filled = returned_int(run_color(TestText("Green"), TestText(scrutinee)));
-            let written = returned_int(run_color(TestText("Green"), TestText(scrutinee)));
+        assert_eq!(
+            Some(TestInteger(0)),
+            returned_int(color_pick(TestText("Red"))),
+            "`Red` is settled before the hole"
+        );
+        assert_eq!(
+            Some(TestInteger(0)),
+            returned_int(run_color(TestText("Green"), TestText("Red"))),
+            "and the fill leaves it exactly where it was"
+        );
+        for (scrutinee, expected) in [("Green", 1), ("Blue", 2)] {
             assert_eq!(
-                Some(TestInteger(expected)),
-                filled,
-                "filling the hole with `Green` must settle `{scrutinee}`"
+                Some(Blame::Hole),
+                blamed(color_pick(TestText(scrutinee))),
+                "`{scrutinee}` is stopped by the unfilled hole"
             );
             assert_eq!(
-                written, filled,
-                "and the filled program must agree with the written one at `{scrutinee}`"
+                Some(TestInteger(expected)),
+                returned_int(run_color(TestText("Green"), TestText(scrutinee))),
+                "and the fill settles it"
             );
         }
     }
@@ -168,6 +181,134 @@ mod tests
                 .any(|note| note.contains("MissingCaseArm")),
             "and `Blue`, which the filled pattern does not name, is a missing arm rather than a \
              stuck one"
+        );
+    }
+
+    // --- Filling through a live session --------------------------------------
+
+    /// **The fill is an edit to a session that already holds checkpoints, and
+    /// what it produces is what a source carrying the pattern from the start
+    /// produces.**
+    ///
+    /// This is the acceptance the whole fill-and-resume half rests on, and it
+    /// has to be a differential against a *separately built* session, not
+    /// against the same text twice: an implementation that recompiled the file
+    /// from scratch on every submission would pass a self-comparison and fail
+    /// this one only if the two disagree, so the assertion that carries weight
+    /// is the before/after change inside the edited session.
+    ///
+    /// `Session::submit` types every append through the incremental
+    /// checkpoint engine, so the second definition arrives at a session whose
+    /// earlier items are already checkpointed. Which items that engine re-types
+    /// and which adopt is asserted against the engine directly in the
+    /// `incremental` suite's `hole_fill` module; what is asserted here is the
+    /// half that suite cannot see, which is what the resumed program then
+    /// evaluates to.
+    #[test]
+    fn filling_a_hole_in_a_live_session_evaluates_like_a_fresh_source()
+    {
+        let mut edited = Session::new();
+        let holed = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, Blue \
+             => ret 2 }} }}"
+        );
+        let opening = edited
+            .submit(holed.as_str())
+            .expect("lowering must not fail");
+        assert!(
+            matches!(
+                opening.outcomes.last(),
+                Some(&ItemOutcome::Definition { bound: true, .. })
+            ),
+            "an unfinished arm does not stop the definition entering scope: {:?}",
+            opening.outcomes
+        );
+
+        // Before the fill, the shadowed constructor stops.
+        assert_eq!(
+            Some(Eval::Blame(Blame::Hole)),
+            evaluated(&mut edited, TestText("pick(Blue)")),
+            "the unfilled hole stops `Blue` inside the session too"
+        );
+
+        // The fill is an ordinary next submission against the retained state.
+        let fill = "def pick(c : Color) -> F Integer { case c { Red => ret 0, Green => ret 1, Blue \
+                    => ret 2 } }";
+        let filled = edited.submit(fill).expect("lowering must not fail");
+        assert!(
+            matches!(
+                filled.outcomes.last(),
+                Some(&ItemOutcome::Definition { bound: true, .. })
+            ),
+            "the fill rebinds the definition: {:?}",
+            filled.outcomes
+        );
+
+        // A session that carried the finished pattern from its first line.
+        let mut fresh = Session::new();
+        let whole = alloc::format!("{COLOR} {fill}");
+        drop(
+            fresh
+                .submit(whole.as_str())
+                .expect("lowering must not fail"),
+        );
+
+        for scrutinee in ["Red", "Green", "Blue"] {
+            let call = alloc::format!("pick({scrutinee})");
+            let after = evaluated(&mut edited, TestText(call.as_str()));
+            assert_eq!(
+                evaluated(&mut fresh, TestText(call.as_str())),
+                after,
+                "the filled session must agree with the fresh one at `{scrutinee}`"
+            );
+            assert!(
+                matches!(after, Some(Eval::Value(_))),
+                "and `{scrutinee}` must now answer rather than stop: {after:?}"
+            );
+        }
+    }
+
+    /// **A fill that covers one constructor turns another from unfinished to
+    /// uncovered**, which is the transition an author is working toward.
+    ///
+    /// Before the fill the match reports one unfinished test and no missing
+    /// arm: `Green` and `Blue` are both held by the hole rather than uncovered.
+    /// After it, `Green` is settled and `Blue` is a coverage gap — a different
+    /// obligation, discharged by writing an arm rather than by finishing a
+    /// pattern. Both halts look identical at run time, so this is the assertion
+    /// that keeps them distinguishable across the edit.
+    #[test]
+    fn a_fill_turns_a_held_constructor_into_an_uncovered_one()
+    {
+        let holed = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} }}"
+        );
+        let before = notes(TestText(holed.as_str()));
+        assert!(
+            before
+                .iter()
+                .any(|note| note.contains("IndeterminatePattern")),
+            "before the fill the match reports an unfinished test: {before:?}"
+        );
+        assert!(
+            !before.iter().any(|note| note.contains("MissingCaseArm")),
+            "and reports no missing arm, because the hole stands in front of both: {before:?}"
+        );
+
+        let filled = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 }} \
+             }}"
+        );
+        let after = notes(TestText(filled.as_str()));
+        assert!(
+            after.iter().any(|note| note.contains("MissingCaseArm")),
+            "after it `Blue` is an uncovered constructor: {after:?}"
+        );
+        assert!(
+            !after
+                .iter()
+                .any(|note| note.contains("IndeterminatePattern")),
+            "and no unfinished test remains: {after:?}"
         );
     }
 
@@ -554,6 +695,25 @@ mod tests
             | ShellOutcome::Completed(_)
             | ShellOutcome::Exited { .. }
             | ShellOutcome::HostFailed(_) => None,
+        }
+    }
+
+    /// Submits one expression to `session` and returns its evaluation.
+    ///
+    /// The session is the resumed path: every append types through the
+    /// incremental checkpoint engine, so an expression submitted after a fill
+    /// is evaluated against the state that resume validated.
+    fn evaluated(
+        session: &mut Session,
+        source: TestText<'_>,
+    ) -> Option<Eval>
+    {
+        let submission = session.submit(source.0).ok()?;
+        match *submission.outcomes.last()? {
+            | ItemOutcome::Expression { ref value, .. } => Some(value.clone()),
+            | ItemOutcome::Definition { .. }
+            | ItemOutcome::TypeError { .. }
+            | ItemOutcome::Holey => None,
         }
     }
 
