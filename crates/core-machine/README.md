@@ -1,4 +1,4 @@
-# core-machine
+# gandr-core-machine
 
 The defunctionalized typing machine for the gandr core: the operational face of the same bidirectional judgement `gandr-core-checker` states recursively.
 

@@ -1,4 +1,4 @@
-# core-checker
+# gandr-core-checker
 
 The core language's static semantics: the bidirectional type system for gandr's call-by-push-value core, realized twice and held to step-for-step agreement.
 

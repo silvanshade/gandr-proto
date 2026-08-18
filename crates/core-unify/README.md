@@ -1,4 +1,4 @@
-# core-unify
+# gandr-core-unify
 
 Predictable-fragment unification for the gandr core: a solver whose failures are named rather than silent.
 

@@ -1,4 +1,4 @@
-# core-nbe
+# gandr-core-nbe
 
 Normalization by evaluation for the gandr core: the engine that decides definitional equality.
 

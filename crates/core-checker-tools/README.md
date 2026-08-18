@@ -1,4 +1,4 @@
-# core-checker-tools
+# gandr-core-checker-tools
 
 Test-facing machinery for the two realizations of the gandr core's typing judgement — `gandr-core-checker`'s recursive one and `gandr-core-machine`'s defunctionalized one — held above both so neither carries test-only code in the source tree of the checking path.
 No shipping crate takes a library dependency on this one; every consumer is a test target.

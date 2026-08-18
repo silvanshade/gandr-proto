@@ -1,4 +1,4 @@
-# core-term
+# gandr-core-term
 
 The core call-by-push-value term substrate: the vocabulary every gandr core judgement is stated over.
 
@@ -63,7 +63,7 @@ The `gandr_feat_regex` feature (through `full`) enables the regex-backed builtin
 
 - Paul Blain Levy, "Call-by-Push-Value: A Subsuming Paradigm", in _Typed Lambda Calculi and Applications_, Springer, 1999.
   DOI [10.1007/3-540-48959-2_17](https://doi.org/10.1007/3-540-48959-2_17), ISBN 978-3-540-48959-7.
-- Robert Atkey, "Syntax and Semantics of Quantitative Type Theory", in _Proceedings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science_ (LICS '18), ACM, 2018.
+- Robert Atkey, "Syntax and Semantics of Quantitative Type Theory", in _Proceedings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science_ (LICS '18), ACM, 2018, 56–65.
   DOI [10.1145/3209108.3209189](https://doi.org/10.1145/3209108.3209189).
 - Matija Pretnar, "An Introduction to Algebraic Effects and Handlers.
   Invited Tutorial Paper", _Electronic Notes in Theoretical Computer Science_ 319, 2015, 19–35.

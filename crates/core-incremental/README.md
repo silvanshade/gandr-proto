@@ -1,11 +1,11 @@
-# core-incremental
+# gandr-core-incremental
 
 `gandr-core-incremental` re-types an editing session's program after each edit by re-typing only the region the edit reached, and re-validating rather than reusing the rest.
 Its granularity is the top-level item.
 
 The seam is deliberately parser-agnostic: an item is a name, an ascription, and a lowered core term, so a front end's spans, origin tables, and node identities cannot reach the reuse decision.
 
-## What it currently provides
+## Current provision
 
 - `region` — the item seam: one lowered top-level item, the ordered items of one revision, and the trait a front end implements to produce them.
 - `footprint` — an item's dependency footprint, over-approximated by construction: a core node it cannot represent as a read set marks the footprint opaque, which costs reuse and never soundness.
@@ -28,10 +28,11 @@ Neither is evaluation: a checkpoint records only what re-typing must reproduce, 
 `cargo nextest run -p gandr-core-incremental --features=full` runs the crate suite, whose standing obligation is the differential in `tests/incremental.rs`: for every edit, resuming from a checkpoint set yields exactly the typings a from-scratch run computes.
 The differential is driven through the item seam by an in-tree test double, so it needs no parser.
 
-## Named theoretical ideas
+## Theoretical ideas relied on
 
 Item-granular incremental typing with validated resume rather than blind reuse; conservative dependency footprints; order maintenance as the carrier of item identity across edits; content addressing as the outer integrity wall over persisted checkpoints, with re-typing as the inner validity wall.
 
 ## Primary references
 
-- Paul Dietz and Daniel Sleator, "Two algorithms for maintaining order in a list", _Proceedings of the Nineteenth Annual ACM Conference on Theory of Computing (STOC '87)_, 1987, pages 365-372, DOI: 10.1145/28395.28434.
+- Paul Dietz and Daniel Sleator, "Two algorithms for maintaining order in a list", in _Proceedings of the Nineteenth Annual ACM Conference on Theory of Computing_ (STOC '87), ACM, 1987, 365–372.
+  DOI [10.1145/28395.28434](https://doi.org/10.1145/28395.28434).
