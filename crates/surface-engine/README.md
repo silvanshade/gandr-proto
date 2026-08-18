@@ -1,8 +1,8 @@
-# surface-engine
+# gandr-surface-engine
 
 `gandr-surface-engine` is the front end between a committed CST and the core: it lowers surface syntax to core IR, keeps source identity in a side table so the core stays span-free, and drives the session that carries checked state across submissions.
 
-## What it currently provides
+## Current provision
 
 - **CST-to-core lowering** over the covered fragment, with every core node's provenance in an origin map rather than in the core syntax.
   Surface sugar is recorded as it is elaborated, so a display layer can recover what the user wrote.
@@ -21,7 +21,7 @@
   A tag no arm reaches stays a missing-arm hole, and the note is what tells the two apart.
   Two arms sharing one constructor head are declined by name, because reaching the second needs an arm body two branches can jump to.
 
-## Planned but not implemented
+## Planned but absent
 
 - Module sealing past the syntax front: the opaque ascription parses and the lowerer declines it by name, because reading it as transparent would expose every component while the source says sealed.
 - User-declared operators reaching the grammar-extension seam, mutual-recursion blocks, and indexed constraints — each reserved in the grammar and declined here.
@@ -33,11 +33,11 @@
 
 `Session::submit` is the entry point for anything stateful; `lower::lower_source` and `lower::lower_source_total` are the one-shot lowering faces, strict and total respectively.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Call-by-push-value, bidirectional typing, elaboration to a core calculus with typed holes, error localization and recovery as a total procedure, live pattern matching in which an unfinished pattern makes a match indeterminate rather than absent, pattern-matrix compilation to a decision structure, and wiring diagrams with embedding-based sub-diagram matching.
 
-## Primary resources
+## Primary references
 
 - Paul Blain Levy, _Call-By-Push-Value: A Functional/Imperative Synthesis_, Springer Netherlands, 2003, `doi:10.1007/978-94-007-0954-6` — the value/computation split the core IR and this crate's sort-directed lowering are organized by.
 - Eric Zhao, Raef Maroof, Anand Dukkipati, Andrew Blinn, Zhiyi Pan and Cyrus Omar, _Total Type Error Localization and Recovery with Holes_, 2024, `doi:10.1145/3632910` — the marked-expression discipline behind total lowering and the no-meaningless-states posture.
