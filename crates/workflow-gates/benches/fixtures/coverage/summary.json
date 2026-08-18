@@ -1,7 +1,7 @@
 {
   "type": "llvm.coverage.json.export",
   "version": "3.1.0",
-  "cargo_llvm_cov": { "version": "0.8.7" },
+  "cargo_llvm_cov": { "version": "0.9.0" },
   "data": [
     {
       "files": [

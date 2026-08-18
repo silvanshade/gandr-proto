@@ -3,11 +3,7 @@
 
 ["coverage:check"]
 description = "Generate coverage, verify the ratchet harness, then enforce per-file floors"
-run = [
-  { task = "cargo:llvm-cov" },
-  { task = "test:coverage-ratchet" },
-  # { task = "coverage:check:enforce" }
-]
+run = [{ task = "cargo:llvm-cov" }, { task = "test:coverage-ratchet" }, { task = "coverage:check:enforce" }]
 
 ["coverage:check:enforce"]
 description = "Fail when measured per-file coverage regresses below coverage/floors.toml"

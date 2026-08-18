@@ -845,7 +845,7 @@ pub(super) enum CoverageFailure
         /// File whose floor disappeared.
         file: ProductionFile,
     },
-    /// A nonexempt new file did not start at the target floor.
+    /// A nonexempt new file did not start at its measured baseline.
     NewFloorWrongStart
     {
         /// New file.

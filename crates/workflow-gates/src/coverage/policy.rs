@@ -191,8 +191,8 @@ pub fn ratchet(
 /// # Contract
 /// - requires: inputs are readable current summary and floor TOML files.
 /// - ensures: raises existing floors to `max(existing, min(measured, target))`,
-///   starts new files at target, retains stale rows, and keeps only
-///   still-active exemptions for floors below target.
+///   starts newly measured files at their exact measured floor, retains stale
+///   rows, and keeps only still-active exemptions for floors below target.
 /// - provides: deterministic ratchet counts plus rendered TOML.
 /// - fails: returns typed gate errors for unreadable or invalid inputs.
 /// - panics: none.
@@ -600,7 +600,10 @@ fn append_base_failures(
             }
         }
         else {
-            current.target_percent
+            match measured_percent {
+                | Some(percent) => percent,
+                | None => current.target_percent,
+            }
         };
         if *floor != expected {
             if exempt {
@@ -649,7 +652,7 @@ fn ratchet_maps(
             },
             | None => {
                 increment_counter(&mut added)?;
-                rendered_rows.insert(file.clone(), target);
+                rendered_rows.insert(file.clone(), row.percent);
             },
         }
     }
@@ -701,10 +704,10 @@ fn validate_summary_identity(
         .and_then(serde_json::Value::as_str);
     if root.get("type").and_then(serde_json::Value::as_str) != Some("llvm.coverage.json.export")
         || root.get("version").and_then(serde_json::Value::as_str) != Some("3.1.0")
-        || cargo_version != Some("0.8.7")
+        || cargo_version != Some("0.9.0")
     {
         return Err(coverage_error(
-            "coverage summary exporter identity must be llvm.coverage.json.export 3.1.0 from cargo-llvm-cov 0.8.7",
+            "coverage summary exporter identity must be llvm.coverage.json.export 3.1.0 from cargo-llvm-cov 0.9.0",
         ));
     }
     Ok(())
@@ -1232,7 +1235,7 @@ where
 fn parse_floor_percent<'semantic, F>(
     file: F,
     raw: &RawTomlValue,
-    target_percent: Percent,
+    _target_percent: Percent,
 ) -> Result<Percent, GateError>
 where
     F: Into<FileText<'semantic>>,
@@ -1244,44 +1247,31 @@ where
             "coverage floor for {file} must be numeric"
         )));
     };
-    let floor = match Percent::parse_exact(text) {
-        | Ok(percent) => percent,
-        | Err(PercentParseError::HiddenPrecision) => {
-            return Err(coverage_error(format!(
-                "coverage floor for {file} must have at most two decimal places"
-            )));
-        },
-        | Err(PercentParseError::Invalid) => {
-            return Err(coverage_error(format!(
-                "coverage floor for {file} must be numeric"
-            )));
-        },
+    match Percent::parse_exact(text) {
+        | Ok(percent) => Ok(percent),
+        | Err(PercentParseError::HiddenPrecision) => Err(coverage_error(format!(
+            "coverage floor for {file} must have at most two decimal places"
+        ))),
+        | Err(PercentParseError::Invalid) => Err(coverage_error(format!(
+            "coverage floor for {file} must be numeric"
+        ))),
         | Err(
             PercentParseError::NonFinite
             | PercentParseError::Negative
             | PercentParseError::OutOfRange
             | PercentParseError::Overflow,
-        ) => {
-            return Err(floor_between_error(file, target_percent));
-        },
-    };
-    if floor > target_percent {
-        return Err(floor_between_error(file, target_percent));
+        ) => Err(floor_between_error(file)),
     }
-    Ok(floor)
 }
 
 /// Build the stable floor range diagnostic.
-fn floor_between_error<'semantic, F>(
-    file: F,
-    target_percent: Percent,
-) -> GateError
+fn floor_between_error<'semantic, F>(file: F) -> GateError
 where
     F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     coverage_error(format!(
-        "coverage floor for {file} must be between 0.00% and {target_percent}%"
+        "coverage floor for {file} must be between 0.00% and 100.00%"
     ))
 }
 
@@ -1563,13 +1553,13 @@ mod tests
     #[test]
     fn json_identity_and_shape_failures_are_exact()
     {
-        let wrong_identity = r#"{"type":"llvm.coverage.json.export","version":"9.9.9","cargo_llvm_cov":{"version":"0.8.7"},"data":[{"files":[]}]}"#;
+        let wrong_identity = r#"{"type":"llvm.coverage.json.export","version":"9.9.9","cargo_llvm_cov":{"version":"0.9.0"},"data":[{"files":[]}]}"#;
         assert_error_contains(
             parse_measured_text("summary.json", wrong_identity, Path::new(".")),
-            "coverage summary exporter identity must be llvm.coverage.json.export 3.1.0 from cargo-llvm-cov 0.8.7",
+            "coverage summary exporter identity must be llvm.coverage.json.export 3.1.0 from cargo-llvm-cov 0.9.0",
         );
 
-        let multiple_data = r#"{"type":"llvm.coverage.json.export","version":"3.1.0","cargo_llvm_cov":{"version":"0.8.7"},"data":[{},{}]}"#;
+        let multiple_data = r#"{"type":"llvm.coverage.json.export","version":"3.1.0","cargo_llvm_cov":{"version":"0.9.0"},"data":[{},{}]}"#;
         assert_error_contains(
             parse_measured_text("summary.json", multiple_data, Path::new(".")),
             "coverage summary JSON must contain exactly one data object",
@@ -1757,7 +1747,7 @@ exempt new coverage floor for crates/demo/src/new.rs must start at measured base
         );
 
         let ordinary_new_current =
-            floors_map(&[(FILE_A, "80.00"), (FILE_C, "42.00")], NO_EXEMPTIONS);
+            floors_map(&[(FILE_A, "80.00"), (FILE_C, "41.00")], NO_EXEMPTIONS);
         let ordinary_new_base = floors_map(&[(FILE_A, "80.00")], NO_EXEMPTIONS);
         let ordinary_new_text = check_maps(
             &measured_map(&[
@@ -1773,7 +1763,7 @@ exempt new coverage floor for crates/demo/src/new.rs must start at measured base
         .join("\n");
         assert!(
             ordinary_new_text.contains(
-                "new coverage floor for crates/demo/src/new.rs must start at 80.00%, got 42.00%"
+                "new coverage floor for crates/demo/src/new.rs must start at 42.00%, got 41.00%"
             ),
             "ordinary new-file seed diagnostic should be present",
         );
@@ -1830,7 +1820,7 @@ target_percent = 80.00
 
 [files]
 "crates/demo/src/lib.rs" = 80.03
-"crates/demo/src/parser.rs" = 80.00
+"crates/demo/src/parser.rs" = 93.00
 "crates/demo/src/stale.rs" = 77.00
 "###
         );
@@ -1841,11 +1831,53 @@ target_percent = 80.00
             "",
             "[files]",
             "\"crates/demo/src/lib.rs\" = 80.03",
-            "\"crates/demo/src/parser.rs\" = 80.00",
+            "\"crates/demo/src/parser.rs\" = 93.00",
             "\"crates/demo/src/stale.rs\" = 77.00",
         ]
         .join("\n");
         assert_eq!(report.toml, expected, "ratchet TOML should be stable");
+    }
+    /// Ratcheted new-file floors round-trip through the current policy.
+    #[test]
+    fn ratchet_new_file_floors_round_trip_through_check()
+    {
+        let measured = measured_map(&[
+            (
+                FILE_A,
+                NINETY_FIVE_PERCENT_COVERED_LINES,
+                PERCENT_TOTAL_LINES,
+            ),
+            (
+                FILE_B,
+                NINETY_THREE_PERCENT_COVERED_LINES,
+                PERCENT_TOTAL_LINES,
+            ),
+            (FILE_C, FORTY_TWO_PERCENT_COVERED_LINES, PERCENT_TOTAL_LINES),
+        ]);
+        let floors = floors_map(&[(FILE_A, "80.03")], NO_EXEMPTIONS);
+        let base = floors_map(&[(FILE_A, "80.03")], NO_EXEMPTIONS);
+        let report = ratchet_maps(&measured, &floors).expect("ratchet fixture should compute");
+        let current = parse_floors_text("ratchet.toml", &report.toml, false)
+            .expect("ratchet output should parse as current policy");
+        let failures = check_maps(&measured, &current, Some(&base));
+        assert!(
+            failures.is_empty(),
+            "ratchet output must pass current policy: {failures:?}"
+        );
+        assert_eq!(
+            current
+                .files
+                .get(&ProductionFile::from_floor_key(FILE_B).expect("fixture path"))
+                .expect("above-target new file floor"),
+            &Percent::parse_exact("93.00").expect("exact percent"),
+        );
+        assert_eq!(
+            current
+                .files
+                .get(&ProductionFile::from_floor_key(FILE_C).expect("fixture path"))
+                .expect("below-target new file floor"),
+            &Percent::parse_exact("42.00").expect("exact percent"),
+        );
     }
 
     /// TOML policy shape rejects precision, range, paths, and exemption errors.
@@ -1859,10 +1891,10 @@ target_percent = 80.00
         assert_error_contains(
             parse_floors_text(
                 "floors.toml",
-                "target_percent = 80.0\n[files]\n\"crates/demo/src/lib.rs\" = 80.01\n",
+                "target_percent = 80.0\n[files]\n\"crates/demo/src/lib.rs\" = 101.00\n",
                 false,
             ),
-            "must be between 0.00% and 80.00%",
+            "must be between 0.00% and 100.00%",
         );
         assert_error_contains(
             parse_floors_text(
@@ -1986,7 +2018,10 @@ target_percent = 80.00
         let report =
             ratchet(&summary_path, &floors_path, Path::new(".")).expect("ratchet should pass");
         assert_eq!(1, report.raised, "measured coverage should raise FILE_A");
-        assert_eq!(1, report.added, "FILE_B should be added at the target");
+        assert_eq!(
+            1, report.added,
+            "FILE_B should be added at its measured floor"
+        );
         assert_eq!(
             0, report.unchanged,
             "no measured current row should stay flat"
@@ -2006,7 +2041,7 @@ target_percent = 80.00
 
 [files]
 "crates/demo/src/lib.rs" = 75.00
-"crates/demo/src/parser.rs" = 80.00
+"crates/demo/src/parser.rs" = 100.00
 "crates/demo/src/stale.rs" = 77.00
 "###
         );
@@ -2112,7 +2147,7 @@ target_percent = 80.00
         let new_floor_path = temp.path().join("new-floors.toml");
         write_text(
             &new_floor_path,
-            &floors_toml(&[(FILE_A, "80.00"), (FILE_C, "42.00")], NO_EXEMPTIONS),
+            &floors_toml(&[(FILE_A, "80.00"), (FILE_C, "41.00")], NO_EXEMPTIONS),
         );
         let new_findings = check_with_base_policy(
             &new_summary_path,
@@ -2124,7 +2159,7 @@ target_percent = 80.00
         assert!(
             new_findings.iter().any(|finding| {
                 finding.detail
-                    == "new coverage floor for crates/demo/src/new.rs must start at 80.00%, got 42.00%"
+                    == "new coverage floor for crates/demo/src/new.rs must start at 42.00%, got 41.00%"
             }),
             "ordinary new-floor findings should use the public finding fields",
         );
@@ -2387,7 +2422,7 @@ target_percent = 80.00
                 &format!("[files]\n\"{FILE_A}\" = inf\n"),
                 false,
             ),
-            "coverage floor for crates/demo/src/lib.rs must be between 0.00% and 80.00%",
+            "coverage floor for crates/demo/src/lib.rs must be between 0.00% and 100.00%",
         );
         assert_error_contains(
             parse_floors_text(
@@ -2796,7 +2831,7 @@ target_percent = 80.00
             .collect::<Vec<_>>()
             .join(",");
         format!(
-            "{{\"type\":\"llvm.coverage.json.export\",\"version\":\"3.1.0\",\"cargo_llvm_cov\":{{\"version\":\"0.8.7\"}},\"data\":[{{\"files\":[{}]}}]}}",
+            "{{\"type\":\"llvm.coverage.json.export\",\"version\":\"3.1.0\",\"cargo_llvm_cov\":{{\"version\":\"0.9.0\"}},\"data\":[{{\"files\":[{}]}}]}}",
             joined
         )
     }
@@ -2937,7 +2972,7 @@ target_percent = 80.00
             ));
         }
         format!(
-            "{{\"type\":\"llvm.coverage.json.export\",\"version\":\"3.1.0\",\"cargo_llvm_cov\":{{\"version\":\"0.8.7\"}},\"data\":[{{\"files\":[{}]}}]}}",
+            "{{\"type\":\"llvm.coverage.json.export\",\"version\":\"3.1.0\",\"cargo_llvm_cov\":{{\"version\":\"0.9.0\"}},\"data\":[{{\"files\":[{}]}}]}}",
             files.join(",")
         )
     }
