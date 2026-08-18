@@ -21,6 +21,8 @@ mod linearity;
 #[cfg(test)]
 mod normal_form;
 #[cfg(test)]
+mod pathway;
+#[cfg(test)]
 mod shift;
 #[cfg(test)]
 mod toy_alphabet;

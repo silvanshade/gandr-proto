@@ -127,6 +127,36 @@ copy_wrapper!(
     "Number of adjacent transpositions an exchange witness performs."
 );
 copy_wrapper!(
+    PathwayCompression,
+    bool,
+    "Whether a candidate pathway is already represented by a held normal form."
+);
+copy_wrapper!(
+    PathwayLengthBudget,
+    usize,
+    "Maximum number of composed steps a synthesized pathway may reach."
+);
+copy_wrapper!(
+    PathwayCandidateBudget,
+    usize,
+    "Maximum number of composite candidates a pathway search may build."
+);
+copy_wrapper!(
+    PathwayCandidateCount,
+    usize,
+    "Number of composite candidates a pathway search has built."
+);
+copy_wrapper!(
+    PathwayLength,
+    usize,
+    "Number of composed steps in a synthesized pathway."
+);
+copy_wrapper!(
+    TargetEventCount,
+    usize,
+    "Number of events in a derivation that fire the queried target cell."
+);
+copy_wrapper!(
     CompletionStepBudget,
     usize,
     "Maximum number of completion worklist steps."

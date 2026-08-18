@@ -104,6 +104,16 @@
 //!   [`compose::compose_invertible`] (the unconditional coherence lane) and
 //!   [`compose::compose_directed`] (gated by variable-flow acyclicity across
 //!   the composed seam, declining with the cycle as diagnostic).
+//! - [`pathway`] — **static pathway queries**: which compressed derivations can
+//!   end in a target cell, grown backwards from the target by composition and
+//!   compressed to normal form, evaluating nothing. Its target-occurs-only-last
+//!   condition is decided as an order property rather than over an equivalence
+//!   class, because the rearrangements of a derivation are exactly the linear
+//!   extensions of its [`causal`] order. The positive verdict is named for what
+//!   it is worth: independence is granted only where the [`shift`] guard can
+//!   discharge it, so a refutation is sound while an acceptance is
+//!   guard-relative. An obstruction that describes the candidate drops it; a
+//!   kill signal reaches the caller.
 //! - [`bridge`] — reification of the frozen fragment into the L0 command arena.
 //!
 //! # The L2 gate
@@ -146,6 +156,7 @@ pub mod instantiate;
 pub mod linearity;
 pub mod normal_form;
 pub mod overlap;
+pub mod pathway;
 pub mod pattern;
 pub mod rewrite;
 pub mod sequent;
