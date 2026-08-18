@@ -48,9 +48,8 @@ use alloc::rc::Rc;
 use gandr_core_checker::discipline::subtype::comp_subtype;
 use gandr_core_checker::discipline::subtype::value_subtype;
 use gandr_core_checker::judgements::checker;
-use gandr_core_checker::machine;
-use gandr_core_checker::machine::control::Dir;
-use gandr_core_checker::machine::control::Trace;
+use gandr_core_checker::judgements::control::Dir;
+use gandr_core_checker::judgements::control::Trace;
 use gandr_core_checker_tools::strategies::any_grade;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
@@ -157,7 +156,8 @@ fn both_comp(
 ) -> PairedRuns
 {
     let (rec_result, rec_trace) = checker::run_comp(ctx.clone(), comp.clone(), dir.clone());
-    let (mach_result, mach_trace) = machine::run_comp(ctx.clone(), comp.clone(), dir.clone());
+    let (mach_result, mach_trace) =
+        gandr_core_machine::run_comp(ctx.clone(), comp.clone(), dir.clone());
     ((rec_result, rec_trace), (mach_result, mach_trace))
 }
 
@@ -188,7 +188,8 @@ fn both_value(
 ) -> PairedRuns
 {
     let (rec_result, rec_trace) = checker::run_value(ctx.clone(), value.clone(), dir.clone());
-    let (mach_result, mach_trace) = machine::run_value(ctx.clone(), value.clone(), dir.clone());
+    let (mach_result, mach_trace) =
+        gandr_core_machine::run_value(ctx.clone(), value.clone(), dir.clone());
     ((rec_result, rec_trace), (mach_result, mach_trace))
 }
 
@@ -1357,7 +1358,7 @@ mod split_motive
 /// Example-based tests over the core-CBPV worked examples.
 mod examples
 {
-    use gandr_core_checker::machine::control::Control;
+    use gandr_core_checker::judgements::control::Control;
 
     use super::*;
 
@@ -1377,7 +1378,7 @@ mod examples
             "identity must infer A → F A"
         );
 
-        let (_, trace) = machine::run_comp(Ctx::new(), identity.clone(), Dir::Infer);
+        let (_, trace) = gandr_core_machine::run_comp(Ctx::new(), identity.clone(), Dir::Infer);
         let expected_trace = vec![
             Control::DescendComp {
                 comp: identity,
@@ -1486,20 +1487,20 @@ mod examples
     }
 
     /// (a8) Single-stepping Example 1 (`λx:A. ret x ⇑ A → F A`), asserting the
-    /// stack [`machine::State::depth`] at each visited state. The frame stack
-    /// grows `Abs`, then `Ret`, holds while the leaf `x` returns, then unwinds
-    /// `Ret`, then `Abs` — so the depths are `0,1,2,2,1,0`, one per control of
-    /// the worked trace.
+    /// stack [`gandr_core_machine::State::depth`] at each visited state. The
+    /// frame stack grows `Abs`, then `Ret`, holds while the leaf `x`
+    /// returns, then unwinds `Ret`, then `Abs` — so the depths are
+    /// `0,1,2,2,1,0`, one per control of the worked trace.
     #[test]
     fn example_1_depth_per_step()
     {
         let atom_a = ValueType::atom("A");
         let identity = Comp::lam_ann("x", atom_a, Comp::ret(Value::var("x")));
-        let mut state = machine::State::new_comp(Ctx::new(), identity, Dir::Infer);
+        let mut state = gandr_core_machine::State::new_comp(Ctx::new(), identity, Dir::Infer);
         let mut depths = vec![state.depth()];
         // Loops while the machine steps; `Done` (expected) or an `Error` (which
         // would leave `depths` short and fail the assertion) ends it.
-        while let machine::Outcome::Step(next) = machine::step(state) {
+        while let gandr_core_machine::Outcome::Step(next) = gandr_core_machine::step(state) {
             state = next;
             depths.push(state.depth());
         }
@@ -6589,7 +6590,7 @@ proptest! {
         prop_assert_eq!(&rec_result, &mach_result);
         prop_assert_eq!(mach_result, Ok(Ty::Comp(ty)));
         // (5) A successful run restores Γ: the final context equals the initial.
-        let report = machine::run_report(machine::State::new_comp(base_ctx(), comp, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_comp(base_ctx(), comp, dir));
         prop_assert_eq!(report.ctx, base_ctx());
     }
 
@@ -6609,7 +6610,7 @@ proptest! {
         prop_assert_eq!(&rec_result, &mach_result);
         prop_assert_eq!(mach_result, Ok(Ty::Comp(ty)));
         // (5) A successful run restores Γ: the final context equals the initial.
-        let report = machine::run_report(machine::State::new_comp(base_ctx(), comp, Dir::Infer));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_comp(base_ctx(), comp, Dir::Infer));
         prop_assert_eq!(report.ctx, base_ctx());
     }
 
@@ -6629,7 +6630,7 @@ proptest! {
         prop_assert_eq!(&rec_result, &mach_result);
         prop_assert_eq!(mach_result, Ok(Ty::Value(ty)));
         // (5) A successful run restores Γ: the final context equals the initial.
-        let report = machine::run_report(machine::State::new_value(base_ctx(), value, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_value(base_ctx(), value, dir));
         prop_assert_eq!(report.ctx, base_ctx());
     }
 
@@ -6648,7 +6649,7 @@ proptest! {
         prop_assert_eq!(&rec_result, &mach_result);
         prop_assert_eq!(mach_result, Ok(Ty::Value(ty)));
         // (5) A successful run restores Γ: the final context equals the initial.
-        let report = machine::run_report(machine::State::new_value(base_ctx(), value, Dir::Infer));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_value(base_ctx(), value, Dir::Infer));
         prop_assert_eq!(report.ctx, base_ctx());
     }
 
@@ -6680,7 +6681,7 @@ proptest! {
     #[test]
     fn step_counter_tracks_trace_length_comp(comp in arb_comp(3_u32), dir in arb_comp_dir())
     {
-        let report = machine::run_report(machine::State::new_comp(base_ctx(), comp, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_comp(base_ctx(), comp, dir));
         prop_assert!(!report.trace.is_empty());
         prop_assert_eq!(usize::try_from(u64::from(report.steps)).ok(), Some(report.trace.len().saturating_sub(1)));
     }
@@ -6689,7 +6690,7 @@ proptest! {
     #[test]
     fn step_counter_tracks_trace_length_value(value in arb_value(3_u32), dir in arb_value_dir())
     {
-        let report = machine::run_report(machine::State::new_value(base_ctx(), value, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_value(base_ctx(), value, dir));
         prop_assert!(!report.trace.is_empty());
         prop_assert_eq!(usize::try_from(u64::from(report.steps)).ok(), Some(report.trace.len().saturating_sub(1)));
     }
@@ -6700,7 +6701,7 @@ proptest! {
     #[test]
     fn internal_shape_texts_never_surface_comp(comp in arb_comp(3_u32), dir in arb_comp_dir())
     {
-        let (result, _) = machine::run_comp(base_ctx(), comp, dir);
+        let (result, _) = gandr_core_machine::run_comp(base_ctx(), comp, dir);
         if let Err(TypeError::ShapeMismatch { expected, .. }) = result {
             prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_VALUE);
             prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_COMP);
@@ -6711,7 +6712,7 @@ proptest! {
     #[test]
     fn internal_shape_texts_never_surface_value(value in arb_value(3_u32), dir in arb_value_dir())
     {
-        let (result, _) = machine::run_value(base_ctx(), value, dir);
+        let (result, _) = gandr_core_machine::run_value(base_ctx(), value, dir);
         if let Err(TypeError::ShapeMismatch { expected, .. }) = result {
             prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_VALUE);
             prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_COMP);
@@ -7007,7 +7008,7 @@ proptest! {
     /// session endpoints, held capabilities, acquired channels — is a deferred
     /// `+feature`), so a reified stack captures no obligations and `resume` /
     /// `discard` / duplication are unrestricted. This is the conformance
-    /// meta-invariant the [`gandr_core_term::ctx::Sigma`] and [`gandr_core_checker::machine::stack`] module docs
+    /// meta-invariant the [`gandr_core_term::ctx::Sigma`] and [`gandr_core_checker::judgements::stack`] module docs
     /// reference: it pins the "vacuous in v0" claim across the **whole** free
     /// generator space — the new `stk` / `resume` / `reset` / `shift` control
     /// terms included — so the one-shot/linear discipline (whose laws are
@@ -7017,7 +7018,7 @@ proptest! {
     #[test]
     fn sigma_stays_empty_through_every_comp_run(comp in arb_comp(3_u32), dir in arb_comp_dir())
     {
-        let report = machine::run_report(machine::State::new_comp(base_ctx(), comp, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_comp(base_ctx(), comp, dir));
         prop_assert!(
             bool::from(report.ctx.sigma().is_empty()),
             "Σ must stay empty after every run: no v0 rule populates it"
@@ -7031,7 +7032,7 @@ proptest! {
     #[test]
     fn sigma_stays_empty_through_every_value_run(value in arb_value(3_u32), dir in arb_value_dir())
     {
-        let report = machine::run_report(machine::State::new_value(base_ctx(), value, dir));
+        let report = gandr_core_machine::run_report(gandr_core_machine::State::new_value(base_ctx(), value, dir));
         prop_assert!(
             bool::from(report.ctx.sigma().is_empty()),
             "Σ must stay empty after every run: no v0 rule populates it"

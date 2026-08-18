@@ -5,15 +5,17 @@
 //! record §"The core call-by-push-value calculus", realized twice:
 //!
 //! - [`judgements::checker`] — the direct-style *recursive* bidirectional
-//!   checker;
-//! - [`machine`] — the *defunctionalized typing machine* obtained from the
-//!   recursive checker by the functional correspondence (CPS transform, then
-//!   defunctionalization of the continuations into an explicit stack of
-//!   frames), per the typing-machine design record and ADR-9.
+//!   checker, which is this crate's;
+//! - `gandr_core_machine` — the *defunctionalized typing machine* obtained from
+//!   the recursive checker by the functional correspondence (CPS transform,
+//!   then defunctionalization of the continuations into an explicit stack of
+//!   frames), per the typing-machine design record and ADR-9. It is a crate
+//!   above this one, and the edge runs one way: the machine names the judgement
+//!   layer, and nothing here names the machine.
 //!
 //! Both implementations are kept in-tree and property-tested for
 //! *step-for-step* agreement: the recursive checker logs a
-//! [`machine::control::Control`] event at every call entry (`Descend`) and
+//! [`judgements::control::Control`] event at every call entry (`Descend`) and
 //! every *successful* call exit (`Return`) — a failing call logs no `Return`,
 //! exactly as the machine takes no `Return` step past the failing frame — and
 //! that event log must equal the sequence of control registers the machine
@@ -25,10 +27,10 @@
 //! The modules are grouped by what they are, so that each candidate crate
 //! boundary is visible before anyone tries to cut one:
 //!
-//! - [`judgements`] — the typing judgement itself and the two that hang off it:
-//!   packages and sealing;
-//! - [`machine`] — the defunctionalized realization, with its control register
-//!   and its stack-typing judgement;
+//! - [`judgements`] — the typing judgement itself, the direction and trace
+//!   vocabulary both realizations speak, the stack-typing judgement reified
+//!   stacks need, and the two judgements that hang off the first: packages and
+//!   sealing;
 //! - [`discipline`] — the rules the checker applies beside the judgement:
 //!   subsumption and total error marking;
 //! - [`kernel_bridge`] — the lowering into the certified kernel's closed
@@ -73,8 +75,8 @@
 //! Incremental re-typing rides on this crate rather than living in it:
 //! `gandr-core-incremental` carries the parser-agnostic item seam, the
 //! dependency footprints, and the validated-resume checkpoint engine, and
-//! drives them through [`machine`] over the substrate's `syntax`, `types`, and
-//! `ctx` vocabulary.
+//! drives them through `gandr_core_machine` over the substrate's `syntax`,
+//! `types`, and `ctx` vocabulary.
 //!
 //! No grade *constraints* beyond the inline `1 ⊑ r` force check of §"Core
 //! rules" (matched-`U` operations emit none), no unions/intersections, no
@@ -87,4 +89,3 @@ extern crate alloc;
 pub mod discipline;
 pub mod judgements;
 pub mod kernel_bridge;
-pub mod machine;

@@ -18,9 +18,11 @@ path = "tests/lib.rs"
 [dependencies]
 # BLAKE3 gives persisted checkpoint identities a stable content address.
 blake3.workspace = true
-# The typing machine an item is re-typed through, and the marking layer the
-# checkpoint validator reads.
+# The marking layer the checkpoint validator reads, and the judgement layer the
+# machine below is stated over.
 gandr-core-checker.workspace = true
+# The typing machine an item is re-typed through.
+gandr-core-machine.workspace = true
 # The core CBPV vocabulary an item carries: `syntax::Term`, `types::Ty`,
 # `ctx::Ctx`, and `error::TypeError`.
 gandr-core-term.workspace = true

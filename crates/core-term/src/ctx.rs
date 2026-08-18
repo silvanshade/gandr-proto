@@ -23,7 +23,7 @@
 //! its initial value (every bind is matched by an unbind). On the *error* path
 //! they diverge — the recursive checker unwinds `Γ` along the host call stack,
 //! while the machine leaves `Γ` at the failure point and surfaces it through
-//! `gandr_core_checker::machine::FailureState` (the machine module's error-path
+//! `gandr_core_machine::FailureState` (the machine module's error-path
 //! `Γ` contract). The conformance suite therefore compares
 //! [`crate::error::TypeError`] values, not `Γ`.
 

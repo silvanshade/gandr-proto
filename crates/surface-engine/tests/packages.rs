@@ -21,7 +21,7 @@
 mod tests
 {
     use gandr_core_checker::judgements::checker::run_comp;
-    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::judgements::control::Dir;
     use gandr_core_sequent::machine::run_comp as evaluate;
     use gandr_core_term::ctx::Ctx;
     use gandr_core_term::outcome::Eval;

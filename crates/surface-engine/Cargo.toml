@@ -21,6 +21,9 @@ gandr-core-checker.workspace = true
 # parser-agnostic `region::Item`s, `item_source` implements its seam, and the
 # session-facing gate resumes through its checkpoint engine.
 gandr-core-incremental.workspace = true
+# The typing machine the session drives and the diagnostic surface reads a
+# failure state from.
+gandr-core-machine.workspace = true
 gandr-core-sequent.workspace = true
 # The core CBPV term and type vocabulary lowering produces and the session
 # carries, plus the host-effect seam foreign declarations are lowered onto.

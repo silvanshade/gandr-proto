@@ -4,7 +4,7 @@
 //!
 //! The report combines marks, obligations, and goals in one envelope. It maps
 //! a typing failure
-//! ([`gandr_core_checker::machine::FailureState`] +
+//! ([`gandr_core_machine::FailureState`] +
 //! [`gandr_core_term::error::TypeError`]) together with the source identity
 //! in an [`OriginMap`](crate::origin) to a structured, source-ranged
 //! [`Diagnostic`], and carries the hole **goals** ([`crate::goals`]) in the
@@ -83,13 +83,13 @@ use gandr_core_checker::discipline::mark::Mark;
 use gandr_core_checker::discipline::mark::Marking;
 use gandr_core_checker::discipline::mark::mark_comp;
 use gandr_core_checker::discipline::mark::mark_value;
-use gandr_core_checker::machine::FailureState;
-use gandr_core_checker::machine::Frame;
-use gandr_core_checker::machine::Outcome;
-use gandr_core_checker::machine::control::Control;
-use gandr_core_checker::machine::control::Dir;
-use gandr_core_checker::machine::step;
+use gandr_core_checker::judgements::control::Control;
+use gandr_core_checker::judgements::control::Dir;
 use gandr_core_incremental::region::Item;
+use gandr_core_machine::FailureState;
+use gandr_core_machine::Frame;
+use gandr_core_machine::Outcome;
+use gandr_core_machine::step;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::syntax::Comp;

@@ -18,7 +18,7 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::judgements::control::Dir;
     use gandr_core_sequent::machine::run_comp;
     use gandr_core_term::boundary::IntegerLiteral;
     use gandr_core_term::ctx::Ctx;

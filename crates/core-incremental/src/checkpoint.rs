@@ -59,8 +59,7 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::machine;
-use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::judgements::control::Dir;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::syntax::Term;
@@ -546,7 +545,7 @@ fn type_item(
 ///
 /// Dispatches on sort and ascription (an item is checked against its recorded
 /// ascription when the sorts match, inferred otherwise), then drives the
-/// heap-stacked typing machine ([`gandr_core_checker::machine`], ADR-47) to
+/// heap-stacked typing machine ([`gandr_core_machine`], ADR-47) to
 /// completion.
 ///
 /// # Contract
@@ -562,15 +561,17 @@ fn item_type(
 {
     let outcome = match (&item.term, &item.ascription) {
         | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
-            machine::run_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+            gandr_core_machine::run_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
         },
         | (&Term::Value(ref value), _) => {
-            machine::run_value(base.clone(), value.clone(), Dir::Infer)
+            gandr_core_machine::run_value(base.clone(), value.clone(), Dir::Infer)
         },
         | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
-            machine::run_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+            gandr_core_machine::run_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
         },
-        | (&Term::Comp(ref comp), _) => machine::run_comp(base.clone(), comp.clone(), Dir::Infer),
+        | (&Term::Comp(ref comp), _) => {
+            gandr_core_machine::run_comp(base.clone(), comp.clone(), Dir::Infer)
+        },
     };
     outcome.0
 }

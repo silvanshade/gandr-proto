@@ -40,8 +40,7 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::machine;
-use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::judgements::control::Dir;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::syntax::Value;
@@ -446,14 +445,17 @@ fn check_payload(
     schema: &ValueType,
 ) -> Option<TypeError>
 {
-    let mut state =
-        machine::State::new_value(base.clone(), value.clone(), Dir::Check(schema.clone()));
+    let mut state = gandr_core_machine::State::new_value(
+        base.clone(),
+        value.clone(),
+        Dir::Check(schema.clone()),
+    );
     loop {
-        match machine::step(state) {
-            | machine::Outcome::Step(next) => state = next,
-            | machine::Outcome::Error { error, .. } => return Some(error),
+        match gandr_core_machine::step(state) {
+            | gandr_core_machine::Outcome::Step(next) => state = next,
+            | gandr_core_machine::Outcome::Error { error, .. } => return Some(error),
             // `Done` means the payload checks.
-            | machine::Outcome::Done(_) => return None,
+            | gandr_core_machine::Outcome::Done(_) => return None,
         }
     }
 }

@@ -65,7 +65,7 @@ use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 
-use crate::machine::control::Dir;
+use crate::judgements::control::Dir;
 
 /// Completes the integer-literal rule under a direction (ADR-39 D4) — the
 /// checking-mode-polymorphic counterpart of [`finish_value`] for
@@ -590,7 +590,7 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
 /// Picks a summand or component by side, cloning out of the pair of children.
 #[inline]
 #[must_use]
-pub(crate) fn pick<T>(
+pub fn pick<T>(
     side: gandr_core_term::syntax::Side,
     fst: &Rc<T>,
     snd: &Rc<T>,

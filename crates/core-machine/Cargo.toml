@@ -1,0 +1,26 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-machine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The defunctionalized typing machine for the gandr core: an explicit frame stack over the checker's judgement layer, iterative and with no host recursion on term depth"
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The judgement layer this machine is the defunctionalized realization of: the
+# direction and trace vocabulary, the stack-typing judgement, the shared rule
+# helpers, subsumption, packages, and the recursive reference judgement itself.
+gandr-core-checker.workspace = true
+# The core CBPV terms, types, contexts, and error vocabulary a state carries.
+gandr-core-term.workspace = true
+
+[features]
+default = []
+full = ["gandr-core-checker/full"]
+
+[lints]
+workspace = true

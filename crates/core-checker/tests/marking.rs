@@ -25,7 +25,7 @@ use gandr_core_checker::discipline::mark::Marking;
 use gandr_core_checker::discipline::mark::mark_comp;
 use gandr_core_checker::discipline::mark::mark_value;
 use gandr_core_checker::judgements::checker;
-use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::judgements::control::Dir;
 use gandr_core_checker_tools::strategies::any_grade;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;

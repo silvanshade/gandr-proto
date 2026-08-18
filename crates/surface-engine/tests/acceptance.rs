@@ -35,8 +35,7 @@ mod tests
     use std::path::PathBuf;
 
     use gandr_core_checker::judgements::checker;
-    use gandr_core_checker::machine;
-    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::judgements::control::Dir;
     use gandr_core_incremental::region::Item;
     use gandr_core_term::ctx::Ctx;
     use gandr_core_term::effect::EffectRow;
@@ -178,8 +177,11 @@ mod tests
                 "the recursive checker must accept square"
             );
 
-            let (machine_result, _trace) =
-                machine::run_value(prelude_ctx(), value.clone(), Dir::Check(expected.clone()));
+            let (machine_result, _trace) = gandr_core_machine::run_value(
+                prelude_ctx(),
+                value.clone(),
+                Dir::Check(expected.clone()),
+            );
             assert_eq!(
                 machine_result,
                 Ok(Ty::Value(expected)),
@@ -922,8 +924,11 @@ mod tests
             let expected = CompType::returner(ValueType::integer());
             let checked = checker::check_comp(Ctx::new(), comp.clone(), expected.clone());
             assert_eq!(checked, Ok(expected.clone()), "the checker must accept");
-            let (machine_result, _trace) =
-                machine::run_comp(Ctx::new(), comp.clone(), Dir::Check(expected.clone()));
+            let (machine_result, _trace) = gandr_core_machine::run_comp(
+                Ctx::new(),
+                comp.clone(),
+                Dir::Check(expected.clone()),
+            );
             assert_eq!(
                 machine_result,
                 Ok(Ty::Comp(expected)),

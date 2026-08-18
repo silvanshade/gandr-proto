@@ -8,7 +8,7 @@
 //!
 //! Every call entry logs a `Descend` event and every successful call exit
 //! logs a `Return` event; the resulting [`Trace`] must equal, event for
-//! event, the sequence of control registers of [`crate::machine`] on the same
+//! event, the sequence of control registers of `gandr_core_machine` on the same
 //! input. Keeping that contract is the whole point of the file's layout: each
 //! syntactic form is handled by one rule function whose recursive call
 //! structure is exactly the frame discipline of the machine.
@@ -17,7 +17,7 @@
 //! maximum term-nesting depth is bounded by the running thread's stack size,
 //! and exceeding that bound aborts the process (stack overflow) rather than
 //! returning a [`TypeError`]. Inputs of adversarial or generated depth should
-//! go to [`crate::machine`], whose frame stack lives on the heap and is
+//! go to `gandr_core_machine`, whose frame stack lives on the heap and is
 //! validated on deeply nested terms by a machine-only test in that module.
 
 use alloc::collections::BTreeMap;
@@ -52,20 +52,20 @@ use crate::discipline::subtype::finish_comp;
 use crate::discipline::subtype::finish_int_literal;
 use crate::discipline::subtype::finish_value;
 use crate::discipline::subtype::pick;
-use crate::machine::control::Control;
-use crate::machine::control::Dir;
-use crate::machine::control::Trace;
-use crate::machine::control::unrc;
-use crate::machine::stack::arrow_components;
-use crate::machine::stack::returner_components;
-use crate::machine::stack::stk_components;
-use crate::machine::stack::with_component;
+use crate::judgements::control::Control;
+use crate::judgements::control::Dir;
+use crate::judgements::control::Trace;
+use crate::judgements::control::unrc;
+use crate::judgements::stack::arrow_components;
+use crate::judgements::stack::returner_components;
+use crate::judgements::stack::stk_components;
+use crate::judgements::stack::with_component;
 
 /// Runs the checker on a value and returns the result with its trace.
 ///
 /// The result is wrapped in [`Ty`] (rather than the sort-specific
-/// [`ValueType`]) so that the checker and [`crate::machine`] runners share one
-/// result shape — the conformance harness then compares them without an
+/// [`ValueType`]) so that the checker and `gandr_core_machine` runners share
+/// one result shape — the conformance harness then compares them without an
 /// adapter. The sort-specific entry points are [`infer_value`] /
 /// [`check_value`].
 ///
@@ -73,7 +73,7 @@ use crate::machine::stack::with_component;
 /// - ensures: on success the result arm is `Ok(Ty::Value(_))` holding the
 ///   inferred (`Dir::Infer`) or checked-against (`Dir::Check`) value type, and
 ///   the `Trace` records the full `Descend`/`Return` control sequence (equal,
-///   event for event, to `machine::run_value` on the same input).
+///   event for event, to `gandr_core_machine::run_value` on the same input).
 /// - provides: the `Trace` is returned in both arms — it is populated even when
 ///   the result arm is `Err`.
 /// - fails: the result arm is `Err` with the first `TypeError` encountered
@@ -102,13 +102,14 @@ pub fn run_value(
 /// Runs the checker on a computation and returns the result with its trace.
 ///
 /// As [`run_value`], the result is wrapped in [`Ty`] to match
-/// [`crate::machine::run_comp`].
+/// `gandr_core_machine::run_comp`.
 ///
 /// # Contract
 /// - ensures: on success the result arm is `Ok(Ty::Comp(_))` holding the
 ///   inferred (`Dir::Infer`) or checked-against (`Dir::Check`) computation
 ///   type, and the `Trace` records the full `Descend`/`Return` control sequence
-///   (equal, event for event, to `machine::run_comp` on the same input).
+///   (equal, event for event, to `gandr_core_machine::run_comp` on the same
+///   input).
 /// - provides: the `Trace` is returned in both arms — it is populated even when
 ///   the result arm is `Err`.
 /// - fails: the result arm is `Err` with the first `TypeError` encountered
@@ -1822,10 +1823,10 @@ impl Rec
     /// infers the continuation, and folds the consumed row in exactly as
     /// [`Self::rule_bind`] does (via [`combine_bind_row`]); a projection
     /// frame consumes a lazy product. The per-frame destructures are the
-    /// `crate::machine::stack` helpers shared with the typing machine, and only
-    /// the *sub-terms* (an argument value, a bind continuation) log trace
-    /// events — the structural walk does not — so the machine's frame walk
-    /// produces the identical trace.
+    /// `crate::judgements::stack` helpers shared with the typing machine, and
+    /// only the *sub-terms* (an argument value, a bind continuation) log
+    /// trace events — the structural walk does not — so the machine's frame
+    /// walk produces the identical trace.
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -1894,8 +1895,8 @@ impl Rec
     /// its expectation, but a *matched* body (a `⟨_, _⟩` / `case` / `split`
     /// checked against `?`) reconstructs a type only consistent with `C`
     /// (e.g. `? & ?`, not `?`), so returning the body type — exactly as the
-    /// machine's [`crate::machine::Frame::ResetBody`] does — is what keeps the
-    /// two faces
+    /// machine's `gandr_core_machine::Frame::ResetBody` does — is what keeps
+    /// the two faces
     /// lock-step (ADR-9; the bug a returned `C` would introduce). The
     /// restore runs only on success; on the error path the register is left
     /// as the failing derivation set it (matching the machine, whose
@@ -2066,17 +2067,19 @@ impl Rec
     }
 }
 
-/// Builds the identity eliminator base's expected type `C[x/y][here(x)/q]` —
-/// the motive's **diagonal** instance under the base binder `x` (ADR-76). The
-/// motive's endpoint binders `y` and `x` both map to the base binder, and the
-/// path binder `q` maps to `here(x)`.
+/// Builds the identity eliminator base's expected type `C[x/y][here(x)/q]`.
+///
+/// This is the motive's **diagonal** instance under the base binder `x`
+/// (ADR-76): the motive's endpoint binders `y` and `x` both map to the base
+/// binder, and the path binder `q` maps to `here(x)`.
 ///
 /// # Contract
 /// - ensures: returns `motive.body` with `motive.x` and `motive.y` replaced by
 ///   `base_binder` and `motive.q` replaced by `here(base_binder)`.
 /// - panics: none.
+#[inline]
 #[must_use]
-pub(crate) fn base_diagonal_type<'source, N>(
+pub fn base_diagonal_type<'source, N>(
     motive: &WalkMotive,
     base_binder: N,
 ) -> CompType
@@ -2099,8 +2102,9 @@ where
 /// - ensures: returns `motive.body` with `motive.x`/`motive.y`/`motive.q`
 ///   replaced by `lhs`/`rhs`/`scrut` respectively.
 /// - panics: none.
+#[inline]
 #[must_use]
-pub(crate) fn motive_result_type(
+pub fn motive_result_type(
     motive: &WalkMotive,
     lhs: &Value,
     rhs: &Value,
@@ -2124,8 +2128,9 @@ pub(crate) fn motive_result_type(
 ///   crosses the binder boundary (D3).
 /// - panics: none — a `None` motive is only reached under a `Check` direction
 ///   (the motive-less `Infer` case is declined at rule entry, ADR-82 D3).
+#[inline]
 #[must_use]
-pub(crate) fn split_expectations<'source, F, S>(
+pub fn split_expectations<'source, F, S>(
     motive: Option<&SplitMotive>,
     dir: &Dir<CompType>,
     fst_name: F,
@@ -2199,8 +2204,9 @@ pub(crate) fn split_result_type(
 ///   **without** a motive the direction is `Check(C)` and both are `C`
 ///   verbatim.
 /// - panics: none — see [`split_expectations`].
+#[inline]
 #[must_use]
-pub(crate) fn split_unknown_expectations(
+pub fn split_unknown_expectations(
     motive: Option<&SplitMotive>,
     dir: &Dir<CompType>,
 ) -> (Dir<CompType>, CompType)

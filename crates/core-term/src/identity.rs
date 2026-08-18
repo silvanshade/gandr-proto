@@ -8,9 +8,9 @@
 //!
 //! * **Value-into-type substitution** ([`subst_valuetype`] /
 //!   [`subst_comptype`]) is this module's: the identity eliminator's typing
-//!   rule (`gandr_core_checker::judgements::checker` /
-//!   `gandr_core_checker::machine`) drives it to form the base's expected type
-//!   `C[x/y][here(x)/q]` and the result type `C[a/x][b/y][p/q]`.
+//!   rule (`gandr_core_checker::judgements::checker` / `gandr_core_machine`)
+//!   drives it to form the base's expected type `C[x/y][here(x)/q]` and the
+//!   result type `C[a/x][b/y][p/q]`.
 //! * **Definitional equality on the endpoints** is not. The `≡ᵥ` the identity
 //!   subtyping arm decides its endpoints with is now
 //!   `gandr_core_nbe::conv::converts`, the normalizer's own relation. The

@@ -325,8 +325,7 @@ fn ascribe_comp_payload(
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::machine;
-    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::judgements::control::Dir;
     use gandr_core_incremental::region::Item;
     use gandr_core_sequent::machine::run_comp;
     use gandr_core_term::ctx::Ctx;
@@ -674,7 +673,7 @@ mod tests
 
     fn inferred_returner_row(comp: Comp) -> EffectRow
     {
-        let (ty, _trace) = machine::run_comp(Ctx::new(), comp, Dir::Infer);
+        let (ty, _trace) = gandr_core_machine::run_comp(Ctx::new(), comp, Dir::Infer);
         match ty.expect("the linked computation infers") {
             | Ty::Comp(CompType::F(_, row)) => Some(row),
             | _ => None,

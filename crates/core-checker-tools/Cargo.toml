@@ -24,15 +24,16 @@ proptest.workspace = true
 
 [dev-dependencies]
 # The two typing faces the conformance suite compares. Only the suite names
-# them, so the edge is test-only: a consumer of the generators links the
+# them, so both edges are test-only: a consumer of the generators links the
 # substrate and nothing above it.
 gandr-core-checker.workspace = true
+gandr-core-machine.workspace = true
 
 [features]
 default = []
 # Regex-backed builtins (`regex.extract`, `string.escape`) in the checker, so
 # the conformance rows that exercise them are generated rather than skipped.
-full = ["gandr-core-checker/full", "gandr-core-term/full"]
+full = ["gandr-core-checker/full", "gandr-core-machine/full", "gandr-core-term/full"]
 
 [lints]
 workspace = true

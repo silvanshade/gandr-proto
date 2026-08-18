@@ -26,8 +26,7 @@
 mod tests
 {
     use gandr_core_checker::judgements::checker;
-    use gandr_core_checker::machine;
-    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::judgements::control::Dir;
     use gandr_core_checker_tools::strategies::binder_name;
     use gandr_core_incremental::region::Item;
     use gandr_core_term::error::TypeError;
@@ -70,26 +69,28 @@ mod tests
             | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
                 let dir = Dir::Check(expected.clone());
                 let (rec, _) = checker::run_value(prelude_ctx(), value.clone(), dir.clone());
-                let (mach, _) = machine::run_value(prelude_ctx(), value.clone(), dir);
+                let (mach, _) = gandr_core_machine::run_value(prelude_ctx(), value.clone(), dir);
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },
             | (&Term::Value(ref value), _) => {
                 let (rec, _) = checker::run_value(prelude_ctx(), value.clone(), Dir::Infer);
-                let (mach, _) = machine::run_value(prelude_ctx(), value.clone(), Dir::Infer);
+                let (mach, _) =
+                    gandr_core_machine::run_value(prelude_ctx(), value.clone(), Dir::Infer);
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },
             | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
                 let dir = Dir::Check(expected.clone());
                 let (rec, _) = checker::run_comp(prelude_ctx(), comp.clone(), dir.clone());
-                let (mach, _) = machine::run_comp(prelude_ctx(), comp.clone(), dir);
+                let (mach, _) = gandr_core_machine::run_comp(prelude_ctx(), comp.clone(), dir);
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },
             | (&Term::Comp(ref comp), _) => {
                 let (rec, _) = checker::run_comp(prelude_ctx(), comp.clone(), Dir::Infer);
-                let (mach, _) = machine::run_comp(prelude_ctx(), comp.clone(), Dir::Infer);
+                let (mach, _) =
+                    gandr_core_machine::run_comp(prelude_ctx(), comp.clone(), Dir::Infer);
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },

@@ -585,7 +585,7 @@ mod tests
             use gandr_core_checker::discipline::mark::Marking;
             use gandr_core_checker::discipline::mark::mark_comp;
             use gandr_core_checker::discipline::mark::mark_value;
-            use gandr_core_checker::machine::control::Dir;
+            use gandr_core_checker::judgements::control::Dir;
             use gandr_core_incremental::region::Item;
             use gandr_core_term::ctx::Ctx;
             use gandr_core_term::syntax::Term;

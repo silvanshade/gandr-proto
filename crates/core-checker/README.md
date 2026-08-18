@@ -2,10 +2,9 @@
 
 The core language's static semantics: the bidirectional type system for gandr's call-by-push-value core, realized twice and held to step-for-step agreement.
 
-The two realizations are the point.
-`judgements::checker` is the direct-style recursive judgement — the readable reference.
-`machine` is the defunctionalized typing machine derived from it by the functional correspondence: an explicit stack of frames, iterative, with no host recursion on term depth.
-A third realization, `discipline::mark`, decorates every node instead of aborting, so an incomplete program still has a typing.
+`judgements::checker` is the direct-style recursive judgement — the readable reference, and the crate's centre.
+`discipline::mark` is a second realization that decorates every node instead of aborting, so an incomplete program still has a typing.
+The third, the defunctionalized typing machine derived from the recursive judgement by the functional correspondence, is `gandr-core-machine`: it names this crate's judgement layer, and nothing here names it back.
 
 Where the kernel is closed by discipline, this crate is deliberately open: holes and the `Unknown` type are first-class, and the representations are non-exhaustive.
 That openness is the totality half of "no parse wall" — the pipeline lowers every editor state, unparseable regions included, and the checker accepts it.
@@ -13,12 +12,12 @@ That openness is the totality half of "no parse wall" — the pipeline lowers ev
 The term substrate is not here: `gandr-core-term` carries the syntax, the types, the context, substitution, interning, effect rows, grades, builtins, and the shared error, outcome, and wrapper vocabulary.
 The conversion engine is not here either: `gandr-core-nbe` decides definitional equality, and subsumption calls into it for its identity endpoints.
 Nor is the solver: `gandr-core-unify` answers unification problems over the same terms, and its certificates are re-checked through that same conversion relation, which is what keeps one equational theory across the three crates.
+Nor is the operational realization: `gandr-core-machine` sits above this crate and drives the same rules from an explicit frame stack.
 The conformance suite and the free generators that drive it are not here: they are `gandr-core-checker-tools`, so nothing test-only sits in the source tree of the checking path.
 
 ## Current provision
 
-- `judgements` — the recursive bidirectional judgement (`checker`), the discharge of a signature's abstract type components (`package`), and the nominal-atom minting opaque ascription needs with the table that makes freshness checkable (`seal`).
-- `machine` — the defunctionalized realization, its `control` register (the `Descend`/`Return` event log the two faces are compared through), and the `stack` typing judgement its reified stacks need.
+- `judgements` — the recursive bidirectional judgement (`checker`); the direction and `Descend`/`Return` trace vocabulary both realizations speak (`control`), which is shared by construction because the recursive judgement emits the events the machine's registers are compared against; the stack-typing judgement a reified stack needs (`stack`); the discharge of a signature's abstract type components (`package`); and the nominal-atom minting opaque ascription needs with the table that makes freshness checkable (`seal`).
 - `discipline` — `subtype`, the consistent subsumption relation, reflexive but deliberately not transitive once `Unknown` participates; and `mark`, the total marking traversal that converts each abort site into a localized mark plus a matched-`Unknown` recovery.
 - `kernel_bridge` — the total, iterative worklist lowering from checked core forms into `gandr-kernel-core`'s closed S1 vocabulary, rejecting out-of-subset nodes structurally with a precise refusal.
 
@@ -38,7 +37,7 @@ gandr-core-checker.workspace = true
 
 ```rust
 use gandr_core_checker::judgements::checker;
-use gandr_core_checker::machine;
+use gandr_core_checker::judgements::control::Dir;
 ```
 
 A crate that only names a term, a type, or an outcome wants `gandr-core-term` instead; this crate is for the crates that need a judgement decided.

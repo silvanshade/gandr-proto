@@ -1,7 +1,7 @@
 //! The defunctionalized typing machine (`typing-machine.md` §"Machine state"
 //! through §"The step function", core subset).
 //!
-//! Derived from [`crate::judgements::checker`] by the functional
+//! Derived from [`gandr_core_checker::judgements::checker`] by the functional
 //! correspondence: CPS transform the recursive checker, then defunctionalize
 //! the continuations. Each [`Frame`] constructor is the defunctionalized image
 //! of one pending recursive call site; the stack *is* the continuation (frames
@@ -33,9 +33,10 @@
 //! `Γ` is **not** restored on error. A failing [`step`] returns
 //! [`Outcome::Error`] carrying a [`FailureState`] whose `Γ` is the context as
 //! it stood at the failure point (`typing-machine.md` §"Error handling": "the
-//! contexts at that point"). The recursive [`crate::judgements::checker`], by
-//! contrast, unwinds `Γ` along the host call stack as the error propagates — so
-//! the two `Γ`s differ on the error path, which is why the conformance suite
+//! contexts at that point"). The recursive
+//! [`gandr_core_checker::judgements::checker`], by contrast, unwinds `Γ` along
+//! the host call stack as the error propagates — so the two `Γ`s differ on the
+//! error path, which is why the conformance suite
 //! compares [`gandr_core_term::error::TypeError`] values, never machine `Γ`.
 //!
 //! # Frame-pop ordering convention
@@ -53,12 +54,26 @@
 //! does in the recursive checker, which likewise unwinds `Γ` before its
 //! delivering `finish_comp`.)
 
-pub mod control;
-pub mod stack;
+extern crate alloc;
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
+use gandr_core_checker::discipline::subtype::finish_comp;
+use gandr_core_checker::discipline::subtype::finish_int_literal;
+use gandr_core_checker::discipline::subtype::finish_value;
+use gandr_core_checker::discipline::subtype::pick;
+use gandr_core_checker::judgements::checker::base_diagonal_type;
+use gandr_core_checker::judgements::checker::motive_result_type;
+use gandr_core_checker::judgements::checker::split_expectations;
+use gandr_core_checker::judgements::checker::split_unknown_expectations;
+use gandr_core_checker::judgements::control::Control;
+use gandr_core_checker::judgements::control::Dir;
+use gandr_core_checker::judgements::control::Trace;
+use gandr_core_checker::judgements::stack::arrow_components;
+use gandr_core_checker::judgements::stack::returner_components;
+use gandr_core_checker::judgements::stack::stk_components;
+use gandr_core_checker::judgements::stack::with_component;
 use gandr_core_term::boundary::MachineStepCount;
 use gandr_core_term::boundary::StackDepth;
 use gandr_core_term::ctx::Ctx;
@@ -81,23 +96,6 @@ use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
-
-use crate::discipline::subtype::finish_comp;
-use crate::discipline::subtype::finish_int_literal;
-use crate::discipline::subtype::finish_value;
-use crate::discipline::subtype::pick;
-use crate::judgements::checker::base_diagonal_type;
-use crate::judgements::checker::motive_result_type;
-use crate::judgements::checker::split_expectations;
-use crate::judgements::checker::split_unknown_expectations;
-use crate::machine::control::Control;
-use crate::machine::control::Dir;
-use crate::machine::control::Trace;
-use crate::machine::control::unrc;
-use crate::machine::stack::arrow_components;
-use crate::machine::stack::returner_components;
-use crate::machine::stack::stk_components;
-use crate::machine::stack::with_component;
 
 /// A typing-stack frame: one pending obligation of the suspended derivation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -207,9 +205,9 @@ pub enum Frame
     /// elements and the result type are stored (rule List⇓; ADR-40 D3). Each
     /// element is descended in `elem_dir`; when none remain the stored `result`
     /// (`List A` for the list case, `Unknown` for the matched-hole case) is
-    /// returned. The machine image of [`crate::judgements::checker`]'s
-    /// `rule_list` loop, so the per-element `Descend`/`Return` sequence
-    /// matches step for step.
+    /// returned. The machine image of
+    /// [`gandr_core_checker::judgements::checker`]'s `rule_list` loop, so
+    /// the per-element `Descend`/`Return` sequence matches step for step.
     List
     {
         /// The elements still to type, in order.
@@ -224,10 +222,10 @@ pub enum Frame
     /// A record literal's fields are pending; each field is typed in its
     /// per-label direction and accumulated into `typed`, then `finish_value`
     /// finishes against `dir` (rule Record⇑/Record⇓; ADR-45 D3). The machine
-    /// image of [`crate::judgements::checker`]'s `rule_record` loop, so the
-    /// per-field `Descend`/`Return` sequence matches step for step. Fields
-    /// are processed in the canonical (sorted-label) order of the
-    /// `BTreeMap`.
+    /// image of [`gandr_core_checker::judgements::checker`]'s `rule_record`
+    /// loop, so the per-field `Descend`/`Return` sequence matches step for
+    /// step. Fields are processed in the canonical (sorted-label) order of
+    /// the `BTreeMap`.
     Record
     {
         /// The fields still to type, `(label, value)` in sorted-label order.
@@ -259,7 +257,8 @@ pub enum Frame
     /// looked up in the inferred record type and `F A` is finished against
     /// `dir` (rule `RecordProj`⇑; ADR-45 D4). The image of [`Frame::Force`];
     /// the record value is **retained** so a missing-field stuck error carries
-    /// the same term as [`crate::judgements::checker`]'s `rule_record_proj`.
+    /// the same term as [`gandr_core_checker::judgements::checker`]'s
+    /// `rule_record_proj`.
     RecordProj
     {
         /// The record value being projected (retained for the stuck-error
@@ -816,7 +815,7 @@ pub enum Outcome
 ///   returning `(Ok(ty), trace)` on success (`ty` is `Ty::Value`-rooted) or
 ///   `(Err(error), trace)` on the first failure; the `Trace` records every
 ///   control register visited (equal, event for event, to
-///   `crate::judgements::checker::run_value` on the same input).
+///   `gandr_core_checker::judgements::checker::run_value` on the same input).
 /// - provides: the `Trace` is returned in both arms; on failure the
 ///   `FailureState` is dropped here — drive `step` directly to inspect it.
 /// - fails: the result arm is `Err` with the first `TypeError`
@@ -824,7 +823,7 @@ pub enum Outcome
 ///   `GradeError`).
 /// - panics: none; the frame stack lives on the heap, so adversarial-depth
 ///   terms do not overflow the host stack (unlike
-///   `crate::judgements::checker`).
+///   `gandr_core_checker::judgements::checker`).
 #[inline]
 pub fn run_value(
     ctx: Ctx,
@@ -842,7 +841,7 @@ pub fn run_value(
 ///   outcome, returning `(Ok(ty), trace)` on success (`ty` is
 ///   `Ty::Comp`-rooted) or `(Err(error), trace)` on the first failure; the
 ///   `Trace` records every control register visited (equal, event for event, to
-///   `crate::judgements::checker::run_comp` on the same input).
+///   `gandr_core_checker::judgements::checker::run_comp` on the same input).
 /// - provides: the `Trace` is returned in both arms; on failure the
 ///   `FailureState` is dropped here — drive `step` directly to inspect it.
 /// - fails: the result arm is `Err` with the first `TypeError`
@@ -850,7 +849,7 @@ pub fn run_value(
 ///   `GradeError`).
 /// - panics: none; the frame stack lives on the heap, so adversarial-depth
 ///   terms do not overflow the host stack (unlike
-///   `crate::judgements::checker`).
+///   `gandr_core_checker::judgements::checker`).
 #[inline]
 pub fn run_comp(
     ctx: Ctx,
@@ -1082,12 +1081,12 @@ fn step_value(
                 | _ => dir.pair_components(),
             };
             stack.push(Frame::PairFst {
-                second: unrc(snd),
+                second: Rc::unwrap_or_clone(snd),
                 second_dir: snd_dir,
                 dir,
             });
             Ok(Control::DescendValue {
-                value: unrc(fst),
+                value: Rc::unwrap_or_clone(fst),
                 dir: fst_dir,
             })
         },
@@ -1098,7 +1097,7 @@ fn step_value(
                     sum: ValueType::Sum(lhs, rhs),
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Check(payload_ty),
                 })
             },
@@ -1110,7 +1109,7 @@ fn step_value(
                     sum: ValueType::Unknown,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Check(ValueType::Unknown),
                 })
             },
@@ -1150,7 +1149,7 @@ fn step_value(
                         result,
                     });
                     Ok(Control::DescendValue {
-                        value: unrc(first),
+                        value: Rc::unwrap_or_clone(first),
                         dir: elem_dir,
                     })
                 },
@@ -1176,7 +1175,7 @@ fn step_value(
                         dir,
                     });
                     Ok(Control::DescendValue {
-                        value: unrc(field_value),
+                        value: Rc::unwrap_or_clone(field_value),
                         dir: field_dir,
                     })
                 },
@@ -1194,7 +1193,7 @@ fn step_value(
                     dir: Dir::Check(ValueType::Unknown),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: Dir::Check(CompType::Unknown),
                 })
             },
@@ -1211,14 +1210,14 @@ fn step_value(
                     dir: Dir::Check(ValueType::Thunk(expected_grade, expected_body)),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: body_dir,
                 })
             },
             | other => {
                 stack.push(Frame::Thunk { grade, dir: other });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: Dir::Infer,
                 })
             },
@@ -1226,8 +1225,8 @@ fn step_value(
         | Value::Annot(inner, ty) => {
             stack.push(Frame::Annot { dir });
             Ok(Control::DescendValue {
-                value: unrc(inner),
-                dir: Dir::Check(unrc(ty)),
+                value: Rc::unwrap_or_clone(inner),
+                dir: Dir::Check(Rc::unwrap_or_clone(ty)),
             })
         },
         // Rule Reify (`effects-control-shell.md` §2.1; A3.3 `+control`):
@@ -1247,13 +1246,13 @@ fn step_value(
                     });
                 },
             };
-            walk_stack(unrc(reified), consumed, dir, stack, ctx)
+            walk_stack(Rc::unwrap_or_clone(reified), consumed, dir, stack, ctx)
         },
         // Rule Here (ADR-76): infer the witness, then form `Path A v v` at the
         // frame pop. The image of `Frame::Inj` — a single descended sub-value —
         // with the witness stored for the endpoints.
         | Value::Here(witness) => {
-            let witness_value = unrc(witness);
+            let witness_value = Rc::unwrap_or_clone(witness);
             stack.push(Frame::Here {
                 witness: witness_value.clone(),
                 dir,
@@ -1294,7 +1293,7 @@ fn step_value(
                     },
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Infer,
                 })
             },
@@ -1303,7 +1302,7 @@ fn step_value(
                     result: ValueType::Unknown,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Infer,
                 })
             },
@@ -1323,7 +1322,7 @@ fn step_value(
                 abstracts,
                 payload: signature_payload,
             }) => {
-                let expected = crate::judgements::package::pack_payload_expectation(
+                let expected = gandr_core_checker::judgements::package::pack_payload_expectation(
                     grade,
                     &abstracts,
                     signature_payload.as_ref(),
@@ -1332,7 +1331,7 @@ fn step_value(
                 let expected = match expected {
                     | Ok(expected) => expected,
                     | Err(refusal) => {
-                        return Err(crate::judgements::package::refusal_error(
+                        return Err(gandr_core_checker::judgements::package::refusal_error(
                             refusal,
                             Term::Value(Value::Pack { witnesses, payload }),
                         ));
@@ -1346,7 +1345,7 @@ fn step_value(
                     },
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Check(expected),
                 })
             },
@@ -1355,7 +1354,7 @@ fn step_value(
                     result: ValueType::Unknown,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(payload),
+                    value: Rc::unwrap_or_clone(payload),
                     dir: Dir::Check(ValueType::Unknown),
                 })
             },
@@ -1389,7 +1388,7 @@ fn step_comp(
                     dir: Dir::Check(CompType::Arrow(arg, res)),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: body_dir,
                 })
             },
@@ -1401,7 +1400,7 @@ fn step_comp(
                     dir: any_dir,
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: Dir::Infer,
                 })
             },
@@ -1416,7 +1415,7 @@ fn step_comp(
                     dir: Dir::Check(CompType::Unknown),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: Dir::Check(CompType::Unknown),
                 })
             },
@@ -1431,11 +1430,11 @@ fn step_comp(
         },
         | Comp::App(head, arg) => {
             stack.push(Frame::AppFn {
-                arg: unrc(arg),
+                arg: Rc::unwrap_or_clone(arg),
                 dir,
             });
             Ok(Control::DescendComp {
-                comp: unrc(head),
+                comp: Rc::unwrap_or_clone(head),
                 dir: Dir::Infer,
             })
         },
@@ -1443,25 +1442,25 @@ fn step_comp(
             let payload_dir = dir.ret_payload();
             stack.push(Frame::Ret { dir });
             Ok(Control::DescendValue {
-                value: unrc(payload),
+                value: Rc::unwrap_or_clone(payload),
                 dir: payload_dir,
             })
         },
         | Comp::Bind(bound, name, cont) => {
             stack.push(Frame::Bind {
                 var: name,
-                cont: unrc(cont),
+                cont: Rc::unwrap_or_clone(cont),
                 dir,
             });
             Ok(Control::DescendComp {
-                comp: unrc(bound),
+                comp: Rc::unwrap_or_clone(bound),
                 dir: Dir::Infer,
             })
         },
         | Comp::Force(thunked) => {
             stack.push(Frame::Force { dir });
             Ok(Control::DescendValue {
-                value: unrc(thunked),
+                value: Rc::unwrap_or_clone(thunked),
                 dir: Dir::Infer,
             })
         },
@@ -1488,7 +1487,7 @@ fn step_comp(
                     expected,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(scrut),
+                    value: Rc::unwrap_or_clone(scrut),
                     dir: Dir::Infer,
                 })
             },
@@ -1505,7 +1504,7 @@ fn step_comp(
             | Dir::Check(expected) => {
                 stack.push(Frame::DataCaseScrut { arms, expected });
                 Ok(Control::DescendValue {
-                    value: unrc(scrut),
+                    value: Rc::unwrap_or_clone(scrut),
                     dir: Dir::Infer,
                 })
             },
@@ -1532,7 +1531,7 @@ fn step_comp(
                     expected,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(scrut),
+                    value: Rc::unwrap_or_clone(scrut),
                     dir: Dir::Infer,
                 })
             },
@@ -1572,13 +1571,13 @@ fn step_comp(
                     hint: text::SPLIT_NEEDS_MOTIVE,
                 });
             }
-            let scrut_value = unrc(scrut);
+            let scrut_value = Rc::unwrap_or_clone(scrut);
             stack.push(Frame::Split {
                 fst_name,
                 snd_name,
                 motive,
                 scrut: scrut_value.clone(),
-                body: unrc(body),
+                body: Rc::unwrap_or_clone(body),
                 dir,
             });
             Ok(Control::DescendValue {
@@ -1590,11 +1589,11 @@ fn step_comp(
             | Dir::Check(CompType::With(lhs, rhs)) => {
                 let fst_dir = Dir::Check(lhs.as_ref().clone());
                 stack.push(Frame::With1 {
-                    second: unrc(snd),
+                    second: Rc::unwrap_or_clone(snd),
                     second_expected: rhs.as_ref().clone(),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(fst),
+                    comp: Rc::unwrap_or_clone(fst),
                     dir: fst_dir,
                 })
             },
@@ -1603,11 +1602,11 @@ fn step_comp(
             // exactly as the recursive checker.
             | Dir::Check(CompType::Unknown) => {
                 stack.push(Frame::With1 {
-                    second: unrc(snd),
+                    second: Rc::unwrap_or_clone(snd),
                     second_expected: CompType::Unknown,
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(fst),
+                    comp: Rc::unwrap_or_clone(fst),
                     dir: Dir::Check(CompType::Unknown),
                 })
             },
@@ -1619,7 +1618,7 @@ fn step_comp(
         | Comp::Prj(side, target) => {
             stack.push(Frame::Prj { side, dir });
             Ok(Control::DescendComp {
-                comp: unrc(target),
+                comp: Rc::unwrap_or_clone(target),
                 dir: Dir::Infer,
             })
         },
@@ -1642,7 +1641,7 @@ fn step_comp(
                 | Some((r, s)) => {
                     stack.push(Frame::Dup { r, s, dir });
                     Ok(Control::DescendValue {
-                        value: unrc(thunked),
+                        value: Rc::unwrap_or_clone(thunked),
                         dir: Dir::Infer,
                     })
                 },
@@ -1657,7 +1656,7 @@ fn step_comp(
         | Comp::Drop(thunked) => {
             stack.push(Frame::Drop { dir });
             Ok(Control::DescendValue {
-                value: unrc(thunked),
+                value: Rc::unwrap_or_clone(thunked),
                 dir: Dir::Infer,
             })
         },
@@ -1678,7 +1677,7 @@ fn step_comp(
                     dir,
                 });
                 Ok(Control::DescendValue {
-                    value: unrc(arg),
+                    value: Rc::unwrap_or_clone(arg),
                     dir: payload_dir,
                 })
             },
@@ -1743,7 +1742,7 @@ fn step_comp(
                 ops: resolved,
             });
             Ok(Control::DescendComp {
-                comp: unrc(scrutinee),
+                comp: Rc::unwrap_or_clone(scrutinee),
                 dir: Dir::Infer,
             })
         },
@@ -1752,11 +1751,11 @@ fn step_comp(
         // inferred principal premise, the fed computation the checked argument.
         | Comp::Resume(reified, comp) => {
             stack.push(Frame::ResumeFn {
-                comp: unrc(comp),
+                comp: Rc::unwrap_or_clone(comp),
                 dir,
             });
             Ok(Control::DescendValue {
-                value: unrc(reified),
+                value: Rc::unwrap_or_clone(reified),
                 dir: Dir::Infer,
             })
         },
@@ -1769,7 +1768,7 @@ fn step_comp(
                 let saved = ambient.replace(answer_ty.clone());
                 stack.push(Frame::ResetBody { saved });
                 Ok(Control::DescendComp {
-                    comp: unrc(body),
+                    comp: Rc::unwrap_or_clone(body),
                     dir: Dir::Check(answer_ty),
                 })
             },
@@ -1789,7 +1788,7 @@ fn step_comp(
                     ctx.bind(k, ValueType::stk(captured.clone(), ans.clone()));
                     stack.push(Frame::ShiftBody { captured });
                     Ok(Control::DescendComp {
-                        comp: unrc(body),
+                        comp: Rc::unwrap_or_clone(body),
                         dir: Dir::Check(ans),
                     })
                 },
@@ -1820,7 +1819,7 @@ fn step_comp(
             motive,
             base,
         } => {
-            let scrut_value = unrc(scrut);
+            let scrut_value = Rc::unwrap_or_clone(scrut);
             stack.push(Frame::WalkScrut {
                 motive: *motive,
                 base,
@@ -1870,7 +1869,7 @@ fn step_comp(
                             upper: grade,
                         });
                     }
-                    let bound = crate::judgements::package::unpack_binding(
+                    let bound = gandr_core_checker::judgements::package::unpack_binding(
                         grade,
                         abstracts,
                         signature_payload.as_ref(),
@@ -1879,7 +1878,7 @@ fn step_comp(
                     match bound {
                         | Ok(bound) => bound,
                         | Err(refusal) => {
-                            return Err(crate::judgements::package::refusal_error(
+                            return Err(gandr_core_checker::judgements::package::refusal_error(
                                 refusal,
                                 Term::Comp(Comp::Unpack {
                                     scrut,
@@ -1904,11 +1903,11 @@ fn step_comp(
             stack.push(Frame::Unpack {
                 binder,
                 bound,
-                body: unrc(body),
+                body: Rc::unwrap_or_clone(body),
                 expected,
             });
             Ok(Control::DescendValue {
-                value: unrc(scrut),
+                value: Rc::unwrap_or_clone(scrut),
                 dir: Dir::Check(ascribed),
             })
         },
@@ -2048,7 +2047,7 @@ fn step_return(
                         result,
                     });
                     Ok(Control::DescendValue {
-                        value: unrc(next),
+                        value: Rc::unwrap_or_clone(next),
                         dir: elem_dir,
                     })
                 },
@@ -2081,7 +2080,7 @@ fn step_return(
                         dir,
                     });
                     Ok(Control::DescendValue {
-                        value: unrc(field_value),
+                        value: Rc::unwrap_or_clone(field_value),
                         dir: field_dir,
                     })
                 },
@@ -2107,7 +2106,7 @@ fn step_return(
         | Frame::AppFn { arg, dir } => match expect_comp(ty)? {
             | CompType::Arrow(param, res) => {
                 stack.push(Frame::AppArg {
-                    result: unrc(res),
+                    result: Rc::unwrap_or_clone(res),
                     dir,
                 });
                 Ok(Control::DescendValue {
@@ -2149,7 +2148,7 @@ fn step_return(
                         upper: grade,
                     });
                 }
-                finish_comp(unrc(body), dir).map(return_comp)
+                finish_comp(Rc::unwrap_or_clone(body), dir).map(return_comp)
             },
             // The matched thunk (A2.2 holes extension): forcing `Unknown`
             // exposes `Unknown`; no `1 ⊑ r` constraint is emitted.
@@ -2191,7 +2190,7 @@ fn step_return(
                         upper: grade,
                     });
                 }
-                let body = unrc(body);
+                let body = Rc::unwrap_or_clone(body);
                 // dup's natural type `F (U_r B_v × U_s B_v)`; the Sub rule
                 // discharges body subsumption + the reflexive grade match.
                 let natural = CompType::returner(ValueType::Prod(
@@ -2232,7 +2231,7 @@ fn step_return(
             // (A3.2 `+effects`). The continuation is descended in the bind's
             // direction, so the direction is cloned for the frame.
             | CompType::F(payload, row) => {
-                ctx.bind(var, unrc(payload));
+                ctx.bind(var, Rc::unwrap_or_clone(payload));
                 stack.push(Frame::BindBody {
                     bound_row: row,
                     dir: dir.clone(),
@@ -2278,14 +2277,14 @@ fn step_return(
         } => match expect_value(ty)? {
             | ValueType::Sum(lhs, rhs) => {
                 let (fst_name, fst_body) = arm_fst;
-                ctx.bind(fst_name, unrc(lhs));
+                ctx.bind(fst_name, Rc::unwrap_or_clone(lhs));
                 stack.push(Frame::CaseArm1 {
                     arm_snd,
-                    snd_ty: unrc(rhs),
+                    snd_ty: Rc::unwrap_or_clone(rhs),
                     expected: expected.clone(),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(fst_body),
+                    comp: Rc::unwrap_or_clone(fst_body),
                     dir: Dir::Check(expected),
                 })
             },
@@ -2300,7 +2299,7 @@ fn step_return(
                     expected: expected.clone(),
                 });
                 Ok(Control::DescendComp {
-                    comp: unrc(fst_body),
+                    comp: Rc::unwrap_or_clone(fst_body),
                     dir: Dir::Check(expected),
                 })
             },
@@ -2327,7 +2326,7 @@ fn step_return(
             ctx.bind(snd_name, snd_ty);
             stack.push(Frame::CaseArm2);
             Ok(Control::DescendComp {
-                comp: unrc(snd_body),
+                comp: Rc::unwrap_or_clone(snd_body),
                 dir: Dir::Check(expected),
             })
         },
@@ -2347,7 +2346,7 @@ fn step_return(
                             expected: expected.clone(),
                         });
                         Ok(Control::DescendComp {
-                            comp: unrc(body),
+                            comp: Rc::unwrap_or_clone(body),
                             dir: Dir::Check(expected),
                         })
                     },
@@ -2377,7 +2376,7 @@ fn step_return(
                         expected: expected.clone(),
                     });
                     Ok(Control::DescendComp {
-                        comp: unrc(body),
+                        comp: Rc::unwrap_or_clone(body),
                         dir: Dir::Check(expected),
                     })
                 },
@@ -2414,7 +2413,7 @@ fn step_return(
                 expected: expected.clone(),
             });
             Ok(Control::DescendComp {
-                comp: unrc(nil),
+                comp: Rc::unwrap_or_clone(nil),
                 dir: Dir::Check(expected),
             })
         },
@@ -2433,7 +2432,7 @@ fn step_return(
             ctx.bind(tail, tail_ty);
             stack.push(Frame::ListCaseCons);
             Ok(Control::DescendComp {
-                comp: unrc(cons),
+                comp: Rc::unwrap_or_clone(cons),
                 dir: Dir::Check(expected),
             })
         },
@@ -2460,7 +2459,12 @@ fn step_return(
                 | ValueType::Prod(lhs, rhs) => {
                     let (body_expected, result) =
                         split_expectations(motive.as_deref(), &dir, &fst_name, &snd_name, &scrut);
-                    (unrc(lhs), unrc(rhs), body_expected, result)
+                    (
+                        Rc::unwrap_or_clone(lhs),
+                        Rc::unwrap_or_clone(rhs),
+                        body_expected,
+                        result,
+                    )
                 },
                 // Rule Sigma elimination (ADR-81 feature 2): the first binder
                 // gets the head `A`, the second the substituted tail `B[p/x]`
@@ -2477,7 +2481,7 @@ fn step_return(
                     );
                     let (body_expected, result) =
                         split_expectations(motive.as_deref(), &dir, &fst_name, &snd_name, &scrut);
-                    (unrc(head), tail_ty, body_expected, result)
+                    (Rc::unwrap_or_clone(head), tail_ty, body_expected, result)
                 },
                 // The matched product (A2.2 holes extension): an `Unknown`
                 // scrutinee binds both components at `Unknown`.
@@ -2564,7 +2568,7 @@ fn step_return(
             ops,
         } => {
             let (eps_t, payload_a): (EffectRow, ValueType) = match expect_comp(ty)? {
-                | CompType::F(payload, row) => (row, unrc(payload)),
+                | CompType::F(payload, row) => (row, Rc::unwrap_or_clone(payload)),
                 | CompType::Unknown => (EffectRow::EMPTY, ValueType::Unknown),
                 | other => {
                     return Err(TypeError::ShapeMismatch {
@@ -2585,7 +2589,7 @@ fn step_return(
                 ops,
             });
             Ok(Control::DescendComp {
-                comp: unrc(ret_body),
+                comp: Rc::unwrap_or_clone(ret_body),
                 dir: body_dir,
             })
         },
@@ -2697,7 +2701,7 @@ fn step_return(
             let (carrier, base_expected, result): (ValueType, CompType, CompType) =
                 match expect_value(ty)? {
                     | ValueType::Path { ty, lhs, rhs } => {
-                        let carrier = unrc(ty);
+                        let carrier = Rc::unwrap_or_clone(ty);
                         let diagonal = base_diagonal_type(&motive, &base.x);
                         let result =
                             motive_result_type(&motive, lhs.as_ref(), rhs.as_ref(), &scrut);
@@ -2716,7 +2720,7 @@ fn step_return(
             ctx.bind(base.x.clone(), carrier);
             stack.push(Frame::WalkBase { result, dir });
             Ok(Control::DescendComp {
-                comp: unrc(base.body),
+                comp: Rc::unwrap_or_clone(base.body),
                 dir: Dir::Check(base_expected),
             })
         },
@@ -2801,7 +2805,7 @@ fn handle_advance(
     let resume_ty = resume_stack_type(&answer, op_def.reply().clone());
     ctx.bind(clause.payload, op_def.payload().clone());
     ctx.bind(clause.resume, resume_ty);
-    let body = unrc(clause.body);
+    let body = Rc::unwrap_or_clone(clause.body);
     let body_dir = Dir::Check(answer.clone());
     stack.push(Frame::HandleOp {
         answer,
@@ -2829,8 +2833,8 @@ fn handle_advance(
 ///
 /// Shared by the initial `stk K` step ([`step_value`]) and the
 /// [`Frame::StkArg`] / [`Frame::StkBind`] pops; the per-frame type destructures
-/// are the `crate::machine::stack` helpers shared with the checker, so the two
-/// faces cannot drift.
+/// are the `gandr_core_checker::judgements::stack` helpers shared with the
+/// checker, so the two faces cannot drift.
 fn walk_stack(
     stack: Stack,
     input: CompType,
@@ -2858,17 +2862,17 @@ fn walk_stack(
             | Stack::Prj(side, rest) => {
                 // A projection has no sub-term: continue the walk in this step.
                 current_input = with_component(current_input, side)?;
-                current = unrc(rest);
+                current = Rc::unwrap_or_clone(rest);
             },
             | Stack::Arg(value, rest) => {
                 let (arg_ty, result_input) = arrow_components(current_input)?;
                 frames.push(Frame::StkArg {
-                    rest: unrc(rest),
+                    rest: Rc::unwrap_or_clone(rest),
                     result_input,
                     dir,
                 });
                 return Ok(Control::DescendValue {
-                    value: unrc(value),
+                    value: Rc::unwrap_or_clone(value),
                     dir: Dir::Check(arg_ty),
                 });
             },
@@ -2876,12 +2880,12 @@ fn walk_stack(
                 let (payload, consumed_row) = returner_components(current_input)?;
                 ctx.bind(name, payload);
                 frames.push(Frame::StkBind {
-                    rest: unrc(rest),
+                    rest: Rc::unwrap_or_clone(rest),
                     consumed_row,
                     dir,
                 });
                 return Ok(Control::DescendComp {
-                    comp: unrc(cont),
+                    comp: Rc::unwrap_or_clone(cont),
                     dir: Dir::Infer,
                 });
             },
@@ -2891,9 +2895,10 @@ fn walk_stack(
 
 /// Machine-only depth tests: the frame stack lives on the heap, so the
 /// machine's nesting bound is memory, not the host call stack. These terms
-/// are far beyond what the recursive [`crate::judgements::checker`] could
-/// survive (its recursion would need hundreds of megabytes of call stack), so
-/// they are deliberately *not* part of the conformance pairing.
+/// are far beyond what the recursive
+/// [`gandr_core_checker::judgements::checker`] could survive (its recursion
+/// would need hundreds of megabytes of call stack), so they are deliberately
+/// *not* part of the conformance pairing.
 #[cfg(test)]
 mod tests
 {

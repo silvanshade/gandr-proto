@@ -37,9 +37,8 @@ use alloc::collections::BTreeMap;
 use core::ops::Deref;
 use core::ops::Range;
 
-use gandr_core_checker::machine;
-use gandr_core_checker::machine::control::Control;
-use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::judgements::control::Control;
+use gandr_core_checker::judgements::control::Dir;
 use gandr_core_incremental::region::Item;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::syntax::Comp;
@@ -281,16 +280,18 @@ fn observe_item(
             },
             | _ => {},
         }
-        match machine::step(state) {
-            | machine::Outcome::Step(next) => state = next,
+        match gandr_core_machine::step(state) {
+            | gandr_core_machine::Outcome::Step(next) => state = next,
             // Done and Error end observation.
-            | machine::Outcome::Done(_) | machine::Outcome::Error { .. } => return,
+            | gandr_core_machine::Outcome::Done(_) | gandr_core_machine::Outcome::Error { .. } => {
+                return;
+            },
         }
     }
 }
 
-/// Builds the initial machine [`State`](machine::State) for typing one
-/// lowered item: against its recorded ascription when the sorts match,
+/// Builds the initial machine [`State`](gandr_core_machine::State) for typing
+/// one lowered item: against its recorded ascription when the sorts match,
 /// otherwise in inference mode.
 ///
 /// Shared by the goals report (pass 2 below) and the diagnostics surface
@@ -300,20 +301,28 @@ fn observe_item(
 pub(crate) fn initial_state(
     item: &Item,
     base: &Ctx,
-) -> machine::State
+) -> gandr_core_machine::State
 {
     match (&item.term, &item.ascription) {
         | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
-            machine::State::new_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+            gandr_core_machine::State::new_value(
+                base.clone(),
+                value.clone(),
+                Dir::Check(expected.clone()),
+            )
         },
         | (&Term::Value(ref value), _) => {
-            machine::State::new_value(base.clone(), value.clone(), Dir::Infer)
+            gandr_core_machine::State::new_value(base.clone(), value.clone(), Dir::Infer)
         },
         | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
-            machine::State::new_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+            gandr_core_machine::State::new_comp(
+                base.clone(),
+                comp.clone(),
+                Dir::Check(expected.clone()),
+            )
         },
         | (&Term::Comp(ref comp), _) => {
-            machine::State::new_comp(base.clone(), comp.clone(), Dir::Infer)
+            gandr_core_machine::State::new_comp(base.clone(), comp.clone(), Dir::Infer)
         },
     }
 }

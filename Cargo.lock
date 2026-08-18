@@ -606,6 +606,7 @@ name = "gandr-core-checker-tools"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
+ "gandr-core-machine",
  "gandr-core-term",
  "proptest",
 ]
@@ -616,9 +617,18 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "gandr-core-checker",
+ "gandr-core-machine",
  "gandr-core-term",
  "gandr-theory-orders",
  "proptest",
+]
+
+[[package]]
+name = "gandr-core-machine"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-term",
 ]
 
 [[package]]
@@ -745,6 +755,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-checker-tools",
  "gandr-core-incremental",
+ "gandr-core-machine",
  "gandr-core-sequent",
  "gandr-core-term",
  "gandr-kernel-core",

@@ -3,7 +3,7 @@
 //! One constructor per *user-facing* failure mode of core CBPV. The lone
 //! exception is [`TypeError::ShapeMismatch`], which carries a second, internal
 //! role: the machine's [`text::SHAPE_VALUE`] / [`text::SHAPE_COMP`]
-//! descriptions guard the polarity invariant of `gandr_core_checker::machine`
+//! descriptions guard the polarity invariant of `gandr_core_machine`
 //! (a frame is always resumed at the sort it suspended on). Those two are
 //! *unreachable by construction* on states reachable from the public entry
 //! points — a conformance meta-test asserts they never surface in a generated

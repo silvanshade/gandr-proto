@@ -2,7 +2,7 @@
 //! al., *Total Type Error Localization and Recovery with Holes*, POPL 2024).
 //!
 //! This is a *third* realization of the type system, additive to the
-//! [`crate::judgements::checker`] / [`crate::machine`] pair and **never a
+//! [`crate::judgements::checker`] / `gandr_core_machine` pair and **never a
 //! modification of either** — the conformance lockstep (ADR-9) stays untouched.
 //! Where the checker is fail-fast (the first
 //! [`gandr_core_term::error::TypeError`] short-circuits the whole derivation),
@@ -128,12 +128,12 @@ use crate::judgements::checker::base_diagonal_type;
 use crate::judgements::checker::motive_result_type;
 use crate::judgements::checker::split_expectations;
 use crate::judgements::checker::split_unknown_expectations;
-use crate::machine::control::Dir;
-use crate::machine::control::unrc;
-use crate::machine::stack::arrow_components;
-use crate::machine::stack::returner_components;
-use crate::machine::stack::stk_components;
-use crate::machine::stack::with_component;
+use crate::judgements::control::Dir;
+use crate::judgements::control::unrc;
+use crate::judgements::stack::arrow_components;
+use crate::judgements::stack::returner_components;
+use crate::judgements::stack::stk_components;
+use crate::judgements::stack::with_component;
 
 /// A stable node identity for marking facts.
 ///

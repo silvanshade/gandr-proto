@@ -52,9 +52,11 @@ use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 
-/// Destructures the consumed type of an argument frame `v :: K`: a function
-/// `A → B′` yields its argument type `A` (the value `v` is checked against it)
-/// and result type `B′` (the rest of the stack runs from it).
+/// Destructures the consumed type of an argument frame `v :: K`.
+///
+/// A function `A → B′` yields its argument type `A`, which the value `v` is
+/// checked against, and its result type `B′`, which the rest of the stack runs
+/// from.
 ///
 /// The matched arrow `Unknown ▶→ Unknown → Unknown` (A2.2 holes extension): an
 /// `Unknown` consumed type yields `(Unknown, Unknown)`, so a hole flowing into
@@ -73,12 +75,12 @@ use gandr_core_term::types::ValueType;
 /// Returns [`TypeError::ShapeMismatch`] when the consumed type is neither a
 /// function nor `Unknown`.
 #[inline]
-pub(crate) fn arrow_components(consumed: CompType) -> Result<(ValueType, CompType), TypeError>
+pub fn arrow_components(consumed: CompType) -> Result<(ValueType, CompType), TypeError>
 {
     match consumed {
         | CompType::Arrow(arg, res) => Ok((
-            crate::machine::control::unrc(arg),
-            crate::machine::control::unrc(res),
+            crate::judgements::control::unrc(arg),
+            crate::judgements::control::unrc(res),
         )),
         | CompType::Unknown => Ok((ValueType::Unknown, CompType::Unknown)),
         | other => Err(TypeError::ShapeMismatch {
@@ -88,10 +90,12 @@ pub(crate) fn arrow_components(consumed: CompType) -> Result<(ValueType, CompTyp
     }
 }
 
-/// Destructures the consumed type of a bind frame `(x. u) :: K`: a returner
-/// `F^ε A` yields the payload `A` (bound to `x`) and the row `ε` (folded into
-/// the continuation's result by [`gandr_core_term::effect::combine_bind_row`],
-/// as at [`gandr_core_term::syntax::Comp::Bind`]).
+/// Destructures the consumed type of a bind frame `(x. u) :: K`.
+///
+/// A returner `F^ε A` yields the payload `A`, bound to `x`, and the row `ε`,
+/// folded into the continuation's result by
+/// [`gandr_core_term::effect::combine_bind_row`] exactly as at
+/// [`gandr_core_term::syntax::Comp::Bind`].
 ///
 /// The matched returner (A2.2): an `Unknown` consumed type binds `x` at
 /// `Unknown` with an empty row.
@@ -108,10 +112,10 @@ pub(crate) fn arrow_components(consumed: CompType) -> Result<(ValueType, CompTyp
 /// Returns [`TypeError::ShapeMismatch`] when the consumed type is neither a
 /// returner nor `Unknown`.
 #[inline]
-pub(crate) fn returner_components(consumed: CompType) -> Result<(ValueType, EffectRow), TypeError>
+pub fn returner_components(consumed: CompType) -> Result<(ValueType, EffectRow), TypeError>
 {
     match consumed {
-        | CompType::F(payload, row) => Ok((crate::machine::control::unrc(payload), row)),
+        | CompType::F(payload, row) => Ok((crate::judgements::control::unrc(payload), row)),
         | CompType::Unknown => Ok((ValueType::Unknown, EffectRow::EMPTY)),
         | other => Err(TypeError::ShapeMismatch {
             expected: text::SHAPE_RETURNER,
@@ -138,7 +142,7 @@ pub(crate) fn returner_components(consumed: CompType) -> Result<(ValueType, Effe
 /// Returns [`TypeError::ShapeMismatch`] when the consumed type is neither a
 /// lazy product nor `Unknown`.
 #[inline]
-pub(crate) fn with_component(
+pub fn with_component(
     consumed: CompType,
     side: Side,
 ) -> Result<CompType, TypeError>
@@ -153,10 +157,12 @@ pub(crate) fn with_component(
     }
 }
 
-/// Destructures a resumed value's type (rule Resume, `effects-control-shell.md`
-/// §2.1): a reified stack `Stk(B, C)` yields the consumed type `B` (the fed
-/// computation is checked against it) and the delivered answer `C` (the result
-/// of the resumption).
+/// Destructures a resumed value's type (rule Resume,
+/// `effects-control-shell.md` §2.1).
+///
+/// A reified stack `Stk(B, C)` yields the consumed type `B`, which the fed
+/// computation is checked against, and the delivered answer `C`, which is the
+/// result of the resumption.
 ///
 /// The matched stack (A2.2): an `Unknown` resumed value feeds its computation
 /// against `Unknown` and delivers `Unknown`, so a hole in stack position
@@ -174,12 +180,12 @@ pub(crate) fn with_component(
 /// Returns [`TypeError::ShapeMismatch`] when the resumed value is neither a
 /// reified stack nor `Unknown`.
 #[inline]
-pub(crate) fn stk_components(stk: ValueType) -> Result<(CompType, CompType), TypeError>
+pub fn stk_components(stk: ValueType) -> Result<(CompType, CompType), TypeError>
 {
     match stk {
         | ValueType::Stk(consumes, delivers) => Ok((
-            crate::machine::control::unrc(consumes),
-            crate::machine::control::unrc(delivers),
+            crate::judgements::control::unrc(consumes),
+            crate::judgements::control::unrc(delivers),
         )),
         | ValueType::Unknown => Ok((CompType::Unknown, CompType::Unknown)),
         | other => Err(TypeError::ShapeMismatch {
