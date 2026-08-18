@@ -914,3 +914,204 @@ fn library_file_names() -> Vec<String>
     names.push(alloc::format!("lib{LIBRARY_STEM}.so"));
     names
 }
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    /// Every boundary status names its own stage.
+    ///
+    /// An error vocabulary nobody can read is one nobody can act on, so each
+    /// arm is asserted on its exact variant rather than on "some refusal".
+    #[test]
+    fn every_boundary_status_names_its_own_stage()
+    {
+        let mapping = [
+            (1_i32, RefusalStage::MalformedImage),
+            (2_i32, RefusalStage::VerifierRejected),
+            (3_i32, RefusalStage::LoweringFailed),
+            (4_i32, RefusalStage::ConversionFailed),
+            (5_i32, RefusalStage::ExecutionFailed),
+            (6_i32, RefusalStage::ResultUnreadable),
+            (7_i32, RefusalStage::LimitExceeded),
+            (8_i32, RefusalStage::FixtureUnreadable),
+            (100_i32, RefusalStage::BadCall),
+        ];
+        for (status, expected) in mapping {
+            assert_eq!(
+                RefusalStage::from_status(BoundaryStatus::from(status)),
+                expected
+            );
+            assert!(!expected.to_string().is_empty(), "every stage renders");
+        }
+
+        // A status this crate does not know is reported as unknown rather
+        // than mapped onto a neighbour, which is the failure a numbering
+        // change would otherwise hide.
+        for unknown in [9_i32, 42_i32, -1_i32, 101_i32] {
+            assert_eq!(
+                RefusalStage::from_status(BoundaryStatus::from(unknown)),
+                RefusalStage::Unknown
+            );
+        }
+        assert_eq!(
+            RefusalStage::Unknown.to_string(),
+            "a stage this crate does not know"
+        );
+    }
+
+    /// Every failure renders a message that names what went wrong.
+    #[test]
+    fn every_host_failure_renders_its_own_message()
+    {
+        let unavailable = HostError::Unavailable {
+            looked: SearchReport(alloc::vec![
+                PathBuf::from("/one/libhost.dylib"),
+                PathBuf::from("/two/libhost.so"),
+            ]),
+        };
+        let rendered = unavailable.to_string();
+        assert!(rendered.contains("/one/libhost.dylib"), "{rendered}");
+        assert!(rendered.contains("/two/libhost.so"), "{rendered}");
+
+        // A report that looked nowhere still renders, which is the case a
+        // caller meets when the environment names nothing and the
+        // conventional path cannot be derived.
+        assert_eq!(SearchReport(Vec::new()).to_string(), "nowhere");
+
+        let unbindable = HostError::NotBindable {
+            path: LibraryPath::from(PathBuf::from("/somewhere/libhost.dylib")),
+            detail: LoaderDetail(String::from("dlsym failed")),
+        };
+        let rendered = unbindable.to_string();
+        assert!(rendered.contains("/somewhere/libhost.dylib"), "{rendered}");
+        assert!(rendered.contains("dlsym failed"), "{rendered}");
+
+        let mismatched = HostError::VersionMismatch {
+            found: AbiVersion::from(7),
+            expected: AbiVersion::from(ABI_VERSION),
+        };
+        let rendered = mismatched.to_string();
+        assert!(rendered.contains('7'), "{rendered}");
+
+        let refused = HostError::Refused {
+            stage: RefusalStage::LimitExceeded,
+            detail: RefusalDetail(String::from("would not fit")),
+        };
+        let rendered = refused.to_string();
+        assert!(rendered.contains("a resource limit"), "{rendered}");
+        assert!(rendered.contains("would not fit"), "{rendered}");
+        let detail = RefusalDetail(String::from("would not fit"));
+        let borrowed: &str = detail.as_ref();
+        assert_eq!(borrowed, "would not fit");
+    }
+
+    /// A symbol name renders without its terminator, so a loader failure says
+    /// what it was looking for.
+    #[test]
+    fn a_symbol_name_renders_without_its_terminator()
+    {
+        assert_eq!(
+            RELEASE_SYMBOL.to_string(),
+            "gandr_compile_host_outcome_release"
+        );
+        assert_eq!(RUN_SYMBOL.to_string(), "gandr_compile_host_run");
+        assert_eq!(VERSION_SYMBOL.to_string(), "gandr_compile_host_abi_version");
+        assert_eq!(INTERPRET_SYMBOL.to_string(), "gandr_compile_host_interpret");
+        assert_eq!(
+            RUN_WITH_HEAP_SYMBOL.to_string(),
+            "gandr_compile_host_run_with_heap"
+        );
+
+        // The two degenerate shapes: no terminator to strip, and bytes that
+        // are not text at all.
+        assert_eq!(SymbolName(b"").to_string(), "");
+        assert_eq!(
+            SymbolName(b"\xff\xfe\0").to_string(),
+            "a symbol whose name is not UTF-8"
+        );
+    }
+
+    /// The boundary's values round-trip through their wrappers.
+    #[test]
+    fn the_boundaries_values_round_trip_through_their_wrappers()
+    {
+        assert_eq!(i64::from(LedgerCount::from(3_i64)), 3_i64);
+        assert_eq!(u64::from(ArenaWords::from(11_u64)), 11_u64);
+        assert_eq!(u64::from(HeapWords::from(64_u64)), 64_u64);
+        assert_eq!(AbiVersion::from(1_u32), AbiVersion(1));
+
+        let rendered = RenderedValue::from(String::from("(int 5)"));
+        assert_eq!(rendered.to_string(), "(int 5)");
+        let borrowed: &str = rendered.as_ref();
+        assert_eq!(borrowed, "(int 5)");
+
+        let path = LibraryPath::from(PathBuf::from("/a/b"));
+        assert_eq!(path.as_path(), Path::new("/a/b"));
+        assert_eq!(path.to_string(), "/a/b");
+    }
+
+    /// A message the boundary did not write is read as empty rather than as a
+    /// dereference of nothing.
+    #[test]
+    fn a_null_boundary_message_reads_as_empty()
+    {
+        let outcome = RawOutcome::default();
+        assert!(outcome.text.is_null());
+        assert_eq!(read_text(&outcome), String::new());
+
+        // A message the boundary did write is read whole, terminator and all.
+        let owned = alloc::ffi::CString::new("a detail").expect("no interior NUL");
+        let outcome = RawOutcome {
+            text: owned.as_ptr(),
+            ..RawOutcome::default()
+        };
+        assert_eq!(read_text(&outcome), String::from("a detail"));
+    }
+
+    /// The discovery names the platform's spellings and derives its directory
+    /// from the manifest rather than from the current directory.
+    #[test]
+    fn the_discovery_looks_where_the_build_puts_the_library()
+    {
+        let names = library_file_names();
+        assert!(
+            names.iter().all(|name| name.contains(LIBRARY_STEM)),
+            "every candidate name carries the library's stem"
+        );
+        assert!(
+            names.contains(&alloc::format!("lib{LIBRARY_STEM}.so")),
+            "the ELF spelling is always a candidate"
+        );
+
+        let candidates = default_candidates();
+        assert!(!candidates.is_empty(), "the fallback derives a directory");
+        for candidate in &candidates {
+            assert!(
+                candidate.ends_with(
+                    Path::new(DEFAULT_LIBRARY_DIRECTORY)
+                        .join(candidate.file_name().expect("a candidate names a file"))
+                ),
+                "a candidate sits under the conventional build output: {}",
+                candidate.display()
+            );
+        }
+    }
+
+    /// A path this platform admits but Unicode does not is refused rather
+    /// than lossily converted.
+    #[test]
+    fn a_library_path_that_is_not_text_is_refused()
+    {
+        use std::os::unix::ffi::OsStrExt as _;
+
+        let raw = std::ffi::OsStr::from_bytes(b"/tmp/\xff\xfe-not-utf8.dylib");
+        let refused = CompileHost::open(Path::new(raw));
+        let Err(HostError::NotBindable { detail, .. }) = refused
+        else {
+            panic!("a non-UTF-8 path was not refused: {refused:?}");
+        };
+        assert_eq!(detail.to_string(), "the library path is not valid UTF-8");
+    }
+}

@@ -562,6 +562,23 @@ mod tests
     }
 
     #[test]
+    fn the_wrappers_round_trip_the_values_they_carry()
+    {
+        assert_eq!(i64::from(WorkCount::from(4_i64)), 4_i64);
+        assert_eq!(i64::from(Literal::from(-7_i64)), -7_i64);
+        assert_eq!(
+            u32::from(BinderIndex::try_from(2_usize).expect("fits")),
+            2_u32
+        );
+        assert_eq!(
+            u32::from(NodeIndex::try_from(9_usize).expect("fits")),
+            9_u32
+        );
+        assert!(!bool::from(Image::new().has_dispatch()));
+        assert!(bool::from(Image::new().is_empty()));
+    }
+
+    #[test]
     fn accounted_work_counts_each_kind_separately()
     {
         let mut image = Image::new();

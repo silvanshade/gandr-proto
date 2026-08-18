@@ -245,3 +245,47 @@ pub fn check_and_lower(comp: &Comp) -> Result<Image, BridgeError>
     let image = lower_computation(comp)?;
     Ok(image)
 }
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    /// Every stage's refusal renders, and each names its own stage.
+    #[test]
+    fn every_bridge_failure_renders_its_own_message()
+    {
+        let unchecked = BridgeError::NotChecked {
+            detail: CheckerDetail(String::from("a type error")),
+        };
+        let rendered = unchecked.to_string();
+        assert!(rendered.contains("core checker"), "{rendered}");
+        assert!(rendered.contains("a type error"), "{rendered}");
+
+        let refused = check_and_lower(&Comp::ret(gandr_core_term::syntax::Value::Str(
+            String::from("outside"),
+        )));
+        let Err(lowering) = refused
+        else {
+            panic!("a value outside the slice was lowered: {refused:?}");
+        };
+        assert!(matches!(lowering, BridgeError::NotLowered { .. }));
+        assert!(
+            lowering.to_string().contains("could not be lowered"),
+            "{lowering}"
+        );
+    }
+
+    /// The typed verdict is the discriminator the callers branch on.
+    #[test]
+    fn the_typed_verdict_reports_what_the_checker_would_say()
+    {
+        let typed = Comp::ret(gandr_core_term::syntax::Value::Int(5));
+        assert!(bool::from(is_typed(&typed)));
+
+        // The grade rules want a graded thunk, so this runs on the machine
+        // and is not a typed computation.
+        let machine_only = Comp::dup(gandr_core_term::syntax::Value::Int(4));
+        assert!(!bool::from(is_typed(&machine_only)));
+    }
+}
