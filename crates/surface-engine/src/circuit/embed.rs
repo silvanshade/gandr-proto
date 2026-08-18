@@ -52,6 +52,7 @@
 //! disconnected diagram sits inside another one.
 
 use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -128,6 +129,10 @@ impl core::error::Error for CircuitWiringError
 ///   whose outputs are the wires no line reads, each in wire order.
 /// - provides: the diagram the matcher takes, derived from the body rather than
 ///   declared beside it.
+/// - intension: ports are interned into one ordered table whose size is the
+///   next wire number, and boundary membership is decided over ordered sets, so
+///   the derivation costs `O(ports log ports)` rather than being quadratic in
+///   the ports before the budgeted search starts.
 /// - fails: [`CircuitWiringError::ArgumentIsNotAPort`] for a ground argument,
 ///   and [`CircuitWiringError::NotAWiring`] when the assembled diagram is
 ///   refused — a port bound or read twice, or a directed cycle.
@@ -151,10 +156,9 @@ impl core::error::Error for CircuitWiringError
 #[inline]
 pub fn circuit_wiring(body: &CircuitBody) -> Result<Wiring, CircuitWiringError>
 {
-    let mut wires: Vec<&Name> = Vec::new();
     let mut generators: Vec<Generator> = Vec::new();
-    let mut bound: Vec<Wire> = Vec::new();
-    let mut read: Vec<Wire> = Vec::new();
+    let mut bound: BTreeSet<Wire> = BTreeSet::new();
+    let mut read: BTreeSet<Wire> = BTreeSet::new();
     let mut index: BTreeMap<PortKey<'_>, Wire> = BTreeMap::new();
     for node in &body.nodes {
         let mut sources = Vec::new();
@@ -165,28 +169,24 @@ pub fn circuit_wiring(body: &CircuitBody) -> Result<Wiring, CircuitWiringError>
                     argument,
                 )));
             };
-            let wire = intern(port, &mut wires, &mut index);
-            if !read.contains(&wire) {
-                read.push(wire);
-            }
+            let wire = intern(port, &mut index);
+            read.insert(wire);
             sources.push(wire);
         }
-        let target = intern(node.out(), &mut wires, &mut index);
-        if !bound.contains(&target) {
-            bound.push(target);
-        }
+        let target = intern(node.out(), &mut index);
+        bound.insert(target);
         generators.push(Generator::new(
             GeneratorLabel::new(node_head(node).as_ref(), node_sort(node)),
             sources,
             alloc::vec![target],
         ));
     }
-    let count = WireCount(wires.len());
-    let inputs: Vec<Wire> = (0_usize .. wires.len())
+    let count = WireCount(index.len());
+    let inputs: Vec<Wire> = (0_usize .. index.len())
         .map(Wire)
         .filter(|wire| !bound.contains(wire))
         .collect();
-    let outputs: Vec<Wire> = (0_usize .. wires.len())
+    let outputs: Vec<Wire> = (0_usize .. index.len())
         .map(Wire)
         .filter(|wire| !read.contains(wire))
         .collect();
@@ -275,18 +275,24 @@ impl core::error::Error for CircuitEmbedError
 struct PortKey<'body>(&'body str);
 
 /// The wire a port names, allocating one on first sight.
+///
+/// The table's own size is the next wire number, so first-appearance numbering
+/// needs no second structure to count with.
+///
+/// # Contract
+/// - ensures: the wire already held for `port`, or a fresh one numbered by the
+///   count of distinct ports seen so far, recorded before it is returned.
+/// - panics: none.
 #[inline]
 fn intern<'body>(
     port: &'body Name,
-    wires: &mut Vec<&'body Name>,
     index: &mut BTreeMap<PortKey<'body>, Wire>,
 ) -> Wire
 {
     if let Some(&held) = index.get(&PortKey(port.as_ref())) {
         return held;
     }
-    let wire = Wire(wires.len());
-    wires.push(port);
+    let wire = Wire(index.len());
     index.insert(PortKey(port.as_ref()), wire);
     wire
 }
