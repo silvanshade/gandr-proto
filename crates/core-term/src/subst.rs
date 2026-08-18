@@ -99,8 +99,8 @@ where
 /// - hypothesis: L3 — three decision surfaces separated pointwise: a bound hole
 ///   is replaced, an unbound hole survives and sets the report, and a hole-free
 ///   term reports no survivor.
-/// - witness: `unify::tests::substituting_a_solution_reports_a_hole_free_result`
-/// - witness: `unify::tests::substituting_leaves_an_unsolved_hole_and_reports_it`
+/// - witness: `gandr_core_unify::tests::substituting_a_solution_reports_a_hole_free_result`
+/// - witness: `gandr_core_unify::tests::substituting_leaves_an_unsolved_hole_and_reports_it`
 #[inline]
 #[must_use]
 pub fn subst_holes_value(
@@ -130,7 +130,7 @@ pub fn subst_holes_value(
 /// # Adequacy
 /// - hypothesis: L3 — the computation-sorted image of the value entry,
 ///   separated by a solved computation hole under an application spine.
-/// - witness: `unify::tests::substituting_a_computation_solution_beta_reduces_on_replay`
+/// - witness: `gandr_core_unify::tests::substituting_a_computation_solution_beta_reduces_on_replay`
 #[inline]
 #[must_use]
 pub fn subst_holes_comp(

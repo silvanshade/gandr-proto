@@ -384,8 +384,8 @@ pub enum ValueType
     /// (covariant widening is unsound without transport): `Path A x y <: Path
     /// A′ x′ y′` iff `A ≡ A′` and `x ≡ᵥ x′` and `y ≡ᵥ y′`. Both `≡ᵥ` on the
     /// endpoints and `≡` on the carrier are **definitional equality**, decided
-    /// by the normalizer (`gandr_core_checker::nbe::conv::converts` and
-    /// `gandr_core_checker::nbe::conv::type_converts`); the two-way subtyping
+    /// by the normalizer (`gandr_core_nbe::conv::converts` and
+    /// `gandr_core_nbe::conv::type_converts`); the two-way subtyping
     /// pass that stood in for the carrier, and the structural no-reduction
     /// equality that stood in for the endpoints, are both retired. So `≡ᵥ`
     /// now carries Walk-β, congruence, and the substitution laws, and

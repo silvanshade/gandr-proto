@@ -16,6 +16,9 @@ name = "checker"
 path = "tests/lib.rs"
 
 [dependencies]
+# The conversion engine subsumption decides its identity endpoints with, and the
+# equational theory a solver certificate is re-checked against.
+gandr-core-nbe.workspace = true
 # The core CBPV term substrate every judgement here is stated over: syntax,
 # types, contexts, substitution, interning, effect rows, grades, builtins, and
 # the shared error, outcome, and wrapper vocabulary.

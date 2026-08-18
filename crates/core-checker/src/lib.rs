@@ -31,14 +31,16 @@
 //!   and its stack-typing judgement;
 //! - [`discipline`] — the rules the checker applies beside the judgement:
 //!   subsumption and total error marking;
-//! - [`nbe`], [`unify`], [`kernel_bridge`] — the engines, each already its own
+//! - [`unify`], [`kernel_bridge`] — the engines, each already its own
 //!   directory.
 //!
-//! The substrate all four are stated over is not here: `gandr-core-term`
-//! carries the syntax, the types, the context, substitution, interning, effect
-//! rows, grades, builtins, and the shared error, outcome, and wrapper
-//! vocabulary, so the crates that decide and the crates that compute share one
-//! language without depending on one another.
+//! Two neighbours the judgements lean on are not here. `gandr-core-term`
+//! carries the substrate all of them are stated over: the syntax, the types,
+//! the context, substitution, interning, effect rows, grades, builtins, and the
+//! shared error, outcome, and wrapper vocabulary. `gandr-core-nbe` carries the
+//! conversion engine subsumption decides its identity endpoints with. So the
+//! crates that decide and the crates that compute share one language without
+//! depending on one another.
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators
@@ -64,8 +66,8 @@
 //! defines, with metavariables nominated among existing holes so no syntactic
 //! former is added and the checker/machine agreement above is inherited rather
 //! than re-established. Its answers are certificates a caller re-checks by
-//! substituting and asking [`nbe::conv`], which is what pins its equational
-//! theory to the checker's own.
+//! substituting and asking `gandr_core_nbe::conv`, which is what pins its
+//! equational theory to the checker's own.
 //!
 //! Incremental re-typing rides on this crate rather than living in it:
 //! `gandr-core-incremental` carries the parser-agnostic item seam, the
@@ -85,5 +87,4 @@ pub mod discipline;
 pub mod judgements;
 pub mod kernel_bridge;
 pub mod machine;
-pub mod nbe;
 pub mod unify;

@@ -33,8 +33,8 @@
 //! address, an allocation order, or a hash-map iteration order. Readback is
 //! deterministic for that reason and not by accident.
 //!
-//! [`conv`]: crate::nbe::conv
-//! [`Normalizer::normalize`]: crate::nbe::Normalizer::normalize
+//! [`conv`]: crate::conv
+//! [`Normalizer::normalize`]: crate::Normalizer::normalize
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -54,22 +54,22 @@ use gandr_core_term::syntax::WalkBaseNode;
 use gandr_core_term::syntax::WalkMotiveNode;
 use gandr_core_term::types::DataId;
 
-use crate::nbe::Normalizer;
-use crate::nbe::eval::ForceMode;
-use crate::nbe::eval::eval_comp;
-use crate::nbe::eval::force_value;
-use crate::nbe::eval::syntax_comp;
-use crate::nbe::eval::value;
-use crate::nbe::sem::ClosureId;
-use crate::nbe::sem::Elim;
-use crate::nbe::sem::NeutralHead;
-use crate::nbe::sem::Rigid;
-use crate::nbe::sem::SemCompId;
-use crate::nbe::sem::SemCompNode;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::SemValueId;
-use crate::nbe::sem::SemValueNode;
-use crate::nbe::sem::ValueUnfold;
+use crate::Normalizer;
+use crate::eval::ForceMode;
+use crate::eval::eval_comp;
+use crate::eval::force_value;
+use crate::eval::syntax_comp;
+use crate::eval::value;
+use crate::sem::ClosureId;
+use crate::sem::Elim;
+use crate::sem::NeutralHead;
+use crate::sem::Rigid;
+use crate::sem::SemCompId;
+use crate::sem::SemCompNode;
+use crate::sem::SemError;
+use crate::sem::SemValueId;
+use crate::sem::SemValueNode;
+use crate::sem::ValueUnfold;
 
 /// How readback treats the two faces and the definitional environment.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -109,7 +109,7 @@ impl QuoteMode
 /// parses, so a generated binder can never collide with a source name.
 #[inline]
 #[must_use]
-pub(crate) fn level_name(level: VariableLevel) -> String
+pub fn level_name(level: VariableLevel) -> String
 {
     format!("\u{ab}{}\u{bb}", u32::from(level))
 }
@@ -118,10 +118,10 @@ pub(crate) fn level_name(level: VariableLevel) -> String
 /// any other name.
 ///
 /// The inverse of [`level_name`], kept beside it so the two halves of one
-/// naming convention cannot drift. The scope check in [`crate::unify`] is what
-/// needs the inverse: it has to tell a variable the solver itself opened from
-/// an ordinary source name, and a solver holding its own copy of the format
-/// string would keep working while this one changed.
+/// naming convention cannot drift. The scope check in `gandr_core_unify` is
+/// what needs the inverse: it has to tell a variable the solver itself opened
+/// from an ordinary source name, and a solver holding its own copy of the
+/// format string would keep working while this one changed.
 ///
 /// # Contract
 /// - ensures: `parse_level_name(level_name(level))` is `Some(level)` for every
@@ -135,13 +135,11 @@ pub(crate) fn level_name(level: VariableLevel) -> String
 /// - hypothesis: L3 — the round trip on an ordinary level and on zero, plus
 ///   four rejections separated pointwise: a source name, an unbracketed number,
 ///   a half-bracketed name, and a bracketed non-number.
-/// - witness: `nbe::tests::a_level_name_round_trips_through_its_parser`
-/// - witness: `nbe::tests::a_parser_rejects_every_name_readback_cannot_produce`
+/// - witness: `crate::tests::a_level_name_round_trips_through_its_parser`
+/// - witness: `crate::tests::a_parser_rejects_every_name_readback_cannot_produce`
 #[inline]
 #[must_use]
-pub(crate) fn parse_level_name(
-    name: gandr_core_term::boundary::NameRef<'_>
-) -> Option<VariableLevel>
+pub fn parse_level_name(name: gandr_core_term::boundary::NameRef<'_>) -> Option<VariableLevel>
 {
     let name = <&str>::from(name);
     let body = name.strip_prefix('\u{ab}')?.strip_suffix('\u{bb}')?;
@@ -319,9 +317,9 @@ enum Task
 ///   land on a convertible value for every generated term — plus L3 for the
 ///   three modes, separated pointwise by one value that has a term face, one
 ///   that does not, and one whose head is a definition.
-/// - witness: `nbe::tests::retained_readback_hands_back_the_source_term`
-/// - witness: `nbe::tests::canonical_readback_renames_binders_to_levels`
-/// - witness: `nbe::tests::unfolding_readback_spends_the_definition`
+/// - witness: `crate::tests::retained_readback_hands_back_the_source_term`
+/// - witness: `crate::tests::canonical_readback_renames_binders_to_levels`
+/// - witness: `crate::tests::unfolding_readback_spends_the_definition`
 ///
 /// # Termination
 /// - reason: the walk drains an explicit task stack; going under a binder

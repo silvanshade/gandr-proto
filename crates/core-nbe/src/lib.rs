@@ -1,10 +1,15 @@
-//! **Normalization by evaluation**: the checker's conversion engine.
+//! **Normalization by evaluation**: gandr's conversion engine.
 //!
-//! This module replaces the rung-one no-reduction shadow of definitional
-//! equality with the real thing. Terms are evaluated into a glued semantic
+//! This crate decides definitional equality on the core call-by-push-value
+//! terms `gandr-core-term` defines. Terms are evaluated into a glued semantic
 //! domain, compared there, and read back into syntax when a term is wanted;
 //! the six-step definitional-equality pipeline decides conversion, and every
-//! caller of the old structural equality now goes through it.
+//! caller that once used a structural equality goes through it.
+//!
+//! It names no judgement and no realization. The bidirectional checker's
+//! subsumption relation calls in, and the solver's certificates are re-checked
+//! by asking this engine — which is what pins one equational theory across the
+//! two.
 //!
 //! # The engine in one screen
 //!
@@ -74,6 +79,8 @@
 //! when its head is a structure and stays neutral when it is not, weak-head and
 //! spine-local, never touching the sibling components.
 
+extern crate alloc;
+
 pub mod conv;
 pub mod defs;
 pub mod eval;
@@ -90,11 +97,11 @@ use gandr_core_term::syntax::FlatArena;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::syntax::ValueNodeId;
 
-use crate::nbe::defs::Definitions;
-use crate::nbe::intern::SyntaxInterner;
-use crate::nbe::sem::SemArena;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::Watermark;
+use crate::defs::Definitions;
+use crate::intern::SyntaxInterner;
+use crate::sem::SemArena;
+use crate::sem::SemError;
+use crate::sem::Watermark;
 
 /// The default fuel a normalizer spends before it stops unfolding.
 ///
@@ -316,7 +323,7 @@ impl Normalizer
     /// binders a readback introduced reads this as a watermark before quoting:
     /// every level readback mints is at or above it, and every level the caller
     /// opened is below it. That is the discrimination the unifier's scope check
-    /// rests on ([`crate::unify`]).
+    /// rests on (`gandr_core_unify`).
     #[inline]
     #[must_use]
     pub fn next_level(&self) -> VariableLevel
@@ -411,9 +418,9 @@ impl Normalizer
     ///   its normal form always convert, and normalizing twice is idempotent —
     ///   plus L3 for the truncation, separated by observing the arena
     ///   population before and after.
-    /// - witness: `nbe::tests::a_term_converts_with_its_own_normal_form`
-    /// - witness: `nbe::tests::normalization_is_idempotent`
-    /// - witness: `nbe::tests::normalizing_leaves_the_arena_where_it_found_it`
+    /// - witness: `crate::tests::a_term_converts_with_its_own_normal_form`
+    /// - witness: `crate::tests::normalization_is_idempotent`
+    /// - witness: `crate::tests::normalizing_leaves_the_arena_where_it_found_it`
     #[inline]
     pub fn normalize(
         &mut self,
@@ -472,7 +479,7 @@ impl Normalizer
     ///   normalizing a term whose binders are source names must intern a
     ///   *different* representative from the lowered input, with one entry in
     ///   each face.
-    /// - witness: `nbe::tests::normalize_node_interns_a_canonical_form_not_the_input`
+    /// - witness: `crate::tests::normalize_node_interns_a_canonical_form_not_the_input`
     #[inline]
     pub(crate) fn intern_readback(
         &mut self,
@@ -558,8 +565,8 @@ impl Normalizer
     ///   deep as its input. Each releases the caller's term while the
     ///   normalizer and its live run are still up, and then observes through a
     ///   weak handle that nothing here kept it.
-    /// - witness: `nbe::tests::a_deep_bind_chain_teardown_is_order_independent`
-    /// - witness: `nbe::tests::a_deep_pair_chain_teardown_is_order_independent`
+    /// - witness: `crate::tests::a_deep_bind_chain_teardown_is_order_independent`
+    /// - witness: `crate::tests::a_deep_pair_chain_teardown_is_order_independent`
     ///
     /// # Errors
     ///
@@ -607,23 +614,23 @@ mod tests
     use gandr_core_term::types::ValueType;
 
     use super::*;
-    use crate::nbe::defs::Transparency;
-    use crate::nbe::eval::ForceMode;
-    use crate::nbe::eval::eval_value;
-    use crate::nbe::eval::force_value;
-    use crate::nbe::intern::Face;
-    use crate::nbe::intern::canonical_key;
-    use crate::nbe::quote::QuoteMode;
-    use crate::nbe::quote::quote_value;
-    use crate::nbe::sem::Guard;
-    use crate::nbe::sem::Neutral;
-    use crate::nbe::sem::NeutralHead;
-    use crate::nbe::sem::Rigid;
-    use crate::nbe::sem::SemValue;
-    use crate::nbe::sem::SemValueNode;
-    use crate::nbe::sem::ValueUnfold;
-    use crate::nbe::sem::mix_word;
-    use crate::nbe::sem::seed;
+    use crate::defs::Transparency;
+    use crate::eval::ForceMode;
+    use crate::eval::eval_value;
+    use crate::eval::force_value;
+    use crate::intern::Face;
+    use crate::intern::canonical_key;
+    use crate::quote::QuoteMode;
+    use crate::quote::quote_value;
+    use crate::sem::Guard;
+    use crate::sem::Neutral;
+    use crate::sem::NeutralHead;
+    use crate::sem::Rigid;
+    use crate::sem::SemValue;
+    use crate::sem::SemValueNode;
+    use crate::sem::ValueUnfold;
+    use crate::sem::mix_word;
+    use crate::sem::seed;
 
     /// Wraps a computation as the thunk value the normalizer's value-level
     /// entry points take, so a reduction rule is observable through `converts`.
@@ -1814,7 +1821,7 @@ mod tests
         let left = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, left_node).unwrap();
         let right = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, right_node).unwrap();
         assert!(
-            bool::from(crate::nbe::conv::converts_values(&mut nbe, left, right).unwrap()),
+            bool::from(crate::conv::converts_values(&mut nbe, left, right).unwrap()),
             "two separately built alpha-equivalent signatures were treated as distinct"
         );
     }
@@ -2426,7 +2433,7 @@ mod tests
         let left = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, left).unwrap();
         let right = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, right).unwrap();
         assert!(bool::from(
-            crate::nbe::conv::converts_values(&mut nbe, left, right).unwrap()
+            crate::conv::converts_values(&mut nbe, left, right).unwrap()
         ));
     }
 
@@ -2435,9 +2442,9 @@ mod tests
     {
         for raw in [0_u32, 1, 7, u32::MAX] {
             let level = VariableLevel::from(raw);
-            let rendered = crate::nbe::quote::level_name(level);
+            let rendered = crate::quote::level_name(level);
             assert_eq!(
-                crate::nbe::quote::parse_level_name(NameRef::from(rendered.as_str())),
+                crate::quote::parse_level_name(NameRef::from(rendered.as_str())),
                 Some(level)
             );
         }
@@ -2455,7 +2462,7 @@ mod tests
             "\u{ab}\u{bb}",
         ] {
             assert_eq!(
-                crate::nbe::quote::parse_level_name(NameRef::from(raw)),
+                crate::quote::parse_level_name(NameRef::from(raw)),
                 None,
                 "{raw} must not parse as a generated binder name"
             );

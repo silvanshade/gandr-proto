@@ -46,7 +46,7 @@
 //! type interner ([`gandr_core_term::intern`]) and it takes nothing into the
 //! trusted base.
 //!
-//! [`SemArena`]: crate::nbe::sem::SemArena
+//! [`SemArena`]: crate::sem::SemArena
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
@@ -69,9 +69,9 @@ use gandr_core_term::syntax::ValueNodeId;
 use gandr_core_term::syntax::ValueTypeNode;
 use gandr_core_term::syntax::ValueTypeNodeId;
 
-use crate::nbe::sem::mix_hashable;
-use crate::nbe::sem::mix_word;
-use crate::nbe::sem::seed;
+use crate::sem::mix_hashable;
+use crate::sem::mix_word;
+use crate::sem::seed;
 
 /// One token in a canonical key's stream.
 #[repr(transparent)]
@@ -240,8 +240,8 @@ impl SyntaxInterner
     ///   alpha-equivalent pair in one face must share a representative, an
     ///   alpha-distinct pair in one face must not, and the same term interned
     ///   into both faces must yield two representatives rather than one.
-    /// - witness: `nbe::tests::interning_shares_alpha_equivalent_terms_within_a_face`
-    /// - witness: `nbe::tests::interning_keeps_the_two_faces_disjoint`
+    /// - witness: `crate::tests::interning_shares_alpha_equivalent_terms_within_a_face`
+    /// - witness: `crate::tests::interning_keeps_the_two_faces_disjoint`
     #[inline]
     pub fn intern(
         &mut self,
@@ -326,8 +326,8 @@ mod tag
 /// - hypothesis: L3 for the two binder namespaces, separated pointwise: one
 ///   term renaming a package's abstract component, which must key the same, and
 ///   one renaming the free value variable it could capture, which must not.
-/// - witness: `nbe::tests::interning_shares_alpha_equivalent_terms_within_a_face`
-/// - witness: `nbe::tests::a_package_binder_binds_type_atoms_without_capturing_a_value_variable`
+/// - witness: `crate::tests::interning_shares_alpha_equivalent_terms_within_a_face`
+/// - witness: `crate::tests::a_package_binder_binds_type_atoms_without_capturing_a_value_variable`
 ///
 /// # Termination
 /// - reason: the traversal drains an explicit task stack over one finite node
@@ -382,12 +382,12 @@ pub fn canonical_value_type_key(
 /// engine that meets a type inside a value performs, because such a type is
 /// never evaluated and the key is the only equality on offer: conversion on a
 /// packed module's witnesses and on an unpack's ascribed signature
-/// ([`crate::nbe::conv`]), and the unifier's pack congruence
-/// ([`crate::unify`]). Sharing the one function is what keeps the solver's
+/// ([`crate::conv`]), and the unifier's pack congruence
+/// (`gandr_core_unify`). Sharing the one function is what keeps the solver's
 /// verdict and conversion's verdict the same relation on this input.
 #[inline]
 #[must_use]
-pub(crate) fn canonically_equal_value_types(
+pub fn canonically_equal_value_types(
     arena: &FlatArena,
     left: ValueTypeNodeId,
     right: ValueTypeNodeId,
@@ -961,11 +961,12 @@ fn visit_value_type<'term>(
             payload,
         } => {
             // The abstract components are binders over the payload, discharged
-            // by `crate::judgements::package::instantiate`, so the labels never reach the
-            // stream: they open the type scope and their occurrences emit an
-            // index. Two signatures that differ only in how they spell a
-            // component are one key, which is the same relation subtyping
-            // decides by instantiating both sides at canonical binders.
+            // by `gandr_core_checker::judgements::package::instantiate`, so the labels
+            // never reach the stream: they open the type scope and their
+            // occurrences emit an index. Two signatures that differ only in how
+            // they spell a component are one key, which is the same relation
+            // subtyping decides by instantiating both sides at canonical
+            // binders.
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(14)));
             hashed(tokens, &grade);
             length(tokens, SemanticNodeCount::from(abstracts.len()));

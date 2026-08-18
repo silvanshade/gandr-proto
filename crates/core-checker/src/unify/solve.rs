@@ -36,6 +36,25 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
+use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::conv;
+use gandr_core_nbe::eval;
+use gandr_core_nbe::eval::ForceMode;
+use gandr_core_nbe::intern::canonically_equal_value_types;
+use gandr_core_nbe::quote::QuoteMode;
+use gandr_core_nbe::quote::level_name;
+use gandr_core_nbe::quote::quote_comp;
+use gandr_core_nbe::quote::quote_value;
+use gandr_core_nbe::sem::Elim;
+use gandr_core_nbe::sem::NeutralHead;
+use gandr_core_nbe::sem::Rigid;
+use gandr_core_nbe::sem::SemArena;
+use gandr_core_nbe::sem::SemCompId;
+use gandr_core_nbe::sem::SemCompNode;
+use gandr_core_nbe::sem::SemError;
+use gandr_core_nbe::sem::SemValueId;
+use gandr_core_nbe::sem::SemValueNode;
+use gandr_core_nbe::sem::ValueUnfold;
 use gandr_core_term::boundary::ConstraintIndex;
 use gandr_core_term::boundary::HoleId;
 use gandr_core_term::boundary::MetaFreedom;
@@ -50,25 +69,6 @@ use gandr_core_term::subst::HoleRepl;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-use crate::nbe::Normalizer;
-use crate::nbe::conv;
-use crate::nbe::eval;
-use crate::nbe::eval::ForceMode;
-use crate::nbe::intern::canonically_equal_value_types;
-use crate::nbe::quote::QuoteMode;
-use crate::nbe::quote::level_name;
-use crate::nbe::quote::quote_comp;
-use crate::nbe::quote::quote_value;
-use crate::nbe::sem::Elim;
-use crate::nbe::sem::NeutralHead;
-use crate::nbe::sem::Rigid;
-use crate::nbe::sem::SemArena;
-use crate::nbe::sem::SemCompId;
-use crate::nbe::sem::SemCompNode;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::SemValueId;
-use crate::nbe::sem::SemValueNode;
-use crate::nbe::sem::ValueUnfold;
 use crate::unify::Constraint;
 use crate::unify::certify::Certificate;
 use crate::unify::certify::Postponed;
@@ -452,7 +452,7 @@ fn value_pair_is_rigid(
 }
 
 /// Whether one guard word says its value is rigid and carries no hole.
-fn settled(guard: crate::nbe::sem::Guard) -> RigidStatus
+fn settled(guard: gandr_core_nbe::sem::Guard) -> RigidStatus
 {
     RigidStatus::from(bool::from(guard.rigid()) && !bool::from(guard.holes()))
 }

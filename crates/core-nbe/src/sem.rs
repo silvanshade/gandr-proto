@@ -66,7 +66,7 @@
 //! from one whose symptom was merely ordered away. Both then drop the
 //! normalizer with its run still live, and both repeat the opposite order.
 //!
-//! [`intern`]: crate::nbe::intern
+//! [`intern`]: crate::intern
 //! [`FlatArena`]: gandr_core_term::syntax::FlatArena
 
 use alloc::collections::BTreeMap;
@@ -420,7 +420,7 @@ impl Guard
     ///   hole-free pair with equal hashes, a rigid hole-free pair with unequal
     ///   hashes, and an unfoldable pair with unequal hashes separate every
     ///   mutant.
-    /// - witness: `nbe::tests::guard_settles_distinct_only_for_rigid_hole_free_pairs`
+    /// - witness: `crate::tests::guard_settles_distinct_only_for_rigid_hole_free_pairs`
     #[inline]
     #[must_use]
     pub fn settles_distinct(
@@ -601,11 +601,11 @@ pub enum SemValueNode
     /// The witnesses are **types**, so they stay syntax ids: this domain has no
     /// semantic type former to evaluate them into, and nothing about a package
     /// asks for one — the abstraction step every package rule performs
-    /// ([`crate::judgements::package::instantiate`]) is a typing operation with
-    /// no term-level residue. Naming syntax rather than copying it is the
-    /// [`Self::Reified`] discipline, and retaining it rather than dropping
-    /// it is what keeps two packs at different representations
-    /// distinguishable.
+    /// (`gandr_core_checker::judgements::package::instantiate`) is a typing
+    /// operation with no term-level residue. Naming syntax rather than
+    /// copying it is the [`Self::Reified`] discipline, and retaining it
+    /// rather than dropping it is what keeps two packs at different
+    /// representations distinguishable.
     Pack
     {
         /// The witness type ids, positionally discharging the signature's
@@ -984,7 +984,7 @@ impl Neutral
     ///   separated by one input each: extending a rigid neutral must leave the
     ///   face rigid, and extending a forced neutral must leave it pending at
     ///   the original height.
-    /// - witness: `nbe::tests::extending_a_glued_spine_reopens_the_unfolding_face`
+    /// - witness: `crate::tests::extending_a_glued_spine_reopens_the_unfolding_face`
     #[inline]
     #[must_use]
     pub fn extended(
@@ -1200,7 +1200,7 @@ impl SemArena
     /// - hypothesis: L3 only — the five family truncations are separated by
     ///   minting one node in each family past a mark and observing every
     ///   population return to it exactly.
-    /// - witness: `nbe::tests::truncating_to_a_watermark_drops_every_family`
+    /// - witness: `crate::tests::truncating_to_a_watermark_drops_every_family`
     #[inline]
     pub fn truncate_to(
         &mut self,

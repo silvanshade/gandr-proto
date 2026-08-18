@@ -46,13 +46,12 @@
 
 use alloc::vec::Vec;
 
+use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::sem::Elim;
+use gandr_core_nbe::sem::Rigid;
+use gandr_core_nbe::sem::SemError;
+use gandr_core_nbe::sem::SemValueNode;
 use gandr_core_term::boundary::VariableLevel;
-
-use crate::nbe::Normalizer;
-use crate::nbe::sem::Elim;
-use crate::nbe::sem::Rigid;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::SemValueNode;
 
 /// Why the solver stopped on a constraint without deciding it.
 ///
@@ -208,11 +207,6 @@ pub(crate) fn classify_spine(
         };
         let level = match *nbe.arena().value(argument)?.node() {
             | SemValueNode::Rigid(Rigid::Level(level), _) => level,
-            | SemValueNode::Rigid(Rigid::Free(_) | Rigid::Hole(_), _)
-            | SemValueNode::Thunk(..)
-            | SemValueNode::Reified(_) => {
-                return Ok(SpineShape::Blocked(PostponeReason::NonPatternSpine));
-            },
             | SemValueNode::Unit
             | SemValueNode::Int(_)
             | SemValueNode::Str(_)
@@ -225,6 +219,14 @@ pub(crate) fn classify_spine(
             | SemValueNode::Ctor { .. }
             | SemValueNode::Pack { .. } => {
                 return Ok(SpineShape::Blocked(PostponeReason::ConstructorInSpine));
+            },
+            // A free or hole-headed rigid, a thunk, a reified stack — and any
+            // variant the `#[non_exhaustive]` semantic domain gains later, which
+            // reaches this arm rather than failing the match to compile. None of
+            // them is a distinct bound variable, so none is a pattern spine, and
+            // postponing loses completeness rather than soundness.
+            | _ => {
+                return Ok(SpineShape::Blocked(PostponeReason::NonPatternSpine));
             },
         };
         if levels.contains(&level) {

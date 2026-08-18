@@ -20,7 +20,7 @@
 //! reading one pins the boundary rather than the absence of an answer.
 //!
 //! **The theory is the checker's theory.** Every rule the solver applies is a
-//! rule [`crate::nbe::conv`] already decides, which is what makes the
+//! rule [`gandr_core_nbe::conv`] already decides, which is what makes the
 //! substitute-and-re-check evidence meaningful. Where a rule is not in
 //! conversion, it is not in the fragment either, whatever the type would
 //! license.
@@ -99,13 +99,13 @@ pub mod solve;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
+use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::sem::SemError;
 use gandr_core_term::boundary::ConstraintCount;
 use gandr_core_term::boundary::SolverBudget;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-use crate::nbe::Normalizer;
-use crate::nbe::sem::SemError;
 pub use crate::unify::certify::Certificate;
 pub use crate::unify::certify::Postponed;
 pub use crate::unify::certify::Replay;
@@ -273,6 +273,7 @@ mod tests
     use alloc::collections::BTreeMap;
     use alloc::vec;
 
+    use gandr_core_nbe::quote::level_name;
     use gandr_core_term::boundary::FieldName;
     use gandr_core_term::boundary::HoleId;
     use gandr_core_term::boundary::IntegerLiteral;
@@ -286,7 +287,6 @@ mod tests
     use proptest::prelude::*;
 
     use super::*;
-    use crate::nbe::quote::level_name;
     use crate::unify::scan;
 
     // ── fixtures ────────────────────────────────────────────────────────────

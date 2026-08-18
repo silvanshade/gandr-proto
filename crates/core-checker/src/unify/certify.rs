@@ -27,6 +27,9 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
+use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::conv;
+use gandr_core_nbe::sem::SemError;
 use gandr_core_term::boundary::ConstraintIndex;
 use gandr_core_term::boundary::HoleId;
 use gandr_core_term::boundary::HoleOccurrence;
@@ -39,9 +42,6 @@ use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-use crate::nbe::Normalizer;
-use crate::nbe::conv;
-use crate::nbe::sem::SemError;
 use crate::unify::Constraint;
 use crate::unify::frag::PostponeReason;
 use crate::unify::frag::Refutation;
@@ -389,10 +389,16 @@ impl Certificate
                 let (rhs, rhs_holes) = self.substitute_value(rhs.as_ref());
                 let lhs = nbe.lower_input(&lhs)?;
                 let rhs = nbe.lower_input(&rhs)?;
-                let lhs =
-                    crate::nbe::eval::eval_value(nbe, crate::nbe::sem::SemArena::EMPTY_ENV, lhs)?;
-                let rhs =
-                    crate::nbe::eval::eval_value(nbe, crate::nbe::sem::SemArena::EMPTY_ENV, rhs)?;
+                let lhs = gandr_core_nbe::eval::eval_value(
+                    nbe,
+                    gandr_core_nbe::sem::SemArena::EMPTY_ENV,
+                    lhs,
+                )?;
+                let rhs = gandr_core_nbe::eval::eval_value(
+                    nbe,
+                    gandr_core_nbe::sem::SemArena::EMPTY_ENV,
+                    rhs,
+                )?;
                 let converts = conv::converts_values(nbe, lhs, rhs)?;
                 Ok((
                     converts,

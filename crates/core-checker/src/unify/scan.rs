@@ -27,11 +27,12 @@
 //! Hole identity has no binding form at all, so the occurs and blocker
 //! questions never had a shadowing case.
 //!
-//! [`QuoteMode::Canonical`]: crate::nbe::quote::QuoteMode::Canonical
+//! [`QuoteMode::Canonical`]: gandr_core_nbe::quote::QuoteMode::Canonical
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use gandr_core_nbe::quote::parse_level_name;
 use gandr_core_term::boundary::EscapeStatus;
 use gandr_core_term::boundary::HoleId;
 use gandr_core_term::boundary::NameRef;
@@ -40,8 +41,6 @@ use gandr_core_term::boundary::VariableLevel;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Stack;
 use gandr_core_term::syntax::Value;
-
-use crate::nbe::quote::parse_level_name;
 
 /// What one scan found.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -121,7 +120,7 @@ impl Occurrences
 /// - witness: `unify::tests::a_scan_allows_the_spine_levels_and_flags_the_others`
 /// - witness: `unify::tests::a_scan_ignores_readback_binders_and_source_names`
 ///
-/// [`QuoteMode::Canonical`]: crate::nbe::quote::QuoteMode::Canonical
+/// [`QuoteMode::Canonical`]: gandr_core_nbe::quote::QuoteMode::Canonical
 #[must_use]
 pub(super) fn scan_value(
     term: &Value,

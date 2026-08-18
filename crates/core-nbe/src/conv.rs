@@ -47,7 +47,7 @@
 //! foreclose the telescope future from the inside, so the absence is a
 //! commitment rather than an omission.
 //!
-//! [`Guard::settles_distinct`]: crate::nbe::sem::Guard::settles_distinct
+//! [`Guard::settles_distinct`]: crate::sem::Guard::settles_distinct
 
 use alloc::rc::Rc;
 use alloc::vec::Vec;
@@ -63,30 +63,30 @@ use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::ValueType;
 
-use crate::nbe::Normalizer;
-use crate::nbe::eval::ForceMode;
-use crate::nbe::eval::apply;
-use crate::nbe::eval::eval_value;
-use crate::nbe::eval::force_head;
-use crate::nbe::eval::force_value;
-use crate::nbe::eval::project;
-use crate::nbe::eval::rerun_spine;
-use crate::nbe::eval::syntax_comp;
-use crate::nbe::eval::value;
-use crate::nbe::intern::canonical_stack_key;
-use crate::nbe::intern::canonically_equal_value_types;
-use crate::nbe::sem::ClosureId;
-use crate::nbe::sem::CompUnfold;
-use crate::nbe::sem::Elim;
-use crate::nbe::sem::NeutralHead;
-use crate::nbe::sem::Rigid;
-use crate::nbe::sem::SemArena;
-use crate::nbe::sem::SemCompId;
-use crate::nbe::sem::SemCompNode;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::SemValueId;
-use crate::nbe::sem::SemValueNode;
-use crate::nbe::sem::ValueUnfold;
+use crate::Normalizer;
+use crate::eval::ForceMode;
+use crate::eval::apply;
+use crate::eval::eval_value;
+use crate::eval::force_head;
+use crate::eval::force_value;
+use crate::eval::project;
+use crate::eval::rerun_spine;
+use crate::eval::syntax_comp;
+use crate::eval::value;
+use crate::intern::canonical_stack_key;
+use crate::intern::canonically_equal_value_types;
+use crate::sem::ClosureId;
+use crate::sem::CompUnfold;
+use crate::sem::Elim;
+use crate::sem::NeutralHead;
+use crate::sem::Rigid;
+use crate::sem::SemArena;
+use crate::sem::SemCompId;
+use crate::sem::SemCompNode;
+use crate::sem::SemError;
+use crate::sem::SemValueId;
+use crate::sem::SemValueNode;
+use crate::sem::ValueUnfold;
 
 /// The speculation state a goal is compared under.
 ///
@@ -166,9 +166,9 @@ enum Frame
 ///   readbacks agree — plus L3 for the three properties the relation promises,
 ///   separated pointwise by a reflexive pair, a symmetric pair, and the
 ///   hole-consistency triple that witnesses non-transitivity.
-/// - witness: `nbe::tests::conversion_agrees_with_canonical_readback`
-/// - witness: `nbe::tests::conversion_is_reflexive_and_symmetric`
-/// - witness: `nbe::tests::a_hole_is_consistent_with_every_value`
+/// - witness: `crate::tests::conversion_agrees_with_canonical_readback`
+/// - witness: `crate::tests::conversion_is_reflexive_and_symmetric`
+/// - witness: `crate::tests::a_hole_is_consistent_with_every_value`
 #[must_use]
 #[inline]
 pub fn converts(
@@ -458,8 +458,8 @@ fn value_goal(
             if left_grade != right_grade {
                 return Ok(ValueEquality::from(false));
             }
-            let left = crate::nbe::eval::enter_nullary(nbe, left_cell, state.force())?;
-            let right = crate::nbe::eval::enter_nullary(nbe, right_cell, state.force())?;
+            let left = crate::eval::enter_nullary(nbe, left_cell, state.force())?;
+            let right = crate::eval::enter_nullary(nbe, right_cell, state.force())?;
             goals.push(Frame::Comp(left, right, state));
             return Ok(ValueEquality::from(true));
         },
@@ -628,8 +628,8 @@ fn neutral_goal(
     nbe: &mut Normalizer,
     lhs_comp: SemCompId,
     rhs_comp: SemCompId,
-    lhs: crate::nbe::sem::NeutralId,
-    rhs: crate::nbe::sem::NeutralId,
+    lhs: crate::sem::NeutralId,
+    rhs: crate::sem::NeutralId,
     state: ConvState,
     goals: &mut Vec<Frame>,
 ) -> Result<ValueEquality, SemError>
@@ -723,8 +723,8 @@ fn closures_goal(
         let node = SemValueNode::Rigid(Rigid::Level(level), ValueUnfold::Rigid);
         fresh.push(value(nbe, node)?);
     }
-    let left = crate::nbe::eval::enter_with(nbe, lhs, &fresh, state.force())?;
-    let right = crate::nbe::eval::enter_with(nbe, rhs, &fresh, state.force())?;
+    let left = crate::eval::enter_with(nbe, lhs, &fresh, state.force())?;
+    let right = crate::eval::enter_with(nbe, rhs, &fresh, state.force())?;
     goals.push(Frame::Comp(left, right, state));
     Ok(())
 }
@@ -1257,8 +1257,8 @@ fn made_progress(
 /// - hypothesis: L3 — the decision surfaces are the former match, the record
 ///   label comparison, the unknown wildcard, and the two value-embedding
 ///   formers, each separated by one pair that differs in exactly it.
-/// - witness: `nbe::tests::signature_conversion_is_label_exact`
-/// - witness: `nbe::tests::identity_endpoints_convert_up_to_beta`
+/// - witness: `crate::tests::signature_conversion_is_label_exact`
+/// - witness: `crate::tests::identity_endpoints_convert_up_to_beta`
 #[must_use]
 #[inline]
 pub fn type_converts(

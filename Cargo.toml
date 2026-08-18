@@ -7,6 +7,7 @@ members = [
   "crates/core-checker",
   "crates/core-checker-tools",
   "crates/core-incremental",
+  "crates/core-nbe",
   "crates/core-sequent",
   "crates/core-term",
   "crates/kernel-core",
@@ -165,6 +166,13 @@ path = "crates/core-checker-tools"
 [workspace.dependencies.gandr-core-incremental]
 path = "crates/core-incremental"
 
+# Normalization by evaluation for the core: the glued semantic domain,
+# evaluation, readback, and the definitional-equality pipeline.
+# consumers:
+# - gandr-core-checker
+[workspace.dependencies.gandr-core-nbe]
+path = "crates/core-nbe"
+
 # The polarized System-L command IL, the static focusing translation, and the L machine.
 # consumers:
 # - gandr-runtime-effects
@@ -184,6 +192,7 @@ path = "crates/core-sequent"
 # - gandr-core-checker
 # - gandr-core-checker-tools
 # - gandr-core-incremental
+# - gandr-core-nbe
 # - gandr-core-sequent
 # - gandr-runtime-effects
 # - gandr-runtime-ffi

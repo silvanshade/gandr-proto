@@ -60,29 +60,29 @@ use gandr_core_term::syntax::ValueNode;
 use gandr_core_term::syntax::ValueNodeId;
 use gandr_core_term::syntax::ValueTypeNodeId;
 
-use crate::nbe::Normalizer;
-use crate::nbe::sem::Closure;
-use crate::nbe::sem::ClosureId;
-use crate::nbe::sem::CompUnfold;
-use crate::nbe::sem::Elim;
-use crate::nbe::sem::EnvId;
-use crate::nbe::sem::Guard;
-use crate::nbe::sem::Neutral;
-use crate::nbe::sem::NeutralHead;
-use crate::nbe::sem::Rigid;
-use crate::nbe::sem::SemArena;
-use crate::nbe::sem::SemComp;
-use crate::nbe::sem::SemCompId;
-use crate::nbe::sem::SemCompNode;
-use crate::nbe::sem::SemError;
-use crate::nbe::sem::SemValue;
-use crate::nbe::sem::SemValueId;
-use crate::nbe::sem::SemValueNode;
-use crate::nbe::sem::ValueUnfold;
-use crate::nbe::sem::mix_hashable;
-use crate::nbe::sem::mix_str;
-use crate::nbe::sem::mix_word;
-use crate::nbe::sem::seed;
+use crate::Normalizer;
+use crate::sem::Closure;
+use crate::sem::ClosureId;
+use crate::sem::CompUnfold;
+use crate::sem::Elim;
+use crate::sem::EnvId;
+use crate::sem::Guard;
+use crate::sem::Neutral;
+use crate::sem::NeutralHead;
+use crate::sem::Rigid;
+use crate::sem::SemArena;
+use crate::sem::SemComp;
+use crate::sem::SemCompId;
+use crate::sem::SemCompNode;
+use crate::sem::SemError;
+use crate::sem::SemValue;
+use crate::sem::SemValueId;
+use crate::sem::SemValueNode;
+use crate::sem::ValueUnfold;
+use crate::sem::mix_hashable;
+use crate::sem::mix_str;
+use crate::sem::mix_word;
+use crate::sem::seed;
 
 /// How far a force drives its subject.
 ///
@@ -116,14 +116,14 @@ impl ForceMode
     #[must_use]
     fn unfolds(
         self,
-        transparency: crate::nbe::defs::Transparency,
+        transparency: crate::defs::Transparency,
     ) -> UnfoldPermission
     {
         UnfoldPermission::from(match self {
             | Self::WeakHead => false,
             | Self::Unfold => true,
             | Self::Speculative => {
-                matches!(transparency, crate::nbe::defs::Transparency::Reducible)
+                matches!(transparency, crate::defs::Transparency::Reducible)
             },
         })
     }
@@ -557,9 +557,9 @@ enum ValueTask
 ///   environment interaction must retain, and a term with one must not — plus
 ///   L2 for the rebuild, whose oracle is readback: quoting the evaluation of
 ///   any closed value returns that value.
-/// - witness: `nbe::tests::evaluating_an_unreduced_value_retains_its_term_face`
-/// - witness: `nbe::tests::evaluating_through_the_environment_drops_the_term_face`
-/// - witness: `nbe::tests::quote_after_eval_is_the_identity_on_inert_values`
+/// - witness: `crate::tests::evaluating_an_unreduced_value_retains_its_term_face`
+/// - witness: `crate::tests::evaluating_through_the_environment_drops_the_term_face`
+/// - witness: `crate::tests::quote_after_eval_is_the_identity_on_inert_values`
 ///
 /// # Termination
 /// - reason: the walk drains an explicit task stack over one finite term.
@@ -863,9 +863,9 @@ fn pop(done: &mut Vec<Evaluated>) -> Evaluated
 ///   unchanged, a reducible definition unfolds under every unfolding mode, and
 ///   an irreducible one unfolds under the full mode but not the speculative
 ///   one. The fuel guard is separated by a self-referential definition.
-/// - witness: `nbe::tests::forcing_unfolds_a_reducible_definition`
-/// - witness: `nbe::tests::speculative_forcing_leaves_an_irreducible_definition_alone`
-/// - witness: `nbe::tests::forcing_a_self_referential_definition_terminates`
+/// - witness: `crate::tests::forcing_unfolds_a_reducible_definition`
+/// - witness: `crate::tests::speculative_forcing_leaves_an_irreducible_definition_alone`
+/// - witness: `crate::tests::forcing_a_self_referential_definition_terminates`
 #[inline]
 pub fn force_value(
     nbe: &mut Normalizer,
@@ -953,12 +953,12 @@ fn head_face(
 ///   — plus L3 for the neutral arms, each separated by one term whose head is a
 ///   rigid variable, and for the quarantine, separated by an effectful term
 ///   whose weak head must stay neutral.
-/// - witness: `nbe::tests::beta_fires_for_every_positive_eliminator`
-/// - witness: `nbe::tests::record_projection_reduces_and_stays_spine_local`
-/// - witness: `nbe::tests::walk_beta_fires_on_here`
-/// - witness: `nbe::tests::unpacking_a_packed_module_binds_the_payload`
-/// - witness: `nbe::tests::unpacking_a_neutral_package_stays_stuck_and_keeps_its_annotation_half`
-/// - witness: `nbe::tests::the_quarantine_leaves_effects_neutral`
+/// - witness: `crate::tests::beta_fires_for_every_positive_eliminator`
+/// - witness: `crate::tests::record_projection_reduces_and_stays_spine_local`
+/// - witness: `crate::tests::walk_beta_fires_on_here`
+/// - witness: `crate::tests::unpacking_a_packed_module_binds_the_payload`
+/// - witness: `crate::tests::unpacking_a_neutral_package_stays_stuck_and_keeps_its_annotation_half`
+/// - witness: `crate::tests::the_quarantine_leaves_effects_neutral`
 #[inline]
 pub fn eval_comp(
     nbe: &mut Normalizer,

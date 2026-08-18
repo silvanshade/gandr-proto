@@ -51,6 +51,9 @@
 
 use alloc::rc::Rc;
 
+use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::conv::converts;
+use gandr_core_nbe::conv::type_converts;
 use gandr_core_term::boundary::IntegerLiteral;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::PackageArity;
@@ -63,9 +66,6 @@ use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 
 use crate::machine::control::Dir;
-use crate::nbe::Normalizer;
-use crate::nbe::conv::converts;
-use crate::nbe::conv::type_converts;
 
 /// Completes the integer-literal rule under a direction (ADR-39 D4) — the
 /// checking-mode-polymorphic counterpart of [`finish_value`] for
@@ -301,10 +301,10 @@ pub fn comp_subtype(
 ///
 /// The two **invariant** formers are decided rather than decomposed: `Path` and
 /// `Sigma` go to the normalizer's definitional equality
-/// ([`crate::nbe::conv::type_converts`]) in one call each, because invariance
-/// is what conversion decides and a two-way subtyping pass was only ever
-/// spelling that out. Endpoints go the same way
-/// ([`crate::nbe::conv::converts`]), so they now relate up to beta.
+/// ([`gandr_core_nbe::conv::type_converts`]) in one call each, because
+/// invariance is what conversion decides and a two-way subtyping pass was only
+/// ever spelling that out. Endpoints go the same way
+/// ([`gandr_core_nbe::conv::converts`]), so they now relate up to beta.
 ///
 /// # Contract
 /// - ensures: returns `true` iff every goal the initial goals decompose into

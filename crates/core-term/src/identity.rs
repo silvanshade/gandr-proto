@@ -13,8 +13,8 @@
 //!   `C[x/y][here(x)/q]` and the result type `C[a/x][b/y][p/q]`.
 //! * **Definitional equality on the endpoints** is not. The `≡ᵥ` the identity
 //!   subtyping arm decides its endpoints with is now
-//!   `gandr_core_checker::nbe::conv::converts`, the normalizer's own relation.
-//!   The structural, no-reduction equality that stood in for it at rung 1 is
+//!   `gandr_core_nbe::conv::converts`, the normalizer's own relation. The
+//!   structural, no-reduction equality that stood in for it at rung 1 is
 //!   **retired**: it decided a strictly weaker relation than the language's,
 //!   and keeping both would have meant two definitional equalities in one
 //!   checker.

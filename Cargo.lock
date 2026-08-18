@@ -593,6 +593,7 @@ name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker-tools",
+ "gandr-core-nbe",
  "gandr-core-term",
  "gandr-kernel-core",
  "gandr-kernel-strata",
@@ -618,6 +619,13 @@ dependencies = [
  "gandr-core-term",
  "gandr-theory-orders",
  "proptest",
+]
+
+[[package]]
+name = "gandr-core-nbe"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-term",
 ]
 
 [[package]]

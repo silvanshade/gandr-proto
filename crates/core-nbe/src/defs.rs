@@ -215,8 +215,8 @@ impl Definitions
     ///   base case and the successor case, separated by defining a body that
     ///   mentions nothing and a body that mentions a definition of known
     ///   height, each observed as an exact height.
-    /// - witness: `nbe::tests::definition_height_is_one_above_what_the_body_mentions`
-    /// - witness: `nbe::tests::definition_height_sees_through_a_packed_module_and_its_elimination`
+    /// - witness: `crate::tests::definition_height_is_one_above_what_the_body_mentions`
+    /// - witness: `crate::tests::definition_height_sees_through_a_packed_module_and_its_elimination`
     #[inline]
     pub fn define<'source, N>(
         &mut self,
