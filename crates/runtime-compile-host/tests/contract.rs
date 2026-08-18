@@ -29,6 +29,34 @@ use gandr_runtime_compile_host::image::IMAGE_WIRE_VERSION;
 use gandr_runtime_compile_host::image::MAX_IMAGE_NODES;
 use gandr_runtime_compile_host::image::NodeKind;
 
+/// One of the host's source files, read whole.
+#[repr(transparent)]
+struct HostSource(String);
+
+/// A line the host is expected to declare.
+#[repr(transparent)]
+struct Declaration(String);
+
+/// What a declaration is about, for the failure message.
+#[repr(transparent)]
+struct Subject(String);
+
+/// A marker some section of a source file starts after.
+#[repr(transparent)]
+struct Marker(String);
+
+/// The tail of a source file, from just past a marker.
+#[repr(transparent)]
+struct Section<'source>(&'source str);
+
+impl AsRef<str> for Section<'_>
+{
+    fn as_ref(&self) -> &str
+    {
+        self.0
+    }
+}
+
 /// The host's root, relative to this crate's manifest.
 fn host_root() -> PathBuf
 {
@@ -39,25 +67,44 @@ fn host_root() -> PathBuf
 }
 
 /// Reads one of the host's source files.
-fn host_source(relative: &str) -> String
+fn host_source(relative: &Path) -> HostSource
 {
     let path = host_root().join(relative);
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|error| panic!("{} is unreadable: {error}", path.display()))
+    let text = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} is unreadable: {error}", path.display()));
+    HostSource(text)
 }
 
-/// Asserts that a source file contains a line, after trimming.
-fn assert_declares(
-    source: &str,
-    declaration: &str,
-    what: &str,
-)
+impl HostSource
 {
-    let found = source.lines().any(|line| line.trim() == declaration.trim());
-    assert!(
-        found,
-        "the host no longer declares {what}: expected `{declaration}`"
-    );
+    /// Asserts that some line of this file, trimmed, is exactly `declaration`.
+    fn assert_declares(
+        &self,
+        declaration: &Declaration,
+        what: &Subject,
+    )
+    {
+        let expected = declaration.0.trim();
+        let found = self.0.lines().any(|line| line.trim() == expected);
+        assert!(
+            found,
+            "the host no longer declares {}: expected `{expected}`",
+            what.0
+        );
+    }
+
+    /// The text after the first occurrence of `marker`.
+    fn after(
+        &self,
+        marker: &Marker,
+    ) -> Section<'_>
+    {
+        let tail = self.0.split_once(marker.0.as_str()).map_or_else(
+            || panic!("the host no longer holds `{}`", marker.0),
+            |(_, tail)| tail,
+        );
+        Section(tail)
+    }
 }
 
 /// The heap's reserved prefix is what this crate assumes it is.
@@ -69,18 +116,19 @@ fn assert_declares(
 #[test]
 fn the_heap_layout_is_what_the_bridge_assumes()
 {
-    let source = host_source("include/gandr/compile_host/value.hpp");
+    let source = host_source(Path::new("include/gandr/compile_host/value.hpp"));
     for (offset, field) in [
-        (0, "bump_cursor"),
-        (1, "duplication_ledger"),
-        (2, "discard_ledger"),
-        (3, "exhaustion_flag"),
-        (4, "arena_base"),
+        (0_u8, "bump_cursor"),
+        (1_u8, "duplication_ledger"),
+        (2_u8, "discard_ledger"),
+        (3_u8, "exhaustion_flag"),
+        (4_u8, "arena_base"),
     ] {
-        assert_declares(
-            &source,
-            &alloc::format!("static constexpr std::size_t {field} = {offset};"),
-            &alloc::format!("the heap's {field} at word {offset}"),
+        source.assert_declares(
+            &Declaration(alloc::format!(
+                "static constexpr std::size_t {field} = {offset};"
+            )),
+            &Subject(alloc::format!("the heap's {field} at word {offset}")),
         );
     }
 }
@@ -90,12 +138,17 @@ fn the_heap_layout_is_what_the_bridge_assumes()
 #[test]
 fn the_cell_tag_numbering_is_unchanged()
 {
-    let source = host_source("include/gandr/compile_host/value.hpp");
-    for (value, tag) in [(0, "Int"), (1, "Unit"), (2, "Pair"), (3, "Inl"), (4, "Inr")] {
-        assert_declares(
-            &source,
-            &alloc::format!("{tag} = {value},"),
-            &alloc::format!("the cell tag {tag} at {value}"),
+    let source = host_source(Path::new("include/gandr/compile_host/value.hpp"));
+    for (value, tag) in [
+        (0_u8, "Int"),
+        (1_u8, "Unit"),
+        (2_u8, "Pair"),
+        (3_u8, "Inl"),
+        (4_u8, "Inr"),
+    ] {
+        source.assert_declares(
+            &Declaration(alloc::format!("{tag} = {value},")),
+            &Subject(alloc::format!("the cell tag {tag} at {value}")),
         );
     }
 }
@@ -105,7 +158,7 @@ fn the_cell_tag_numbering_is_unchanged()
 #[test]
 fn the_wire_numbering_matches_this_crates_mirror()
 {
-    let source = host_source("include/gandr/compile_host/image.hpp");
+    let source = host_source(Path::new("include/gandr/compile_host/image.hpp"));
 
     for kind in [
         NodeKind::Lit,
@@ -119,20 +172,18 @@ fn the_wire_numbering_matches_this_crates_mirror()
     ] {
         let byte = u8::from(kind.wire_byte());
         let name = alloc::format!("{kind:?}");
-        assert_declares(
-            &source,
-            &alloc::format!("{name} = {byte},"),
-            &alloc::format!("the node kind {name} at {byte}"),
+        source.assert_declares(
+            &Declaration(alloc::format!("{name} = {byte},")),
+            &Subject(alloc::format!("the node kind {name} at {byte}")),
         );
     }
 
     for tag in [CtorTag::Unit, CtorTag::Pair, CtorTag::Inl, CtorTag::Inr] {
         let byte = u8::from(tag.wire_byte());
         let name = alloc::format!("{tag:?}");
-        assert_declares(
-            &source,
-            &alloc::format!("{name} = {byte},"),
-            &alloc::format!("the constructor tag {name} at {byte}"),
+        source.assert_declares(
+            &Declaration(alloc::format!("{name} = {byte},")),
+            &Subject(alloc::format!("the constructor tag {name} at {byte}")),
         );
     }
 }
@@ -141,11 +192,9 @@ fn the_wire_numbering_matches_this_crates_mirror()
 #[test]
 fn the_constructor_arities_match_this_crates_mirror()
 {
-    let source = host_source("include/gandr/compile_host/image.hpp");
-    let arities = source
-        .split("constexpr std::uint32_t ctor_arity")
-        .nth(1)
-        .expect("the host declares ctor_arity");
+    let source = host_source(Path::new("include/gandr/compile_host/image.hpp"));
+    let section = source.after(&Marker(String::from("constexpr std::uint32_t ctor_arity")));
+    let arities: &str = section.as_ref();
 
     // The arity table is a switch whose arms fall through for the two
     // injections, so the check reads the arm bodies in order rather than
@@ -160,8 +209,8 @@ fn the_constructor_arities_match_this_crates_mirror()
     assert_eq!(
         returns,
         alloc::vec!["0", "2", "1", "0"],
-        "the host's arity table changed shape; this crate emits \
-         {} fields for a pair and {} for an injection",
+        "the host's arity table changed shape; this crate emits {} fields for a pair and {} for \
+         an injection",
         usize::from(CtorTag::Pair.arity()),
         usize::from(CtorTag::Inl.arity())
     );
@@ -176,18 +225,20 @@ fn the_constructor_arities_match_this_crates_mirror()
 #[test]
 fn the_wire_version_and_arena_bound_are_unchanged()
 {
-    let image = host_source("include/gandr/compile_host/image.hpp");
-    assert_declares(
-        &image,
-        &alloc::format!("inline constexpr std::size_t max_image_nodes = {MAX_IMAGE_NODES};"),
-        "the arena bound",
+    let image = host_source(Path::new("include/gandr/compile_host/image.hpp"));
+    image.assert_declares(
+        &Declaration(alloc::format!(
+            "inline constexpr std::size_t max_image_nodes = {MAX_IMAGE_NODES};"
+        )),
+        &Subject(String::from("the arena bound")),
     );
 
-    let decode = host_source("src/decode.cpp");
-    assert_declares(
-        &decode,
-        &alloc::format!("constexpr std::uint8_t image_version = {IMAGE_WIRE_VERSION};"),
-        "the wire version",
+    let decode = host_source(Path::new("src/decode.cpp"));
+    decode.assert_declares(
+        &Declaration(alloc::format!(
+            "constexpr std::uint8_t image_version = {IMAGE_WIRE_VERSION};"
+        )),
+        &Subject(String::from("the wire version")),
     );
 }
 
@@ -195,29 +246,31 @@ fn the_wire_version_and_arena_bound_are_unchanged()
 #[test]
 fn the_boundary_version_and_statuses_are_unchanged()
 {
-    let source = host_source("include/gandr/compile_host/abi.h");
-    assert_declares(
-        &source,
-        &alloc::format!("#define GANDR_COMPILE_HOST_ABI_VERSION {ABI_VERSION}u"),
-        "the boundary version",
+    let source = host_source(Path::new("include/gandr/compile_host/abi.h"));
+    source.assert_declares(
+        &Declaration(alloc::format!(
+            "#define GANDR_COMPILE_HOST_ABI_VERSION {ABI_VERSION}u"
+        )),
+        &Subject(String::from("the boundary version")),
     );
 
     for (value, name) in [
-        (0, "OK"),
-        (1, "MALFORMED_IMAGE"),
-        (2, "VERIFIER_REJECTED"),
-        (3, "LOWERING_FAILED"),
-        (4, "CONVERSION_FAILED"),
-        (5, "EXECUTION_FAILED"),
-        (6, "RESULT_UNREADABLE"),
-        (7, "LIMIT_EXCEEDED"),
-        (8, "FIXTURE_UNREADABLE"),
-        (100, "BAD_CALL"),
+        (0_u8, "OK"),
+        (1_u8, "MALFORMED_IMAGE"),
+        (2_u8, "VERIFIER_REJECTED"),
+        (3_u8, "LOWERING_FAILED"),
+        (4_u8, "CONVERSION_FAILED"),
+        (5_u8, "EXECUTION_FAILED"),
+        (6_u8, "RESULT_UNREADABLE"),
+        (7_u8, "LIMIT_EXCEEDED"),
+        (8_u8, "FIXTURE_UNREADABLE"),
+        (100_u8, "BAD_CALL"),
     ] {
-        assert_declares(
-            &source,
-            &alloc::format!("#define GANDR_COMPILE_HOST_STATUS_{name} {value}"),
-            &alloc::format!("the status {name} at {value}"),
+        source.assert_declares(
+            &Declaration(alloc::format!(
+                "#define GANDR_COMPILE_HOST_STATUS_{name} {value}"
+            )),
+            &Subject(alloc::format!("the status {name} at {value}")),
         );
     }
 }
@@ -231,11 +284,11 @@ fn the_boundary_version_and_statuses_are_unchanged()
 #[test]
 fn the_boundary_struct_layout_is_unchanged()
 {
-    let source = host_source("include/gandr/compile_host/abi.h");
-    let declaration = source
-        .split("typedef struct GandrCompileHostOutcome")
-        .nth(1)
-        .expect("the host declares the outcome struct");
+    let source = host_source(Path::new("include/gandr/compile_host/abi.h"));
+    let section = source.after(&Marker(String::from(
+        "typedef struct GandrCompileHostOutcome",
+    )));
+    let declaration: &str = section.as_ref();
     let fields: Vec<&str> = declaration
         .lines()
         .take_while(|line| !line.contains("GandrCompileHostOutcome;"))
@@ -265,12 +318,10 @@ fn the_boundary_struct_layout_is_unchanged()
 #[test]
 fn the_verifier_still_opens_the_pipeline()
 {
-    let source = host_source("src/pipeline.cpp");
+    let source = host_source(Path::new("src/pipeline.cpp"));
 
-    let optimize = source
-        .split("Expected<void> optimize_module")
-        .nth(1)
-        .expect("the host declares optimize_module");
+    let optimize_section = source.after(&Marker(String::from("Expected<void> optimize_module")));
+    let optimize: &str = optimize_section.as_ref();
     let verification = optimize
         .find("verify_module(module)")
         .expect("optimize_module verifies");
@@ -280,10 +331,8 @@ fn the_verifier_still_opens_the_pipeline()
         "a pass now runs before the verifier in optimize_module"
     );
 
-    let lower = source
-        .split("Expected<void> lower_module")
-        .nth(1)
-        .expect("the host declares lower_module");
+    let lower_section = source.after(&Marker(String::from("Expected<void> lower_module")));
+    let lower: &str = lower_section.as_ref();
     let optimization = lower
         .find("optimize_module(module, optimization)")
         .expect("lower_module goes through optimize_module");
@@ -305,19 +354,17 @@ fn the_verifier_still_opens_the_pipeline()
 #[test]
 fn the_grade_operations_still_declare_their_effects()
 {
-    let source = host_source("src/dialect/GandrOps.td");
+    let source = host_source(Path::new("src/dialect/GandrOps.td"));
     for operation in ["Gandr_DupOp", "Gandr_DropOp"] {
-        let declaration = source
-            .split(&alloc::format!("def {operation} :"))
-            .nth(1)
-            .unwrap_or_else(|| panic!("the host declares {operation}"));
+        let section = source.after(&Marker(alloc::format!("def {operation} :")));
+        let declaration: &str = section.as_ref();
         let traits = declaration
             .split_once('{')
-            .map(|(head, _)| head)
-            .unwrap_or(declaration);
+            .map_or(declaration, |(head, _)| head);
         assert!(
             traits.contains("MemoryEffects<[MemRead, MemWrite]"),
-            "{operation} no longer declares memory effects; a canonicalization may now delete accounted work"
+            "{operation} no longer declares memory effects; a canonicalization may now delete \
+             accounted work"
         );
         assert!(
             !traits.contains("Pure"),
@@ -330,8 +377,9 @@ fn the_grade_operations_still_declare_their_effects()
 #[test]
 fn the_agreement_fixture_names_this_crates_programs()
 {
-    let fixture = host_source("fixtures/positive-core-samples.txt");
+    let fixture = host_source(Path::new("fixtures/positive-core-samples.txt"));
     let named: Vec<&str> = fixture
+        .0
         .lines()
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .filter_map(|line| line.split('\t').next())

@@ -6,11 +6,11 @@
 
 use alloc::rc::Rc;
 
+use gandr_core_sequent::machine::run_comp;
 use gandr_core_term::outcome::Eval;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Side;
 use gandr_core_term::syntax::Value;
-use gandr_core_sequent::machine::run_comp;
 use gandr_runtime_compile_host::RenderError;
 use gandr_runtime_compile_host::render::canonical;
 
