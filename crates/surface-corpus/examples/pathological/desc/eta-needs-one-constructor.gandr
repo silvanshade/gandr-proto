@@ -1,0 +1,29 @@
+// A type with several constructors licenses no η cell, and the route says so
+// rather than guessing one.
+//
+// `pred(Succ(m)) ==> m` looks like the inverse face an η law is licensed by,
+// and for `Succ` it is one. But `NatPred` has two constructors, so the law
+// `Succ(pred(w)) = w` is false at `Zero`: `pred(Zero)` is not written here at
+// all, and even written it could not make `Succ` of it equal `Zero`. An η law
+// cancels a destructor against *the* constructor it inverts, and a type with
+// two has no such constructor.
+//
+// So the cell layer declines, and the decline names the half that is missing
+// with the count that decides it. Licensing no η law is the ordinary case, not
+// a failure — most declarations are in it — so the reason is reported where a
+// reader can ask for it rather than raised as a diagnostic.
+//
+// The rest of the declaration is unaffected: the two constructor frames and
+// the written rule still reach the store.
+data NatPred : Type {
+  Zero : NatPred;
+  Succ : (n : NatPred) --> NatPred;
+  oper pred(n : NatPred) -> NatPred;
+  rule pred(Succ(m)) ==> m;
+}
+
+//@ mode: desc
+//@ expect-desc-rules: 1
+//@ expect-desc-store-cells: 3
+//@ expect-desc-eta-cells: 0
+//@ expect-desc-no-eta: the declaration has 2 constructors

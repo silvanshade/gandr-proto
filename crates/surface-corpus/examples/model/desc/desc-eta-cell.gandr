@@ -1,0 +1,34 @@
+// A declaration that says a destructor inverts its constructor mints an η cell.
+//
+// `unwrap` takes a `Wrap` apart and `MkWrap` puts one together, and the rule
+// below says so: `unwrap(MkWrap(x))` is `x`. That is one half of an
+// isomorphism. The other half — rebuilding what you just took apart gets you
+// back where you started — is the η law, and the cell layer mints it from the
+// declaration rather than waiting for it to be written:
+//
+//     ⟨w |+ unwrap(; MkWrap⁻(β))⟩  ~>  ⟨w |+ β⟩
+//
+// Read left to right: destruct `w` with `unwrap`, hand the result to
+// `MkWrap⁻`, which rebuilds it, and pass that on — the same as passing `w` on
+// untouched. The cell is written in the contracting direction only. Its mirror
+// would rewrite *any* cut of the right polarity into an `unwrap`/`MkWrap` pair,
+// whatever the type of the thing being cut, so it is not minted.
+//
+// The declaration licenses the law by stating both halves, and both are
+// checked. One constructor, because the cancellation is false at every other
+// constructor of a type that has several. And the rule below, because without
+// it `unwrap` is an arbitrary operation and there is nothing to cancel against.
+//
+// Three cells reach the store: `MkWrap`'s return-side frame cell, the written
+// rule, and the η cell. Data η is a call-by-value law, so the cell is minted at
+// a positive cut and refuses to fire at a negative one.
+data Wrap : Type {
+  MkWrap : (n : Wrap) --> Wrap;
+  oper unwrap(w : Wrap) -> Wrap;
+  rule unwrap(MkWrap(x)) ==> x;
+}
+
+//@ mode: desc
+//@ expect-desc-rules: 1
+//@ expect-desc-store-cells: 3
+//@ expect-desc-eta-cells: 1

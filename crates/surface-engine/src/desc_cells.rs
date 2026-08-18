@@ -31,6 +31,7 @@
 //! [`SignDesc`]: gandr_theory_levitation::SignDesc
 //! [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 
+use gandr_theory_computads::CellId;
 use gandr_theory_computads::CellStore;
 use gandr_theory_computads::DeclinedCircuitIndex;
 use gandr_theory_computads::DeclinedFaceIndex;
@@ -62,6 +63,18 @@ pub struct DescCells
     /// Every cell-layer decline, in description order, located at its surface
     /// span where the description records one.
     pub diagnostics: Vec<ElabDiagnostic>,
+    /// The **η cells** each description licensed, by their id in that
+    /// description's store, in description order.
+    pub eta: Vec<Vec<CellId>>,
+    /// Why a description licensed no η cell, in description order, one entry
+    /// per description that licensed none.
+    ///
+    /// This is **not** a diagnostic. Most declarations license no η law — a
+    /// type with several constructors has no single constructor for a
+    /// destructor to invert — so reporting one as a decline would make the
+    /// ordinary case look like a failure. It is stated where a reader can ask
+    /// for it and nowhere else.
+    pub eta_declines: Vec<String>,
 }
 
 /// **Elaborate** each description into the cell store, collecting the stores
@@ -73,10 +86,14 @@ pub struct DescCells
 ///   independent of [`gandr_theory_levitation::check_desc`] and answers only
 ///   the cell layer's question).
 /// - ensures: one [`CellStore`] per description, in the given order, each
-///   holding a frame-defining cell per declared constructor plus every admitted
-///   `rule` cell; one diagnostic per declined `op` member and per declined
-///   `rule` face, in description order and within a description, operations
-///   before faces.
+///   holding a frame-defining cell per declared constructor, every admitted
+///   `rule` cell, and the η cell the declaration licenses; one diagnostic per
+///   declined `op` member and per declined `rule` face, in description order
+///   and within a description, operations before faces.
+/// - ensures: `eta` addresses the η cells of each description's store, and
+///   `eta_declines` states why a description licensed none — the latter is
+///   reported rather than diagnosed, because licensing no η law is the ordinary
+///   case.
 /// - ensures: **the cell identities are a function of the source alone.** A
 ///   [`gandr_theory_computads::CellId`] is an insertion-order address and the
 ///   insertion order is the declaration order this pass walks — constructors,
@@ -140,6 +157,12 @@ pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
                 .diagnostics
                 .push(circuit_decline_diagnostic(desc, index, error));
         }
+        if let Some(ref declined) = elaborated.declined_eta {
+            cells
+                .eta_declines
+                .push(format!("`{}`: {declined}", desc.id.name.as_ref()));
+        }
+        cells.eta.push(elaborated.eta);
         cells.composites.extend(elaborated.composites);
         cells.stores.push(elaborated.store);
     }

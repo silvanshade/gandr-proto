@@ -72,6 +72,8 @@
 //! | `expect-desc-rules` | integer | elaborated descriptions carry this many rule faces in total |
 //! | `expect-desc-store-cells` | integer | cell-layer elaboration puts this many cells in the stores |
 //! | `expect-desc-cell-decline` | substring | some cell-layer decline message contains it |
+//! | `expect-desc-eta-cells` | integer | the descriptions license this many eta cells in total |
+//! | `expect-desc-no-eta` | substring | some description's eta-decline reason contains it |
 //! | `expect-desc-decline` | substring | some stage-0 / declaration-table diagnostic contains it |
 //! | `expect-desc-composites` | integer | the cell layer built this many whiskered composites |
 //! | `expect-desc-unit-consumers` | `clean` | generic equality and serialization separate two unit constructors |
@@ -410,6 +412,21 @@ pub enum Expect
         /// The required decline-message substring.
         String,
     ),
+    /// `expect-desc-eta-cells: n` — the descriptions license exactly `n` η
+    /// cells in total, minted at the cell layer's admission seam.
+    DescEtaCells(
+        /// The expected total η-cell count.
+        usize,
+    ),
+    /// `expect-desc-no-eta: s` — some description's η-decline reason contains
+    /// `s`.
+    ///
+    /// Licensing no η law is the ordinary case, so the reason is reported
+    /// rather than diagnosed and this directive is how an example asks for it.
+    DescNoEta(
+        /// The required η-decline substring.
+        String,
+    ),
     /// `expect-desc-unit-consumers: clean` — the first description's first two
     /// constructors are nullary and the generic equality/serialization
     /// consumers agree on equal values and distinguish the constructors.
@@ -584,6 +601,14 @@ where
                 expects.push(Expect::DescStoreCells(count));
             },
             | "expect-desc-cell-decline" => expects.push(Expect::DescCellDecline(value.to_owned())),
+            | "expect-desc-eta-cells" => {
+                let Ok(count) = value.parse::<usize>()
+                else {
+                    return Err(format!("`{key}` needs an integer; got `{value}`"));
+                };
+                expects.push(Expect::DescEtaCells(count));
+            },
+            | "expect-desc-no-eta" => expects.push(Expect::DescNoEta(value.to_owned())),
             | "expect-desc-decline" => expects.push(Expect::DescDecline(value.to_owned())),
             | "expect-desc-composites" => {
                 expects.push(Expect::DescComposites(
@@ -879,6 +904,8 @@ fn session_failure(
         | Expect::DescRules(_)
         | Expect::DescStoreCells(_)
         | Expect::DescCellDecline(_)
+        | Expect::DescEtaCells(_)
+        | Expect::DescNoEta(_)
         | Expect::DescDecline(_)
         | Expect::DescComposites(_)
         | Expect::DescUnitConsumers => Some("directive is not valid in session mode".to_owned()),
@@ -1566,6 +1593,35 @@ fn check_desc(
                 else {
                     Some(format!(
                         "expected {expected} elaborated cell(s) in the store(s); got {actual}"
+                    ))
+                }
+            },
+            | Expect::DescEtaCells(expected) => {
+                let actual = cells
+                    .eta
+                    .iter()
+                    .fold(0_usize, |total, ids| total.saturating_add(ids.len()));
+                if actual == expected {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected {expected} η cell(s) across the descriptions; got {actual}"
+                    ))
+                }
+            },
+            | Expect::DescNoEta(ref needle) => {
+                let found = cells
+                    .eta_declines
+                    .iter()
+                    .any(|reason| reason.contains(needle));
+                if found {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected an η decline containing `{needle}`; got {:?}",
+                        cells.eta_declines
                     ))
                 }
             },
