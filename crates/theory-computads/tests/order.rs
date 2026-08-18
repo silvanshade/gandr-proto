@@ -21,17 +21,17 @@ mod tests
     use core::cmp::Ordering;
 
     use gandr_core_sequent::il::Polarity;
-    use gandr_theory_computads::Cell;
-    use gandr_theory_computads::CellProvenance;
-    use gandr_theory_computads::CellStore;
-    use gandr_theory_computads::CmdPat;
-    use gandr_theory_computads::CompletionBudget;
-    use gandr_theory_computads::CompletionOutcome;
-    use gandr_theory_computads::ConsPat;
-    use gandr_theory_computads::Orientation;
-    use gandr_theory_computads::ProdPat;
-    use gandr_theory_computads::complete;
-    use gandr_theory_computads::reduction_cmp;
+    use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellProvenance;
+    use gandr_theory_cell_complexes::CellStore;
+    use gandr_theory_cell_complexes::CmdPat;
+    use gandr_theory_cell_complexes::ConsPat;
+    use gandr_theory_cell_complexes::Orientation;
+    use gandr_theory_cell_complexes::ProdPat;
+    use gandr_theory_cell_complexes::reduction_cmp;
+    use gandr_theory_coherent_resolutions::CompletionBudget;
+    use gandr_theory_coherent_resolutions::CompletionOutcome;
+    use gandr_theory_coherent_resolutions::complete;
 
     extern crate alloc;
 
@@ -52,8 +52,8 @@ mod tests
         let mut oriented = 0_usize;
         for left in &faces {
             for right in &faces {
-                if gandr_theory_computads::pattern::cmd_size(left)
-                    != gandr_theory_computads::pattern::cmd_size(right)
+                if gandr_theory_cell_complexes::pattern::cmd_size(left)
+                    != gandr_theory_cell_complexes::pattern::cmd_size(right)
                 {
                     continue;
                 }

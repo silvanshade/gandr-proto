@@ -33,21 +33,21 @@
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
-    use gandr_theory_computads::Cell;
-    use gandr_theory_computads::CellId;
-    use gandr_theory_computads::CellProvenance;
-    use gandr_theory_computads::CellStore;
-    use gandr_theory_computads::CmdPat;
-    use gandr_theory_computads::ConsPat;
-    use gandr_theory_computads::Orientation;
-    use gandr_theory_computads::OverlapKind;
-    use gandr_theory_computads::ProdPat;
-    use gandr_theory_computads::Sym;
-    use gandr_theory_computads::Tracelet;
-    use gandr_theory_computads::compose_invertible;
-    use gandr_theory_computads::derive_fused;
-    use gandr_theory_computads::enumerate_overlaps;
-    use gandr_theory_computads::frame_defining_cell;
+    use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellId;
+    use gandr_theory_cell_complexes::CellProvenance;
+    use gandr_theory_cell_complexes::CellStore;
+    use gandr_theory_cell_complexes::CmdPat;
+    use gandr_theory_cell_complexes::ConsPat;
+    use gandr_theory_cell_complexes::Orientation;
+    use gandr_theory_cell_complexes::ProdPat;
+    use gandr_theory_cell_complexes::Sym;
+    use gandr_theory_cell_complexes::frame_defining_cell;
+    use gandr_theory_coherent_resolutions::OverlapKind;
+    use gandr_theory_coherent_resolutions::Tracelet;
+    use gandr_theory_coherent_resolutions::derive_fused;
+    use gandr_theory_coherent_resolutions::enumerate_overlaps;
+    use gandr_theory_decomposition_spaces::compose_invertible;
     use gandr_theory_levitation::FreeTerm;
     use gandr_theory_levitation::Name;
     use gandr_theory_levitation::NameRef;

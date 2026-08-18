@@ -23,8 +23,8 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use gandr_theory_computads::CellId;
-use gandr_theory_computads::CellStore;
+use gandr_theory_cell_complexes::CellId;
+use gandr_theory_cell_complexes::CellStore;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
 

@@ -17,10 +17,10 @@
 //!
 //! **This is an API to the engine, not a second engine.** Every cell datum is a
 //! reflected object whose *meaning* is delegated to the engine: composition
-//! rides [`gandr_theory_computads::compose_invertible`], and
+//! rides [`gandr_theory_decomposition_spaces::compose_invertible`], and
 //! identity/composition are quotiented by **replay-equivalence**
-//! ([`gandr_theory_computads::replay_equivalent`], ADR-69 D1) rather than
-//! structural equality. No rewriting is re-implemented here.
+//! ([`gandr_theory_coherent_resolutions::replay_equivalent`], ADR-69 D1) rather
+//! than structural equality. No rewriting is re-implemented here.
 //!
 //! # Store schema — which cells are storable, and their identity
 //!
@@ -40,11 +40,11 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use gandr_theory_computads::CellId;
-use gandr_theory_computads::CellStore;
-use gandr_theory_computads::Tracelet;
-use gandr_theory_computads::compose_invertible;
-use gandr_theory_computads::replay_equivalent;
+use gandr_theory_cell_complexes::CellId;
+use gandr_theory_cell_complexes::CellStore;
+use gandr_theory_coherent_resolutions::Tracelet;
+use gandr_theory_coherent_resolutions::replay_equivalent;
+use gandr_theory_decomposition_spaces::compose_invertible;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
@@ -462,7 +462,7 @@ impl Derivation
 
     /// Elaborate this cell to its engine content, folding grafting through the
     /// engine's sequential invertible composition
-    /// ([`gandr_theory_computads::compose_invertible`]).
+    /// ([`gandr_theory_decomposition_spaces::compose_invertible`]).
     ///
     /// # Contract
     /// - ensures: [`Elaborated::Trivial`] for an `Id` (and for a `Graft` whose
@@ -548,10 +548,10 @@ impl Derivation
 ///
 /// # Contract
 /// - ensures: [`Elaborated::Cert`] of
-///   [`gandr_theory_computads::compose_invertible`] when both are certificates
-///   sharing the seam (`inner.joins_at == outer.overlap.peak`); the non-trivial
-///   side unchanged when the other is trivial; [`Elaborated::Stuck`] on a
-///   mismatched seam or a stuck operand.
+///   [`gandr_theory_decomposition_spaces::compose_invertible`] when both are
+///   certificates sharing the seam (`inner.joins_at == outer.overlap.peak`);
+///   the non-trivial side unchanged when the other is trivial;
+///   [`Elaborated::Stuck`] on a mismatched seam or a stuck operand.
 /// - panics: none.
 #[inline]
 fn graft_sequential(
@@ -578,10 +578,10 @@ fn graft_sequential(
 ///
 /// # Contract
 /// - ensures: two trivial elaborations agree; two certificates agree iff
-///   [`gandr_theory_computads::replay_equivalent`] holds; a trivial and a
-///   certificate agree iff the certificate is reflexive (`peak == joins_at`)
-///   and replays; a [`Elaborated::Stuck`] never agrees with anything (an
-///   unrealized cell is not a transformation).
+///   [`gandr_theory_coherent_resolutions::replay_equivalent`] holds; a trivial
+///   and a certificate agree iff the certificate is reflexive (`peak ==
+///   joins_at`) and replays; a [`Elaborated::Stuck`] never agrees with anything
+///   (an unrealized cell is not a transformation).
 /// - panics: none.
 #[inline]
 #[must_use]

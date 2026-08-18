@@ -52,45 +52,46 @@
 //! [`CellAlphabet::Cmd`] term; what happens instead is that the instance is
 //! *exercised* — [`derive_shift_equivalence`] fires both orders — so a peak
 //! that is not an instance of the block reaches
-//! [`crate::shift::ShiftObstruction::StepDoesNotFire`] rather than a silent
-//! identification. Whether a body's redex heads are the telescope's ports at
-//! all is [`gandr_theory_levitation::check_desc`]'s check, not this one's.
+//! [`gandr_theory_deep_inference::shift::ShiftObstruction::StepDoesNotFire`]
+//! rather than a silent identification. Whether a body's redex heads are the
+//! telescope's ports at all is [`gandr_theory_levitation::check_desc`]'s check,
+//! not this one's.
 //!
 //! # Nothing here decides independence
 //!
 //! Every conjunct is [`derive_shift_equivalence`]'s, and every refusal is
 //! carried verbatim as the constructor's own
-//! [`crate::shift::ShiftObstruction`]. In particular a genuinely overlapping
-//! pair is refused here by the *overlap enumerator's* verdict reaching this
-//! site through the shift guard — this module holds no second overlap oracle,
-//! and the crate's one independence relation stays the one [`crate::shift`]
-//! owns.
+//! [`gandr_theory_deep_inference::shift::ShiftObstruction`]. In particular a
+//! genuinely overlapping pair is refused here by the *overlap enumerator's*
+//! verdict reaching this site through the shift guard — this module holds no
+//! second overlap oracle, and the crate's one independence relation stays the
+//! one [`gandr_theory_deep_inference::shift`] owns.
 //!
 //! The licence is also **confirmed rather than granted**: a witness that clears
-//! the guard is replayed ([`crate::shift::ShiftEquivalence::replay`], ADR-69)
+//! the guard is replayed
+//! ([`gandr_theory_deep_inference::shift::ShiftEquivalence::replay`], ADR-69)
 //! before it is handed back, and a composite neither sequentialization reaches
 //! is a refusal rather than a recorded identification.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
+use gandr_theory_cell_complexes::alphabet::CellAlphabet;
+use gandr_theory_cell_complexes::boundary::PositionStep;
+use gandr_theory_cell_complexes::boundary::RedexOccurrenceCount;
+use gandr_theory_cell_complexes::boundary::ShiftReplay;
+use gandr_theory_cell_complexes::cell::CellId;
+use gandr_theory_cell_complexes::cell::CellStore;
+use gandr_theory_cell_complexes::sequent::SequentAlphabet;
+use gandr_theory_coherent_resolutions::rewrite::CellApp;
+use gandr_theory_deep_inference::shift::ShiftEquivalence;
+use gandr_theory_deep_inference::shift::ShiftObstruction;
+use gandr_theory_deep_inference::shift::derive_shift_equivalence;
 use gandr_theory_levitation::CircuitDerivationError;
 use gandr_theory_levitation::CircuitRule;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::RedexOccurrence;
 use gandr_theory_levitation::redex_occurrences;
-
-use crate::alphabet::CellAlphabet;
-use crate::boundary::PositionStep;
-use crate::boundary::RedexOccurrenceCount;
-use crate::boundary::ShiftReplay;
-use crate::cell::CellId;
-use crate::cell::CellStore;
-use crate::rewrite::CellApp;
-use crate::sequent::SequentAlphabet;
-use crate::shift::ShiftEquivalence;
-use crate::shift::ShiftObstruction;
-use crate::shift::derive_shift_equivalence;
 
 /// One entry of a circuit rule's **instantiation**: the stored cell a
 /// rewrite-sorted port is applied at.
@@ -386,6 +387,13 @@ where
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
+    use gandr_theory_cell_complexes::cell::Cell;
+    use gandr_theory_cell_complexes::pattern::CmdPat;
+    use gandr_theory_cell_complexes::pattern::ConsPat;
+    use gandr_theory_cell_complexes::pattern::Pos;
+    use gandr_theory_cell_complexes::pattern::ProdPat;
+    use gandr_theory_cell_complexes::sequent::CellProvenance;
+    use gandr_theory_cell_complexes::sequent::Orientation;
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
@@ -396,13 +404,6 @@ mod tests
     use gandr_theory_levitation::SurfaceSpan;
 
     use super::*;
-    use crate::cell::Cell;
-    use crate::pattern::CmdPat;
-    use crate::pattern::ConsPat;
-    use crate::pattern::Pos;
-    use crate::pattern::ProdPat;
-    use crate::sequent::CellProvenance;
-    use crate::sequent::Orientation;
 
     /// A face carrying the two terms, with no telescope and a zero span.
     fn face(

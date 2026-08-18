@@ -26,11 +26,11 @@
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
-    use gandr_theory_computads::CellStore;
-    use gandr_theory_computads::CmdPat;
-    use gandr_theory_computads::ConsPat;
-    use gandr_theory_computads::ProdPat;
-    use gandr_theory_computads::normalize;
+    use gandr_theory_cell_complexes::CellStore;
+    use gandr_theory_cell_complexes::CmdPat;
+    use gandr_theory_cell_complexes::ConsPat;
+    use gandr_theory_cell_complexes::ProdPat;
+    use gandr_theory_coherent_resolutions::normalize;
     use gandr_theory_levitation::DeclPolarity;
 
     extern crate alloc;
@@ -173,13 +173,13 @@ mod tests
                 .any(|step| Some(step.cell) == store_eta_id(&store)),
             "the normalization did take the η step"
         );
-        let overlap_source = gandr_theory_computads::enumerate_overlaps(&store)
+        let overlap_source = gandr_theory_coherent_resolutions::enumerate_overlaps(&store)
             .into_iter()
             .next()
             .expect("the store enumerates at least one overlap to carry a peak");
         let mut overlap = overlap_source;
         overlap.peak = redex;
-        let certificate = gandr_theory_computads::Tracelet {
+        let certificate = gandr_theory_coherent_resolutions::Tracelet {
             overlap,
             path_a: outcome.path.clone(),
             path_b: outcome.path,
@@ -206,7 +206,7 @@ mod tests
     /// insertion-order cell choice takes the η route.
     fn store_with_eta_first(
         store: &CellStore,
-        eta_ids: &[gandr_theory_computads::CellId],
+        eta_ids: &[gandr_theory_cell_complexes::CellId],
     ) -> CellStore
     {
         let mut out = CellStore::new();
@@ -225,12 +225,12 @@ mod tests
     }
 
     /// The id of the store's η cell, if it holds one.
-    fn store_eta_id(store: &CellStore) -> Option<gandr_theory_computads::CellId>
+    fn store_eta_id(store: &CellStore) -> Option<gandr_theory_cell_complexes::CellId>
     {
         store.iter().find_map(|(id, cell)| {
             matches!(
                 cell.provenance,
-                gandr_theory_computads::CellProvenance::Eta(_)
+                gandr_theory_cell_complexes::CellProvenance::Eta(_)
             )
             .then_some(id)
         })
@@ -239,7 +239,7 @@ mod tests
     /// A copy of `store` with the cells at `dropped` left out.
     fn store_without(
         store: &CellStore,
-        dropped: &[gandr_theory_computads::CellId],
+        dropped: &[gandr_theory_cell_complexes::CellId],
     ) -> CellStore
     {
         let mut out = CellStore::new();
@@ -257,7 +257,10 @@ mod tests
     /// it minted.
     fn wrapper_store(
         polarity: DeclPolarity
-    ) -> (CellStore, alloc::vec::Vec<gandr_theory_computads::CellId>)
+    ) -> (
+        CellStore,
+        alloc::vec::Vec<gandr_theory_cell_complexes::CellId>,
+    )
     {
         use gandr_theory_levitation::Attrs;
         use gandr_theory_levitation::BridgeArity;

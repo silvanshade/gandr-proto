@@ -64,8 +64,8 @@
 //!   [`Wiring`] is a **derived index** — assembled from a carrier, never
 //!   authoritative, and holding nothing the carrier does not already hold.
 //! - **Positions.** The cell store's child-index paths and their order stay
-//!   where they are, in `gandr_theory_computads::alphabet` — an interface is
-//!   what replaces a position at the circuit rung, not a re-spelling of one.
+//!   where they are, in `gandr_theory_cell_complexes::alphabet` — an interface
+//!   is what replaces a position at the circuit rung, not a re-spelling of one.
 //! - **Arity declarations.** What a cell's ports *are* is the alphabet's and
 //!   the description layer's business; this module reads an interface, it does
 //!   not declare one.

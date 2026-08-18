@@ -9,16 +9,16 @@
 //!
 //! The groupoid laws (identity, inverse, composition) are constructions on
 //! [`IsoWitness`], **composed in the invertible mode**
-//! ([`gandr_theory_computads::compose_invertible`]) — unconditional, by design
-//! (§4.3; LLV Thm 4.5: over groupoids, dinaturals always compose).
+//! ([`gandr_theory_decomposition_spaces::compose_invertible`]) — unconditional,
+//! by design (§4.3; LLV Thm 4.5: over groupoids, dinaturals always compose).
 //! [`ProtypeIso`] is the reflected-syntax surface (a pair of [`Proterm`]
 //! certificate witnesses); [`ProtypeIso::witness`] resolves it to an
 //! [`IsoWitness`] over the engine.
 
 use alloc::boxed::Box;
 
-use gandr_theory_computads::CellStore;
-use gandr_theory_computads::compose_invertible;
+use gandr_theory_cell_complexes::CellStore;
+use gandr_theory_decomposition_spaces::compose_invertible;
 
 use crate::boundary::DerivationIndex;
 use crate::boundary::IsoValidity;
@@ -91,8 +91,9 @@ impl IsoWitness
     /// # Contract
     /// - ensures: the forward witness grafts `self.fwd` then `other.fwd` (`A ⇒
     ///   C`) and the backward witness grafts `other.bwd` then `self.bwd` (`C ⇒
-    ///   A`); elaboration rides [`gandr_theory_computads::compose_invertible`],
-    ///   so the composite of two valid isos is valid unconditionally (§4.3).
+    ///   A`); elaboration rides
+    ///   [`gandr_theory_decomposition_spaces::compose_invertible`], so the
+    ///   composite of two valid isos is valid unconditionally (§4.3).
     /// - panics: none.
     #[inline]
     #[must_use]

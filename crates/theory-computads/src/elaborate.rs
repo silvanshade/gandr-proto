@@ -54,11 +54,12 @@
 //! This module is where cells **enter a store from a description**, so it is
 //! where the linearity ruling binds (owner ruling 2026-08-01, placement decided
 //! 2026-08-02): a rule whose left-hand side copies a hole is refused here, by
-//! [`crate::linearity::admit_linear_cell`], with a diagnostic naming the copy
-//! and the respelling. The refusal is deliberately *not* in
-//! [`crate::sequent::CellMeta::derive`] — non-linear command patterns remain
-//! constructible, because the multi-sum contract witnesses and unification
-//! goals are legitimate internal shapes; what the ruling governs is admission.
+//! [`gandr_theory_cell_complexes::linearity::admit_linear_cell`], with a
+//! diagnostic naming the copy and the respelling. The refusal is deliberately
+//! *not* in [`gandr_theory_cell_complexes::sequent::CellMeta::derive`] —
+//! non-linear command patterns remain constructible, because the multi-sum
+//! contract witnesses and unification goals are legitimate internal shapes;
+//! what the ruling governs is admission.
 //!
 //! # The ADR-54 acceptance path
 //!
@@ -77,6 +78,25 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use gandr_core_sequent::il::Polarity;
+use gandr_theory_cell_complexes::boundary::ConstructorCount;
+use gandr_theory_cell_complexes::boundary::DeclinedCircuitIndex;
+use gandr_theory_cell_complexes::boundary::DeclinedFaceIndex;
+use gandr_theory_cell_complexes::boundary::DeclinedOpIndex;
+use gandr_theory_cell_complexes::boundary::OperationInputCount;
+use gandr_theory_cell_complexes::cell::Cell;
+use gandr_theory_cell_complexes::cell::CellId;
+use gandr_theory_cell_complexes::cell::CellStore;
+use gandr_theory_cell_complexes::linearity::NonLinearPattern;
+use gandr_theory_cell_complexes::linearity::admit_linear_cell;
+use gandr_theory_cell_complexes::pattern::CmdPat;
+use gandr_theory_cell_complexes::pattern::ConsPat;
+use gandr_theory_cell_complexes::pattern::MetaVar;
+use gandr_theory_cell_complexes::pattern::ProdPat;
+use gandr_theory_cell_complexes::pattern::Sym;
+use gandr_theory_cell_complexes::sequent::CellProvenance;
+use gandr_theory_cell_complexes::sequent::EtaKind;
+use gandr_theory_cell_complexes::sequent::Orientation;
+use gandr_theory_cell_complexes::sequent::frame_defining_cell;
 use gandr_theory_levitation::CircuitElaborationError;
 use gandr_theory_levitation::CircuitRule;
 use gandr_theory_levitation::DeclPolarity;
@@ -87,26 +107,6 @@ use gandr_theory_levitation::RuleFace;
 use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::WhiskeredCell;
 use gandr_theory_levitation::elaborate_body;
-
-use crate::boundary::ConstructorCount;
-use crate::boundary::DeclinedCircuitIndex;
-use crate::boundary::DeclinedFaceIndex;
-use crate::boundary::DeclinedOpIndex;
-use crate::boundary::OperationInputCount;
-use crate::cell::Cell;
-use crate::cell::CellId;
-use crate::cell::CellStore;
-use crate::linearity::NonLinearPattern;
-use crate::linearity::admit_linear_cell;
-use crate::pattern::CmdPat;
-use crate::pattern::ConsPat;
-use crate::pattern::MetaVar;
-use crate::pattern::ProdPat;
-use crate::pattern::Sym;
-use crate::sequent::CellProvenance;
-use crate::sequent::EtaKind;
-use crate::sequent::Orientation;
-use crate::sequent::frame_defining_cell;
 
 /// The reserved return-continuation metavariable name a rule's cut binds — the
 /// `$`-prefix keeps it disjoint from every user pattern variable.
@@ -138,7 +138,7 @@ pub enum ElaborateError
     UnrepresentableOperation,
     /// The face elaborated, but its left-hand side copies a hole — refused at
     /// the admission boundary, because cell patterns are linear (owner ruling,
-    /// 2026-08-01; [`crate::linearity`]).
+    /// 2026-08-01; [`gandr_theory_cell_complexes::linearity`]).
     NonLinear(NonLinearPattern),
     /// A **circuit rule**'s wiring denotes no single whiskered composite, so
     /// the boundary-language object the member stands for does not exist and
@@ -406,8 +406,8 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
 /// The cut polarity is the declaration's: data η at a positive cut, codata η at
 /// a negative one (`proposal-sequent-kernel.md` §5, strategy-tied). The cell
 /// carries [`CellProvenance::Eta`], so
-/// [`crate::alphabet::CellAlphabet::may_fire`] refuses it at the other polarity
-/// however well its left-hand side matches.
+/// [`gandr_theory_cell_complexes::alphabet::CellAlphabet::may_fire`] refuses it
+/// at the other polarity however well its left-hand side matches.
 ///
 /// # Contract
 /// - ensures: one η cell per operation carrying the inverse face when the
@@ -920,6 +920,7 @@ fn elaborate_producers(terms: &[FreeTerm]) -> Result<Box<[ProdPat]>, ElaborateEr
 #[cfg(test)]
 mod tests
 {
+    use gandr_theory_cell_complexes::pattern::ConsPat;
     use gandr_theory_levitation::Attrs;
     use gandr_theory_levitation::BridgeArity;
     use gandr_theory_levitation::Code;
@@ -930,7 +931,6 @@ mod tests
     use gandr_theory_levitation::SurfaceSpan;
 
     use super::*;
-    use crate::pattern::ConsPat;
 
     #[test]
     fn add_zero_elaborates_to_a_cut_against_the_operation_frame()
@@ -1033,7 +1033,7 @@ mod tests
         );
         // Two frame cells (Zero⁻, Succ⁻) plus the two rule cells.
         assert_eq!(
-            crate::boundary::CellCount::from(4_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(4_usize),
             elaborated.store.len(),
             "two frame cells and two rule cells"
         );
@@ -1067,7 +1067,7 @@ mod tests
         );
         let elaborated = elaborate_data_desc(&desc);
         assert_eq!(
-            crate::boundary::CellCount::from(1_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(1_usize),
             elaborated.store.len(),
             "only the Off frame cell is admitted; the copying rule is not"
         );
@@ -1140,7 +1140,7 @@ mod tests
             elaborated.declined_circuits
         );
         assert_eq!(
-            crate::boundary::CellCount::from(3_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(3_usize),
             elaborated.store.len(),
             "the rule's cell joins the two constructor frame cells"
         );
@@ -1203,7 +1203,7 @@ mod tests
             "a declined body contributes no composite"
         );
         assert_eq!(
-            crate::boundary::CellCount::from(2_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(2_usize),
             elaborated.store.len(),
             "the rule's cell never enters the store"
         );
@@ -1258,7 +1258,7 @@ mod tests
         .with_circuits([rule]);
         let elaborated = elaborate_data_desc(&desc);
         assert_eq!(
-            crate::boundary::CellCount::from(2_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(2_usize),
             elaborated.store.len(),
             "the copying rule never enters the store"
         );
@@ -1385,7 +1385,7 @@ mod tests
             "a face over a declined operation is declined, not silently narrowed"
         );
         assert_eq!(
-            crate::boundary::CellCount::from(2_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(2_usize),
             elaborated.store.len(),
             "only the two constructor frame cells reached the store"
         );
@@ -1456,7 +1456,7 @@ mod tests
             "the face applies `id`, which is admitted"
         );
         assert_eq!(
-            crate::boundary::CellCount::from(3_usize),
+            gandr_theory_cell_complexes::boundary::CellCount::from(3_usize),
             elaborated.store.len(),
             "two frame cells and the one rule cell"
         );
@@ -1492,10 +1492,15 @@ mod tests
             .store
             .iter()
             .map(|(_id, cell)| cell)
-            .find(|cell| matches!(cell.provenance, crate::sequent::CellProvenance::SurfaceRule))
+            .find(|cell| {
+                matches!(
+                    cell.provenance,
+                    gandr_theory_cell_complexes::sequent::CellProvenance::SurfaceRule
+                )
+            })
             .expect("the rule cell is in the store");
         assert_eq!(
-            crate::sequent::StepGrowth::Duplicating,
+            gandr_theory_cell_complexes::sequent::StepGrowth::Duplicating,
             rule_cell.meta.step_growth(),
             "and its growth is now reported rather than silent"
         );
@@ -1508,12 +1513,12 @@ mod tests
                 .map(|v| v.contractum)
         };
         assert_eq!(
-            Some(crate::sequent::CellContractumUse::Repeated),
+            Some(gandr_theory_cell_complexes::sequent::CellContractumUse::Repeated),
             use_of("x"),
             "the duplicated hole is named"
         );
         assert_eq!(
-            Some(crate::sequent::CellContractumUse::Erased),
+            Some(gandr_theory_cell_complexes::sequent::CellContractumUse::Erased),
             use_of("y"),
             "and the dropped hole is named beside it"
         );

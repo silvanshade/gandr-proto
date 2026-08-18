@@ -5,7 +5,7 @@
 //!
 //! The matcher of [`crate::matching`] quantifies over diagrams, and the engine
 //! quantifies over terms. This module is the one place the two meet: it indexes
-//! a `gandr_theory_computads::pattern::CmdPat` as the monogamous acyclic
+//! a `gandr_theory_cell_complexes::pattern::CmdPat` as the monogamous acyclic
 //! hypergraph the theory's conditions are stated over, so the embedding matcher
 //! can be run against the alphabet the engines actually hold and its verdict
 //! compared with the one-sided matcher's on the fragment where both apply.
@@ -61,10 +61,10 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use gandr_theory_computads::pattern::CmdPat;
-use gandr_theory_computads::pattern::ConsPat;
-use gandr_theory_computads::pattern::MetaVar;
-use gandr_theory_computads::pattern::ProdPat;
+use gandr_theory_cell_complexes::pattern::CmdPat;
+use gandr_theory_cell_complexes::pattern::ConsPat;
+use gandr_theory_cell_complexes::pattern::MetaVar;
+use gandr_theory_cell_complexes::pattern::ProdPat;
 
 use crate::interface::Generator;
 use crate::interface::GeneratorLabel;
@@ -450,7 +450,7 @@ fn read_consumer(
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
-    use gandr_theory_computads::pattern::Sym;
+    use gandr_theory_cell_complexes::pattern::Sym;
 
     use super::*;
     use crate::interface::EdgeCount;

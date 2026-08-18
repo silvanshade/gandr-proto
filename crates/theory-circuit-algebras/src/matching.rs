@@ -78,7 +78,7 @@
 //!
 //! This module supplies the **third conjunct's two routes**, and it supplies
 //! the one the engine's own datum records as missing: the engine carries
-//! `gandr_theory_computads::alphabet::ConvexityDischarge`, whose
+//! `gandr_theory_cell_complexes::alphabet::ConvexityDischarge`, whose
 //! `ReCheckRequired` arm names the per-pair convexity re-check and refuses the
 //! shift rather than assuming it, because the re-check is not built
 //! engine-side. Here it is built, as the sweep.
@@ -1637,13 +1637,13 @@ fn seam_of(
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
-    use gandr_theory_computads::alphabet::CellAlphabet as _;
-    use gandr_theory_computads::boundary::SubstitutionDecision;
-    use gandr_theory_computads::pattern::CmdPat;
-    use gandr_theory_computads::pattern::ConsPat;
-    use gandr_theory_computads::pattern::ProdPat;
-    use gandr_theory_computads::sequent::SequentAlphabet;
-    use gandr_theory_computads::subst::Subst;
+    use gandr_theory_cell_complexes::alphabet::CellAlphabet as _;
+    use gandr_theory_cell_complexes::boundary::SubstitutionDecision;
+    use gandr_theory_cell_complexes::pattern::CmdPat;
+    use gandr_theory_cell_complexes::pattern::ConsPat;
+    use gandr_theory_cell_complexes::pattern::ProdPat;
+    use gandr_theory_cell_complexes::sequent::SequentAlphabet;
+    use gandr_theory_cell_complexes::subst::Subst;
 
     use super::*;
     use crate::interface::Generator;

@@ -12,7 +12,7 @@ mod tests
 {
     use gandr_surface_engine::desc_cells::elaborate_desc_cells;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
-    use gandr_theory_computads::CellCount;
+    use gandr_theory_cell_complexes::CellCount;
     use gandr_theory_computads::CellId;
     use gandr_theory_levitation::check_desc;
 

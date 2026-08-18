@@ -1,0 +1,32 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-coherent-resolutions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Coherent resolution of a cell rewriting system: cell firing with budgeted normalization, multi-sum critical-pair and composition overlap enumeration, replayable coherence certificates, and budgeted Knuth-Bendix/Squier completion that declines with a report"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "coherent_resolutions"
+path = "tests/lib.rs"
+
+[dependencies]
+gandr-theory-cell-complexes.workspace = true
+
+[dev-dependencies]
+gandr-core-sequent.workspace = true
+gandr-theory-cell-complexes-tools.workspace = true
+gandr-theory-deep-inference.workspace = true
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

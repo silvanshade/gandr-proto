@@ -561,7 +561,7 @@ sign Bits {
     let cells = elaborate_desc_cells(&elab.descs);
     let store = cells.stores.first().expect("one store per description");
     assert_eq!(
-        gandr_theory_computads::CellCount::from(0_usize),
+        gandr_theory_cell_complexes::CellCount::from(0_usize),
         store.len(),
         "and contributes no cell"
     );

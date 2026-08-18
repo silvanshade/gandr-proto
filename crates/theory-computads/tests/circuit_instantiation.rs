@@ -53,19 +53,24 @@ mod tests
 {
     use alloc::vec::Vec;
 
-    use gandr_theory_computads::Cell;
-    use gandr_theory_computads::CellAlphabet as _;
-    use gandr_theory_computads::CellApp;
-    use gandr_theory_computads::CellId;
-    use gandr_theory_computads::CellStore;
+    use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellAlphabet as _;
+    use gandr_theory_cell_complexes::CellId;
+    use gandr_theory_cell_complexes::CellStore;
+    use gandr_theory_cell_complexes::ConvexityDischarge;
+    use gandr_theory_cell_complexes::PositionOrder;
+    use gandr_theory_cell_complexes::PositionStep;
+    use gandr_theory_cell_complexes_tools::toy::Toy;
+    use gandr_theory_cell_complexes_tools::toy::ToyAlphabet;
+    use gandr_theory_cell_complexes_tools::toy::ToyNameRef;
+    use gandr_theory_cell_complexes_tools::toy::ToyPos;
+    use gandr_theory_cell_complexes_tools::toy::toy_cell;
+    use gandr_theory_coherent_resolutions::CellApp;
+    use gandr_theory_coherent_resolutions::rewrite::rewrite_at;
     use gandr_theory_computads::CircuitShiftObstruction;
-    use gandr_theory_computads::ConvexityDischarge;
-    use gandr_theory_computads::PositionOrder;
-    use gandr_theory_computads::PositionStep;
     use gandr_theory_computads::RewriteBinding;
-    use gandr_theory_computads::ShiftObstruction;
     use gandr_theory_computads::instantiate_two_redex_rule;
-    use gandr_theory_computads::rewrite::rewrite_at;
+    use gandr_theory_deep_inference::ShiftObstruction;
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
@@ -77,12 +82,6 @@ mod tests
     use gandr_theory_levitation::RuleFace;
     use gandr_theory_levitation::SurfaceSpan;
     use gandr_theory_levitation::redex_occurrences;
-
-    use crate::toy_alphabet::Toy;
-    use crate::toy_alphabet::ToyAlphabet;
-    use crate::toy_alphabet::ToyNameRef;
-    use crate::toy_alphabet::ToyPos;
-    use crate::toy_alphabet::toy_cell;
 
     extern crate alloc;
 

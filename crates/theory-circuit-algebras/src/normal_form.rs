@@ -186,9 +186,9 @@
 //! arm, the shared form together with **both** relabellings, so a caller holds
 //! the two halves of the composite and can check them. Nothing here hands over
 //! an unguarded equality shortcut, which is what the engines' standing warning
-//! forbids (`gandr_theory_computads::alphabet`: the `cells_equal` normal-form
-//! fast path is TCB-adjacent and needs a guard plus a soundness witness, never
-//! documentation).
+//! forbids (`gandr_theory_cell_complexes::alphabet`: the `cells_equal`
+//! normal-form fast path is TCB-adjacent and needs a guard plus a soundness
+//! witness, never documentation).
 //!
 //! **The metatheory's own `Rigid` instance is a different object and stays
 //! owed.** `spec:metatheory/roadmap.md`'s `Rigid.canon-sound` at the circuit

@@ -18,13 +18,13 @@
 
 use alloc::vec::Vec;
 
-use gandr_theory_computads::CellApp;
-use gandr_theory_computads::CellId;
-use gandr_theory_computads::CellStore;
-use gandr_theory_computads::CmdPat;
-use gandr_theory_computads::OverlapKind;
-use gandr_theory_computads::enumerate_overlaps;
-use gandr_theory_computads::normalize;
+use gandr_theory_cell_complexes::CellId;
+use gandr_theory_cell_complexes::CellStore;
+use gandr_theory_cell_complexes::CmdPat;
+use gandr_theory_coherent_resolutions::CellApp;
+use gandr_theory_coherent_resolutions::OverlapKind;
+use gandr_theory_coherent_resolutions::enumerate_overlaps;
+use gandr_theory_coherent_resolutions::normalize;
 
 use crate::boundary::RewriteCompletion;
 use crate::boundary::RewriteReachability;

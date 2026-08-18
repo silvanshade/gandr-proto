@@ -44,8 +44,8 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_theory_computads::CellCount;
-    use gandr_theory_computads::DeclinedFaceIndex;
+    use gandr_theory_cell_complexes::CellCount;
+    use gandr_theory_cell_complexes::DeclinedFaceIndex;
     use gandr_theory_computads::ElaborateError;
     use gandr_theory_computads::elaborate_data_desc;
     use gandr_theory_levitation::Attrs;

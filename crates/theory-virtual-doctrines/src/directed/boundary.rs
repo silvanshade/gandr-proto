@@ -2,12 +2,13 @@
 //! ADR-68/69; §4.3).
 //!
 //! The directed lane gates certificate composition on variable-flow acyclicity
-//! ([`gandr_theory_computads::compose_directed`]) — a mixed-variance seam can
-//! cycle the flow and be declined. The boundary theorem says that on
+//! ([`gandr_theory_decomposition_spaces::compose_directed`]) — a mixed-variance
+//! seam can cycle the flow and be declined. The boundary theorem says that on
 //! **invertible-cell signatures** the gate is unnecessary: full cut is
 //! admissible, because over groupoids dinaturals always compose (LLV Thm 4.5,
-//! the operational warrant for [`gandr_theory_computads::compose_invertible`]).
-//! This is F1's directed gate lifted on the coherence lane.
+//! the operational warrant for
+//! [`gandr_theory_decomposition_spaces::compose_invertible`]). This is F1's
+//! directed gate lifted on the coherence lane.
 //!
 //! [`directed_cut`] realizes exactly that operational content: when every
 //! participating cell of both certificates is invertible
@@ -25,11 +26,11 @@
 //! groupoid tower; the property tests here are engineering evidence, not the
 //! theorem.
 
-use gandr_theory_computads::CellStore;
-use gandr_theory_computads::CompositionObstruction;
-use gandr_theory_computads::Tracelet;
-use gandr_theory_computads::compose_directed;
-use gandr_theory_computads::compose_invertible;
+use gandr_theory_cell_complexes::CellStore;
+use gandr_theory_coherent_resolutions::Tracelet;
+use gandr_theory_decomposition_spaces::CompositionObstruction;
+use gandr_theory_decomposition_spaces::compose_directed;
+use gandr_theory_decomposition_spaces::compose_invertible;
 
 use crate::boundary::CertificateInvertibility;
 use crate::boundary::CutCoherence;
@@ -94,11 +95,11 @@ impl CutOutcome
 /// When every participating cell of both certificates is invertible
 /// ([`all_participating_invertible`]), the cut is admissible unconditionally
 /// (the boundary theorem): it rides the ungated
-/// [`gandr_theory_computads::compose_invertible`] and yields
+/// [`gandr_theory_decomposition_spaces::compose_invertible`] and yields
 /// [`CutOutcome::Coherent`]. Otherwise it consults the acyclicity gate
-/// ([`gandr_theory_computads::compose_directed`]): [`CutOutcome::Directed`]
-/// when the seam variable-flow graph is acyclic, [`CutOutcome::Declined`] when
-/// a cycle obstructs it.
+/// ([`gandr_theory_decomposition_spaces::compose_directed`]):
+/// [`CutOutcome::Directed`] when the seam variable-flow graph is acyclic,
+/// [`CutOutcome::Declined`] when a cycle obstructs it.
 ///
 /// # Contract
 /// - requires: `a.joins_at == b.overlap.peak` (the sequential seam) for the
@@ -144,13 +145,13 @@ pub fn directed_cut(
 /// Whether **every** cell a certificate fires is an invertible joinability
 /// certificate (`proposal-vdc-reflection.md` §7, Ł4; §4.2 `invertible` flag).
 ///
-/// Reads the live [`gandr_theory_computads::CellMeta::invertible`] of each cell
-/// in `path_a` then `path_b`. A stale cell id (absent from the store) is
+/// Reads the live [`gandr_theory_cell_complexes::CellMeta::invertible`] of each
+/// cell in `path_a` then `path_b`. A stale cell id (absent from the store) is
 /// **conservatively** not invertible — invertibility cannot be certified for a
 /// cell that is not there.
 ///
 /// # Contract
-/// - ensures: `true` iff every [`gandr_theory_computads::CellId`] the
+/// - ensures: `true` iff every [`gandr_theory_cell_complexes::CellId`] the
 ///   certificate fires resolves in `store` and carries `meta.invertible`;
 ///   vacuously `true` for a certificate with empty paths (a groupoid identity).
 /// - panics: none.

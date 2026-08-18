@@ -778,7 +778,9 @@ dependencies = [
  "gandr-surface-parser",
  "gandr-surface-render-remote",
  "gandr-surface-syntax",
+ "gandr-theory-cell-complexes",
  "gandr-theory-circuit-algebras",
+ "gandr-theory-coherent-resolutions",
  "gandr-theory-computads",
  "gandr-theory-levitation",
  "gandr-theory-nominal-automata",
@@ -822,11 +824,37 @@ name = "gandr-surface-syntax"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-theory-cell-complexes"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "proptest",
+]
+
+[[package]]
+name = "gandr-theory-cell-complexes-tools"
+version = "0.0.0"
+dependencies = [
+ "gandr-theory-cell-complexes",
+]
+
+[[package]]
 name = "gandr-theory-circuit-algebras"
 version = "0.0.0"
 dependencies = [
  "gandr-core-sequent",
- "gandr-theory-computads",
+ "gandr-theory-cell-complexes",
+]
+
+[[package]]
+name = "gandr-theory-coherent-resolutions"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "gandr-theory-cell-complexes",
+ "gandr-theory-cell-complexes-tools",
+ "gandr-theory-deep-inference",
+ "proptest",
 ]
 
 [[package]]
@@ -834,9 +862,38 @@ name = "gandr-theory-computads"
 version = "0.0.0"
 dependencies = [
  "gandr-core-sequent",
+ "gandr-theory-cell-complexes",
+ "gandr-theory-cell-complexes-tools",
+ "gandr-theory-coherent-resolutions",
+ "gandr-theory-deep-inference",
+ "gandr-theory-levitation",
+ "proptest",
+]
+
+[[package]]
+name = "gandr-theory-decomposition-spaces"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
  "gandr-storage-artifact",
+ "gandr-theory-cell-complexes",
+ "gandr-theory-cell-complexes-tools",
+ "gandr-theory-coherent-resolutions",
+ "gandr-theory-computads",
+ "gandr-theory-deep-inference",
  "gandr-theory-graphs",
  "gandr-theory-levitation",
+ "proptest",
+]
+
+[[package]]
+name = "gandr-theory-deep-inference"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "gandr-theory-cell-complexes",
+ "gandr-theory-cell-complexes-tools",
+ "gandr-theory-coherent-resolutions",
  "proptest",
 ]
 
@@ -882,7 +939,9 @@ name = "gandr-theory-virtual-doctrines"
 version = "0.0.0"
 dependencies = [
  "gandr-core-sequent",
- "gandr-theory-computads",
+ "gandr-theory-cell-complexes",
+ "gandr-theory-coherent-resolutions",
+ "gandr-theory-decomposition-spaces",
  "gandr-theory-levitation",
  "proptest",
 ]

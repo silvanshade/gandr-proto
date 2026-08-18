@@ -3,7 +3,7 @@
 //! bridge).
 //!
 //! A cell's pattern layer is symbolic (datatype-declared
-//! [`crate::pattern::Sym`] symbols), because the
+//! [`gandr_theory_cell_complexes::pattern::Sym`] symbols), because the
 //! fusion fragment ranges over user data the frozen
 //! [`gandr_core_sequent::il::CtorTag`] enum does not name. Where a symbol
 //! *does* correspond to a frozen constructor, [`reify_into`] lowers a
@@ -35,11 +35,10 @@ use gandr_core_sequent::il::CtorTag;
 use gandr_core_sequent::il::Polarity;
 use gandr_core_sequent::il::ProducerId;
 use gandr_core_sequent::il::ProducerNode;
-
-use crate::pattern::CmdPat;
-use crate::pattern::ConsPat;
-use crate::pattern::ProdPat;
-use crate::pattern::Sym;
+use gandr_theory_cell_complexes::pattern::CmdPat;
+use gandr_theory_cell_complexes::pattern::ConsPat;
+use gandr_theory_cell_complexes::pattern::ProdPat;
+use gandr_theory_cell_complexes::pattern::Sym;
 
 /// A **constructor resolver** — the map from a datatype-declared constructor
 /// name to its frozen [`CtorTag`] (the caller's bridge table).
@@ -271,9 +270,9 @@ impl Reifier<'_>
 mod tests
 {
     use gandr_core_sequent::boundary::SequentNodeCount;
+    use gandr_theory_cell_complexes::pattern::ConsPat;
 
     use super::*;
-    use crate::pattern::ConsPat;
 
     #[test]
     fn a_frozen_cut_reifies_to_the_command_il()

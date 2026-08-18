@@ -49,11 +49,11 @@
 //!   lifting F1's directed gate on the coherence lane. Realized as
 //!   [`boundary::directed_cut`]: cut-elaboration succeeds **unconditionally**
 //!   when every participating cell is invertible (routing to
-//!   [`gandr_theory_computads::compose_invertible`], no gate), and otherwise
-//!   consults the acyclicity gate
-//!   ([`gandr_theory_computads::compose_directed`]). The theorem-grade
-//!   *statement* (all invertible signatures, not the finite fixtures the
-//!   property tests exercise) is Agda-face territory.
+//!   [`gandr_theory_decomposition_spaces::compose_invertible`], no gate), and
+//!   otherwise consults the acyclicity gate
+//!   ([`gandr_theory_decomposition_spaces::compose_directed`]). The
+//!   theorem-grade *statement* (all invertible signatures, not the finite
+//!   fixtures the property tests exercise) is Agda-face territory.
 //!
 //! # Out of scope (direction only)
 //!

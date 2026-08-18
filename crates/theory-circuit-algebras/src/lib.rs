@@ -24,7 +24,8 @@
 //! beside the landed one, and this crate must never mint one. And it names the
 //! engines as somebody else's: the cell store, the overlap enumerator, the
 //! completion loop, and the tracelet certificates stay in
-//! [`gandr_theory_computads`], over whatever alphabet that crate is handed.
+//! [`gandr_theory_cell_complexes`], over whatever alphabet that crate is
+//! handed.
 //!
 //! # The three faces
 //!
@@ -52,8 +53,8 @@
 //!   one, so the representation half was never new work. Nothing here mints a
 //!   second diagram carrier.
 //! - **Not the engines.** Cells, overlaps, completion, and tracelets are
-//!   [`gandr_theory_computads`]'s, over whatever alphabet it is given; this
-//!   crate never forks them and never grows a private copy of one.
+//!   [`gandr_theory_cell_complexes`]'s, over whatever alphabet it is given;
+//!   this crate never forks them and never grows a private copy of one.
 //! - **Not a second [`CellAlphabet`] inhabitant.** The alphabet grows in place
 //!   (`circuit-terms-question-01`), which is what keeps the pattern grammar's
 //!   compile-visible tripwire pointed at every match site.
@@ -72,23 +73,24 @@
 //! `theory-computads`.
 //!
 //! The dependency direction minted here is what makes that unviolatable rather
-//! than merely agreed: this crate depends on [`gandr_theory_computads`], so the
-//! downward **library** edge the consequence forbids would close a dependency
-//! cycle Cargo rejects outright — verified by construction, not asserted: a
-//! `[dependencies]` entry for this crate in `theory-computads` fails resolution
-//! with `error: cyclic package dependency`. The resolver's reach stops there:
-//! Cargo *does* admit a cycle through `[dev-dependencies]`, so a test-only
-//! downward edge is refused by the ruling rather than by the resolver. Since
-//! completion is library code, the consequence's own case is the enforced one.
-//! A future consumer that wants completion over embedding matching therefore
-//! has exactly one shape available to it — pass the matcher in at the
-//! instantiation site — and that shape is the one the ruling asked for.
+//! than merely agreed: this crate depends on [`gandr_theory_cell_complexes`],
+//! so the downward **library** edge the consequence forbids would close a
+//! dependency cycle Cargo rejects outright — verified by construction, not
+//! asserted: a `[dependencies]` entry for this crate in `theory-computads`
+//! fails resolution with `error: cyclic package dependency`. The resolver's
+//! reach stops there: Cargo *does* admit a cycle through `[dev-dependencies]`,
+//! so a test-only downward edge is refused by the ruling rather than by the
+//! resolver. Since completion is library code, the consequence's own case is
+//! the enforced one. A future consumer that wants completion over embedding
+//! matching therefore has exactly one shape available to it — pass the matcher
+//! in at the instantiation site — and that shape is the one the ruling asked
+//! for.
 //!
 //! **The seam is not established, and the rung that built the matcher did not
 //! establish it.** `circuit-terms-rung-05` filled [`matching`] and left the
 //! seam owed: no engine instantiation site exists to supply a matcher at yet,
 //! and minting the supply point ahead of a consumer would fix its shape before
-//! anything needs it. So `gandr_theory_computads`'s
+//! anything needs it. So [`gandr_theory_cell_complexes`]'s
 //! `ConvexityDischarge::ReCheckRequired` still refuses a shift rather than
 //! consuming the sweep this crate now has. The obligation stays recorded on
 //! that rung's tracker item, and the reversal condition is the first engine
@@ -109,11 +111,11 @@
 //! shipped dependency for it.
 //!
 //! No engine code has moved: cells, overlaps, completion, tracelets, and the
-//! rewrite loop are still [`gandr_theory_computads`]'s, and nothing here
+//! rewrite loop are still [`gandr_theory_cell_complexes`]'s, and nothing here
 //! rewrites. Read each module's own documentation for what it owns and what it
 //! declines.
 //!
-//! [`CellAlphabet`]: gandr_theory_computads::alphabet::CellAlphabet
+//! [`CellAlphabet`]: gandr_theory_cell_complexes::alphabet::CellAlphabet
 
 extern crate alloc;
 

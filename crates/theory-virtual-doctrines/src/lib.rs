@@ -5,9 +5,11 @@
 //!
 //! This crate is **strictly additive** and reflects — it does not re-implement
 //! — the engine. It consumes [`gandr_theory_levitation`] (descriptions,
-//! [`gandr_theory_levitation::FreeTerm`]) and [`gandr_theory_computads`]
-//! (cells, tracelets, replay, two-mode composition), and exposes a first-order
-//! judgment layer plus a query API over them.
+//! [`gandr_theory_levitation::FreeTerm`]), [`gandr_theory_cell_complexes`]
+//! (cells and the store), [`gandr_theory_coherent_resolutions`] (certificates
+//! and replay) and [`gandr_theory_decomposition_spaces`] (two-mode
+//! composition), and exposes a first-order judgment layer plus a query API
+//! over them.
 //!
 //! # The layers
 //!
@@ -25,7 +27,8 @@
 //!   engine-fact rules are validated by **replay elaboration** (ADR-69).
 //! - [`iso`] — [`ProtypeIso`] / [`IsoWitness`]: protype isomorphisms are
 //!   **paired replayable witnesses** with groupoid laws, composed in the
-//!   invertible mode ([`gandr_theory_computads::compose_invertible`]).
+//!   invertible mode
+//!   ([`gandr_theory_decomposition_spaces::compose_invertible`]).
 //! - [`query`] — the constructor-menu [`Query`] surface (path induction over
 //!   rewrite traces, per-overlap seam composition, extension queries,
 //!   instantiation tables).
@@ -54,7 +57,8 @@
 //! generating cells, adopted here per §10.1's F0 reading, versus the
 //! single-cell reading); and (2) the reflected-cell **identity model** (a
 //! [`Derivation`] tree quotiented by replay-equivalence, elaborated to the
-//! engine only through [`gandr_theory_computads::compose_invertible`]) — pin
+//! engine only through
+//! [`gandr_theory_decomposition_spaces::compose_invertible`]) — pin
 //! either by ADR only if a later stage makes the reflected syntax canonical.
 
 extern crate alloc;

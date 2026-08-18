@@ -1,0 +1,37 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-decomposition-spaces"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The algebra of derivation certificates: two-mode composition, static backward pathway queries over compressed derivations, and the canonical step encoding that mints a durable transport identity"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "decomposition_spaces"
+path = "tests/lib.rs"
+
+[dependencies]
+gandr-core-sequent.workspace = true
+gandr-storage-artifact.workspace = true
+gandr-theory-cell-complexes.workspace = true
+gandr-theory-coherent-resolutions.workspace = true
+gandr-theory-deep-inference.workspace = true
+gandr-theory-graphs.workspace = true
+
+[dev-dependencies]
+gandr-theory-cell-complexes-tools.workspace = true
+gandr-theory-computads.workspace = true
+gandr-theory-levitation.workspace = true
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

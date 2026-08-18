@@ -21,15 +21,15 @@ mod tests
     use gandr_surface_engine::circuit::embed::embed_circuit_rule;
     use gandr_surface_engine::desc_cells::elaborate_desc_cells;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
+    use gandr_theory_cell_complexes::CmdPat;
+    use gandr_theory_cell_complexes::ConsPat;
+    use gandr_theory_cell_complexes::ProdPat;
     use gandr_theory_circuit_algebras::interface::EdgeCount;
     use gandr_theory_circuit_algebras::interface::WireCount;
     use gandr_theory_circuit_algebras::matching::MatchBudget;
-    use gandr_theory_computads::CmdPat;
-    use gandr_theory_computads::ConsPat;
-    use gandr_theory_computads::ProdPat;
-    use gandr_theory_computads::Tracelet;
-    use gandr_theory_computads::enumerate_overlaps;
-    use gandr_theory_computads::normalize;
+    use gandr_theory_coherent_resolutions::Tracelet;
+    use gandr_theory_coherent_resolutions::enumerate_overlaps;
+    use gandr_theory_coherent_resolutions::normalize;
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
@@ -300,7 +300,7 @@ mod tests
         let store = cells
             .stores
             .iter()
-            .find(|store| store.len() > gandr_theory_computads::CellCount::from(0_usize))
+            .find(|store| store.len() > gandr_theory_cell_complexes::CellCount::from(0_usize))
             .expect("the source's declarations put cells in a store");
         let peak = CmdPat::cut(
             Polarity::Positive,

@@ -5,7 +5,7 @@
 //! covariant (`x : I`, a target / producer slot) or contravariant (`x : Iᵒᵖ`, a
 //! source / consumer slot). This module reflects that discipline over the
 //! rewrite layer, and — the payoff §7 Ł1 names — turns the §4.2 engine variance
-//! metadata (derived live by [`gandr_theory_computads::CellMeta`]) from
+//! metadata (derived live by [`gandr_theory_cell_complexes::CellMeta`]) from
 //! *derived* into *checkable*: [`DirectedContext::check_cell_variance`] rejects
 //! an engine cell whose hole occurs at a polarity the context did not sort it
 //! at.
@@ -22,8 +22,8 @@
 
 use alloc::vec::Vec;
 
-use gandr_theory_computads::Cell;
-use gandr_theory_computads::CellVariance;
+use gandr_theory_cell_complexes::Cell;
+use gandr_theory_cell_complexes::CellVariance;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
 
@@ -301,7 +301,7 @@ impl DirectedContext
     ///
     /// # Contract
     /// - ensures: `Ok(())` iff, for each of `cell`'s derived
-    ///   [`gandr_theory_computads::CellVarMeta`] whose name this context
+    ///   [`gandr_theory_cell_complexes::CellVarMeta`] whose name this context
     ///   declares, the [`Variance::of_cell`] of its derived [`CellVariance`]
     ///   equals the declared [`Variance`]; a `Mixed` hole naming a declared
     ///   variable fails.

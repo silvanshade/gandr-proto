@@ -16,7 +16,9 @@ name = "vdc"
 path = "tests/lib.rs"
 
 [dependencies]
-gandr-theory-computads.workspace = true
+gandr-theory-cell-complexes.workspace = true
+gandr-theory-coherent-resolutions.workspace = true
+gandr-theory-decomposition-spaces.workspace = true
 gandr-theory-levitation.workspace = true
 
 [dev-dependencies]

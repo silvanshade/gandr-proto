@@ -27,8 +27,13 @@ members = [
   "crates/surface-parser",
   "crates/surface-render-remote",
   "crates/surface-syntax",
+  "crates/theory-cell-complexes",
+  "crates/theory-cell-complexes-tools",
   "crates/theory-circuit-algebras",
+  "crates/theory-coherent-resolutions",
   "crates/theory-computads",
+  "crates/theory-decomposition-spaces",
+  "crates/theory-deep-inference",
   "crates/theory-graphs",
   "crates/theory-levitation",
   "crates/theory-nominal-automata",
@@ -195,7 +200,9 @@ path = "crates/core-nbe"
 # - gandr-runtime-effects
 # - gandr-surface-corpus
 # - gandr-surface-engine
+# - gandr-theory-cell-complexes
 # - gandr-theory-circuit-algebras (dev)
+# - gandr-theory-decomposition-spaces
 # - gandr-theory-computads
 # - gandr-theory-virtual-doctrines (dev)
 [workspace.dependencies.gandr-core-sequent]
@@ -272,7 +279,7 @@ path = "crates/runtime-ffi"
 # consumers:
 # - gandr-core-sequent (dev)
 # - gandr-surface-engine
-# - gandr-theory-computads
+# - gandr-theory-decomposition-spaces
 [workspace.dependencies.gandr-storage-artifact]
 path = "crates/storage-artifact"
 
@@ -333,6 +340,29 @@ path = "crates/surface-render-remote"
 [workspace.dependencies.gandr-surface-syntax]
 path = "crates/surface-syntax"
 
+# The cell-shape substrate: pattern language, substitution, reduction order,
+# the cell-alphabet trait with its sequent inhabitant, and the cell store.
+# consumers:
+# - gandr-theory-coherent-resolutions
+# - gandr-theory-computads
+# - gandr-theory-decomposition-spaces
+# - gandr-theory-deep-inference
+# - gandr-theory-circuit-algebras
+# - gandr-theory-virtual-doctrines
+# - gandr-surface-engine (dev)
+[workspace.dependencies.gandr-theory-cell-complexes]
+path = "crates/theory-cell-complexes"
+
+# The test-facing second inhabitant of the cell-alphabet trait, with its five
+# adversarial wrappers.
+# consumers:
+# - gandr-theory-coherent-resolutions (dev)
+# - gandr-theory-computads (dev)
+# - gandr-theory-decomposition-spaces (dev)
+# - gandr-theory-deep-inference (dev)
+[workspace.dependencies.gandr-theory-cell-complexes-tools]
+path = "crates/theory-cell-complexes-tools"
+
 # Circuit-algebra machinery over the cell-alphabet seam (interface bookkeeping,
 # embedding matching, diagram normal form).
 # consumers:
@@ -340,18 +370,43 @@ path = "crates/surface-syntax"
 [workspace.dependencies.gandr-theory-circuit-algebras]
 path = "crates/theory-circuit-algebras"
 
-# Fusion by Squier completion over the command IL (tracelet 3-cell certificates).
+# Cell firing, critical-pair enumeration, coherence certificates, and budgeted
+# Knuth-Bendix/Squier completion.
+# consumers:
+# - gandr-theory-computads
+# - gandr-theory-decomposition-spaces
+# - gandr-theory-deep-inference
+# - gandr-theory-virtual-doctrines
+# - gandr-surface-engine (dev)
+[workspace.dependencies.gandr-theory-coherent-resolutions]
+path = "crates/theory-coherent-resolutions"
+
+# The elaborator seam: levitation descriptions into cells, circuit-rule
+# instantiation, and reification into the frozen command arena.
 # consumers:
 # - gandr-surface-engine
-# - gandr-theory-circuit-algebras
-# - gandr-theory-virtual-doctrines
 [workspace.dependencies.gandr-theory-computads]
 path = "crates/theory-computads"
+
+# The certificate algebra: composition, backward pathway queries, and the
+# canonical step encoding behind the durable transport identity.
+# consumers:
+# - gandr-theory-virtual-doctrines
+[workspace.dependencies.gandr-theory-decomposition-spaces]
+path = "crates/theory-decomposition-spaces"
+
+# The identity relations on derivations: the shift guard, the causal order, the
+# certificate normal form, and the atom-occurrence flow projection.
+# consumers:
+# - gandr-theory-computads
+# - gandr-theory-decomposition-spaces
+[workspace.dependencies.gandr-theory-deep-inference]
+path = "crates/theory-deep-inference"
 
 # Deterministic dense-u32 graph algorithms.
 # consumers:
 # - gandr-surface-grammar
-# - gandr-theory-computads
+# - gandr-theory-decomposition-spaces
 [workspace.dependencies.gandr-theory-graphs]
 path = "crates/theory-graphs"
 

@@ -1,0 +1,24 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-cell-complexes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The cell-shape substrate for gandr's rewriting stack: the command-pattern language, matching and unification, the reduction order, the cell-alphabet trait with its sequent inhabitant, the deduplicated cell store, and the linearity admission boundary"
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+gandr-core-sequent.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

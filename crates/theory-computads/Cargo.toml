@@ -6,26 +6,24 @@ name = "gandr-theory-computads"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Fusion by Squier completion over the command IL: an oriented cell store, cut-seam overlap enumeration, budgeted Knuth-Bendix/Squier completion, and replayable tracelet 3-cell certificates (sequent-machines phase L2, the sequent-machines design's section 7 + VDC addendum)"
+description = "The elaborator seam for the cell-rewriting stack: levitation descriptions elaborated into cells, circuit-rule instantiation at the site where the shift question is well-posed, and reification of the cell grammar back into the frozen command arena"
 license.workspace = true
 publish.workspace = true
 autotests = false
 
 [[test]]
-name = "polygraph"
+name = "computads"
 path = "tests/lib.rs"
 
 [dependencies]
 gandr-core-sequent.workspace = true
-# The durable transport-step identity boundary (gandr-4o8a): certificates mint
-# portable step identities through storage-artifact's canonical BLAKE3 framing,
-# and this crate's transport adapter owns the canonical cell/position encoding.
-# Acyclic: storage-artifact depends on kernel-core and the storage tier only.
-gandr-storage-artifact.workspace = true
-gandr-theory-graphs.workspace = true
+gandr-theory-cell-complexes.workspace = true
+gandr-theory-coherent-resolutions.workspace = true
+gandr-theory-deep-inference.workspace = true
 gandr-theory-levitation.workspace = true
 
 [dev-dependencies]
+gandr-theory-cell-complexes-tools.workspace = true
 proptest.workspace = true
 
 [features]
