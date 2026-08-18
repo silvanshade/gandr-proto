@@ -13,6 +13,8 @@ mod content_faithfulness;
 #[cfg(test)]
 mod differential;
 #[cfg(test)]
+mod eta;
+#[cfg(test)]
 mod flow;
 #[cfg(test)]
 mod footprint;

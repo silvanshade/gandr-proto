@@ -197,6 +197,11 @@ copy_wrapper!(
     "Number of input ports a declared operation reads."
 );
 copy_wrapper!(
+    ConstructorCount,
+    usize,
+    "Number of constructors a declaration declares."
+);
+copy_wrapper!(
     FlowEquality,
     bool,
     "Whether two atom-occurrence flows are the same flow."

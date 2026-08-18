@@ -79,6 +79,7 @@ use alloc::vec::Vec;
 use gandr_core_sequent::il::Polarity;
 use gandr_theory_levitation::CircuitElaborationError;
 use gandr_theory_levitation::CircuitRule;
+use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::OperDesc;
@@ -87,11 +88,13 @@ use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::WhiskeredCell;
 use gandr_theory_levitation::elaborate_body;
 
+use crate::boundary::ConstructorCount;
 use crate::boundary::DeclinedCircuitIndex;
 use crate::boundary::DeclinedFaceIndex;
 use crate::boundary::DeclinedOpIndex;
 use crate::boundary::OperationInputCount;
 use crate::cell::Cell;
+use crate::cell::CellId;
 use crate::cell::CellStore;
 use crate::linearity::NonLinearPattern;
 use crate::linearity::admit_linear_cell;
@@ -101,12 +104,17 @@ use crate::pattern::MetaVar;
 use crate::pattern::ProdPat;
 use crate::pattern::Sym;
 use crate::sequent::CellProvenance;
+use crate::sequent::EtaKind;
 use crate::sequent::Orientation;
 use crate::sequent::frame_defining_cell;
 
 /// The reserved return-continuation metavariable name a rule's cut binds — the
 /// `$`-prefix keeps it disjoint from every user pattern variable.
 const RETURN_CONT: &str = "$ret";
+
+/// The reserved producer metavariable an η cell observes and hands back — the
+/// `$`-prefix keeps it disjoint from every user pattern variable.
+const ETA_OBSERVED: &str = "$eta";
 
 /// Why a face could not be elaborated into a command cell, or could not be
 /// admitted once elaborated (`proposal-sequent-kernel.md` §7.4, the declined
@@ -214,6 +222,58 @@ pub struct DescElaboration
     /// Each declined circuit rule, by index into `desc.circuits`, with its
     /// reason.
     pub declined_circuits: Vec<(DeclinedCircuitIndex, ElaborateError)>,
+    /// The η cells the declaration licensed, by their id in `store`.
+    pub eta: Vec<CellId>,
+    /// Why no η cell was minted, when none was.
+    pub declined_eta: Option<EtaElaborateError>,
+}
+
+/// Why a declaration licenses no **η cell**.
+///
+/// An η law says a destructor and the constructor it inverts cancel. A
+/// declaration licenses one only when it states both halves, so each variant
+/// below names a half that is missing rather than a failure to elaborate.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum EtaElaborateError
+{
+    /// The declaration has zero or several constructors, so `K(f(w)) ~> w`
+    /// would be false at every constructor but one.
+    NotSingleConstructor(ConstructorCount),
+    /// No admitted operation of the declaration carries the inverse face
+    /// `f(K(x)) ==> x`, so nothing states that any operation destructs the
+    /// constructor.
+    NoInverseFace,
+}
+
+impl core::fmt::Display for EtaElaborateError
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        match *self {
+            | Self::NotSingleConstructor(count) => write!(
+                f,
+                "no η cell: the declaration has {count} constructors, and an η law cancels a \
+                 destructor against *the* constructor it inverts. Write the declaration with one \
+                 constructor, or state the per-constructor laws as ordinary `rule` members.",
+                count = usize::from(count),
+            ),
+            | Self::NoInverseFace => write!(
+                f,
+                "no η cell: no operation of the declaration carries the face `f(K(x)) ==> x`, so \
+                 nothing in the declaration says that an operation destructs the constructor. An \
+                 η law is licensed by the inverse face, never assumed from an operation's \
+                 presence."
+            ),
+        }
+    }
+}
+
+impl core::error::Error for EtaElaborateError
+{
 }
 
 /// Elaborate a whole datatype description's operations and rules into a store
@@ -281,7 +341,7 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
         let admitted = match declined_operation(face, &unrepresentable) {
             | Some(error) => Err(error),
             | None => match elaborate_rule(face) {
-                | Ok(cell) => admit_cell(&mut store, cell),
+                | Ok(cell) => admit_cell(&mut store, cell).map(|_| ()),
                 | Err(error) => Err(error),
             },
         };
@@ -302,6 +362,10 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
             | Err(error) => declined_circuits.push((DeclinedCircuitIndex::from(index), error)),
         }
     }
+    // The η cells the declaration licenses. They enter through the same
+    // admission seam every other cell does — the linearity boundary — and are
+    // reported by id beside the store rather than held in one of their own.
+    let (eta, declined_eta) = mint_eta_cells(&mut store, desc, &unrepresentable);
     DescElaboration {
         store,
         opers,
@@ -309,7 +373,228 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
         declined_faces,
         composites,
         declined_circuits,
+        eta,
+        declined_eta,
     }
+}
+
+/// Mint the **η cells** a declaration licenses, into `store`.
+///
+/// An η law says a destructor and the constructor it inverts cancel. This
+/// fragment writes it as
+///
+/// ```text
+/// ⟨w |ε f(; K⁻(β))⟩  ~>  ⟨w |ε β⟩
+/// ```
+///
+/// which reads: destruct `w` with `f`, rebuild the result with `K`, and you are
+/// back where you started. The left-hand side is headed by an operation frame,
+/// so the cell is a consumer-driven redex like every other cell the route
+/// admits — the **contracting** direction, never the expanding one. Its mirror
+/// `⟨w |ε β⟩ ~> ⟨w |ε f(; K⁻(β))⟩` is headed by a bare metavariable, matches
+/// every cut of its polarity whatever the type, and is not minted.
+///
+/// The declaration licenses the law by stating both halves, and each is checked
+/// rather than assumed:
+///
+/// * exactly **one** constructor `K`, because `K(f(w)) = w` is false at every
+///   other constructor of a type that has several;
+/// * an admitted operation `f` carrying the **inverse face** `f(K(x)) ==> x`,
+///   which is the declaration's own statement that `f` destructs `K`. Without
+///   it `f` is an arbitrary operation and the cancellation is not a law.
+///
+/// The cut polarity is the declaration's: data η at a positive cut, codata η at
+/// a negative one (`proposal-sequent-kernel.md` §5, strategy-tied). The cell
+/// carries [`CellProvenance::Eta`], so
+/// [`crate::alphabet::CellAlphabet::may_fire`] refuses it at the other polarity
+/// however well its left-hand side matches.
+///
+/// # Contract
+/// - ensures: one η cell per operation carrying the inverse face when the
+///   declaration has exactly one constructor, each inserted through
+///   [`admit_cell`]; the returned ids address them in `store`. `None` for the
+///   decline when at least one cell was minted, and otherwise the reason no
+///   cell was.
+/// - provides: the declaration-derived half of the η discipline, minted at the
+///   admission seam rather than beside it.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the two decline routes are separated by a description
+///   with several constructors and one with a single constructor whose
+///   operation carries no inverse face; the minting route by a single-
+///   constructor description whose operation carries it, whose cell is shown
+///   joinable with the projection route it must agree with.
+/// - witness: `elaborate::tests::a_wrapper_description_mints_its_eta_cell`
+/// - witness: `elaborate::tests::a_multi_constructor_description_declines_its_eta_cell`
+/// - witness: `elaborate::tests::an_operation_with_no_inverse_face_licenses_no_eta_cell`
+/// - witness: `elaborate::tests::a_codata_declaration_mints_its_eta_cell_at_a_negative_cut`
+/// - witness: `gandr-theory-computads/tests/eta.rs`
+#[inline]
+fn mint_eta_cells(
+    store: &mut CellStore,
+    desc: &SignDesc,
+    unrepresentable: &[&Name],
+) -> (Vec<CellId>, Option<EtaElaborateError>)
+{
+    let count = ConstructorCount::from(desc.ctors.len());
+    let single = (usize::from(count) == 1_usize)
+        .then(|| desc.ctors.first())
+        .flatten();
+    let Some(ctor) = single
+    else {
+        return (
+            Vec::new(),
+            Some(EtaElaborateError::NotSingleConstructor(count)),
+        );
+    };
+    let kind = match desc.polarity {
+        | DeclPolarity::Data => EtaKind::Data,
+        | DeclPolarity::Codata => EtaKind::Codata,
+    };
+    let polarity = kind.required_polarity();
+    let mut minted = Vec::new();
+    for op in &desc.opers {
+        if unrepresentable.iter().any(|name| **name == op.name) {
+            continue;
+        }
+        if !inverts(desc, &op.name, &ctor.name).0 {
+            continue;
+        }
+        let cell = eta_cell(
+            &Sym::new(op.name.clone()),
+            &Sym::new(ctor.name.clone()),
+            polarity,
+            kind,
+        );
+        if let Ok(id) = admit_cell(store, cell) {
+            minted.push(id);
+        }
+    }
+    if minted.is_empty() {
+        return (minted, Some(EtaElaborateError::NoInverseFace));
+    }
+    (minted, None)
+}
+
+/// Whether some face of `desc` states `op(ctor(x)) ==> x` — the declaration's
+/// own statement that `op` destructs `ctor`.
+///
+/// # Contract
+/// - ensures: positive exactly when a face's left-hand side is `op` applied to
+///   `ctor` applied to a single variable, and its right-hand side is that same
+///   variable.
+/// - panics: none.
+#[inline]
+fn inverts(
+    desc: &SignDesc,
+    op: &Name,
+    ctor: &Name,
+) -> InverseFacePresent
+{
+    InverseFacePresent(desc.rules.iter().any(|face| {
+        let Some((applied, args)) = as_op(&face.lhs)
+        else {
+            return false;
+        };
+        if applied != op {
+            return false;
+        }
+        let Some(argument) = only(args)
+        else {
+            return false;
+        };
+        let Some((built, fields)) = as_ctor(argument)
+        else {
+            return false;
+        };
+        if built != ctor {
+            return false;
+        }
+        let Some(field) = only(fields).and_then(as_var)
+        else {
+            return false;
+        };
+        as_var(&face.rhs) == Some(field)
+    }))
+}
+
+/// Whether a declaration states that an operation inverts its constructor.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct InverseFacePresent(bool);
+
+/// The name and arguments of an operation application.
+#[inline]
+fn as_op(term: &FreeTerm) -> Option<(&Name, &[FreeTerm])>
+{
+    match *term {
+        | FreeTerm::Op(ref name, ref args) => Some((name, args)),
+        | FreeTerm::Var(_) | FreeTerm::Ctor(..) => None,
+    }
+}
+
+/// The name and arguments of a constructor application.
+#[inline]
+fn as_ctor(term: &FreeTerm) -> Option<(&Name, &[FreeTerm])>
+{
+    match *term {
+        | FreeTerm::Ctor(ref name, ref args) => Some((name, args)),
+        | FreeTerm::Var(_) | FreeTerm::Op(..) => None,
+    }
+}
+
+/// The name of a variable term.
+#[inline]
+fn as_var(term: &FreeTerm) -> Option<&Name>
+{
+    match *term {
+        | FreeTerm::Var(ref name) => Some(name),
+        | FreeTerm::Ctor(..) | FreeTerm::Op(..) => None,
+    }
+}
+
+/// The single element of a slice, or `None` when it holds any other number.
+#[inline]
+fn only(terms: &[FreeTerm]) -> Option<&FreeTerm>
+{
+    let (first, rest) = terms.split_first()?;
+    rest.is_empty().then_some(first)
+}
+
+/// The η cell `⟨w |ε op(; ctor⁻(β))⟩ ~> ⟨w |ε β⟩`.
+///
+/// # Contract
+/// - ensures: a cell whose left-hand side cuts a fresh producer hole against
+///   the operation frame wrapping the constructor's return-side frame, whose
+///   right-hand side drops both, and whose provenance is
+///   [`CellProvenance::Eta`] at `kind`.
+/// - panics: none.
+#[inline]
+fn eta_cell(
+    op: &Sym,
+    ctor: &Sym,
+    polarity: Polarity,
+    kind: EtaKind,
+) -> Cell
+{
+    let observed = MetaVar::producer(ETA_OBSERVED);
+    let rest = MetaVar::consumer(RETURN_CONT);
+    let lhs = CmdPat::cut(polarity, ProdPat::Meta(observed.clone()), ConsPat::Op {
+        op: op.clone(),
+        args: Box::from([]),
+        ret: Box::new(ConsPat::Frame {
+            ctor: ctor.clone(),
+            ret: Box::new(ConsPat::Meta(rest.clone())),
+        }),
+    });
+    let rhs = CmdPat::cut(polarity, ProdPat::Meta(observed), ConsPat::Meta(rest));
+    Cell::new(
+        lhs,
+        rhs,
+        Orientation::PolarityDerived,
+        CellProvenance::Eta(kind),
+    )
 }
 
 /// Admit one circuit rule: its composite, then its cell, through the same gate
@@ -441,13 +726,10 @@ fn declined_operation(
 fn admit_cell(
     store: &mut CellStore,
     cell: Cell,
-) -> Result<(), ElaborateError>
+) -> Result<CellId, ElaborateError>
 {
     match admit_linear_cell(&cell) {
-        | Ok(()) => {
-            store.insert(cell);
-            Ok(())
-        },
+        | Ok(()) => Ok(store.insert(cell)),
         | Err(refusal) => Err(ElaborateError::from(refusal)),
     }
 }
@@ -1262,6 +1544,170 @@ mod tests
         OperDesc::new(
             name.into(),
             BridgeArity::single_output(inputs, SortRef::new("out", "Nat")),
+            Attrs::empty(),
+        )
+    }
+
+    #[test]
+    fn a_wrapper_description_mints_its_eta_cell()
+    {
+        // The licensed shape: one constructor, one operation, and the face that
+        // says the operation destructs it.
+        let elaborated = elaborate_data_desc(&wrapper(DeclPolarity::Data));
+        assert_eq!(
+            None, elaborated.declined_eta,
+            "the declaration states both halves of the law"
+        );
+        let &[id] = &*elaborated.eta
+        else {
+            panic!("exactly one η cell is minted")
+        };
+        let cell = elaborated
+            .store
+            .get(id)
+            .expect("the η cell is in the store");
+        assert_eq!(
+            CellProvenance::Eta(EtaKind::Data),
+            cell.provenance,
+            "a `data` declaration's η law is the data one"
+        );
+        assert_eq!(
+            Polarity::Positive,
+            cell.lhs.polarity(),
+            "and data η is valid only at a positive cut"
+        );
+        // The left-hand side is a consumer-driven redex — an operation frame
+        // wrapping the constructor's return-side frame — and the right-hand
+        // side drops both.
+        let CmdPat::Cut { ref cons, .. } = cell.lhs;
+        let ConsPat::Op {
+            ref op, ref ret, ..
+        } = *cons
+        else {
+            panic!("the η redex is headed by an operation frame")
+        };
+        assert_eq!(&Sym::new("unwrap"), op, "the destructor heads it");
+        assert!(
+            matches!(**ret, ConsPat::Frame { ref ctor, .. } if *ctor == Sym::new("MkWrap")),
+            "and the constructor it inverts is inside it"
+        );
+        let CmdPat::Cut { ref cons, .. } = cell.rhs;
+        assert!(
+            matches!(*cons, ConsPat::Meta(_)),
+            "the contractum drops the whole pair, which is what cancelling means"
+        );
+    }
+
+    #[test]
+    fn a_codata_declaration_mints_its_eta_cell_at_a_negative_cut()
+    {
+        // The dual, and the polarity is the whole difference: codata η is valid
+        // only under call-by-name.
+        let elaborated = elaborate_data_desc(&wrapper(DeclPolarity::Codata));
+        let &[id] = &*elaborated.eta
+        else {
+            panic!("exactly one η cell is minted")
+        };
+        let cell = elaborated
+            .store
+            .get(id)
+            .expect("the η cell is in the store");
+        assert_eq!(
+            CellProvenance::Eta(EtaKind::Codata),
+            cell.provenance,
+            "a `codata` declaration's η law is the codata one"
+        );
+        assert_eq!(
+            Polarity::Negative,
+            cell.lhs.polarity(),
+            "and codata η is valid only at a negative cut"
+        );
+    }
+
+    #[test]
+    fn a_multi_constructor_description_declines_its_eta_cell()
+    {
+        // `Nat` has two constructors, so `MkWrap(unwrap(w)) = w` has no reading:
+        // there is no single constructor for a destructor to invert.
+        let desc = nat_with([op("pred", [SortRef::new("n", "Nat")])], [face(
+            FreeTerm::op("pred", [FreeTerm::ctor("Succ", [FreeTerm::var("m")])]),
+            FreeTerm::var("m"),
+        )]);
+        let elaborated = elaborate_data_desc(&desc);
+        assert!(elaborated.eta.is_empty(), "no η cell is minted");
+        assert_eq!(
+            Some(EtaElaborateError::NotSingleConstructor(
+                ConstructorCount::from(2_usize)
+            )),
+            elaborated.declined_eta,
+            "and the decline names the half that is missing, with the count that decides it"
+        );
+    }
+
+    #[test]
+    fn an_operation_with_no_inverse_face_licenses_no_eta_cell()
+    {
+        // One constructor and one operation, but the declaration never says the
+        // operation destructs the constructor — so nothing licenses cancelling
+        // them, and the route declines rather than assuming it.
+        let desc = SignDesc::new(
+            NominalId::new(0_u64.into(), "Wrap"),
+            Vec::new(),
+            [CtorDesc::new(
+                "MkWrap",
+                Code::var("Nat"),
+                "Wrap",
+                Attrs::empty(),
+            )],
+            [OperDesc::new(
+                "twice",
+                BridgeArity::single_output(
+                    [SortRef::new("w", "Wrap")],
+                    SortRef::new("out", "Wrap"),
+                ),
+                Attrs::empty(),
+            )],
+            [face(
+                FreeTerm::op("twice", [FreeTerm::ctor("MkWrap", [FreeTerm::var("x")])]),
+                FreeTerm::ctor("MkWrap", [FreeTerm::var("x")]),
+            )],
+            DeclPolarity::Data,
+            Attrs::empty(),
+        );
+        let elaborated = elaborate_data_desc(&desc);
+        assert!(elaborated.eta.is_empty(), "no η cell is minted");
+        assert_eq!(
+            Some(EtaElaborateError::NoInverseFace),
+            elaborated.declined_eta,
+            "an operation's presence is not the licence; the inverse face is"
+        );
+    }
+
+    /// A single-constructor `Wrap` description whose `unwrap` operation carries
+    /// the inverse face — the shape an η law is licensed by.
+    fn wrapper(polarity: DeclPolarity) -> SignDesc
+    {
+        use gandr_theory_levitation::Attrs;
+
+        SignDesc::new(
+            NominalId::new(0_u64.into(), "Wrap"),
+            Vec::new(),
+            [CtorDesc::new(
+                "MkWrap",
+                Code::var("Nat"),
+                "Wrap",
+                Attrs::empty(),
+            )],
+            [OperDesc::new(
+                "unwrap",
+                BridgeArity::single_output([SortRef::new("w", "Wrap")], SortRef::new("out", "Nat")),
+                Attrs::empty(),
+            )],
+            [face(
+                FreeTerm::op("unwrap", [FreeTerm::ctor("MkWrap", [FreeTerm::var("x")])]),
+                FreeTerm::var("x"),
+            )],
+            polarity,
             Attrs::empty(),
         )
     }
