@@ -323,14 +323,18 @@ impl Certificate
     /// - witness: `unify::tests::meta_splitting_leaves_the_unconstrained_half_open_and_replays_vacuously`
     /// - witness: `unify::tests::a_hand_built_singleton_eta_certificate_is_refuted_by_replay`
     /// - witness: `unify::tests::a_refuting_certificate_has_nothing_to_replay`
-    /// - hypothesis: L0 for the arena-restoration clause — the entry watermark
-    ///   has exactly one consumer, so removing the rollback or retargeting it
-    ///   at a later watermark leaves the mark unused and fails to compile —
-    ///   plus L3 on the reachable leg, the arena population observed either
-    ///   side of a validating replay. The refuting leg carries no separate
-    ///   witness: no input reaches an error inside the replay, whose only
-    ///   failures are arena exhaustion and an unresolvable id, so the rollback
-    ///   being unconditional in source is what carries it.
+    /// - hypothesis: L3 on the reachable leg — the arena population observed
+    ///   either side of a validating replay, which no mutant that drops or
+    ///   retargets the truncation survives. **The failing leg is not covered,
+    ///   and the gap is measured rather than assumed**: making the rollback
+    ///   conditional on success compiles and survives the whole suite, because
+    ///   no input reaches an error inside the replay at all — its only failures
+    ///   are arena exhaustion and an unresolvable id, neither constructible
+    ///   through this API. So the clause rests on the rollback being
+    ///   unconditional in three lines of source, which a reader checks and no
+    ///   test can. Removing the truncation outright also fails to compile,
+    ///   leaving the entry mark unused, but that is a weak kill and is not what
+    ///   the clause rests on.
     /// - witness: `unify::tests::replaying_a_certificate_restores_the_callers_semantic_arena`
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
