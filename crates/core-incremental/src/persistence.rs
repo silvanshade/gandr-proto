@@ -11,6 +11,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write as _;
+use core::hash::BuildHasher as _;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
@@ -133,6 +134,17 @@ pub trait CheckpointStore
     ) -> Result<Option<Checkpoints>, CheckpointStoreError>;
 
     /// Stores a complete checkpoint set under its content address.
+    ///
+    /// # Contract
+    /// - requires: `checkpoints` is the complete set for `address`.
+    /// - ensures: on `Ok(())` the record is retrievable by `load` under the
+    ///   same address and backend identity.
+    /// - provides: the persistence half of checkpoint reuse.
+    /// - fails: a typed [`CheckpointStoreError`] when encoding or the backing
+    ///   store rejects the record; **a failed store leaves the store exactly as
+    ///   it was**, with no partial, private, or temporary residue an observer
+    ///   of the backing medium could see.
+    /// - panics: none.
     ///
     /// # Errors
     ///
@@ -261,6 +273,16 @@ impl CheckpointStore for FileCheckpointStore
         Ok(Some(decoded))
     }
 
+    /// # Adequacy
+    /// - hypothesis: L3 for the failure-atomicity clause — the encode, the
+    ///   staging write, and the publishing rename are separated by the one
+    ///   ordinary condition that fails the rename after the record is written,
+    ///   a directory occupying the record path, observed through the store
+    ///   directory's exact entry set. Removing or inverting the rollback fails
+    ///   the witness; removing the disarm fails to compile, because the
+    ///   published state is then never read.
+    /// - witness: `tests::a_failed_file_store_strands_no_temporary_in_the_record_directory`
+    /// - witness: `tests::supported_nonempty_checkpoints_round_trip_in_memory_and_reopened_file`
     #[inline]
     fn store(
         &mut self,
@@ -271,19 +293,118 @@ impl CheckpointStore for FileCheckpointStore
     {
         let payload = codec::encode_checkpoints(&checkpoints)?;
         let artifact = artifact_bytes(address, backend, &payload)?;
-        let path = self.root.join(hex(address.0));
-        let temporary = self
-            .root
-            .join(format!("{}.tmp-{}", hex(address.0), std::process::id()));
-        std::fs::write(&temporary, artifact).map_err(|error| {
+        let record = TemporaryRecord::write(&self.root, address, &artifact)?;
+        record.commit(&self.root.join(hex(address.0)))
+    }
+}
+
+/// A fully written record awaiting the rename that publishes it.
+///
+/// The guard is what makes a store failure-atomic on the directory: the record
+/// is written under a private name first, and only a successful rename disarms
+/// the rollback. Every other exit removes the temporary, so a caller that reads
+/// the store root after a rejected store sees exactly what it saw before.
+struct TemporaryRecord
+{
+    /// The private path the complete record was written to.
+    path: PathBuf,
+    /// Whether the rename published the record, which disarms the rollback.
+    published: RecordPublication,
+}
+
+/// Whether a [`TemporaryRecord`] reached its published name.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RecordPublication(bool);
+
+impl RecordPublication
+{
+    /// The record is still private, so the rollback is armed.
+    const PRIVATE: Self = Self(false);
+    /// The record was renamed into place, so there is nothing to roll back.
+    const PUBLISHED: Self = Self(true);
+}
+
+impl TemporaryRecord
+{
+    /// Writes `artifact` under a private name in `root`.
+    ///
+    /// The name carries the process id, an operating-system-seeded nonce, and
+    /// the record address, so two stores of one address — in one process or
+    /// across processes — cannot write through each other's temporary. The
+    /// dependency-free nonce recipe is the one `gandr-runtime-effects` uses for
+    /// its temporary directories.
+    ///
+    /// # Contract
+    /// - requires: `root` is an existing directory.
+    /// - ensures: on success the complete artifact is on disk under a name no
+    ///   other store call will choose, and the returned guard removes it unless
+    ///   [`Self::commit`] publishes it.
+    /// - provides: the staging half of the store's atomic replacement.
+    /// - fails: [`CheckpointStoreError::Io`] when the write fails, in which
+    ///   case any partial file is removed before returning.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns [`CheckpointStoreError::Io`] when the temporary cannot be
+    /// written.
+    fn write(
+        root: &Path,
+        address: CheckpointAddress,
+        artifact: &[u8],
+    ) -> Result<Self, CheckpointStoreError>
+    {
+        let process = std::process::id();
+        let nonce = std::collections::hash_map::RandomState::new().hash_one(process);
+        let path = root.join(format!("{}.tmp-{process}-{nonce:016x}", hex(address.0)));
+        let record = Self {
+            path,
+            published: RecordPublication::PRIVATE,
+        };
+        std::fs::write(&record.path, artifact).map_err(|error| {
             drop(error);
             CheckpointStoreError::Io
         })?;
-        std::fs::rename(&temporary, &path).map_err(|error| {
+        Ok(record)
+    }
+
+    /// Renames the record onto `destination`, publishing it.
+    ///
+    /// # Contract
+    /// - ensures: `Ok(())` exactly when the rename succeeded, after which the
+    ///   record is the store's entry for its address and the rollback is
+    ///   disarmed.
+    /// - provides: the publishing half of the store's atomic replacement.
+    /// - fails: [`CheckpointStoreError::Io`] when the rename fails, in which
+    ///   case the temporary is removed and the directory is unchanged.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns [`CheckpointStoreError::Io`] when the rename fails.
+    fn commit(
+        mut self,
+        destination: &Path,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        std::fs::rename(&self.path, destination).map_err(|error| {
             drop(error);
             CheckpointStoreError::Io
         })?;
+        self.published = RecordPublication::PUBLISHED;
         Ok(())
+    }
+}
+
+impl Drop for TemporaryRecord
+{
+    /// Removes the temporary unless the rename published it, so no failure path
+    /// strands a private record in the caller's store directory.
+    #[inline]
+    fn drop(&mut self)
+    {
+        if self.published == RecordPublication::PRIVATE {
+            drop(std::fs::remove_file(&self.path));
+        }
     }
 }
 
@@ -893,6 +1014,39 @@ mod tests
         assert_eq!(
             store.load(address, backend),
             Err(CheckpointStoreError::NonCanonical)
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_failed_file_store_strands_no_temporary_in_the_record_directory()
+    {
+        let root = root("store-io");
+        drop(std::fs::remove_dir_all(&root));
+        let program = program(&[1]);
+        let checkpoints = checkpoint_program(&program);
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let address = address_of(&program).unwrap();
+        let mut store = FileCheckpointStore::open(&root).unwrap();
+        // A directory at the record path is the one ordinary condition that
+        // fails the rename *after* the temporary has been written, which is the
+        // only ordering that can strand one.
+        std::fs::create_dir_all(root.join(hex(address.0))).unwrap();
+
+        assert_eq!(
+            store.store(address, backend, checkpoints),
+            Err(CheckpointStoreError::Io)
+        );
+
+        let mut remaining = std::fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect::<alloc::vec::Vec<_>>();
+        remaining.sort();
+        assert_eq!(
+            remaining,
+            alloc::vec![hex(address.0)],
+            "a rejected store leaves the record directory exactly as it found it"
         );
         std::fs::remove_dir_all(root).unwrap();
     }
