@@ -1,7 +1,5 @@
 //! **The VDC reflection face** — the rewrite layer reflected as a virtual
-//! double category, with `FVDblTT` as its internal language (the reflection
-//! decisions: the formal reading and reflection face, and certificate
-//! identity and composition).
+//! double category, with `FVDblTT` as its internal language.
 //!
 //! This crate is **strictly additive** and reflects — it does not re-implement
 //! — the engine. It consumes [`gandr_theory_levitation`] (descriptions,
@@ -13,18 +11,18 @@
 //!
 //! # The layers
 //!
-//! - [`vdc`] — the [`Vdc`] interface (objects / tight arrows / loose arrows /
+//! - [`vdc`] — the [`Vdc`] interface (objects, tight arrows, loose arrows and
 //!   multi-ary cells, with restriction and multicategorical composition) and
-//!   its [`CellStoreVdc`] instance: the dictionary reading of ADR-68 D1
-//!   realized as the cell store realizes it ([`SignatureRef`], [`SigMorphism`],
-//!   [`RelationRef`], [`Derivation`]).
+//!   its [`CellStoreVdc`] instance: the dictionary reading as the cell store
+//!   realizes it ([`SignatureRef`], [`SigMorphism`], [`RelationRef`],
+//!   [`Derivation`]).
 //! - [`cartesian`] — checked W-actions and deterministic witnesses for
 //!   projection, diagonal, and complete product-structure preservation.
 //! - [`syntax`] — the reflected judgment layer: [`Protype`]s and [`Proterm`]s
 //!   (`FVDblTT`'s four judgment families), **first-order, no dependent types**,
 //!   with [`Proterm::Cert`] embedding an engine derivation.
 //! - [`check`] — bidirectional [`Checker`] over two-sided [`Context`]s; the
-//!   engine-fact rules are validated by **replay elaboration** (ADR-69).
+//!   engine-fact rules are validated by **replay elaboration**.
 //! - [`iso`] — [`ProtypeIso`] / [`IsoWitness`]: protype isomorphisms are
 //!   **paired replayable witnesses** with groupoid laws, composed in the
 //!   invertible mode
@@ -32,34 +30,35 @@
 //! - [`query`] — the constructor-menu [`Query`] surface (path induction over
 //!   rewrite traces, per-overlap seam composition, extension queries,
 //!   instantiation tables).
-//! - [`directed`] — the **LLV directed fragment** over the reflected layer, and
-//!   the crate's largest face: variance-carrying contexts, [`DirectedHom`] with
-//!   a J-eliminator restricted by polarity so symmetry stays underivable, and
+//! - [`directed`] — the **directed fragment** over the reflected layer, and the
+//!   crate's largest face: variance-carrying contexts, [`DirectedHom`] with a
+//!   J-eliminator restricted by polarity so symmetry stays underivable, and
 //!   (co)ends as quantifiers with the Fubini and coYoneda operations. It is
 //!   what [`syntax`] deliberately cannot express, and it stages behind
 //!   levitation stage 1.
 //!
-//! # Soundness posture (§8; ADR-68 D4)
+//! # Soundness posture
 //!
 //! gandr implements **checkers and property tests**; the **theorem-grade claims
-//! are not made in Rust**. Nasu's syntax–semantics biadjunction (soundness +
-//! completeness — "reflection loses nothing") and the groupoid-fragment
+//! are not made in Rust**. The syntax–semantics biadjunction (soundness plus
+//! completeness — reflection loses nothing) and the groupoid-fragment
 //! certificate-composition theorem ride the **Agda face** of the metatheory
-//! tree. What this crate carries is engineering evidence:
-//! per-rule property tests plus replay elaboration (each judgment-layer rule
-//! that claims an engine fact replays the underlying certificate).
+//! tree. What this crate carries is engineering evidence: per-rule property
+//! tests plus replay elaboration, so each judgment-layer rule that claims an
+//! engine fact replays the underlying certificate.
 //!
 //! # Open observations (none minted here)
 //!
-//! The reflection decisions cover this lane; this crate mints no decision
-//! record. Two observations are recorded as open:
-//! (1) the loose-arrow **granularity** (a named relation as a *set* of
-//! generating cells, adopted here per §10.1's F0 reading, versus the
-//! single-cell reading); and (2) the reflected-cell **identity model** (a
-//! [`Derivation`] tree quotiented by replay-equivalence, elaborated to the
-//! engine only through
-//! [`gandr_theory_decomposition_spaces::compose_invertible`]) — pin
-//! either by ADR only if a later stage makes the reflected syntax canonical.
+//! This crate mints no decision record. Two observations are recorded as open:
+//! the loose-arrow **granularity** (a named relation as a *set* of generating
+//! cells, adopted here, versus the single-cell reading); and the reflected-cell
+//! **identity model** (a [`Derivation`] tree quotiented by replay-equivalence,
+//! elaborated to the engine only through
+//! [`gandr_theory_decomposition_spaces::compose_invertible`]). Pin either only
+//! if a later stage makes the reflected syntax canonical.
+//!
+//! The named ideas and their primary references are in this crate's
+//! `README.md`.
 
 extern crate alloc;
 

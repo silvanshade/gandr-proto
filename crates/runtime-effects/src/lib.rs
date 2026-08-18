@@ -30,13 +30,16 @@
 //!   truncating the run. [`run_program_with_prelude`] drives the same seam with
 //!   an ambient value prelude installed.
 //!
-//! **Soundness (v0).** `Σ` is vacuous and resumption is multi-shot — a
-//! captured continuation prefix is reified as a plain stack value with the
-//! handler reinstalled, so a captured continuation may be resumed any number
-//! of times — so the host is an always-resume ambient handler on the seam; the
-//! eager OS pipe between external commands is a stopgap, NOT the typed A8
-//! `Pipe` session; the op set is named `Exec`/`Fs`/`Proc`/`Env` and does not
-//! appropriate the reserved A8 name `Shell`.
+//! **Soundness posture.** The effect row is vacuous and resumption is
+//! multi-shot: a captured continuation prefix is reified as a plain stack value
+//! with the handler reinstalled, so it may be resumed any number of times, and
+//! the host is an always-resume ambient handler on the seam. The eager
+//! operating-system pipe between external commands is a stopgap standing in for
+//! the session-typed pipe of the effects and control design record
+//! (`spec:implementation/effects-and-control.md`), not an implementation of it.
+//! The operation set is named `Exec`/`Fs`/`Proc`/`Env` and does not appropriate
+//! the reserved name `Shell`, which belongs to the typed shell surface that
+//! record specifies and that is not built.
 //!
 //! Source-text convenience entry points stay in the surface engine:
 //! `gandr_surface_engine::run::run_source` composes the engine's lowering,

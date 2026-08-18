@@ -6,7 +6,7 @@ name = "gandr-surface-render-remote"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Leaf wire-protocol types for the typing-machine inspection render bus: the versioned frame envelope, machine-state projections, deltas, and the graduated gandr-tui present seam (proposal-inspection-protocol.md)"
+description = "Leaf wire-protocol types for the typing-machine inspection render bus: the versioned frame envelope, machine-state projections, deltas, and the Send-safe present seam"
 license.workspace = true
 publish.workspace = true
 

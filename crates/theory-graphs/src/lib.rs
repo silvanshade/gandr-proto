@@ -12,8 +12,9 @@
 //! [`immediate_dominators`], [`reachability`], [`shortest_path_lengths`],
 //! [`all_simple_paths`], [`transitive_reduction_closure`], [`cycle_witness`],
 //! the bisimulation and simulation refinements, and
-//! [`adjacency_fingerprint`] — is a general library over [`EdgeSource`]. Only
-//! [`cycle_witness`] currently has a caller outside this crate.
+//! [`adjacency_fingerprint`] — is a general library over [`EdgeSource`]. Two
+//! of them have a caller outside this crate: [`condensation`] and
+//! [`cycle_witness`].
 //!
 //! **The grammar half** — the named precedence DAG (`prec`: [`PrecSpec`],
 //! [`PrecDag`], [`Prec`], [`Assoc`], [`Bound`]) and the declarative walk index

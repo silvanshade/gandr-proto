@@ -1,46 +1,42 @@
-//! Levitation **stage 0**: datatypes as descriptions, Rust-side (the
-//! levitation design's stage ladder, with the VDC deltas of its addendum).
+//! Levitation **stage 0 and stage 1**: datatypes as descriptions, Rust-side.
 //!
 //! A datatype's *description* is a first-class value, so generic operations
 //! over datatypes are ordinary programs over descriptions — derive-style
 //! codegen, wire serialization, structural equality, content-addressed
-//! interning, and the uniform handling the polygraph layer needs. This crate is
-//! the stage-0 rung of the four-stage ladder (proposal §2): descriptions are
-//! **Rust values** and the generic functions are **Rust functions**; the
-//! meta-theory functions (`decode`, `μ`, `induction`) stay host-side until
-//! stage 1+ moves them, one at a time, into the checker. Nothing here needs a
-//! dependent type.
+//! interning, and the uniform handling the polygraph layer needs. At stage 0
+//! descriptions are **Rust values** and the generic functions are **Rust
+//! functions**; the meta-theory functions (`decode`, `μ`, `induction`) stay
+//! host-side until later stages move them, one at a time, into the checker.
+//! Nothing here needs a dependent type.
 //!
 //! # The code universe (`code`)
 //!
-//! The canonical decl-table shape is the **tagged description** (`tagDesc`,
-//! V2): an enumeration of constructors, each carrying a first-order [`Code`].
-//! The code grammar's MVP is the finitary first-order fragment `{1, var, ×, σ}`
-//! ([`Code::Unit`], [`Code::Var`], [`Code::Prod`], [`Code::Sum`]) plus the V5
-//! leaf decorations — a graded, attributed [`Code::Field`] over a core value
-//! type, and a [`Code::Bind`] atom-abstraction. The fragment is first-order
-//! **so that code equality stays decidable**: higher-order codes
-//! (function-typed fields) are *excluded from the fragment*, not merely
-//! deferred (proposal §3).
+//! The canonical decl-table shape is the **tagged description**: an
+//! enumeration of constructors, each carrying a first-order [`Code`]. The code
+//! grammar is the finitary first-order fragment ([`Code::Unit`], [`Code::Var`],
+//! [`Code::Prod`], [`Code::Sum`]) plus the leaf decorations — a graded,
+//! attributed [`Code::Field`] over a core value type, and a [`Code::Bind`]
+//! atom-abstraction. The fragment is first-order **so that code equality stays
+//! decidable**: higher-order codes (function-typed fields) are *excluded from
+//! the fragment*, not merely deferred.
 //!
 //! Decidable equality is load-bearing, not cosmetic: it is what
 //! content-addressing interns on ([`CodeInterner`]) and what the
-//! matching-modulo engine compares (proposal §3, ADR-54 §4.3). [`Code`] derives
-//! total structural [`Eq`]/[`Hash`]; the [`code`] module's tests witness
-//! reflexivity, per-variant distinctness, and use as a hash-map key.
+//! matching-modulo engine compares. [`Code`] derives total structural
+//! [`Eq`]/[`Hash`]; the [`code`] module's tests witness reflexivity,
+//! per-variant distinctness, and use as a hash-map key.
 //!
 //! # 2-cell faces (`rule`)
 //!
 //! A rewrite `lhs ==> rhs` over a signature is a **pair of open terms in the
-//! free structure over that signature** — elements of the free monad `D⋆(V)`
-//! (V3). Stage 0 stores them untyped-but-host-checked as [`FreeTerm`] pairs in
-//! a [`RuleFace`]; the typed encoding (a dependent Σ over the signature) is the
-//! stage-1 refinement and changes only the *checking*, never the encoding
-//! (proposal §4.1). The VDC delta: each [`RuleFace`] carries derived
+//! free structure over that signature** — elements of the free monad `D⋆(V)`.
+//! Stage 0 stores them untyped-but-host-checked as [`FreeTerm`] pairs in a
+//! [`RuleFace`]; the typed encoding is a later refinement and changes only the
+//! *checking*, never the encoding. Each [`RuleFace`] carries derived
 //! [`RuleVarMeta`] per pattern variable, whose [`Variance`] is the constant
-//! [`Variance::Producer`] at stage 0 (no consumer-argument operations exist
-//! yet) — the field ships now so the sequent-era refinement is an *update*, not
-//! a migration (addendum §A).
+//! [`Variance::Producer`] at stage 0 because no consumer-argument operations
+//! exist yet — the field ships now so the later refinement is an *update*
+//! rather than a migration.
 //!
 //! # Circuit rules (`circuit`)
 //!
@@ -51,8 +47,7 @@
 //! target ([`derive_boundaries`]). The declared sphere stays the declaration's:
 //! [`check_desc`] checks the derived pair against it, so a mis-glued boundary
 //! fails at the decl table
-//! (`spec:surface-language/circuit-cells.md`, section "Frame and
-//! redex").
+//! (`spec:surface-language/circuit-cells.md`, section "Frame and redex").
 //!
 //! # Elaborating a circuit block (`elaborate`)
 //!
@@ -65,31 +60,30 @@
 //! derivation consumes. A block then elaborates to the boundary language's
 //! whiskered composite of its redex inside its frames ([`elaborate_body`],
 //! [`WhiskeredCell`]), against the boundaries the sphere check already fixed
-//! (`spec:surface-language/circuit-cells.md`, section "Sorting a
-//! rewrite port"; `spec:surface-language/higher-cells.md`, section
-//! "The boundary language").
+//! (`spec:surface-language/circuit-cells.md`, section "Sorting a rewrite
+//! port"; `spec:surface-language/higher-cells.md`, section "The boundary
+//! language").
 //!
 //! # Multi-out arities (`arity`)
 //!
 //! A multi-output operation is presented by the **bridge diagram**
-//! `A ←s— J —π→ I —t→ B` ([`BridgeArity`], V4): four finite sets and three
-//! maps, separating the Π-layer (one operation's named result tuple) from the
-//! Σ-layer (destination aggregation, which independently requires a commutative
-//! monoid — ADR-49's "Σ-zone" firewall). The encoding is finite sets + maps:
-//! content-addressable and first-order (proposal §4.2).
+//! `A ←s— J —π→ I —t→ B` ([`BridgeArity`]): four finite sets and three maps,
+//! separating the Π-layer (one operation's named result tuple) from the Σ-layer
+//! (destination aggregation, which independently requires a commutative
+//! monoid). The encoding is finite sets plus maps: content-addressable and
+//! first-order.
 //!
 //! # The description table and polarity (`desc`)
 //!
-//! [`SignDesc`] *is* the decl table (ADR-54 §5): the minted [`NominalId`], the
-//! graded/attributed parameters and constructors, the reserved operations and
-//! 2-cell faces, and the [`DeclPolarity`] (`Data` μ-decoded | `Codata`
-//! ν-decoded, V6). The ν decoder itself is a later lane; only the
-//! polarity *tag* ships now.
+//! [`SignDesc`] *is* the decl table: the minted [`NominalId`], the graded and
+//! attributed parameters and constructors, the reserved operations and 2-cell
+//! faces, and the [`DeclPolarity`] (`Data` μ-decoded, `Codata` ν-decoded). The
+//! ν decoder itself is a later lane; only the polarity *tag* ships now.
 //!
 //! # The generic consumers (`generic`, `intern`, `builtin`)
 //!
-//! Stage 0 lands **with real consumers**, refuting the named dead-end — "a
-//! beautiful decl table nobody decodes" (proposal §11). The description drives:
+//! Stage 0 lands **with real consumers**, refuting the named dead end of a
+//! beautiful decl table nobody decodes. The description drives:
 //!
 //! * [`generic_eq`] — structural equality of two [`DescValue`]s guided by a
 //!   [`Code`];
@@ -102,26 +96,27 @@
 //!
 //! [`builtin`] retrofits primitive formers (`Bool`, pairs, sums, `Option`,
 //! `List`) as [`SignDesc`]s so the same generic programs cover builtins and
-//! declared data uniformly (proposal §3).
+//! declared data uniformly.
 //!
 //! # Stage 1: the decoder and typed cells (`decode`, `typed_rule`)
 //!
-//! The stage-1 dependent-core bill (the levitation design's stage ladder, §6)
-//! moves the first meta function from Rust-as-unwritten-meta-theory into a
-//! written host function and adds the typed cell face:
+//! Stage 1 moves the first meta function from Rust-as-unwritten-meta-theory
+//! into a written host function and adds the typed cell face:
 //!
-//! * [`decode`](fn@decode) / [`decode_desc`] — **large elimination** (bill
-//!   feature 3): the decoder `Desc → ValueType`, interpreting the decidable
-//!   first-order fragment `{1, var, ×, σ}` (+ the [`Code::Field`] leaf) into
-//!   the core value-type universe. It targets the frozen-core code universe
-//!   ([`gandr_core_term::types::ValueType::Universe`], feature 1); the
-//!   dependent pair [`gandr_core_term::types::ValueType::Sigma`] (feature 2) is
-//!   the stage-1 capability the decoder will target once a dependent σ *code*
-//!   lands (the current fragment is non-dependent — see the
-//!   [`decode`](mod@decode) module docs).
+//! * [`decode`](fn@decode) / [`decode_desc`] — **large elimination**: the
+//!   decoder `Desc → ValueType`, interpreting the decidable first-order
+//!   fragment (plus the [`Code::Field`] leaf) into the core value-type
+//!   universe. It targets the frozen-core code universe
+//!   ([`gandr_core_term::types::ValueType::Universe`]); the dependent pair
+//!   [`gandr_core_term::types::ValueType::Sigma`] is the capability the decoder
+//!   will target once a dependent σ *code* lands, the current fragment being
+//!   non-dependent — see the [`decode`](mod@decode) module docs.
 //! * [`typed_rule`] — the **typed 2-cell face**: a stage-0 [`RuleFace`] refined
-//!   with a decoded [`PatternContext`] (the "dependent Σ over the signature",
-//!   addendum §4.1). Additive — [`RuleFace`] is reused whole, not rewritten.
+//!   with a decoded [`PatternContext`]. Additive: [`RuleFace`] is reused whole,
+//!   not rewritten.
+//!
+//! The named ideas and their primary references are in this crate's
+//! `README.md`.
 
 extern crate alloc;
 

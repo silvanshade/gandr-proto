@@ -1,106 +1,87 @@
-//! A generic **nominal atom** substrate for gandr's machine-minted names.
+//! A generic **nominal atom** substrate for gandr's machine-minted names, and
+//! the automaton layer that reclaims them.
 //!
-//! gandr mints machine-internal names in several independent places — the
-//! pipeline lowerer's hoist binders (`%tmp{n}`) and hole identifiers, the
-//! typing machine's captured-continuation keys (`%k{id}`), and a future solver
-//! type-variable / grade-variable pool. Each was its own counter plus format,
-//! each separately re-establishing the invariant that the names it mints are
-//! distinct. This crate is the **shared atom fabric** those name-spaces are
-//! being consolidated onto: one allocation discipline ([`Gensym`]) producing
-//! sort-tagged [`Atom`]s whose identities are distinct **within a single
-//! allocator**. That per-allocator guarantee is exactly the scope its consumers
-//! need: gandr runs one allocator per sort per pass (one `Lowerer` hoist/hole
-//! allocator), so the names any one pass mints are mutually distinct.
+//! gandr mints machine-internal names in several independent places, each of
+//! which used to carry its own counter, format, and separate re-proof that the
+//! names it minted were distinct. This crate is the shared fabric those
+//! name-spaces are consolidating onto: one allocation discipline ([`Gensym`])
+//! producing sort-tagged [`Atom`]s whose identities are distinct **within a
+//! single allocator**. gandr runs one allocator per sort per pass, so that
+//! per-allocator guarantee is exactly the scope its consumers need.
 //!
 //! **The consolidation is partial, and the tree is the record of how far it
-//! got.** The lowerer's hoist binders and hole addresses mint here. The
-//! continuation keys do not: they are still `format!("%k{n}")` off a bare
-//! counter in `gandr-core-sequent`'s focusing pass. Sealing minted a third
-//! discipline deliberately — an opaque ascription's abstract-type identity has
-//! to be a *function of the sealing site* so an admission point can re-mint and
-//! compare, which a monotone allocator cannot offer, so `gandr-core-checker`'s
-//! seal table assigns positional serials instead. Two of the sort vocabulary's
-//! six roles are constructed today.
-//!
-//! The consolidation is the structural answer to a measured hazard: keying a
-//! continuation environment by the *source* binder name (dynamic scoping)
-//! once made a well-typed term loop to a stuck step-limit; the fix is to
-//! α-rename each capture to a fresh machine-unique name. Folding the ad-hoc
-//! counters into one audited primitive replaces per-site re-provings of
-//! "minted names are distinct" with a single one (the address-distinctness
-//! invariant a cut-based / SAX-style addressing discipline wants).
+//! got.** The lowerer's hoist binders and hole addresses mint here. The typing
+//! machine's continuation keys do not: they are still a formatted string off a
+//! bare counter in `gandr-core-sequent`'s focusing pass. Sealing minted a third
+//! discipline deliberately, because an opaque ascription's abstract-type
+//! identity has to be a function of the sealing site so an admission point can
+//! re-mint and compare, which a monotone allocator cannot offer, so
+//! `gandr-core-checker`'s seal table assigns positional serials instead. Two of
+//! the sort vocabulary's six roles are constructed today.
 //!
 //! # The atom-vs-variable sort boundary
 //!
 //! [`Sort::is_unifiable`] splits the atoms one allocator mints into two roles:
 //!
-//! - **atom-role** — pure names, only minted / compared / freshness-tested /
-//!   (eventually) permuted: continuation keys, hoist binders, the typing-
-//!   transparent hole *address*, and the reserved channel / world / role /
-//!   capability classes;
+//! - **atom-role** — pure names, only minted, compared, freshness-tested and
+//!   (eventually) permuted: continuation keys, hoist binders, the
+//!   typing-transparent hole *address*, and the reserved channel, world, role
+//!   and capability classes;
 //! - **variable-role** — substitutable unknowns that enter a substitution's
-//!   domain (`π·X`): the solver's type- and grade-variables.
+//!   domain: the solver's type- and grade-variables.
 //!
-//! The boundary is load-bearing, not cosmetic: keeping unification variables in
-//! a disjoint sort is what preserves **unitary** most-general unifiers
-//! (Urban–Pitts–Gabbay, *Nominal Unification*, Theoretical Computer Science
-//! 323, 2004); collapsing them into the atom pool drops into equivariant
-//! unification. `is_unifiable` is gandr's project-side realization of that
-//! boundary — it is *not* anchored to "Pitts, *Nominal Sets*, Remark 3.10"
-//! (a freshness-quantifier proposition, not this boundary).
+//! The boundary is load-bearing rather than cosmetic: keeping unification
+//! variables in a disjoint sort is what preserves **unitary** most-general
+//! unifiers, and collapsing them into the atom pool drops into equivariant
+//! unification.
 //!
 //! # What this crate is, and is not
 //!
-//! The crate is the atom space, the monotone allocator, and the sort trait
+//! The crate is the atom space, the monotone allocator, and the sort trait,
 //! **plus the explicit-dealloc automaton layer** that reclaims atoms.
 //!
 //! **Only the first is consumed.** [`Gensym`], [`Sort`] and [`Unifiability`]
 //! are the three items other crates name; the automaton layer below — three
 //! model inventories, the membership procedure, the name-dropping
 //! construction, and the decision-procedure catalogue — has no caller in the
-//! workspace and is waiting on the bounded-alphabet restriction and the
-//! classical back-end that every remaining catalogue procedure bottlenecks on.
-//! The ratio is stated here rather than left to a reader to discover: the two
-//! layers are kept in one crate deliberately, because the automaton half is
-//! where the resource-lifecycle work lands, and splitting it would buy a
-//! tidier number at the price of a crate, a name, and a category argument.
+//! workspace and waits on the bounded-alphabet restriction and the classical
+//! back-end that every remaining catalogue procedure bottlenecks on. The ratio
+//! is stated here rather than left to a reader to discover: the two layers are
+//! kept in one crate deliberately, because the automaton half is where the
+//! resource-lifecycle work lands, and splitting it would buy a tidier number at
+//! the price of a crate, a name, and a category argument.
 //!
-//! The adopted design is the nominal-automata study, which left this repository
-//! with the research corpus; the landed modules map onto it as follows:
+//! The landed modules are:
 //!
-//! - [`handle`] — the finitary orbit-level representation (control points,
-//!   registers, partial injective stores, degree): design doc §6.4.
-//! - [`letter`] — the extended alphabet `Â = { ⟦a, a⟧, ⟦a⟧ }` plus free uses:
-//!   NDA §3.
-//! - [`nda`] — the **NDA** model inventory (NDA Def 5.1) and the **membership**
-//!   decision procedure (forward reachability; on a DDA the deterministic
-//!   online monitor): design doc §4, §6.3, §7.3.
-//! - [`rnna`] — the **RNNA** model inventory (`FoSSaCS` 2017): design doc §2.2.
-//! - [`rnta`] — the **RNTA** model inventory (RNTA Def 4.1) and nominal terms
-//!   (RNTA Def 3.1): design doc §3.
-//! - [`dropping`] — the **name-dropping modification** `A_⊥` (NDA Constr 6.3 /
-//!   Thm 6.9; RNTA Def 5.3 / Thm 5.5), step ① of the shared name-dropping /
-//!   bounded-alphabet / reduce-to-classical template: design doc §5.
+//! - [`handle`] — the finitary orbit-level representation: control points,
+//!   registers, partial injective stores, degree.
+//! - [`letter`] — the extended alphabet plus free uses.
+//! - [`nda`] — the deallocation-automaton model inventory and the membership
+//!   decision procedure (forward reachability; a deterministic online monitor
+//!   on a deterministic automaton).
+//! - [`rnna`] — the regular nondeterministic nominal automaton model inventory.
+//! - [`rnta`] — the regular nominal tree automaton model inventory, and nominal
+//!   terms.
+//! - [`dropping`] — the name-dropping modification, the first step of the
+//!   shared name-dropping, bounded-alphabet, reduce-to-classical template.
 //! - [`catalogue`] — the decision-procedure register (membership, emptiness,
-//!   inclusion, equivalence, determinization, Kleene) with the papers' theorem
-//!   numbers: design doc §6.3, §10.
+//!   inclusion, equivalence, determinization, Kleene) with each entry's source
+//!   theorem.
 //!
-//! Still reserved behind this API until their consuming features land:
-//!
-//! - the swapping-list **permutation** (`Perm`) and its action / freshness `#`
-//!   discipline (arrives with the α / equivariance metatheory);
-//! - the finite-**support** skin (`BTreeSet<Atom>` with native `⊆`) over which
-//!   scope-sets and contextual substitution are hosted (arrives with macros; it
-//!   widens [`Sort`] with `Ord` — and `Hash` for hash-set support — so
-//!   `Atom<S>` can key the support container);
-//! - **nominal unification** (arrives with the real solver);
-//! - the bounded-alphabet S-restriction and the classical NFA/NFTA back-end
-//!   (steps ② and ③ of the design doc §5 template), the RNTA top-down run,
-//!   determinization (NDA Thm 8.14), and the Kleene expression compiler (NDA
-//!   Thm 7.19/7.20) — recorded residuals of the landed slice.
+//! Still reserved behind this API until their consuming features land: the
+//! swapping-list permutation with its action and freshness discipline (arrives
+//! with the equivariance metatheory); the finite-support skin over which scope
+//! sets and contextual substitution are hosted (arrives with macros, and widens
+//! [`Sort`] so `Atom<S>` can key the support container); nominal unification
+//! (arrives with the real solver); and the bounded-alphabet restriction, the
+//! classical back-end, the tree-automaton top-down run, determinization, and
+//! the Kleene expression compiler.
 //!
 //! The crate is generic over the sort so it carries no gandr vocabulary; gandr
 //! supplies its own `enum GandrSort : Sort`.
+//!
+//! The named ideas and their primary references are in this crate's
+//! `README.md`.
 
 extern crate alloc;
 
@@ -348,12 +329,12 @@ where
     }
 }
 
-/// A **monotone atom allocator** for one sort: the M1 allocation discipline.
+/// A **monotone atom allocator** for one sort.
 ///
 /// Each [`Self::fresh`] hands out the next identity from a strictly increasing
 /// counter, so every atom one `Gensym` mints is distinct from all the others it
 /// has minted. The counter is never rolled back — identities leak harmlessly on
-/// backtrack rather than being recycled (ADR-41 D2) — which is exactly why the
+/// backtrack rather than being recycled — which is exactly why the
 /// distinctness it guarantees is sound regardless of the consumer's
 /// speculative-execution / rollback behaviour.
 ///
@@ -399,7 +380,7 @@ where
     ///   increasing counter) — so all atoms from one `Gensym` are pairwise
     ///   distinct: the per-allocator address-distinctness invariant.
     /// - ensures: on success, identities are **monotone and never reused** —
-    ///   not recycled on the consumer's rollback (M1; ADR-41 D2).
+    ///   not recycled on the consumer's rollback.
     /// - errors: returns [`GensymExhausted`] when the counter has reached
     ///   [`AtomId::MAX`]; in that case no atom is minted and the counter is
     ///   left unchanged, so exhaustion can never duplicate an identity.
