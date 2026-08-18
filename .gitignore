@@ -71,4 +71,5 @@ fuzz/coverage/
 # macOS cruft
 .DS_Store
 
+.cache
 .obsidian
