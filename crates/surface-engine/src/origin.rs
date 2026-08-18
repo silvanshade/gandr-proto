@@ -17,11 +17,11 @@
 
 use alloc::collections::BTreeMap;
 
-use gandr_core_checker::discipline::boundary::PathIndex;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::syntax::WalkBase;
+use gandr_core_term::boundary::PathIndex;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::WalkBase;
 use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::StableHash;
 
@@ -250,7 +250,7 @@ pub enum ElabKind
     ModuleDeclaration,
     /// Functional record update `#{ r | ℓ = v, … }` ⇒ a fresh-record rebuild
     /// `recordupdate r #{ℓ = v, …}` over
-    /// [`gandr_core_checker::prim::NativePrim::RecordUpdate`] (value-semantics
+    /// [`gandr_core_term::prim::NativePrim::RecordUpdate`] (value-semantics
     /// MVP, `proposal-value-semantics-mvp.md` §3.1). The tag
     /// marks the synthesized application so a diagnostic can un-sugar the
     /// update back to its base-and-overrides, and the surface unparser can

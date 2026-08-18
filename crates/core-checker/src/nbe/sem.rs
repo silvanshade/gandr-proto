@@ -67,35 +67,35 @@
 //! normalizer with its run still live, and both repeat the opposite order.
 //!
 //! [`intern`]: crate::nbe::intern
-//! [`FlatArena`]: crate::term::syntax::FlatArena
+//! [`FlatArena`]: gandr_core_term::syntax::FlatArena
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ApproximateDepth;
-use crate::discipline::boundary::ConstructorTag;
-use crate::discipline::boundary::DefinitionHeightLevel;
-use crate::discipline::boundary::GuardDecision;
-use crate::discipline::boundary::HoleOccurrence;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::NodeIndex;
-use crate::discipline::boundary::RigidStatus;
-use crate::discipline::boundary::SemanticHash;
-use crate::discipline::boundary::SemanticNodeCount;
-use crate::discipline::boundary::SemanticNodeIndex;
-use crate::discipline::boundary::SpineLength;
-use crate::discipline::boundary::VariableLevel;
-use crate::discipline::grade::Grade;
-use crate::prim::NativePrim;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::HoleId;
-use crate::term::syntax::NumLit;
-use crate::term::syntax::Side;
-use crate::term::syntax::StackNodeId;
-use crate::term::syntax::ValueNodeId;
-use crate::term::syntax::ValueTypeNodeId;
-use crate::term::types::DataId;
+use gandr_core_term::boundary::ApproximateDepth;
+use gandr_core_term::boundary::ConstructorTag;
+use gandr_core_term::boundary::DefinitionHeightLevel;
+use gandr_core_term::boundary::GuardDecision;
+use gandr_core_term::boundary::HoleOccurrence;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::NodeIndex;
+use gandr_core_term::boundary::RigidStatus;
+use gandr_core_term::boundary::SemanticHash;
+use gandr_core_term::boundary::SemanticNodeCount;
+use gandr_core_term::boundary::SemanticNodeIndex;
+use gandr_core_term::boundary::SpineLength;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::HoleId;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::StackNodeId;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::ValueTypeNodeId;
+use gandr_core_term::types::DataId;
 
 /// Defines a transparent arena id with its explicit conversions and its
 /// checked index projection.

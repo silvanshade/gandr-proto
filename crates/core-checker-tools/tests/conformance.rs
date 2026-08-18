@@ -29,7 +29,7 @@
 //!
 //! Beyond the worked examples, rule coverage lives in [`positive`] (one per
 //! introduction/elimination rule), failure modes in [`negative`] (one per
-//! [`gandr_core_checker::error::TypeError`] constructor reachable in core
+//! [`gandr_core_term::error::TypeError`] constructor reachable in core
 //! CBPV), the `type-system.md` §"Subtyping decomposition" rows in
 //! [`subtype_rows`] (one positive and one negative per row), and the A2.2 hole
 //! rules in [`holes`] — the hole axioms, every matched-type elimination/checked
@@ -45,32 +45,12 @@
 
 use alloc::rc::Rc;
 
-use gandr_core_checker::discipline::boundary::CoherenceDecision;
-use gandr_core_checker::discipline::boundary::GenerationDepth;
-use gandr_core_checker::discipline::boundary::I64Slice;
-use gandr_core_checker::discipline::boundary::IntegerLiteral;
-use gandr_core_checker::discipline::boundary::NumericLiteralName;
-use gandr_core_checker::discipline::boundary::Staticness;
-use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::discipline::subtype::comp_subtype;
 use gandr_core_checker::discipline::subtype::value_subtype;
-use gandr_core_checker::effect::EffectOp;
-use gandr_core_checker::effect::EffectRow;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::error::TypeError;
 use gandr_core_checker::judgements::checker;
 use gandr_core_checker::machine;
 use gandr_core_checker::machine::control::Dir;
 use gandr_core_checker::machine::control::Trace;
-use gandr_core_checker::term::ctx::Ctx;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::OpClause;
-use gandr_core_checker::term::syntax::SplitMotive;
-use gandr_core_checker::term::syntax::Stack;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
 use gandr_core_checker_tools::strategies::any_grade;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
@@ -83,6 +63,26 @@ use gandr_core_checker_tools::strategies::numeric_atom;
 use gandr_core_checker_tools::strategies::record_label;
 use gandr_core_checker_tools::strategies::string;
 use gandr_core_checker_tools::strategies::txt;
+use gandr_core_term::boundary::CoherenceDecision;
+use gandr_core_term::boundary::GenerationDepth;
+use gandr_core_term::boundary::I64Slice;
+use gandr_core_term::boundary::IntegerLiteral;
+use gandr_core_term::boundary::NumericLiteralName;
+use gandr_core_term::boundary::Staticness;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::effect::EffectOp;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::SplitMotive;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 use proptest::prelude::*;
 use proptest::strategy::NewTree;
 use proptest::strategy::Union;
@@ -119,9 +119,9 @@ fn base_scope() -> Scope
 fn io_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::discipline::boundary::EffectSignatureName::from("IO"),
+        gandr_core_term::boundary::EffectSignatureName::from("IO"),
         vec![EffectOp::new(
-            gandr_core_checker::discipline::boundary::OperationName::from("print"),
+            gandr_core_term::boundary::OperationName::from("print"),
             integer(),
             ValueType::Unit,
         )],
@@ -309,12 +309,8 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
         for widened in [
             Grade::ZERO,
             Grade::ONE,
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                2_u64,
-            )),
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                3_u64,
-            )),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(2_u64)),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(3_u64)),
             Grade::OMEGA,
         ] {
             if bool::from(widened.leq(grade)) && widened != grade {
@@ -333,7 +329,7 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
 /// reference evaluator's frozen outcome snapshots).
 mod declared_data
 {
-    use gandr_core_checker::term::types::DataId;
+    use gandr_core_term::types::DataId;
 
     use super::*;
 
@@ -550,10 +546,10 @@ mod levitation
 /// and a package is not a graded thunk however alike the two look.
 mod packages
 {
-    use gandr_core_checker::discipline::boundary::NameRef;
-    use gandr_core_checker::discipline::boundary::TypeSerial;
     use gandr_core_checker::judgements::package;
-    use gandr_core_checker::term::types::SealId;
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::boundary::TypeSerial;
+    use gandr_core_term::types::SealId;
 
     use super::*;
 
@@ -721,7 +717,7 @@ mod packages
             matches!(
                 result,
                 Err(TypeError::StuckExpr {
-                    hint: gandr_core_checker::error::text::ANNOTATE_PACK,
+                    hint: gandr_core_term::error::text::ANNOTATE_PACK,
                     ..
                 })
             ),
@@ -743,7 +739,7 @@ mod packages
             matches!(
                 result,
                 Err(TypeError::StuckExpr {
-                    hint: gandr_core_checker::error::text::PACK_ARITY_MISMATCH,
+                    hint: gandr_core_term::error::text::PACK_ARITY_MISMATCH,
                     ..
                 })
             ),
@@ -897,7 +893,7 @@ mod packages
             matches!(
                 result,
                 Err(TypeError::StuckExpr {
-                    hint: gandr_core_checker::error::text::UNPACK_NEEDS_CHECK,
+                    hint: gandr_core_term::error::text::UNPACK_NEEDS_CHECK,
                     ..
                 })
             ),
@@ -957,7 +953,7 @@ mod packages
             matches!(
                 forced,
                 Err(TypeError::ShapeMismatch {
-                    expected: gandr_core_checker::error::text::SHAPE_THUNK,
+                    expected: gandr_core_term::error::text::SHAPE_THUNK,
                     ..
                 })
             ),
@@ -979,7 +975,7 @@ mod packages
             matches!(
                 result,
                 Err(TypeError::ShapeMismatch {
-                    expected: gandr_core_checker::error::text::SHAPE_PACKAGE,
+                    expected: gandr_core_term::error::text::SHAPE_PACKAGE,
                     ..
                 })
             ),
@@ -1124,7 +1120,7 @@ mod packages
             matches!(
                 result,
                 Err(TypeError::ShapeMismatch {
-                    expected: gandr_core_checker::error::text::SHAPE_PACKAGE_PAYLOAD,
+                    expected: gandr_core_term::error::text::SHAPE_PACKAGE_PAYLOAD,
                     ..
                 })
             ),
@@ -1146,9 +1142,9 @@ mod packages
                 ValueType::prod(
                     ValueType::atom("t"),
                     ValueType::atom(
-                        package::canonical_binder(
-                            gandr_core_checker::discipline::boundary::PackageArity::from(0_usize),
-                        )
+                        package::canonical_binder(gandr_core_term::boundary::PackageArity::from(
+                            0_usize,
+                        ))
                         .as_str(),
                     ),
                 ),
@@ -1263,7 +1259,7 @@ mod split_motive
             matches!(
                 result,
                 Err(TypeError::StuckExpr { hint, .. })
-                    if hint == gandr_core_checker::error::text::SPLIT_NEEDS_MOTIVE
+                    if hint == gandr_core_term::error::text::SPLIT_NEEDS_MOTIVE
             ),
             "a motive-less split cannot infer — the binder-escape hazard is \
              closed at the rule (ADR-82); got {result:?}"
@@ -1510,12 +1506,12 @@ mod examples
         assert_eq!(
             depths,
             vec![
-                gandr_core_checker::discipline::boundary::StackDepth::from(0_usize),
-                gandr_core_checker::discipline::boundary::StackDepth::from(1),
-                gandr_core_checker::discipline::boundary::StackDepth::from(2),
-                gandr_core_checker::discipline::boundary::StackDepth::from(2),
-                gandr_core_checker::discipline::boundary::StackDepth::from(1),
-                gandr_core_checker::discipline::boundary::StackDepth::from(0),
+                gandr_core_term::boundary::StackDepth::from(0_usize),
+                gandr_core_term::boundary::StackDepth::from(1),
+                gandr_core_term::boundary::StackDepth::from(2),
+                gandr_core_term::boundary::StackDepth::from(2),
+                gandr_core_term::boundary::StackDepth::from(1),
+                gandr_core_term::boundary::StackDepth::from(0),
             ],
             "the stack depth must follow the worked Example 1 derivation"
         );
@@ -1598,9 +1594,7 @@ mod positive
     fn dup_conserves_grade()
     {
         let thunk = Value::thunk(
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                2,
-            )),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(2)),
             Comp::ret(Value::int(1)),
         );
         let half = ValueType::thunk(Grade::ONE, CompType::returner(integer()));
@@ -1623,9 +1617,7 @@ mod positive
     fn drop_discards_thunk_budget()
     {
         let thunk = Value::thunk(
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                2,
-            )),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(2)),
             Comp::ret(Value::int(1)),
         );
         let result = agree_comp(&Ctx::new(), &Comp::drop(thunk), &Dir::Infer);
@@ -1895,8 +1887,8 @@ mod positive
 /// implementations.
 mod negative
 {
-    use gandr_core_checker::error::text;
-    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_term::error::text;
+    use gandr_core_term::syntax::Term;
 
     use super::*;
 
@@ -2035,9 +2027,7 @@ mod negative
         let result = agree_comp(&Ctx::new(), &Comp::dup(thunk), &Dir::Check(expected));
         assert_eq!(
             Err(TypeError::GradeError {
-                lower: Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                    2
-                )),
+                lower: Grade::fin(gandr_core_term::boundary::GradeBound::from(2)),
                 upper: Grade::ONE
             }),
             result,
@@ -2052,9 +2042,7 @@ mod negative
     fn dup_in_inference_is_stuck()
     {
         let dup = Comp::dup(Value::thunk(
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                2,
-            )),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(2)),
             Comp::ret(Value::int(1)),
         ));
         let result = agree_comp(&Ctx::new(), &dup, &Dir::Infer);
@@ -2624,9 +2612,9 @@ mod subtype_rows
     fn state_row() -> EffectRow
     {
         EffectRow::singleton(EffectSig::new(
-            gandr_core_checker::discipline::boundary::EffectSignatureName::from("State"),
+            gandr_core_term::boundary::EffectSignatureName::from("State"),
             alloc::vec![EffectOp::new(
-                gandr_core_checker::discipline::boundary::OperationName::from("get"),
+                gandr_core_term::boundary::OperationName::from("get"),
                 ValueType::Unit,
                 int(),
             )],
@@ -2655,8 +2643,8 @@ mod subtype_rows
 ///   bidirectional discipline.
 mod holes
 {
-    use gandr_core_checker::error::text;
-    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_term::error::text;
+    use gandr_core_term::syntax::Term;
 
     use super::*;
     /// Rule Hole⇑: a hole infers `Unknown`, in both sorts; the identifier is
@@ -2992,8 +2980,8 @@ mod holes
 /// lockstep; `effects-control-shell.md` §1).
 mod effects
 {
-    use gandr_core_checker::error::text;
-    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_term::error::text;
+    use gandr_core_term::syntax::Term;
 
     use super::*;
     /// Rule Op⇑: `perform State.get ()` infers the singleton-row returner
@@ -3407,8 +3395,8 @@ mod effects
 /// by both implementations (ADR-9 lockstep; `effects-control-shell.md` §2).
 mod control
 {
-    use gandr_core_checker::error::text;
-    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_term::error::text;
+    use gandr_core_term::syntax::Term;
 
     use super::*;
     /// Rule Reify⇓: the empty stack is the identity `ε : B ⇒ B`, so `stk ε`
@@ -4081,12 +4069,8 @@ fn grade_geq(lower: Grade) -> BoxedStrategy<Grade>
     for candidate in [
         Grade::ZERO,
         Grade::ONE,
-        Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-            2_u64,
-        )),
-        Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-            3_u64,
-        )),
+        Grade::fin(gandr_core_term::boundary::GradeBound::from(2_u64)),
+        Grade::fin(gandr_core_term::boundary::GradeBound::from(3_u64)),
         Grade::OMEGA,
     ] {
         if bool::from(lower.leq(candidate)) {
@@ -5336,9 +5320,9 @@ fn forceable_grade() -> impl Strategy<Value = Grade>
 {
     prop_oneof![
         Just(Grade::ONE),
-        Just(Grade::fin(
-            gandr_core_checker::discipline::boundary::GradeBound::from(2_u64)
-        )),
+        Just(Grade::fin(gandr_core_term::boundary::GradeBound::from(
+            2_u64
+        ))),
         Just(Grade::OMEGA)
     ]
 }
@@ -5581,7 +5565,7 @@ fn arb_effect_sig() -> impl Strategy<Value = EffectSig>
 fn empty_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::discipline::boundary::EffectSignatureName::from("Empty"),
+        gandr_core_term::boundary::EffectSignatureName::from("Empty"),
         Vec::new(),
     )
 }
@@ -5866,7 +5850,7 @@ enum RebuildFrame
     },
     ValueData
     {
-        id: gandr_core_checker::term::types::DataId,
+        id: gandr_core_term::types::DataId,
         arity: usize,
     },
     ValueSigma(String),
@@ -6237,9 +6221,7 @@ fn coherence_value_subtype_reflexivity_arm_sweep()
         ValueType::thunk(Grade::ZERO, CompType::returner(ValueType::Unit)),
         ValueType::thunk(Grade::ONE, CompType::returner(ValueType::integer())),
         ValueType::thunk(
-            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
-                2,
-            )),
+            Grade::fin(gandr_core_term::boundary::GradeBound::from(2)),
             CompType::returner(ValueType::integer()),
         ),
         ValueType::thunk(
@@ -6382,7 +6364,7 @@ fn comp_near_misses(b_prime: &CompType) -> Vec<CompType>
 }
 
 /// The value-sort analogue of [`comp_coherence_violation`]: the grade leg of
-/// [`gandr_core_checker::term::types::ValueType::Thunk`] plays the role the
+/// [`gandr_core_term::types::ValueType::Thunk`] plays the role the
 /// effect row plays for computations (see [`value_near_misses`]). Coherence is
 /// decided up to integer-literal defaulting ([`coherence_value_subtype`],
 /// ADR-48).
@@ -6522,15 +6504,15 @@ fn integer_computation_does_not_widen_to_sized_returner()
 fn state_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::discipline::boundary::EffectSignatureName::from("State"),
+        gandr_core_term::boundary::EffectSignatureName::from("State"),
         vec![
             EffectOp::new(
-                gandr_core_checker::discipline::boundary::OperationName::from("get"),
+                gandr_core_term::boundary::OperationName::from("get"),
                 ValueType::Unit,
                 integer(),
             ),
             EffectOp::new(
-                gandr_core_checker::discipline::boundary::OperationName::from("put"),
+                gandr_core_term::boundary::OperationName::from("put"),
                 integer(),
                 ValueType::Unit,
             ),
@@ -6720,8 +6702,8 @@ proptest! {
     {
         let (result, _) = machine::run_comp(base_ctx(), comp, dir);
         if let Err(TypeError::ShapeMismatch { expected, .. }) = result {
-            prop_assert_ne!(expected, gandr_core_checker::error::text::SHAPE_VALUE);
-            prop_assert_ne!(expected, gandr_core_checker::error::text::SHAPE_COMP);
+            prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_VALUE);
+            prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_COMP);
         }
     }
 
@@ -6731,8 +6713,8 @@ proptest! {
     {
         let (result, _) = machine::run_value(base_ctx(), value, dir);
         if let Err(TypeError::ShapeMismatch { expected, .. }) = result {
-            prop_assert_ne!(expected, gandr_core_checker::error::text::SHAPE_VALUE);
-            prop_assert_ne!(expected, gandr_core_checker::error::text::SHAPE_COMP);
+            prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_VALUE);
+            prop_assert_ne!(expected, gandr_core_term::error::text::SHAPE_COMP);
         }
     }
 
@@ -6942,7 +6924,7 @@ proptest! {
     /// Subsumption-coherence for the value sort: the value-mode
     /// analogue of [`infer_check_subsumption_coherence_comp`] (see
     /// [`value_coherence_violation`]). The effect row is absent, but the grade
-    /// leg of [`gandr_core_checker::term::types::ValueType::Thunk`] plays the same role — an
+    /// leg of [`gandr_core_term::types::ValueType::Thunk`] plays the same role — an
     /// inferred `U_r B` checked against the grade-tightened `U_ω B` near-miss
     /// exercises the `ω ⊑ r` leg directly. The bare-integer-literal defaulting
     /// (ADR-39 D4) is a value leaf too, so this oracle also compares up to
@@ -7025,11 +7007,11 @@ proptest! {
     /// session endpoints, held capabilities, acquired channels — is a deferred
     /// `+feature`), so a reified stack captures no obligations and `resume` /
     /// `discard` / duplication are unrestricted. This is the conformance
-    /// meta-invariant the [`gandr_core_checker::term::ctx::Sigma`] and [`gandr_core_checker::machine::stack`] module docs
+    /// meta-invariant the [`gandr_core_term::ctx::Sigma`] and [`gandr_core_checker::machine::stack`] module docs
     /// reference: it pins the "vacuous in v0" claim across the **whole** free
     /// generator space — the new `stk` / `resume` / `reset` / `shift` control
     /// terms included — so the one-shot/linear discipline (whose laws are
-    /// directly unit-tested over [`gandr_core_checker::term::ctx::Sigma`]) is not merely "green
+    /// directly unit-tested over [`gandr_core_term::ctx::Sigma`]) is not merely "green
     /// because nothing ever touches `Σ`". A future rule that binds into `Σ`
     /// without the full linear discipline trips this.
     #[test]
@@ -7068,7 +7050,7 @@ proptest! {
 /// retired reference evaluator's frozen outcome snapshots).
 mod native
 {
-    use gandr_core_checker::prim::NativePrim;
+    use gandr_core_term::prim::NativePrim;
 
     use super::*;
     /// Rule Native⇑: a source (argument-free) native infers its declared type,
@@ -7192,9 +7174,9 @@ mod native
 /// evaluator's frozen outcome snapshots).
 mod combinators
 {
-    use gandr_core_checker::effect::EffectOp;
-    use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::prim::NativePrim;
+    use gandr_core_term::effect::EffectOp;
+    use gandr_core_term::effect::EffectSig;
+    use gandr_core_term::prim::NativePrim;
 
     use super::*;
     /// A v0 combinator closure is **pure**: its codomain is a pure returner `F
@@ -7206,9 +7188,9 @@ mod combinators
     fn an_effectful_closure_is_rejected_by_a_pure_combinator()
     {
         let sig = EffectSig::new(
-            gandr_core_checker::discipline::boundary::EffectSignatureName::from("Bang"),
+            gandr_core_term::boundary::EffectSignatureName::from("Bang"),
             vec![EffectOp::new(
-                gandr_core_checker::discipline::boundary::OperationName::from("bang"),
+                gandr_core_term::boundary::OperationName::from("bang"),
                 ValueType::Unknown,
                 ValueType::Unknown,
             )],
@@ -7235,9 +7217,9 @@ mod combinators
     {
         let sig = || {
             EffectSig::new(
-                gandr_core_checker::discipline::boundary::EffectSignatureName::from("Bang"),
+                gandr_core_term::boundary::EffectSignatureName::from("Bang"),
                 vec![EffectOp::new(
-                    gandr_core_checker::discipline::boundary::OperationName::from("bang"),
+                    gandr_core_term::boundary::OperationName::from("bang"),
                     ValueType::Unknown,
                     ValueType::Unknown,
                 )],
@@ -7319,8 +7301,8 @@ mod combinators
 /// `agree_value` / `agree_comp` differential.
 mod identity_types
 {
-    use gandr_core_checker::term::syntax::WalkBase;
-    use gandr_core_checker::term::syntax::WalkMotive;
+    use gandr_core_term::syntax::WalkBase;
+    use gandr_core_term::syntax::WalkMotive;
 
     use super::*;
 
@@ -7368,7 +7350,7 @@ mod identity_types
     /// engines: `walk(here(7), (x y q). F(Path Integer y x), (x). ret here(x))`
     /// infers `F(Path Integer 7 7)`. The motive binds **both** endpoints, so
     /// this row exercises the value-into-type substitution
-    /// (`gandr_core_checker::judgements::identity`).
+    /// (`gandr_core_term::identity`).
     #[test]
     fn walk_back_infers_instantiated_motive()
     {

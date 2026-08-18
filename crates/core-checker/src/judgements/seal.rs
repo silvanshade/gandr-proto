@@ -49,9 +49,9 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::discipline::boundary::TypeSerial;
-use crate::term::types::SealId;
-pub use crate::term::types::SealSite;
+use gandr_core_term::boundary::TypeSerial;
+use gandr_core_term::types::SealId;
+pub use gandr_core_term::types::SealSite;
 
 /// Why a minting or a re-minting check failed.
 ///
@@ -285,10 +285,11 @@ mod tests
     use alloc::vec;
     use alloc::vec::Vec;
 
+    use gandr_core_term::boundary::TypeSerial;
+
     use super::SealError;
     use super::SealSite;
     use super::SealTable;
-    use crate::discipline::boundary::TypeSerial;
 
     /// A two-component sealing: `Counter` sealing `t` and `u`.
     fn counter_sites() -> [SealSite; 2]

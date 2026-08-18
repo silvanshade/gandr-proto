@@ -43,16 +43,23 @@
 //! and convertible arguments are convertible, which is strictly more than
 //! syntactic equality would give.
 //!
-//! [`FlatArena`]: crate::term::syntax::FlatArena
+//! [`FlatArena`]: gandr_core_term::syntax::FlatArena
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ConstructorTag;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::SemanticHash;
-use crate::discipline::boundary::TermRetention;
-use crate::discipline::boundary::UnfoldPermission;
+use gandr_core_term::boundary::ConstructorTag;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::SemanticHash;
+use gandr_core_term::boundary::TermRetention;
+use gandr_core_term::boundary::UnfoldPermission;
+use gandr_core_term::syntax::CompNode;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::ValueNode;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::ValueTypeNodeId;
+
 use crate::nbe::Normalizer;
 use crate::nbe::sem::Closure;
 use crate::nbe::sem::ClosureId;
@@ -76,12 +83,6 @@ use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_str;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::term::syntax::CompNode;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::Side;
-use crate::term::syntax::ValueNode;
-use crate::term::syntax::ValueNodeId;
-use crate::term::syntax::ValueTypeNodeId;
 
 /// How far a force drives its subject.
 ///
@@ -511,7 +512,7 @@ enum ValueFinish
     /// Rebuild a reflexivity witness.
     Here,
     /// Rebuild a constructor value.
-    Ctor(crate::term::types::DataId, ConstructorTag),
+    Ctor(gandr_core_term::types::DataId, ConstructorTag),
     /// Rebuild a packed module over these witness types.
     Pack(Vec<ValueTypeNodeId>),
 }

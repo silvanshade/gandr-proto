@@ -73,8 +73,8 @@ mod tests
     use gandr_core_checker::kernel_bridge::BridgeContext;
     use gandr_core_checker::kernel_bridge::lower_computation_definition;
     use gandr_core_checker::kernel_bridge::lower_value_definition;
-    use gandr_core_checker::term::ctx::Ctx;
-    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_term::ctx::Ctx;
+    use gandr_core_term::syntax::Term;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::LevelParamCount;
     use gandr_kernel_core::LevelSignature;

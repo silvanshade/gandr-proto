@@ -4,8 +4,8 @@
 //! Levy's CBPV has a third syntactic sort beside values and computations:
 //! **stacks** (evaluation contexts), typed `K : B ⇒ C` ("`K` consumes a
 //! `B`-computation and delivers a `C`"). gandr internalizes the judgment as the
-//! value type [`crate::term::types::ValueType::Stk`] `Stk(B, C)`, inhabited by
-//! the reified-stack term [`crate::term::syntax::Value::Stk`] (`stk K`).
+//! value type [`gandr_core_term::types::ValueType::Stk`] `Stk(B, C)`, inhabited
+//! by the reified-stack term [`gandr_core_term::syntax::Value::Stk`] (`stk K`).
 //!
 //! # The forward (synthesizing) reading the checker and machine share
 //!
@@ -17,12 +17,12 @@
 //! `v ⇓ A`, and continues from `B′`; a bind frame `(x. u) :: K` consumes a
 //! returner `F^ε A`, binds `x : A`, infers `u`, and continues from the
 //! sequenced type (`ε` folds in exactly as at
-//! [`crate::term::syntax::Comp::Bind`],
-//! via [`crate::effect::combine_bind_row`]); a projection frame `prjᵢ :: K`
-//! consumes a lazy product `B₁ & B₂` and continues from `Bᵢ`. The synthesized
-//! output is then fit to the expected `C` by the inlined Sub rule (so the
-//! contravariant- `B` / covariant-`C` variance of ADR-33 D6 is discharged
-//! through [`crate::discipline::subtype::finish_value`]).
+//! [`gandr_core_term::syntax::Comp::Bind`],
+//! via [`gandr_core_term::effect::combine_bind_row`]); a projection frame `prjᵢ
+//! :: K` consumes a lazy product `B₁ & B₂` and continues from `Bᵢ`. The
+//! synthesized output is then fit to the expected `C` by the inlined Sub rule
+//! (so the contravariant- `B` / covariant-`C` variance of ADR-33 D6 is
+//! discharged through [`crate::discipline::subtype::finish_value`]).
 //!
 //! The per-frame type destructures live **here**, shared verbatim, so the
 //! recursive checker's stack recursion and the typing machine's frame walk
@@ -35,22 +35,22 @@
 //! obligations is itself `Σ`-resident; discarding it without `resume` runs the
 //! recorded unwind; duplication is permitted only when the captured `Σ` is
 //! empty — is **typing-side** and rides the linear zone
-//! [`crate::term::ctx::Sigma`]. It is **vacuous in v0**: every `Σ`-obligation
-//! source (session endpoints, held capabilities, acquired channels) is a
-//! deferred `+feature` (contract §9), so a source-level `stk K` captures no
-//! obligations, a reified stack is never `Σ`-resident, and `resume` / `discard`
-//! / duplication are unrestricted. The discipline's machinery is exercised
-//! directly over [`crate::term::ctx::Sigma`] (its own unit tests), so it is not
-//! "green because vacuous"; no v0 typing rule populates `Σ`, which a
-//! conformance meta-invariant pins.
+//! [`gandr_core_term::ctx::Sigma`]. It is **vacuous in v0**: every
+//! `Σ`-obligation source (session endpoints, held capabilities, acquired
+//! channels) is a deferred `+feature` (contract §9), so a source-level `stk K`
+//! captures no obligations, a reified stack is never `Σ`-resident, and `resume`
+//! / `discard` / duplication are unrestricted. The discipline's machinery is
+//! exercised directly over [`gandr_core_term::ctx::Sigma`] (its own unit
+//! tests), so it is not "green because vacuous"; no v0 typing rule populates
+//! `Σ`, which a conformance meta-invariant pins.
 
-use crate::effect::EffectRow;
-use crate::error::TypeError;
-use crate::error::text;
-use crate::term::syntax::Side;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::error::text;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 
 /// Destructures the consumed type of an argument frame `v :: K`: a function
 /// `A → B′` yields its argument type `A` (the value `v` is checked against it)
@@ -59,7 +59,7 @@ use crate::term::types::ValueType;
 /// The matched arrow `Unknown ▶→ Unknown → Unknown` (A2.2 holes extension): an
 /// `Unknown` consumed type yields `(Unknown, Unknown)`, so a hole flowing into
 /// a stack frame localizes rather than cascading — exactly as at
-/// [`crate::term::syntax::Comp::App`].
+/// [`gandr_core_term::syntax::Comp::App`].
 ///
 /// # Contract
 /// - ensures: `(A, B′)` for `consumed = A → B′`; `(Unknown, Unknown)` for
@@ -90,8 +90,8 @@ pub(crate) fn arrow_components(consumed: CompType) -> Result<(ValueType, CompTyp
 
 /// Destructures the consumed type of a bind frame `(x. u) :: K`: a returner
 /// `F^ε A` yields the payload `A` (bound to `x`) and the row `ε` (folded into
-/// the continuation's result by [`crate::effect::combine_bind_row`], as at
-/// [`crate::term::syntax::Comp::Bind`]).
+/// the continuation's result by [`gandr_core_term::effect::combine_bind_row`],
+/// as at [`gandr_core_term::syntax::Comp::Bind`]).
 ///
 /// The matched returner (A2.2): an `Unknown` consumed type binds `x` at
 /// `Unknown` with an empty row.
@@ -161,7 +161,7 @@ pub(crate) fn with_component(
 /// The matched stack (A2.2): an `Unknown` resumed value feeds its computation
 /// against `Unknown` and delivers `Unknown`, so a hole in stack position
 /// localizes rather than cascading — exactly as a hole head at
-/// [`crate::term::syntax::Comp::App`].
+/// [`gandr_core_term::syntax::Comp::App`].
 ///
 /// # Contract
 /// - ensures: `(B, C)` for `stk = Stk(B, C)`; `(Unknown, Unknown)` for `stk =

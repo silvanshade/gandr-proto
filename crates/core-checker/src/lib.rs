@@ -25,36 +25,39 @@
 //! The modules are grouped by what they are, so that each candidate crate
 //! boundary is visible before anyone tries to cut one:
 //!
-//! - [`term`] — the substrate the judgements are stated over: syntax, types,
-//!   contexts, substitution, and type interning;
-//! - [`judgements`] — the typing judgement itself and the three that hang off
-//!   it: identity-motive instantiation, packages, and sealing;
+//! - [`judgements`] — the typing judgement itself and the two that hang off it:
+//!   packages and sealing;
 //! - [`machine`] — the defunctionalized realization, with its control register
 //!   and its stack-typing judgement;
 //! - [`discipline`] — the rules the checker applies beside the judgement:
-//!   subsumption, usage grades, total error marking, and the semantic-wrapper
-//!   boundary;
-//! - [`nbe`], [`unify`], [`effect`], [`kernel_bridge`] — the engines, each
-//!   already its own directory;
-//! - [`error`], [`outcome`], [`prim`], [`nominal`] — the leaf vocabularies
-//!   every cluster names.
+//!   subsumption and total error marking;
+//! - [`nbe`], [`unify`], [`kernel_bridge`] — the engines, each already its own
+//!   directory.
+//!
+//! The substrate all four are stated over is not here: `gandr-core-term`
+//! carries the syntax, the types, the context, substitution, interning, effect
+//! rows, grades, builtins, and the shared error, outcome, and wrapper
+//! vocabulary, so the crates that decide and the crates that compute share one
+//! language without depending on one another.
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators
 //! in lockstep per ADR-9 — the conformance suite and the free generators it
 //! shares live in `gandr-core-checker-tools`, one tier above this crate:
 //!
-//! - **A2.1 integer literals** — [`term::syntax::Value::Int`] inferring the
-//!   rigid `Integer` atom (the A2.1 literal axiom in the gandr roadmap);
-//! - **A2.2 holes** — [`term::syntax::Value::Hole`] /
-//!   [`term::syntax::Comp::Hole`] and the unknown type
-//!   ([`term::types::ValueType::Unknown`] / [`term::types::CompType::Unknown`])
-//!   per A2 D5 and the incremental-pipeline design: holes are axioms that infer
-//!   `Unknown` and check against anything; subsumption becomes *consistent
-//!   subtyping* ([`discipline::subtype`] records the decision tree);
-//!   eliminations on `Unknown` use matched types. This is the totality half of
-//!   "no parse wall" — the pipeline lowers unparseable/unsupported regions to
-//!   holes and the checker accepts every editor state.
+//! - **A2.1 integer literals** — `gandr_core_term::syntax::Value::Int`
+//!   inferring the rigid `Integer` atom (the A2.1 literal axiom in the gandr
+//!   roadmap);
+//! - **A2.2 holes** — `gandr_core_term::syntax::Value::Hole` /
+//!   `gandr_core_term::syntax::Comp::Hole` and the unknown type
+//!   (`gandr_core_term::types::ValueType::Unknown` /
+//!   `gandr_core_term::types::CompType::Unknown`) per A2 D5 and the
+//!   incremental-pipeline design: holes are axioms that infer `Unknown` and
+//!   check against anything; subsumption becomes *consistent subtyping*
+//!   ([`discipline::subtype`] records the decision tree); eliminations on
+//!   `Unknown` use matched types. This is the totality half of "no parse wall"
+//!   — the pipeline lowers unparseable/unsupported regions to holes and the
+//!   checker accepts every editor state.
 //!
 //! Unification rides on the same conversion engine rather than beside it:
 //! [`unify`] is a solver-machine service over the terms this crate already
@@ -67,8 +70,8 @@
 //! Incremental re-typing rides on this crate rather than living in it:
 //! `gandr-core-incremental` carries the parser-agnostic item seam, the
 //! dependency footprints, and the validated-resume checkpoint engine, and
-//! drives them through [`machine`] over this crate's [`term::syntax`],
-//! [`term::types`], and [`term::ctx`] vocabulary.
+//! drives them through [`machine`] over the substrate's `syntax`, `types`, and
+//! `ctx` vocabulary.
 //!
 //! No grade *constraints* beyond the inline `1 ⊑ r` force check of §"Core
 //! rules" (matched-`U` operations emit none), no unions/intersections, no
@@ -79,14 +82,8 @@
 extern crate alloc;
 
 pub mod discipline;
-pub mod effect;
-pub mod error;
 pub mod judgements;
 pub mod kernel_bridge;
 pub mod machine;
 pub mod nbe;
-pub mod nominal;
-pub mod outcome;
-pub mod prim;
-pub mod term;
 pub mod unify;

@@ -24,20 +24,34 @@ use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::IntegerLiteral;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::OperationName;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::IntegerLiteral;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::OperationName;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::effect::combine_bind_row;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::error::text;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::identity::subst_comptype;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::SplitMotive;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::WalkBase;
+use gandr_core_term::syntax::WalkMotive;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
+
 use crate::discipline::subtype::finish_comp;
 use crate::discipline::subtype::finish_int_literal;
 use crate::discipline::subtype::finish_value;
 use crate::discipline::subtype::pick;
-use crate::effect::EffectRow;
-use crate::effect::EffectSig;
-use crate::effect::combine_bind_row;
-use crate::error::TypeError;
-use crate::error::text;
-use crate::judgements::identity::subst_comptype;
 use crate::machine::control::Control;
 use crate::machine::control::Dir;
 use crate::machine::control::Trace;
@@ -46,19 +60,6 @@ use crate::machine::stack::arrow_components;
 use crate::machine::stack::returner_components;
 use crate::machine::stack::stk_components;
 use crate::machine::stack::with_component;
-use crate::term::ctx::Ctx;
-use crate::term::syntax::Comp;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::OpClause;
-use crate::term::syntax::SplitMotive;
-use crate::term::syntax::Stack;
-use crate::term::syntax::Term;
-use crate::term::syntax::Value;
-use crate::term::syntax::WalkBase;
-use crate::term::syntax::WalkMotive;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
 
 /// Runs the checker on a value and returns the result with its trace.
 ///
@@ -303,7 +304,8 @@ struct Rec
     /// This is the v0 realization of the spec's "control `C` effect"
     /// answer-type bookkeeping (answer-type *modification* is reserved).
     /// Like `Γ`, it is not restored on the error path, so the conformance
-    /// suite compares [`crate::error::TypeError`] values, not the register.
+    /// suite compares [`gandr_core_term::error::TypeError`] values, not the
+    /// register.
     answer: Option<CompType>,
 }
 
@@ -497,7 +499,7 @@ impl Rec
     /// A pair *checked against* a dependent pair `Σ(x:A).B` checks its first
     /// component against the head `A`, then its second against `B[v₁/x]` — the
     /// value-into-type substitution
-    /// ([`crate::judgements::identity::subst_valuetype`]) that
+    /// ([`gandr_core_term::identity::subst_valuetype`]) that
     /// makes the tail depend on the *actual* first component `v₁`. Every other
     /// direction (an inferred pair, or a pair checked against `Prod` /
     /// `Unknown` / any non-`Σ` type) is the non-dependent Pair rule
@@ -521,7 +523,7 @@ impl Rec
         }) = dir
         {
             self.value(fst.as_ref().clone(), Dir::Check(head.as_ref().clone()))?;
-            let tail_ty = crate::judgements::identity::subst_valuetype(
+            let tail_ty = gandr_core_term::identity::subst_valuetype(
                 &tail,
                 NameRef::from(binder.as_str()),
                 &fst,
@@ -550,7 +552,7 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_inj(
         &mut self,
-        side: crate::term::syntax::Side,
+        side: gandr_core_term::syntax::Side,
         payload: Rc<Value>,
         dir: Dir<ValueType>,
     ) -> Result<ValueType, TypeError>
@@ -589,13 +591,13 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_ctor<T>(
         &mut self,
-        id: crate::term::types::DataId,
+        id: gandr_core_term::types::DataId,
         tag: T,
         payload: Rc<Value>,
         dir: Dir<ValueType>,
     ) -> Result<ValueType, TypeError>
     where
-        T: Into<crate::discipline::boundary::ConstructorTag>,
+        T: Into<gandr_core_term::boundary::ConstructorTag>,
     {
         let tag = tag.into();
         match dir {
@@ -773,7 +775,7 @@ impl Rec
         let mut constructed: BTreeMap<String, Rc<ValueType>> = BTreeMap::new();
         for (label, value) in fields {
             let field_dir =
-                dir.record_field_dir(crate::discipline::boundary::FieldName::from(label.as_str()));
+                dir.record_field_dir(gandr_core_term::boundary::FieldName::from(label.as_str()));
             let field_ty = self.value(unrc(value), field_dir)?;
             constructed.insert(label, Rc::new(field_ty));
         }
@@ -1397,7 +1399,7 @@ impl Rec
                 binder,
                 snd: tail,
             } => {
-                let tail_ty = crate::judgements::identity::subst_valuetype(
+                let tail_ty = gandr_core_term::identity::subst_valuetype(
                     &tail,
                     NameRef::from(binder.as_str()),
                     &Value::var(&fst_name),
@@ -1461,7 +1463,7 @@ impl Rec
         &mut self,
         scrut: Rc<Value>,
         signature: Rc<ValueType>,
-        atoms: Vec<crate::term::types::SealId>,
+        atoms: Vec<gandr_core_term::types::SealId>,
         binder: String,
         body: Rc<Comp>,
         dir: Dir<CompType>,
@@ -1579,7 +1581,7 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_prj(
         &mut self,
-        side: crate::term::syntax::Side,
+        side: gandr_core_term::syntax::Side,
         target: Rc<Comp>,
         dir: Dir<CompType>,
     ) -> Result<CompType, TypeError>
@@ -1723,7 +1725,7 @@ impl Rec
                 });
             },
         };
-        let Some(resolved) = crate::effect::resolve_handler_coverage(&sig, &ops)
+        let Some(resolved) = gandr_core_term::effect::resolve_handler_coverage(&sig, &ops)
         else {
             return Err(TypeError::StuckExpr {
                 expr: Term::Comp(Comp::Handle {
@@ -1758,7 +1760,8 @@ impl Rec
         // (in the signature's canonical op order, matching the machine; the
         // continuation type is the shared deep-resumption stack).
         for (op_def, clause) in resolved {
-            let resume_ty = crate::effect::resume_stack_type(&answer, op_def.reply().clone());
+            let resume_ty =
+                gandr_core_term::effect::resume_stack_type(&answer, op_def.reply().clone());
             self.ctx.bind(clause.payload, op_def.payload().clone());
             self.ctx.bind(clause.resume, resume_ty);
             self.comp(unrc(clause.body), Dir::Check(answer.clone()))?;
@@ -1768,7 +1771,7 @@ impl Rec
         // 4. The handle's natural type carries `t`'s residual row `ε_t ∖ E`; the
         // inlined Sub rule then decides `ε_t ∖ E ⊆ ε` against the answer (the
         // matched-hole answer absorbs any residual).
-        let natural = crate::effect::handle_natural_type(&answer, residual);
+        let natural = gandr_core_term::effect::handle_natural_type(&answer, residual);
         finish_comp(natural, Dir::Check(answer))
     }
 
@@ -2018,7 +2021,7 @@ impl Rec
     /// gandr's first **dependent** eliminator, and — unlike [`Self::rule_case`]
     /// — inference-capable: the explicit motive supplies the result type. The
     /// motive is untraced pure type computation
-    /// ([`crate::judgements::identity::subst_comptype`] instantiates it); the
+    /// ([`gandr_core_term::identity::subst_comptype`] instantiates it); the
     /// two traced premises are the scrutinee (value, inferred) and the base
     /// body (computation, checked), so the control trace is exactly
     /// [`Self::rule_split`]'s shape with a checked body. A matched
@@ -2216,10 +2219,11 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::syntax::Value;
+
     use super::diagnostic_abs_term;
-    use crate::term::syntax::Comp;
-    use crate::term::syntax::Term;
-    use crate::term::syntax::Value;
 
     /// The unannotated-abstraction stuck diagnostic is a public compatibility
     /// readback boundary: it reconstructs the legacy term only after routing

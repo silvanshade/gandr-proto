@@ -36,7 +36,7 @@ pub enum GandrSort
     /// a computation (the lowerer).
     TmpHoist,
     /// **Atom-role.** A pipeline hole *address*
-    /// ([`crate::term::syntax::HoleId`]): typing-transparent addressing,
+    /// ([`crate::syntax::HoleId`]): typing-transparent addressing,
     /// **not** a unification variable — two holes with different
     /// identifiers type identically (ADR-41 D3). The Ψ+σ-bearing object is
     /// the CMTT staging node, not an atom.
@@ -49,8 +49,9 @@ pub enum GandrSort
     /// its sealing site*, so that an admission point can re-elaborate, re-mint
     /// and refuse a recorded sequence a re-run does not reproduce; a monotone
     /// allocator offers never-reused identities, which is a different property.
-    /// [`crate::judgements::seal::SealTable`] therefore assigns positional
-    /// serials keyed on [`crate::judgements::seal::SealSite`], and this
+    /// `gandr_core_checker::judgements::seal::SealTable` therefore assigns
+    /// positional serials keyed on
+    /// `gandr_core_checker::judgements::seal::SealSite`, and this
     /// variant records that a sealed atom is atom-role rather than that it
     /// comes from the shared allocator.
     ///

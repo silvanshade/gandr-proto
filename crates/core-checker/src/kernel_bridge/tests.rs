@@ -11,6 +11,14 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::DataId;
+use gandr_core_term::types::SealId;
+use gandr_core_term::types::ValueType;
 use gandr_kernel_core::ConstantIndex;
 use gandr_kernel_core::Environment;
 use gandr_kernel_core::LevelSignature;
@@ -28,14 +36,6 @@ use super::lower_computation_definition;
 use super::lower_value;
 use super::lower_value_definition;
 use super::lower_value_type;
-use crate::effect::EffectSig;
-use crate::prim::NativePrim;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::DataId;
-use crate::term::types::SealId;
-use crate::term::types::ValueType;
 
 /// An empty naming environment (the closed-program case).
 fn closed() -> BridgeContext
@@ -132,7 +132,7 @@ fn drop_erases_to_return_unit()
     // itself erases to `return ()`).
     let mut arena = TermArena::new();
     let thunk = Value::thunk(
-        crate::discipline::grade::Grade::OMEGA,
+        gandr_core_term::grade::Grade::OMEGA,
         Comp::Ret(Rc::new(Value::Unit)),
     );
     let dropped = Comp::Drop(Rc::new(thunk));
@@ -147,7 +147,7 @@ fn dup_erases_to_return_pair()
 {
     let mut arena = TermArena::new();
     let thunk = Value::thunk(
-        crate::discipline::grade::Grade::OMEGA,
+        gandr_core_term::grade::Grade::OMEGA,
         Comp::Ret(Rc::new(Value::Unit)),
     );
     let duplicated = Comp::Dup(Rc::new(thunk));

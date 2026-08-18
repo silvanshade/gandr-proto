@@ -83,17 +83,18 @@ pub mod sem;
 
 use alloc::rc::Rc;
 
-use crate::discipline::boundary::ConversionFuel;
-use crate::discipline::boundary::ValueEquality;
-use crate::discipline::boundary::VariableLevel;
+use gandr_core_term::boundary::ConversionFuel;
+use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::ValueNodeId;
+
 use crate::nbe::defs::Definitions;
 use crate::nbe::intern::SyntaxInterner;
 use crate::nbe::sem::SemArena;
 use crate::nbe::sem::SemError;
 use crate::nbe::sem::Watermark;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::Value;
-use crate::term::syntax::ValueNodeId;
 
 /// The default fuel a normalizer spends before it stops unfolding.
 ///
@@ -219,7 +220,7 @@ impl Normalizer
         body: &Value,
     ) -> Result<(), SemError>
     where
-        N: Into<crate::discipline::boundary::NameRef<'source>>,
+        N: Into<gandr_core_term::boundary::NameRef<'source>>,
     {
         self.define_with(name, body, defs::Transparency::Reducible)
     }
@@ -238,7 +239,7 @@ impl Normalizer
         transparency: defs::Transparency,
     ) -> Result<(), SemError>
     where
-        N: Into<crate::discipline::boundary::NameRef<'source>>,
+        N: Into<gandr_core_term::boundary::NameRef<'source>>,
     {
         let node = self.lower_input(body)?;
         self.defs
@@ -528,8 +529,8 @@ impl Normalizer
     #[inline]
     pub fn type_converts(
         &mut self,
-        lhs: &crate::term::types::ValueType,
-        rhs: &crate::term::types::ValueType,
+        lhs: &gandr_core_term::types::ValueType,
+        rhs: &gandr_core_term::types::ValueType,
     ) -> ValueEquality
     {
         conv::type_converts(self, lhs, rhs)
@@ -587,18 +588,25 @@ mod tests
     use alloc::string::String;
     use alloc::vec::Vec;
 
+    use gandr_core_term::boundary::ConversionFuel;
+    use gandr_core_term::boundary::FieldName;
+    use gandr_core_term::boundary::GradeBound;
+    use gandr_core_term::boundary::IntegerLiteral;
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::boundary::SealComponentName;
+    use gandr_core_term::boundary::SealDeclarationName;
+    use gandr_core_term::boundary::TypeAtomName;
+    use gandr_core_term::boundary::TypeSerial;
+    use gandr_core_term::effect::EffectSig;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Side;
+    use gandr_core_term::syntax::WalkBase;
+    use gandr_core_term::syntax::WalkMotive;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::ValueType;
+
     use super::*;
-    use crate::discipline::boundary::ConversionFuel;
-    use crate::discipline::boundary::FieldName;
-    use crate::discipline::boundary::GradeBound;
-    use crate::discipline::boundary::IntegerLiteral;
-    use crate::discipline::boundary::NameRef;
-    use crate::discipline::boundary::SealComponentName;
-    use crate::discipline::boundary::SealDeclarationName;
-    use crate::discipline::boundary::TypeAtomName;
-    use crate::discipline::boundary::TypeSerial;
-    use crate::discipline::grade::Grade;
-    use crate::effect::EffectSig;
     use crate::nbe::defs::Transparency;
     use crate::nbe::eval::ForceMode;
     use crate::nbe::eval::eval_value;
@@ -616,12 +624,6 @@ mod tests
     use crate::nbe::sem::ValueUnfold;
     use crate::nbe::sem::mix_word;
     use crate::nbe::sem::seed;
-    use crate::term::syntax::Comp;
-    use crate::term::syntax::Side;
-    use crate::term::syntax::WalkBase;
-    use crate::term::syntax::WalkMotive;
-    use crate::term::types::CompType;
-    use crate::term::types::ValueType;
 
     /// Wraps a computation as the thunk value the normalizer's value-level
     /// entry points take, so a reduction rule is observable through `converts`.
@@ -656,7 +658,7 @@ mod tests
     fn lower(
         nbe: &mut Normalizer,
         term: &Value,
-    ) -> crate::term::syntax::ValueNodeId
+    ) -> gandr_core_term::syntax::ValueNodeId
     {
         nbe.lower_input(term).expect("lowering must succeed")
     }
@@ -682,9 +684,9 @@ mod tests
     fn seal(
         serial: TypeSerial,
         component: SealComponentName<'_>,
-    ) -> crate::term::types::SealId
+    ) -> gandr_core_term::types::SealId
     {
-        crate::term::types::SealId::new(serial, SealDeclarationName::from("module"), component)
+        gandr_core_term::types::SealId::new(serial, SealDeclarationName::from("module"), component)
     }
 
     /// A package signature whose payload names its own abstract component in a
@@ -718,15 +720,15 @@ mod tests
     /// separately allocated terms do **not** share.
     fn unpack_signature(
         nbe: &Normalizer,
-        node: crate::term::syntax::ValueNodeId,
-    ) -> crate::term::syntax::ValueTypeNodeId
+        node: gandr_core_term::syntax::ValueNodeId,
+    ) -> gandr_core_term::syntax::ValueTypeNodeId
     {
-        let crate::term::syntax::ValueNode::Thunk(_, body) =
+        let gandr_core_term::syntax::ValueNode::Thunk(_, body) =
             *nbe.syntax().values.get(node).expect("a value node")
         else {
             panic!("the fixture must be a thunk");
         };
-        let crate::term::syntax::CompNode::Unpack { signature, .. } =
+        let gandr_core_term::syntax::CompNode::Unpack { signature, .. } =
             *nbe.syntax().comps.get(body).expect("a computation node")
         else {
             panic!("the fixture must thunk a package elimination");
@@ -744,7 +746,7 @@ mod tests
     fn signature() -> EffectSig
     {
         EffectSig::new(
-            crate::discipline::boundary::EffectSignatureName::from("State"),
+            gandr_core_term::boundary::EffectSignatureName::from("State"),
             Vec::new(),
         )
     }
@@ -754,8 +756,8 @@ mod tests
     #[test]
     fn guard_settles_distinct_only_for_rigid_hole_free_pairs()
     {
-        let one = Guard::leaf(seed(crate::discipline::boundary::SemanticHash::from(1)));
-        let two = Guard::leaf(seed(crate::discipline::boundary::SemanticHash::from(2)));
+        let one = Guard::leaf(seed(gandr_core_term::boundary::SemanticHash::from(1)));
+        let two = Guard::leaf(seed(gandr_core_term::boundary::SemanticHash::from(2)));
         // Rigid and hole-free with different hashes: settled.
         assert!(bool::from(one.settles_distinct(two)));
         // Rigid and hole-free with equal hashes: not settled — equal hashes
@@ -770,7 +772,7 @@ mod tests
     #[test]
     fn guard_folding_propagates_holes_and_unfolding()
     {
-        let plain = Guard::leaf(seed(crate::discipline::boundary::SemanticHash::from(1)));
+        let plain = Guard::leaf(seed(gandr_core_term::boundary::SemanticHash::from(1)));
         let holed = plain.with_hole();
         let opaque = plain.with_unfolding();
         assert!(bool::from(plain.fold(holed).holes()));
@@ -790,7 +792,7 @@ mod tests
             rigid.extended(sem::Elim::Project(Side::Fst), None).unfold(),
             sem::CompUnfold::Rigid
         );
-        let height = crate::discipline::boundary::DefinitionHeightLevel::from(3);
+        let height = gandr_core_term::boundary::DefinitionHeightLevel::from(3);
         let glued = Neutral::new(NeutralHead::Force(head), sem::CompUnfold::Pending(height));
         let grown = glued.extended(sem::Elim::Project(Side::Fst), Some(height));
         assert_eq!(grown.unfold(), sem::CompUnfold::Pending(height));
@@ -1669,7 +1671,7 @@ mod tests
     {
         let mut nbe = Normalizer::new();
         let signature = package_type(TypeAtomName::from("component"), ValueType::integer());
-        let stuck = |atom: crate::term::types::SealId, scrut: Value| {
+        let stuck = |atom: gandr_core_term::types::SealId, scrut: Value| {
             thunk(Comp::unpack(
                 scrut,
                 signature.clone(),
@@ -2367,8 +2369,8 @@ mod tests
         let mut nbe = Normalizer::new();
         let node = lower(&mut nbe, &int(IntegerLiteral::from(1_i64)));
         let guard = Guard::leaf(mix_word(
-            seed(crate::discipline::boundary::SemanticHash::from(1)),
-            crate::discipline::boundary::SemanticHash::from(2),
+            seed(gandr_core_term::boundary::SemanticHash::from(1)),
+            gandr_core_term::boundary::SemanticHash::from(2),
         ));
         let value = SemValue::new(
             SemValueNode::Rigid(Rigid::Free(String::from("x")), ValueUnfold::Rigid),

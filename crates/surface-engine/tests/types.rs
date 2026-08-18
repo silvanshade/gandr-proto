@@ -21,12 +21,12 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::GradeBound;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::Ty;
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::boundary::GradeBound;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
     use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::Lowered;
     use gandr_surface_engine::lower::lower_source;

@@ -20,8 +20,10 @@ name = "corpus"
 path = "tests/lib.rs"
 
 [dependencies]
-gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
+# The term, grade, host-signature, and outcome vocabulary the harnesses assert
+# example programs against.
+gandr-core-term.workspace = true
 gandr-runtime-effects.workspace = true
 gandr-runtime-ffi.workspace = true
 gandr-surface-engine.workspace = true
@@ -32,7 +34,7 @@ default = []
 ffi = ["gandr-runtime-ffi/native-fixture"]
 full = ["ffi", "regex"]
 regex = [
-  "gandr-core-checker/gandr_feat_regex",
+  "gandr-core-term/gandr_feat_regex",
   "gandr-surface-engine/regex",
 ]
 

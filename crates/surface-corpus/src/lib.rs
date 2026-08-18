@@ -103,17 +103,17 @@
 
 use core::fmt::Write as _;
 
-use gandr_core_checker::effect::host::FIELD_STDOUT;
-use gandr_core_checker::outcome::Blame;
-use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::outcome::StuckReason;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::NumLit;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Value;
 use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
+use gandr_core_term::effect::host::FIELD_STDOUT;
+use gandr_core_term::outcome::Blame;
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::outcome::StuckReason;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Value;
 use gandr_runtime_effects::ShellOutcome;
 #[cfg(feature = "ffi")]
 use gandr_runtime_ffi::FfiShellOutcome;
@@ -1688,9 +1688,9 @@ fn desc_unit_consumer_failure(descs: &[SignDesc]) -> Option<String>
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine::run_comp;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::types::ValueType;
 
     use super::*;
     /// Expected substring in an expectation-evaluator failure message.

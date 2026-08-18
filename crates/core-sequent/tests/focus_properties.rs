@@ -16,29 +16,29 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::EffectSignatureName;
-    use gandr_core_checker::discipline::boundary::GenerationDepth;
-    use gandr_core_checker::discipline::boundary::NameRef;
-    use gandr_core_checker::discipline::boundary::OperationName;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect::EffectOp;
-    use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::OpClause;
-    use gandr_core_checker::term::syntax::Stack;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::syntax::WalkBase;
-    use gandr_core_checker::term::syntax::WalkMotive;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::DataId;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::FocusOrigin;
     use gandr_core_sequent::focus_comp;
     use gandr_core_sequent::focus_value;
     use gandr_core_sequent::inspect;
     use gandr_core_sequent::pretty;
     use gandr_core_sequent::wellformed;
+    use gandr_core_term::boundary::EffectSignatureName;
+    use gandr_core_term::boundary::GenerationDepth;
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::effect::EffectOp;
+    use gandr_core_term::effect::EffectSig;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::OpClause;
+    use gandr_core_term::syntax::Stack;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::syntax::WalkBase;
+    use gandr_core_term::syntax::WalkMotive;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::DataId;
+    use gandr_core_term::types::ValueType;
     use proptest::prelude::*;
     use proptest::strategy::BoxedStrategy;
     use proptest::strategy::Union;

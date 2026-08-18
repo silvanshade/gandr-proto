@@ -43,7 +43,7 @@
 //! its canonical representative, is a wrong answer rather than a missed hit.
 //!
 //! The table is a deduplicator, not an equality oracle. It is disjoint from the
-//! type interner ([`crate::term::intern`]) and it takes nothing into the
+//! type interner ([`gandr_core_term::intern`]) and it takes nothing into the
 //! trusted base.
 //!
 //! [`SemArena`]: crate::nbe::sem::SemArena
@@ -51,26 +51,27 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::BinderName;
-use crate::discipline::boundary::BinderScope;
-use crate::discipline::boundary::InternedSyntaxCount;
-use crate::discipline::boundary::SemanticHash;
-use crate::discipline::boundary::SemanticNodeCount;
-use crate::discipline::boundary::ValueEquality;
+use gandr_core_term::boundary::BinderName;
+use gandr_core_term::boundary::BinderScope;
+use gandr_core_term::boundary::InternedSyntaxCount;
+use gandr_core_term::boundary::SemanticHash;
+use gandr_core_term::boundary::SemanticNodeCount;
+use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::syntax::CompNode;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::CompTypeNode;
+use gandr_core_term::syntax::CompTypeNodeId;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::StackNode;
+use gandr_core_term::syntax::StackNodeId;
+use gandr_core_term::syntax::ValueNode;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::ValueTypeNode;
+use gandr_core_term::syntax::ValueTypeNodeId;
+
 use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::term::syntax::CompNode;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::CompTypeNode;
-use crate::term::syntax::CompTypeNodeId;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::StackNode;
-use crate::term::syntax::StackNodeId;
-use crate::term::syntax::ValueNode;
-use crate::term::syntax::ValueNodeId;
-use crate::term::syntax::ValueTypeNode;
-use crate::term::syntax::ValueTypeNodeId;
 
 /// One token in a canonical key's stream.
 #[repr(transparent)]
@@ -217,9 +218,9 @@ impl SyntaxInterner
     pub fn is_empty(
         &self,
         face: Face,
-    ) -> crate::discipline::boundary::InternerEmptyStatus
+    ) -> gandr_core_term::boundary::InternerEmptyStatus
     {
-        crate::discipline::boundary::InternerEmptyStatus::from(usize::from(self.len(face)) == 0)
+        gandr_core_term::boundary::InternerEmptyStatus::from(usize::from(self.len(face)) == 0)
     }
 
     /// Interns `term` into `face`'s table and returns that face's canonical

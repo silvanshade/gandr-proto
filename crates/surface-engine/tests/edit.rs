@@ -39,13 +39,13 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::GradeBound;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Side;
-    use gandr_core_checker::term::syntax::Term;
-    use gandr_core_checker::term::syntax::Value;
     use gandr_core_incremental::region::Item;
+    use gandr_core_term::boundary::GradeBound;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Side;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::syntax::Value;
     use gandr_surface_engine::edit::Action;
     use gandr_surface_engine::edit::AnnSlot;
     use gandr_surface_engine::edit::BinderSlot;
@@ -1569,11 +1569,11 @@ mod tests
     {
         use alloc::rc::Rc;
 
-        use gandr_core_checker::effect::EffectOp;
-        use gandr_core_checker::effect::EffectSig;
-        use gandr_core_checker::term::syntax::OpClause;
-        use gandr_core_checker::term::syntax::Stack;
-        use gandr_core_checker::term::types::ValueType;
+        use gandr_core_term::effect::EffectOp;
+        use gandr_core_term::effect::EffectSig;
+        use gandr_core_term::syntax::OpClause;
+        use gandr_core_term::syntax::Stack;
+        use gandr_core_term::types::ValueType;
         use gandr_surface_engine::edit::EditScript;
         use gandr_surface_engine::origin::TermRef;
         use gandr_surface_engine::origin::resolve;

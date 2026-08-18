@@ -1,9 +1,9 @@
 //! The elaborator-side **kernel bridge**.
 //!
-//! A total lowering from the checked core CBPV forms ([`crate::term::syntax`],
-//! [`crate::term::types`]) into the minimal certified kernel's closed **S1
-//! vocabulary** ([`gandr_kernel_core`], the kernel-boundary design record
-//! §7).
+//! A total lowering from the checked core CBPV forms
+//! ([`gandr_core_term::syntax`], [`gandr_core_term::types`]) into the minimal
+//! certified kernel's closed **S1 vocabulary** ([`gandr_kernel_core`], the
+//! kernel-boundary design record §7).
 //!
 //! # The dependency direction
 //!
@@ -60,6 +60,12 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Side as CoreSide;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::SealId;
+use gandr_core_term::types::ValueType;
 use gandr_kernel_core::BaseType;
 use gandr_kernel_core::CompTypeId;
 use gandr_kernel_core::ComputationId;
@@ -75,13 +81,6 @@ use gandr_kernel_core::TermArena;
 use gandr_kernel_core::ValueId;
 use gandr_kernel_core::ValueTypeId;
 use thiserror::Error;
-
-use crate::term::syntax::Comp;
-use crate::term::syntax::Side as CoreSide;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::SealId;
-use crate::term::types::ValueType;
 
 /// Why a core form has no image in the closed S1 vocabulary.
 ///

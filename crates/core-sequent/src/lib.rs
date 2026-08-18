@@ -4,8 +4,9 @@
 //! ADR-65).
 //!
 //! This crate carries the sequent kernel through its operational phase, beside
-//! the frozen CBPV core and touching no frozen-core code: it consumes the
-//! public [`gandr_core_checker`] surface only.
+//! the frozen CBPV core and touching no frozen-core code: its library consumes
+//! the [`gandr_core_term`] substrate alone, and the checker's own faces appear
+//! only in this crate's test targets.
 //!
 //! - **L0** reifies the polarized System-L / λμμ̃ **command IL** (§2) as
 //!   arena-resident, inspectable IR and gives the **static focusing translation
@@ -30,10 +31,10 @@
 //!   IL shares the workspace's arena/`NodeId` idioms rather than reintroducing
 //!   `Rc`/`Box` recursion.
 //! - [`focus`] — `𝓕` (and the value/stack companions `𝓥`/`𝓚`), taking a
-//!   checked-core [`gandr_core_checker::term::syntax::Comp`] /
-//!   [`gandr_core_checker::term::syntax::Value`] to a focused command. It is
-//!   the only entry into the IL, administrative-redex-avoiding, and **total**
-//!   on well-formed core terms.
+//!   checked-core [`gandr_core_term::syntax::Comp`] /
+//!   [`gandr_core_term::syntax::Value`] to a focused command. It is the only
+//!   entry into the IL, administrative-redex-avoiding, and **total** on
+//!   well-formed core terms.
 //!
 //! # Correspondence and adaptations
 //!

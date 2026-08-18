@@ -5,7 +5,7 @@
 //! The report combines marks, obligations, and goals in one envelope. It maps
 //! a typing failure
 //! ([`gandr_core_checker::machine::FailureState`] +
-//! [`gandr_core_checker::error::TypeError`]) together with the source identity
+//! [`gandr_core_term::error::TypeError`]) together with the source identity
 //! in an [`OriginMap`](crate::origin) to a structured, source-ranged
 //! [`Diagnostic`], and carries the hole **goals** ([`crate::goals`]) in the
 //! same versioned [`Report`] envelope. The incremental-pipeline design's
@@ -83,21 +83,21 @@ use gandr_core_checker::discipline::mark::Mark;
 use gandr_core_checker::discipline::mark::Marking;
 use gandr_core_checker::discipline::mark::mark_comp;
 use gandr_core_checker::discipline::mark::mark_value;
-use gandr_core_checker::error::TypeError;
 use gandr_core_checker::machine::FailureState;
 use gandr_core_checker::machine::Frame;
 use gandr_core_checker::machine::Outcome;
 use gandr_core_checker::machine::control::Control;
 use gandr_core_checker::machine::control::Dir;
 use gandr_core_checker::machine::step;
-use gandr_core_checker::term::ctx::Ctx;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
 use gandr_surface_render_remote::present::ObligationClass;
@@ -206,7 +206,7 @@ pub enum Severity
 ///
 /// The machine's two
 /// polarity-guard `ShapeMismatch` descriptions
-/// ([`text::SHAPE_VALUE`](gandr_core_checker::error::text::SHAPE_VALUE) /
+/// ([`text::SHAPE_VALUE`](gandr_core_term::error::text::SHAPE_VALUE) /
 /// `SHAPE_COMP`) are unreachable by construction (`error.rs` module doc; a
 /// conformance meta-test pins this), so they need no dedicated shape here —
 /// they would arrive as an ordinary [`Self::ShapeMismatch`] if they ever did.

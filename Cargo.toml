@@ -8,6 +8,7 @@ members = [
   "crates/core-checker-tools",
   "crates/core-incremental",
   "crates/core-sequent",
+  "crates/core-term",
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-effects",
@@ -142,14 +143,10 @@ path = "crates/surface-driver"
 
 # Core CBPV bidirectional checker and defunctionalized typing machine.
 # consumers:
-# - gandr
-# - gandr-core-checker-tools
+# - gandr-core-checker-tools (dev)
 # - gandr-core-incremental
-# - gandr-core-sequent
-# - gandr-runtime-effects
-# - gandr-surface-corpus
+# - gandr-core-sequent (dev)
 # - gandr-surface-engine
-# - gandr-theory-levitation
 [workspace.dependencies.gandr-core-checker]
 path = "crates/core-checker"
 
@@ -178,6 +175,23 @@ path = "crates/core-incremental"
 # - gandr-theory-virtual-doctrines (dev)
 [workspace.dependencies.gandr-core-sequent]
 path = "crates/core-sequent"
+
+# The core CBPV term substrate: syntax, types, contexts, substitution,
+# interning, effect rows, usage grades, builtins, and the shared error, outcome,
+# and wrapper vocabulary.
+# consumers:
+# - gandr
+# - gandr-core-checker
+# - gandr-core-checker-tools
+# - gandr-core-incremental
+# - gandr-core-sequent
+# - gandr-runtime-effects
+# - gandr-runtime-ffi
+# - gandr-surface-corpus
+# - gandr-surface-engine
+# - gandr-theory-levitation
+[workspace.dependencies.gandr-core-term]
+path = "crates/core-term"
 
 # The minimal certified kernel's S1 core (term/type language, environment, conversion).
 # consumers:
@@ -308,7 +322,7 @@ path = "crates/theory-levitation"
 
 # Generic nominal atom substrate (sort-tagged atoms and gensym allocators).
 # consumers:
-# - gandr-core-checker
+# - gandr-core-term
 # - gandr-surface-engine
 [workspace.dependencies.gandr-theory-nominal-automata]
 path = "crates/theory-nominal-automata"
@@ -378,7 +392,7 @@ default-features = false
 # build, inert in debug (cannot prove) and under the dist abort profile. The
 # macro is a no-op where the cfg is false, so it adds no codegen there.
 # consumers:
-# - gandr-core-checker
+# - gandr-core-term
 [workspace.dependencies.no-panic]
 version = "0.1.36"
 
@@ -439,7 +453,7 @@ features = ["crossterm"]
 # Keep defaults off; `std` avoids no-std spin locks, while `unicode-perl` keeps
 # `\d`/`\w`/`\s` support available without the full Unicode feature bundle.
 # consumers:
-# - gandr-core-checker
+# - gandr-core-term
 [workspace.dependencies.regex]
 version = "1.12.4"
 default-features = false
@@ -492,6 +506,7 @@ features = ["full", "parsing", "visit"]
 # Typed error derive (`thiserror::Error`) for crate error vocabularies.
 # consumers:
 # - gandr-core-checker
+# - gandr-core-term
 # - gandr-runtime-effects
 # - gandr-storage-artifact
 # - gandr-storage-prolly-trees

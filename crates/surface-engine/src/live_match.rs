@@ -124,12 +124,12 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_checker::discipline::mark::Mark;
-use gandr_core_checker::term::syntax::NumLit;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Value;
 use gandr_core_incremental::stream::BranchStatus;
 use gandr_core_incremental::stream::Liveness;
 use gandr_core_incremental::stream::MatchOrigin as PublishedOrigin;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Value;
 
 use crate::boundary::BranchIndex;
 use crate::boundary::ConstructorArity;

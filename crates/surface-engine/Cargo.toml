@@ -22,6 +22,9 @@ gandr-core-checker.workspace = true
 # session-facing gate resumes through its checkpoint engine.
 gandr-core-incremental.workspace = true
 gandr-core-sequent.workspace = true
+# The core CBPV term and type vocabulary lowering produces and the session
+# carries, plus the host-effect seam foreign declarations are lowered onto.
+gandr-core-term.workspace = true
 # The certified kernel this crate's session admits its S1-eligible definitions
 # into, through `core-checker`'s elaborator-side bridge; the dependency points
 # inward and the kernel never learns of this crate.
@@ -67,8 +70,8 @@ codecs = [
 ]
 full = ["codecs", "regex"]
 regex = [
-  "gandr-core-checker/gandr_feat_regex",
   "gandr-core-sequent/gandr_feat_regex",
+  "gandr-core-term/gandr_feat_regex",
 ]
 
 [lints]

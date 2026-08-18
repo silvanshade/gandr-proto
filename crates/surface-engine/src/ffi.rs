@@ -25,9 +25,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::effect::EffectOp;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::effect::EffectOp;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::types::ValueType;
 
 use crate::boundary::ForeignOperation;
 

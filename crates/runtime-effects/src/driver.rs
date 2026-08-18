@@ -6,9 +6,9 @@
 //! [`gandr_core_sequent::machine::run_comp_with_host`] and reads back an
 //! [`Eval`]. That entry offers every host-interceptable `perform` to the
 //! handler over the host-effect seam
-//! ([`gandr_core_checker::effect::host`]) — the `(signature name,
+//! ([`gandr_core_term::effect::host`]) — the `(signature name,
 //! operation name, payload)` projection the seam presents — and
-//! enforces the same [`gandr_core_checker::outcome::StuckReason::StepLimit`]
+//! enforces the same [`gandr_core_term::outcome::StuckReason::StepLimit`]
 //! guard, so a non-terminating program halts rather than hangs.
 //!
 //! # The seam adaptation
@@ -33,13 +33,13 @@
 //! lowering, linking, and prelude checking with [`run_program_with_prelude`];
 //! only the hand-built [`Comp`] entries land on the L-machine seam here.
 
-use gandr_core_checker::discipline::boundary::OperationName;
-use gandr_core_checker::effect;
-use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Value;
 use gandr_core_sequent::machine::run_comp_with_host;
 use gandr_core_sequent::machine::run_comp_with_prelude_and_host;
+use gandr_core_term::boundary::OperationName;
+use gandr_core_term::effect;
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
 
 use crate::error::ShellError;
 use crate::handler::HostAction;
@@ -220,15 +220,15 @@ impl effect::host::HostHandler for ShellDriver
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::OperationName;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect;
-    use gandr_core_checker::outcome::Blame;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::outcome::StuckReason;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::effect;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::outcome::Blame;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::outcome::StuckReason;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::ValueType;
 
     use super::ShellOutcome;
     use super::run_program;
@@ -1164,12 +1164,12 @@ mod tests
 #[cfg(test)]
 mod l_host_outcomes
 {
-    use gandr_core_checker::effect;
-    use gandr_core_checker::outcome::Blame;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::effect;
+    use gandr_core_term::outcome::Blame;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::ValueType;
 
     use super::ShellOutcome;
     use super::run_program;

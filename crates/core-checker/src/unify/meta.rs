@@ -36,21 +36,21 @@
 //! wrote the type the metavariable stands at. A value-sorted metavariable met
 //! under a `force` with no declared grade is a named postponement instead.
 //!
-//! [`Value::Hole`]: crate::term::syntax::Value::Hole
-//! [`Comp::Hole`]: crate::term::syntax::Comp::Hole
+//! [`Value::Hole`]: gandr_core_term::syntax::Value::Hole
+//! [`Comp::Hole`]: gandr_core_term::syntax::Comp::Hole
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
-use crate::discipline::boundary::HoleId;
-use crate::discipline::boundary::MetaStatus;
-use crate::discipline::grade::Grade;
-use crate::term::subst::HoleRepl;
-use crate::term::subst::HoleSubstitution;
-use crate::term::subst::subst_holes_comp;
-use crate::term::subst::subst_holes_value;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
+use gandr_core_term::boundary::HoleId;
+use gandr_core_term::boundary::MetaStatus;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::subst::HoleRepl;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_comp;
+use gandr_core_term::subst::subst_holes_value;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
 
 /// The sort a metavariable occupies, and the shape its solutions take.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

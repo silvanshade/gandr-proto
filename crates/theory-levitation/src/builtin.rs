@@ -9,8 +9,8 @@
 //! same first-order fragment: `Boolean` is `1 + 1` (two nullary constructors);
 //! `List` is recursive through [`crate::Code::Var`].
 
-use gandr_core_checker::discipline::boundary::NameRef;
-use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::grade::Grade;
 
 use crate::code::Attrs;
 use crate::code::Code;

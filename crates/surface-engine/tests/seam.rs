@@ -35,9 +35,9 @@ mod tests
     use alloc::string::String;
     use alloc::vec::Vec;
 
-    use gandr_core_checker::term::types::Ty;
     use gandr_core_incremental::region::ItemSource as _;
     use gandr_core_incremental::region::Program;
+    use gandr_core_term::types::Ty;
     use gandr_surface_engine::item_source::LoweringItemSource;
     use gandr_surface_engine::item_source::SourceRevision;
     use gandr_surface_engine::lower::Lowered;

@@ -4,7 +4,7 @@
 //! Three syntactic categories — [`ProducerNode`], [`ConsumerNode`], and
 //! [`CommandNode`] — realize the polarized System-L / λμμ̃ command IL. Every
 //! node is arena-resident and refers to its children by typed
-//! [`gandr_core_checker::term::syntax::NodeId`]s, reusing the ADR-50 carrier
+//! [`gandr_core_term::syntax::NodeId`]s, reusing the ADR-50 carrier
 //! substrate (`NodeArena`) that the frozen core's `ValueNode` / `CompNode` /
 //! `StackNode` families already use, so this IL shares the workspace's arena
 //! idioms rather than reintroducing `Rc`/`Box` recursion.
@@ -57,14 +57,14 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::PrimitiveArity;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::term::syntax::HoleId;
-use gandr_core_checker::term::syntax::NodeArena;
-use gandr_core_checker::term::syntax::NodeId;
-use gandr_core_checker::term::syntax::NumLit;
-use gandr_core_checker::term::syntax::Side;
+use gandr_core_term::boundary::PrimitiveArity;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::HoleId;
+use gandr_core_term::syntax::NodeArena;
+use gandr_core_term::syntax::NodeId;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
 
 use crate::boundary::ConsumerArity;
 use crate::boundary::SequentNodeCount;
@@ -149,7 +149,7 @@ pub enum CtorTag
     Op
     {
         /// The complete source effect signature.
-        sig: gandr_core_checker::effect::EffectSig,
+        sig: gandr_core_term::effect::EffectSig,
         /// The operation's own name.
         op: String,
     },
@@ -162,7 +162,7 @@ pub enum CtorTag
     /// intro), keyed by the constructor's position `i` in the decl-table
     /// `ctors` list (the [`Side`] analogue for a `k`-constructor datatype). One
     /// producer argument (the field-tuple payload `w`). The nominal
-    /// [`gandr_core_checker::term::types::DataId`] is erased by `𝓕`: the L
+    /// [`gandr_core_term::types::DataId`] is erased by `𝓕`: the L
     /// machine selects a `DataCase` arm by position, exactly as the CEK's
     /// `arms.nth(tag)`, so the render-only id is never matched on.
     Data(usize),
@@ -338,7 +338,7 @@ impl PrimOp
     /// [`Self::Native`] command's `p̄` is the argument prefix the source
     /// `Comp::Native` carried, which varies with partial application, so the
     /// producer count is **not** fixed by the head the way the consumer count
-    /// is. [`gandr_core_checker::prim::NativePrim::arity`] is the builtin's
+    /// is. [`gandr_core_term::prim::NativePrim::arity`] is the builtin's
     /// saturation arity as a function, not this command's argument count.
     ///
     /// # Contract
@@ -469,7 +469,7 @@ pub enum ProducerNode
     /// (`Value::Thunk`).
     ///
     /// The thunk carries the core's usage grade `U_r B` from
-    /// [`gandr_core_checker::discipline::grade::Grade`] (retiring the former
+    /// [`gandr_core_term::grade::Grade`] (retiring the former
     /// A-THUNK-GRADE adaptation): the grade rides the binder, exactly as the
     /// core's `Value::Thunk(Grade, _)` does. The grade→store-region *placement*
     /// remains the constant-`Heap` L1 default (`store::placement`; the
@@ -795,8 +795,8 @@ mod tests
             CtorTag::Cons,
             CtorTag::Record(Box::from([String::from("a"), String::from("b")])),
             CtorTag::Op {
-                sig: gandr_core_checker::effect::EffectSig::new(
-                    gandr_core_checker::discipline::boundary::EffectSignatureName::from("State"),
+                sig: gandr_core_term::effect::EffectSig::new(
+                    gandr_core_term::boundary::EffectSignatureName::from("State"),
                     Vec::new(),
                 ),
                 op: String::from("get"),

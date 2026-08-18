@@ -1,6 +1,6 @@
 //! The source-level module surface over the canonical host signatures.
 //!
-//! [`gandr_core_checker::effect::host`] owns the canonical `Exec` / `Fs` /
+//! [`gandr_core_term::effect::host`] owns the canonical `Exec` / `Fs` /
 //! `Proc` / `Env` signatures alongside the representation-independent host
 //! seam. This module explicitly re-exports that signature API and adds only the
 //! source-facing [`HostModule`] / [`HostMember`] metadata the lowerer needs.
@@ -24,39 +24,39 @@
 //! The current surface assumes vacuous `Σ` and multi-shot resumption; the
 //! runtime host installs the ambient handler for these signatures.
 
-use gandr_core_checker::effect::EffectSig;
-pub use gandr_core_checker::effect::host::ENV;
-pub use gandr_core_checker::effect::host::ENV_GET;
-pub use gandr_core_checker::effect::host::ENV_PATH;
-pub use gandr_core_checker::effect::host::EXEC;
-pub use gandr_core_checker::effect::host::EXEC_RUN;
-pub use gandr_core_checker::effect::host::FIELD_ARGS;
-pub use gandr_core_checker::effect::host::FIELD_CONTENTS;
-pub use gandr_core_checker::effect::host::FIELD_EXIT_CODE;
-pub use gandr_core_checker::effect::host::FIELD_KIND;
-pub use gandr_core_checker::effect::host::FIELD_MODE;
-pub use gandr_core_checker::effect::host::FIELD_PATH;
-pub use gandr_core_checker::effect::host::FIELD_PROGRAM;
-pub use gandr_core_checker::effect::host::FIELD_SIZE;
-pub use gandr_core_checker::effect::host::FIELD_STDERR;
-pub use gandr_core_checker::effect::host::FIELD_STDOUT;
-pub use gandr_core_checker::effect::host::FS;
-pub use gandr_core_checker::effect::host::FS_CWD;
-pub use gandr_core_checker::effect::host::FS_GLOB;
-pub use gandr_core_checker::effect::host::FS_LS_FILES;
-pub use gandr_core_checker::effect::host::FS_MKDIR;
-pub use gandr_core_checker::effect::host::FS_READ;
-pub use gandr_core_checker::effect::host::FS_STAT;
-pub use gandr_core_checker::effect::host::FS_TEMPDIR;
-pub use gandr_core_checker::effect::host::FS_WRITE;
-pub use gandr_core_checker::effect::host::MODE_CAPTURED;
-pub use gandr_core_checker::effect::host::MODE_INHERIT;
-pub use gandr_core_checker::effect::host::PROC;
-pub use gandr_core_checker::effect::host::PROC_EXIT;
-pub use gandr_core_checker::effect::host::env;
-pub use gandr_core_checker::effect::host::exec;
-pub use gandr_core_checker::effect::host::fs;
-pub use gandr_core_checker::effect::host::proc;
+use gandr_core_term::effect::EffectSig;
+pub use gandr_core_term::effect::host::ENV;
+pub use gandr_core_term::effect::host::ENV_GET;
+pub use gandr_core_term::effect::host::ENV_PATH;
+pub use gandr_core_term::effect::host::EXEC;
+pub use gandr_core_term::effect::host::EXEC_RUN;
+pub use gandr_core_term::effect::host::FIELD_ARGS;
+pub use gandr_core_term::effect::host::FIELD_CONTENTS;
+pub use gandr_core_term::effect::host::FIELD_EXIT_CODE;
+pub use gandr_core_term::effect::host::FIELD_KIND;
+pub use gandr_core_term::effect::host::FIELD_MODE;
+pub use gandr_core_term::effect::host::FIELD_PATH;
+pub use gandr_core_term::effect::host::FIELD_PROGRAM;
+pub use gandr_core_term::effect::host::FIELD_SIZE;
+pub use gandr_core_term::effect::host::FIELD_STDERR;
+pub use gandr_core_term::effect::host::FIELD_STDOUT;
+pub use gandr_core_term::effect::host::FS;
+pub use gandr_core_term::effect::host::FS_CWD;
+pub use gandr_core_term::effect::host::FS_GLOB;
+pub use gandr_core_term::effect::host::FS_LS_FILES;
+pub use gandr_core_term::effect::host::FS_MKDIR;
+pub use gandr_core_term::effect::host::FS_READ;
+pub use gandr_core_term::effect::host::FS_STAT;
+pub use gandr_core_term::effect::host::FS_TEMPDIR;
+pub use gandr_core_term::effect::host::FS_WRITE;
+pub use gandr_core_term::effect::host::MODE_CAPTURED;
+pub use gandr_core_term::effect::host::MODE_INHERIT;
+pub use gandr_core_term::effect::host::PROC;
+pub use gandr_core_term::effect::host::PROC_EXIT;
+pub use gandr_core_term::effect::host::env;
+pub use gandr_core_term::effect::host::exec;
+pub use gandr_core_term::effect::host::fs;
+pub use gandr_core_term::effect::host::proc;
 
 use crate::boundary::HostMemberIndex;
 use crate::boundary::HostModuleIndex;
@@ -74,7 +74,7 @@ use crate::boundary::HostOperation;
 pub struct HostMember
 {
     /// The surface member name — also the
-    /// [`EffectOp::name`](gandr_core_checker::effect::EffectOp::name) the call
+    /// [`EffectOp::name`](gandr_core_term::effect::EffectOp::name) the call
     /// performs.
     pub op: &'static str,
     /// The parameter names, in declaration order. The length is the arity;
@@ -253,7 +253,7 @@ mod tests
 {
     use alloc::vec;
 
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::types::ValueType;
 
     use super::*;
 

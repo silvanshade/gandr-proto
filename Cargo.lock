@@ -583,7 +583,7 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 name = "gandr"
 version = "0.0.0"
 dependencies = [
- "gandr-core-checker",
+ "gandr-core-term",
  "gandr-runtime-ffi",
  "gandr-surface-engine",
 ]
@@ -593,12 +593,10 @@ name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker-tools",
+ "gandr-core-term",
  "gandr-kernel-core",
  "gandr-kernel-strata",
- "gandr-theory-nominal-automata",
- "no-panic",
  "proptest",
- "regex",
  "thiserror 2.0.19",
 ]
 
@@ -607,6 +605,7 @@ name = "gandr-core-checker-tools"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
+ "gandr-core-term",
  "proptest",
 ]
 
@@ -616,6 +615,7 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "gandr-core-checker",
+ "gandr-core-term",
  "gandr-theory-orders",
  "proptest",
 ]
@@ -626,12 +626,23 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "gandr-core-checker",
+ "gandr-core-term",
  "gandr-kernel-core",
  "gandr-kernel-strata",
  "gandr-storage-artifact",
  "gandr-storage-prolly-trees",
  "gandr-surface-engine",
  "proptest",
+]
+
+[[package]]
+name = "gandr-core-term"
+version = "0.0.0"
+dependencies = [
+ "gandr-theory-nominal-automata",
+ "no-panic",
+ "regex",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -653,8 +664,8 @@ dependencies = [
 name = "gandr-runtime-effects"
 version = "0.0.0"
 dependencies = [
- "gandr-core-checker",
  "gandr-core-sequent",
+ "gandr-core-term",
  "thiserror 2.0.19",
 ]
 
@@ -663,8 +674,8 @@ name = "gandr-runtime-ffi"
 version = "0.0.0"
 dependencies = [
  "cc",
- "gandr-core-checker",
  "gandr-core-sequent",
+ "gandr-core-term",
  "gandr-runtime-effects",
  "gandr-surface-engine",
  "libffi",
@@ -702,8 +713,8 @@ dependencies = [
 name = "gandr-surface-corpus"
 version = "0.0.0"
 dependencies = [
- "gandr-core-checker",
  "gandr-core-sequent",
+ "gandr-core-term",
  "gandr-runtime-effects",
  "gandr-runtime-ffi",
  "gandr-surface-engine",
@@ -718,6 +729,7 @@ dependencies = [
  "gandr-core-checker-tools",
  "gandr-core-incremental",
  "gandr-core-sequent",
+ "gandr-core-term",
  "gandr-kernel-core",
  "gandr-runtime-effects",
  "gandr-storage-artifact",
@@ -800,7 +812,7 @@ dependencies = [
 name = "gandr-theory-levitation"
 version = "0.0.0"
 dependencies = [
- "gandr-core-checker",
+ "gandr-core-term",
  "proptest",
 ]
 

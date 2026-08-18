@@ -11,7 +11,7 @@
 //! It is a flat loop over commands (ADR-47 — no recursion in the step),
 //! environment-extension only (never textual substitution), and every
 //! transition is one budgeted step against the single shared
-//! [`gandr_core_checker::outcome::STEP_BUDGET`].
+//! [`gandr_core_term::outcome::STEP_BUDGET`].
 //!
 //! # Configuration (§4.1)
 //!
@@ -46,7 +46,7 @@
 //! lazy pairs, `ap` / `prj`) / the grade structural ops (`dup` / `drop`) — is
 //! live and differentially anchored, as is the **native registry** (`prim`): a
 //! curried native accumulates its arguments from the `ap` frames and dispatches
-//! to `gandr_core_checker::prim` on saturation, reading its (first-order)
+//! to `gandr_core_term::prim` on saturation, reading its (first-order)
 //! arguments back to source values. The **higher-order combinators** (`each` /
 //! `where` / `reduce` / `any` / `all` / `update_where`) force and apply a thunk
 //! argument's body, which the focused IL no longer retains; they now dispatch
@@ -78,7 +78,7 @@
 //! operation no source-level handler claims — where [`LMachine::run`] blames
 //! [`Blame::PerformNoHandler`] — is instead offered to an ambient host by
 //! [`LMachine::run_with_host`] over the public [`Value`] / signature surface
-//! ([`gandr_core_checker::effect::host`]), the *identical* seam the CEK
+//! ([`gandr_core_term::effect::host`]), the *identical* seam the CEK
 //! presents. On a resume the reply flows into the perform's continuation
 //! (deep); a decline is the same `PerformNoHandler` blame. The seam is realized
 //! at the driver — the L machine's configuration is the run loop's locals, not
@@ -91,25 +91,25 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::ContinuationName;
-use gandr_core_checker::discipline::boundary::FieldName;
-use gandr_core_checker::discipline::boundary::NameRef;
-use gandr_core_checker::discipline::boundary::OperationName;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::effect::host::HostHandler;
-use gandr_core_checker::effect::host::HostOp;
-use gandr_core_checker::effect::host::HostReply;
-use gandr_core_checker::outcome::Blame;
-use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::outcome::STEP_BUDGET;
-use gandr_core_checker::outcome::StuckReason;
-use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::DataId;
+use gandr_core_term::boundary::ContinuationName;
+use gandr_core_term::boundary::FieldName;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::OperationName;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::effect::host::HostHandler;
+use gandr_core_term::effect::host::HostOp;
+use gandr_core_term::effect::host::HostReply;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::outcome::Blame;
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::outcome::STEP_BUDGET;
+use gandr_core_term::outcome::StuckReason;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::DataId;
 
 use crate::boundary::CommandHoleStatus;
 use crate::boundary::CommandUnsupportedStatus;
@@ -1435,7 +1435,7 @@ impl LMachine
     /// The accumulated arguments (including the thunk-closure arguments the
     /// combinator forces and applies) are un-focused to source [`Value`]s
     /// ([`crate::unfocus::unfocus_value`], mirroring the CEK's `quote_value`),
-    /// the builtin is invoked over the shared `gandr_core_checker::prim`
+    /// the builtin is invoked over the shared `gandr_core_term::prim`
     /// registry, and its result term — an **unrolled** closed CBPV computation
     /// over the manifest list — is re-focused into the live arena and run
     /// against the ambient continuation ([`crate::focus::focus_comp_into`]).
@@ -1499,7 +1499,7 @@ impl LMachine
     /// Dispatches a saturated native to the Rust registry: read its first-order
     /// arguments back to source values, run the builtin (`prim.apply`), and
     /// feed the result to the continuation. The host seam is unchanged —
-    /// the native registry is the CEK's own (`gandr_core_checker::prim`).
+    /// the native registry is the CEK's own (`gandr_core_term::prim`).
     ///
     /// This is the **first-order** dispatch path: a scalar / structural prim
     /// (`id` / `const`, arithmetic, list and record rearrangement) that never
@@ -2555,10 +2555,10 @@ fn read_lit(lit: &Lit) -> Value
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
 
     use crate::focus::focus_comp;
     use crate::machine::LMachine;

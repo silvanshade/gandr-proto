@@ -10,11 +10,11 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::EffectSignatureName;
-use gandr_core_checker::discipline::boundary::FieldName;
-use gandr_core_checker::discipline::boundary::OperationName;
-use gandr_core_checker::effect;
-use gandr_core_checker::term::syntax::Value;
+use gandr_core_term::boundary::EffectSignatureName;
+use gandr_core_term::boundary::FieldName;
+use gandr_core_term::boundary::OperationName;
+use gandr_core_term::effect;
+use gandr_core_term::syntax::Value;
 
 use crate::boundary::FileKind;
 use crate::boundary::FileSizeBytes;

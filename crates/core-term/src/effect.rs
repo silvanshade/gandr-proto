@@ -35,17 +35,17 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::EffectContains;
-use crate::discipline::boundary::EffectRowEmptyStatus;
-use crate::discipline::boundary::EffectSignatureName;
-use crate::discipline::boundary::EffectSubsetDecision;
-use crate::discipline::boundary::OperationName;
+use crate::boundary::EffectContains;
+use crate::boundary::EffectRowEmptyStatus;
+use crate::boundary::EffectSignatureName;
+use crate::boundary::EffectSubsetDecision;
+use crate::boundary::OperationName;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::term::syntax::OpClause;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
+use crate::syntax::OpClause;
+use crate::types::CompType;
+use crate::types::Ty;
+use crate::types::ValueType;
 
 /// A single effect operation `op : A ↠ B` (the effects and control record's
 /// operation and handle rules).
@@ -187,7 +187,7 @@ impl EffectSig
 /// [`Self::union`], [`Self::without`], [`Self::contains`], [`Self::is_subset`],
 /// [`Self::is_empty`], [`Self::signatures`]) plus the forwarding-free [`Debug`]
 /// impl below. The pure returner `F A ≡ F^⟨⟩ A` is exactly the [`Self::EMPTY`]
-/// case, and [`crate::term::types::CompType`]'s `Debug` renders it with no row
+/// case, and [`crate::types::CompType`]'s `Debug` renders it with no row
 /// so the spelling stays `F(payload)` (ADR-33 D1).
 #[derive(Clone, Eq, Hash, PartialEq)]
 #[repr(transparent)]
@@ -341,10 +341,10 @@ impl EffectRow
     }
 }
 
-/// The bottom-up row union at a `bind` (the effect calculus's bind row
-/// arithmetic; A3.2 `+effects`): `t >>= x. u` accumulates the demand of both
-/// sides, so the bound computation's effect row `bound_row` folds into the
-/// continuation's result.
+/// The bottom-up row union at a `bind` (A3.2 `+effects`).
+///
+/// `t >>= x. u` accumulates the demand of both sides, so the bound
+/// computation's effect row `bound_row` folds into the continuation's result.
 ///
 /// The continuation type `cont_ty` is the bind's result type:
 ///
@@ -360,8 +360,8 @@ impl EffectRow
 ///   `F` until a later stage carries them on negative types).
 ///
 /// Shared by the recursive checker and the typing machine (as
-/// [`crate::discipline::subtype::finish_comp`]) so the two produce *equal*
-/// results.
+/// `gandr_core_checker::discipline::subtype::finish_comp`) so the two produce
+/// *equal* results.
 ///
 /// # Contract
 /// - ensures: returns `F^{bound_row ∪ ε_u} C` for a returner `cont_ty = F^{ε_u}
@@ -376,7 +376,7 @@ impl EffectRow
 /// Returns [`TypeError::ShapeMismatch`] when an effectful bound computation is
 /// sequenced into a non-returner continuation.
 #[inline]
-pub(crate) fn combine_bind_row(
+pub fn combine_bind_row(
     bound_row: &EffectRow,
     cont_ty: CompType,
 ) -> Result<CompType, TypeError>
@@ -409,7 +409,7 @@ pub(crate) fn combine_bind_row(
 /// each binds is identical (the step-for-step contract).
 #[inline]
 #[must_use]
-pub(crate) fn resume_stack_type(
+pub fn resume_stack_type(
     answer: &CompType,
     reply: ValueType,
 ) -> ValueType
@@ -427,13 +427,14 @@ pub(crate) fn resume_stack_type(
 /// may leak.
 ///
 /// Finishing it against the answer `F^ε C` (via
-/// [`crate::discipline::subtype::finish_comp`]) makes the inlined Sub rule's
-/// row leg `ε_t ∖ E ⊆ ε` the soundness check — the residual `t` may perform
-/// unhandled must fit the answer's row. A matched-hole answer yields `Unknown`,
-/// which absorbs any residual. Shared by the checker and the machine.
+/// `gandr_core_checker::discipline::subtype::finish_comp`) makes the inlined
+/// Sub rule's row leg `ε_t ∖ E ⊆ ε` the soundness check — the residual `t` may
+/// perform unhandled must fit the answer's row. A matched-hole answer yields
+/// `Unknown`, which absorbs any residual. Shared by the checker and the
+/// machine.
 #[inline]
 #[must_use]
-pub(crate) fn handle_natural_type(
+pub fn handle_natural_type(
     answer: &CompType,
     residual: EffectRow,
 ) -> CompType
@@ -461,7 +462,9 @@ pub(crate) fn handle_natural_type(
 ///   [`EffectSig::ops`], iff the clause set is exactly the signature's
 ///   operations; `None` otherwise.
 /// - panics: none.
-pub(crate) fn resolve_handler_coverage(
+#[inline]
+#[must_use]
+pub fn resolve_handler_coverage(
     sig: &EffectSig,
     ops: &[OpClause],
 ) -> Option<Vec<(EffectOp, OpClause)>>

@@ -11,7 +11,7 @@
 
 use alloc::rc::Rc;
 
-use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_term::grade::Grade;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;

@@ -1,21 +1,20 @@
 //! Per-run **type interning**: a content-addressed identity for [`Ty`] giving
-//! O(1) equality and — on an intern hit — O(1) reflexive/atom subtyping.
+//! O(1) equality.
 //!
-//! Two consumers share this one facility:
+//! Equal ids witness structural equality, so an id comparison answers in O(1)
+//! what a structural `==` answers in time proportional to the type's size.
+//! That identity is what a consumer builds a fast path on: the checker crate's
+//! subsumption relation short-circuits its *reflexive* leg with it, since two
+//! types that intern to the same id are structurally equal and hence
+//! (consistent) subtypes with no descent. Reflexivity is admissible rather
+//! than a rule (`type-system.md` §"Algorithmic subtyping and the worklist
+//! solver"), so every such fast path is a pure optimization over a structural
+//! relation this crate does not define.
 //!
-//! - the **incremental marking** layer ([`crate::discipline::mark`]) keys
-//!   Porter's per-node dual-type cache on interned [`TypeId`]s, so an unchanged
-//!   node compares its type in O(1) instead of the structural O(tree-size)
-//!   `==`;
-//! - **subtyping** ([`TypeInterner::subtype`]) reuses the same identity to
-//!   short-circuit the *reflexive* leg of the subtype relation: two types that
-//!   intern to the same id are structurally equal, hence (consistent) subtypes,
-//!   with no structural descent. Reflexivity is admissible, never a rule
-//!   (`type-system.md` §"Algorithmic subtyping and the worklist solver"), so
-//!   this is a pure optimization — the structural
-//!   [`crate::discipline::subtype::value_subtype`] /
-//!   [`crate::discipline::subtype::comp_subtype`] decides every non-reflexive
-//!   pair.
+//! No shipping crate keys anything on a [`TypeId`] yet. The facility is
+//! exercised by this module's own tests and by the checker crate's interned
+//! subsumption rows; a consumer that adopts it inherits the resolve guard
+//! below rather than a second identity notion.
 //!
 //! # Intern-hit discipline (Lean 4 `Expr` interning, adapted)
 //!
@@ -41,7 +40,7 @@
 //! # Content-key discipline
 //!
 //! Interning covers the immutable value graph, and every content-bearing field
-//! is part of the key: a [`crate::discipline::grade::Grade`] inside a `Thunk`
+//! is part of the key: a [`crate::grade::Grade`] inside a `Thunk`
 //! and an [`crate::effect::EffectRow`] inside an `F` both participate — the
 //! derived `Hash` / `Eq` descend into them, and both are canonical (`EffectRow`
 //! is a name-ordered `BTreeMap`, so union order is immaterial). Thunks that
@@ -54,7 +53,7 @@
 //! ordering** is already admitted and exploited (records are a name-ordered
 //! `BTreeMap`, rows likewise) — no ordering is baked into an id. And a
 //! [`TypeId`] is an opaque dense index: nothing in the key shape or the
-//! resolve / subtype API assumes an **arity-1** result, so a later multi-output
+//! resolve API assumes an **arity-1** result, so a later multi-output
 //! canonicalization (the Σ-zone term face) can land without a key-shape change.
 
 use alloc::collections::BTreeMap;
@@ -62,14 +61,11 @@ use alloc::vec::Vec;
 use core::hash::Hash as _;
 use core::hash::Hasher as _;
 
-use crate::discipline::boundary::InternedTypeCount;
-use crate::discipline::boundary::InternerEmptyStatus;
-use crate::discipline::boundary::SubtypeDecision;
-use crate::discipline::boundary::TypeHash;
-use crate::discipline::boundary::TypeTableIndex;
-use crate::discipline::subtype::comp_subtype;
-use crate::discipline::subtype::value_subtype;
-use crate::term::types::Ty;
+use crate::boundary::InternedTypeCount;
+use crate::boundary::InternerEmptyStatus;
+use crate::boundary::TypeHash;
+use crate::boundary::TypeTableIndex;
+use crate::types::Ty;
 
 /// A canonical, interned identity for a type — O(1) equality for the
 /// unchanged-type optimization (Porter's per-node dual-type cache).
@@ -167,58 +163,6 @@ impl TypeInterner
         self.types.get(usize::from(id.index()))
     }
 
-    /// Decides `sub ≲ sup` on two interned ids, using intern identity as an
-    /// O(1) reflexive/atom short-circuit before any structural descent — the
-    /// interned analogue of the `core::ptr::eq` fast path in
-    /// [`crate::discipline::subtype::value_subtype`], but catching
-    /// *structurally* equal address-distinct types too (they share an id).
-    ///
-    /// # Contract
-    /// - requires: `sub` and `sup` were both minted by *this* interner (an id
-    ///   from another interner, or one never minted, resolves to `None` and so
-    ///   returns `false`).
-    /// - ensures: returns `true` iff the type at `sub` is a consistent subtype
-    ///   of the type at `sup` — same-sort structural subtyping via
-    ///   [`crate::discipline::subtype::value_subtype`] /
-    ///   [`crate::discipline::subtype::comp_subtype`]. Identical ids return
-    ///   `true` in O(1) (reflexivity, admissible per `type-system.md`
-    ///   §"Algorithmic subtyping and the worklist solver"); a value id against
-    ///   a computation id returns `false` (no value type is a subtype of a
-    ///   computation type, and vice versa). The verdict equals the structural
-    ///   relation on the resolved types, so the id short-circuit is a pure
-    ///   optimization.
-    /// - panics: none.
-    ///
-    /// # Adequacy
-    /// - hypothesis: L1 — the id-equality short-circuit never disagrees with
-    ///   structural subtyping (it only pre-empts the reflexive case, which the
-    ///   structural relation also accepts).
-    /// - witness: `tests::interned_subtype_agrees_with_structural_value` /
-    ///   `_comp` (the fast path equals structural descent on every generated
-    ///   pair) plus the deterministic reflexive-hit and structural-fallback
-    ///   tests.
-    #[inline]
-    #[must_use]
-    pub fn subtype(
-        &self,
-        sub: TypeId,
-        sup: TypeId,
-    ) -> SubtypeDecision
-    {
-        // Reflexive/atom intern hit: equal ids ⟹ structurally identical types
-        // ⟹ (consistent) subtypes, decided in O(1) without any descent.
-        if sub == sup {
-            return true.into();
-        }
-        match (self.resolve(sub), self.resolve(sup)) {
-            | (Some(&Ty::Value(ref lo)), Some(&Ty::Value(ref hi))) => value_subtype(lo, hi),
-            | (Some(&Ty::Comp(ref lo)), Some(&Ty::Comp(ref hi))) => comp_subtype(lo, hi),
-            // Cross-sort (a value type and a computation type never relate) or an
-            // id this interner never minted.
-            | _ => false.into(),
-        }
-    }
-
     /// The number of distinct interned types.
     #[inline]
     #[must_use]
@@ -311,12 +255,11 @@ mod tests
 {
     use super::TypeId;
     use super::TypeInterner;
-    use crate::discipline::boundary::InternedTypeCount;
-    use crate::discipline::grade::Grade;
-    use crate::discipline::subtype::value_subtype;
-    use crate::term::types::CompType;
-    use crate::term::types::Ty;
-    use crate::term::types::ValueType;
+    use crate::boundary::InternedTypeCount;
+    use crate::grade::Grade;
+    use crate::types::CompType;
+    use crate::types::Ty;
+    use crate::types::ValueType;
 
     /// structurally distinct type mints a fresh id (miss). Each `fresh_nested`
     /// call allocates fresh `Rc`s throughout, so a same-id verdict is genuine
@@ -347,78 +290,16 @@ mod tests
         );
     }
 
-    /// Reflexive/atom hit: an address-distinct rebuild interns to the same id,
-    /// so [`TypeInterner::subtype`] returns `true` in O(1) — and it agrees with
-    /// the structural [`value_subtype`] run over the two address-distinct
-    /// values (the non-vacuous reflexive descent).
-    #[test]
-    fn subtype_reflexive_hit_agrees_with_structural_descent()
-    {
-        let t1 = fresh_nested();
-        let t2 = fresh_nested();
-        // Structural descent (addresses differ ⇒ the ptr::eq fast path in
-        // `value_subtype` cannot pre-empt): the relation holds by reflexivity.
-        assert!(
-            bool::from(value_subtype(&t1, &t2)),
-            "reflexivity holds structurally"
-        );
-
-        let mut interner = TypeInterner::new();
-        let a = interner.intern(&Ty::Value(t1));
-        let b = interner.intern(&Ty::Value(t2));
-        assert_eq!(a, b, "the rebuild deduped to the same id");
-        assert!(
-            bool::from(interner.subtype(a, b)),
-            "same id ⇒ O(1) reflexive subtype hit"
-        );
-    }
-
     /// A small nested value type, built fresh (all-new `Rc`s) on each call so
-    /// two invocations are structurally equal yet share no interior address —
-    /// the address-distinctness the reflexive-hit test needs so the structural
-    /// `value_subtype` descent is genuinely exercised (not pre-emptied by the
-    /// `core::ptr::eq` fast path).
+    /// two invocations are structurally equal yet share no interior address.
+    /// Address-distinctness is what makes the dedup verdict content-addressing
+    /// rather than aliasing.
     fn fresh_nested() -> ValueType
     {
         ValueType::prod(
             ValueType::list(ValueType::atom("A")),
             ValueType::thunk(Grade::OMEGA, CompType::returner(ValueType::integer())),
         )
-    }
-
-    /// Structural fallback on distinct ids: `U_ω B <: U_1 B` (because `1 ⊑ ω`)
-    /// but not conversely. The two thunks intern to distinct ids, so
-    /// [`TypeInterner::subtype`] takes the structural path and matches
-    /// [`value_subtype`] in both directions.
-    #[test]
-    fn subtype_structural_fallback_on_distinct_ids()
-    {
-        let omega = ValueType::thunk(Grade::OMEGA, CompType::returner(ValueType::integer()));
-        let one = ValueType::thunk(Grade::ONE, CompType::returner(ValueType::integer()));
-
-        let mut interner = TypeInterner::new();
-        let omega_id = interner.intern(&Ty::Value(omega.clone()));
-        let one_id = interner.intern(&Ty::Value(one.clone()));
-        assert_ne!(omega_id, one_id, "different grades ⇒ different ids");
-
-        assert!(
-            bool::from(interner.subtype(omega_id, one_id)),
-            "U_ω B <: U_1 B (1 ⊑ ω)"
-        );
-        assert_eq!(
-            interner.subtype(omega_id, one_id),
-            value_subtype(&omega, &one),
-            "the interned verdict matches structural subtyping"
-        );
-        assert!(
-            !bool::from(interner.subtype(one_id, omega_id)),
-            "U_1 B </: U_ω B (directional)"
-        );
-        assert_eq!(
-            interner.subtype(one_id, omega_id),
-            value_subtype(&one, &omega),
-            "the interned negative verdict matches structural subtyping"
-        );
     }
 
     /// Content-key discipline: a [`Grade`] is part of the key, so two thunks
@@ -438,28 +319,45 @@ mod tests
         assert_ne!(omega, one, "grade participates in the intern key");
     }
 
-    /// Cross-sort ids never relate, and an id this interner never minted
-    /// resolves to nothing and so returns `false`.
+    /// [`TypeInterner::resolve`] is the guard every id-keyed reader passes
+    /// through: an id past this interner's minted range resolves to nothing, so
+    /// a reader that honours the `Option` cannot observe a type this interner
+    /// never minted. The unminted id is constructed directly here because no
+    /// public caller can reach that state.
     #[test]
-    fn subtype_cross_sort_and_unminted_are_false()
+    fn resolve_of_an_unminted_id_is_none()
     {
         const UNMINTED_TYPE_ID: u32 = 999;
         let mut interner = TypeInterner::new();
+        let minted = interner.intern(&Ty::Value(ValueType::integer()));
+        assert!(
+            interner.resolve(minted).is_some(),
+            "a minted id resolves to its type"
+        );
+        assert!(
+            interner.resolve(TypeId(UNMINTED_TYPE_ID)).is_none(),
+            "an id past the minted range resolves to nothing"
+        );
+    }
+
+    /// The two sorts stay apart under one interner: a value type and a
+    /// computation type mint distinct ids and resolve to distinct [`Ty`]
+    /// variants, which is what lets an id-keyed reader refuse a cross-sort
+    /// pair without a structural comparison.
+    #[test]
+    fn the_two_sorts_resolve_to_distinct_variants()
+    {
+        let mut interner = TypeInterner::new();
         let value_id = interner.intern(&Ty::Value(ValueType::integer()));
         let comp_id = interner.intern(&Ty::Comp(CompType::returner(ValueType::integer())));
+        assert_ne!(value_id, comp_id, "the two sorts mint distinct ids");
         assert!(
-            !bool::from(interner.subtype(value_id, comp_id)),
-            "a value type is not a subtype of a computation type"
+            matches!(interner.resolve(value_id), Some(&Ty::Value(_))),
+            "the value id resolves to the value sort"
         );
         assert!(
-            !bool::from(interner.subtype(comp_id, value_id)),
-            "nor the converse"
-        );
-        // An id past the minted range resolves to `None` ⇒ `false`.
-        let unminted = TypeId(UNMINTED_TYPE_ID);
-        assert!(
-            !bool::from(interner.subtype(value_id, unminted)),
-            "an unminted id never relates"
+            matches!(interner.resolve(comp_id), Some(&Ty::Comp(_))),
+            "the computation id resolves to the computation sort"
         );
     }
 }

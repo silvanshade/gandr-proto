@@ -4,21 +4,22 @@
 //! This is a *third* realization of the type system, additive to the
 //! [`crate::judgements::checker`] / [`crate::machine`] pair and **never a
 //! modification of either** — the conformance lockstep (ADR-9) stays untouched.
-//! Where the checker is fail-fast (the first [`crate::error::TypeError`]
-//! short-circuits the whole derivation), the marker is **total over type
-//! errors**: it decorates *every* node, and at each of the five abort sites it
-//! records a localized [`Mark`] and recovers, so typing continues. (Totality is
-//! over *type* errors only — the traversal is direct-style, as the checker, so
-//! a term that exceeds the host call stack still aborts the process; see
-//! [`mark_value`].) Recovery generalizes the existing hole discipline — a node
-//! whose subsumption, shape, grade, scope, or rule lookup fails recovers with
-//! the matched-`Unknown` type the checker already uses for
-//! [`crate::term::syntax::Value::Hole`] (`subtype.rs`, `stack.rs`). Every
-//! recovery fallback is `Unknown` / `EffectRow::EMPTY` — consistent/bottom in
-//! `subtype.rs`, hence *absorbing*: a recovered child can never make a parent's
-//! subsumption fail, which is exactly what keeps recovery from cascading
-//! spurious marks (the no-false-positive half of the oracle). A refactor must
-//! keep that fallback invariant or the oracle's accept direction breaks.
+//! Where the checker is fail-fast (the first
+//! [`gandr_core_term::error::TypeError`] short-circuits the whole derivation),
+//! the marker is **total over type errors**: it decorates *every* node, and at
+//! each of the five abort sites it records a localized [`Mark`] and recovers,
+//! so typing continues. (Totality is over *type* errors only — the traversal is
+//! direct-style, as the checker, so a term that exceeds the host call stack
+//! still aborts the process; see [`mark_value`].) Recovery generalizes the
+//! existing hole discipline — a node whose subsumption, shape, grade, scope, or
+//! rule lookup fails recovers with the matched-`Unknown` type the checker
+//! already uses for [`gandr_core_term::syntax::Value::Hole`] (`subtype.rs`,
+//! `stack.rs`). Every recovery fallback is `Unknown` / `EffectRow::EMPTY` —
+//! consistent/bottom in `subtype.rs`, hence *absorbing*: a recovered child can
+//! never make a parent's subsumption fail, which is exactly what keeps recovery
+//! from cascading spurious marks (the no-false-positive half of the oracle). A
+//! refactor must keep that fallback invariant or the oracle's accept direction
+//! breaks.
 //!
 //! # The oracle against the checker (the soundness anchor)
 //!
@@ -67,35 +68,62 @@
 //! ➜ stable origin id ➜ span) and setting the dirty bit from the edit / order-
 //! maintenance layer is the deferred pipeline-side consumer; [`NodeFacts`]
 //! carries `dirty` (the representation is complete) but the marker leaves it at
-//! its `false` default. A reified stack [`crate::term::syntax::Value::Stk`] is
-//! typed with full `Γ; answer` fidelity, and its interior frames are decorated
-//! under explicit compatibility paths as *bonus* entries (they are not
-//! `origin::resolve`-addressable — the Stk-descent resync is deferred).
+//! its `false` default. A reified stack [`gandr_core_term::syntax::Value::Stk`]
+//! is typed with full `Γ; answer` fidelity, and its interior frames are
+//! decorated under explicit compatibility paths as *bonus* entries (they are
+//! not `origin::resolve`-addressable — the Stk-descent resync is deferred).
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::IntoIter;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ContextLength;
-use crate::discipline::boundary::ErrorStatus;
-use crate::discipline::boundary::I64Literal;
-use crate::discipline::boundary::MarkingEmptyStatus;
-use crate::discipline::boundary::PathIndex;
-use crate::discipline::boundary::PathSegments;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::ContextLength;
+use gandr_core_term::boundary::ErrorStatus;
+use gandr_core_term::boundary::I64Literal;
+use gandr_core_term::boundary::MarkingEmptyStatus;
+use gandr_core_term::boundary::PathIndex;
+use gandr_core_term::boundary::PathSegments;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::effect::combine_bind_row;
+use gandr_core_term::effect::handle_natural_type;
+use gandr_core_term::effect::resolve_handler_coverage;
+use gandr_core_term::effect::resume_stack_type;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::error::text;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::CompNode;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::HoleId;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::OpClauseNode;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::SplitMotive;
+use gandr_core_term::syntax::SplitMotiveNode;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::StackNode;
+use gandr_core_term::syntax::StackNodeId;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::ValueNode;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::ValueTypeNodeId;
+use gandr_core_term::syntax::WalkBase;
+use gandr_core_term::syntax::WalkBaseNode;
+use gandr_core_term::syntax::WalkMotive;
+use gandr_core_term::syntax::WalkMotiveNode;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::SealId;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
+
 use crate::discipline::subtype::comp_subtype;
 use crate::discipline::subtype::int_literal_fits;
 use crate::discipline::subtype::pick;
 use crate::discipline::subtype::value_subtype;
-use crate::effect::EffectRow;
-use crate::effect::EffectSig;
-use crate::effect::combine_bind_row;
-use crate::effect::handle_natural_type;
-use crate::effect::resolve_handler_coverage;
-use crate::effect::resume_stack_type;
-use crate::error::TypeError;
-use crate::error::text;
 use crate::judgements::checker::base_diagonal_type;
 use crate::judgements::checker::motive_result_type;
 use crate::judgements::checker::split_expectations;
@@ -106,32 +134,6 @@ use crate::machine::stack::arrow_components;
 use crate::machine::stack::returner_components;
 use crate::machine::stack::stk_components;
 use crate::machine::stack::with_component;
-use crate::term::ctx::Ctx;
-use crate::term::syntax::Comp;
-use crate::term::syntax::CompNode;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::HoleId;
-use crate::term::syntax::OpClause;
-use crate::term::syntax::OpClauseNode;
-use crate::term::syntax::Side;
-use crate::term::syntax::SplitMotive;
-use crate::term::syntax::SplitMotiveNode;
-use crate::term::syntax::Stack;
-use crate::term::syntax::StackNode;
-use crate::term::syntax::StackNodeId;
-use crate::term::syntax::Value;
-use crate::term::syntax::ValueNode;
-use crate::term::syntax::ValueNodeId;
-use crate::term::syntax::ValueTypeNodeId;
-use crate::term::syntax::WalkBase;
-use crate::term::syntax::WalkBaseNode;
-use crate::term::syntax::WalkMotive;
-use crate::term::syntax::WalkMotiveNode;
-use crate::term::types::CompType;
-use crate::term::types::SealId;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
 
 /// A stable node identity for marking facts.
 ///
@@ -1422,7 +1424,7 @@ enum InternFrame
         /// Optional Rc cache key for the parent.
         cache_key: Option<*const Value>,
         /// Data id.
-        id: crate::term::types::DataId,
+        id: gandr_core_term::types::DataId,
         /// Constructor tag.
         tag: usize,
     },
@@ -1526,7 +1528,7 @@ enum InternFrame
         /// Optional Rc cache key for the parent.
         cache_key: Option<*const Comp>,
         /// Native primitive.
-        prim: crate::prim::NativePrim,
+        prim: gandr_core_term::prim::NativePrim,
         /// Remaining arguments.
         args: IntoIter<Rc<Value>>,
         /// Accumulated argument ids.
@@ -2143,9 +2145,9 @@ impl Marker
                     snd: tail,
                 }) = dir
                 {
-                    let tail_ty = crate::judgements::identity::subst_valuetype(
+                    let tail_ty = gandr_core_term::identity::subst_valuetype(
                         &tail,
-                        crate::discipline::boundary::NameRef::from(binder.as_str()),
+                        gandr_core_term::boundary::NameRef::from(binder.as_str()),
                         &fst,
                     );
                     let result_ty = ValueType::Sigma {
@@ -2892,9 +2894,7 @@ impl Marker
                 );
             },
             | Comp::Perform(sig, op, arg) => match sig
-                .op(crate::discipline::boundary::OperationName::from(
-                    op.as_str(),
-                ))
+                .op(gandr_core_term::boundary::OperationName::from(op.as_str()))
                 .cloned()
             {
                 | Some(op_def) => {
@@ -3232,7 +3232,7 @@ impl Marker
         let next_index = u32::from(next_index.into());
         if let Some((label, value)) = fields.next() {
             let field_dir =
-                dir.record_field_dir(crate::discipline::boundary::FieldName::from(label.as_str()));
+                dir.record_field_dir(gandr_core_term::boundary::FieldName::from(label.as_str()));
             self.schedule_child_value(
                 next_index,
                 value,
@@ -3304,7 +3304,7 @@ impl Marker
         } = handler;
         if let Some(clause) = ops.next() {
             let (payload_ty, resume_ty) = match sig.op(
-                crate::discipline::boundary::OperationName::from(clause.op.as_str()),
+                gandr_core_term::boundary::OperationName::from(clause.op.as_str()),
             ) {
                 | Some(op_def) => (
                     op_def.payload().clone(),
@@ -3835,9 +3835,9 @@ impl Marker
                         binder,
                         snd: tail,
                     } => {
-                        let tail_ty = crate::judgements::identity::subst_valuetype(
+                        let tail_ty = gandr_core_term::identity::subst_valuetype(
                             &tail,
-                            crate::discipline::boundary::NameRef::from(binder.as_str()),
+                            gandr_core_term::boundary::NameRef::from(binder.as_str()),
                             &Value::var(&fst_name),
                         );
                         let (body_expected, result_ty) = split_expectations(
@@ -4868,7 +4868,7 @@ impl Marker
     fn schedule_intern_native_args(
         &mut self,
         cache_key: Option<*const Comp>,
-        prim: crate::prim::NativePrim,
+        prim: gandr_core_term::prim::NativePrim,
         mut args: IntoIter<Rc<Value>>,
         ids: Vec<ValueNodeId>,
         run: &mut InternRun,
@@ -5684,7 +5684,7 @@ impl Marker
     {
         match self
             .ctx
-            .lookup(crate::discipline::boundary::NameRef::from(name.as_str()))
+            .lookup(gandr_core_term::boundary::NameRef::from(name.as_str()))
         {
             | Some(found) => finish_value(found.clone(), dir, marks),
             | None => {
@@ -5844,7 +5844,7 @@ where
         | Dir::Infer => ValueType::integer(),
         | Dir::Check(expected) => {
             if bool::from(int_literal_fits(
-                crate::discipline::boundary::IntegerLiteral::from(n),
+                gandr_core_term::boundary::IntegerLiteral::from(n),
                 &expected,
             )) {
                 expected

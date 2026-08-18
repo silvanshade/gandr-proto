@@ -5,7 +5,7 @@
 //!
 //! Every description here is Field-free and parameter-free (or a builtin
 //! retrofit), so the fixtures are built without naming
-//! `gandr_core_checker::discipline::grade::Grade` — the crate is a normal, not
+//! `gandr_core_term::grade::Grade` — the crate is a normal, not
 //! a dev, dependency and is not in scope for an integration test.
 
 use alloc::collections::BTreeMap;

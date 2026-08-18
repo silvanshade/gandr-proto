@@ -66,14 +66,14 @@ mod tests
     use std::path::Path;
     use std::path::PathBuf;
 
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::outcome::StuckReason;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Term;
     use gandr_core_sequent::boundary::CorpusItemCount;
     use gandr_core_sequent::boundary::UnsupportedFormerStatus;
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::outcome::StuckReason;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Term;
 
     use crate::common::CorpusTree;
     use crate::common::Fixture;

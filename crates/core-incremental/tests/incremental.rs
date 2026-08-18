@@ -35,9 +35,6 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::term::syntax::Term;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::checkpoint::ItemTyping;
     use gandr_core_incremental::checkpoint::Resume;
     use gandr_core_incremental::checkpoint::checkpoint_program;
@@ -45,6 +42,9 @@ mod tests
     use gandr_core_incremental::region::Item;
     use gandr_core_incremental::region::ItemSource;
     use gandr_core_incremental::region::Program;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::ValueType;
 
     /// One definition body the toy surface can lower — enough scalar and
     /// reference shapes to drive body edits, type changes, and downstream

@@ -28,7 +28,7 @@
 //! Each program is rebuilt through the frozen public `gandr_core_checker` API
 //! and run on the L machine via [`gandr_core_sequent::machine`]; every asserted
 //! outcome is preserved verbatim from the conformance row it mirrors. The
-//! native reductions themselves are shared `gandr_core_checker::prim` code
+//! native reductions themselves are shared `gandr_core_term::prim` code
 //! (machine independent), so these rows pin that substrate's behaviour where
 //! the CEK conformance rows used to.
 //!
@@ -51,23 +51,23 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::EffectSignatureName;
-    use gandr_core_checker::discipline::boundary::OperationName;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect::EffectOp;
-    use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::outcome::Blame;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::outcome::StuckReason;
-    use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::OpClause;
-    use gandr_core_checker::term::syntax::SplitMotive;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::DataId;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine;
+    use gandr_core_term::boundary::EffectSignatureName;
+    use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::effect::EffectOp;
+    use gandr_core_term::effect::EffectSig;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::outcome::Blame;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::outcome::StuckReason;
+    use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::OpClause;
+    use gandr_core_term::syntax::SplitMotive;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::DataId;
+    use gandr_core_term::types::ValueType;
 
     // ─────────────────────────────── declared data + split (β on the machine)
 

@@ -12,8 +12,9 @@ build = "build.rs"
 publish.workspace = true
 
 [dependencies]
-gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
+# The effect seam a foreign call crosses and the outcome vocabulary it returns.
+gandr-core-term.workspace = true
 gandr-runtime-effects.workspace = true
 gandr-surface-engine.workspace = true
 libffi.workspace = true

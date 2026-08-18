@@ -27,20 +27,21 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ConstraintIndex;
-use crate::discipline::boundary::HoleId;
-use crate::discipline::boundary::HoleOccurrence;
-use crate::discipline::boundary::SolverSteps;
-use crate::discipline::boundary::VariableLevel;
+use gandr_core_term::boundary::ConstraintIndex;
+use gandr_core_term::boundary::HoleId;
+use gandr_core_term::boundary::HoleOccurrence;
+use gandr_core_term::boundary::SolverSteps;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::subst::HoleRepl;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_comp;
+use gandr_core_term::subst::subst_holes_value;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+
 use crate::nbe::Normalizer;
 use crate::nbe::conv;
 use crate::nbe::sem::SemError;
-use crate::term::subst::HoleRepl;
-use crate::term::subst::HoleSubstitution;
-use crate::term::subst::subst_holes_comp;
-use crate::term::subst::subst_holes_value;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
 use crate::unify::Constraint;
 use crate::unify::frag::PostponeReason;
 use crate::unify::frag::Refutation;
@@ -363,7 +364,7 @@ impl Certificate
         &self,
         nbe: &mut Normalizer,
         constraint: &Constraint,
-    ) -> Result<(crate::discipline::boundary::ValueEquality, HoleOccurrence), SemError>
+    ) -> Result<(gandr_core_term::boundary::ValueEquality, HoleOccurrence), SemError>
     {
         let mark = nbe.watermark();
         let outcome = self.replay_checked(nbe, constraint);
@@ -380,7 +381,7 @@ impl Certificate
         &self,
         nbe: &mut Normalizer,
         constraint: &Constraint,
-    ) -> Result<(crate::discipline::boundary::ValueEquality, HoleOccurrence), SemError>
+    ) -> Result<(gandr_core_term::boundary::ValueEquality, HoleOccurrence), SemError>
     {
         match *constraint {
             | Constraint::Values(ref lhs, ref rhs) => {

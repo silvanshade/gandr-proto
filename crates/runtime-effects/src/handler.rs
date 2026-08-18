@@ -7,7 +7,7 @@
 //! resume the run with a reply, halt with an exit code, abort with a fatal
 //! error, or decline (leaving the machine to blame an unclaimed `perform`).
 //!
-//! Dispatch keys on [`gandr_core_checker::effect::EffectSig::name`] first, then
+//! Dispatch keys on [`gandr_core_term::effect::EffectSig::name`] first, then
 //! the operation name — so an operation named `read` in some *other* signature
 //! is declined, not misrouted to `Fs::read`.
 //!
@@ -32,9 +32,9 @@ use std::process::Command as ProcCommand;
 use std::process::Stdio;
 use std::process::id as process_id;
 
-use gandr_core_checker::discipline::boundary::OperationName;
-use gandr_core_checker::effect;
-use gandr_core_checker::term::syntax::Value;
+use gandr_core_term::boundary::OperationName;
+use gandr_core_term::effect;
+use gandr_core_term::syntax::Value;
 
 use crate::boundary::FilePath;
 use crate::boundary::GlobMatch;
@@ -51,7 +51,7 @@ use crate::error::ShellError;
 const MAX_TEMPDIR_ATTEMPTS: u64 = 1024;
 
 /// The dispatcher's instruction after an intercepted operation — the richer
-/// cousin of [`gandr_core_checker::effect::host::HostReply`].
+/// cousin of [`gandr_core_term::effect::host::HostReply`].
 ///
 /// `HostReply` cannot express a run-truncating `exit` or a fatal abort; a
 /// driver such as [`crate::driver`] captures those two out of band.
@@ -790,8 +790,8 @@ fn glob_segment(cursor: GlobCursor<'_>) -> GlobMatch
 )]
 mod tests
 {
-    use gandr_core_checker::effect;
-    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_term::effect;
+    use gandr_core_term::syntax::Value;
 
     use super::ShellHandler;
     use super::glob_paths;

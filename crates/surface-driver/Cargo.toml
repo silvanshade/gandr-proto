@@ -18,8 +18,8 @@ path = "tests/cli.rs"
 [dependencies]
 # The core outcome vocabulary a run terminates in: `ShellOutcome::Completed`
 # carries an `Eval`, so classifying a run into a process status means naming
-# the checker's terminal, blame, and stuck cases.
-gandr-core-checker.workspace = true
+# the substrate's terminal, blame, and stuck cases.
+gandr-core-term.workspace = true
 # The host seam that runs a script: `ShellOutcome` classifies the run the
 # engine's source entry hands back, so the driver reads the outcome the same
 # way every other host consumer does.

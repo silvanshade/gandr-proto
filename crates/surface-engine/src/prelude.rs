@@ -26,12 +26,12 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::term::ctx::Ctx;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::ValueType;
 
 use crate::boundary::PreludeMemberName;
 use crate::boundary::PreludeModuleName;
@@ -262,8 +262,8 @@ mod tests
 {
     use alloc::vec;
 
-    use gandr_core_checker::outcome::Eval;
     use gandr_core_sequent::machine::run_comp_with_prelude;
+    use gandr_core_term::outcome::Eval;
 
     use super::*;
 

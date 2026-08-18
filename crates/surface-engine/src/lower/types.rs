@@ -24,13 +24,13 @@
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
-use gandr_core_checker::discipline::boundary::GradeBound;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::DataId;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::boundary::GradeBound;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::DataId;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 
 use crate::boundary::PipelineSource;
 use crate::boundary::SignificantIndex;

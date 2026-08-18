@@ -10,34 +10,34 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crate::discipline::boundary::ArenaEmptyStatus;
-use crate::discipline::boundary::ArenaLength;
-use crate::discipline::boundary::BinderName;
-use crate::discipline::boundary::ConstructorTag;
-use crate::discipline::boundary::ContinuationName;
-use crate::discipline::boundary::F32Literal;
-use crate::discipline::boundary::F64Literal;
-use crate::discipline::boundary::FieldName;
-use crate::discipline::boundary::I32Literal;
-use crate::discipline::boundary::I64Literal;
-use crate::discipline::boundary::IntegerLiteral;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::NodeIndex;
-use crate::discipline::boundary::OperationName;
-use crate::discipline::boundary::ResumeName;
-use crate::discipline::boundary::SourceIndex;
-use crate::discipline::boundary::StringLiteral;
-use crate::discipline::boundary::StringText;
-use crate::discipline::boundary::U32Literal;
-use crate::discipline::boundary::U64Literal;
-use crate::discipline::grade::Grade;
+use crate::boundary::ArenaEmptyStatus;
+use crate::boundary::ArenaLength;
+use crate::boundary::BinderName;
+use crate::boundary::ConstructorTag;
+use crate::boundary::ContinuationName;
+use crate::boundary::F32Literal;
+use crate::boundary::F64Literal;
+use crate::boundary::FieldName;
+use crate::boundary::I32Literal;
+use crate::boundary::I64Literal;
+use crate::boundary::IntegerLiteral;
+use crate::boundary::NameRef;
+use crate::boundary::NodeIndex;
+use crate::boundary::OperationName;
+use crate::boundary::ResumeName;
+use crate::boundary::SourceIndex;
+use crate::boundary::StringLiteral;
+use crate::boundary::StringText;
+use crate::boundary::U32Literal;
+use crate::boundary::U64Literal;
 use crate::effect::EffectRow;
 use crate::effect::EffectSig;
+use crate::grade::Grade;
 use crate::prim::NativePrim;
-use crate::term::types::CompType;
-use crate::term::types::DataId;
-use crate::term::types::SealId;
-use crate::term::types::ValueType;
+use crate::types::CompType;
+use crate::types::DataId;
+use crate::types::SealId;
+use crate::types::ValueType;
 
 /// A stable, typed identifier for a node in an arena-backed IR carrier.
 ///
@@ -282,7 +282,7 @@ pub enum ValueTypeNode
     Thunk(Grade, CompTypeNodeId),
     Stk(CompTypeNodeId, CompTypeNodeId),
     /// The identity type `Path A x y` (ADR-76): carrier plus two value
-    /// endpoints, the flat mirror of [`crate::term::types::ValueType::Path`]
+    /// endpoints, the flat mirror of [`crate::types::ValueType::Path`]
     /// (the endpoints are value-arena ids — terms in a type).
     Path
     {
@@ -294,7 +294,7 @@ pub enum ValueTypeNode
         rhs: ValueNodeId,
     },
     /// The declared-data nominal handle `Data { id, args }` (ADR-80), the flat
-    /// mirror of [`crate::term::types::ValueType::Data`].
+    /// mirror of [`crate::types::ValueType::Data`].
     Data
     {
         /// The datatype's minted nominal identity.
@@ -303,16 +303,16 @@ pub enum ValueTypeNode
         args: Vec<ValueTypeNodeId>,
     },
     /// The predicative code universe `Type` (ADR-81), the flat mirror of
-    /// [`crate::term::types::ValueType::Universe`].
+    /// [`crate::types::ValueType::Universe`].
     Universe,
     /// A sealed abstract type, the flat mirror of
-    /// [`crate::term::types::ValueType::Sealed`].
+    /// [`crate::types::ValueType::Sealed`].
     ///
     /// A leaf, like its structural counterpart: the identity is the whole node,
     /// because there is no representation recorded to give it a child.
     Sealed(SealId),
     /// The dependent pair `Σ(binder : fst). snd` (ADR-81), the flat mirror of
-    /// [`crate::term::types::ValueType::Sigma`]. The `binder` is an owned
+    /// [`crate::types::ValueType::Sigma`]. The `binder` is an owned
     /// attribute (a value-variable name); the head and tail are type-arena
     /// ids.
     Sigma
@@ -325,11 +325,11 @@ pub enum ValueTypeNode
         snd: ValueTypeNodeId,
     },
     /// The first-class module package `Package_grade ⟨abstracts⟩ payload`, the
-    /// flat mirror of [`crate::term::types::ValueType::Package`].
+    /// flat mirror of [`crate::types::ValueType::Package`].
     ///
     /// The binder labels are owned attributes (type-variable names, discharged
-    /// by [`crate::judgements::package::instantiate`]); the payload is a
-    /// type-arena id.
+    /// by `gandr_core_checker::judgements::package::instantiate`); the payload
+    /// is a type-arena id.
     Package
     {
         /// The usage grade `r` — how many times the package may be unpacked.
@@ -374,10 +374,10 @@ pub enum ValueNode
     Hole(HoleId),
     Stk(StackNodeId),
     /// A reflexivity proof `here(v)` (ADR-76), the flat mirror of
-    /// [`crate::term::syntax::Value::Here`].
+    /// [`crate::syntax::Value::Here`].
     Here(ValueNodeId),
     /// A declared-data constructor value `Ctor { id, tag, payload }` (ADR-80),
-    /// the flat mirror of [`crate::term::syntax::Value::Ctor`].
+    /// the flat mirror of [`crate::syntax::Value::Ctor`].
     Ctor
     {
         /// The datatype's minted nominal identity.
@@ -388,7 +388,7 @@ pub enum ValueNode
         payload: ValueNodeId,
     },
     /// A packed module `pack ⟨witnesses⟩ payload`, the flat mirror of
-    /// [`crate::term::syntax::Value::Pack`].
+    /// [`crate::syntax::Value::Pack`].
     ///
     /// The witnesses are type-arena ids — the abstraction's own half of the
     /// both-directions annotation — and the payload is a value-arena id.
@@ -476,7 +476,7 @@ pub enum CompNode
         cons: CompNodeId,
     },
     /// The product / dependent-pair eliminator `split v as (p, q) [z. M] in t`
-    /// (ADR-82), the flat mirror of [`crate::term::syntax::Comp::Split`]: the
+    /// (ADR-82), the flat mirror of [`crate::syntax::Comp::Split`]: the
     /// optional motive `(z). M` is a computation-type child
     /// ([`SplitMotiveNode`]), not a term child.
     Split
@@ -494,7 +494,7 @@ pub enum CompNode
         body: CompNodeId,
     },
     /// The declared-data eliminator `DataCase { scrut, arms }` (ADR-80), the
-    /// flat mirror of [`crate::term::syntax::Comp::DataCase`]: each arm is a
+    /// flat mirror of [`crate::syntax::Comp::DataCase`]: each arm is a
     /// `(binder, body)`, arm `i` handling constructor tag `i`.
     DataCase
     {
@@ -528,7 +528,7 @@ pub enum CompNode
         args: Vec<ValueNodeId>,
     },
     /// The identity eliminator `walk(p, motive, base)` (ADR-76), the flat
-    /// mirror of [`crate::term::syntax::Comp::Walk`].
+    /// mirror of [`crate::syntax::Comp::Walk`].
     Walk
     {
         /// The scrutinee value id `p`.
@@ -539,7 +539,7 @@ pub enum CompNode
         base: WalkBaseNode,
     },
     /// The package eliminator `unpack v : σ as ⟨atoms⟩ binder in t`, the flat
-    /// mirror of [`crate::term::syntax::Comp::Unpack`].
+    /// mirror of [`crate::syntax::Comp::Unpack`].
     ///
     /// The ascribed signature is a type-arena id — the elimination's own half
     /// of the both-directions annotation — and the minted atoms are owned
@@ -754,7 +754,7 @@ pub enum Value
     /// A list literal `[v₀, …, vₙ]` — the value-model ladder's list rung
     /// (`proposal-shell-usage-surface.md` §2, ADR-40).
     ///
-    /// The flat-vector intro of [`crate::term::types::ValueType::List`]: its
+    /// The flat-vector intro of [`crate::types::ValueType::List`]: its
     /// elements are ordinary values, so substitution and structural diffing
     /// descend into them (unlike the opaque scalar leaves [`Value::Str`] /
     /// [`Value::Num`]). Typing is **check-only** against an expected `List
@@ -769,7 +769,7 @@ pub enum Value
     /// A record literal `{ℓᵢ=vᵢ}` — the value-model ladder's record rung
     /// (`proposal-shell-usage-surface.md` §2, ADR-45).
     ///
-    /// The labeled intro of [`crate::term::types::ValueType::Record`]: its
+    /// The labeled intro of [`crate::types::ValueType::Record`]: its
     /// field values are ordinary values, so substitution and structural
     /// diffing descend into them (the structural-child discipline of
     /// [`Value::Pair`] / [`Value::List`], unlike the opaque scalar leaves
@@ -821,7 +821,7 @@ pub enum Value
     /// value, a `stk K` holds a *stack* (Levy's third syntactic sort) as a
     /// value, crossing the value/computation boundary the other way. Typing is
     /// **check-only** against an expected
-    /// [`crate::term::types::ValueType::Stk`] `Stk(B, C)` (like
+    /// [`crate::types::ValueType::Stk`] `Stk(B, C)` (like
     /// [`Value::Inj`]): the stack-typing judgment `K : B ⇒ C` runs forward
     /// from the consumed type `B`, synthesizing the delivered answer, which
     /// the inlined Sub rule fits to `C`. The `Stk` is `Rc`'d so
@@ -832,7 +832,7 @@ pub enum Value
         Rc<Stack>,
     ),
     /// A reflexivity proof `here(v) : Path A v v` — the sole introduction of
-    /// the identity type [`crate::term::types::ValueType::Path`] (ADR-76; rule
+    /// the identity type [`crate::types::ValueType::Path`] (ADR-76; rule
     /// `Here`).
     ///
     /// An **introduction** form (like [`Self::Inj`]): it infers `Path A v v`
@@ -849,7 +849,7 @@ pub enum Value
         Rc<Self>,
     ),
     /// A **declared-data constructor value** `Ctor { id, tag, payload }` — the
-    /// intro of [`crate::term::types::ValueType::Data`] (ADR-80 Decision 2),
+    /// intro of [`crate::types::ValueType::Data`] (ADR-80 Decision 2),
     /// mirroring [`Self::Inj`] for sums.
     ///
     /// `id` is the datatype's minted nominal identity ([`DataId`]); `tag` is
@@ -864,7 +864,7 @@ pub enum Value
     /// type at the render site.
     ///
     /// An **introduction** form, **check-only** like [`Self::Inj`]: it checks
-    /// against an expected [`crate::term::types::ValueType::Data`] (verifying
+    /// against an expected [`crate::types::ValueType::Data`] (verifying
     /// the nominal `id`), and a `Ctor` in inference position is stuck
     /// (annotate). Its payload is an ordinary value, so substitution and
     /// structural diffing descend into it. The eliminator is
@@ -879,7 +879,7 @@ pub enum Value
         payload: Rc<Self>,
     },
     /// A **packed module** `pack ⟨Ā⟩ v` — the introduction of
-    /// [`crate::term::types::ValueType::Package`], and the module layer's one
+    /// [`crate::types::ValueType::Package`], and the module layer's one
     /// new value form.
     ///
     /// It carries a witness type for each abstract type component the signature
@@ -887,9 +887,9 @@ pub enum Value
     /// abstract: the grade-`r` thunked module returner the package
     /// internalizes. Checking substitutes the witnesses into the
     /// signature's payload simultaneously
-    /// ([`crate::judgements::package::instantiate`]) and checks `payload`
-    /// against the result, so the packer's representation is checked at the
-    /// representation and hidden everywhere after.
+    /// (`gandr_core_checker::judgements::package::instantiate`) and checks
+    /// `payload` against the result, so the packer's representation is
+    /// checked at the representation and hidden everywhere after.
     ///
     /// **Check-only, and the witnesses are why.** A pack in inference position
     /// is stuck ([`crate::error::text::ANNOTATE_PACK`]), like
@@ -1254,7 +1254,7 @@ impl Value
 /// `op` names the handled operation (which must be an operation of the
 /// handler's signature `E`). `payload` binds `p` (the op's payload `A_op`) and
 /// `resume` binds `k` (the captured continuation, a
-/// [`crate::term::types::ValueType::Stk`] value `Stk(F^ε B_op, F^ε C)`); `body`
+/// [`crate::types::ValueType::Stk`] value `Stk(F^ε B_op, F^ε C)`); `body`
 /// is the clause's computation `t`, checked against the handler's answer `F^ε
 /// C`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -1303,15 +1303,15 @@ impl OpClause
 /// (ADR-76; the full Martin-Löf dinatural form).
 ///
 /// This is part of the `Walk` **syntax form** — like a `case` arm's binder —
-/// NOT a first-class function: gandr's [`crate::term::types::CompType::Arrow`]
+/// NOT a first-class function: gandr's [`crate::types::CompType::Arrow`]
 /// is non-dependent, so a motive binding value endpoints inside its result type
 /// is not typeable as a standalone value. The three binders `x`, `y`, `q` are
 /// value variables ([`Value::Var`]) that appear inside the
-/// [`crate::term::types::ValueType::Path`] sub-terms of `body`; the motive
+/// [`crate::types::ValueType::Path`] sub-terms of `body`; the motive
 /// lands in a **computation type** (`F`-wrapped value motives are the special
 /// case), so transport can eliminate into arbitrary computations. Motive
 /// instantiation is the value-into-type substitution of
-/// [`crate::judgements::identity`].
+/// [`crate::identity`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct WalkMotive
 {
@@ -1398,13 +1398,13 @@ impl WalkBase
 ///
 /// Like [`WalkMotive`], this is part of the `Split` **syntax form** — a
 /// `case`-arm-style binder, NOT a first-class function: gandr's
-/// [`crate::term::types::CompType::Arrow`] is non-dependent, so a motive
+/// [`crate::types::CompType::Arrow`] is non-dependent, so a motive
 /// binding a value inside its result type is not typeable as a standalone
 /// value. The single value binder `z` ([`Value::Var`]) appears inside the
-/// [`crate::term::types::ValueType::Path`] sub-terms (or a `Σ` tail) of `body`,
+/// [`crate::types::ValueType::Path`] sub-terms (or a `Σ` tail) of `body`,
 /// which lands in a **computation type** so elimination targets arbitrary
 /// computations. Motive instantiation is the value-into-type substitution of
-/// [`crate::judgements::identity::subst_comptype`]: the body checks against `M[(p, q)/z]`
+/// [`crate::identity::subst_comptype`]: the body checks against `M[(p, q)/z]`
 /// and the eliminator delivers `M[v/z]` (ADR-82 D2). A motive-bearing split
 /// **infers** (rule `SplitMotive`⇑); the motive-less form is check-only (rule
 /// Split⇓, [`Comp::split`]).
@@ -1487,7 +1487,7 @@ pub enum Comp
     ),
     /// **Declared-data elimination** `case v { C₀(x₀) → t₀ | … }` — the case
     /// over a constructor tag, the eliminator of
-    /// [`crate::term::types::ValueType::Data`] (ADR-80 Decision 3), mirroring
+    /// [`crate::types::ValueType::Data`] (ADR-80 Decision 3), mirroring
     /// [`Self::Case`] for a `k`-constructor datatype.
     ///
     /// `arms` is one `(binder, body)` per constructor, positionally: arm `i`
@@ -1495,7 +1495,7 @@ pub enum Comp
     /// constructor's field-tuple `payload`. A nullary constructor's arm binds a
     /// discard binder to the unit payload; a one-field constructor's arm binds
     /// the field. **Check-only** (like [`Self::Case`]): it infers the scrutinee
-    /// (which must be a [`crate::term::types::ValueType::Data`] or `Unknown`)
+    /// (which must be a [`crate::types::ValueType::Data`] or `Unknown`)
     /// and checks each arm against the expected answer, binding each arm's
     /// payload binder at `Unknown` — the frozen core carries the nominal
     /// tag but not the constructor field types (those live in the decl
@@ -1513,7 +1513,7 @@ pub enum Comp
     /// value-model ladder's structural list eliminator (`ListCase`; ADR-40 D4).
     ///
     /// The non-recursive one-level destructor of
-    /// [`crate::term::types::ValueType::List`], the list analogue of
+    /// [`crate::types::ValueType::List`], the list analogue of
     /// [`Self::Case`]: it infers the scrutinee `v`, checks the `nil` body
     /// against the expected answer, and checks the `cons` body under `head
     /// : A, tail : List A` (a matched-`Unknown` scrutinee binds both
@@ -1549,7 +1549,7 @@ pub enum Comp
     /// * **with a motive** the split *infers* (rule `SplitMotive`⇑) — the body
     ///   checks against `M[(p, q)/z]` and the split delivers `M[v/z]`, built
     ///   from the outer-scoped `M` and the scrutinee `v`, so **no binder can
-    ///   escape into it** (the [`crate::judgements::identity::subst_comptype`]
+    ///   escape into it** (the [`crate::identity::subst_comptype`]
     ///   instantiation, untraced pure type computation);
     /// * **without a motive** the split is *check-only* (rule Split⇓,
     ///   [`Comp::split`]) — the expectation `C` arrives binder-free from the
@@ -1668,7 +1668,7 @@ pub enum Comp
     /// a returner answer `F^ε C` (like [`Self::Case`]): the return clause
     /// and each operation clause check against that answer, the
     /// continuation binder `k` is a first-class
-    /// [`crate::term::types::ValueType::Stk`] value `Stk(F^ε B_i, F^ε C)` (deep
+    /// [`crate::types::ValueType::Stk`] value `Stk(F^ε B_i, F^ε C)` (deep
     /// — it delivers the same answer, ADR-33 D4), and the residual row `ε_t
     /// ∖ E` of the handled computation must fit the answer's row `ε` (the
     /// soundness leg, discharged by the inlined Sub rule).
@@ -1689,7 +1689,7 @@ pub enum Comp
     /// Resuming a reified stack: `resume v t` (`effects-control-shell.md` §2.1
     /// rule Resume; contract §6.2; A3.3 `+control`).
     ///
-    /// The elimination of [`crate::term::types::ValueType::Stk`], structurally
+    /// The elimination of [`crate::types::ValueType::Stk`], structurally
     /// an application whose "function" is the stack value `v` and whose
     /// "argument" is the computation `t`: `v` infers `Stk(B, C)`, `t`
     /// checks against the consumed `B`, and the result is the delivered
@@ -1735,7 +1735,7 @@ pub enum Comp
     /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5).
     ///
     /// As [`Value::Hole`]: an axiom that infers
-    /// [`crate::term::types::CompType::Unknown`] and checks against any
+    /// [`crate::types::CompType::Unknown`] and checks against any
     /// expected type.
     Hole(
         /// The hole's identifier (ignored by typing; see [`HoleId`]).
@@ -1777,7 +1777,7 @@ pub enum Comp
     },
     /// The **Martin-Löf identity eliminator** `walk(p, (x y q). C, (x). c)` —
     /// the full dinatural form, the sole primitive eliminator of
-    /// [`crate::term::types::ValueType::Path`] (ADR-76; rule `Walk`).
+    /// [`crate::types::ValueType::Path`] (ADR-76; rule `Walk`).
     ///
     /// gandr's **first dependent eliminator**. Given a scrutinee `p ⇑ Path A a
     /// b`, a motive `C(x, y, q)` over both endpoints and the path
@@ -1786,7 +1786,7 @@ pub enum Comp
     /// it is **inference-capable** — the explicit motive is what makes the
     /// result type inferable (`Walk⇑`); a `Walk⇓` is derived by subsumption.
     /// The motive is untraced pure type computation (instantiated by
-    /// [`crate::judgements::identity`]); the two traced premises are the
+    /// [`crate::identity`]); the two traced premises are the
     /// scrutinee (value, inferred) and the base body (computation,
     /// checked), so `Walk` traces exactly like `Case`.
     ///
@@ -1809,7 +1809,7 @@ pub enum Comp
         base: WalkBase,
     },
     /// **Package elimination** `unpack v : σ as ⟨ā⟩ m in t` — the sole
-    /// eliminator of [`crate::term::types::ValueType::Package`], and the place
+    /// eliminator of [`crate::types::ValueType::Package`], and the place
     /// abstraction is actually bought.
     ///
     /// The scrutinee is **checked** against the ascribed signature rather than
@@ -1817,7 +1817,7 @@ pub enum Comp
     /// package is opaque to core-type inference, so no rule reconstructs a
     /// module type from a core term's structure. The signature's abstract type
     /// components are then discharged with the atoms in `atoms` — one fresh
-    /// [`crate::term::types::ValueType::Sealed`] per component — and `m` is
+    /// [`crate::types::ValueType::Sealed`] per component — and `m` is
     /// bound to the payload at the resulting type.
     ///
     /// # Minting here is the whole point
@@ -1832,11 +1832,12 @@ pub enum Comp
     ///
     /// The atoms are **recorded in the term rather than invented by typing**,
     /// which is the sealing rung's own discipline
-    /// ([`crate::judgements::seal::SealTable`]): the elaborator mints against a
-    /// table that refuses a repeated site, records what it minted, and a
-    /// reader re-derives and refutes. Typing checks what it can decide
-    /// locally — one atom per component, pairwise distinct — and does not
-    /// pretend to a freshness property no state-free pass can establish.
+    /// (`gandr_core_checker::judgements::seal::SealTable`): the elaborator
+    /// mints against a table that refuses a repeated site, records what it
+    /// minted, and a reader re-derives and refutes. Typing checks what it
+    /// can decide locally — one atom per component, pairwise distinct — and
+    /// does not pretend to a freshness property no state-free pass can
+    /// establish.
     ///
     /// # Check-only, and the avoidance fence that follows
     ///
@@ -5835,11 +5836,11 @@ mod tests
     use super::Stack;
     use super::Value;
     use super::ValueNode;
-    use crate::discipline::boundary::IntegerLiteral;
-    use crate::discipline::boundary::NodeIndex;
-    use crate::discipline::grade::Grade;
-    use crate::term::types::CompType;
-    use crate::term::types::ValueType;
+    use crate::boundary::IntegerLiteral;
+    use crate::boundary::NodeIndex;
+    use crate::grade::Grade;
+    use crate::types::CompType;
+    use crate::types::ValueType;
 
     /// The ADR-50 arena substrate allocates stable typed ids and exposes only
     /// checked lookup.

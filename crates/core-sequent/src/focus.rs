@@ -72,15 +72,15 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::EffectSignatureName;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::OpClause;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Stack;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
+use gandr_core_term::boundary::EffectSignatureName;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
 
 use crate::boundary::FocusResultCount;
 use crate::boundary::UnsupportedFormerStatus;
@@ -1328,7 +1328,7 @@ impl Focuser
 /// Focuses a checked-core computation into an **existing** command arena.
 ///
 /// The re-focusing entry the L machine drives when a saturated higher-order
-/// native's result term (`gandr_core_checker::prim`) must be lowered back into
+/// native's result term (`gandr_core_term::prim`) must be lowered back into
 /// the live machine arena and run against the ambient continuation
 /// ([`crate::machine`] `dispatch_native_higher_order`).
 ///
@@ -1643,7 +1643,7 @@ enum FocusTask<'src>
     BuildNative
     {
         /// The native primitive.
-        prim: gandr_core_checker::prim::NativePrim,
+        prim: gandr_core_term::prim::NativePrim,
         /// The number of argument producers on the result stack.
         len: usize,
         /// The continuation consumer.
@@ -1951,7 +1951,7 @@ impl PreludeFocused
 ///
 /// Later bindings shadow earlier ones (the CEK's reverse lookup); a binding
 /// whose winning value is not a thunk does not resolve (a force miss stays
-/// [`gandr_core_checker::outcome::StuckReason::ForcedNonThunk`], as the CEK).
+/// [`gandr_core_term::outcome::StuckReason::ForcedNonThunk`], as the CEK).
 /// The empty prelude reproduces [`focus_comp`] exactly — an empty table, so
 /// every force-position free name still halts at `ForcedNonThunk`.
 ///

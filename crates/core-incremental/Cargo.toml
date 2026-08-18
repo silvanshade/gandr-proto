@@ -18,9 +18,12 @@ path = "tests/lib.rs"
 [dependencies]
 # BLAKE3 gives persisted checkpoint identities a stable content address.
 blake3.workspace = true
-# The core CBPV vocabulary an item carries and the typing machine that types it:
-# `syntax::Term`, `types::Ty`, `ctx::Ctx`, `error::TypeError`, and `machine`.
+# The typing machine an item is re-typed through, and the marking layer the
+# checkpoint validator reads.
 gandr-core-checker.workspace = true
+# The core CBPV vocabulary an item carries: `syntax::Term`, `types::Ty`,
+# `ctx::Ctx`, and `error::TypeError`.
+gandr-core-term.workspace = true
 # The order-maintenance substrate (`incremental-pipeline.md`
 # §"pipeline-decision-02", the Porter disposition): the resume splices the item
 # order onto it so a matched item keeps its stable identity across

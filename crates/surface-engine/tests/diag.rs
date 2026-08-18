@@ -2,7 +2,7 @@
 //! class:
 //!
 //! 1. [`tests::coverage`] — the error corpus drives **every reachable**
-//!    [`TypeError`](gandr_core_checker::error::TypeError) variant (each shape,
+//!    [`TypeError`](gandr_core_term::error::TypeError) variant (each shape,
 //!    each hint) through the full pipeline (lower → machine), pinning that the
 //!    diagnostics surface covers the inventory.
 //! 2. [`tests::golden`] — one golden JSON [`Report`] per corpus fixture, plus
@@ -586,10 +586,10 @@ mod tests
             use gandr_core_checker::discipline::mark::mark_comp;
             use gandr_core_checker::discipline::mark::mark_value;
             use gandr_core_checker::machine::control::Dir;
-            use gandr_core_checker::term::ctx::Ctx;
-            use gandr_core_checker::term::syntax::Term;
-            use gandr_core_checker::term::types::Ty;
             use gandr_core_incremental::region::Item;
+            use gandr_core_term::ctx::Ctx;
+            use gandr_core_term::syntax::Term;
+            use gandr_core_term::types::Ty;
 
             fn marking_of(
                 item: &Item,

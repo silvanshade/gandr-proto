@@ -12,17 +12,17 @@
 //! The durable driver is the **L machine**
 //! ([`gandr_core_sequent::machine::run_comp_with_host`]): [`run_program`] hands
 //! a lowered program and a host handler to it and reads back an
-//! [`Eval`](gandr_core_checker::outcome::Eval). The seam it binds is the
+//! [`Eval`](gandr_core_term::outcome::Eval). The seam it binds is the
 //! representation-independent host-effect boundary in
-//! [`gandr_core_checker::effect::host`] — the `(signature name, operation name,
+//! [`gandr_core_term::effect::host`] — the `(signature name, operation name,
 //! payload)` projection every driver over the seam presents identically, so a
 //! host runtime is interchangeable against the machine without changing
 //! observable outcomes.
 //!
 //! Two runtime faces, both consuming the canonical signature API in
-//! [`gandr_core_checker::effect::host`]:
+//! [`gandr_core_term::effect::host`]:
 //! - [`ShellHandler`] — the
-//!   [`gandr_core_checker::effect::host::HostHandler`]-shaped dispatcher
+//!   [`gandr_core_term::effect::host::HostHandler`]-shaped dispatcher
 //!   ([`ShellHandler::dispatch`]) that carries each intercepted operation out
 //!   to a real syscall over `std::process` / `std::fs` / `std::env`.
 //! - [`run_program`] — the driver that flows a program through the host-effect
@@ -42,13 +42,13 @@
 //! `gandr_surface_engine::run::run_source` composes the engine's lowering,
 //! linking, and prelude checking with [`run_program_with_prelude`]. This
 //! headless host accepts already-lowered, hand-built
-//! [`Comp`](gandr_core_checker::term::syntax::Comp) programs through
+//! [`Comp`](gandr_core_term::syntax::Comp) programs through
 //! [`run_program`].
 //!
 //! ```
-//! use gandr_core_checker::effect;
-//! use gandr_core_checker::term::syntax::Comp;
-//! use gandr_core_checker::term::syntax::Value;
+//! use gandr_core_term::effect;
+//! use gandr_core_term::syntax::Comp;
+//! use gandr_core_term::syntax::Value;
 //! use gandr_runtime_effects::run_program;
 //!
 //! // perform Exec::exec {program: "true", args: []} >>= r. ret r

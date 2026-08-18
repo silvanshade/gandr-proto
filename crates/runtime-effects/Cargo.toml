@@ -11,8 +11,10 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
+# The host-effect seam this runtime implements, plus the term, type, and
+# outcome vocabulary a handler exchanges with the L machine.
+gandr-core-term.workspace = true
 thiserror = { workspace = true }
 
 [features]

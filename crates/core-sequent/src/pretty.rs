@@ -13,8 +13,8 @@ use alloc::string::String;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use gandr_core_checker::term::syntax::NumLit;
-use gandr_core_checker::term::syntax::Side;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
 
 use crate::boundary::RenderDepth;
 use crate::boundary::RenderToken;
@@ -659,9 +659,9 @@ fn prim_op(op: PrimOp) -> String
 
 /// A stable spelling of a native builtin (avoids a `Debug` widening on the
 /// tag).
-fn native_name(prim: gandr_core_checker::prim::NativePrim) -> RenderToken<'static>
+fn native_name(prim: gandr_core_term::prim::NativePrim) -> RenderToken<'static>
 {
-    use gandr_core_checker::prim::NativePrim;
+    use gandr_core_term::prim::NativePrim;
     match prim {
         | NativePrim::Id => "id",
         | NativePrim::Const => "const",
@@ -719,10 +719,10 @@ fn native_name(prim: gandr_core_checker::prim::NativePrim) -> RenderToken<'stati
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
 
     use super::*;
     use crate::focus;

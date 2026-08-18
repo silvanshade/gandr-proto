@@ -18,20 +18,20 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::discipline::boundary::IntegerLiteral;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect::EffectRow;
     use gandr_core_checker::machine::control::Dir;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::ctx::Ctx;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Side;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::SealId;
-    use gandr_core_checker::term::types::Ty;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine::run_comp;
+    use gandr_core_term::boundary::IntegerLiteral;
+    use gandr_core_term::ctx::Ctx;
+    use gandr_core_term::effect::EffectRow;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Side;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::SealId;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
 
     /// `U_ω (F payload)`.
     fn returner_thunk(payload: ValueType) -> ValueType

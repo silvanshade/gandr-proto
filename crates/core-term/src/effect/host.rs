@@ -18,7 +18,7 @@
 //! module is the seam's durable home precisely because the boundary outlives
 //! any one machine.
 //!
-//! It lives under [`crate::effect`]: [`crate::discipline::boundary`] is the
+//! It lives under [`crate::effect`]: [`crate::boundary`] is the
 //! newtype vocabulary, the parent module is the effect-row algebra, and this
 //! submodule owns the representation-independent host seam plus its canonical
 //! signatures.
@@ -26,11 +26,11 @@
 use alloc::string::String;
 use alloc::vec;
 
-use crate::discipline::boundary::OperationName;
+use crate::boundary::OperationName;
 use crate::effect::EffectOp;
 use crate::effect::EffectSig;
-use crate::term::syntax::Value;
-use crate::term::types::ValueType;
+use crate::syntax::Value;
+use crate::types::ValueType;
 
 /// The host's reply to an intercepted effect operation.
 ///

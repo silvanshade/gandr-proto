@@ -51,22 +51,25 @@
 
 use alloc::rc::Rc;
 
-use crate::discipline::boundary::IntegerLiteral;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::PackageArity;
-use crate::discipline::boundary::SubtypeDecision;
-use crate::error::TypeError;
+use gandr_core_term::boundary::IntegerLiteral;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::PackageArity;
+use gandr_core_term::boundary::SubtypeDecision;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::intern::TypeId;
+use gandr_core_term::intern::TypeInterner;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
+
 use crate::machine::control::Dir;
 use crate::nbe::Normalizer;
 use crate::nbe::conv::converts;
 use crate::nbe::conv::type_converts;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
 
 /// Completes the integer-literal rule under a direction (ADR-39 D4) — the
 /// checking-mode-polymorphic counterpart of [`finish_value`] for
-/// [`crate::term::syntax::Value::Int`].
+/// [`gandr_core_term::syntax::Value::Int`].
 ///
 /// In inference mode an integer literal is the rigid `Integer` atom (frozen,
 /// A2.1). In checking mode it additionally accepts any integer numeric atom it
@@ -457,10 +460,12 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                             Rc::clone(lo_snd)
                         }
                         else {
-                            Rc::new(crate::judgements::identity::subst_valuetype(
+                            Rc::new(gandr_core_term::identity::subst_valuetype(
                                 lo_snd,
                                 NameRef::from(lo_binder.as_str()),
-                                &crate::term::syntax::Value::var(NameRef::from(hi_binder.as_str())),
+                                &gandr_core_term::syntax::Value::var(NameRef::from(
+                                    hi_binder.as_str(),
+                                )),
                             ))
                         };
                         let nbe = nbe.get_or_insert_with(Normalizer::new);
@@ -586,7 +591,7 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
 #[inline]
 #[must_use]
 pub(crate) fn pick<T>(
-    side: crate::term::syntax::Side,
+    side: gandr_core_term::syntax::Side,
     fst: &Rc<T>,
     snd: &Rc<T>,
 ) -> T
@@ -594,8 +599,65 @@ where
     T: Clone,
 {
     match side {
-        | crate::term::syntax::Side::Fst => fst.as_ref().clone(),
-        | crate::term::syntax::Side::Snd => snd.as_ref().clone(),
+        | gandr_core_term::syntax::Side::Fst => fst.as_ref().clone(),
+        | gandr_core_term::syntax::Side::Snd => snd.as_ref().clone(),
+    }
+}
+
+/// Decides `sub ≲ sup` on two ids minted by `interner`.
+///
+/// Intern identity is an O(1) reflexive short-circuit taken before any
+/// structural descent — the interned analogue of the `core::ptr::eq` fast path
+/// inside [`value_subtype`], but catching *structurally* equal
+/// address-distinct types too, since those share an id.
+///
+/// The relation lives here rather than on the interner because the interner is
+/// substrate: it knows type identity and nothing about subsumption, and a
+/// substrate that named this relation would depend on the crate that decides
+/// it.
+///
+/// # Contract
+/// - requires: `sub` and `sup` were both minted by `interner`; an id from
+///   another interner, or one never minted, resolves to nothing and so returns
+///   `false`.
+/// - ensures: returns `true` iff the type at `sub` is a consistent subtype of
+///   the type at `sup` — same-sort structural subtyping via [`value_subtype`] /
+///   [`comp_subtype`]. Identical ids return `true` in O(1) (reflexivity,
+///   admissible per `type-system.md` §"Algorithmic subtyping and the worklist
+///   solver"); a value id against a computation id returns `false`, because no
+///   value type is a subtype of a computation type or conversely. The verdict
+///   equals the structural relation on the resolved types, so the id
+///   short-circuit is a pure optimization.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 — the id-equality short-circuit never disagrees with
+///   structural subtyping, because it only pre-empts the reflexive case, which
+///   the structural relation also accepts.
+/// - witness: `gandr_core_checker::interning::interned_subtype_agrees_with_structural_value`
+/// - witness: `gandr_core_checker::interning::interned_subtype_agrees_with_structural_comp`
+/// - witness: `tests::interned_subtype_takes_the_reflexive_hit`
+/// - witness: `tests::interned_subtype_falls_back_to_structural_descent`
+/// - witness: `tests::interned_subtype_refuses_cross_sort_and_foreign_ids`
+#[inline]
+#[must_use]
+pub fn interned_subtype(
+    interner: &TypeInterner,
+    sub: TypeId,
+    sup: TypeId,
+) -> SubtypeDecision
+{
+    // Reflexive intern hit: equal ids ⟹ structurally identical types ⟹
+    // (consistent) subtypes, decided in O(1) without any descent.
+    if sub == sup {
+        return true.into();
+    }
+    match (interner.resolve(sub), interner.resolve(sup)) {
+        | (Some(&Ty::Value(ref lo)), Some(&Ty::Value(ref hi))) => value_subtype(lo, hi),
+        | (Some(&Ty::Comp(ref lo)), Some(&Ty::Comp(ref hi))) => comp_subtype(lo, hi),
+        // Cross-sort (a value type and a computation type never relate) or an id
+        // this interner never minted.
+        | _ => false.into(),
     }
 }
 
@@ -604,9 +666,15 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::intern::TypeInterner;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::SealId;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
+
+    use super::interned_subtype;
     use super::value_subtype;
-    use crate::term::types::SealId;
-    use crate::term::types::ValueType;
 
     /// The top-level reflexive entry `value_subtype(&x, &x)` short-circuits
     /// through the `core::ptr::eq` fast-path (ADR-50 Decision B).
@@ -625,25 +693,26 @@ mod tests
     #[test]
     fn path_endpoints_relate_up_to_beta_since_the_normalizer_decides_them()
     {
-        let redex = Rc::new(crate::term::syntax::Value::Thunk(
-            crate::discipline::grade::Grade::ONE,
-            Rc::new(crate::term::syntax::Comp::app(
-                crate::term::syntax::Comp::lam(
+        let redex = Rc::new(gandr_core_term::syntax::Value::Thunk(
+            gandr_core_term::grade::Grade::ONE,
+            Rc::new(gandr_core_term::syntax::Comp::app(
+                gandr_core_term::syntax::Comp::lam(
                     "x",
-                    crate::term::syntax::Comp::ret(crate::term::syntax::Value::var(
-                        crate::discipline::boundary::NameRef::from("x"),
+                    gandr_core_term::syntax::Comp::ret(gandr_core_term::syntax::Value::var(
+                        gandr_core_term::boundary::NameRef::from("x"),
                     )),
                 ),
-                crate::term::syntax::Value::Int(3),
+                gandr_core_term::syntax::Value::Int(3),
             )),
         ));
-        let contractum = Rc::new(crate::term::syntax::Value::Thunk(
-            crate::discipline::grade::Grade::ONE,
-            Rc::new(crate::term::syntax::Comp::ret(
-                crate::term::syntax::Value::Int(3),
+        let contractum = Rc::new(gandr_core_term::syntax::Value::Thunk(
+            gandr_core_term::grade::Grade::ONE,
+            Rc::new(gandr_core_term::syntax::Comp::ret(
+                gandr_core_term::syntax::Value::Int(3),
             )),
         ));
-        let path = |lhs: &Rc<crate::term::syntax::Value>, rhs: &Rc<crate::term::syntax::Value>| {
+        let path = |lhs: &Rc<gandr_core_term::syntax::Value>,
+                    rhs: &Rc<gandr_core_term::syntax::Value>| {
             ValueType::Path {
                 ty: Rc::new(ValueType::integer()),
                 lhs: Rc::clone(lhs),
@@ -657,10 +726,10 @@ mod tests
         // Endpoints that are genuinely apart still do not relate.
         let apart = path(
             &contractum,
-            &Rc::new(crate::term::syntax::Value::Thunk(
-                crate::discipline::grade::Grade::ONE,
-                Rc::new(crate::term::syntax::Comp::ret(
-                    crate::term::syntax::Value::Int(4),
+            &Rc::new(gandr_core_term::syntax::Value::Thunk(
+                gandr_core_term::grade::Grade::ONE,
+                Rc::new(gandr_core_term::syntax::Comp::ret(
+                    gandr_core_term::syntax::Value::Int(4),
                 )),
             )),
         );
@@ -743,5 +812,107 @@ mod tests
         // Shared allocation ⇒ the two inner references have equal addresses.
         assert!(core::ptr::eq(shared.as_ref(), clone.as_ref()));
         assert!(bool::from(value_subtype(shared.as_ref(), clone.as_ref())));
+    }
+
+    /// A small nested value type, rebuilt from fresh allocations on each call
+    /// so two invocations are structurally equal and share no interior address
+    /// — which is what makes the interner's dedup a content decision and keeps
+    /// the structural descent below genuinely exercised.
+    fn fresh_nested() -> ValueType
+    {
+        ValueType::prod(
+            ValueType::list(ValueType::atom("A")),
+            ValueType::thunk(Grade::OMEGA, CompType::returner(ValueType::integer())),
+        )
+    }
+
+    /// Reflexive hit: an address-distinct rebuild interns to the same id, so
+    /// [`interned_subtype`] answers in O(1) — and it agrees with the structural
+    /// [`value_subtype`] over the two address-distinct values, which is the
+    /// non-vacuous reflexive descent.
+    #[test]
+    fn interned_subtype_takes_the_reflexive_hit()
+    {
+        let lhs = fresh_nested();
+        let rhs = fresh_nested();
+        // The addresses differ, so `value_subtype`'s `ptr::eq` fast path cannot
+        // pre-empt: the relation holds by structural reflexivity.
+        assert!(
+            bool::from(value_subtype(&lhs, &rhs)),
+            "reflexivity holds structurally"
+        );
+
+        let mut interner = TypeInterner::new();
+        let lhs_id = interner.intern(&Ty::Value(lhs));
+        let rhs_id = interner.intern(&Ty::Value(rhs));
+        assert_eq!(lhs_id, rhs_id, "the rebuild deduped to the same id");
+        assert!(
+            bool::from(interned_subtype(&interner, lhs_id, rhs_id)),
+            "same id gives the O(1) reflexive hit"
+        );
+    }
+
+    /// Structural fallback on distinct ids: `U_ω B <: U_1 B` because `1 ⊑ ω`,
+    /// and not conversely. The two thunks intern to distinct ids, so
+    /// [`interned_subtype`] takes the structural path and matches
+    /// [`value_subtype`] in both directions.
+    #[test]
+    fn interned_subtype_falls_back_to_structural_descent()
+    {
+        let omega = ValueType::thunk(Grade::OMEGA, CompType::returner(ValueType::integer()));
+        let one = ValueType::thunk(Grade::ONE, CompType::returner(ValueType::integer()));
+
+        let mut interner = TypeInterner::new();
+        let omega_id = interner.intern(&Ty::Value(omega.clone()));
+        let one_id = interner.intern(&Ty::Value(one.clone()));
+        assert_ne!(omega_id, one_id, "different grades give different ids");
+
+        assert_eq!(
+            interned_subtype(&interner, omega_id, one_id),
+            value_subtype(&omega, &one),
+            "the interned verdict matches structural subtyping"
+        );
+        assert!(
+            bool::from(interned_subtype(&interner, omega_id, one_id)),
+            "U_ω B <: U_1 B, since 1 ⊑ ω"
+        );
+        assert_eq!(
+            interned_subtype(&interner, one_id, omega_id),
+            value_subtype(&one, &omega),
+            "the interned negative verdict matches structural subtyping"
+        );
+        assert!(
+            !bool::from(interned_subtype(&interner, one_id, omega_id)),
+            "U_1 B is not below U_ω B, so the relation stays directional"
+        );
+    }
+
+    /// The two refusals the resolve guard buys: a value id never relates to a
+    /// computation id, and an id this interner never minted resolves to
+    /// nothing. The foreign id is minted by a second interner, which is how a
+    /// caller reaches the unresolvable case through the public API.
+    #[test]
+    fn interned_subtype_refuses_cross_sort_and_foreign_ids()
+    {
+        let mut interner = TypeInterner::new();
+        let value_id = interner.intern(&Ty::Value(ValueType::integer()));
+        let comp_id = interner.intern(&Ty::Comp(CompType::returner(ValueType::integer())));
+        assert!(
+            !bool::from(interned_subtype(&interner, value_id, comp_id)),
+            "a value type is not a subtype of a computation type"
+        );
+        assert!(
+            !bool::from(interned_subtype(&interner, comp_id, value_id)),
+            "nor the converse"
+        );
+
+        let mut foreign = TypeInterner::new();
+        let _first = foreign.intern(&Ty::Value(ValueType::integer()));
+        let _second = foreign.intern(&Ty::Value(ValueType::atom("A")));
+        let third = foreign.intern(&Ty::Value(ValueType::atom("B")));
+        assert!(
+            !bool::from(interned_subtype(&interner, value_id, third)),
+            "an id minted by another interner never relates"
+        );
     }
 }

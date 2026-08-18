@@ -3,12 +3,12 @@
 //!
 //! `𝓕` erases the direct-style source syntax into the polarized command IL; a
 //! machine value's suspended body therefore no longer carries a source
-//! [`gandr_core_checker::term::syntax::Comp`]. This module reconstructs that
+//! [`gandr_core_term::syntax::Comp`]. This module reconstructs that
 //! source syntax from the focused IL, so:
 //!
 //! - a higher-order native combinator (`each` / `where` / `reduce` / `any` /
 //!   `all` / `update_where`) can un-focus its thunk-closure arguments to source
-//!   [`Value`]s and dispatch through the shared `gandr_core_checker::prim`
+//!   [`Value`]s and dispatch through the shared `gandr_core_term::prim`
 //!   registry exactly as the CEK oracle does ([`crate::machine`]
 //!   `dispatch_native_higher_order`);
 //! - a returned thunk / function / lazy-pair / partial-native terminal reads
@@ -51,18 +51,18 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::EffectSignatureName;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::OpClause;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Stack;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::syntax::WalkBase;
-use gandr_core_checker::term::syntax::WalkMotive;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::DataId;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::boundary::EffectSignatureName;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::WalkBase;
+use gandr_core_term::syntax::WalkMotive;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::DataId;
+use gandr_core_term::types::ValueType;
 
 use crate::focus::FocusOrigin;
 use crate::il::CoName;

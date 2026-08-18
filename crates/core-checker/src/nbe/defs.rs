@@ -35,15 +35,15 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::DefinitionCount;
-use crate::discipline::boundary::DefinitionHeightLevel;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::ScopeDepth;
-use crate::term::syntax::CompNode;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::ValueNode;
-use crate::term::syntax::ValueNodeId;
+use gandr_core_term::boundary::DefinitionCount;
+use gandr_core_term::boundary::DefinitionHeightLevel;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::ScopeDepth;
+use gandr_core_term::syntax::CompNode;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::ValueNode;
+use gandr_core_term::syntax::ValueNodeId;
 
 /// Whether the engine may unfold a definition speculatively.
 ///
@@ -167,9 +167,9 @@ impl Definitions
     /// Whether no scope binds any name.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> crate::discipline::boundary::InternerEmptyStatus
+    pub fn is_empty(&self) -> gandr_core_term::boundary::InternerEmptyStatus
     {
-        crate::discipline::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
+        gandr_core_term::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
     }
 
     /// Opens a nested scope.

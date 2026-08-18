@@ -45,7 +45,7 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_term::boundary::NameRef;
 
 use crate::boundary::CheckDepth;
 use crate::boundary::ConsumerArity;
@@ -826,9 +826,9 @@ mod tests
     use alloc::boxed::Box;
     use alloc::string::String;
 
-    use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
 
     use super::*;
     use crate::il::CommandNode;

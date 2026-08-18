@@ -123,27 +123,27 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 
-use gandr_core_checker::discipline::boundary::NameRef;
-use gandr_core_checker::discipline::boundary::SealComponentName;
-use gandr_core_checker::discipline::boundary::SealDeclarationName;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::nominal::GandrSort;
-use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::term::syntax::ArenaBridgeError;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::CompNodeId;
-use gandr_core_checker::term::syntax::FlatArena;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::syntax::ValueNodeId;
-use gandr_core_checker::term::syntax::WalkBase;
-use gandr_core_checker::term::syntax::WalkMotive;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::SealId;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::SealComponentName;
+use gandr_core_term::boundary::SealDeclarationName;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::nominal::GandrSort;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::ArenaBridgeError;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::WalkBase;
+use gandr_core_term::syntax::WalkMotive;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::SealId;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
 use gandr_surface_syntax::NodeId;
@@ -2086,7 +2086,7 @@ impl Lowerer<'_>
 
     /// Mints a fresh hole identifier — the next [`GandrSort::HoleAddr`] atom's
     /// identity, projected to the
-    /// [`HoleId`](gandr_core_checker::term::syntax::HoleId) addressing handle
+    /// [`HoleId`](gandr_core_term::syntax::HoleId) addressing handle
     /// the IR carries.
     fn fresh_hole(&mut self) -> FreshHoleId
     {
@@ -3944,7 +3944,7 @@ impl Lowerer<'_>
     /// Lowers a functional record update `#{ r | ℓ = v, … }` (value-semantics
     /// MVP, `proposal-value-semantics-mvp.md` §3.1) to a fresh-record rebuild
     /// `recordupdate r #{ ℓ = v, … }` over
-    /// [`gandr_core_checker::prim::NativePrim::RecordUpdate`]
+    /// [`gandr_core_term::prim::NativePrim::RecordUpdate`]
     /// ([`ElabKind::RecordUpdate`]).
     ///
     /// The base `r` and the overrides record both lower in *value position* (a

@@ -139,14 +139,14 @@
 //! 1. **Resolution at the elaboration boundary.** A path is resolved — here by
 //!    [`scope::Scope::resolve`] — to whatever the consumer bound at it, and
 //!    what that payload *is* varies today. A declared datatype's identity is a
-//!    [`gandr_core_checker::term::types::DataId`]: a declaration-order serial
-//!    plus the declared name, minted per declaration, so two `data Boolean`
-//!    declarations are distinct types. A user definition is still a string
-//!    binder in the checker's context. Only lowerer-minted binders and hole
-//!    addresses are atoms. What this layer contributes at that boundary is
-//!    narrower and exact: because paths are inert data, a *reachability*
-//!    collision surfaces as a shadow event instead of silently redirecting a
-//!    path to a different identity.
+//!    [`gandr_core_term::types::DataId`]: a declaration-order serial plus the
+//!    declared name, minted per declaration, so two `data Boolean` declarations
+//!    are distinct types. A user definition is still a string binder in the
+//!    checker's context. Only lowerer-minted binders and hole addresses are
+//!    atoms. What this layer contributes at that boundary is narrower and
+//!    exact: because paths are inert data, a *reachability* collision surfaces
+//!    as a shadow event instead of silently redirecting a path to a different
+//!    identity.
 //! 2. **Freshness is untouched by renaming.** `Gensym`'s mint reads no name, so
 //!    no path operation can perturb an atom's identity. A `DataId` embeds the
 //!    *declaration site's* name together with its serial, and a modifier moves
@@ -159,7 +159,7 @@
 //!
 //! [`gandr_theory_nominal_automata::Atom`]: gandr_theory_nominal_automata::Atom
 //! [`gandr_theory_nominal_automata::Gensym`]: gandr_theory_nominal_automata::Gensym
-//! [`gandr_core_checker::term::types::DataId`]: gandr_core_checker::term::types::DataId
+//! [`gandr_core_term::types::DataId`]: gandr_core_term::types::DataId
 
 pub mod event;
 pub mod modifier;

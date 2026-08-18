@@ -16,19 +16,15 @@ name = "checker"
 path = "tests/lib.rs"
 
 [dependencies]
+# The core CBPV term substrate every judgement here is stated over: syntax,
+# types, contexts, substitution, interning, effect rows, grades, builtins, and
+# the shared error, outcome, and wrapper vocabulary.
+gandr-core-term.workspace = true
 # The minimal certified kernel's S1 core (kernel-boundary.md §2). The B2.3
 # bridge lowers checked core CBPV forms into the closed S1 vocabulary; this
 # dependency direction is the permitted one — the section-2 TCB wall forbids the
 # reverse (gandr-kernel-core depends on gandr-kernel-strata ONLY).
 gandr-kernel-core.workspace = true
-# The nominal atom substrate (ADR-41). This crate names its `Sort` trait and
-# `Unifiability`, and nothing else: `nominal::GandrSort` is the sort vocabulary
-# every machine-minted name-space is tagged with, and the trait impl is what
-# draws the atom-role/variable-role boundary. Minting happens in the crates that
-# allocate — the lowerer holds the `Gensym`s.
-gandr-theory-nominal-automata.workspace = true
-no-panic.workspace = true
-regex = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
@@ -50,9 +46,9 @@ proptest.workspace = true
 [features]
 default = []
 full = ["gandr_feat_regex"]
-# Regex-backed builtins (`regex.extract`, `string.escape`); pulls in the
-# workspace `regex`. Off by default.
-gandr_feat_regex = ["dep:regex"]
+# Regex-backed builtins (`regex.extract`, `string.escape`), which live with the
+# builtin registry in the substrate. Off by default.
+gandr_feat_regex = ["gandr-core-term/gandr_feat_regex"]
 
 [lints]
 workspace = true

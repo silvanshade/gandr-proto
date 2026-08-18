@@ -58,14 +58,14 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 
 use super::COut;
 use super::EOut;

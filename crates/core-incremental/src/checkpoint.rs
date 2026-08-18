@@ -28,7 +28,7 @@
 //! "re-validate, not blindly reuse" refinement: reuse is keyed on whether the
 //! binding actually changed, not on whether some upstream item was edited.
 //!
-//! [`Ctx`]: gandr_core_checker::term::ctx::Ctx
+//! [`Ctx`]: gandr_core_term::ctx::Ctx
 //!
 //! # The order structure (§"pipeline-decision-02", the Porter disposition)
 //!
@@ -59,14 +59,14 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::error::TypeError;
 use gandr_core_checker::machine;
 use gandr_core_checker::machine::control::Dir;
-use gandr_core_checker::term::ctx::Ctx;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 use gandr_theory_orders::OrderMaintenance;
 use gandr_theory_orders::Pos;
 

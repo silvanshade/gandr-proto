@@ -20,8 +20,8 @@ use alloc::string::String;
 use std::path::Path;
 use std::path::PathBuf;
 
-use gandr_core_checker::error::TypeError;
 use gandr_core_checker::judgements::checker;
+use gandr_core_term::error::TypeError;
 use gandr_runtime_effects::ShellOutcome;
 use gandr_runtime_effects::run_program_with_prelude;
 
@@ -36,7 +36,7 @@ use crate::prelude_env;
 pub struct PreparedSource
 {
     /// The linked and type-checked computation.
-    pub comp: gandr_core_checker::term::syntax::Comp,
+    pub comp: gandr_core_term::syntax::Comp,
     /// The ambient bindings used by the evaluator.
     pub prelude: crate::prelude::Prelude,
     /// Foreign modules declared by this source.

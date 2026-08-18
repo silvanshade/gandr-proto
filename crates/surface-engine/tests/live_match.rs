@@ -25,10 +25,6 @@ mod tests
     use alloc::vec::Vec;
 
     use gandr_core_checker::discipline::mark::Mark;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::DataId;
     use gandr_core_incremental::boundary::MatchOrdinal;
     use gandr_core_incremental::boundary::SourceItemOrdinal;
     use gandr_core_incremental::boundary::SubmissionOrdinal;
@@ -37,6 +33,10 @@ mod tests
     use gandr_core_incremental::stream::MatchOrigin as PublishedOrigin;
     use gandr_core_incremental::stream::SynthesisEvent;
     use gandr_core_sequent::machine::run_comp;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::DataId;
     use gandr_surface_engine::boundary::MatchIndex;
     use gandr_surface_engine::boundary::SourceItemId;
     use gandr_surface_engine::boundary::SourceRange;

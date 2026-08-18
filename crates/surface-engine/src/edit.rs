@@ -80,17 +80,17 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::OpClause;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::SplitMotive;
-use gandr_core_checker::term::syntax::Term;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::Ty;
-use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
+use gandr_core_term::effect::EffectSig;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::SplitMotive;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 
 use crate::boundary::AlignmentOffset;
 use crate::boundary::DefinitionName;

@@ -59,22 +59,23 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::discipline::boundary::PackageArity;
-use crate::discipline::boundary::TypeAtomName;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::PackageArity;
+use gandr_core_term::boundary::TypeAtomName;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::error::text;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::DataId;
+use gandr_core_term::types::SealId;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
+
 use crate::discipline::mark::Mark;
-use crate::effect::EffectRow;
-use crate::error::TypeError;
-use crate::error::text;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Stack;
-use crate::term::syntax::Term;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::DataId;
-use crate::term::types::SealId;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
 
 /// Why discharging a package's binders could not be completed.
 ///
@@ -1067,7 +1068,7 @@ fn collect_embedded_types<'term>(
 
 /// Push an effect signature's operation types onto the embedded-type list.
 fn push_signature_types<'term>(
-    sig: &'term crate::effect::EffectSig,
+    sig: &'term gandr_core_term::effect::EffectSig,
     out: &mut Vec<TypeRef<'term>>,
 )
 {
@@ -1225,10 +1226,11 @@ mod tests
     use alloc::vec;
     use alloc::vec::Vec;
 
+    use gandr_core_term::boundary::GradeBound;
+    use gandr_core_term::effect::EffectRow;
+    use gandr_core_term::syntax::Value;
+
     use super::*;
-    use crate::discipline::boundary::GradeBound;
-    use crate::effect::EffectRow;
-    use crate::term::syntax::Value;
 
     /// `U_ω (F payload)` — the thunked module returner shape every package
     /// payload takes.

@@ -15,10 +15,10 @@
 //! suite that drives them: they are coupled to that harness and have no second
 //! consumer to justify promoting them here.
 
-use gandr_core_checker::discipline::boundary::GenerationDepth;
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::term::types::CompType;
-use gandr_core_checker::term::types::ValueType;
+use gandr_core_term::boundary::GenerationDepth;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::ValueType;
 use proptest::prelude::*;
 
 /// A small pool of binder names (deliberately overlapping, to exercise
@@ -199,9 +199,9 @@ pub fn any_grade() -> impl Strategy<Value = Grade>
     prop_oneof![
         Just(Grade::ZERO),
         Just(Grade::ONE),
-        Just(Grade::fin(
-            gandr_core_checker::discipline::boundary::GradeBound::from(3_u64)
-        )),
+        Just(Grade::fin(gandr_core_term::boundary::GradeBound::from(
+            3_u64
+        ))),
         Just(Grade::OMEGA),
     ]
 }

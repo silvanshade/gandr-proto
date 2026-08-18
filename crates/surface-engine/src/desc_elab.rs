@@ -50,9 +50,9 @@
 //!   face former at every position, and the grammar keeps `~>` admissible in
 //!   the arrow slot precisely so this decline can name it.
 
-use gandr_core_checker::discipline::boundary::GradeBound;
-use gandr_core_checker::discipline::boundary::NameRef;
-use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_term::boundary::GradeBound;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::grade::Grade;
 use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::Attr;
 use gandr_theory_levitation::Attrs;

@@ -16,15 +16,15 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::outcome::Blame;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::Ty;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::boundary::AdoptionDecision;
     use gandr_core_incremental::stream::SynthesisEvent;
+    use gandr_core_term::outcome::Blame;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
     use gandr_surface_engine::diag::Span;
     use gandr_surface_engine::namespace::DottedName;
     use gandr_surface_engine::namespace::NamePath;

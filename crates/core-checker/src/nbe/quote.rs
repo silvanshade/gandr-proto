@@ -41,8 +41,19 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::VariableLevel;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::CompNode;
+use gandr_core_term::syntax::CompNodeId;
+use gandr_core_term::syntax::CompTypeNode;
+use gandr_core_term::syntax::OpClauseNode;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::ValueNode;
+use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::syntax::WalkBaseNode;
+use gandr_core_term::syntax::WalkMotiveNode;
+use gandr_core_term::types::DataId;
+
 use crate::nbe::Normalizer;
 use crate::nbe::eval::ForceMode;
 use crate::nbe::eval::eval_comp;
@@ -59,16 +70,6 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::term::syntax::CompNode;
-use crate::term::syntax::CompNodeId;
-use crate::term::syntax::CompTypeNode;
-use crate::term::syntax::OpClauseNode;
-use crate::term::syntax::Side;
-use crate::term::syntax::ValueNode;
-use crate::term::syntax::ValueNodeId;
-use crate::term::syntax::WalkBaseNode;
-use crate::term::syntax::WalkMotiveNode;
-use crate::term::types::DataId;
 
 /// How readback treats the two faces and the definitional environment.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -139,7 +140,7 @@ pub(crate) fn level_name(level: VariableLevel) -> String
 #[inline]
 #[must_use]
 pub(crate) fn parse_level_name(
-    name: crate::discipline::boundary::NameRef<'_>
+    name: gandr_core_term::boundary::NameRef<'_>
 ) -> Option<VariableLevel>
 {
     let name = <&str>::from(name);
@@ -225,7 +226,7 @@ enum ValueFinish
     /// Rebuild a constructor value.
     Ctor(DataId, usize),
     /// Rebuild a packed module over these witness types.
-    Pack(Vec<crate::term::syntax::ValueTypeNodeId>),
+    Pack(Vec<gandr_core_term::syntax::ValueTypeNodeId>),
     /// Rebuild a thunk from the computation on the computation stack.
     Thunk(Grade),
 }
@@ -257,7 +258,7 @@ enum CompFinish
     /// Rebuild an identity elimination over the diagonal binder.
     Walk(String),
     /// Rebuild a native application over this many arguments.
-    Native(crate::prim::NativePrim, usize),
+    Native(gandr_core_term::prim::NativePrim, usize),
     /// Rebuild a grade duplication.
     Dup,
     /// Rebuild a grade discard.
@@ -273,7 +274,7 @@ enum CompFinish
     /// Rebuild a capture over its binder.
     Shift(String),
     /// Rebuild a computation hole.
-    Hole(crate::term::syntax::HoleId),
+    Hole(gandr_core_term::syntax::HoleId),
     /// Re-apply one frustrated application to the computation beneath it.
     Apply,
     /// Re-apply one frustrated projection.

@@ -23,14 +23,14 @@
 //! its initial value (every bind is matched by an unbind). On the *error* path
 //! they diverge — the recursive checker unwinds `Γ` along the host call stack,
 //! while the machine leaves `Γ` at the failure point and surfaces it through
-//! [`crate::machine::FailureState`] (the machine module's error-path `Γ`
-//! contract). The conformance suite therefore compares
+//! `gandr_core_checker::machine::FailureState` (the machine module's error-path
+//! `Γ` contract). The conformance suite therefore compares
 //! [`crate::error::TypeError`] values, not `Γ`.
 
-use crate::discipline::boundary::ContextEmptyStatus;
-use crate::discipline::boundary::ContextLength;
-use crate::discipline::boundary::NameRef;
-use crate::term::types::ValueType;
+use crate::boundary::ContextEmptyStatus;
+use crate::boundary::ContextLength;
+use crate::boundary::NameRef;
+use crate::types::ValueType;
 
 /// The linear context zone `Σ` (the effects and control record's one-shot
 /// linearity section; ADR-33 D5):

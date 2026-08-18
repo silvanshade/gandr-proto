@@ -52,13 +52,17 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::BacktrackStatus;
-use crate::discipline::boundary::ClosureArity;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::ProgressStatus;
-use crate::discipline::boundary::UnfoldPermission;
-use crate::discipline::boundary::ValueEquality;
-use crate::judgements::identity::subst_valuetype;
+use gandr_core_term::boundary::BacktrackStatus;
+use gandr_core_term::boundary::ClosureArity;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::ProgressStatus;
+use gandr_core_term::boundary::UnfoldPermission;
+use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::identity::subst_valuetype;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::ValueType;
+
 use crate::nbe::Normalizer;
 use crate::nbe::eval::ForceMode;
 use crate::nbe::eval::apply;
@@ -83,9 +87,6 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::ValueType;
 
 /// The speculation state a goal is compared under.
 ///
@@ -537,7 +538,7 @@ fn unfold_value_side(
 fn value_height(
     nbe: &Normalizer,
     id: SemValueId,
-) -> Result<Option<crate::discipline::boundary::DefinitionHeightLevel>, SemError>
+) -> Result<Option<gandr_core_term::boundary::DefinitionHeightLevel>, SemError>
 {
     let node = nbe.arena().value(id)?;
     Ok(match *node.node() {
@@ -584,10 +585,10 @@ fn comp_goal(
             Ok(ValueEquality::from(true))
         },
         | (&SemCompNode::LazyPair(..), _) | (_, &SemCompNode::LazyPair(..)) => {
-            let left_fst = project(nbe, lhs, crate::term::syntax::Side::Fst, state.force())?;
-            let right_fst = project(nbe, rhs, crate::term::syntax::Side::Fst, state.force())?;
-            let left_snd = project(nbe, lhs, crate::term::syntax::Side::Snd, state.force())?;
-            let right_snd = project(nbe, rhs, crate::term::syntax::Side::Snd, state.force())?;
+            let left_fst = project(nbe, lhs, gandr_core_term::syntax::Side::Fst, state.force())?;
+            let right_fst = project(nbe, rhs, gandr_core_term::syntax::Side::Fst, state.force())?;
+            let left_snd = project(nbe, lhs, gandr_core_term::syntax::Side::Snd, state.force())?;
+            let right_snd = project(nbe, rhs, gandr_core_term::syntax::Side::Snd, state.force())?;
             goals.push(Frame::Comp(left_snd, right_snd, state));
             goals.push(Frame::Comp(left_fst, right_fst, state));
             Ok(ValueEquality::from(true))
@@ -1063,8 +1064,8 @@ fn head_goal(
 /// Returns [`SemError`] when a source node does not resolve.
 fn same_effect_head(
     nbe: &Normalizer,
-    lhs: crate::term::syntax::CompNodeId,
-    rhs: crate::term::syntax::CompNodeId,
+    lhs: gandr_core_term::syntax::CompNodeId,
+    rhs: gandr_core_term::syntax::CompNodeId,
 ) -> Result<ValueEquality, SemError>
 {
     if lhs == rhs {
@@ -1072,16 +1073,16 @@ fn same_effect_head(
     }
     let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
         | (
-            crate::term::syntax::CompNode::Perform(left_sig, left_op, _),
-            crate::term::syntax::CompNode::Perform(right_sig, right_op, _),
+            gandr_core_term::syntax::CompNode::Perform(left_sig, left_op, _),
+            gandr_core_term::syntax::CompNode::Perform(right_sig, right_op, _),
         ) => left_sig == right_sig && left_op == right_op,
         | (
-            crate::term::syntax::CompNode::Handle {
+            gandr_core_term::syntax::CompNode::Handle {
                 sig: left_sig,
                 ops: left_ops,
                 ..
             },
-            crate::term::syntax::CompNode::Handle {
+            gandr_core_term::syntax::CompNode::Handle {
                 sig: right_sig,
                 ops: right_ops,
                 ..
@@ -1113,8 +1114,8 @@ fn same_effect_head(
 /// Returns [`SemError`] when a source node does not resolve.
 fn same_package_head(
     nbe: &Normalizer,
-    lhs: crate::term::syntax::CompNodeId,
-    rhs: crate::term::syntax::CompNodeId,
+    lhs: gandr_core_term::syntax::CompNodeId,
+    rhs: gandr_core_term::syntax::CompNodeId,
 ) -> Result<ValueEquality, SemError>
 {
     if lhs == rhs {
@@ -1122,12 +1123,12 @@ fn same_package_head(
     }
     let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
         | (
-            crate::term::syntax::CompNode::Unpack {
+            gandr_core_term::syntax::CompNode::Unpack {
                 signature: left_signature,
                 atoms: left_atoms,
                 ..
             },
-            crate::term::syntax::CompNode::Unpack {
+            gandr_core_term::syntax::CompNode::Unpack {
                 signature: right_signature,
                 atoms: right_atoms,
                 ..

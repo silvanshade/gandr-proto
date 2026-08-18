@@ -16,18 +16,23 @@ name = "conformance"
 path = "tests/lib.rs"
 
 [dependencies]
-# The core CBPV checker whose syntax, types, and two typing faces these
-# generators build terms for and the conformance suite compares. The edge is a
-# library dependency because `strategies` names the checker's own `ValueType`,
-# `CompType`, and `Grade` in its public signatures.
-gandr-core-checker.workspace = true
+# The core CBPV term substrate these generators build terms over. The edge is a
+# library dependency because `strategies` names `ValueType`, `CompType`, and
+# `Grade` in its public signatures.
+gandr-core-term.workspace = true
 proptest.workspace = true
+
+[dev-dependencies]
+# The two typing faces the conformance suite compares. Only the suite names
+# them, so the edge is test-only: a consumer of the generators links the
+# substrate and nothing above it.
+gandr-core-checker.workspace = true
 
 [features]
 default = []
 # Regex-backed builtins (`regex.extract`, `string.escape`) in the checker, so
 # the conformance rows that exercise them are generated rather than skipped.
-full = ["gandr-core-checker/full"]
+full = ["gandr-core-checker/full", "gandr-core-term/full"]
 
 [lints]
 workspace = true

@@ -3,19 +3,19 @@
 //! One constructor per *user-facing* failure mode of core CBPV. The lone
 //! exception is [`TypeError::ShapeMismatch`], which carries a second, internal
 //! role: the machine's [`text::SHAPE_VALUE`] / [`text::SHAPE_COMP`]
-//! descriptions guard the polarity invariant of [`crate::machine`] (a frame is
-//! always resumed at the sort it suspended on). Those two are *unreachable by
-//! construction* on states reachable from the public entry points — a
-//! conformance meta-test asserts they never surface in a generated run — so in
-//! practice each reachable failure still maps to one constructor. Both
-//! implementations must produce *equal* errors on the same input; this is
+//! descriptions guard the polarity invariant of `gandr_core_checker::machine`
+//! (a frame is always resumed at the sort it suspended on). Those two are
+//! *unreachable by construction* on states reachable from the public entry
+//! points — a conformance meta-test asserts they never surface in a generated
+//! run — so in practice each reachable failure still maps to one constructor.
+//! Both implementations must produce *equal* errors on the same input; this is
 //! asserted by the conformance property tests.
 
 use thiserror::Error;
 
-use crate::discipline::grade::Grade;
-use crate::term::syntax::Term;
-use crate::term::types::Ty;
+use crate::grade::Grade;
+use crate::syntax::Term;
+use crate::types::Ty;
 
 /// Result type for this crate's typing operations.
 pub type GandrCoreResult<T> = Result<T, TypeError>;

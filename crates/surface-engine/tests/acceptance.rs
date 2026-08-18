@@ -34,18 +34,18 @@ mod tests
     use std::io::Write as _;
     use std::path::PathBuf;
 
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect::EffectRow;
-    use gandr_core_checker::error::TypeError;
     use gandr_core_checker::judgements::checker;
     use gandr_core_checker::machine;
     use gandr_core_checker::machine::control::Dir;
-    use gandr_core_checker::term::ctx::Ctx;
-    use gandr_core_checker::term::syntax::Term;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::Ty;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::region::Item;
+    use gandr_core_term::ctx::Ctx;
+    use gandr_core_term::effect::EffectRow;
+    use gandr_core_term::error::TypeError;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
     use gandr_surface_engine::boundary::SourceRange;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::host;
@@ -561,8 +561,8 @@ mod tests
         use alloc::rc::Rc;
         use core::fmt::Write as _;
 
-        use gandr_core_checker::term::syntax::Comp;
-        use gandr_core_checker::term::syntax::Value;
+        use gandr_core_term::syntax::Comp;
+        use gandr_core_term::syntax::Value;
 
         use super::*;
         /// `run x <- t;` is `Bind`; `t;` is `Bind` on `_`; the tail closes
@@ -807,7 +807,7 @@ mod tests
         #[test]
         fn list_literal_and_list_case_lower()
         {
-            use gandr_core_checker::term::types::ValueType;
+            use gandr_core_term::types::ValueType;
 
             // `[1, 2, 3] : List(Integer)` — the literal lowers to a flat
             // `Value::List` under a `List` annotation that lowers to

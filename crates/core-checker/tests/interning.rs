@@ -1,25 +1,25 @@
-//! The type interner's property rows, driven by the shared free generators in
+//! The interned subsumption rows, driven by the shared free generators in
 //! `gandr-core-checker-tools`.
 //!
-//! Only the generator-driven rows live here. The interner's unit tests stay
-//! inline beside `intern.rs`, because one of them constructs an id past the
-//! minted range — a state no public caller can reach, so it is not an
-//! integration-level observation.
+//! Only the generator-driven rows live here. The deterministic rows stay inline
+//! beside `discipline::subtype`, where the relation is defined, and the
+//! interner's own content-addressing rows stay inline in `gandr-core-term`.
 //!
 //! These rows are here for the reason `marking.rs` records: the generators sit
 //! one tier above this crate, so an inline `cfg(test)` module could not unify
 //! types with them.
 
 use gandr_core_checker::discipline::subtype::comp_subtype;
+use gandr_core_checker::discipline::subtype::interned_subtype;
 use gandr_core_checker::discipline::subtype::value_subtype;
-use gandr_core_checker::term::intern::TypeInterner;
-use gandr_core_checker::term::types::Ty;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
+use gandr_core_term::intern::TypeInterner;
+use gandr_core_term::types::Ty;
 use proptest::prelude::*;
 
 proptest! {
-    /// The interned [`TypeInterner::subtype`] verdict equals the structural
+    /// The interned [`interned_subtype`] verdict equals the structural
     /// [`value_subtype`] on the same pair — the id short-circuit is a pure
     /// optimization, agreeing with structural descent on every pair. `lo`
     /// and `hi` are independent random types, so most pairs take the
@@ -33,7 +33,7 @@ proptest! {
         let mut interner = TypeInterner::new();
         let lo_id = interner.intern(&Ty::Value(lo.clone()));
         let hi_id = interner.intern(&Ty::Value(hi.clone()));
-        prop_assert_eq!(interner.subtype(lo_id, hi_id), value_subtype(&lo, &hi));
+        prop_assert_eq!(interned_subtype(&interner, lo_id, hi_id), value_subtype(&lo, &hi));
     }
 
     /// The computation-sort analogue of
@@ -46,6 +46,6 @@ proptest! {
         let mut interner = TypeInterner::new();
         let lo_id = interner.intern(&Ty::Comp(lo.clone()));
         let hi_id = interner.intern(&Ty::Comp(hi.clone()));
-        prop_assert_eq!(interner.subtype(lo_id, hi_id), comp_subtype(&lo, &hi));
+        prop_assert_eq!(interned_subtype(&interner, lo_id, hi_id), comp_subtype(&lo, &hi));
     }
 }

@@ -36,16 +36,20 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ConstraintIndex;
-use crate::discipline::boundary::HoleId;
-use crate::discipline::boundary::MetaFreedom;
-use crate::discipline::boundary::RigidStatus;
-use crate::discipline::boundary::SolverBudget;
-use crate::discipline::boundary::SolverSteps;
-use crate::discipline::boundary::UnfoldPermission;
-use crate::discipline::boundary::ValueEquality;
-use crate::discipline::boundary::VariableLevel;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::ConstraintIndex;
+use gandr_core_term::boundary::HoleId;
+use gandr_core_term::boundary::MetaFreedom;
+use gandr_core_term::boundary::RigidStatus;
+use gandr_core_term::boundary::SolverBudget;
+use gandr_core_term::boundary::SolverSteps;
+use gandr_core_term::boundary::UnfoldPermission;
+use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::subst::HoleRepl;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+
 use crate::nbe::Normalizer;
 use crate::nbe::conv;
 use crate::nbe::eval;
@@ -65,9 +69,6 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::term::subst::HoleRepl;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
 use crate::unify::Constraint;
 use crate::unify::certify::Certificate;
 use crate::unify::certify::Postponed;
@@ -992,25 +993,25 @@ fn step_comp(
             let left_fst = eval::project(
                 nbe,
                 lhs,
-                crate::term::syntax::Side::Fst,
+                gandr_core_term::syntax::Side::Fst,
                 ForceMode::WeakHead,
             )?;
             let right_fst = eval::project(
                 nbe,
                 rhs,
-                crate::term::syntax::Side::Fst,
+                gandr_core_term::syntax::Side::Fst,
                 ForceMode::WeakHead,
             )?;
             let left_snd = eval::project(
                 nbe,
                 lhs,
-                crate::term::syntax::Side::Snd,
+                gandr_core_term::syntax::Side::Snd,
                 ForceMode::WeakHead,
             )?;
             let right_snd = eval::project(
                 nbe,
                 rhs,
-                crate::term::syntax::Side::Snd,
+                gandr_core_term::syntax::Side::Snd,
                 ForceMode::WeakHead,
             )?;
             machine.push_comp(goal, left_snd, right_snd);

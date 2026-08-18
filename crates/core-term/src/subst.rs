@@ -3,11 +3,12 @@
 //!
 //! One traversal, two rules. [`subst_value`] replaces a free value variable
 //! inside a source value, respecting binder shadowing; it is what the identity
-//! former's motive instantiation drives ([`crate::judgements::identity`] calls
-//! it at each [`crate::term::types::ValueType::Path`] endpoint).
+//! former's motive instantiation drives ([`crate::identity`] calls
+//! it at each [`crate::types::ValueType::Path`] endpoint).
 //! [`subst_holes_value`] and [`subst_holes_comp`] replace **solved holes** by
 //! their solutions, which is how a unifier's certificate is applied to a term
-//! before the ordinary conversion engine re-checks it ([`crate::unify`]).
+//! before the ordinary conversion engine re-checks it
+//! (`gandr_core_checker::unify`).
 //!
 //! The two rules differ in exactly two places and share everything else. A
 //! variable substitution is blocked by a binder of the same name; a hole
@@ -26,25 +27,27 @@ use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::HoleId;
-use crate::discipline::boundary::HoleOccurrence;
-use crate::discipline::boundary::NameRef;
-use crate::term::syntax::Comp;
-use crate::term::syntax::OpClause;
-use crate::term::syntax::Stack;
-use crate::term::syntax::Value;
-use crate::term::syntax::WalkBase;
+use crate::boundary::HoleId;
+use crate::boundary::HoleOccurrence;
+use crate::boundary::NameRef;
+use crate::syntax::Comp;
+use crate::syntax::OpClause;
+use crate::syntax::Stack;
+use crate::syntax::Value;
+use crate::syntax::WalkBase;
 
 /// Capture-avoiding substitution of `repl` for the free value variable `name`
-/// inside a **value** — the value-into-value entry of the iterative [`Subst`]
-/// engine (the ADR-47 traversal the CEK's computation-level substitution once
-/// shared, reusing its binder-shadowing discipline).
+/// inside a **value**.
+///
+/// The value-into-value entry of the iterative [`Subst`] engine (the ADR-47
+/// traversal the CEK's computation-level substitution once shared, reusing its
+/// binder-shadowing discipline).
 ///
 /// This is the substitution the identity former's motive instantiation drives
-/// (`crate::judgements::identity` calls it at each
-/// [`crate::term::types::ValueType::Path`] endpoint). Exposed to the crate
-/// (`pub(crate)`) precisely so motive instantiation shares one proven
-/// substitution rather than reimplementing capture-avoidance.
+/// ([`crate::identity`] calls it at each [`crate::types::ValueType::Path`]
+/// endpoint), and the one a solver's certificate is re-checked through. It is
+/// public precisely so every caller shares one proven substitution rather than
+/// reimplementing capture-avoidance.
 ///
 /// # Contract
 /// - ensures: returns `value` with every free `name` replaced by `repl`,
@@ -53,8 +56,9 @@ use crate::term::syntax::WalkBase;
 ///   definition.
 /// - panics: none (the worklist's post-order balance keeps every result pop
 ///   defined; a `debug_assert` guards the invariant in test / debug builds).
+#[inline]
 #[must_use]
-pub(crate) fn subst_value<'source, N>(
+pub fn subst_value<'source, N>(
     value: &Value,
     name: N,
     repl: &Value,
@@ -80,7 +84,8 @@ where
 ///
 /// # Contract
 /// - requires: every solution in `solutions` is a closed term, which is what
-///   the closed-metavariable discipline of [`crate::unify`] guarantees.
+///   the closed-metavariable discipline of `gandr_core_checker::unify`
+///   guarantees.
 /// - ensures: returns `value` with each hole bound in `solutions` replaced by
 ///   its solution and every other node untouched, together with whether the
 ///   result still carries a hole. No binder blocks the replacement, because a
@@ -96,8 +101,9 @@ where
 ///   term reports no survivor.
 /// - witness: `unify::tests::substituting_a_solution_reports_a_hole_free_result`
 /// - witness: `unify::tests::substituting_leaves_an_unsolved_hole_and_reports_it`
+#[inline]
 #[must_use]
-pub(crate) fn subst_holes_value(
+pub fn subst_holes_value(
     value: &Value,
     solutions: &HoleSubstitution,
 ) -> (Value, HoleOccurrence)
@@ -125,8 +131,9 @@ pub(crate) fn subst_holes_value(
 /// - hypothesis: L3 — the computation-sorted image of the value entry,
 ///   separated by a solved computation hole under an application spine.
 /// - witness: `unify::tests::substituting_a_computation_solution_beta_reduces_on_replay`
+#[inline]
 #[must_use]
-pub(crate) fn subst_holes_comp(
+pub fn subst_holes_comp(
     comp: &Comp,
     solutions: &HoleSubstitution,
 ) -> (Comp, HoleOccurrence)
@@ -144,7 +151,7 @@ pub(crate) fn subst_holes_comp(
 /// occurrence a solution answers: a value solution replaces
 /// [`Value::Hole`] and never [`Comp::Hole`], and the reverse.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum HoleRepl
+pub enum HoleRepl
 {
     /// A value-sorted solution.
     Value(Rc<Value>),
@@ -156,7 +163,7 @@ pub(crate) enum HoleRepl
 /// unification certificate carries.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(crate) struct HoleSubstitution
+pub struct HoleSubstitution
 {
     /// The solutions, keyed by hole identity in canonical order.
     entries: BTreeMap<HoleId, HoleRepl>,
@@ -167,7 +174,7 @@ impl HoleSubstitution
     /// An empty substitution.
     #[inline]
     #[must_use]
-    pub(crate) fn new() -> Self
+    pub fn new() -> Self
     {
         Self {
             entries: BTreeMap::new(),
@@ -181,7 +188,7 @@ impl HoleSubstitution
     /// - ensures: a later lookup of `hole` at that sort returns `repl`.
     /// - panics: none.
     #[inline]
-    pub(crate) fn bind(
+    pub fn bind(
         &mut self,
         hole: HoleId,
         repl: HoleRepl,
@@ -193,7 +200,7 @@ impl HoleSubstitution
     /// The value-sorted solution of `hole`, when it has one.
     #[inline]
     #[must_use]
-    pub(crate) fn value(
+    pub fn value(
         &self,
         hole: HoleId,
     ) -> Option<&Rc<Value>>
@@ -207,7 +214,7 @@ impl HoleSubstitution
     /// The computation-sorted solution of `hole`, when it has one.
     #[inline]
     #[must_use]
-    pub(crate) fn comp(
+    pub fn comp(
         &self,
         hole: HoleId,
     ) -> Option<&Rc<Comp>>
@@ -220,7 +227,7 @@ impl HoleSubstitution
 
     /// The bindings, in canonical hole order.
     #[inline]
-    pub(crate) fn entries(&self) -> impl Iterator<Item = (HoleId, &HoleRepl)>
+    pub fn entries(&self) -> impl Iterator<Item = (HoleId, &HoleRepl)>
     {
         self.entries.iter().map(|(&hole, repl)| (hole, repl))
     }

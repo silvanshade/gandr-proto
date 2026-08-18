@@ -87,8 +87,8 @@
 //! again after pushing more constraints resumes from the bindings already made,
 //! which is how a residual is retried once its blockers are bound.
 //!
-//! [`Value::Hole`]: crate::term::syntax::Value::Hole
-//! [`Comp::Hole`]: crate::term::syntax::Comp::Hole
+//! [`Value::Hole`]: gandr_core_term::syntax::Value::Hole
+//! [`Comp::Hole`]: gandr_core_term::syntax::Comp::Hole
 
 pub mod certify;
 pub mod frag;
@@ -99,12 +99,13 @@ pub mod solve;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::ConstraintCount;
-use crate::discipline::boundary::SolverBudget;
+use gandr_core_term::boundary::ConstraintCount;
+use gandr_core_term::boundary::SolverBudget;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+
 use crate::nbe::Normalizer;
 use crate::nbe::sem::SemError;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
 pub use crate::unify::certify::Certificate;
 pub use crate::unify::certify::Postponed;
 pub use crate::unify::certify::Replay;
@@ -272,20 +273,20 @@ mod tests
     use alloc::collections::BTreeMap;
     use alloc::vec;
 
+    use gandr_core_term::boundary::FieldName;
+    use gandr_core_term::boundary::HoleId;
+    use gandr_core_term::boundary::IntegerLiteral;
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::boundary::SolverSteps;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::subst::HoleRepl;
+    use gandr_core_term::subst::HoleSubstitution;
+    use gandr_core_term::syntax::Side;
+    use gandr_core_term::types::ValueType;
     use proptest::prelude::*;
 
     use super::*;
-    use crate::discipline::boundary::FieldName;
-    use crate::discipline::boundary::HoleId;
-    use crate::discipline::boundary::IntegerLiteral;
-    use crate::discipline::boundary::NameRef;
-    use crate::discipline::boundary::SolverSteps;
-    use crate::discipline::grade::Grade;
     use crate::nbe::quote::level_name;
-    use crate::term::subst::HoleRepl;
-    use crate::term::subst::HoleSubstitution;
-    use crate::term::syntax::Side;
-    use crate::term::types::ValueType;
     use crate::unify::scan;
 
     // ── fixtures ────────────────────────────────────────────────────────────
@@ -340,12 +341,12 @@ mod tests
     }
 
     /// An atom as one package elimination minted it.
-    fn seal(serial: crate::discipline::boundary::TypeSerial) -> crate::term::types::SealId
+    fn seal(serial: gandr_core_term::boundary::TypeSerial) -> gandr_core_term::types::SealId
     {
-        crate::term::types::SealId::new(
+        gandr_core_term::types::SealId::new(
             serial,
-            crate::discipline::boundary::SealDeclarationName::from("module"),
-            crate::discipline::boundary::SealComponentName::from("component"),
+            gandr_core_term::boundary::SealDeclarationName::from("module"),
+            gandr_core_term::boundary::SealComponentName::from("component"),
         )
     }
 
@@ -504,7 +505,7 @@ mod tests
         let solution = certificate
             .comp_solution(HoleId::from(0))
             .expect("the pattern must be solved");
-        let binder = level_name(crate::discipline::boundary::VariableLevel::from(0));
+        let binder = level_name(gandr_core_term::boundary::VariableLevel::from(0));
         assert_eq!(
             solution.as_ref(),
             &Comp::Abs(
@@ -533,7 +534,7 @@ mod tests
                     Comp::lam("x", Comp::ret(Value::Int(1))),
                 ),
             ]);
-        let binder = level_name(crate::discipline::boundary::VariableLevel::from(0));
+        let binder = level_name(gandr_core_term::boundary::VariableLevel::from(0));
         assert_eq!(
             certificate
                 .comp_solution(HoleId::from(0_u32))
@@ -930,7 +931,7 @@ mod tests
             abstracts: vec![label.to_owned()],
             payload: Rc::new(ValueType::Thunk(
                 Grade::ONE,
-                Rc::new(crate::term::types::CompType::returner(ValueType::atom(
+                Rc::new(gandr_core_term::types::CompType::returner(ValueType::atom(
                     label,
                 ))),
             )),
@@ -1304,15 +1305,15 @@ mod tests
         let (_nbe, _solver, certificate) =
             run(context(&[(HoleId::from(0_u32), MetaSort::Value)]), vec![
                 values(
-                    Rc::new(Value::Stk(Rc::new(crate::term::syntax::Stack::Arg(
+                    Rc::new(Value::Stk(Rc::new(gandr_core_term::syntax::Stack::Arg(
                         value_hole(0),
-                        Rc::new(crate::term::syntax::Stack::Empty),
+                        Rc::new(gandr_core_term::syntax::Stack::Empty),
                     )))),
-                    Rc::new(Value::Stk(Rc::new(crate::term::syntax::Stack::Arg(
+                    Rc::new(Value::Stk(Rc::new(gandr_core_term::syntax::Stack::Arg(
                         int(1),
-                        Rc::new(crate::term::syntax::Stack::Arg(
+                        Rc::new(gandr_core_term::syntax::Stack::Arg(
                             int(2),
-                            Rc::new(crate::term::syntax::Stack::Empty),
+                            Rc::new(gandr_core_term::syntax::Stack::Empty),
                         )),
                     )))),
                 ),
@@ -1396,7 +1397,7 @@ mod tests
     {
         let mut nbe = Normalizer::new();
         let mut solver = Solver::new(context(&[(HoleId::from(0_u32), MetaSort::Value)]))
-            .with_budget(crate::discipline::boundary::SolverBudget::from(0));
+            .with_budget(gandr_core_term::boundary::SolverBudget::from(0));
         solver.push(values(value_hole(0), int(3)));
         solver.push(values(value_hole(0), int(3)));
         let certificate = solver.run(&mut nbe).expect("the run must not fail");
@@ -1499,8 +1500,10 @@ mod tests
     {
         let mut bindings = HoleSubstitution::new();
         bindings.bind(HoleId::from(0), HoleRepl::Value(int(3)));
-        let (term, holes) =
-            crate::term::subst::subst_holes_value(&Value::Pair(value_hole(0), int(1)), &bindings);
+        let (term, holes) = gandr_core_term::subst::subst_holes_value(
+            &Value::Pair(value_hole(0), int(1)),
+            &bindings,
+        );
         assert_eq!(term, Value::Pair(int(3), int(1)));
         assert!(!bool::from(holes));
     }
@@ -1509,8 +1512,10 @@ mod tests
     fn substituting_leaves_an_unsolved_hole_and_reports_it()
     {
         let bindings = HoleSubstitution::new();
-        let (term, holes) =
-            crate::term::subst::subst_holes_value(&Value::Pair(value_hole(0), int(1)), &bindings);
+        let (term, holes) = gandr_core_term::subst::subst_holes_value(
+            &Value::Pair(value_hole(0), int(1)),
+            &bindings,
+        );
         assert_eq!(term, Value::Pair(value_hole(0), int(1)));
         assert!(bool::from(holes));
     }
@@ -1526,7 +1531,7 @@ mod tests
                 Comp::ret(Value::var(NameRef::from("z"))),
             ))),
         );
-        let (term, holes) = crate::term::subst::subst_holes_comp(
+        let (term, holes) = gandr_core_term::subst::subst_holes_comp(
             &Comp::app(Comp::Hole(0), Value::Int(4)),
             &bindings,
         );
@@ -1546,7 +1551,7 @@ mod tests
                 Rc::new(Comp::unpack(
                     scrut,
                     ValueType::integer(),
-                    [seal(crate::discipline::boundary::TypeSerial::from(0))],
+                    [seal(gandr_core_term::boundary::TypeSerial::from(0))],
                     "m",
                     body,
                 )),
@@ -1554,7 +1559,7 @@ mod tests
         };
         // The module binder differs: the substitution reaches the scrutinee
         // and the body.
-        let reached = crate::term::subst::subst_value(
+        let reached = gandr_core_term::subst::subst_value(
             &unpack(
                 Value::var(NameRef::from("x")),
                 Comp::ret(Value::var(NameRef::from("x"))),
@@ -1565,7 +1570,7 @@ mod tests
         assert_eq!(reached, unpack(Value::Int(3), Comp::ret(Value::Int(3))));
         // The module binder rebinds the name: the body is blocked, and the
         // scrutinee — outside the binder's scope — is not.
-        let blocked = crate::term::subst::subst_value(
+        let blocked = gandr_core_term::subst::subst_value(
             &unpack(
                 Value::var(NameRef::from("m")),
                 Comp::ret(Value::var(NameRef::from("m"))),
@@ -1584,11 +1589,11 @@ mod tests
     #[test]
     fn a_scan_allows_the_spine_levels_and_flags_the_others()
     {
-        let allowed = crate::discipline::boundary::VariableLevel::from(0);
-        let ceiling = crate::discipline::boundary::VariableLevel::from(2);
+        let allowed = gandr_core_term::boundary::VariableLevel::from(0);
+        let ceiling = gandr_core_term::boundary::VariableLevel::from(2);
         let inside = Value::var(NameRef::from(level_name(allowed).as_str()));
         let outside = Value::var(NameRef::from(
-            level_name(crate::discipline::boundary::VariableLevel::from(1)).as_str(),
+            level_name(gandr_core_term::boundary::VariableLevel::from(1)).as_str(),
         ));
         assert!(!bool::from(
             scan::scan_value(&inside, ceiling, &[allowed]).escapes()
@@ -1601,9 +1606,9 @@ mod tests
     #[test]
     fn a_scan_ignores_readback_binders_and_source_names()
     {
-        let ceiling = crate::discipline::boundary::VariableLevel::from(1);
+        let ceiling = gandr_core_term::boundary::VariableLevel::from(1);
         let binder = Value::var(NameRef::from(
-            level_name(crate::discipline::boundary::VariableLevel::from(5)).as_str(),
+            level_name(gandr_core_term::boundary::VariableLevel::from(5)).as_str(),
         ));
         let source = Value::var(NameRef::from("x"));
         assert!(!bool::from(
@@ -1617,11 +1622,11 @@ mod tests
     #[test]
     fn a_scan_reaches_through_an_application_spine()
     {
-        let ceiling = crate::discipline::boundary::VariableLevel::from(2);
+        let ceiling = gandr_core_term::boundary::VariableLevel::from(2);
         let term = Comp::app(
             Comp::Hole(3),
             Value::var(NameRef::from(
-                level_name(crate::discipline::boundary::VariableLevel::from(1)).as_str(),
+                level_name(gandr_core_term::boundary::VariableLevel::from(1)).as_str(),
             )),
         );
         let found = scan::scan_comp(&term, ceiling, &[]);
@@ -1632,8 +1637,8 @@ mod tests
     #[test]
     fn a_scan_reaches_through_a_pack_and_an_unpack()
     {
-        let ceiling = crate::discipline::boundary::VariableLevel::from(2);
-        let escaped = level_name(crate::discipline::boundary::VariableLevel::from(1));
+        let ceiling = gandr_core_term::boundary::VariableLevel::from(2);
+        let escaped = level_name(gandr_core_term::boundary::VariableLevel::from(1));
         // The pack's payload is the one term child: the hole inside it is
         // found, and a disallowed level inside it is flagged.
         let found = scan::scan_value(&packed(Value::Hole(0)), ceiling, &[]);
@@ -1650,7 +1655,7 @@ mod tests
         let term = Comp::unpack(
             Value::Hole(0),
             ValueType::integer(),
-            [seal(crate::discipline::boundary::TypeSerial::from(0))],
+            [seal(gandr_core_term::boundary::TypeSerial::from(0))],
             "m",
             Comp::ret(Value::var(NameRef::from(escaped.as_str()))),
         );

@@ -32,15 +32,16 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::discipline::boundary::EscapeStatus;
-use crate::discipline::boundary::HoleId;
-use crate::discipline::boundary::NameRef;
-use crate::discipline::boundary::OpaqueOccurrence;
-use crate::discipline::boundary::VariableLevel;
+use gandr_core_term::boundary::EscapeStatus;
+use gandr_core_term::boundary::HoleId;
+use gandr_core_term::boundary::NameRef;
+use gandr_core_term::boundary::OpaqueOccurrence;
+use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Value;
+
 use crate::nbe::quote::parse_level_name;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Stack;
-use crate::term::syntax::Value;
 
 /// What one scan found.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -93,9 +94,9 @@ impl Occurrences
     pub(super) fn mentions(
         &self,
         hole: HoleId,
-    ) -> crate::discipline::boundary::HoleOccurrence
+    ) -> gandr_core_term::boundary::HoleOccurrence
     {
-        crate::discipline::boundary::HoleOccurrence::from(self.holes.contains(&hole))
+        gandr_core_term::boundary::HoleOccurrence::from(self.holes.contains(&hole))
     }
 }
 

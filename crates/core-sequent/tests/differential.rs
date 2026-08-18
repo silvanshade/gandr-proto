@@ -55,28 +55,28 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::discipline::boundary::EffectSignatureName;
-    use gandr_core_checker::discipline::boundary::GenerationDepth;
-    use gandr_core_checker::discipline::boundary::NameRef;
-    use gandr_core_checker::discipline::boundary::OperationName;
-    use gandr_core_checker::discipline::grade::Grade;
-    use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::effect::host::HostHandler;
-    use gandr_core_checker::effect::host::HostReply;
-    use gandr_core_checker::outcome::Blame;
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::OpClause;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::syntax::WalkBase;
-    use gandr_core_checker::term::syntax::WalkMotive;
-    use gandr_core_checker::term::types::CompType;
-    use gandr_core_checker::term::types::DataId;
-    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::differential::agree;
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
+    use gandr_core_term::boundary::EffectSignatureName;
+    use gandr_core_term::boundary::GenerationDepth;
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::effect::EffectSig;
+    use gandr_core_term::effect::host::HostHandler;
+    use gandr_core_term::effect::host::HostReply;
+    use gandr_core_term::grade::Grade;
+    use gandr_core_term::outcome::Blame;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::OpClause;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::syntax::WalkBase;
+    use gandr_core_term::syntax::WalkMotive;
+    use gandr_core_term::types::CompType;
+    use gandr_core_term::types::DataId;
+    use gandr_core_term::types::ValueType;
     use proptest::prelude::*;
     use proptest::strategy::BoxedStrategy;
     use proptest::strategy::Union;
@@ -391,9 +391,9 @@ mod tests
     /// by operation name — ADR-33 D3).
     fn eff_sig() -> EffectSig
     {
-        use gandr_core_checker::effect::EffectOp;
-        use gandr_core_checker::effect::EffectSig;
-        use gandr_core_checker::term::types::ValueType;
+        use gandr_core_term::effect::EffectOp;
+        use gandr_core_term::effect::EffectSig;
+        use gandr_core_term::types::ValueType;
         EffectSig::new(EffectSignatureName::from("E"), vec![EffectOp::new(
             OperationName::from("op"),
             ValueType::integer(),
@@ -2304,9 +2304,9 @@ mod tests
         op: OperationName<'_>,
     ) -> EffectSig
     {
-        use gandr_core_checker::effect::EffectOp;
-        use gandr_core_checker::effect::EffectSig;
-        use gandr_core_checker::term::types::ValueType;
+        use gandr_core_term::effect::EffectOp;
+        use gandr_core_term::effect::EffectSig;
+        use gandr_core_term::types::ValueType;
         EffectSig::new(name, vec![EffectOp::new(
             op,
             ValueType::integer(),

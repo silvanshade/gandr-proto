@@ -36,7 +36,7 @@
 //! contexts at that point"). The recursive [`crate::judgements::checker`], by
 //! contrast, unwinds `Γ` along the host call stack as the error propagates — so
 //! the two `Γ`s differ on the error path, which is why the conformance suite
-//! compares [`crate::error::TypeError`] values, never machine `Γ`.
+//! compares [`gandr_core_term::error::TypeError`] values, never machine `Γ`.
 //!
 //! # Frame-pop ordering convention
 //!
@@ -59,21 +59,33 @@ pub mod stack;
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
-use crate::discipline::boundary::MachineStepCount;
-use crate::discipline::boundary::StackDepth;
-use crate::discipline::grade::Grade;
+use gandr_core_term::boundary::MachineStepCount;
+use gandr_core_term::boundary::StackDepth;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::effect::EffectOp;
+use gandr_core_term::effect::EffectRow;
+use gandr_core_term::effect::combine_bind_row;
+use gandr_core_term::effect::handle_natural_type;
+use gandr_core_term::effect::resolve_handler_coverage;
+use gandr_core_term::effect::resume_stack_type;
+use gandr_core_term::error::TypeError;
+use gandr_core_term::error::text;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::OpClause;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Term;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
+
 use crate::discipline::subtype::finish_comp;
 use crate::discipline::subtype::finish_int_literal;
 use crate::discipline::subtype::finish_value;
 use crate::discipline::subtype::pick;
-use crate::effect::EffectOp;
-use crate::effect::EffectRow;
-use crate::effect::combine_bind_row;
-use crate::effect::handle_natural_type;
-use crate::effect::resolve_handler_coverage;
-use crate::effect::resume_stack_type;
-use crate::error::TypeError;
-use crate::error::text;
 use crate::judgements::checker::base_diagonal_type;
 use crate::judgements::checker::motive_result_type;
 use crate::judgements::checker::split_expectations;
@@ -86,17 +98,6 @@ use crate::machine::stack::arrow_components;
 use crate::machine::stack::returner_components;
 use crate::machine::stack::stk_components;
 use crate::machine::stack::with_component;
-use crate::term::ctx::Ctx;
-use crate::term::syntax::Comp;
-use crate::term::syntax::FlatArena;
-use crate::term::syntax::OpClause;
-use crate::term::syntax::Side;
-use crate::term::syntax::Stack;
-use crate::term::syntax::Term;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
 
 /// A typing-stack frame: one pending obligation of the suspended derivation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -414,7 +415,7 @@ pub enum Frame
         snd_name: String,
         /// The optional dependent motive `(z). M` (ADR-82); `None` is the
         /// check-only motive-less split.
-        motive: Option<Box<crate::term::syntax::SplitMotive>>,
+        motive: Option<Box<gandr_core_term::syntax::SplitMotive>>,
         /// The scrutinee value `v` (the motive's `z` is instantiated to it for
         /// the answer `M[v/z]`).
         scrut: Value,
@@ -605,9 +606,9 @@ pub enum Frame
     WalkScrut
     {
         /// The motive `(x y q). C`.
-        motive: crate::term::syntax::WalkMotive,
+        motive: gandr_core_term::syntax::WalkMotive,
         /// The diagonal base `(x). c`.
-        base: crate::term::syntax::WalkBase,
+        base: gandr_core_term::syntax::WalkBase,
         /// The scrutinee value `p` (the motive's `q` is instantiated to it).
         scrut: Value,
         /// The direction the `Walk` itself was typed in.
@@ -644,7 +645,8 @@ pub struct State
     /// [`Frame::ResetBody`] pop restores it (dynamic scoping); `shift` reads
     /// it. The mirror of the recursive checker's `answer` register; like
     /// `Γ`, it is not restored on the error path (the conformance suite
-    /// compares [`crate::error::TypeError`] values, never the register).
+    /// compares [`gandr_core_term::error::TypeError`] values, never the
+    /// register).
     answer: Option<CompType>,
     /// Monotone step counter.
     steps: u64,
@@ -1032,7 +1034,7 @@ fn step_value(
 {
     match value {
         | Value::Var(name) => {
-            match ctx.lookup(crate::discipline::boundary::NameRef::from(name.as_str())) {
+            match ctx.lookup(gandr_core_term::boundary::NameRef::from(name.as_str())) {
                 | Some(found) => {
                     let ty = found.clone();
                     finish_value(ty, dir).map(return_value)
@@ -1046,7 +1048,7 @@ fn step_value(
         // `finish_int_literal` carries the Rust `{integer}` checking-mode
         // widening, so machine and checker stay lock-step.
         | Value::Int(literal) => finish_int_literal(
-            crate::discipline::boundary::IntegerLiteral::from(literal),
+            gandr_core_term::boundary::IntegerLiteral::from(literal),
             dir,
         )
         .map(return_value),
@@ -1074,7 +1076,7 @@ fn step_value(
                     ref binder,
                     snd: ref tail,
                 }) => {
-                    let tail_ty = crate::judgements::identity::subst_valuetype(tail, binder, &fst);
+                    let tail_ty = gandr_core_term::identity::subst_valuetype(tail, binder, &fst);
                     (Dir::Check(head.as_ref().clone()), Dir::Check(tail_ty))
                 },
                 | _ => dir.pair_components(),
@@ -1165,7 +1167,7 @@ fn step_value(
             match iter.next() {
                 | Some((label, field_value)) => {
                     let field_dir = dir.record_field_dir(
-                        crate::discipline::boundary::FieldName::from(label.as_str()),
+                        gandr_core_term::boundary::FieldName::from(label.as_str()),
                     );
                     stack.push(Frame::Record {
                         remaining: iter.collect(),
@@ -1664,9 +1666,7 @@ fn step_comp(
         // its payload type. An absent op is stuck before the payload is
         // descended (matching the recursive checker step for step).
         | Comp::Perform(sig, op, arg) => match sig
-            .op(crate::discipline::boundary::OperationName::from(
-                op.as_str(),
-            ))
+            .op(gandr_core_term::boundary::OperationName::from(op.as_str()))
             .cloned()
         {
             | Some(op_def) => {
@@ -2072,7 +2072,7 @@ fn step_return(
             match iter.next() {
                 | Some((label, field_value)) => {
                     let field_dir = dir.record_field_dir(
-                        crate::discipline::boundary::FieldName::from(label.as_str()),
+                        gandr_core_term::boundary::FieldName::from(label.as_str()),
                     );
                     stack.push(Frame::Record {
                         remaining: iter.collect(),
@@ -2470,9 +2470,9 @@ fn step_return(
                     binder,
                     snd: tail,
                 } => {
-                    let tail_ty = crate::judgements::identity::subst_valuetype(
+                    let tail_ty = gandr_core_term::identity::subst_valuetype(
                         &tail,
-                        crate::discipline::boundary::NameRef::from(binder.as_str()),
+                        gandr_core_term::boundary::NameRef::from(binder.as_str()),
                         &Value::var(&fst_name),
                     );
                     let (body_expected, result) =
@@ -2573,7 +2573,7 @@ fn step_return(
                     });
                 },
             };
-            let residual = eps_t.without(crate::discipline::boundary::EffectSignatureName::from(
+            let residual = eps_t.without(gandr_core_term::boundary::EffectSignatureName::from(
                 sig_name.as_str(),
             ));
             let (ret_var, ret_body) = ret;
@@ -3040,10 +3040,11 @@ mod arena_boundary_tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::syntax::Value;
+
     use super::diagnostic_abs_term;
-    use crate::term::syntax::Comp;
-    use crate::term::syntax::Term;
-    use crate::term::syntax::Value;
 
     /// The unannotated-abstraction stuck diagnostic is a public compatibility
     /// readback boundary: it reconstructs the legacy term only after routing

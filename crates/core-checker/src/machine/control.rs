@@ -8,12 +8,12 @@
 
 use alloc::rc::Rc;
 
-use crate::discipline::boundary::FieldName;
-use crate::term::syntax::Comp;
-use crate::term::syntax::Value;
-use crate::term::types::CompType;
-use crate::term::types::Ty;
-use crate::term::types::ValueType;
+use gandr_core_term::boundary::FieldName;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::CompType;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 
 /// The bidirectional mode: inference (`⇑`) or checking (`⇓`) against an
 /// expected type.

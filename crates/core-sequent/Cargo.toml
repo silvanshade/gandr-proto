@@ -16,13 +16,19 @@ name = "sequent"
 path = "tests/lib.rs"
 
 [dependencies]
-gandr-core-checker.workspace = true
+# The frozen CBPV core's term, type, effect, grade, and outcome vocabulary that
+# focusing reads and the L machine runs over.
+gandr-core-term.workspace = true
 
 [dev-dependencies]
 # BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
 # provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
 # provenance convention the pre-lowered corpus fixtures already carry.
 blake3.workspace = true
+# The checker's kernel bridge and recursive judgement, for the export gate and
+# the ported conformance-soundness rows. A test-only edge: the focusing
+# translation and the L machine name the substrate alone.
+gandr-core-checker.workspace = true
 # The S1 kernel (kernel-boundary.md §2): the B2.3 corpus partition sweep
 # (`tests/kernel_corpus_partition.rs`) bridges each corpus item through
 # `gandr-core-checker`'s kernel bridge into this kernel's choke point and export.
@@ -54,7 +60,7 @@ full = ["gandr_feat_regex"]
 # soundness rows (`tests/conformance_soundness.rs`) can exercise `regex.extract`
 # on the L machine under `--features=full`, exactly as the core-checker
 # conformance suite gated them.
-gandr_feat_regex = ["gandr-core-checker/gandr_feat_regex"]
+gandr_feat_regex = ["gandr-core-term/gandr_feat_regex"]
 
 [lints]
 workspace = true

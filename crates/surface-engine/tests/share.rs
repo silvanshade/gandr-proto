@@ -23,11 +23,11 @@ mod tests
     use alloc::string::String;
     use alloc::vec;
 
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Term;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::Ty;
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Term;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::Ty;
+    use gandr_core_term::types::ValueType;
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
     use gandr_surface_engine::boundary::DefinitionName;

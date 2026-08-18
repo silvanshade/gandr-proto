@@ -48,18 +48,18 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::discipline::grade::Grade;
-use gandr_core_checker::outcome::Blame;
-use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::outcome::StuckReason;
-use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::HoleId;
-use gandr_core_checker::term::syntax::NumLit;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Stack;
-use gandr_core_checker::term::syntax::Value;
-use gandr_core_checker::term::types::DataId;
+use gandr_core_term::grade::Grade;
+use gandr_core_term::outcome::Blame;
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::outcome::StuckReason;
+use gandr_core_term::prim::NativePrim;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::HoleId;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Stack;
+use gandr_core_term::syntax::Value;
+use gandr_core_term::types::DataId;
 
 use crate::boundary::DifferentialAgreement;
 
@@ -380,10 +380,10 @@ fn canonical_data_id() -> DataId
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::term::syntax::Comp;
-    use gandr_core_checker::term::syntax::Value;
-    use gandr_core_checker::term::types::ValueType;
+    use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
+    use gandr_core_term::syntax::Value;
+    use gandr_core_term::types::ValueType;
 
     use super::*;
 
