@@ -8,10 +8,17 @@
 # whole-tree normalization check. The strict project-local Dylint lane gates
 # recursion and primitive-boundary contracts together.
 #
+# compile-host:wall is the conditional present-toolchain lane: it runs the C++
+# compilation host's gates on a checkout that has a usable MLIR installation
+# and prints a named skip on one that does not. It is on the wall because a
+# conditional check that a machine CAN run is strictly better than none, and it
+# is conditional because the repository pins no MLIR. The unconditional half of
+# the host's contract is a source-level parity gate inside cargo:nextest.
+#
 # This body is the merge wall's single source of truth. gandr-workflow-gates
 # mirrors it so `workflow merge` replays the same boundaries with caching, and
 # its `merge_plan_matches_gate_merge_task` witness fails if the two diverge —
 # so change this list first.
 ["gate:merge"]
 description = "Run the native pre-merge gate"
-run = [{ task = "toolchain:pin-check" }, { task = "docs:conflict-markers" }, { task = "cargo:build" }, { task = "cargo:clippy" }, { task = "cargo:dylint:local" }, { task = "cargo:doc-check" }, { task = "cargo:nextest" }, { task = "treefmt:check" }]
+run = [{ task = "toolchain:pin-check" }, { task = "docs:conflict-markers" }, { task = "cargo:build" }, { task = "cargo:clippy" }, { task = "cargo:dylint:local" }, { task = "cargo:doc-check" }, { task = "cargo:nextest" }, { task = "compile-host:wall" }, { task = "treefmt:check" }]

@@ -230,3 +230,70 @@ done < "$catalogue"
 echo "compile-host: $applied mutants applied, $survived survived"
 [ "$survived" -eq 0 ]
 '''
+
+# The conditional present-toolchain lane, and the reason it is conditional.
+#
+# The host's own gates need a discovered MLIR installation, so the merge wall
+# cannot require them: making every Rust change depend on an installation the
+# repository does not pin is a much larger claim than this slice makes. What
+# the wall CAN require is that a checkout which HAS a usable installation runs
+# them — so this task runs the host's gates when the toolchain is there and
+# prints a named skip when it is not.
+#
+# "Usable" is decided by the configure step rather than by the presence of a
+# directory: an installation whose clang and MLIR disagree is refused at
+# configure, and that is a fact about the machine rather than about the host,
+# so it skips with the same notice. GANDR_COMPILE_HOST_STRICT=1 turns every
+# skip into a failure, which is the switch a pinned-MLIR future flips.
+#
+# What still does not ride here: nothing about the host's behaviour is proven
+# on a checkout without MLIR. The unconditional half is the source-level
+# contract gate in crates/runtime-compile-host/tests/contract.rs, which runs
+# inside cargo:nextest and holds the Rust mirror of the boundary to the host's
+# own headers.
+["compile-host:wall"]
+description = "Run the compilation host's gates when a usable MLIR installation is present"
+run = '''
+set -eu
+
+strict=${GANDR_COMPILE_HOST_STRICT:-}
+
+skip() {
+  if [ -n "$strict" ]; then
+    echo "compile-host: $1 (GANDR_COMPILE_HOST_STRICT is set, so this is a failure)" >&2
+    exit 1
+  fi
+  echo "compile-host: $1"
+  echo "compile-host: the host's gates are SKIPPED; the source-level contract gate ran inside cargo:nextest"
+  exit 0
+}
+
+prefix=${GANDR_MLIR_PREFIX:-}
+if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
+  prefix=$(brew --prefix llvm 2>/dev/null || true)
+fi
+if [ -z "$prefix" ] && command -v llvm-config >/dev/null 2>&1; then
+  prefix=$(llvm-config --prefix)
+fi
+if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
+  skip "no MLIR installation was found"
+fi
+
+if ! mise run compile-host:configure; then
+  skip "the discovered MLIR installation at $prefix is not usable by this compiler"
+fi
+
+mise run compile-host:build
+mise run compile-host:test
+mise run compile-host:differential
+mise run compile-host:fuzz-smoke
+
+# The bridge's own cases skip when no host is built. Here one is, so they are
+# required rather than conditional.
+GANDR_COMPILE_HOST_REQUIRED=1 cargo nextest run \
+  --package gandr-runtime-compile-host \
+  --all-targets \
+  --features=full
+
+echo "compile-host: the host's gates passed against the MLIR at $prefix"
+'''
