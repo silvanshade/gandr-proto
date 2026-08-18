@@ -1,16 +1,21 @@
 // The compile host's fuzz entry surface.
 //
-// One byte string in, one decode-emit-verify pass out. Execution is
-// deliberately excluded: the property under test is that no byte string makes
-// the front of the pipeline misbehave, and running arbitrary generated
-// programs would measure the heap sizing instead.
+// One byte string in, one decode-emit-verify pass out, then a reference run.
+//
+// The reference walk is included and the JIT is not, and the split is about
+// cost rather than coverage: the walk shares the image, the heap layout and
+// the bounds discipline with the compiled path and costs microseconds, while
+// building an execution engine per input would put a compiler on every fuzz
+// iteration. A decoded image is bounded by construction, and a run that would
+// outgrow its heap reports the refusal, so executing arbitrary well-formed
+// images is now a bounded operation rather than a measurement of the sizing.
 //
 // # Contract
 // - requires: the input on standard input, or file paths for deterministic
 //   replay.
 // - ensures: every input is either refused by the decoder or carried through
-//   emission and verification; neither path may crash, hang, or read out of
-//   bounds.
+//   emission, verification and a reference run; no path may crash, hang, or
+//   read out of bounds.
 // - provides: the AFL++ target and the seed-replay smoke.
 // - fails: a nonzero exit status only for a replay whose file cannot be read.
 // - panics: none.
@@ -24,6 +29,7 @@
 
 #include "gandr/compile_host/emit.hpp"
 #include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/interpret.hpp"
 #include "gandr/compile_host/pipeline.hpp"
 
 namespace
@@ -47,7 +53,14 @@ void exercise(std::span<const std::uint8_t> bytes)
         return;
     }
     const Expected<void> verified = verify_module(module->get());
-    (void)verified;
+    if (!verified.has_value()) {
+        return;
+    }
+    // The reference run. Its outcome is not asserted on — a generated program
+    // may legitimately exhaust its heap or nest past the walk's bound — only
+    // that reaching one of the two outcomes is all it ever does.
+    const Expected<RunOutcome> outcome = interpret_image(*image);
+    (void)outcome;
 }
 
 /// Reads a whole file as bytes.

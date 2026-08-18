@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -184,12 +185,20 @@ void case_decoder_is_total_on_seed_corpus()
     const std::filesystem::path seeds = fixtures_root() / "fuzz-seeds";
     std::size_t examined = 0;
     std::size_t accepted = 0;
+    std::size_t refused_at_a_limit = 0;
 
     const std::unique_ptr<mlir::MLIRContext> context = make_context();
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(seeds)) {
         std::ifstream file(entry.path(), std::ios::binary);
         const std::vector<std::uint8_t> bytes(
             (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        // A committed seed that no longer decodes is dead weight the campaign
+        // would carry without anyone noticing, so each one is checked on its
+        // own before the edits start.
+        check(
+            decode_image(bytes).has_value(),
+            std::string("the committed seed ") + entry.path().filename().string() + " decodes");
 
         // The seed itself, then a deterministic sweep of single-byte edits, so
         // the case exercises the refusal paths as well as the accepting one.
@@ -205,17 +214,29 @@ void case_decoder_is_total_on_seed_corpus()
             }
             accepted += 1;
             check(image_is_wellformed(*decoded), "a decoded image is well-formed");
+
+            // A decoded image either emits and verifies, or is refused for a
+            // stated reason. The nesting bound is the reason a well-formed
+            // image can be refused here, and a seed sits on each side of it.
             const Expected<mlir::OwningOpRef<mlir::ModuleOp>> emitted =
                 emit_module(*context, *decoded);
-            check(emitted.has_value(), "a decoded image emits");
             if (emitted.has_value()) {
                 check(verify_module(emitted->get()).has_value(), "a decoded image's module verifies");
+            }
+            else {
+                check(
+                    emitted.error().kind == ErrorKind::LimitExceeded,
+                    "a decoded image is refused only by a stated limit");
+                refused_at_a_limit += 1;
             }
         }
     }
 
     check(examined > 0, "the seed corpus is not empty");
     check(accepted > 0, "at least one input decodes, so the case is not vacuous");
+    check(
+        refused_at_a_limit > 0,
+        "at least one seed sits past the nesting bound, so the limit path is exercised");
 }
 
 /// The wire form round-trips: an image encodes and decodes back to itself.
@@ -347,6 +368,161 @@ void case_ledger_records_every_executed_duplication_and_discard()
     }
 }
 
+/// The compiled code carries its own bounds check: it refuses an allocation
+/// that would not fit, at the same word the reference walk refuses it.
+///
+/// The sizes are measured rather than predicted. Each path is run once on the
+/// static bound, its consumed arena is read back, and the exact heap is that
+/// consumption plus the reserved prefix — so the boundary case is the real
+/// last word rather than an arithmetic guess about it.
+void case_compiled_allocation_is_bounded_by_its_heap()
+{
+    for (const Sample& sample : all_samples()) {
+        const std::size_t generous = heap_words_for(sample.image);
+
+        const Expected<RunOutcome> reference = interpret_image_with_heap(sample.image, generous);
+        const Expected<RunOutcome> compiled = compile_and_run_with_heap(sample.image, generous);
+        check(reference.has_value(), "the reference walk runs on the static bound");
+        check(compiled.has_value(), "the compiled run runs on the static bound");
+        if (!reference.has_value() || !compiled.has_value()) {
+            continue;
+        }
+        check_equal(compiled->value, reference->value, "the two paths agree on the static bound");
+        check(
+            compiled->allocated <= reference->allocated,
+            "the compiled path allocates no more than the reference walk");
+
+        const std::size_t reference_exact = HeapLayout::arena_base + reference->allocated;
+        const std::size_t compiled_exact = HeapLayout::arena_base + compiled->allocated;
+
+        const Expected<RunOutcome> reference_at_exact =
+            interpret_image_with_heap(sample.image, reference_exact);
+        check(reference_at_exact.has_value(), "the reference walk fits its own exact heap");
+        if (reference_at_exact.has_value()) {
+            check_equal(
+                reference_at_exact->value,
+                reference->value,
+                "the exact heap does not change the reference answer");
+        }
+
+        const Expected<RunOutcome> compiled_at_exact =
+            compile_and_run_with_heap(sample.image, compiled_exact);
+        check(compiled_at_exact.has_value(), "the compiled run fits its own exact heap");
+        if (compiled_at_exact.has_value()) {
+            check_equal(
+                compiled_at_exact->value,
+                compiled->value,
+                "the exact heap does not change the compiled answer");
+            check(
+                compiled_at_exact->ledger == compiled->ledger,
+                "the exact heap does not change the accounted work");
+        }
+
+        // One word short of what the run consumed. A program that allocates
+        // nothing has no such case, and saying so is cheaper than pretending
+        // it does.
+        if (reference->allocated > 0) {
+            const Expected<RunOutcome> starved =
+                interpret_image_with_heap(sample.image, reference_exact - 1);
+            check(!starved.has_value(), "the reference walk refuses one word short");
+            if (!starved.has_value()) {
+                check(
+                    starved.error().kind == ErrorKind::LimitExceeded,
+                    "the reference refusal names the limit, not another stage");
+            }
+        }
+        if (compiled->allocated > 0) {
+            const Expected<RunOutcome> starved =
+                compile_and_run_with_heap(sample.image, compiled_exact - 1);
+            check(!starved.has_value(), "the compiled run refuses one word short");
+            if (!starved.has_value()) {
+                check(
+                    starved.error().kind == ErrorKind::LimitExceeded,
+                    "the compiled refusal names the limit, not another stage");
+            } else {
+                std::fprintf(
+                    stderr,
+                    "    %.*s answered %s on a heap one word short\n",
+                    static_cast<int>(sample.name.size()),
+                    sample.name.data(),
+                    starved->value.c_str());
+            }
+        }
+
+        // A heap too small even for the reserved prefix is refused before the
+        // entry point is invoked at all, because the prefix is what the
+        // refusal itself is written into.
+        const Expected<RunOutcome> unusable =
+            compile_and_run_with_heap(sample.image, HeapLayout::arena_base - 1);
+        check(!unusable.has_value(), "a heap below the reserved prefix is refused");
+        if (!unusable.has_value()) {
+            check(
+                unusable.error().kind == ErrorKind::LimitExceeded,
+                "the prefix refusal names the limit");
+        }
+    }
+}
+
+/// A refused run writes nothing past the extent it was given.
+///
+/// The heap handed to the entry point is a prefix of a longer buffer whose
+/// remaining words carry a sentinel. The compiled code learns its bound from
+/// the descriptor, so an unchecked allocation would run into the sentinel
+/// region and be visible afterwards; a checked one cannot reach it.
+void case_a_refused_run_writes_nothing_past_its_heap()
+{
+    constexpr std::int64_t sentinel = -987654321;
+    constexpr std::size_t canary_words = 32;
+
+    const std::unique_ptr<mlir::MLIRContext> context = make_context();
+    std::size_t exercised = 0;
+
+    for (const Sample& sample : all_samples()) {
+        const Expected<RunOutcome> measured = compile_and_run(sample.image);
+        check(measured.has_value(), "the sample runs on the static bound");
+        if (!measured.has_value() || measured->allocated == 0) {
+            continue;
+        }
+
+        Expected<mlir::OwningOpRef<mlir::ModuleOp>> module = emit_module(*context, sample.image);
+        check(module.has_value(), "the sample emits");
+        if (!module.has_value()) {
+            continue;
+        }
+        const Expected<void> lowered =
+            lower_module(module->get(), Optimization::CanonicalizeAndDeduplicate);
+        check(lowered.has_value(), "the sample lowers");
+        if (!lowered.has_value()) {
+            continue;
+        }
+
+        // One word short of what the run needs, so the last allocation is the
+        // one that must be refused.
+        const std::size_t offered = HeapLayout::arena_base + measured->allocated - 1;
+        std::vector<std::int64_t> buffer(offered + canary_words, sentinel);
+        const std::span<std::int64_t> heap(buffer.data(), offered);
+
+        const Expected<RunOutcome> outcome = run_lowered_module_on(module->get(), heap);
+        check(!outcome.has_value(), "the run on the short heap is refused");
+        if (!outcome.has_value()) {
+            check(
+                outcome.error().kind == ErrorKind::LimitExceeded,
+                "the refusal names the limit");
+        }
+
+        std::size_t disturbed = 0;
+        for (std::size_t index = offered; index < buffer.size(); ++index) {
+            if (buffer[index] != sentinel) {
+                disturbed += 1;
+            }
+        }
+        check(disturbed == 0, "no word past the offered heap was written");
+        exercised += 1;
+    }
+
+    check(exercised > 0, "at least one sample allocates, so the case is not vacuous");
+}
+
 /// Lowering is complete: no operation of the gandr dialect survives it.
 void case_lowering_leaves_no_dialect_operation_behind()
 {
@@ -438,9 +614,12 @@ struct Case
 [[nodiscard]] std::vector<Case> registry()
 {
     return {
+        Case{"a_refused_run_writes_nothing_past_its_heap",
+             case_a_refused_run_writes_nothing_past_its_heap},
         Case{"arity_verifier_rejects_a_malformed_constructor",
              case_arity_verifier_rejects_a_malformed_constructor},
         Case{"canonicalization_preserves_accounted_work", case_canonicalization_preserves_accounted_work},
+        Case{"compiled_allocation_is_bounded_by_its_heap", case_compiled_allocation_is_bounded_by_its_heap},
         Case{"decoder_is_total_on_seed_corpus", case_decoder_is_total_on_seed_corpus},
         Case{"encode_decode_round_trips_every_sample", case_encode_decode_round_trips_every_sample},
         Case{"jit_agrees_with_the_fixture_on_every_sample", case_jit_agrees_with_the_fixture_on_every_sample},

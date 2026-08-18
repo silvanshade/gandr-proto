@@ -97,7 +97,10 @@ using Environment = std::vector<std::int64_t>;
     const auto allocate_cell = [&heap](std::size_t words) -> Expected<std::int64_t> {
         const std::optional<std::int64_t> base = heap.allocate(words);
         if (!base.has_value()) {
-            return host_error(ErrorKind::ResultUnreadable, "run exhausted the host heap");
+            heap.words[HeapLayout::exhaustion_flag] = 1;
+            return host_error(
+                ErrorKind::LimitExceeded,
+                "reference run refused an allocation that would not fit its heap");
         }
         return *base;
     };
@@ -208,12 +211,22 @@ using Environment = std::vector<std::int64_t>;
 
 Expected<RunOutcome> interpret_image(const Image& image)
 {
+    return interpret_image_with_heap(image, heap_words_for(image));
+}
+
+Expected<RunOutcome> interpret_image_with_heap(const Image& image, std::size_t heap_words)
+{
     if (!image_is_wellformed(image)) {
         return host_error(ErrorKind::MalformedImage, "image failed the structural check");
     }
+    if (heap_words < HeapLayout::arena_base) {
+        return host_error(
+            ErrorKind::LimitExceeded,
+            "heap is too small to hold the reserved prefix a run writes");
+    }
 
     Heap heap;
-    heap.words.assign(heap_words_for(image), 0);
+    heap.words.assign(heap_words, 0);
     reset_heap(heap.words);
 
     Environment environment;
@@ -226,7 +239,11 @@ Expected<RunOutcome> interpret_image(const Image& image)
     if (!rendered.has_value()) {
         return host_error(ErrorKind::ResultUnreadable, "reference run produced an unreadable value");
     }
-    return RunOutcome{.value = *rendered, .ledger = read_ledger(heap.words)};
+    return RunOutcome{
+        .value = *rendered,
+        .ledger = read_ledger(heap.words),
+        .allocated = allocated_words(heap.words),
+    };
 }
 
 } // namespace gandr::compile_host

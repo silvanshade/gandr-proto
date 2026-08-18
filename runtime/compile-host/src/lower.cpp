@@ -34,8 +34,13 @@ struct LowerState
     mlir::OpBuilder& builder;
     /// The replacement function's heap argument.
     mlir::Value heap;
+    /// The heap's word count, read from the argument in the entry block so it
+    /// dominates every allocation site that compares against it.
+    mlir::Value heap_limit;
     /// Dialect values to their lowered machine-word replacements.
     mlir::IRMapping mapping;
+    /// The one block every refused allocation branches to, built on first use.
+    mlir::Block* refusal = nullptr;
 };
 
 /// Converts a machine-word offset into the index type memory operations take.
@@ -86,23 +91,90 @@ void store_word(LowerState& state, mlir::Value base, std::int64_t offset, mlir::
         builder, location, value, state.heap, mlir::ValueRange{word_index(state, address)});
 }
 
-/// Bump-allocates `words` heap words and returns the base offset.
+/// Reads the heap argument's word count as a machine word.
 ///
-/// The allocation carries no bounds check, exactly as the reference
-/// interpreter's does not: the heap is sized by the host from the image's own
-/// allocation bound, so the guarantee is the caller's rather than the compiled
-/// code's. Making it the compiled code's is future work the honest boundary
-/// names.
-[[nodiscard]] mlir::Value allocate_cell(LowerState& state, std::int64_t words)
+/// The count comes from the memref descriptor the caller passed, so the
+/// compiled code learns its own bound from its argument rather than from a
+/// number the host baked in at compile time. A heap sized by one caller and a
+/// program compiled for another therefore still checks correctly.
+[[nodiscard]] mlir::Value heap_word_count(LowerState& state)
 {
-    const mlir::Value base =
-        load_word(state, word_constant(state, static_cast<std::int64_t>(HeapLayout::bump_cursor)), 0);
     mlir::OpBuilder& builder = state.builder;
     const mlir::Location location = builder.getUnknownLoc();
+    const mlir::Value axis =
+        mlir::arith::ConstantOp::create(builder, location, builder.getIndexAttr(0)).getResult();
+    const mlir::Value extent =
+        mlir::memref::DimOp::create(builder, location, state.heap, axis).getResult();
+    return mlir::arith::IndexCastOp::create(builder, location, builder.getI64Type(), extent)
+        .getResult();
+}
+
+/// The block a refused allocation branches to, created once per function.
+///
+/// The block sets the heap's exhaustion flag and returns. The flag is the
+/// channel: the entry point returns one machine word, so a refusal cannot be
+/// distinguished from an answer in the return value alone, and a caller that
+/// read the word without reading the flag would read a heap offset that was
+/// never allocated.
+[[nodiscard]] mlir::Block* refusal_block(LowerState& state)
+{
+    if (state.refusal != nullptr) {
+        return state.refusal;
+    }
+    mlir::OpBuilder& builder = state.builder;
+    const mlir::Location location = builder.getUnknownLoc();
+    const mlir::OpBuilder::InsertionGuard guard(builder);
+
+    mlir::Region* region = builder.getInsertionBlock()->getParent();
+    mlir::Block* refusal = builder.createBlock(region, region->end(), {}, {});
+    builder.setInsertionPointToEnd(refusal);
+    store_word(
+        state,
+        word_constant(state, static_cast<std::int64_t>(HeapLayout::exhaustion_flag)),
+        0,
+        word_constant(state, 1));
+    mlir::func::ReturnOp::create(builder, location, mlir::ValueRange{word_constant(state, 0)});
+
+    state.refusal = refusal;
+    return refusal;
+}
+
+/// Bump-allocates `words` heap words and returns the base offset.
+///
+/// The allocation is checked against the heap's own extent before the cursor
+/// moves, so no store the compiled code performs can address a word outside
+/// the caller's heap. A refusal leaves the cursor where it was and branches to
+/// the function's refusal block; the reference interpreter refuses at the same
+/// point, which is what makes the short-heap differential a comparison rather
+/// than two independent conventions.
+[[nodiscard]] mlir::Value allocate_cell(LowerState& state, std::int64_t words)
+{
+    mlir::OpBuilder& builder = state.builder;
+    const mlir::Location location = builder.getUnknownLoc();
+    const mlir::Value cursor_slot =
+        word_constant(state, static_cast<std::int64_t>(HeapLayout::bump_cursor));
+    const mlir::Value base = load_word(state, cursor_slot, 0);
     const mlir::Value advanced =
         mlir::arith::AddIOp::create(builder, location, base, word_constant(state, words)).getResult();
-    store_word(
-        state, word_constant(state, static_cast<std::int64_t>(HeapLayout::bump_cursor)), 0, advanced);
+    const mlir::Value fits = mlir::arith::CmpIOp::create(
+                                 builder,
+                                 location,
+                                 mlir::arith::CmpIPredicate::sle,
+                                 advanced,
+                                 state.heap_limit)
+                                 .getResult();
+
+    mlir::Block* refusal = refusal_block(state);
+    mlir::Block* attempted = builder.getInsertionBlock();
+    mlir::Region* region = attempted->getParent();
+    mlir::Block* fitted = builder.createBlock(region, region->end(), {}, {});
+
+    builder.setInsertionPointToEnd(attempted);
+    mlir::cf::CondBranchOp::create(
+        builder, location, fits, fitted, mlir::ValueRange{}, refusal, mlir::ValueRange{});
+
+    builder.setInsertionPointToEnd(fitted);
+    store_word(state, cursor_slot, 0, advanced);
     return base;
 }
 
@@ -317,7 +389,14 @@ Expected<void> lower_dialect_operations(mlir::ModuleOp module)
     mlir::Block* entry = lowered.addEntryBlock();
     builder.setInsertionPointToEnd(entry);
 
-    LowerState state{.builder = builder, .heap = entry->getArgument(0), .mapping = {}};
+    LowerState state{
+        .builder = builder,
+        .heap = entry->getArgument(0),
+        .heap_limit = {},
+        .mapping = {},
+        .refusal = nullptr,
+    };
+    state.heap_limit = heap_word_count(state);
     const Expected<mlir::Value> produced = lower_operations(staged.getBody().front(), state, 0);
     if (!produced.has_value()) {
         staged.erase();

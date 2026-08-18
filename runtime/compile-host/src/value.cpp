@@ -46,23 +46,44 @@ struct RenderStep
 
 void reset_heap(std::span<std::int64_t> heap) noexcept
 {
-    if (heap.size() <= HeapLayout::arena_base) {
+    if (heap.size() < HeapLayout::arena_base) {
         return;
     }
     heap[HeapLayout::bump_cursor] = static_cast<std::int64_t>(HeapLayout::arena_base);
     heap[HeapLayout::duplication_ledger] = 0;
     heap[HeapLayout::discard_ledger] = 0;
+    heap[HeapLayout::exhaustion_flag] = 0;
 }
 
 WorkLedger read_ledger(std::span<const std::int64_t> heap) noexcept
 {
-    if (heap.size() <= HeapLayout::arena_base) {
+    if (heap.size() < HeapLayout::arena_base) {
         return WorkLedger{};
     }
     return WorkLedger{
         .duplications = heap[HeapLayout::duplication_ledger],
         .discards = heap[HeapLayout::discard_ledger],
     };
+}
+
+bool heap_was_exhausted(std::span<const std::int64_t> heap) noexcept
+{
+    if (heap.size() < HeapLayout::arena_base) {
+        return true;
+    }
+    return heap[HeapLayout::exhaustion_flag] != 0;
+}
+
+std::size_t allocated_words(std::span<const std::int64_t> heap) noexcept
+{
+    if (heap.size() < HeapLayout::arena_base) {
+        return 0;
+    }
+    const std::int64_t cursor = heap[HeapLayout::bump_cursor];
+    if (cursor <= static_cast<std::int64_t>(HeapLayout::arena_base)) {
+        return 0;
+    }
+    return static_cast<std::size_t>(cursor) - HeapLayout::arena_base;
 }
 
 std::optional<std::string> render_value(std::span<const std::int64_t> heap, std::int64_t root)

@@ -33,10 +33,27 @@ namespace gandr::compile_host
 /// - ensures: the outcome's rendering and ledger match the compiled path's on
 ///   every image both accept.
 /// - fails: `ErrorKind::MalformedImage` for an image that does not verify;
-///   `ErrorKind::LimitExceeded` past `max_emit_depth`;
-///   `ErrorKind::ResultUnreadable` when the heap ran out of room.
+///   `ErrorKind::LimitExceeded` past `max_emit_depth` or when an allocation
+///   would not fit the heap.
 /// - panics: none.
 [[nodiscard]] Expected<RunOutcome> interpret_image(const Image& image);
+
+/// Evaluates a program image directly on a heap of the caller's size.
+///
+/// # Contract
+/// - requires: `image` satisfies `image_is_wellformed`.
+/// - ensures: identical to `interpret_image` when `heap_words` is at least
+///   what the walk needs; otherwise the walk stops at the first allocation
+///   that does not fit and reports it, having written nothing outside the
+///   heap.
+/// - provides: the reference side of the bounds differential, so the compiled
+///   path's refusal is compared against another implementation's rather than
+///   against a rule stated once.
+/// - fails: as `interpret_image`, `ErrorKind::LimitExceeded` included.
+/// - panics: none.
+[[nodiscard]] Expected<RunOutcome> interpret_image_with_heap(
+    const Image& image,
+    std::size_t heap_words);
 
 } // namespace gandr::compile_host
 

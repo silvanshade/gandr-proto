@@ -4,6 +4,7 @@
 #include <functional>
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,12 @@ void ensure_native_target()
 
 Expected<RunOutcome> run_lowered_module(mlir::ModuleOp module, std::size_t heap_words)
 {
+    std::vector<std::int64_t> heap(heap_words, 0);
+    return run_lowered_module_on(module, heap);
+}
+
+Expected<RunOutcome> run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap)
+{
     // The wall reaches execution as well as the passes: this entry is public,
     // so a caller could otherwise assemble the stages in an order that skips
     // it, and "verified before executed" would be a property of the usual call
@@ -48,6 +55,12 @@ Expected<RunOutcome> run_lowered_module(mlir::ModuleOp module, std::size_t heap_
     const Expected<void> verified = verify_module(module);
     if (!verified.has_value()) {
         return std::unexpected(verified.error());
+    }
+
+    if (heap.size() < HeapLayout::arena_base) {
+        return host_error(
+            ErrorKind::LimitExceeded,
+            "heap is too small to hold the reserved prefix the entry point writes");
     }
 
     ensure_native_target();
@@ -65,7 +78,6 @@ Expected<RunOutcome> run_lowered_module(mlir::ModuleOp module, std::size_t heap_
             "execution engine could not be created: " + llvm::toString(engine.takeError()));
     }
 
-    std::vector<std::int64_t> heap(heap_words, 0);
     reset_heap(heap);
 
     StridedMemRefType<std::int64_t, 1> descriptor{};
@@ -88,11 +100,24 @@ Expected<RunOutcome> run_lowered_module(mlir::ModuleOp module, std::size_t heap_
             "entry point could not be invoked: " + llvm::toString(std::move(invoked)));
     }
 
+    // The flag is read before the returned word, because a refused run returns
+    // a word that was never an allocation and rendering it would be reading a
+    // heap the program declined to build.
+    if (heap_was_exhausted(heap)) {
+        return host_error(
+            ErrorKind::LimitExceeded,
+            "compiled run refused an allocation that would not fit its heap");
+    }
+
     const std::optional<std::string> rendered = render_value(heap, produced);
     if (!rendered.has_value()) {
         return host_error(ErrorKind::ResultUnreadable, "compiled run produced an unreadable value");
     }
-    return RunOutcome{.value = *rendered, .ledger = read_ledger(heap)};
+    return RunOutcome{
+        .value = *rendered,
+        .ledger = read_ledger(heap),
+        .allocated = allocated_words(heap),
+    };
 }
 
 Expected<RunOutcome> compile_and_run(const Image& image)
@@ -102,6 +127,21 @@ Expected<RunOutcome> compile_and_run(const Image& image)
         return std::unexpected(timed.error());
     }
     return timed->first;
+}
+
+Expected<RunOutcome> compile_and_run_with_heap(const Image& image, std::size_t heap_words)
+{
+    const std::unique_ptr<mlir::MLIRContext> context = make_context();
+    Expected<mlir::OwningOpRef<mlir::ModuleOp>> module = emit_module(*context, image);
+    if (!module.has_value()) {
+        return std::unexpected(module.error());
+    }
+    const Expected<void> lowered =
+        lower_module(module->get(), Optimization::CanonicalizeAndDeduplicate);
+    if (!lowered.has_value()) {
+        return std::unexpected(lowered.error());
+    }
+    return run_lowered_module(module->get(), heap_words);
 }
 
 Expected<std::pair<RunOutcome, RunTiming>> compile_and_run_timed(const Image& image)

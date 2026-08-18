@@ -19,3 +19,8 @@ discard-ledger-not-recorded	src/lower.cpp	s|            record_work(state, HeapL
 dispatch-takes-the-wrong-arm	src/lower.cpp	s|word_constant(state, static_cast<std::int64_t>(CellTag::Inl)))|word_constant(state, static_cast<std::int64_t>(CellTag::Inr)))|
 literal-cell-carries-the-wrong-tag	src/lower.cpp	s|store_word(state, cell, 0, word_constant(state, static_cast<std::int64_t>(CellTag::Int)));|store_word(state, cell, 0, word_constant(state, static_cast<std::int64_t>(CellTag::Unit)));|
 constructor-fields-stored-in-reverse	src/lower.cpp	s|                field_offset += 1;|                field_offset -= 1;|
+allocation-bound-never-compared	src/lower.cpp	s|                                 state.heap_limit)|                                 advanced)|
+allocation-bound-compared-the-wrong-way	src/lower.cpp	s|                                 mlir::arith::CmpIPredicate::sle,|                                 mlir::arith::CmpIPredicate::sgt,|
+refusal-leaves-the-exhaustion-flag-clear	src/lower.cpp	s|^        word_constant(state, 1));|        word_constant(state, 0));|
+host-never-reads-the-exhaustion-flag	src/jit.cpp	s|    if (heap_was_exhausted(heap)) {|    if (false) {|
+reference-walk-does-not-bound-its-heap	src/interpret.cpp	s|        if (base > words.size() \|\| count > words.size() - base) {|        if (base > words.size()) {|

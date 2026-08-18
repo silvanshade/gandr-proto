@@ -134,7 +134,10 @@ struct Node
     NodeKind kind = NodeKind::Lit;
     /// The constructor tag, for `NodeKind::Ctor`.
     CtorTag tag = CtorTag::Unit;
-    /// The de Bruijn level of the referenced binder, for `NodeKind::Var`.
+    /// How many binders separate the reference from the one it names, for
+    /// `NodeKind::Var`. Zero is the innermost binder, so this is a de Bruijn
+    /// index counted inwards rather than a level counted outwards; the
+    /// evaluator reads it as `environment[size - 1 - binder]`.
     std::uint32_t binder = 0;
     /// The integer payload, for `NodeKind::Lit`.
     std::int64_t literal = 0;

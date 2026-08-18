@@ -105,6 +105,15 @@ target_link_libraries(gandr-compile-host-core PUBLIC MLIR LLVM MLIRExecutionEngi
 set(GANDR_COMPILE_HOST_WARNINGS -Wall -Wextra -Wconversion -Wsign-conversion -Werror)
 target_compile_options(gandr-compile-host-core PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
 
+# The C boundary, built as a shared library so a foreign caller resolves it at
+# run time. Keeping it separate from the static core is what lets the Rust
+# workspace build with no MLIR at all: nothing links this, and a caller that
+# cannot find it reports an unavailable host rather than failing to compile.
+add_library(gandr-compile-host-abi SHARED src/abi.cpp)
+target_link_libraries(gandr-compile-host-abi PRIVATE gandr-compile-host-core)
+target_compile_options(gandr-compile-host-abi PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
+set_target_properties(gandr-compile-host-abi PROPERTIES CXX_VISIBILITY_PRESET default)
+
 add_executable(gandr-compile-host tools/main.cpp)
 target_link_libraries(gandr-compile-host PRIVATE gandr-compile-host-core)
 target_compile_options(gandr-compile-host PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
@@ -126,8 +135,10 @@ if(GANDR_COMPILE_HOST_BUILD_TESTS)
   )
 
   set(GANDR_COMPILE_HOST_TEST_CASES
+      a_refused_run_writes_nothing_past_its_heap
       arity_verifier_rejects_a_malformed_constructor
       canonicalization_preserves_accounted_work
+      compiled_allocation_is_bounded_by_its_heap
       decoder_is_total_on_seed_corpus
       encode_decode_round_trips_every_sample
       jit_agrees_with_the_fixture_on_every_sample

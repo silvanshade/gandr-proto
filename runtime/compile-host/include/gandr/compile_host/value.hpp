@@ -51,6 +51,8 @@ enum class CellTag : std::int64_t
 /// The prefix is what makes duplication and discard observable from outside
 /// the compiled function: the two counters are the accounted work, and a
 /// canonicalization that deleted either operation would leave them at zero.
+/// The fourth word is how the compiled code reports that it refused to
+/// allocate, since a function returning one machine word has no other channel.
 struct HeapLayout
 {
     /// The word holding the bump-allocation cursor.
@@ -59,8 +61,14 @@ struct HeapLayout
     static constexpr std::size_t duplication_ledger = 1;
     /// The word counting executed discards.
     static constexpr std::size_t discard_ledger = 2;
+    /// The word a run sets when an allocation would not fit.
+    ///
+    /// Zero means every allocation the run attempted fitted. Any other value
+    /// means the run stopped at an allocation it refused, and its returned
+    /// word is not a value.
+    static constexpr std::size_t exhaustion_flag = 3;
     /// The first word available to cell allocation.
-    static constexpr std::size_t arena_base = 3;
+    static constexpr std::size_t arena_base = 4;
 };
 
 /// The work a run accounted for, read back from the heap's ledger words.
@@ -78,8 +86,8 @@ struct WorkLedger
 ///
 /// # Contract
 /// - requires: `heap.size()` is at least `HeapLayout::arena_base`.
-/// - ensures: the bump cursor points at `HeapLayout::arena_base` and both
-///   ledger words are zero.
+/// - ensures: the bump cursor points at `HeapLayout::arena_base`, both ledger
+///   words are zero, and the exhaustion flag is clear.
 /// - provides: the precondition the emitted entry point assumes.
 /// - panics: none.
 void reset_heap(std::span<std::int64_t> heap) noexcept;
@@ -91,6 +99,29 @@ void reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - ensures: returns the two ledger words as executed counts.
 /// - panics: none.
 [[nodiscard]] WorkLedger read_ledger(std::span<const std::int64_t> heap) noexcept;
+
+/// Whether a run stopped at an allocation that would not fit.
+///
+/// # Contract
+/// - requires: nothing; a heap smaller than the reserved prefix reads as
+///   exhausted, because such a heap cannot hold a run at all.
+/// - ensures: true exactly when the compiled or interpreted run refused an
+///   allocation, so a caller never reads the returned word as a value.
+/// - provides: the one channel the compiled entry point has for reporting a
+///   refusal, since its signature returns a single machine word.
+/// - panics: none.
+[[nodiscard]] bool heap_was_exhausted(std::span<const std::int64_t> heap) noexcept;
+
+/// The number of arena words a run consumed, above the reserved prefix.
+///
+/// # Contract
+/// - requires: `heap.size()` is at least `HeapLayout::arena_base`.
+/// - ensures: returns the bump cursor's advance over the reserved prefix, so
+///   zero means the run allocated nothing.
+/// - provides: the measurement the exact-heap witnesses size their heaps by,
+///   rather than trusting the static bound.
+/// - panics: none.
+[[nodiscard]] std::size_t allocated_words(std::span<const std::int64_t> heap) noexcept;
 
 /// Renders a heap value in the canonical form the agreement fixture uses.
 ///
@@ -127,15 +158,16 @@ inline constexpr std::size_t heap_headroom_words = 16;
 ///
 /// Every node of a well-formed image is reached exactly once and evaluates at
 /// most once, so the sum over its nodes bounds a run's allocation. A dispatch
-/// runs one arm, so the sum over-estimates rather than needing a check — which
-/// is what lets the compiled code carry no bounds check of its own.
+/// runs one arm, so the sum over-estimates; the compiled code checks its own
+/// allocations regardless, because this bound is the host's arithmetic rather
+/// than anything the emitted program knows.
 ///
 /// # Contract
 /// - requires: `image` satisfies `image_is_wellformed`.
 /// - ensures: a run of `image` allocates no more than the returned count.
 /// - provides: the one sizing both the compiled path and the reference
-///   interpreter use, so a heap difference can never be mistaken for a
-///   disagreement between them.
+///   interpreter use by default, so a heap difference can never be mistaken
+///   for a disagreement between them.
 /// - panics: none.
 [[nodiscard]] std::size_t heap_words_for(const Image& image) noexcept;
 
