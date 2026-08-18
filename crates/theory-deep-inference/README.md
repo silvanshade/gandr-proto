@@ -8,7 +8,7 @@ None of them is the semantic oracle — replay, in `gandr-theory-coherent-resolu
 
 The causal order and the normal form are mutually dependent, and the crate boundary encloses both: an event's canonical key digests its causal past, and the causal order is read back to schedule the normal form.
 
-## Current provision
+## What it provides
 
 - The earned shift-equivalence witness: two adjacent applications at disjoint positions with trivial overlap are one composite transformation, granted per pair against the decided guard and carrying the convexity conjunct's discharge as a certificate rather than a recomputed sweep.
   This is the crate's single independence relation.
@@ -22,7 +22,7 @@ The causal order and the normal form are mutually dependent, and the crate bound
 The flow projection and the footprint test are prototypes and neither has a consumer.
 Both say so at their own module heads, and neither replaces the guard.
 
-## Planned but absent
+## What is planned and absent
 
 - The trace seam and spinal duplication from the sharing programme.
 - Any consumer for the flow projection or the footprint test.
@@ -42,7 +42,7 @@ let reached = plan.replay_with_fuel(&store, plan.critical_path())?;
 The content addresses this crate computes are process-local.
 Nothing may persist or transmit one; the durable identity is minted at the transport boundary in `gandr-theory-decomposition-spaces`.
 
-## Theoretical ideas relied on
+## Theoretical ideas it relies on
 
 Deep inference and atomic flows; permutation of inference steps; trace monoids over an independence relation; causal orders and their linear extensions; content-addressed canonical keys; critical-path replay.
 
