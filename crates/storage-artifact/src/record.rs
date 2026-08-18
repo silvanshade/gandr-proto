@@ -293,8 +293,19 @@ impl ArtifactRecordSet
     #[must_use]
     pub fn from_segmented(segmented: &SegmentedArtifact) -> Self
     {
+        let artifact_bytes = segmented.bytes();
+        let bytes = artifact_bytes.as_ref();
+        let mut spans = segmented.segment_spans();
+        let header = spans
+            .next()
+            .and_then(|span| bytes.get(span))
+            .unwrap_or_default();
         let mut records = Vec::with_capacity(usize::from(segmented.segment_count()));
-        for (index, segment) in segmented.segments().enumerate() {
+        for (index, span) in spans.enumerate() {
+            let Some(segment) = bytes.get(span)
+            else {
+                break;
+            };
             let admission_index = AdmissionIndex::from(u64::try_from(index).unwrap_or(u64::MAX));
             records.push(ArtifactRecord::new(
                 admission_index,
@@ -304,7 +315,7 @@ impl ArtifactRecordSet
 
         return Self {
             inner_format_version: InnerFormatVersion::from(FORMAT_VERSION_V1),
-            header: Box::<[u8]>::from(segmented.header().as_ref()),
+            header: Box::<[u8]>::from(header),
             records,
         };
     }

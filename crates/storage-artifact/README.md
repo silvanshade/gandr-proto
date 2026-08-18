@@ -11,7 +11,8 @@
 
 - A v1 export artifact **is**, by construction, a sorted unique keyed record set: E2 admission ordering keys each declaration by its admission index, and the format is declaration-segmented.
   Records are `(admission index as a fixed-width big-endian key → declaration segment bytes)`.
-- `ArtifactRecordSet` extracts those records from a `SegmentedArtifact` (or directly from an `Environment`), and reassembles the canonical artifact bytes from them.
+- `ArtifactRecordSet` extracts those records from a `SegmentedArtifact` (or directly from an `Environment`) using its header-plus-segment span reader, and reassembles the canonical artifact bytes from them.
+  The spans are offsets only; they do not make declaration records independently replayable.
 - `build` flows the records through record-safe (declaration-granular) chunking into a `BlockStore`-backed prolly tree, storing every node, and mints the artifact identity.
 - `ArtifactManifest` is the canonical, versioned outer manifest binding the chunker parameter commitment (85 bytes), the record count, the root node hash, and the inner kernel export format version.
   `ArtifactIdentity` is `BLAKE3` of the manifest — the b3sum-provenance successor.

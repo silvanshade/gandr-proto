@@ -128,6 +128,7 @@ pub use export::ReadError;
 pub use export::ReservedKind;
 pub use export::ReservedSlot;
 pub use export::SegmentCount;
+pub use export::SegmentSpans;
 pub use export::SegmentedArtifact;
 pub use export::Segments;
 pub use export::TableEntryCount;

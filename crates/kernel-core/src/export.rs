@@ -117,6 +117,7 @@ mod write;
 
 use core::error::Error;
 use core::fmt;
+use core::ops::Range;
 
 pub use self::read::decode;
 pub use self::read::read;
@@ -894,6 +895,77 @@ impl SegmentedArtifact
             next: 0,
         }
     }
+    /// Returns the header and declaration segment byte ranges without
+    /// borrowing payload slices.
+    ///
+    /// # Contract
+    /// - ensures: each range is half-open and ordered by admission; the first
+    ///   range is the header and the remainder reconstruct the artifact.
+    /// - provides: a framing byproduct for outer storage readers.
+    /// - fails: never for artifacts produced by [`write_segmented`].
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn segment_spans(&self) -> SegmentSpans<'_>
+    {
+        SegmentSpans {
+            header: 0 .. self.framing.header_len,
+            bytes_len: self.bytes.as_ref().len(),
+            ends: &self.framing.segment_ends,
+            start: self.framing.header_len,
+            next: 0,
+        }
+    }
+}
+
+/// Iterator over the header and declaration segment byte ranges.
+#[derive(Clone, Debug)]
+pub struct SegmentSpans<'artifact>
+{
+    /// Header byte range.
+    header: Range<usize>,
+    /// Full artifact byte length.
+    bytes_len: usize,
+    /// Exclusive segment end offsets.
+    ends: &'artifact [usize],
+    /// Start offset of the next segment.
+    start: usize,
+    /// Number of ranges already yielded.
+    next: usize,
+}
+
+impl Iterator for SegmentSpans<'_>
+{
+    type Item = Range<usize>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        if self.next == 0 {
+            self.next = 1;
+            return Some(self.header.clone());
+        }
+        let end = *self.ends.get(self.next.checked_sub(1)?)?;
+        let span = self.start .. end;
+        if end > self.bytes_len || span.start > span.end {
+            self.next = self.ends.len().saturating_add(1);
+            return None;
+        }
+        self.start = end;
+        self.next = self.next.saturating_add(1);
+        Some(span)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>)
+    {
+        let remaining = self.ends.len().saturating_add(1).saturating_sub(self.next);
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for SegmentSpans<'_>
+{
 }
 
 /// An iterator over a [`SegmentedArtifact`]'s declaration segments, in
@@ -1318,6 +1390,35 @@ mod tests
             next: 0,
         };
         assert_eq!(None, malformed.next());
+    }
+    #[test]
+    fn segment_spans_expose_header_then_payload_ranges()
+    {
+        let bytes = [1_u8, 2, 3, 4, 5];
+        let ends = [3_usize, 5];
+        let spans = SegmentSpans {
+            header: 0 .. 1,
+            bytes_len: bytes.len(),
+            ends: &ends,
+            start: 1,
+            next: 0,
+        };
+        assert_eq!(
+            [0 .. 1, 1 .. 3, 3 .. 5],
+            spans.collect::<alloc::vec::Vec<_>>().as_slice(),
+        );
+
+        let malformed = SegmentSpans {
+            header: 0 .. 1,
+            bytes_len: bytes.len(),
+            ends: &[9],
+            start: 1,
+            next: 0,
+        };
+        assert_eq!(
+            alloc::vec![0 .. 1],
+            malformed.collect::<alloc::vec::Vec<_>>(),
+        );
     }
 
     #[test]
