@@ -25,6 +25,14 @@ mod codec;
 /// Fixed byte length of the file-artifact header.
 const FILE_HEADER_LEN: usize = 116;
 
+/// How many private names a store tries before giving up.
+///
+/// A collision needs two live temporaries to draw one 64-bit nonce, so the
+/// bound is a liveness guard against a pathological directory rather than an
+/// expected path: exhausting it is reported as an I/O failure, never as a
+/// silent overwrite.
+const MAX_TEMPORARY_ATTEMPTS: u8 = 8;
+
 /// A stable content address for one lowered program revision.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -143,7 +151,8 @@ pub trait CheckpointStore
     /// - fails: a typed [`CheckpointStoreError`] when encoding or the backing
     ///   store rejects the record; **a failed store leaves the store exactly as
     ///   it was**, with no partial, private, or temporary residue an observer
-    ///   of the backing medium could see.
+    ///   of the backing medium could see, and no record other than this
+    ///   address's own touched whether it succeeds or fails.
     /// - panics: none.
     ///
     /// # Errors
@@ -279,9 +288,25 @@ impl CheckpointStore for FileCheckpointStore
     ///   ordinary condition that fails the rename after the record is written,
     ///   a directory occupying the record path, observed through the store
     ///   directory's exact entry set. Removing or inverting the rollback fails
-    ///   the witness; removing the disarm fails to compile, because the
-    ///   published state is then never read.
+    ///   that witness. **The staging name's safety is separated by a squatter
+    ///   at the name a predictable implementation would choose**: making the
+    ///   nonce constant fails the exclusivity witness on its own, and pairing
+    ///   that with a truncating open fails its byte-identity assertion too. The
+    ///   invariant clause is pinned under real contention on the record path
+    ///   rather than argued.
+    /// - hypothesis: **one property here is not separable by any test at this
+    ///   nonce width, and is carried structurally instead** — that a collision
+    ///   retries rather than overwriting. Provoking one needs two live
+    ///   temporaries to draw the same 64-bit value, so no witness can reach the
+    ///   retry arm; what the tests do establish is that the name is
+    ///   unpredictable and that an existing file is never opened. The retry
+    ///   itself rests on `create_new`'s exclusivity and the `AlreadyExists`
+    ///   arm, which a reader checks. The partial-write leg is likewise
+    ///   structural: the guard is armed before the first byte, and no reachable
+    ///   input fails a write to a file just created.
     /// - witness: `tests::a_failed_file_store_strands_no_temporary_in_the_record_directory`
+    /// - witness: `tests::a_store_never_writes_through_a_file_it_did_not_create`
+    /// - witness: `tests::concurrent_stores_of_one_address_leave_the_record_and_no_temporary`
     /// - witness: `tests::supported_nonempty_checkpoints_round_trip_in_memory_and_reopened_file`
     #[inline]
     fn store(
@@ -327,27 +352,34 @@ impl RecordPublication
 
 impl TemporaryRecord
 {
-    /// Writes `artifact` under a private name in `root`.
+    /// Writes `artifact` into a freshly created private file in `root`.
     ///
-    /// The name carries the process id, an operating-system-seeded nonce, and
-    /// the record address, so two stores of one address — in one process or
-    /// across processes — cannot write through each other's temporary. The
-    /// dependency-free nonce recipe is the one `gandr-runtime-effects` uses for
-    /// its temporary directories.
+    /// **Exclusive creation is what makes the name safe, not the name itself.**
+    /// The candidate carries the process id, the record address, and an
+    /// operating-system-seeded nonce — the dependency-free recipe
+    /// `gandr-runtime-effects` uses for its temporary directories — but a
+    /// 64-bit nonce is a probabilistic name, and truncating whatever it
+    /// happens to hit would let two stores of one address write through
+    /// each other. So the file is opened with `create_new`, whose failure
+    /// on an existing path is what turns a collision into a retry under a
+    /// fresh nonce instead of a silent overwrite.
     ///
     /// # Contract
     /// - requires: `root` is an existing directory.
-    /// - ensures: on success the complete artifact is on disk under a name no
-    ///   other store call will choose, and the returned guard removes it unless
-    ///   [`Self::commit`] publishes it.
+    /// - ensures: on success the complete artifact is on disk in a file this
+    ///   call created, under a name no other live temporary holds, and the
+    ///   returned guard removes it unless [`Self::commit`] publishes it. No
+    ///   file that existed before the call is opened, truncated, or written.
     /// - provides: the staging half of the store's atomic replacement.
-    /// - fails: [`CheckpointStoreError::Io`] when the write fails, in which
-    ///   case any partial file is removed before returning.
+    /// - fails: [`CheckpointStoreError::Io`] when a candidate cannot be created
+    ///   for a reason other than already existing, when the write fails — in
+    ///   which case the partly written file is removed before returning — or
+    ///   when [`MAX_TEMPORARY_ATTEMPTS`] consecutive candidates already exist.
     /// - panics: none.
     ///
     /// # Errors
-    /// Returns [`CheckpointStoreError::Io`] when the temporary cannot be
-    /// written.
+    /// Returns [`CheckpointStoreError::Io`] when no candidate can be created or
+    /// the artifact cannot be written.
     fn write(
         root: &Path,
         address: CheckpointAddress,
@@ -355,17 +387,40 @@ impl TemporaryRecord
     ) -> Result<Self, CheckpointStoreError>
     {
         let process = std::process::id();
-        let nonce = std::collections::hash_map::RandomState::new().hash_one(process);
-        let path = root.join(format!("{}.tmp-{process}-{nonce:016x}", hex(address.0)));
-        let record = Self {
-            path,
-            published: RecordPublication::PRIVATE,
-        };
-        std::fs::write(&record.path, artifact).map_err(|error| {
-            drop(error);
-            CheckpointStoreError::Io
-        })?;
-        Ok(record)
+        for _ in 0 .. MAX_TEMPORARY_ATTEMPTS {
+            // A fresh nonce per attempt: retrying the same candidate would spin
+            // rather than resolve the collision it just observed.
+            let nonce = std::collections::hash_map::RandomState::new().hash_one(process);
+            let candidate = root.join(format!("{}.tmp-{process}-{nonce:016x}", hex(address.0)));
+            let created = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate);
+            let mut file = match created {
+                | Ok(file) => file,
+                // Somebody else holds this candidate. Draw another rather than
+                // truncating a temporary that is not ours.
+                | Err(ref error) if error.kind() == ErrorKind::AlreadyExists => continue,
+                | Err(error) => {
+                    drop(error);
+                    return Err(CheckpointStoreError::Io);
+                },
+            };
+            // Armed before the first byte, so a partial write is removed too.
+            let record = Self {
+                path: candidate,
+                published: RecordPublication::PRIVATE,
+            };
+            let written = std::io::Write::write_all(&mut file, artifact)
+                .and_then(|()| std::io::Write::flush(&mut file));
+            let outcome = written.map_err(|error| {
+                drop(error);
+                CheckpointStoreError::Io
+            });
+            outcome?;
+            return Ok(record);
+        }
+        Err(CheckpointStoreError::Io)
     }
 
     /// Renames the record onto `destination`, publishing it.
@@ -1047,6 +1102,96 @@ mod tests
             remaining,
             alloc::vec![hex(address.0)],
             "a rejected store leaves the record directory exactly as it found it"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Exclusive creation is what the staging name relies on, so a file already
+    /// occupying the store root is never opened, truncated, or removed by a
+    /// store — whatever candidate the nonce draws.
+    #[test]
+    fn a_store_never_writes_through_a_file_it_did_not_create()
+    {
+        let root = root("store-exclusive");
+        drop(std::fs::remove_dir_all(&root));
+        let program = program(&[1]);
+        let checkpoints = checkpoint_program(&program);
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let address = address_of(&program).unwrap();
+        let mut store = FileCheckpointStore::open(&root).unwrap();
+        // A squatter shaped exactly like a live temporary of the same address,
+        // which is the shape a colliding candidate would hit.
+        let squatter = root.join(format!(
+            "{}.tmp-{}-0000000000000000",
+            hex(address.0),
+            std::process::id()
+        ));
+        std::fs::write(&squatter, b"another store's bytes").unwrap();
+
+        store.store(address, backend, checkpoints.clone()).unwrap();
+
+        assert_eq!(
+            std::fs::read(&squatter).unwrap(),
+            b"another store's bytes",
+            "a store leaves a file it did not create byte-identical"
+        );
+        assert_eq!(
+            store.load(address, backend).unwrap(),
+            Some(checkpoints),
+            "and still publishes its own record"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Concurrent stores of one address contend for the record path and for
+    /// candidate names. The invariants that must hold whatever the
+    /// interleaving: every call either succeeds or reports I/O, the
+    /// published record is the one that was stored, and no private
+    /// temporary survives.
+    #[test]
+    fn concurrent_stores_of_one_address_leave_the_record_and_no_temporary()
+    {
+        let root = root("store-concurrent");
+        drop(std::fs::remove_dir_all(&root));
+        let backend = BackendArtifact::from_bytes(b"backend");
+        let address = address_of(&program(&[1, 2])).unwrap();
+        drop(FileCheckpointStore::open(&root).unwrap());
+
+        // A checkpoint set is `Rc`-carrying and so not `Send`; each thread
+        // rebuilds the same program instead, which the crate's own byte-and-
+        // address stability row pins as identical work.
+        std::thread::scope(|scope| {
+            for _ in 0_u8 .. 4_u8 {
+                let root = root.clone();
+                drop(scope.spawn(move || {
+                    let checkpoints = checkpoint_program(&program(&[1, 2]));
+                    let mut store = FileCheckpointStore::open(&root).unwrap();
+                    for _ in 0_u8 .. 16_u8 {
+                        let outcome = store.store(address, backend, checkpoints.clone());
+                        assert!(
+                            matches!(outcome, Ok(()) | Err(CheckpointStoreError::Io)),
+                            "a store either publishes or reports I/O"
+                        );
+                    }
+                }));
+            }
+        });
+
+        let mut store = FileCheckpointStore::open(&root).unwrap();
+        assert_eq!(
+            store.load(address, backend).unwrap(),
+            Some(checkpoint_program(&program(&[1, 2]))),
+            "the published record is the one that was stored"
+        );
+        let leftovers = std::fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains(".tmp-"))
+            .collect::<alloc::vec::Vec<_>>();
+        assert_eq!(
+            leftovers,
+            alloc::vec::Vec::<alloc::string::String>::new(),
+            "no private temporary survives its store"
         );
         std::fs::remove_dir_all(root).unwrap();
     }
