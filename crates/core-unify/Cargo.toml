@@ -1,0 +1,28 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-unify"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Predictable-fragment unification for the gandr core: most-general solutions inside a named fragment, postponement with a reason outside it, and certificates a caller re-checks through the conversion engine"
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The conversion engine whose equational theory the solver's rules are drawn
+# from and whose relation re-checks every certificate it hands back.
+gandr-core-nbe.workspace = true
+# The core CBPV terms and types the equations are stated between.
+gandr-core-term.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

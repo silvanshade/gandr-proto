@@ -1,4 +1,4 @@
-//! **Predictable-fragment unification**: the checker's solver-machine service.
+//! **Predictable-fragment unification**: gandr's solver-machine service.
 //!
 //! A unification problem is a list of equations between core terms, some of
 //! whose holes the caller has nominated as metavariables. The service answers
@@ -19,9 +19,10 @@
 //! solver stops. A caller reading one knows what would have to change; a test
 //! reading one pins the boundary rather than the absence of an answer.
 //!
-//! **The theory is the checker's theory.** Every rule the solver applies is a
-//! rule [`gandr_core_nbe::conv`] already decides, which is what makes the
-//! substitute-and-re-check evidence meaningful. Where a rule is not in
+//! **The theory is the conversion engine's theory.** Every rule the solver
+//! applies is a rule [`gandr_core_nbe::conv`] already decides, which is what
+//! makes the substitute-and-re-check evidence meaningful, and what stops a
+//! second definitional equality growing here. Where a rule is not in
 //! conversion, it is not in the fragment either, whatever the type would
 //! license.
 //!
@@ -90,6 +91,8 @@
 //! [`Value::Hole`]: gandr_core_term::syntax::Value::Hole
 //! [`Comp::Hole`]: gandr_core_term::syntax::Comp::Hole
 
+extern crate alloc;
+
 pub mod certify;
 pub mod frag;
 pub mod meta;
@@ -106,14 +109,14 @@ use gandr_core_term::boundary::SolverBudget;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-pub use crate::unify::certify::Certificate;
-pub use crate::unify::certify::Postponed;
-pub use crate::unify::certify::Replay;
-pub use crate::unify::certify::Verdict;
-pub use crate::unify::frag::PostponeReason;
-pub use crate::unify::frag::Refutation;
-pub use crate::unify::meta::MetaContext;
-pub use crate::unify::meta::MetaSort;
+pub use crate::certify::Certificate;
+pub use crate::certify::Postponed;
+pub use crate::certify::Replay;
+pub use crate::certify::Verdict;
+pub use crate::frag::PostponeReason;
+pub use crate::frag::Refutation;
+pub use crate::meta::MetaContext;
+pub use crate::meta::MetaSort;
 
 /// The default number of steps one run may spend.
 ///
@@ -287,7 +290,7 @@ mod tests
     use proptest::prelude::*;
 
     use super::*;
-    use crate::unify::scan;
+    use crate::scan;
 
     // ── fixtures ────────────────────────────────────────────────────────────
 

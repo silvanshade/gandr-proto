@@ -8,7 +8,7 @@
 //! [`subst_holes_value`] and [`subst_holes_comp`] replace **solved holes** by
 //! their solutions, which is how a unifier's certificate is applied to a term
 //! before the ordinary conversion engine re-checks it
-//! (`gandr_core_checker::unify`).
+//! (`gandr_core_unify`).
 //!
 //! The two rules differ in exactly two places and share everything else. A
 //! variable substitution is blocked by a binder of the same name; a hole
@@ -84,8 +84,7 @@ where
 ///
 /// # Contract
 /// - requires: every solution in `solutions` is a closed term, which is what
-///   the closed-metavariable discipline of `gandr_core_checker::unify`
-///   guarantees.
+///   the closed-metavariable discipline of `gandr_core_unify` guarantees.
 /// - ensures: returns `value` with each hole bound in `solutions` replaced by
 ///   its solution and every other node untouched, together with whether the
 ///   result still carries a hole. No binder blocks the replacement, because a

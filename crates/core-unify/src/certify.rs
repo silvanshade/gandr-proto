@@ -42,11 +42,11 @@ use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-use crate::unify::Constraint;
-use crate::unify::frag::PostponeReason;
-use crate::unify::frag::Refutation;
-use crate::unify::scan;
-use crate::unify::solve::lower_comp;
+use crate::Constraint;
+use crate::frag::PostponeReason;
+use crate::frag::Refutation;
+use crate::scan;
+use crate::solve::lower_comp;
 
 /// What the solver concluded about a problem as a whole.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

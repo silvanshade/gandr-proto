@@ -12,6 +12,7 @@ That openness is the totality half of "no parse wall" — the pipeline lowers ev
 
 The term substrate is not here: `gandr-core-term` carries the syntax, the types, the context, substitution, interning, effect rows, grades, builtins, and the shared error, outcome, and wrapper vocabulary.
 The conversion engine is not here either: `gandr-core-nbe` decides definitional equality, and subsumption calls into it for its identity endpoints.
+Nor is the solver: `gandr-core-unify` answers unification problems over the same terms, and its certificates are re-checked through that same conversion relation, which is what keeps one equational theory across the three crates.
 The conformance suite and the free generators that drive it are not here: they are `gandr-core-checker-tools`, so nothing test-only sits in the source tree of the checking path.
 
 ## Current provision
@@ -19,8 +20,6 @@ The conformance suite and the free generators that drive it are not here: they a
 - `judgements` — the recursive bidirectional judgement (`checker`), the discharge of a signature's abstract type components (`package`), and the nominal-atom minting opaque ascription needs with the table that makes freshness checkable (`seal`).
 - `machine` — the defunctionalized realization, its `control` register (the `Descend`/`Return` event log the two faces are compared through), and the `stack` typing judgement its reified stacks need.
 - `discipline` — `subtype`, the consistent subsumption relation, reflexive but deliberately not transitive once `Unknown` participates; and `mark`, the total marking traversal that converts each abort site into a localized mark plus a matched-`Unknown` recovery.
-- `unify` — the predictable-fragment solver over the terms this crate already defines, with metavariables nominated among existing holes so no syntactic former is added.
-  Its answers are certificates a caller re-checks by substituting and asking the conversion relation, which pins its equational theory to the checker's own.
 - `kernel_bridge` — the total, iterative worklist lowering from checked core forms into `gandr-kernel-core`'s closed S1 vocabulary, rejecting out-of-subset nodes structurally with a precise refusal.
 
 ## Planned but absent
@@ -52,7 +51,6 @@ A crate that only names a term, a type, or an outcome wants `gandr-core-term` in
 - **Normalization by evaluation** — deciding definitional equality by evaluating into a semantic domain and quoting back, rather than by rewriting syntax.
 - **Total type error localization** — marking a node and recovering with the expected type instead of aborting, so a program with errors still has a typing everywhere.
 - **Consistent subtyping** — the gradual-typing relation in which the unknown type relates to every type in both directions, at the known price of non-transitivity.
-- **Pattern unification** — the decidable fragment in which a metavariable applied to distinct bound variables has a most general solution, which is the fragment the solver commits to and postpones outside.
 
 ## Primary references
 

@@ -10,6 +10,7 @@ members = [
   "crates/core-nbe",
   "crates/core-sequent",
   "crates/core-term",
+  "crates/core-unify",
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-effects",
@@ -170,6 +171,7 @@ path = "crates/core-incremental"
 # evaluation, readback, and the definitional-equality pipeline.
 # consumers:
 # - gandr-core-checker
+# - gandr-core-unify
 [workspace.dependencies.gandr-core-nbe]
 path = "crates/core-nbe"
 
@@ -194,6 +196,7 @@ path = "crates/core-sequent"
 # - gandr-core-incremental
 # - gandr-core-nbe
 # - gandr-core-sequent
+# - gandr-core-unify
 # - gandr-runtime-effects
 # - gandr-runtime-ffi
 # - gandr-surface-corpus
@@ -201,6 +204,13 @@ path = "crates/core-sequent"
 # - gandr-theory-levitation
 [workspace.dependencies.gandr-core-term]
 path = "crates/core-term"
+
+# Predictable-fragment unification: most-general solutions inside a named
+# fragment, postponement with a reason outside it, and certificates re-checked
+# through the conversion engine.
+# consumers: none yet — the elaborator seam that will drive it is unbuilt
+[workspace.dependencies.gandr-core-unify]
+path = "crates/core-unify"
 
 # The minimal certified kernel's S1 core (term/type language, environment, conversion).
 # consumers:
@@ -436,6 +446,7 @@ default-features = false
 # - gandr-core-checker-tools
 # - gandr-core-incremental (dev)
 # - gandr-core-sequent (dev)
+# - gandr-core-unify (dev)
 # - gandr-kernel-core (dev)
 # - gandr-kernel-strata (dev)
 # - gandr-storage-artifact (dev)

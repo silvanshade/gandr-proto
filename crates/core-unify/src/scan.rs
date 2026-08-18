@@ -44,7 +44,7 @@ use gandr_core_term::syntax::Value;
 
 /// What one scan found.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(super) struct Occurrences
+pub struct Occurrences
 {
     /// Every hole the term mentions, at either sort, in canonical order.
     holes: BTreeSet<HoleId>,
@@ -122,7 +122,7 @@ impl Occurrences
 ///
 /// [`QuoteMode::Canonical`]: gandr_core_nbe::quote::QuoteMode::Canonical
 #[must_use]
-pub(super) fn scan_value(
+pub fn scan_value(
     term: &Value,
     ceiling: VariableLevel,
     allowed: &[VariableLevel],
@@ -150,7 +150,7 @@ pub(super) fn scan_value(
 ///   disallowed level.
 /// - witness: `unify::tests::a_scan_reaches_through_an_application_spine`
 #[must_use]
-pub(super) fn scan_comp(
+pub fn scan_comp(
     term: &Comp,
     ceiling: VariableLevel,
     allowed: &[VariableLevel],

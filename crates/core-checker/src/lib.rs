@@ -31,16 +31,18 @@
 //!   and its stack-typing judgement;
 //! - [`discipline`] — the rules the checker applies beside the judgement:
 //!   subsumption and total error marking;
-//! - [`unify`], [`kernel_bridge`] — the engines, each already its own
-//!   directory.
+//! - [`kernel_bridge`] — the lowering into the certified kernel's closed
+//!   subset, the one engine that stays beside the judgements because its subset
+//!   is defined by what they admit.
 //!
-//! Two neighbours the judgements lean on are not here. `gandr-core-term`
+//! Three neighbours the judgements lean on are not here. `gandr-core-term`
 //! carries the substrate all of them are stated over: the syntax, the types,
 //! the context, substitution, interning, effect rows, grades, builtins, and the
 //! shared error, outcome, and wrapper vocabulary. `gandr-core-nbe` carries the
-//! conversion engine subsumption decides its identity endpoints with. So the
-//! crates that decide and the crates that compute share one language without
-//! depending on one another.
+//! conversion engine subsumption decides its identity endpoints with, and
+//! `gandr-core-unify` the solver whose certificates that same engine
+//! re-checks. So the crates that decide and the crates that compute share one
+//! language without depending on one another.
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators
@@ -62,12 +64,11 @@
 //!   checker accepts every editor state.
 //!
 //! Unification rides on the same conversion engine rather than beside it:
-//! [`unify`] is a solver-machine service over the terms this crate already
-//! defines, with metavariables nominated among existing holes so no syntactic
-//! former is added and the checker/machine agreement above is inherited rather
-//! than re-established. Its answers are certificates a caller re-checks by
-//! substituting and asking `gandr_core_nbe::conv`, which is what pins its
-//! equational theory to the checker's own.
+//! `gandr-core-unify` is a solver-machine service over the substrate's terms,
+//! with metavariables nominated among existing holes so no syntactic former is
+//! added. Its answers are certificates a caller re-checks by substituting and
+//! asking `gandr_core_nbe::conv`, which is what pins its equational theory to
+//! the one this crate's subsumption relation already decides.
 //!
 //! Incremental re-typing rides on this crate rather than living in it:
 //! `gandr-core-incremental` carries the parser-agnostic item seam, the
@@ -87,4 +88,3 @@ pub mod discipline;
 pub mod judgements;
 pub mod kernel_bridge;
 pub mod machine;
-pub mod unify;

@@ -69,17 +69,17 @@ use gandr_core_term::subst::HoleRepl;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 
-use crate::unify::Constraint;
-use crate::unify::certify::Certificate;
-use crate::unify::certify::Postponed;
-use crate::unify::certify::Verdict;
-use crate::unify::frag::PostponeReason;
-use crate::unify::frag::Refutation;
-use crate::unify::frag::SpineShape;
-use crate::unify::frag::classify_spine;
-use crate::unify::meta::MetaContext;
-use crate::unify::meta::MetaSort;
-use crate::unify::scan;
+use crate::Constraint;
+use crate::certify::Certificate;
+use crate::certify::Postponed;
+use crate::certify::Verdict;
+use crate::frag::PostponeReason;
+use crate::frag::Refutation;
+use crate::frag::SpineShape;
+use crate::frag::classify_spine;
+use crate::meta::MetaContext;
+use crate::meta::MetaSort;
+use crate::scan;
 
 /// One pending equation, in the semantic domain.
 #[derive(Clone, Copy, Debug)]

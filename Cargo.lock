@@ -654,6 +654,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-core-unify"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-nbe",
+ "gandr-core-term",
+ "proptest",
+]
+
+[[package]]
 name = "gandr-kernel-core"
 version = "0.0.0"
 dependencies = [
