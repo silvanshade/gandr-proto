@@ -58,6 +58,11 @@ coverage/*
 # seed anyway. Never tracked.
 crates/*/proptest-regressions/
 
+# The C++26 compilation host's out-of-source build trees (its toolchain is a
+# discovered installation, so a build tree is machine-local by construction).
+/runtime/compile-host/build/
+/runtime/compile-host/build-*/
+
 # Fuzzing build output + crash artifacts (seed corpora are tracked)
 fuzz/target/
 fuzz/artifacts/

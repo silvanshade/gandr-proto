@@ -1,0 +1,232 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+# The C++26 MLIR compilation host under runtime/compile-host.
+#
+# MLIR is an installed toolchain rather than a pinned dependency, so these
+# tasks *discover* it and never hard-code an installation: MLIR_DIR wins,
+# then a Homebrew llvm keg, then whatever llvm-config is on PATH. The compiling
+# clang must be the one that ships beside the discovered MLIR — the CMake
+# configure refuses a mismatch, because an ODR mismatch across that boundary
+# surfaces far from its cause.
+#
+# None of these tasks is on the merge wall. The wall is Rust-only and every
+# contributor runs it; requiring an MLIR installation to land a Rust change
+# would be a much larger claim than this slice makes. The Rust half of the
+# host's agreement differential — the fixture against the L machine — is on
+# the wall, inside cargo:nextest.
+
+["compile-host:configure"]
+description = "Configure the C++26 MLIR compilation host against the discovered MLIR installation"
+run = '''
+set -eu
+
+prefix=${GANDR_MLIR_PREFIX:-}
+if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
+  prefix=$(brew --prefix llvm 2>/dev/null || true)
+fi
+if [ -z "$prefix" ] && command -v llvm-config >/dev/null 2>&1; then
+  prefix=$(llvm-config --prefix)
+fi
+if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
+  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX to one whose lib/cmake/mlir exists" >&2
+  exit 1
+fi
+
+echo "compile-host: MLIR at $prefix"
+cmake \
+  -S runtime/compile-host \
+  -B "${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}" \
+  -G Ninja \
+  -DCMAKE_BUILD_TYPE="${GANDR_COMPILE_HOST_BUILD_TYPE:-Release}" \
+  -DCMAKE_C_COMPILER="$prefix/bin/clang" \
+  -DCMAKE_CXX_COMPILER="$prefix/bin/clang++" \
+  -DMLIR_DIR="$prefix/lib/cmake/mlir"
+'''
+
+["compile-host:build"]
+description = "Build the compilation host, its test binary, and its fuzz entry"
+depends = ["compile-host:configure"]
+run = '''
+set -eu
+cmake --build "${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}"
+'''
+
+["compile-host:test"]
+description = "Run the compilation host's regression suite"
+depends = ["compile-host:build"]
+run = '''
+set -eu
+ctest --test-dir "${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}" --output-on-failure
+'''
+
+# The differential's other half is a Rust test on the merge wall
+# (crates/core-sequent/tests/compile_host_agreement.rs), which holds the same
+# fixture to what the L machine answers. Passing both is what makes the
+# compiled slice agree with the L machine rather than with a file.
+["compile-host:differential"]
+description = "Diff the compiled slice's answers against the L machine's fixture"
+depends = ["compile-host:build"]
+run = '''
+set -eu
+build=${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}
+fixture=runtime/compile-host/fixtures/positive-core-samples.txt
+
+expected=$(mktemp)
+actual=$(mktemp)
+trap 'rm -f "$expected" "$actual"' EXIT
+
+grep -v '^#' "$fixture" | grep -v '^$' > "$expected"
+"$build/gandr-compile-host" --run-samples | cut -f1,2 > "$actual"
+
+if diff -u "$expected" "$actual"; then
+  echo "compile-host: the compiled slice agrees with the L machine on every sample"
+else
+  echo "compile-host: the compiled slice disagrees with the L machine" >&2
+  exit 1
+fi
+'''
+
+["compile-host:timings"]
+description = "Report the compilation host's per-program compile and execute microseconds"
+depends = ["compile-host:build"]
+run = '''
+set -eu
+build=${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}
+printf 'program\tcompile_us\texecute_us\n'
+"$build/gandr-compile-host" --timings
+'''
+
+# Deterministic replay of every committed seed through the fuzz entry. This is
+# the smoke; an unbounded campaign is compile-host:fuzz and belongs on a
+# schedule rather than on a landing path.
+["compile-host:fuzz-smoke"]
+description = "Replay every committed fuzz seed through the compilation host's entry surface"
+depends = ["compile-host:build"]
+run = '''
+set -eu
+build=${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}
+"$build/gandr-compile-host-fuzz" runtime/compile-host/fixtures/fuzz-seeds/*.bin
+echo "compile-host: every seed replayed"
+'''
+
+# AFL++ arrives with the cargo-afl tool mise already pins; its compilers live
+# in that tool's own data directory rather than on PATH, so the task looks for
+# them there and takes AFL_CXX as an override.
+["compile-host:fuzz"]
+description = "Run an AFL++ campaign over the compilation host's entry surface"
+run = '''
+set -eu
+
+afl_cxx=${AFL_CXX:-}
+afl_root="${XDG_DATA_HOME:-$HOME/.local/share}/afl.rs/AFLplusplus"
+if [ -z "$afl_cxx" ] && [ -x "$afl_root/afl-clang-fast++" ]; then
+  afl_cxx="$afl_root/afl-clang-fast++"
+fi
+if [ -z "$afl_cxx" ] && command -v afl-clang-fast++ >/dev/null 2>&1; then
+  afl_cxx=$(command -v afl-clang-fast++)
+fi
+if [ -z "$afl_cxx" ]; then
+  echo "compile-host: no afl-clang-fast++ found; run 'cargo afl config --build' or set AFL_CXX" >&2
+  exit 1
+fi
+afl_fuzz=$(dirname "$afl_cxx")/afl-fuzz
+
+prefix=${GANDR_MLIR_PREFIX:-}
+if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
+  prefix=$(brew --prefix llvm 2>/dev/null || true)
+fi
+if [ -z "$prefix" ]; then
+  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX" >&2
+  exit 1
+fi
+
+build=runtime/compile-host/build-fuzz
+cmake \
+  -S runtime/compile-host \
+  -B "$build" \
+  -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER="$(dirname "$afl_cxx")/afl-clang-fast" \
+  -DCMAKE_CXX_COMPILER="$afl_cxx" \
+  -DMLIR_DIR="$prefix/lib/cmake/mlir" \
+  -DGANDR_COMPILE_HOST_ALLOW_TOOLCHAIN_MISMATCH=ON \
+  -DGANDR_COMPILE_HOST_BUILD_TESTS=OFF
+cmake --build "$build" --target gandr-compile-host-fuzz
+
+AFL_NO_UI=1 AFL_AUTORESUME=1 "$afl_fuzz" \
+  -i runtime/compile-host/fixtures/fuzz-seeds \
+  -o "$build/artifacts" \
+  ${GANDR_COMPILE_HOST_FUZZ_SECONDS:+-V "$GANDR_COMPILE_HOST_FUZZ_SECONDS"} \
+  -- "$build/gandr-compile-host-fuzz"
+'''
+
+# The mutation campaign. cargo-mutants does not reach C++, so the host carries
+# a curated catalogue instead of a generated one: each row names a decision
+# surface the slice defends and the edit that breaks it, and the campaign fails
+# if the suite still passes. A curated set measures the tests against the
+# claims rather than against an operator inventory, and the trade is stated on
+# the crate page: the coverage is exactly as wide as the catalogue.
+["compile-host:mutants"]
+description = "Apply the compilation host's curated mutant catalogue and require the suite to catch each"
+run = '''
+set -eu
+
+prefix=${GANDR_MLIR_PREFIX:-}
+if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
+  prefix=$(brew --prefix llvm 2>/dev/null || true)
+fi
+if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
+  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX" >&2
+  exit 1
+fi
+
+catalogue=runtime/compile-host/mutation/catalogue.tsv
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+
+survived=0
+applied=0
+
+while IFS="$(printf '\t')" read -r name file expression; do
+  case "$name" in ''|'#'*) continue ;; esac
+  applied=$((applied + 1))
+
+  tree="$scratch/$name"
+  rm -rf "$tree"
+  cp -R runtime/compile-host "$tree"
+  rm -rf "$tree/build" "$tree/build-fuzz" "$tree/build-debug"
+
+  target="$tree/$file"
+  cp "$target" "$target.original"
+  sed "$expression" "$target.original" > "$target"
+  if cmp -s "$target" "$target.original"; then
+    echo "MUTANT $name: catalogue defect — the edit matched nothing in $file" >&2
+    survived=$((survived + 1))
+    continue
+  fi
+  rm -f "$target.original"
+
+  if ! cmake -S "$tree" -B "$tree/build" -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER="$prefix/bin/clang" \
+      -DCMAKE_CXX_COMPILER="$prefix/bin/clang++" \
+      -DMLIR_DIR="$prefix/lib/cmake/mlir" > "$tree/configure.log" 2>&1; then
+    echo "MUTANT $name: killed at configure"
+    continue
+  fi
+  if ! cmake --build "$tree/build" > "$tree/build.log" 2>&1; then
+    echo "MUTANT $name: killed at compile"
+    continue
+  fi
+  if ctest --test-dir "$tree/build" --output-on-failure > "$tree/test.log" 2>&1; then
+    echo "MUTANT $name: SURVIVED — no case noticed the edit" >&2
+    survived=$((survived + 1))
+  else
+    echo "MUTANT $name: killed by $(grep -c 'FAILED:' "$tree/test.log" || true) failed checks"
+  fi
+done < "$catalogue"
+
+echo "compile-host: $applied mutants applied, $survived survived"
+[ "$survived" -eq 0 ]
+'''
