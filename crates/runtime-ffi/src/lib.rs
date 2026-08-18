@@ -681,7 +681,6 @@ impl effect::host::HostHandler for CombinedDriver
 mod tests
 {
     use gandr_core_checker::effect::EffectSig;
-    #[cfg(feature = "native-fixture")]
     use gandr_surface_engine::ffi::ForeignParam;
 
     use super::*;
@@ -1010,7 +1009,6 @@ mod tests
         assert!(matches!(host.dispatch(&operation), FfiAction::Decline));
     }
 
-    #[cfg(feature = "native-fixture")]
     #[test]
     fn every_declaration_refusal_precedes_library_loading()
     {
@@ -1125,66 +1123,6 @@ mod tests
             };
             assert_eq!(detail, expected, "{label}: unexpected refusal");
         }
-    }
-
-    #[test]
-    fn malformed_declaration_is_refused_before_library_loading()
-    {
-        let Err(error) = FfiHost::new(vec![ForeignModule {
-            name: String::new(),
-            abi: "c".to_owned(),
-            library: String::new(),
-            types: Vec::new(),
-            functions: vec![ForeignFn {
-                op: "duplicate".to_owned(),
-                params: Vec::new(),
-                result: CType::Void,
-            }],
-        }])
-        else {
-            panic!("empty declaration must be refused");
-        };
-        assert!(matches!(
-            error,
-            FfiError::Marshal {
-                detail,
-                ..
-            } if detail == "foreign module name is empty"
-        ));
-    }
-
-    #[test]
-    fn duplicate_foreign_operation_is_refused()
-    {
-        let Err(error) = FfiHost::new(vec![ForeignModule {
-            name: "module".to_owned(),
-            abi: "c".to_owned(),
-            library: "missing".to_owned(),
-            types: Vec::new(),
-            functions: vec![
-                ForeignFn {
-                    op: "same".to_owned(),
-                    params: Vec::new(),
-                    result: CType::Void,
-                },
-                ForeignFn {
-                    op: "same".to_owned(),
-                    params: Vec::new(),
-                    result: CType::Void,
-                },
-            ],
-        }])
-        else {
-            panic!("duplicate operation must be refused");
-        };
-        assert!(matches!(
-            error,
-            FfiError::Marshal {
-                operation,
-                detail,
-                ..
-            } if operation == "same" && detail == "duplicate foreign operation"
-        ));
     }
 
     #[cfg(feature = "native-fixture")]
