@@ -236,7 +236,9 @@ description = "Generate coverage artifacts (lcov, human summary, and summary JSO
 run = """
 mkdir -p coverage
 cargo llvm-cov clean --workspace
-cargo llvm-cov --no-report --workspace --all-targets --features=full
+# The Dylint driver is nightly-only (`#![feature(rustc_private)]`); the stable
+# coverage lane excludes it — the nightly cargo:dylint lane covers it.
+cargo llvm-cov --no-report --workspace --exclude gandr-workflow-dylint --all-targets --features=full
 cargo llvm-cov report --lcov --output-path coverage/lcov.info
 cargo llvm-cov report --summary-only | tee coverage/summary.txt
 cargo llvm-cov report --json --summary-only --output-path coverage/llvm-cov-summary.json
