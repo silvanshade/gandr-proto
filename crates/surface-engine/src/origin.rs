@@ -842,6 +842,18 @@ fn step_comp(
             &(Comp::Case(_, _, (_, ref child)) | Comp::ListCase { cons: ref child, .. }),
             2,
         ) => Some(TermRef::Comp(child)),
+        // A declared-data case's children: scrutinee (0) then one arm body per
+        // constructor tag (1..), the order `lower::data` builds its origin
+        // children in. Without this arm no origin path reaches inside a
+        // `DataCase`, so every hole in one — a missing arm, an unfinished
+        // pattern test — is invisible to the goal stream, to hole
+        // localization, and to edit descent (`gandr-l1cw`). The payload
+        // binders are attributes, not children.
+        | (&Comp::DataCase(_, ref arms), index) if index > 0 => index
+            .checked_sub(1)
+            .and_then(|arm| usize::try_from(arm).ok())
+            .and_then(|arm| arms.get(arm))
+            .map(|arm| TermRef::Comp(&arm.1)),
         // A handler's computation children: scrutinee (0), return body (1), and
         // operation-clause bodies (2..), the order `edit::diff`/`edit::rebuild`
         // also use (`deep edit descent`). The signature and the clause binders are
@@ -861,6 +873,9 @@ fn step_comp(
             | Comp::Force(ref child)
             | Comp::Case(ref child, ..)
             | Comp::ListCase { scrut: ref child, .. }
+            // A declared-data case's scrutinee is its value child `0`; its arm
+            // bodies are the computation children `1..` handled above.
+            | Comp::DataCase(ref child, _)
             | Comp::Split { scrut: ref child, .. }
             | Comp::Dup(ref child)
             | Comp::Drop(ref child)

@@ -248,6 +248,129 @@ mod tests
         }
     }
 
+    /// Filling a pattern hole: the edit the live-matching line exists for.
+    ///
+    /// A `case` arm carrying a typed hole lowers to a real core arm, so filling
+    /// the hole is an **ordinary source edit** rather than a mode change — and
+    /// that is what makes resume apply to it at all. The tests below pin what a
+    /// fill must do: reach the same answer as compiling the filled source
+    /// outright, re-type nothing it did not have to, and leave the items that
+    /// do not read the edited one alone.
+    mod hole_fill
+    {
+        use super::*;
+
+        /// A three-constructor enumeration, with the match under edit written
+        /// against it.
+        const COLOR: &str = "data Color : Type { Red : Color; Green : Color; Blue : Color; }\n";
+
+        /// **Filling the hole resumes to exactly the typing a from-scratch
+        /// compile of the filled source produces.**
+        ///
+        /// This is the acceptance the whole fill-and-resume half rests on: the
+        /// filled program is not a second compilation path, and resume does not
+        /// reach a different answer from the one the source would have had if
+        /// the pattern had been written in the first place.
+        #[test]
+        fn filling_a_pattern_hole_resumes_to_the_written_source()
+        {
+            let base = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} \
+                 }}\n"
+            );
+            let filled = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 \
+                 }} }}\n"
+            );
+            let resumed = gate(base.as_str(), filled.as_str());
+            assert_eq!(
+                1,
+                resumed.adopted().len(),
+                "one runnable item: a `data` block is a declaration and contributes none"
+            );
+        }
+
+        /// The reverse edit — writing a hole *into* a finished match — resumes
+        /// the same way.
+        ///
+        /// Editing toward an unfinished program is the ordinary direction in an
+        /// editor, and it must not be the direction that falls back to a full
+        /// re-compile.
+        #[test]
+        fn opening_a_pattern_hole_resumes_to_the_unfinished_source()
+        {
+            let finished = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 \
+                 }} }}\n"
+            );
+            let opened = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} \
+                 }}\n"
+            );
+            drop(gate(finished.as_str(), opened.as_str()));
+        }
+
+        /// **The fill invalidates the item it edits and nothing else.**
+        ///
+        /// The definition below the match is adopted: it reads no binding the
+        /// fill changed. This is the scope claim — resume starts from the
+        /// existing checkpoint frontier rather than recompiling the file.
+        #[test]
+        fn filling_a_hole_invalidates_only_the_item_holding_it()
+        {
+            let base = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} \
+                 }}\ndef unrelated = 41 + 1;\n"
+            );
+            let filled = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 \
+                 }} }}\ndef unrelated = 41 + 1;\n"
+            );
+            let resumed = gate(base.as_str(), filled.as_str());
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
+
+            assert_eq!(
+                2,
+                adopted.len(),
+                "the match and the unrelated item; the `data` block contributes none"
+            );
+            assert!(!adopted[0], "the item holding the filled hole is re-typed");
+            assert!(
+                adopted[1],
+                "the item below it reads nothing the fill changed, so it is adopted rather than \
+                 re-typed"
+            );
+        }
+
+        /// A hole filled in one item does not invalidate a *reader* of that
+        /// item whose type did not move.
+        ///
+        /// The fill changes which branch the match takes, never `pick`'s type,
+        /// so the reuse rule keyed on whether the binding changed applies to a
+        /// pattern fill exactly as it applies to a body edit.
+        #[test]
+        fn a_type_stable_fill_adopts_its_dependent()
+        {
+            let base = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} \
+                 }}\nprint(pick)\n"
+            );
+            let filled = alloc::format!(
+                "{COLOR}def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 \
+                 }} }}\nprint(pick)\n"
+            );
+            let resumed = gate(base.as_str(), filled.as_str());
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
+
+            assert_eq!(2, adopted.len(), "the definition and its reader");
+            assert!(!adopted[0], "the filled definition is re-typed");
+            assert!(
+                adopted[1],
+                "the fill left `pick`'s type where it was, so its reader is adopted"
+            );
+        }
+    }
+
     /// Item-list edits.
     mod structure
     {

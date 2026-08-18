@@ -210,11 +210,15 @@ enum ReadFrame<'tree>
 ///
 /// # Adequacy
 /// - hypothesis: L2 — a form that fails to cross this reading is invisible to
-///   the compiler afterwards and would degrade into a declined arm rather than
-///   fail, so the witness reads one pattern holding every compiled form at once
-///   rather than a representative sample.
-/// - witness: `lower::pattern::tests::reading_covers_every_compiled_form`
-/// - witness: `lower::pattern::tests::an_uncompiled_form_is_declined_by_kind`
+///   the compiler afterwards and degrades into a declined arm rather than
+///   failing, so the witnesses drive each compiled form through to its
+///   observable outcome rather than asserting the reading itself. A reading
+///   that dropped a form would turn its witness's expected value into a
+///   `Blame::Hole` or a lowering decline.
+/// - witness: `pattern_holes::tests::a_nested_constructor_pattern_binds_and_runs`
+/// - witness: `pattern_holes::tests::an_as_binder_over_a_hole_does_not_settle_it`
+/// - witness: `pattern_holes::tests::an_or_pattern_of_holes_is_indeterminate`
+/// - witness: `pattern_holes::tests::an_uncompiled_arm_is_declined_and_a_hole_is_not`
 ///
 /// # Intension
 /// The walk carries an explicit work stack. Patterns come from user source, so
@@ -590,10 +594,9 @@ impl Lowerer<'_>
     ///   eliminator can act on. A classifier collapsing indeterminate into
     ///   declined loses the stuck arm and reproduces the dropped-arm behavior
     ///   this seam exists to end.
-    /// - witness: `surface-engine`
-    ///   `engine::live_match::a_hole_arm_is_stuck_rather_than_dropped`
-    /// - witness: `surface-engine`
-    ///   `engine::live_match::an_uncompiled_arm_is_declined_not_stuck`
+    /// - witness: `pattern_holes::tests::a_hole_shadows_the_arms_written_after_it`
+    /// - witness: `pattern_holes::tests::an_unfilled_hole_never_runs_its_own_arm`
+    /// - witness: `pattern_holes::tests::an_uncompiled_arm_is_declined_and_a_hole_is_not`
     pub(super) fn classify_arm<'tree>(
         &mut self,
         plan: PatternPlan<'tree>,
