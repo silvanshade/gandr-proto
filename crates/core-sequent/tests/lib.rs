@@ -6,6 +6,9 @@ extern crate alloc;
 mod common;
 
 #[cfg(test)]
+mod compile_host_agreement;
+
+#[cfg(test)]
 mod conformance_soundness;
 #[cfg(test)]
 mod corpus_differential;
