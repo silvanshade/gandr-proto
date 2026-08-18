@@ -102,8 +102,9 @@ The cross-tier `[dev-dependencies]`, which are where several crates are exercise
 
 The rules the graph enforces:
 
-0. **The substrate decides nothing, and the engines name no judgement.** `core-term` carries the vocabulary every core judgement is stated over and depends on no crate that decides anything, so the checker, the conversion engine, the solver, and the L machine share one language without any of them depending on another.
-   `core-nbe` sits one step above it and names no typing judgement either: consumers call into the conversion relation, which is what pins one equational theory across all of them instead of letting each grow its own, and `core-unify` draws every rule it applies from that same relation.
+0. **The substrate decides nothing, and the engines name no judgement.** `core-term` carries the vocabulary every core judgement is stated over and **has no upward dependency at all**, which is the precise property: the checker, the conversion engine, the solver, and the L machine are each stated over one vocabulary, and none of them depends on another merely to name a term.
+   They are not independent of each other, and the tiers above are where their edges are stated — `core-checker → core-nbe` and `core-unify → core-nbe` are both deliberate, because **a definitional equality is decided in exactly one place**.
+   `core-nbe` sits one step above the substrate and names no typing judgement either: consumers call into the conversion relation, which is what pins one equational theory across all of them instead of letting each grow its own, and `core-unify` draws every rule it applies from that same relation.
    A crate that only needs a term, a type, or an outcome takes `core-term` and stops there; six crates do.
    `core-unify` has no consumer at all yet, which is a scheduling fact rather than a layering one: the elaborator seam that will drive it is unbuilt, and the crate is exercised by its own tests.
    `core-machine` is above `core-checker` rather than beside it, and the edge is the derivation direction: the machine is obtained from the recursive judgement by the functional correspondence, so it names the judgement layer and the judgement layer names nothing of it.

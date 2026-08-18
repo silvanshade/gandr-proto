@@ -3,7 +3,11 @@
 The core call-by-push-value term substrate: the vocabulary every gandr core judgement is stated over.
 
 Nothing here decides anything.
-This crate carries the terms, the types that classify them, the services a judgement spends while walking them, and the shared wrapper and error vocabulary the answers come back in — so the crates that _do_ decide (`gandr-core-checker`'s bidirectional checker and typing machine, `gandr-core-nbe`'s conversion engine, `gandr-core-unify`'s solver, `gandr-core-sequent`'s L machine) all speak one language without any of them depending on another.
+Nothing here decides anything, and nothing here names a crate that does: this crate has no upward dependency, which is what makes it the common substrate.
+It carries the terms, the types that classify them, the services a judgement spends while walking them, and the shared wrapper and error vocabulary the answers come back in, so every crate that _does_ decide is stated over one vocabulary: `gandr-core-checker`'s recursive bidirectional judgement, `gandr-core-machine`'s defunctionalized realization of that same judgement, `gandr-core-nbe`'s conversion engine, `gandr-core-unify`'s solver, and `gandr-core-sequent`'s L machine.
+
+Those crates are not independent of each other, and `ARCHITECTURE.md`'s tier map is where their edges are stated: both the checker and the solver depend on the conversion engine, because a definitional equality is decided in exactly one place.
+What this crate buys is that none of them has to depend on another merely to name a term.
 
 ## Current provision
 

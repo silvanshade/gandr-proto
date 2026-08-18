@@ -3,15 +3,14 @@
 //! every lowered corpus program must match a checked-in expected-outcome
 //! record.
 //!
-//! Through stages C–E this sweep was an L-vs-CEK **agreement** differential: it
-//! ran every top-level item of every model and pathological corpus program on
-//! both the CEK oracle (`gandr_core_checker::eval::run_comp`) and the L machine
-//! (`gandr_core_sequent::machine::run_comp`) and asserted the two
-//! [`canonical`]ized outcomes were equal. With the CEK retiring (B1 phase-3
-//! stage F), the differential's guarantee is preserved by **freezing** the
-//! oracle-agreeing outcome of each item into a checked-in snapshot: the L
-//! machine must keep reproducing exactly that outcome. The frozen snapshot *is*
-//! the retired oracle.
+//! The snapshot carries the guarantee a second implementation used to carry.
+//! This sweep was once an agreement differential against a CEK evaluator that
+//! ran beside the L machine and shared no step code with it; that evaluator is
+//! retired and removed (B1 phase-3 stage F). What replaced it is the outcome
+//! the two agreed on, frozen into a checked-in record the L machine must keep
+//! reproducing exactly. **The frozen snapshot is the oracle**, so a diff here
+//! is a change in observable behaviour and never a disagreement between two
+//! live implementations.
 //!
 //! # What is asserted
 //!

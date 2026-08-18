@@ -43,8 +43,13 @@
 //! shared error, outcome, and wrapper vocabulary. `gandr-core-nbe` carries the
 //! conversion engine subsumption decides its identity endpoints with, and
 //! `gandr-core-unify` the solver whose certificates that same engine
-//! re-checks. So the crates that decide and the crates that compute share one
-//! language without depending on one another.
+//! re-checks.
+//!
+//! Two of those three edges are real and documented: this crate depends on the
+//! substrate and on the conversion engine, and the solver depends on both as
+//! well, because a definitional equality is decided in exactly one place. What
+//! the substrate buys is that no deciding crate depends on another merely to
+//! name a term.
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators

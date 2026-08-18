@@ -1,11 +1,11 @@
 //! Property and coverage tests for the focusing translation `𝓕`
 //! (`proposal-sequent-kernel.md` §3, phase-L0 gate).
 //!
-//! No free (input-free) generator of well-formed core *terms* is exported by
-//! `gandr-core-checker` — its `strategies` module carries only type / grade /
-//! name generators, and the type-directed well-typed term generators live in
-//! the `#[cfg(test)]` conformance suite (a deferred lane),
-//! unreachable from here (**noted gap**). So this file builds its own
+//! No free (input-free) generator of well-formed core *terms* is exported
+//! anywhere: `gandr-core-checker-tools`'s `strategies` module carries only
+//! type / grade / name generators, and the type-directed well-typed term
+//! generators stay beside the conformance target that drives them rather than
+//! becoming library surface (**noted gap**). So this file builds its own
 //! scope-threaded generator of well-formed *closed* core computations (covering
 //! the pure spine plus the grade, control-delimiter, and native formers) and
 //! asserts `𝓕` is total and typed-IL-well-formed on them, complemented by

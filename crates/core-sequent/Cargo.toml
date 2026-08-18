@@ -56,10 +56,10 @@ proptest.workspace = true
 [features]
 default = []
 full = ["gandr_feat_regex"]
-# Passthrough of core-checker's regex-backed builtins so the ported conformance
+# Passthrough of the substrate's regex-backed builtins so the ported conformance
 # soundness rows (`tests/conformance_soundness.rs`) can exercise `regex.extract`
-# on the L machine under `--features=full`, exactly as the core-checker
-# conformance suite gated them.
+# on the L machine under `--features=full`, exactly as the conformance suite
+# gated them. The builtin registry lives with the terms it is a former of.
 gandr_feat_regex = ["gandr-core-term/gandr_feat_regex"]
 
 [lints]

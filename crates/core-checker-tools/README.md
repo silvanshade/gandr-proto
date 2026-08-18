@@ -1,15 +1,15 @@
 # core-checker-tools
 
-Test-facing machinery for the core checker and its typing machine, held above both so neither crate carries test-only code in the source tree of the checking path.
+Test-facing machinery for the two realizations of the gandr core's typing judgement — `gandr-core-checker`'s recursive one and `gandr-core-machine`'s defunctionalized one — held above both so neither carries test-only code in the source tree of the checking path.
 No shipping crate takes a library dependency on this one; every consumer is a test target.
-Since the checker split, this crate is also what carries the step-for-step invariant between the two realizations: they are two crates now, and the suite that compares them drives both from outside.
+It is also where the step-for-step invariant between those two realizations lives: neither crate holds it, and the suite that compares them drives both from outside.
 
 ## Current provision
 
 - `strategies` — the _free_ proptest generators over the core call-by-push-value syntax and types: grades, binder names, leaf and recursive value and computation types, and hole identifiers.
   These are grammar-directed rather than type-directed, so they produce mostly ill-typed terms, which is what the agreement properties want.
 - The `conformance` test target — the checker-versus-machine conformance suite.
-  It pins _step-for-step_ agreement between the two realizations of the same typing judgement that `gandr-core-checker` keeps in tree: the direct recursive bidirectional checker and the defunctionalized typing machine.
+  It pins _step-for-step_ agreement between the two realizations of one typing judgement: `gandr-core-checker`'s direct recursive bidirectional checker and `gandr-core-machine`'s defunctionalized typing machine.
   Its evidence is of two kinds — example-based rows over the worked core-CBPV examples, including a literal machine trace, and property rows over generated terms, where the type-directed generators produce well-typed terms (agreement and success) and the free generators produce arbitrary ones (agreement on the error and on the trace prefix).
 - The type-directed, well-typed generators, which stay beside the conformance suite that drives them rather than becoming library surface.
 
@@ -31,7 +31,7 @@ gandr-core-checker-tools.workspace = true
 use gandr_core_checker_tools::strategies::binder_name;
 ```
 
-The generators name only `gandr-core-term`, so a consumer of them links the substrate and nothing above it; the two typing faces the conformance suite compares are this crate's own development dependencies.
+The generators name only `gandr-core-term`, so a consumer of them links the substrate and nothing above it; `gandr-core-checker` and `gandr-core-machine`, the two faces the conformance suite compares, are this crate's own development dependencies.
 `gandr-core-checker` dev-depends on this crate for its inline property tests, so the pair still carries a development cycle, which is the arrangement Cargo admits — the non-development graph stays acyclic, so nothing propagates to a consumer of either crate.
 
 ## Theoretical ideas relied on

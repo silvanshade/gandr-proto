@@ -1,29 +1,28 @@
-//! The core-checker conformance suite's **observable-outcome** soundness rows,
-//! re-homed on the L machine (B1 phase-3 stage F; coordinator decision D2).
+//! The conformance suite's **observable-outcome** soundness rows, re-homed on
+//! the L machine (B1 phase-3 stage F; coordinator decision D2).
 //!
-//! The core-checker conformance suite (`gandr_core_checker::conformance`)
-//! pinned the runtime outcome of a large family of programs — declared-data and
-//! split β-reduction, the native-builtin substrate, the higher-order
-//! combinators, the string / path / regex builtins, and the deep-handler assert
-//! runner — against the retiring CEK oracle. Decision D2 re-points those
-//! observable-outcome rows at the L machine so their soundness survives the
-//! CEK's retirement.
+//! The conformance suite pinned the runtime outcome of a large family of
+//! programs — declared-data and split β-reduction, the native-builtin
+//! substrate, the higher-order combinators, the string / path / regex builtins,
+//! and the deep-handler assert runner — against a CEK oracle that has since
+//! retired. Decision D2 re-points those observable-outcome rows at the L
+//! machine so their soundness survives that retirement.
 //!
-//! # Why they live here, not in `gandr_core_checker::conformance`
+//! # Why they live here
 //!
-//! The conformance suite is an **internal** `#[cfg(test)] mod` of
-//! `gandr-core-checker`. Running its programs on the L machine would require a
-//! `gandr-core-checker →dev→ gandr-core-sequent →normal→ gandr-core-checker`
-//! dev-dependency cycle; while Cargo *permits* that cycle for the library
-//! build, the crate's own unit-test target is a **distinct compilation** of
-//! `gandr-core-checker` from the one the L machine (through the dev-dep) links,
-//! so `crate::syntax::Comp` / `crate::outcome::Eval` (the unit-test instance)
-//! and the `gandr_core_checker::…` types the L machine consumes are *different
-//! types* — the program cannot be handed to `machine::run_comp`, nor its
-//! outcome compared, without an `E0308` two-instances mismatch. The rows
-//! therefore move to `gandr-core-sequent`, which depends on
-//! `gandr-core-checker` **normally** (one instance, no cycle) and is the L
-//! machine's own crate — its natural home.
+//! Because the L machine is this crate's, and a row asserting an observable
+//! outcome belongs beside the machine that produces it.
+//!
+//! **The obstruction that originally forced the move has dissolved, and the
+//! placement is now a choice rather than a consequence.** When the rows moved,
+//! the suite was an internal `#[cfg(test)]` module of `gandr-core-checker`, and
+//! that crate's unit-test target is a distinct compilation of itself from the
+//! one a dev-dependency links — so the two spellings of a term type would not
+//! unify and no program could be handed across. The suite now lives in
+//! `gandr-core-checker-tools`, and the term vocabulary it shares with the L
+//! machine comes from `gandr-core-term`, a plain dependency of both, so the
+//! types unify and the argument no longer applies. What survives it is the
+//! ordinary reason above.
 //!
 //! Each program is rebuilt through the frozen public `gandr_core_checker` API
 //! and run on the L machine via [`gandr_core_sequent::machine`]; every asserted

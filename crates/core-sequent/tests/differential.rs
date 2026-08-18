@@ -3,12 +3,12 @@
 //!
 //! # From oracle agreement to L-outcome regression (ADR-71)
 //!
-//! Through stage E this was an L-vs-CEK **agreement** differential: the CEK
-//! machine (`gandr_core_checker::eval::run_comp`) was the external oracle — a
-//! distinct implementation of the same operational semantics, sharing no step
-//! code with the L machine (`gandr_core_sequent::machine::run_comp`) — and each
-//! case asserted the two canonicalized [`Eval`] outcomes were equal. With the
-//! CEK retiring (B1 phase-3 stage F), the differential's evidence is preserved
+//! This was once an agreement differential against a CEK evaluator: an
+//! external oracle, a distinct implementation of the same operational
+//! semantics sharing no step code with the L machine
+//! (`gandr_core_sequent::machine::run_comp`), against which each case asserted
+//! the two canonicalized [`Eval`] outcomes were equal. That evaluator is
+//! retired and removed (B1 phase-3 stage F), and the evidence is preserved
 //! by **freezing** the L machine's own canonical outcome for each hand-built
 //! case — captured once from the final oracle-agreeing run — into a checked-in
 //! regression snapshot ([`Check`]), and by

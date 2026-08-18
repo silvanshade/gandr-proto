@@ -71,10 +71,11 @@
 //! # Metavariables are nominated holes, and they are closed
 //!
 //! The solver adds no syntactic former. A metavariable is an existing
-//! [`Value::Hole`] or [`Comp::Hole`] that a [`MetaContext`] declares, so the
-//! checker, the typing machine, the marking pass, and the conformance
-//! generators see nothing new and their step-for-step agreement is inherited
-//! rather than re-established.
+//! [`Value::Hole`] or [`Comp::Hole`] that a [`MetaContext`] declares, so
+//! `gandr-core-checker`'s recursive judgement and marking pass,
+//! `gandr-core-machine`'s realization of the first, and the conformance
+//! generators above them all see nothing new, and their step-for-step
+//! agreement is inherited rather than re-established.
 //!
 //! Every metavariable stands for a **closed** term, with context dependence
 //! travelling through its spine. That is what lets a solution be substituted
