@@ -29,13 +29,13 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
 | [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog; the per-crate `docs/` tier it replaced is gone                                   |
 
-Referenced by guidance but not landed: `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
+Referenced by guidance but not landed: hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
 
 ## Domains
 
 Crate names are domain-prefixed; the prefix is the domain.
 Roles are one-line condensations of each crate's `Cargo.toml` description, which stays the per-crate authority.
-Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 26 members over 27 `crates/` directories, the 27th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
+Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 27 members over 28 `crates/` directories, the 28th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
 
 | Domain       | Crates                                                                                                                                                          | Role                                                                                                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ Counting convention: a member is an active entry in the root `Cargo.toml` `works
 | `core-*`     | core-checker, core-sequent, core-incremental                                                                                                                    | the checked language: CBPV typing machine; System-L IL, focusing, the L machine; item-granular incremental re-typing (seam, footprints, validated resume)                          |
 | `theory-*`   | theory-nominal-automata, theory-orders, theory-graphs, theory-recursion, theory-levitation, theory-computads, theory-circuit-algebras, theory-virtual-doctrines | semantic machinery: atoms, orders, graphs, recursion; descriptions; completion; circuit-algebra interface bookkeeping, embedding matching, and diagram normal form; VDC reflection |
 | `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                                         | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export                                                                                                  |
-| `runtime-*`  | runtime-effects                                                                                                                                                 | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                                                                                                            |
+| `runtime-*`  | runtime-effects, runtime-ffi                                                                                                                                    | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine; least-authority native C ABI host over the effect seam                                                    |
 | `surface-*`  | surface-syntax, surface-render-remote, surface-grammar, surface-parser, surface-engine, surface-corpus, surface-driver                                          | user-facing syntax and tools: CST + diffing, inspection wire protocol, grammar, parser, lowering engine with kernel admission, example corpus, script-runner driver                |
 | `workflow-*` | workflow-gates, workflow-dylint                                                                                                                                 | project tooling: the gate battery, project-local Dylint lints (the doc-class tool `workflow-docs` is parked)                                                                       |
 
@@ -72,7 +72,9 @@ tier 5   theory-circuit-algebras → theory-computads
          runtime-effects, surface-grammar, surface-parser, surface-render-remote,
          surface-syntax, theory-computads, theory-levitation, theory-nominal-automata,
          theory-recursion
-tier 6   surface-corpus → core-checker, core-sequent, runtime-effects, surface-engine, theory-levitation
+tier 6   runtime-ffi → core-checker, core-sequent, runtime-effects, surface-engine
+tier 7   surface-corpus → core-checker, core-sequent, runtime-effects, runtime-ffi,
+         surface-engine, theory-levitation
 off-tier workflow-gates, workflow-dylint — tooling; depend on no workspace crate
          (the doc-class tool workflow-docs is parked: commented out of the workspace, no tier)
          surface-driver — process entry point carrying the script-runner face; the
