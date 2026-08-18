@@ -1024,6 +1024,7 @@ where
         &request,
         "",
     )?;
+    publish_campaign_result(host, options, CampaignPublicationKind::MutationBearing)?;
     cleanup_success_workspace(host, options)?;
     if summary.succeeded().into().0 {
         return Ok(());

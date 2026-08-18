@@ -98,8 +98,8 @@ const GUEST_IN_DIFF_TIMEOUT: &str = "45m";
 const GUEST_SWEEP_TIMEOUT: &str = "8h";
 /// In-diff sandbox lifetime cap.
 const SANDBOX_IN_DIFF_TIMEOUT: &str = "55m";
-/// Sweep sandbox lifetime cap.
-const SANDBOX_SWEEP_TIMEOUT: &str = "8h15m";
+/// Sweep sandbox lifetime cap, expressed in microsandbox's minute syntax.
+const SANDBOX_SWEEP_TIMEOUT: &str = "495m";
 /// Exit code for successful report probe.
 const EXIT_SUCCESS_CODE: c_int = 0x0;
 /// Exit code from `test -d` when no cargo-mutants report exists.
@@ -2295,7 +2295,7 @@ mod tests
             (CampaignMode::Push, "push", true, "45m", "55m"),
             (CampaignMode::Merge, "merge", true, "45m", "55m"),
             (CampaignMode::Scheduled, "scheduled", true, "45m", "55m"),
-            (CampaignMode::Sweep, "sweep", false, "8h", "8h15m"),
+            (CampaignMode::Sweep, "sweep", false, "8h", "495m"),
         ];
 
         for (mode, label, needs_diff, guest_timeout, sandbox_timeout) in cases {
@@ -2643,7 +2643,7 @@ mod tests
 
         let sweep_plan = campaign_plan(CampaignMode::Sweep)?;
         assert_eq!(
-            Some(OsStr::new("8h15m")),
+            Some(OsStr::new("495m")),
             arg_after(sweep_plan.boot().args(), "--max-duration"),
             "sweep sandbox max duration should be capped"
         );
