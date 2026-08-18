@@ -14,7 +14,7 @@
 - Additional ABIs and richer ownership-aware foreign types are not implemented.
 - A runtime codec crate is not part of this landing because no live consumer requires one.
 
-## Usage
+## Using it
 
 Enable the native fixture for the hermetic tests:
 
@@ -24,7 +24,7 @@ cargo test -p gandr-runtime-ffi --features native-fixture
 
 Construct `FfiHost` from lowered `ForeignModule` declarations and pass host offers to `dispatch`.
 
-## Theoretical ideas
+## Theoretical ideas relied on
 
 The boundary follows least authority, typed effect handlers, and explicit ownership at an ABI boundary.
 

@@ -5,7 +5,7 @@ Coherent resolution of a cell rewriting system: firing a cell, finding the criti
 The four modules are one construction read in order, and the crate is generic over the cell alphabet.
 Overlap enumeration and the certificates are mutually dependent — a certificate carries the branching it joins, and the support index memoizes independence over certificates as well as cells — so the crate boundary encloses both rather than cutting between them.
 
-## What it provides
+## Current provision
 
 - One cell applied at one position, and budgeted normalization, both under the alphabet's own firing discipline.
 - The multi-sum overlap enumerator: confluence critical pairs and composition overlaps, with the seam data each carries.
@@ -13,7 +13,7 @@ Overlap enumeration and the certificates are mutually dependent — a certificat
 - Replayable coherence certificates and the derived fused cell, with replay-equivalence as the identity criterion and observable step evidence.
 - Budgeted Knuth–Bendix and Squier completion that declines with a report rather than diverging.
 
-## What is planned and absent
+## Planned but absent
 
 - Enumeration of match-and-pre-critical pairs for the citable convex confluence route.
   The completion loop cites the result; the enumerator that would make it a decision procedure here is not built.
@@ -31,7 +31,7 @@ let outcome = complete(&mut store, CompletionBudget::new(cells, steps));
 A budget is a pair of ceilings, each the maximum admitted rather than the point of failure.
 Reaching one returns a decline carrying its report, so the answer says where it stopped instead of truncating silently.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Knuth–Bendix completion; Squier's coherence theorem and coherent presentations; critical branchings and their joins; tracelets as replayable certificates; double-pushout rewriting.
 

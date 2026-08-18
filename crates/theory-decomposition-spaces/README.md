@@ -6,7 +6,7 @@ A decomposition space is the structure that answers, of an arrow, in how many wa
 That is what this crate computes over the certificates `gandr-theory-coherent-resolutions` produces.
 It is also the home the tracelet Hopf-algebra work lands into as that work arrives.
 
-## What it provides
+## Current provision
 
 - Two-mode certificate composition: an unconditional coherence lane, and a directed lane gated by variable-flow acyclicity across the composed seam that declines with the cycle as its diagnostic.
 - Static pathway queries: which compressed derivations can end in a target cell, grown backwards from the target and compressed to normal form, evaluating nothing.
@@ -15,7 +15,7 @@ It is also the home the tracelet Hopf-algebra work lands into as that work arriv
 
 The pathway engine's positive verdict is relative to what the shift guard can discharge: a refutation is sound, an acceptance over-approximates.
 
-## What is planned and absent
+## Planned but absent
 
 - A protocol face for pathway queries.
   The engine answers a caller holding the store; nothing carries a query in or renders a result out, so the diagnostics-side explanation query and completion-loop-driven exploration both wait on the interactive surface.
@@ -37,7 +37,7 @@ A pathway budget is a pair of ceilings, each the maximum admitted rather than th
 Reaching one returns a decline carrying the pathways already found and the frontier the search stopped on.
 Nothing takes a frontier back yet, so continuing a declined query means re-asking with a larger budget.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Decomposition spaces and the 2-Segal condition; incidence coalgebras; tracelet Hopf algebras; certificate composition and variable-flow acyclicity; content-addressed transport identity.
 

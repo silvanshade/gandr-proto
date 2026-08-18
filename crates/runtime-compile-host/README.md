@@ -1,7 +1,5 @@
 # gandr-runtime-compile-host
 
-## What it is for
-
 The Rust side of the compilation host boundary.
 A core computation goes in, a plain-old-data program image comes out, and the C++26 compilation host under [`runtime/compile-host/`](../../runtime/compile-host/README.md) compiles and runs it — returning the same value the L machine produces, with the run's accounted work beside it.
 
@@ -9,7 +7,7 @@ The host is **found at run time, never linked**.
 It builds against a discovered MLIR installation, so linking it would make every Rust build in the workspace depend on a toolchain the workspace does not pin.
 A checkout with no MLIR builds and tests this crate in full; the host's absence is an ordinary reported outcome.
 
-## What it currently provides
+## Current provision
 
 - A **lowering** from the core's positive fragment to the image: names become de Bruijn distances counted inwards, the tree becomes a flat arena in dependency order with the terminal cut last, and every form outside the fragment is refused by name.
   The walk is an explicit stack, so term depth costs heap rather than the host's call stack.
@@ -31,7 +29,7 @@ So `dup 4` runs on the machine and is not a typed computation at all, and the ch
 Five of the host's eight named programs are typed and go through the checked entry; three are machine-level and go through the entry named for that.
 The gap closes when the image can represent a thunk, which is the codata rung.
 
-## What is planned and absent
+## Planned but absent
 
 - **No surface path.** Nothing in gandr's language surface produces a core computation and hands it here; the entry is the Rust API.
 - **No effects, codata, reified continuations, or calls** — the compiled slice excludes them, so the lowering refuses them by name.
@@ -52,7 +50,7 @@ The bridge's own cases report an absent host and stop.
 `GANDR_COMPILE_HOST_REQUIRED=1` turns that report into a failure, which is what `mise run compile-host:wall` sets once it has built a host — that task is the merge wall's compile-host lane, and it skips only when no MLIR toolchain can be discovered at all.
 `GANDR_COMPILE_HOST_LIBRARY` names the host library explicitly; otherwise the conventional build output under the workspace root is used.
 
-## The ideas it rests on
+## Theoretical ideas relied on
 
 - **Call-by-push-value** and the **polarized sequent calculus**: the fragment lowered here is the value-producing part of gandr's System-L command IL, and a consumer that binds is a `mu-tilde` frame.
 - **Graded computation**: duplication and discard are ordinary computations rather than free wiring, which is why the boundary reports them as accounted work rather than eliding them.

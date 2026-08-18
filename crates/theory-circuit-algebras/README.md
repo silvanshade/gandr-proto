@@ -1,7 +1,5 @@
 # gandr-theory-circuit-algebras
 
-## Intent
-
 `gandr-theory-circuit-algebras` provides the circuit-algebra machinery at the cell-alphabet seam.
 It owns interface bookkeeping, embedding-based matching with convexity checks, and diagram normal forms.
 It does not own the port-bijection representation, cell engines, overlap enumeration, completion, tracelets, or rewrite execution.
@@ -23,7 +21,7 @@ The crate does not provide a user-facing circuit-term former, rewrite execution,
 Those require the circuit-algebra surface and consumer rungs that are outside this crate.
 Completion does not consume the matcher yet: `gandr-theory-computads` still enumerates overlaps through its one-sided command-pattern matcher, which is right for command patterns and is not what a circuit pattern needs.
 
-## Usage
+## Using it
 
 The public modules can be used directly by an internal Rust consumer:
 
@@ -34,7 +32,7 @@ use gandr_theory_circuit_algebras::{interface, matching, normal_form};
 Construct a validated `interface::Wiring`, call `matching::embeddings` or `matching::embeddings_by_sweep`, and use `normal_form::same_diagram` for representation-level equality.
 No command-line or user-language syntax reaches this crate.
 
-## Theoretical ideas
+## Theoretical ideas relied on
 
 Circuit algebras, monogamous acyclic hypergraphs, convex double-pushout matching, boundary-anchored canonicalization, cospan-isomorphism equality, and checkable relabelling witnesses.
 

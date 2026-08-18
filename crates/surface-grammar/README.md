@@ -1,9 +1,9 @@
-# surface-grammar
+# gandr-surface-grammar
 
 `gandr-surface-grammar` owns the checked grammar the surface front-end parses over: a precedence-bounded grammar (PBG) whose rules are constant data, validated once at build time, and whose every tile occurrence gets a stable identity the parser and the editor faces both address.
 It carries no parser: clients supply `Rule` values over a validated precedence DAG, and `Pbg::build` performs the cross-rule checks.
 
-## What it currently provides
+## Current provision
 
 - **The checked model.** `Pbg::build` runs three build-time gates — no concatenation exposes two adjacent sort holes, every tile occurrence interns to a distinct identity, and the precedence relation is conflict-free — so a colliding rule fails the build instead of parsing ambiguously.
 - **The mold table.** One entry per tile occurrence, keyed by an interned regex-zipper context, with precomputed precedence bounds and zipper steps.
@@ -14,7 +14,7 @@ It carries no parser: clients supply `Rule` values over a validated precedence D
 - **The `extend` seam.** Folds declared operators into a fresh grammar with base identities preserved.
   Only its own tests call it.
 
-## Planned but not implemented
+## Planned but absent
 
 - Wiring `extend` to a real module or session path: declaration collection, the numeric fixity level, the non-associative class, and propagation of the extended grammar through parsing, lowering, and display.
 - The tree-sitter differential and highlight-parity harnesses, deferred with the tree-sitter reference; the parity inventory is the data they will consume.
@@ -24,11 +24,11 @@ It carries no parser: clients supply `Rule` values over a validated precedence D
 `built_in()` returns the checked gandr grammar; `Pbg::build` takes your own rules and precedence table.
 Both are pure and allocation-bounded, and both fail with a typed error rather than panicking.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Precedence-bounded grammars and precedence graphs, mixfix operator parsing, and the regex-zipper presentation of a rule's parse context.
 
-## Primary resources
+## Primary references
 
 - Nils Anders Danielsson and Ulf Norell, _Parsing Mixfix Operators_, 2011, `doi:10.1007/978-3-642-24452-0_5` — the precedence-graph presentation the precedence DAG follows.
 - David Moon, Andrew Blinn, Thomas J. Porter and Cyrus Omar, _Syntactic Completions with Material Obligations_, 2025, `doi:10.1145/3763182` (arXiv:2508.16848) — the tile-based parsing theory this grammar's molds, precedence comparisons, and obligation surface are built against.

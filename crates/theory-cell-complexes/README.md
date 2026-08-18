@@ -5,7 +5,7 @@ The cell-shape substrate for gandr's rewriting stack: what a rewriting cell is, 
 Every crate above this one is stated over the vocabulary defined here and introduces none of its own at this level.
 The crate names no other workspace crate except `gandr-core-sequent`, and that only for the polarity tag the sequent alphabet carries.
 
-## What it provides
+## Current provision
 
 - The command-pattern language: the cut grammar with pattern metavariables, the operation and return-side constructor frames, positions, and the erased node view the orders are taken over.
 - Substitutions, with one-sided matching for cell application and two-sided unification for overlaps, both iterative.
@@ -15,7 +15,7 @@ The crate names no other workspace crate except `gandr-core-sequent`, and that o
 - The linearity admission boundary: cell patterns are linear, so a rule that copies a hole is refused where cells are admitted rather than where patterns are constructed.
 - The nominal wrapper vocabulary for every count, index, budget, depth and verdict that crosses a public signature in this crate or above it.
 
-## What is planned and absent
+## Planned but absent
 
 - A second production alphabet.
   The trait exists for one, the tree has one, and the compile-visible pattern grammar stays pointed at every match site until a second arrives.
@@ -32,7 +32,7 @@ let mut store = CellStore::new();
 let id = store.insert(frame_defining_cell(&constructor));
 ```
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Polygraphs and computads; cells as generating rewrites; critical-pair matching and unification; reduction orders and lexicographic path orders; linear left-hand sides; polarized call-by-push-value and the sequent command language.
 

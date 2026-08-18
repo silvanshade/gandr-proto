@@ -8,7 +8,7 @@ A consumer that only wants descriptions turned into cells consumes this crate an
 
 It reads the core sequent command language without modifying it.
 
-## What it provides
+## Current provision
 
 - Elaboration of a whole levitation description into cells: surface rule faces become cells, and the declared operations' bridge arities decide which of them the single-continuation grammar admits.
 - The circuit rule application site, where the shift-equivalence question about a two-redex rule body becomes well-posed.
@@ -17,7 +17,7 @@ It reads the core sequent command language without modifying it.
 
 The matcher is supplied at the instantiation site rather than depended upon, which is why no crate in this stack depends on `gandr-theory-circuit-algebras`.
 
-## What is planned and absent
+## Planned but absent
 
 - Surface rule lowering and the end-to-end rewriting integration that would give the engines below a shipping consumer.
   In production this crate is consumed as an elaborator; the fusion engines beneath it are consumed by tests.
@@ -35,7 +35,7 @@ let store = elaborated.store;
 
 A declined face or operation is reported by index rather than dropped, so a caller can say which member of the description the grammar refused.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
 Computads and polygraphs; levitation-style datatype descriptions; circuit rules as schemas over rewrite-sorted ports; shift equivalence at the instantiation site; polarized call-by-push-value and the sequent command language.
 
