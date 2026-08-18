@@ -17,6 +17,7 @@ A checkout with no MLIR builds and tests this crate in full; the host's absence 
 - A **typed gate**: the driving entry checks the computation on the core's typing machine before lowering it, so what crosses the boundary is a computation the checker accepted.
 - The **C boundary**, resolved by name at run time: three run entries, a version check, and an owned-string release.
   A version mismatch is refused rather than called, because a struct whose layout changed has no other symptom across a dynamic boundary.
+  The release entry is resolved **before** any run, so a library that exports a run and no release is refused before anything is allocated; the completion step takes the resolved entry by type, which makes the leaking order unreachable rather than merely unused.
 - The **canonical rendering** of an L machine terminal value in the grammar the host prints, deliberately partial: a value outside the compiled slice has no spelling here.
 - A **source-level contract gate** over the host's own sources, in `tests/contract.rs`.
   It rides the merge wall unconditionally and holds every number this crate mirrors — heap layout, cell and node numbering, constructor arities, wire version and arena bound, ABI version and statuses, the boundary struct's field order — plus the verifier-first pipeline and the grade operations' effect declarations, to what the host declares.
@@ -48,7 +49,7 @@ cargo nextest run --package gandr-runtime-compile-host --all-targets --features=
 ```
 
 The bridge's own cases report an absent host and stop.
-`GANDR_COMPILE_HOST_REQUIRED=1` turns that report into a failure, which is what `mise run compile-host:wall` sets once it has built a host — that task is the conditional present-toolchain lane on the merge wall.
+`GANDR_COMPILE_HOST_REQUIRED=1` turns that report into a failure, which is what `mise run compile-host:wall` sets once it has built a host — that task is the merge wall's compile-host lane, and it skips only when no MLIR toolchain can be discovered at all.
 `GANDR_COMPILE_HOST_LIBRARY` names the host library explicitly; otherwise the conventional build output under the workspace root is used.
 
 ## The ideas it rests on

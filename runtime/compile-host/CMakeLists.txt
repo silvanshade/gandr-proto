@@ -114,6 +114,18 @@ target_link_libraries(gandr-compile-host-abi PRIVATE gandr-compile-host-core)
 target_compile_options(gandr-compile-host-abi PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
 set_target_properties(gandr-compile-host-abi PROPERTIES CXX_VISIBILITY_PRESET default)
 
+# A deliberately incomplete boundary: it declares the version and the ordinary
+# run entry and exports no release. It exists so the Rust side's resolution
+# order is witnessed rather than argued — a caller that resolved the release
+# entry only after a run had already allocated the outcome's text would leak
+# against exactly this library, and the witness is what makes that a failure.
+add_library(gandr-compile-host-abi-partial SHARED tests/partial_abi.c)
+set_target_properties(
+  gandr-compile-host-abi-partial
+  PROPERTIES C_VISIBILITY_PRESET default C_STANDARD 17 C_STANDARD_REQUIRED ON
+)
+target_include_directories(gandr-compile-host-abi-partial PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 add_executable(gandr-compile-host tools/main.cpp)
 target_link_libraries(gandr-compile-host PRIVATE gandr-compile-host-core)
 target_compile_options(gandr-compile-host PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
@@ -127,7 +139,10 @@ endif()
 if(GANDR_COMPILE_HOST_BUILD_TESTS)
   enable_testing()
   add_executable(gandr-compile-host-tests tests/main.cpp)
-  target_link_libraries(gandr-compile-host-tests PRIVATE gandr-compile-host-core)
+  # The boundary is linked into the test binary as well as built as the shared
+  # library a foreign caller resolves, so its own paths are exercised by named
+  # cases rather than only across the dynamic boundary.
+  target_link_libraries(gandr-compile-host-tests PRIVATE gandr-compile-host-core gandr-compile-host-abi)
   target_compile_options(gandr-compile-host-tests PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
   target_compile_definitions(
     gandr-compile-host-tests
@@ -137,6 +152,7 @@ if(GANDR_COMPILE_HOST_BUILD_TESTS)
   set(GANDR_COMPILE_HOST_TEST_CASES
       a_refused_run_writes_nothing_past_its_heap
       arity_verifier_rejects_a_malformed_constructor
+      the_c_boundary_owns_and_releases_every_message
       canonicalization_preserves_accounted_work
       compiled_allocation_is_bounded_by_its_heap
       decoder_is_total_on_seed_corpus

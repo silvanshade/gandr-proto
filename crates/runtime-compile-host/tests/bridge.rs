@@ -18,6 +18,7 @@ use gandr_core_term::syntax::Value;
 use gandr_runtime_compile_host::BridgeError;
 use gandr_runtime_compile_host::CompileHost;
 use gandr_runtime_compile_host::HostError;
+use gandr_runtime_compile_host::check_and_lower;
 use gandr_runtime_compile_host::compile_and_run;
 use gandr_runtime_compile_host::host::HeapWords;
 use gandr_runtime_compile_host::host::RefusalStage;
@@ -247,6 +248,82 @@ fn a_computation_outside_the_slice_is_refused_before_the_boundary()
         matches!(refused, Err(BridgeError::NotLowered { .. })),
         "a value outside the slice reached the boundary: {refused:?}"
     );
+}
+
+/// A library that exports no release entry is refused before a run allocates.
+///
+/// This is the boundary-order witness, and it is a witness rather than an
+/// argument because the compilation host builds a **deliberately incomplete**
+/// boundary beside the real one: `gandr-compile-host-abi-partial` declares the
+/// same ABI version and the same run entry, and exports no release at all.
+///
+/// A caller that resolved the release entry only after invoking a run would,
+/// against this library, allocate the outcome's text and then fail to find the
+/// function that frees it — leaking on the way to reporting the error. Because
+/// the release is resolved first, the failure arrives before the run is
+/// invoked at all, and `CompileHost::finish` takes the resolved entry by type
+/// rather than looking one up, so the leaking order is unreachable rather than
+/// merely unused.
+#[test]
+fn a_library_without_a_release_entry_is_refused_before_any_run()
+{
+    let Some(partial) = partial_library()
+    else {
+        return;
+    };
+
+    let host = CompileHost::open(&partial);
+    let Ok(host) = host
+    else {
+        panic!("the partial boundary declares this crate's version and should bind: {host:?}");
+    };
+
+    let image = check_and_lower(&Comp::ret(Value::Int(5))).expect("the computation lowers");
+    let bytes = image.encode();
+    let refused = host.run(&bytes);
+    let Err(HostError::NotBindable { detail, .. }) = refused
+    else {
+        panic!("a boundary without a release entry was not refused: {refused:?}");
+    };
+    assert!(
+        detail
+            .to_string()
+            .contains("gandr_compile_host_outcome_release"),
+        "the refusal names the symbol that is missing: {detail}"
+    );
+
+    // The same holds for the other two entries, so the order is a property of
+    // the boundary rather than of one method.
+    assert!(matches!(
+        host.run_with_heap(&bytes, HeapWords::from(64_u64)),
+        Err(HostError::NotBindable { .. })
+    ));
+    assert!(matches!(
+        host.interpret(&bytes),
+        Err(HostError::NotBindable { .. })
+    ));
+}
+
+/// The deliberately incomplete boundary, when this checkout has built one.
+fn partial_library() -> Option<std::path::PathBuf>
+{
+    let Ok(host) = CompileHost::discover()
+    else {
+        eprintln!("no compilation host built; skipping the boundary-order witness");
+        return None;
+    };
+    let directory = host.path().as_path().parent()?;
+    for name in [
+        "libgandr-compile-host-abi-partial.dylib",
+        "libgandr-compile-host-abi-partial.so",
+        "gandr-compile-host-abi-partial.dll",
+    ] {
+        let candidate = directory.join(name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    panic!("a compilation host is built but its partial boundary is not beside it");
 }
 
 /// An absent host is an ordinary reported outcome, never a panic and never a

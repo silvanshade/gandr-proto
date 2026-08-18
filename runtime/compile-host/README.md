@@ -26,6 +26,8 @@ The first production lowering slice — the L machine's **positive core** — en
 - A **C boundary**, `include/gandr/compile_host/abi.h`, built as the shared library `gandr-compile-host-abi`.
   An encoded image goes in; a rendered value, both ledger counters, the arena words consumed, and a typed status come out.
   It is C rather than C++ because a caller sharing a C++ ABI with this host would have to share its MLIR installation too, and it is a separate library because nothing should have to link the host in order to build.
+  Every entry is total: no exception escapes, and the only allocation on the message path is a `nothrow` buffer, so a failing one loses the message rather than the status.
+  A second library, `gandr-compile-host-abi-partial`, exports the version and the run entry and **no release**, so a caller's symbol-resolution order is witnessed rather than argued.
   `crates/runtime-compile-host` is the Rust side of it: it lowers a checked core computation into an image, encodes it, and resolves this boundary by name at run time.
 
 ## What is planned and absent
@@ -50,17 +52,17 @@ Every entry point is a named task, run from the repository root.
 MLIR is discovered rather than pinned: `GANDR_MLIR_PREFIX` wins, then a Homebrew `llvm` keg, then whatever `llvm-config` is on `PATH`.
 The compiling clang must be the one that ships beside the discovered MLIR; the configure step refuses a version mismatch, because mixing two builds across that boundary fails far from its cause.
 
-| Task                                 | Does                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------- |
-| `mise run compile-host:configure`    | configure the build against the discovered MLIR                        |
-| `mise run compile-host:build`        | build the host, its test binary, and its fuzz entry                    |
-| `mise run compile-host:test`         | run the regression suite                                               |
-| `mise run compile-host:differential` | diff the compiled slice's answers against the L machine's fixture      |
-| `mise run compile-host:timings`      | report per-program compile and execute microseconds                    |
-| `mise run compile-host:fuzz-smoke`   | replay every committed fuzz seed through the entry surface             |
-| `mise run compile-host:fuzz`         | run an AFL++ campaign over the entry surface                           |
-| `mise run compile-host:mutants`      | apply the curated mutant catalogue and require the suite to catch each |
-| `mise run compile-host:wall`         | run the gates above when a usable MLIR is present, and say so when not |
+| Task                                 | Does                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `mise run compile-host:configure`    | configure the build against the discovered MLIR                                 |
+| `mise run compile-host:build`        | build the host, its test binary, and its fuzz entry                             |
+| `mise run compile-host:test`         | run the regression suite                                                        |
+| `mise run compile-host:differential` | diff the compiled slice's answers against the L machine's fixture               |
+| `mise run compile-host:timings`      | report per-program compile and execute microseconds                             |
+| `mise run compile-host:fuzz-smoke`   | replay every committed fuzz seed through the entry surface                      |
+| `mise run compile-host:fuzz`         | run an AFL++ campaign over the entry surface                                    |
+| `mise run compile-host:mutants`      | apply the curated mutant catalogue and require the suite to catch each          |
+| `mise run compile-host:wall`         | run the gates above when an MLIR toolchain is discoverable, and say so when not |
 
 The binary itself has modes for looking at intermediate stages:
 
@@ -70,9 +72,11 @@ runtime/compile-host/build/gandr-compile-host --dump-lowered=case
 runtime/compile-host/build/gandr-compile-host --interpret-samples
 ```
 
-`compile-host:wall` **is** on the merge wall, and the rest are not.
-It runs the gates above on a checkout with a usable MLIR installation and prints a named skip on one without, because requiring an installation the repository does not pin would be a much larger claim than this slice makes.
-`GANDR_COMPILE_HOST_STRICT=1` turns the skip into a failure.
+`compile-host:wall` **is** on the merge wall, and the rest are the pieces it composes.
+Its condition is **discovery and nothing else**: it skips only when it can prove the toolchain is absent — no MLIR prefix, no `lib/cmake/mlir` under it, or no `clang++` beside it — because requiring an installation the repository does not pin would be a much larger claim than this slice makes.
+**Once a candidate is found every later step is fatal**: a configure failure, a build failure, a failing case, a differential mismatch, a bridge failure.
+A toolchain whose compiler and MLIR disagree is a failure of this task, not an absence — treating any configure failure as an optional-toolchain skip would leave a broken `CMakeLists.txt` or a broken source with a green wall and a reassuring message.
+`GANDR_COMPILE_HOST_STRICT=1` additionally turns the absence skip into a failure.
 
 Two things ride the wall unconditionally beside it: the Rust half of the agreement differential, and the source-level contract gate in `crates/runtime-compile-host/tests/contract.rs`, which holds this host's declared numbers and disciplines to what the Rust mirror assumes.
 Neither reaches behaviour — that is what the conditional lane is for.

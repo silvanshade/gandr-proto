@@ -6,6 +6,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "gandr/compile_host/image.hpp"
@@ -62,10 +63,17 @@ using gandr::compile_host::RunOutcome;
 
 /// Copies a message into a buffer the caller releases.
 ///
+/// The parameter is a **view** rather than a string, and that is the whole
+/// point of it: every caller here is `noexcept`, so materializing a
+/// `std::string` on the way in would put an allocation that can throw inside
+/// a function that may not, and a failed one would call `std::terminate`
+/// instead of reporting. A view allocates nothing, which leaves the nothrow
+/// `char[]` below as the only allocation on the boundary.
+///
 /// A failed allocation yields `borrowed_empty_text` rather than propagating:
 /// the boundary promises a non-null `text` on every call that returns, and
 /// losing a message is a smaller failure than losing the status beside it.
-[[nodiscard]] const char* own_text(const std::string& text) noexcept
+[[nodiscard]] const char* own_text(std::string_view text) noexcept
 {
     char* owned = new (std::nothrow) char[text.size() + 1];
     if (owned == nullptr) {
@@ -75,6 +83,11 @@ using gandr::compile_host::RunOutcome;
     owned[text.size()] = '\0';
     return owned;
 }
+
+// The boundary's no-abort promise rests on this: `own_text` is callable
+// without throwing, so the `noexcept` functions below cannot terminate on the
+// message path. A parameter that had to allocate would fail this.
+static_assert(noexcept(own_text(std::string_view{})), "the message path must not throw");
 
 /// Whether a pointer `own_text` returned owns heap storage.
 [[nodiscard]] bool is_owned_text(const char* text) noexcept
@@ -101,20 +114,26 @@ void fill(GandrCompileHostOutcome& outcome, const Expected<RunOutcome>& result) 
 }
 
 /// Fills an outcome for a call the boundary itself refused.
-void refuse(GandrCompileHostOutcome& outcome, const char* detail) noexcept
+void refuse(GandrCompileHostOutcome& outcome, std::string_view detail) noexcept
 {
     outcome.status = GANDR_COMPILE_HOST_STATUS_BAD_CALL;
     outcome.duplications = 0;
     outcome.discards = 0;
     outcome.allocated_words = 0;
-    outcome.text = own_text(std::string(detail));
+    outcome.text = own_text(detail);
 }
 
 /// Decodes the caller's bytes, or reports the refusal into the outcome.
+///
+/// Deliberately **not** `noexcept`: the decoder allocates an arena, so a
+/// failure there is an exception, and swallowing that into a `noexcept`
+/// function would call `std::terminate` rather than report. Every caller runs
+/// this inside its own try block, which is where such a failure becomes a
+/// status.
 [[nodiscard]] std::optional<Image> decode_or_refuse(
     const std::uint8_t* bytes,
     std::size_t length,
-    GandrCompileHostOutcome& outcome) noexcept
+    GandrCompileHostOutcome& outcome)
 {
     const std::span<const std::uint8_t> input(bytes, length);
     std::optional<Image> image = gandr::compile_host::decode_image(input);
@@ -123,7 +142,7 @@ void refuse(GandrCompileHostOutcome& outcome, const char* detail) noexcept
         outcome.duplications = 0;
         outcome.discards = 0;
         outcome.allocated_words = 0;
-        outcome.text = own_text(std::string("the byte image did not decode"));
+        outcome.text = own_text("the byte image did not decode");
     }
     return image;
 }

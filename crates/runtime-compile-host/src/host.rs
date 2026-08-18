@@ -473,6 +473,31 @@ type ReleaseEntry = unsafe extern "C" fn(*mut RawOutcome);
 #[repr(transparent)]
 struct SymbolName(&'static [u8]);
 
+impl core::fmt::Display for SymbolName
+{
+    /// The name without its terminator.
+    ///
+    /// The loader reports a failed lookup as "dlsym failed" and says nothing
+    /// about what it was looking for, so the name is carried into the message
+    /// here — a caller debugging a partial or mismatched library needs the
+    /// symbol far more than the verb.
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        let spelled = self
+            .0
+            .split_last()
+            .map_or(self.0, |(_terminator, head)| head);
+        match core::str::from_utf8(spelled) {
+            | Ok(name) => f.write_str(name),
+            | Err(_not_utf8) => f.write_str("a symbol whose name is not UTF-8"),
+        }
+    }
+}
+
 /// The version entry's symbol.
 const VERSION_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_abi_version\0");
 
@@ -661,6 +686,11 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
+        // The release entry is resolved **before** the run, and that order is
+        // the point: a run allocates the outcome's text, so discovering a
+        // missing release afterwards would leak on the way to reporting a
+        // library this crate cannot bind.
+        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
         // SAFETY: the signature named here is the one `abi.h` declares for
         // this symbol.
@@ -670,7 +700,7 @@ impl CompileHost
         // `abi.h` declares. The host copies out of the slice and does not
         // retain it, and the text it writes into `outcome` is released below.
         let status = unsafe { entry(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
-        self.finish(BoundaryStatus::from(status), &mut outcome)
+        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
     }
 
     /// Compiles and runs an encoded image on a heap of the caller's size.
@@ -699,6 +729,8 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
+        // Resolved before the run, as in `run`.
+        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
         // SAFETY: the signature named here is the one `abi.h` declares for
         // this symbol.
@@ -712,7 +744,7 @@ impl CompileHost
                 &raw mut outcome,
             )
         };
-        self.finish(BoundaryStatus::from(status), &mut outcome)
+        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
     }
 
     /// Runs an encoded image on the host's reference interpreter.
@@ -739,13 +771,15 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
+        // Resolved before the run, as in `run`.
+        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
         // SAFETY: the signature named here is the one `abi.h` declares for
         // this symbol.
         let entry = unsafe { self.entry::<RunEntry>(INTERPRET_SYMBOL) }?;
         // SAFETY: as `run`.
         let status = unsafe { entry(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
-        self.finish(BoundaryStatus::from(status), &mut outcome)
+        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
     }
 
     /// Resolves one boundary entry by name.
@@ -766,20 +800,51 @@ impl CompileHost
             | Ok(symbol) => Ok(symbol),
             | Err(error) => Err(HostError::NotBindable {
                 path: self.path.clone(),
-                detail: LoaderDetail(error.to_string()),
+                detail: LoaderDetail(alloc::format!("resolving {name}: {error}")),
             }),
         }
     }
 
+    /// Resolves the release entry.
+    ///
+    /// Every caller does this **before** invoking a run, which is what makes
+    /// the release on the way out infallible: [`CompileHost::finish`] takes
+    /// the resolved entry rather than looking one up, so there is no path on
+    /// which an allocated outcome meets a failing lookup.
+    ///
+    /// # Contract
+    /// - ensures: a returned symbol is the release entry `abi.h` declares.
+    /// - provides: the resolution `finish` requires by type.
+    /// - fails: [`HostError::NotBindable`] when the library exports no such
+    ///   symbol, before anything has been allocated.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// [`HostError::NotBindable`].
+    fn release_entry(&self) -> Result<libloading::Symbol<'_, ReleaseEntry>, HostError>
+    {
+        // SAFETY: the signature named here is the one `abi.h` declares for
+        // this symbol.
+        unsafe { self.entry::<ReleaseEntry>(RELEASE_SYMBOL) }
+    }
+
     /// Reads a filled outcome, releases what it owns, and reports the answer.
+    ///
+    /// Taking the release entry as an argument rather than resolving one is
+    /// the whole discipline: an outcome reaches this function only after its
+    /// caller has already proved the release exists, so the type makes the
+    /// leaking order unreachable rather than merely unused.
     fn finish(
-        &self,
         status: BoundaryStatus,
         outcome: &mut RawOutcome,
+        release: &libloading::Symbol<'_, ReleaseEntry>,
     ) -> Result<HostAnswer, HostError>
     {
         let text = read_text(outcome);
-        self.release(outcome)?;
+        // SAFETY: `outcome` was filled by one of the entries above, which is
+        // exactly the precondition `gandr_compile_host_outcome_release`
+        // states; it clears the pointer, so a second release is inert.
+        unsafe { release(&raw mut *outcome) };
 
         if status != STATUS_OK {
             return Err(HostError::Refused {
@@ -793,22 +858,6 @@ impl CompileHost
             discards: LedgerCount(outcome.discards),
             allocated: ArenaWords(outcome.allocated_words),
         })
-    }
-
-    /// Releases what a filled outcome owns.
-    fn release(
-        &self,
-        outcome: &mut RawOutcome,
-    ) -> Result<(), HostError>
-    {
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol.
-        let entry = unsafe { self.entry::<ReleaseEntry>(RELEASE_SYMBOL) }?;
-        // SAFETY: `outcome` was filled by one of the entries above, which is
-        // exactly the precondition `gandr_compile_host_outcome_release`
-        // states; it clears the pointer, so a second release is inert.
-        unsafe { entry(&raw mut *outcome) };
-        Ok(())
     }
 }
 

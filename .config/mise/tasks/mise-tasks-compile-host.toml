@@ -10,11 +10,16 @@
 # configure refuses a mismatch, because an ODR mismatch across that boundary
 # surfaces far from its cause.
 #
-# None of these tasks is on the merge wall. The wall is Rust-only and every
-# contributor runs it; requiring an MLIR installation to land a Rust change
-# would be a much larger claim than this slice makes. The Rust half of the
-# host's agreement differential — the fixture against the L machine — is on
-# the wall, inside cargo:nextest.
+# One of these tasks IS on the merge wall: compile-host:wall, at the bottom of
+# this file. It is conditional on the toolchain being discoverable and on
+# nothing else — once a candidate MLIR and its compiler are found, every
+# configure, build, test, differential and bridge failure is fatal. The rest
+# of the tasks are the pieces it composes and are not separately on the wall.
+#
+# Two things ride the wall unconditionally beside it: the Rust half of the
+# host's agreement differential (the fixture against the L machine), and the
+# source-level contract gate in crates/runtime-compile-host, both inside
+# cargo:nextest.
 
 ["compile-host:configure"]
 description = "Configure the C++26 MLIR compilation host against the discovered MLIR installation"
@@ -231,20 +236,27 @@ echo "compile-host: $applied mutants applied, $survived survived"
 [ "$survived" -eq 0 ]
 '''
 
-# The conditional present-toolchain lane, and the reason it is conditional.
+# The conditional present-toolchain lane, and the exact shape of its condition.
 #
 # The host's own gates need a discovered MLIR installation, so the merge wall
-# cannot require them: making every Rust change depend on an installation the
-# repository does not pin is a much larger claim than this slice makes. What
-# the wall CAN require is that a checkout which HAS a usable installation runs
-# them — so this task runs the host's gates when the toolchain is there and
-# prints a named skip when it is not.
+# cannot require them unconditionally: making every Rust change depend on an
+# installation the repository does not pin is a much larger claim than this
+# slice makes. What the wall CAN require is that a checkout which HAS one runs
+# them.
 #
-# "Usable" is decided by the configure step rather than by the presence of a
-# directory: an installation whose clang and MLIR disagree is refused at
-# configure, and that is a fact about the machine rather than about the host,
-# so it skips with the same notice. GANDR_COMPILE_HOST_STRICT=1 turns every
-# skip into a failure, which is the switch a pinned-MLIR future flips.
+# The condition is DISCOVERY, and nothing else. This task skips only when it
+# can prove the toolchain is absent — no MLIR prefix, no lib/cmake/mlir under
+# it, or no clang++ beside it. Once a candidate is found, every later step is
+# fatal: a configure failure, a build failure, a failing regression case, a
+# differential mismatch, a bridge failure. That boundary is deliberate and it
+# was drawn the other way first, which was the defect: treating any configure
+# failure as an optional-toolchain skip means a broken CMakeLists or a broken
+# host source leaves gate:merge green with a reassuring message, which is the
+# one outcome a gate must never produce. A toolchain whose compiler and MLIR
+# disagree is a real failure of this task, not an absence.
+#
+# GANDR_COMPILE_HOST_STRICT=1 additionally turns the absence skip into a
+# failure, which is the switch a pinned-MLIR future flips.
 #
 # What still does not ride here: nothing about the host's behaviour is proven
 # on a checkout without MLIR. The unconditional half is the source-level
@@ -252,14 +264,12 @@ echo "compile-host: $applied mutants applied, $survived survived"
 # inside cargo:nextest and holds the Rust mirror of the boundary to the host's
 # own headers.
 ["compile-host:wall"]
-description = "Run the compilation host's gates when a usable MLIR installation is present"
+description = "Run the compilation host's gates when an MLIR toolchain is discoverable"
 run = '''
 set -eu
 
-strict=${GANDR_COMPILE_HOST_STRICT:-}
-
-skip() {
-  if [ -n "$strict" ]; then
+absent() {
+  if [ -n "${GANDR_COMPILE_HOST_STRICT:-}" ]; then
     echo "compile-host: $1 (GANDR_COMPILE_HOST_STRICT is set, so this is a failure)" >&2
     exit 1
   fi
@@ -275,14 +285,21 @@ fi
 if [ -z "$prefix" ] && command -v llvm-config >/dev/null 2>&1; then
   prefix=$(llvm-config --prefix)
 fi
-if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
-  skip "no MLIR installation was found"
+
+# The three absence conditions, and they are the only three.
+if [ -z "$prefix" ]; then
+  absent "no MLIR installation was found"
+fi
+if [ ! -d "$prefix/lib/cmake/mlir" ]; then
+  absent "the installation at $prefix carries no lib/cmake/mlir"
+fi
+if [ ! -x "$prefix/bin/clang++" ]; then
+  absent "the installation at $prefix ships no clang++ to build against it"
 fi
 
-if ! mise run compile-host:configure; then
-  skip "the discovered MLIR installation at $prefix is not usable by this compiler"
-fi
+echo "compile-host: MLIR discovered at $prefix; every step below is required"
 
+mise run compile-host:configure
 mise run compile-host:build
 mise run compile-host:test
 mise run compile-host:differential

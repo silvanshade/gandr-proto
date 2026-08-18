@@ -24,6 +24,7 @@
 #include "mlir/IR/Verifier.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#include "gandr/compile_host/abi.h"
 #include "gandr/compile_host/dialect.hpp"
 #include "gandr/compile_host/emit.hpp"
 #include "gandr/compile_host/interpret.hpp"
@@ -523,6 +524,94 @@ void case_a_refused_run_writes_nothing_past_its_heap()
     check(exercised > 0, "at least one sample allocates, so the case is not vacuous");
 }
 
+/// The C boundary owns the text it hands back, releases it, and reaches both
+/// of the paths that produce one.
+///
+/// The two paths matter separately. A **literal** message is what the boundary
+/// itself writes when it refuses a call; an **owned** message is what a run's
+/// answer or a stage's detail carries out of the host. Both go through the one
+/// nothrow allocation, and this case is what makes the claim observable rather
+/// than a property of reading the source.
+void case_the_c_boundary_owns_and_releases_every_message()
+{
+    // The owned path: a real run's rendered answer crosses the boundary.
+    {
+        const Sample sample = accounted_work_sample();
+        const std::vector<std::uint8_t> bytes = encode_image(sample.image);
+        GandrCompileHostOutcome outcome{};
+        const std::int32_t status =
+            gandr_compile_host_run(bytes.data(), bytes.size(), &outcome);
+        check(status == GANDR_COMPILE_HOST_STATUS_OK, "a well-formed image runs across the boundary");
+        check(status == outcome.status, "the return value repeats the outcome's status");
+        check(outcome.text != nullptr, "a returned call always carries a message");
+        if (outcome.text != nullptr) {
+            check_equal(outcome.text, "(int 0)", "the owned message is the rendered answer");
+        }
+        check(outcome.duplications == 1 && outcome.discards == 1, "the ledger crosses too");
+
+        gandr_compile_host_outcome_release(&outcome);
+        check(outcome.text == nullptr, "release clears the pointer");
+        // A second release is inert, which is what the cleared pointer buys.
+        gandr_compile_host_outcome_release(&outcome);
+        check(outcome.text == nullptr, "a second release changes nothing");
+    }
+
+    // The literal path: the decoder refuses, and the message is a static
+    // string the boundary owns a copy of.
+    {
+        const std::vector<std::uint8_t> garbage{0xFF, 0xFF, 0xFF};
+        GandrCompileHostOutcome outcome{};
+        const std::int32_t status =
+            gandr_compile_host_run(garbage.data(), garbage.size(), &outcome);
+        check(
+            status == GANDR_COMPILE_HOST_STATUS_MALFORMED_IMAGE,
+            "undecodable bytes are refused at the decoder");
+        check(outcome.text != nullptr, "a refusal carries its message");
+        if (outcome.text != nullptr) {
+            check_equal(
+                outcome.text,
+                "the byte image did not decode",
+                "the literal message crosses intact");
+        }
+        gandr_compile_host_outcome_release(&outcome);
+        check(outcome.text == nullptr, "the literal path releases like the owned one");
+    }
+
+    // The boundary's own refusals: a null outcome is a return value with
+    // nothing written, and a null image with a length is a filled refusal.
+    {
+        check(
+            gandr_compile_host_run(nullptr, 0, nullptr) == GANDR_COMPILE_HOST_STATUS_BAD_CALL,
+            "a null outcome is refused by return value alone");
+
+        GandrCompileHostOutcome outcome{};
+        const std::int32_t status = gandr_compile_host_run(nullptr, 7, &outcome);
+        check(status == GANDR_COMPILE_HOST_STATUS_BAD_CALL, "a null image with a length is refused");
+        check(outcome.text != nullptr, "the refusal carries its message");
+        gandr_compile_host_outcome_release(&outcome);
+    }
+
+    // The version is what the header declares, which is what a caller checks
+    // before it calls anything else.
+    check(
+        gandr_compile_host_abi_version() == GANDR_COMPILE_HOST_ABI_VERSION,
+        "the built library declares the header's version");
+
+    // The sized entry reports exhaustion across the boundary rather than
+    // answering, so the bounds check is visible to a foreign caller.
+    {
+        const Sample sample = accounted_work_sample();
+        const std::vector<std::uint8_t> bytes = encode_image(sample.image);
+        GandrCompileHostOutcome outcome{};
+        const std::int32_t status = gandr_compile_host_run_with_heap(
+            bytes.data(), bytes.size(), HeapLayout::arena_base, &outcome);
+        check(
+            status == GANDR_COMPILE_HOST_STATUS_LIMIT_EXCEEDED,
+            "a heap with no arena is reported as a limit across the boundary");
+        gandr_compile_host_outcome_release(&outcome);
+    }
+}
+
 /// Lowering is complete: no operation of the gandr dialect survives it.
 void case_lowering_leaves_no_dialect_operation_behind()
 {
@@ -619,6 +708,8 @@ struct Case
         Case{"arity_verifier_rejects_a_malformed_constructor",
              case_arity_verifier_rejects_a_malformed_constructor},
         Case{"canonicalization_preserves_accounted_work", case_canonicalization_preserves_accounted_work},
+        Case{"the_c_boundary_owns_and_releases_every_message",
+             case_the_c_boundary_owns_and_releases_every_message},
         Case{"compiled_allocation_is_bounded_by_its_heap", case_compiled_allocation_is_bounded_by_its_heap},
         Case{"decoder_is_total_on_seed_corpus", case_decoder_is_total_on_seed_corpus},
         Case{"encode_decode_round_trips_every_sample", case_encode_decode_round_trips_every_sample},
