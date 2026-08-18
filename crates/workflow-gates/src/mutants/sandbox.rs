@@ -386,17 +386,22 @@ impl MsbPlan
     }
 }
 
-/// Host paths and mode for one mutation campaign.
+/// Host paths, mode, and package selector for one mutation campaign.
 ///
 /// # Contract
-/// - requires: `source_archive` points at a tracked-file tar archive and `diff`
-///   is present exactly for diff-scoped modes.
-/// - ensures: the request names a single sandbox and a single report directory.
-/// - provides: immutable inputs for constructing a [`CampaignExecutionPlan`].
+/// - requires: package is present only for `CampaignMode::Package`; diff is
+///   present exactly for diff-scoped modes.
+/// - ensures: plan construction retains one sandbox, source archive, and report
+///   path without changing caller-owned inputs.
+/// - provides: immutable inputs for constructing a campaign execution plan.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — execution and fast-path tests distinguish the single
+/// - hypothesis: L3 pointwise — package requests, diff requests, and teardown
+///   precedence are distinguished by plan and execution tests.
+/// - witness: `mutants::sandbox::tests::package_campaign_plan_carries_package_argv`
+/// - witness: `mutants::sandbox::tests::teardown_error_takes_precedence_over_payload_error`
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct CampaignRequest<'request>
 {
     /// Campaign mode.
@@ -2295,6 +2300,7 @@ mod tests
             (CampaignMode::Push, "push", true, "45m", "55m"),
             (CampaignMode::Merge, "merge", true, "45m", "55m"),
             (CampaignMode::Scheduled, "scheduled", true, "45m", "55m"),
+            (CampaignMode::Package, "package", false, "8h", "495m"),
             (CampaignMode::Sweep, "sweep", false, "8h", "495m"),
         ];
 
@@ -2402,6 +2408,33 @@ mod tests
                 .contains("scheduled campaign requires a diff path"),
             "missing diff error should name the scheduled campaign"
         );
+        Ok(())
+    }
+    /// Package campaigns carry exact package argv and omit diff/workspace
+    /// scope.
+    #[test]
+    fn package_campaign_plan_carries_package_argv() -> TestResult
+    {
+        let name = sandbox_name()?;
+        let request = CampaignRequest::new_package(
+            &name,
+            Path::new("src.tar"),
+            Path::new("mutants.out"),
+            "gandr-core-checker-tools",
+        );
+        let plan = CampaignExecutionPlan::new(&config(), &request)?;
+        let args = plan.guest().args();
+        let rendered = args
+            .iter()
+            .map(|arg| arg.to_string_lossy())
+            .collect::<Vec<_>>();
+        let package_index = rendered
+            .iter()
+            .position(|arg| arg == "--package")
+            .expect("missing package selector");
+        assert_eq!("gandr-core-checker-tools", rendered[package_index + 1]);
+        assert!(!rendered.iter().any(|arg| arg == "--workspace"));
+        assert!(!rendered.iter().any(|arg| arg == "--diff"));
         Ok(())
     }
 

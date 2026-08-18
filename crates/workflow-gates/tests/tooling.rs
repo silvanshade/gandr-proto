@@ -1144,7 +1144,43 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     Ok(())
 }
 
-/// Configured mise mutants tasks parse to CLI plans without path flags.
+/// Package mutation parsing requires one exact UTF-8 package argument.
+#[test]
+fn package_mutants_cli_requires_exact_single_package() -> TestResult
+{
+    let parsed = cli::parse_command(os_args([
+        "gandr-workflow-gates",
+        "mutants",
+        "package",
+        "gandr-core-checker-tools",
+    ]))?;
+    match parsed {
+        | cli::Command::Mutants {
+            command: mutants::MutantsCommand::Package { package },
+            options,
+        } => {
+            assert!(!options.source_archive.as_os_str().is_empty());
+            assert_eq!("gandr-core-checker-tools", package);
+        },
+        | _ => {
+            return Err(Box::new(std::io::Error::other(
+                "package mutation parsed as a different command",
+            )));
+        },
+    }
+    for args in [
+        vec!["gandr-workflow-gates", "mutants", "package"],
+        vec!["gandr-workflow-gates", "mutants", "package", "one", "two"],
+        vec!["gandr-workflow-gates", "mutants", "package", " padded"],
+    ] {
+        assert!(
+            cli::parse_command(os_args(args)).is_err(),
+            "invalid package argv must be rejected"
+        );
+    }
+    Ok(())
+}
+
 #[test]
 fn configured_mise_mutants_tasks_parse_without_internal_path_flags() -> TestResult
 {

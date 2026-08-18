@@ -766,6 +766,11 @@ where
         ));
     }
     let package = os_string_into_utf8("mutants package", package)?;
+    if package.is_empty() || package.trim() != package {
+        return Err(GateError::usage(
+            "mutants package requires a nonempty package name without surrounding whitespace",
+        ));
+    }
     let options = MutantsCommonOptions::default().into_host_options(MutantsHostMode::Package)?;
     Ok(Command::Mutants {
         command: mutants::MutantsCommand::Package { package },
