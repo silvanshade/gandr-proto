@@ -127,7 +127,3 @@ The convention (authored docs are clean by construction):
   A balanced block is inert to the reflow wherever it sits: its own paragraph, tight against prose, inside a list item or a blockquote, all on one line, or carrying sentence-looking periods in its body.
   An **unbalanced** `$$` is the live hazard — with no closing delimiter the block stops being recognised, the reflow absorbs it into the surrounding prose line, and `rumdl check` reports success on the result.
 - **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
-- **Write every paragraph expecting the line breaks to fall at sentence boundaries** — that is what `reflow-mode = "semantic-line-breaks"` means, and inline formatting must not straddle one of those boundaries.
-  A sentence's period therefore sits _outside_ the emphasis that ends it: write `**the rule**.` rather than `**the rule.**` (both are code spans here, so this bullet does not demonstrate the effect on itself).
-  **Dangling formatting** — an emphasis span that swallows the full stop it ends on — hides that boundary from the splitter, which then leaves the sentences joined on one line instead of splitting them there.
-  The outcome is stable rather than stuck: `rumdl check` accepts the joined line and the merge wall stays green, so the cost is a paragraph that stops reading one sentence per line, not a failing gate.
