@@ -6,8 +6,8 @@
 
 The crate exposes the `mutants` facade for snapshot, changed-range, scheduled, single-package, and sweep campaigns.
 Package campaigns validate one exact name on the host, archive current `HEAD`, run the existing guest with `--package`, publish before reporting survivors, and clean temporary state.
-`mutants::record` defines deterministic, replayable mutation records with exact source edits, bounded base identities, and distinct killed, compile-error, and survivor verdicts.
-Compile errors are never survivors; replay applies exact one-hunk edits, rejects base mismatches and ambiguous sites, and preserves multi-line patches as provenance.
+`mutants::record` defines deterministic, replayable mutation records with exact source edits, bounded base identities, and distinct killed, compile-error, timed-out, and survivor verdicts.
+Compile errors are never survivors; timeouts retain their outcome evidence and remain indeterminate; replay applies exact one-hunk edits, rejects base mismatches and ambiguous sites, and preserves multi-line patches as provenance.
 
 ## Planned but absent
 

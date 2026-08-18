@@ -26,6 +26,11 @@ pub enum Verdict
     {
         diagnostic: String
     },
+    /// The selected test/build budget expired before classification.
+    TimedOut
+    {
+        evidence: String
+    },
     /// Every selected test passed for the viable mutation.
     Survivor
     {
@@ -68,12 +73,15 @@ pub enum ReplayError
         observed: String,
     },
     EmptySite,
+    SourceUnavailable
+    {
+        detail: String,
+    },
     AmbiguousSite
     {
         matches: usize,
     },
 }
-
 impl core::fmt::Display for ReplayError
 {
     #[inline]
@@ -95,6 +103,9 @@ impl core::fmt::Display for ReplayError
                 "mutation base mismatch: expected {expected}, observed {observed}"
             ),
             | Self::EmptySite => f.write_str("mutation record has an empty before-image"),
+            | Self::SourceUnavailable { detail } => {
+                write!(f, "mutation source unavailable: {detail}")
+            },
             | Self::AmbiguousSite { matches } => write!(
                 f,
                 "mutation before-image matched {matches} sites; expected exactly one"
@@ -114,6 +125,12 @@ pub enum ReportError
     MissingArtifact(PathBuf),
     UnsupportedRecord(String),
     InvalidJson(String),
+    Replay
+    {
+        name: String,
+        file: String,
+        source: ReplayError,
+    },
 }
 
 impl core::fmt::Display for ReportError
@@ -136,6 +153,10 @@ impl core::fmt::Display for ReportError
                 write!(f, "unsupported cargo-mutants record: {detail}")
             },
             | Self::InvalidJson(detail) => write!(f, "invalid cargo-mutants JSON: {detail}"),
+            | Self::Replay { name, file, source } => write!(
+                f,
+                "cargo-mutants record {name} at {file} cannot replay against campaign base: {source}"
+            ),
         }
     }
 }
@@ -185,6 +206,7 @@ fn outcome_log(
 )]
 pub fn convert_cargo_mutants_report(
     report_dir: &Path,
+    source_root: &Path,
     base: String,
 ) -> Result<Vec<MutationRecord>, ReportError>
 {
@@ -213,6 +235,11 @@ pub fn convert_cargo_mutants_report(
                 diagnostic: outcome_log(report_dir, &outcomes, name.clone())?,
             }
         }
+        else if outcomes.timed_out.contains(&name) {
+            Verdict::TimedOut {
+                evidence: outcome_log(report_dir, &outcomes, name.clone())?,
+            }
+        }
         else if outcomes.caught.contains(&name) {
             let log = outcome_log(report_dir, &outcomes, name.clone())?;
             let test = log
@@ -237,20 +264,83 @@ pub fn convert_cargo_mutants_report(
             )));
         };
         let mut record = MutationRecord::new(
-            file,
+            file.clone(),
             function.to_owned(),
             before,
             after,
             base.clone(),
             verdict,
         );
+        let source =
+            source_at_base(source_root, &base, &file).map_err(|source| ReportError::Replay {
+                name: name.clone(),
+                file: file.clone(),
+                source,
+            })?;
+        record
+            .reapply(source, base.clone())
+            .map_err(|source| ReportError::Replay {
+                name: name.clone(),
+                file: file.clone(),
+                source,
+            })?;
         record.patch = patch;
         records.push(record);
     }
     Ok(records)
 }
+/// Load the campaign-base source used to validate an exact mutation site.
+#[expect(
+    unknown_lints,
+    reason = "primitive_signature is supplied by the local dylint library"
+)]
+#[expect(
+    clippy::allow_attributes,
+    reason = "the stable compiler and local dylint library disagree about primitive_signature"
+)]
+#[allow(
+    unfulfilled_lint_expectations,
+    reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+)]
+#[expect(
+    primitive_signature,
+    reason = "Git revision and repository-relative path are validated text tokens at this boundary"
+)]
+fn source_at_base(
+    root: &Path,
+    base: &str,
+    file: &str,
+) -> Result<String, ReplayError>
+{
+    let output = std::process::Command::new("git")
+        .args([
+            "-C",
+            root.to_str().unwrap_or_default(),
+            "show",
+            &format!("{base}:{file}"),
+        ])
+        .output()
+        .map_err(|error| ReplayError::SourceUnavailable {
+            detail: error.to_string(),
+        })?;
+    if !output.status.success() {
+        if base == "HEAD" {
+            return std::fs::read_to_string(root.join(file)).map_err(|error| {
+                ReplayError::SourceUnavailable {
+                    detail: error.to_string(),
+                }
+            });
+        }
+        return Err(ReplayError::SourceUnavailable {
+            detail: String::from_utf8_lossy(&output.stderr).into_owned(),
+        });
+    }
+    String::from_utf8(output.stdout).map_err(|error| ReplayError::SourceUnavailable {
+        detail: error.to_string(),
+    })
+}
 
-/// Outcome-name sets loaded from cargo-mutants text artifacts.
+/// Outcome names grouped by cargo-mutants classification.
 struct OutcomeNames
 {
     /// Names classified as killed.
@@ -259,11 +349,13 @@ struct OutcomeNames
     missed: BTreeSet<String>,
     /// Names classified as compile errors.
     unviable: BTreeSet<String>,
+    /// Names whose execution budget expired before classification.
+    timed_out: BTreeSet<String>,
     /// Log paths keyed by mutant name.
     logs: BTreeMap<String, String>,
 }
 
-/// Load the three supported cargo-mutants outcome lists.
+/// Load cargo-mutants outcome lists.
 fn outcome_names(report_dir: &Path) -> Result<OutcomeNames, ReportError>
 {
     #[expect(
@@ -313,6 +405,7 @@ fn outcome_names(report_dir: &Path) -> Result<OutcomeNames, ReportError>
         caught: load(report_dir, "caught.txt".into())?,
         missed: load(report_dir, "missed.txt".into())?,
         unviable: load(report_dir, "unviable.txt".into())?,
+        timed_out: load(report_dir, "timeout.txt".into())?,
         logs,
     })
 }
@@ -568,23 +661,28 @@ mod tests
             std::env::temp_dir().join(format!("gandr-mutation-record-{}", std::process::id()));
         drop(std::fs::remove_dir_all(&root));
         std::fs::create_dir_all(&root).expect("fixture directory");
+        std::fs::create_dir_all(root.join("src")).expect("source directory");
         std::fs::create_dir_all(root.join("logs")).expect("logs directory");
         std::fs::write(root.join("mutants.json"), r#"[{"name":"m-1","file":"src/lib.rs","function":{"function_name":"answer"},"diff":"--- src/lib.rs\n+++ src/lib.rs\n@@\n-1\n+2\n"}]"#).expect("mutants fixture");
         std::fs::write(root.join("caught.txt"), "m-1\n").expect("caught fixture");
         std::fs::write(root.join("missed.txt"), "").expect("missed fixture");
         std::fs::write(root.join("unviable.txt"), "").expect("unviable fixture");
+        std::fs::write(root.join("timeout.txt"), "").expect("timeout fixture");
         std::fs::write(
             root.join("outcomes.json"),
             r#"{"outcomes":[{"scenario":{"Mutant":{"name":"m-1"}},"log_path":"log/m-1.log"}]}"#,
         )
         .expect("outcomes fixture");
+        std::fs::create_dir_all(root.join("src")).expect("source directory");
+        std::fs::write(root.join("src/lib.rs"), "fn answer() -> i32 { 1 }\n")
+            .expect("source fixture");
         std::fs::create_dir_all(root.join("log")).expect("log directory");
         std::fs::write(root.join("log/m-1.log"), "test answer_is_one ... FAILED")
             .expect("log fixture");
         let direct =
-            convert_cargo_mutants_report(&root, "base-001".into()).expect("direct conversion");
-        let scheduled =
-            convert_cargo_mutants_report(&root, "base-001".into()).expect("scheduled conversion");
+            convert_cargo_mutants_report(&root, &root, "HEAD".into()).expect("direct conversion");
+        let scheduled = convert_cargo_mutants_report(&root, &root, "HEAD".into())
+            .expect("scheduled conversion");
         assert_eq!(direct, scheduled);
         assert_eq!(
             direct[0].to_json().expect("canonical JSON"),
@@ -602,5 +700,35 @@ mod tests
             record.reapply("x + x".into(), "base-001".into()),
             Err(ReplayError::AmbiguousSite { matches: 2 })
         );
+    }
+    #[test]
+    fn timeout_and_stale_site_are_evidence_backed()
+    {
+        let root =
+            std::env::temp_dir().join(format!("gandr-mutation-timeout-{}", std::process::id()));
+        drop(std::fs::remove_dir_all(&root));
+        std::fs::create_dir_all(root.join("src")).expect("source directory");
+        std::fs::write(root.join("src/lib.rs"), "fn answer() -> i32 { 1 }\n")
+            .expect("timeout source");
+        std::fs::create_dir_all(root.join("log")).expect("fixture directory");
+        std::fs::write(
+            root.join("mutants.json"),
+            r#"[{"name":"m-timeout","file":"src/lib.rs","function":{"function_name":"answer"},"diff":"--- src/lib.rs\n+++ src/lib.rs\n@@\n-1\n+2\n"},{"name":"m-stale","file":"src/missing.rs","function":{"function_name":"answer"},"diff":"--- src/missing.rs\n+++ src/missing.rs\n@@\n-1\n+2\n"}]"#,
+        )
+        .expect("mutants fixture");
+        std::fs::write(root.join("caught.txt"), "").expect("caught fixture");
+        std::fs::write(root.join("missed.txt"), "").expect("missed fixture");
+        std::fs::write(root.join("unviable.txt"), "m-stale\n").expect("unviable fixture");
+        std::fs::write(root.join("timeout.txt"), "m-timeout\n").expect("timeout fixture");
+        std::fs::write(
+            root.join("outcomes.json"),
+            r#"{"outcomes":[{"scenario":{"Mutant":{"name":"m-timeout"}},"log_path":"log/m-timeout.log"},{"scenario":{"Mutant":{"name":"m-stale"}},"log_path":"log/m-stale.log"}]}"#,
+        )
+        .expect("outcomes fixture");
+        std::fs::write(root.join("log/m-timeout.log"), "TIMEOUT after 2s").expect("timeout log");
+        std::fs::write(root.join("log/m-stale.log"), "unviable").expect("stale log");
+        let error = convert_cargo_mutants_report(&root, &root, "HEAD".into())
+            .expect_err("stale source must obstruct conversion");
+        assert!(matches!(error, ReportError::Replay { .. }), "{error:?}");
     }
 }

@@ -14,9 +14,9 @@ Three moving parts: every nontrivial item documents a falsifiable **adequacy hyp
 ## Reproducible mutation records
 
 Every recorded mutation is a canonical record emitted by the workflow-gates crate.
-It names the repository-relative file and semantic item, stores the exact before/after edit, records the bounded base identity, and carries one evidence-bearing verdict: killed with a test, compile_error with the compiler diagnostic, or survivor with the surviving-test evidence.
-A compile error is never a survivor.
-Replay validates the base and requires exactly one before-image match; ambiguous or legacy label-only entries are rejected rather than guessed.
+It names the repository-relative file and semantic item, stores the exact before/after edit, records the bounded base identity, and carries one evidence-bearing verdict: killed with a test, compile_error with the compiler diagnostic, timed_out with the retained timeout evidence, or survivor with the surviving-test evidence.
+A compile error is never a survivor, and a timeout remains indeterminate rather than being collapsed into either survivor or compile failure.
+Replay validates the campaign base by loading the recorded path from that base and requires exactly one before-image match; ambiguous, stale-source, or legacy label-only entries are rejected rather than guessed.
 Direct and scheduled campaigns use this same record contract after their cargo-mutants report is converted.
 
 ## Campaign lifecycle

@@ -359,11 +359,11 @@ impl MutantsHost for SupportMutantsHost
     fn canonicalize_report(
         &mut self,
         report: &Path,
-        _workspace_root: &Path,
+        workspace_root: &Path,
         base: String,
     ) -> Result<(), GateError>
     {
-        let records = record::convert_cargo_mutants_report(report, base)
+        let records = record::convert_cargo_mutants_report(report, workspace_root, base)
             .map_err(|error| GateError::operational(error.to_string()))?;
         let bytes = serde_json::to_string_pretty(&records).map_err(|error| {
             GateError::operational(format!(
