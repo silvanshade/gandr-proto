@@ -2640,6 +2640,94 @@ mod tests
         );
         Ok(())
     }
+    /// Package host campaigns publish and clean before returning success.
+    #[test]
+    fn package_campaign_publishes_then_cleans_before_success() -> TestResult
+    {
+        let fixture = TestWorkspace::create("package-success")?;
+        let options = test_options(fixture.path(), &fixture.path().join("scratch"));
+        let mut host = FakeHost::new(
+            vec![host_stdout("base-001\n")],
+            vec![host_success()],
+            Vec::new(),
+        )
+        .with_metadata(r#"{"packages":[{"name":"gandr-core-checker-tools"}]}"#);
+        let mut infrastructure = FakeInfrastructure::present();
+        let mut runner = FakeMsbAdapter::new(Vec::new(), vec![
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            sandbox::CommandOutcome::success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+        ]);
+        let mut sink = report_sink();
+        run_package_campaign_with_environment(
+            &mut host,
+            &mut infrastructure,
+            &mut runner,
+            &mut sink,
+            &options,
+            "gandr-core-checker-tools",
+        )?;
+        assert!(
+            published_campaign(&options)?.contains("succeeded: true"),
+            "canonical report must be published before success returns"
+        );
+        assert!(!options.working_report.exists());
+        assert!(!options.source_archive.exists());
+        assert!(
+            runner
+                .rendered_calls()
+                .iter()
+                .any(|call| call.contains("--package gandr-core-checker-tools")),
+            "package guest argv must reach the msb adapter"
+        );
+        Ok(())
+    }
+
+    /// Package host campaigns publish and clean before returning survivor
+    /// failure.
+    #[test]
+    fn package_campaign_publishes_then_cleans_before_failure() -> TestResult
+    {
+        let fixture = TestWorkspace::create("package-failure")?;
+        let options = test_options(fixture.path(), &fixture.path().join("scratch"));
+        let mut host = FakeHost::new(
+            vec![host_stdout("base-001\n")],
+            vec![host_success()],
+            Vec::new(),
+        )
+        .with_metadata(r#"{"packages":[{"name":"gandr-core-checker-tools"}]}"#);
+        let mut infrastructure = FakeInfrastructure::present();
+        let mut runner = FakeMsbAdapter::new(Vec::new(), vec![
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            sandbox::CommandOutcome::failure(Some(2_i32)),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+        ]);
+        let mut sink = report_sink();
+        let error = run_package_campaign_with_environment(
+            &mut host,
+            &mut infrastructure,
+            &mut runner,
+            &mut sink,
+            &options,
+            "gandr-core-checker-tools",
+        )
+        .expect_err("survivors must return campaign failure");
+        assert!(error.to_string().contains("mutants-vm"));
+        assert!(published_campaign(&options)?.contains("succeeded: false"));
+        assert!(!options.working_report.exists());
+        assert!(!options.source_archive.exists());
+        Ok(())
+    }
 
     /// Missing msb fails snapshot/clean modes before any runner command.
     #[test]
