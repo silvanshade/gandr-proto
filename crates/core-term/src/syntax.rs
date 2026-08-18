@@ -5897,10 +5897,9 @@ mod tests
     /// ids, not as retained `Rc<Comp>` bodies.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
-            reason = "the test owns and discards its fresh arena after any failed round trip; a systematic failure-atomic arena audit is tracked separately"
+            reason = "the flagged allocations write only this test's own arena, built at the top of the body and dropped at scope exit, so a partial allocation is unreachable from anything outliving the call; witnessed by this test's own round-trip assertions"
         )
     )]
     #[test]
@@ -5922,10 +5921,9 @@ mod tests
     /// types without retaining legacy recursive children in term nodes.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
-            reason = "the test owns and discards its fresh arena after any failed round trip; a systematic failure-atomic arena audit is tracked separately"
+            reason = "the flagged allocations write only this test's own arena, built at the top of the body and dropped at scope exit, so a partial allocation is unreachable from anything outliving the call; witnessed by this test's own round-trip assertions"
         )
     )]
     #[test]
@@ -5953,10 +5951,9 @@ mod tests
     /// value-type roots while preserving the legacy public readback surface.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
-            reason = "the test owns and discards its fresh arena after any failed round trip; a systematic failure-atomic arena audit is tracked separately"
+            reason = "the flagged allocations write only this test's own arena, built at the top of the body and dropped at scope exit, so a partial allocation is unreachable from anything outliving the call; witnessed by this test's own round-trip assertions"
         )
     )]
     #[test]

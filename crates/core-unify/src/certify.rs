@@ -303,6 +303,12 @@ impl Certificate
     ///   convert; [`Replay::Unproven`] for a certificate claiming no solution.
     ///   An arena error is absorbed into [`Replay::Refuted`], which is the
     ///   fail-closed direction and matches how conversion absorbs one.
+    /// - ensures: `nbe`'s semantic arena is left at the population it was
+    ///   handed, whichever verdict is returned — each constraint replays inside
+    ///   a watermark [`Self::replay_one`] truncates back to before it returns.
+    ///   The syntax store and its interner grow, identically on every verdict,
+    ///   because they are content-keyed caches a definitional environment names
+    ///   by handle; nothing truncation drops can be named through them.
     /// - provides: the self-certifying half of the service — a validator small
     ///   enough to read, resting entirely on machinery the solver does not own.
     /// - panics: none.
@@ -317,6 +323,26 @@ impl Certificate
     /// - witness: `unify::tests::meta_splitting_leaves_the_unconstrained_half_open_and_replays_vacuously`
     /// - witness: `unify::tests::a_hand_built_singleton_eta_certificate_is_refuted_by_replay`
     /// - witness: `unify::tests::a_refuting_certificate_has_nothing_to_replay`
+    /// - hypothesis: L0 for the arena-restoration clause — the entry watermark
+    ///   has exactly one consumer, so removing the rollback or retargeting it
+    ///   at a later watermark leaves the mark unused and fails to compile —
+    ///   plus L3 on the reachable leg, the arena population observed either
+    ///   side of a validating replay. The refuting leg carries no separate
+    ///   witness: no input reaches an error inside the replay, whose only
+    ///   failures are arena exhaustion and an unresolvable id, so the rollback
+    ///   being unconditional in source is what carries it.
+    /// - witness: `unify::tests::replaying_a_certificate_restores_the_callers_semantic_arena`
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        expect(
+            non_local_effect_before_unhandled_error,
+            reason = "the flagged effect is replay_one's own rollback: it truncates the caller's \
+                      semantic arena back to the watermark it took at entry, unconditionally and \
+                      before returning, and it hands out no arena id, so the arena a caller can \
+                      still name is exactly the one it passed in; witnessed by \
+                      tests::replaying_a_certificate_restores_the_callers_semantic_arena"
+        )
+    )]
     #[inline]
     #[must_use]
     pub fn validate(

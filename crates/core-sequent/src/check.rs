@@ -1077,6 +1077,13 @@ mod tests
     /// A constructor is held to the consumer arity its tag declares — zero —
     /// so the multi-consumer constructor the walk used to admit silently is
     /// refused, and the diagnostic names the head and both counts.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        expect(
+            non_local_effect_before_unhandled_error,
+            reason = "the helper allocates into this test's own arena, built at the top of the body and dropped at scope exit, so nodes left by a refused check are unreachable orphans no assertion reads; the assertion observes only the returned CheckError"
+        )
+    )]
     #[test]
     fn constructor_consumer_arity_is_checked()
     {
@@ -1101,6 +1108,13 @@ mod tests
     /// A destructor frame is held to the consumer arity its tag declares — one
     /// — in both directions: a frame with no return continuation and a frame
     /// with two are each refused, with the exact counts reported.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        expect(
+            non_local_effect_before_unhandled_error,
+            reason = "the helper allocates into this test's own arena, built at the top of the body and dropped at scope exit, so nodes left by a refused check are unreachable orphans no assertion reads; the assertion observes only the returned CheckError"
+        )
+    )]
     #[test]
     fn destructor_consumer_arity_is_checked()
     {
@@ -1187,6 +1201,13 @@ mod tests
     /// **zero** is admitted at a constructor and refused at a destructor frame.
     /// Replacing the declaration lookup with either constant therefore fails
     /// half of this test.
+    #[cfg_attr(
+        dylint_lib = "non_local_effect_before_unhandled_error",
+        expect(
+            non_local_effect_before_unhandled_error,
+            reason = "the helper allocates into this test's own arena, built at the top of the body and dropped at scope exit, so nodes left by a refused check are unreachable orphans no assertion reads; the arena is reused across the admitted and refused legs and every assertion observes only the returned outcome"
+        )
+    )]
     #[test]
     fn consumer_arity_follows_the_head_not_a_constant()
     {

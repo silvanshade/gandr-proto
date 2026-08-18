@@ -675,8 +675,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, this admission is asserted to succeed, and no state outlives the test"
         )
@@ -705,8 +704,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -731,8 +729,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it restores the pre-call arena is what this test exists to do"
         )
@@ -789,8 +786,7 @@ mod tests
     /// rolling back at all (the checker intermediates survive).
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it stops at the admission floor is what this test exists to do"
         )
@@ -846,8 +842,7 @@ mod tests
     /// would empty the arena and strand the bypassed axiom's declared type.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation, and asserting that it stops at the floor the bypass raised is what this test exists to do"
         )
@@ -1006,8 +1001,7 @@ mod tests
     /// `U (t → F t)` checks without the kernel ever unfolding `t`.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, this admission is asserted to succeed, and no state outlives the test"
         )
@@ -1046,8 +1040,7 @@ mod tests
     /// than out of a guard someone remembered to write.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -1076,8 +1069,7 @@ mod tests
     /// reference.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -1104,8 +1096,7 @@ mod tests
     /// is refused, so no atom can be self-referential or forward.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -1131,8 +1122,7 @@ mod tests
     /// atom's level is a lookup rather than an inference.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -1158,8 +1148,7 @@ mod tests
     /// trace in the type.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )
@@ -1191,8 +1180,7 @@ mod tests
     /// spelling.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect is add_decl's own rollback truncation; the environment is local to this test, is not read after the rejection, and is dropped at scope exit"
         )

@@ -1356,8 +1356,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
         )
@@ -1388,8 +1387,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
         )
@@ -1515,8 +1513,7 @@ mod tests
 
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
+        expect(
             non_local_effect_before_unhandled_error,
             reason = "the flagged effect mints a checker intermediate into the fresh TermArena this test owns; the arena is never read after the call and is dropped at scope exit, so no error path can observe it"
         )

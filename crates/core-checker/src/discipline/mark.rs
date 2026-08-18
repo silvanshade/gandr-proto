@@ -4935,14 +4935,6 @@ impl Marker
     }
 
     /// Resumes one interning continuation frame.
-    #[cfg_attr(
-        dylint_lib = "non_local_effect_before_unhandled_error",
-        allow(
-            unknown_lints,
-            non_local_effect_before_unhandled_error,
-            reason = "interning converts allocation failure to an absent node; failure-atomic arena auditing is tracked separately"
-        )
-    )]
     fn resume_intern_frame(
         &mut self,
         frame: InternFrame,

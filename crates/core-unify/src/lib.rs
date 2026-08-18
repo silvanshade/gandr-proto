@@ -490,6 +490,35 @@ mod tests
         assert_eq!(replay, Replay::Validated);
     }
 
+    /// Replay is failure-atomic on the caller's normalizer: every constraint is
+    /// replayed inside a watermark that is truncated back before the outcome is
+    /// returned, so the semantic arena a caller can still name is exactly the
+    /// one it handed in.
+    #[test]
+    fn replaying_a_certificate_restores_the_callers_semantic_arena()
+    {
+        let (mut nbe, solver, certificate) =
+            run(context(&[(HoleId::from(0_u32), MetaSort::Comp)]), vec![
+                comps(
+                    Comp::lam(
+                        "x",
+                        Comp::app(Comp::Hole(0), Value::var(NameRef::from("x"))),
+                    ),
+                    Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+                ),
+            ]);
+        let before = nbe.watermark();
+
+        let replay = certificate.validate(&mut nbe, solver.constraints());
+
+        assert_eq!(Replay::Validated, replay);
+        assert_eq!(
+            before,
+            nbe.watermark(),
+            "a replay returns the semantic arena to the population it was handed"
+        );
+    }
+
     #[test]
     fn a_pattern_solution_replays_through_ordinary_conversion()
     {

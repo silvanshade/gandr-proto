@@ -1927,14 +1927,6 @@ fn step_comp(
 /// - ensures: returns a `Term::Comp` equivalent to `λ name. body` for the
 ///   public error payload.
 /// - panics: none.
-#[cfg_attr(
-    dylint_lib = "non_local_effect_before_unhandled_error",
-    allow(
-        unknown_lints,
-        non_local_effect_before_unhandled_error,
-        reason = "the diagnostic bridge uses a fresh local arena that is discarded on failure; the audit evidence is recorded separately"
-    )
-)]
 fn diagnostic_abs_term(
     name: String,
     body: Rc<Comp>,
