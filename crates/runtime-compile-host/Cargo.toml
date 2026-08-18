@@ -1,0 +1,37 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-runtime-compile-host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The Rust side of the compilation host boundary: core computations to program images, and the C ABI that runs them"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "compile-host"
+path = "tests/lib.rs"
+
+[dependencies]
+# The bidirectional judgement, for the direction the typed gate checks in.
+gandr-core-checker.workspace = true
+# The typing machine, whose frame stack is on the heap: a bridged computation's
+# depth is the caller's, so the recursive judgement is the wrong entry.
+gandr-core-machine.workspace = true
+# The term substrate the lowering and the renderer are stated over.
+gandr-core-term.workspace = true
+libloading.workspace = true
+thiserror = { workspace = true }
+
+[dev-dependencies]
+gandr-core-sequent.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

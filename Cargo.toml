@@ -14,6 +14,7 @@ members = [
   "crates/core-unify",
   "crates/kernel-core",
   "crates/kernel-strata",
+  "crates/runtime-compile-host",
   "crates/runtime-effects",
   "crates/runtime-ffi",
   "crates/storage-artifact",
@@ -150,6 +151,7 @@ path = "crates/surface-driver"
 # - gandr-core-incremental
 # - gandr-core-machine
 # - gandr-core-sequent (dev)
+# - gandr-runtime-compile-host
 # - gandr-surface-engine
 [workspace.dependencies.gandr-core-checker]
 path = "crates/core-checker"
@@ -174,6 +176,7 @@ path = "crates/core-incremental"
 # consumers:
 # - gandr-core-checker-tools (dev)
 # - gandr-core-incremental
+# - gandr-runtime-compile-host
 # - gandr-surface-engine
 [workspace.dependencies.gandr-core-machine]
 path = "crates/core-machine"
@@ -188,6 +191,7 @@ path = "crates/core-nbe"
 
 # The polarized System-L command IL, the static focusing translation, and the L machine.
 # consumers:
+# - gandr-runtime-compile-host (dev)
 # - gandr-runtime-effects
 # - gandr-surface-corpus
 # - gandr-surface-engine
@@ -209,6 +213,7 @@ path = "crates/core-sequent"
 # - gandr-core-nbe
 # - gandr-core-sequent
 # - gandr-core-unify
+# - gandr-runtime-compile-host
 # - gandr-runtime-effects
 # - gandr-runtime-ffi
 # - gandr-surface-corpus
@@ -246,6 +251,13 @@ path = "crates/kernel-strata"
 # - gandr-runtime-ffi
 # - gandr-surface-corpus
 # - gandr-surface-engine
+# The Rust side of the compilation host boundary: core computations to program
+# images, and the C ABI that runs them.
+# consumers:
+# - (none yet; the bridge is exercised by its own tests)
+[workspace.dependencies.gandr-runtime-compile-host]
+path = "crates/runtime-compile-host"
+
 [workspace.dependencies.gandr-runtime-effects]
 path = "crates/runtime-effects"
 
@@ -409,10 +421,9 @@ default-features = false
 version = "5.1.1"
 default-features = false
 
-# Dynamic symbol resolution for the FFI handler (`gandr-runtime-ffi`):
-# `dlopen`/`dlsym` over the platform loader, resolving each extern block's
-# `from "lib"` target.
+# `dlopen`/`dlsym` over the platform loader, with lifetime-checked symbols.
 # consumers:
+# - gandr-runtime-compile-host
 # - gandr-runtime-ffi
 [workspace.dependencies.libloading]
 version = "0.9.0"
@@ -540,6 +551,7 @@ features = ["full", "parsing", "visit"]
 # consumers:
 # - gandr-core-checker
 # - gandr-core-term
+# - gandr-runtime-compile-host
 # - gandr-runtime-effects
 # - gandr-storage-artifact
 # - gandr-storage-prolly-trees

@@ -688,6 +688,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-runtime-compile-host"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-machine",
+ "gandr-core-sequent",
+ "gandr-core-term",
+ "libloading",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-runtime-effects"
 version = "0.0.0"
 dependencies = [
