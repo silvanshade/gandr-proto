@@ -873,9 +873,37 @@ pub fn run(state: State) -> (Result<Ty, TypeError>, Trace)
 }
 
 /// Runs a state to completion like [`run`], additionally reporting the final
-/// state's step counter and `Γ` (test-only; see [`RunReport`]).
-#[cfg(test)]
-pub(crate) fn run_report(state: State) -> RunReport
+/// state's step counter and `Γ`.
+///
+/// # Contract
+/// - ensures: drives `step` to a terminal outcome and returns the same control
+///   `Trace` [`run`] would, together with the `steps` counter and the `Γ` of
+///   the state that produced that outcome; neither terminal outcome mutates
+///   either past the reported point.
+/// - provides: the two projections the `(Result, Trace)` pair cannot show — the
+///   step counter, which pins `steps == trace.len() - 1`, and the final `Γ`,
+///   which pins that a successful run matches every bind with an unbind.
+/// - fails: never; a failing run is reported like a succeeding one, since the
+///   type and the error are [`run`]'s to return and are dropped here.
+/// - panics: none; the frame stack lives on the heap, so adversarial-depth
+///   terms do not overflow the host stack.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — both projections are pinned pointwise by the
+///   conformance suite, which asserts the step-counter identity against the
+///   trace length and the final `Γ` against the initial one, over generated
+///   terms in both directions.
+/// - witness: `gandr-core-checker-tools`
+///   `conformance::step_counter_tracks_trace_length_comp`
+/// - witness: `gandr-core-checker-tools`
+///   `conformance::step_counter_tracks_trace_length_value`
+/// - witness: `gandr-core-checker-tools`
+///   `conformance::checked_comps_agree_and_succeed`
+/// - witness: `gandr-core-checker-tools`
+///   `conformance::sigma_stays_empty_through_every_comp_run`
+#[inline]
+#[must_use]
+pub fn run_report(state: State) -> RunReport
 {
     let mut trace = Trace::new();
     let mut current = state;
@@ -890,26 +918,31 @@ pub(crate) fn run_report(state: State) -> RunReport
         match step(current) {
             | Outcome::Step(next) => current = next,
             | Outcome::Done(_) | Outcome::Error { .. } => {
-                return RunReport { trace, steps, ctx };
+                return RunReport {
+                    trace,
+                    steps: steps.into(),
+                    ctx,
+                };
             },
         }
     }
 }
 
-/// A test-only run report: the result, the trace, and the step counter and
-/// `Γ` of the state that produced the final outcome.
+/// An instrumented run report: the trace, plus the step counter and `Γ` of the
+/// state that produced the final outcome.
 ///
-/// Exposes [`State::steps`] and the final `Γ` so the conformance suite can pin
-/// two otherwise-internal invariants: that the step counter is load-bearing
-/// (`steps == trace.len() - 1`), and that a successful run restores `Γ` (every
-/// bind is matched by an unbind, so the final `Γ` equals the initial one).
-#[cfg(test)]
-pub(crate) struct RunReport
+/// Exposes [`State::steps`] and the final `Γ`, which is what lets a caller pin
+/// two invariants the bare [`run`] result cannot show: that the step counter is
+/// load-bearing (`steps == trace.len() - 1`), and that a successful run
+/// restores `Γ` (every bind is matched by an unbind, so the final `Γ` equals
+/// the initial one). The conformance suite in `gandr-core-checker-tools` is the
+/// consumer those two projections exist for.
+pub struct RunReport
 {
     /// The control trace.
     pub trace: Trace,
     /// The `steps` counter of the state that produced the final outcome.
-    pub steps: u64,
+    pub steps: MachineStepCount,
     /// The `Γ` of the state that produced the final outcome.
     pub ctx: Ctx,
 }

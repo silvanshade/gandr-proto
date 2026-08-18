@@ -306,21 +306,15 @@ impl core::hash::Hasher for FnvHasher
 #[cfg(test)]
 mod tests
 {
-    use proptest::prelude::*;
-
     use super::TypeId;
     use super::TypeInterner;
     use crate::boundary::InternedTypeCount;
     use crate::grade::Grade;
-    use crate::strategies::arb_comp_type;
-    use crate::strategies::arb_value_type;
-    use crate::subtype::comp_subtype;
     use crate::subtype::value_subtype;
     use crate::types::CompType;
     use crate::types::Ty;
     use crate::types::ValueType;
-    /// Interning is by content, not address: two independent (address-distinct)
-    /// constructions of the same type dedup to the SAME id (hit), while a
+
     /// structurally distinct type mints a fresh id (miss). Each `fresh_nested`
     /// call allocates fresh `Rc`s throughout, so a same-id verdict is genuine
     /// content-addressing, not aliasing.
@@ -464,37 +458,5 @@ mod tests
             !bool::from(interner.subtype(value_id, unminted)),
             "an unminted id never relates"
         );
-    }
-
-    proptest! {
-        /// The interned [`TypeInterner::subtype`] verdict equals the structural
-        /// [`value_subtype`] on the same pair — the id short-circuit is a pure
-        /// optimization, agreeing with structural descent on every pair. `lo`
-        /// and `hi` are independent random types, so most pairs take the
-        /// structural fallback (distinct ids) and a coincidentally-equal pair
-        /// takes the O(1) id hit; either way the verdicts must agree.
-        #[test]
-        fn interned_subtype_agrees_with_structural_value(
-            lo in arb_value_type(3_u32),
-            hi in arb_value_type(3_u32),
-        ) {
-            let mut interner = TypeInterner::new();
-            let lo_id = interner.intern(&Ty::Value(lo.clone()));
-            let hi_id = interner.intern(&Ty::Value(hi.clone()));
-            prop_assert_eq!(interner.subtype(lo_id, hi_id), value_subtype(&lo, &hi));
-        }
-
-        /// The computation-sort analogue of
-        /// [`interned_subtype_agrees_with_structural_value`].
-        #[test]
-        fn interned_subtype_agrees_with_structural_comp(
-            lo in arb_comp_type(3_u32),
-            hi in arb_comp_type(3_u32),
-        ) {
-            let mut interner = TypeInterner::new();
-            let lo_id = interner.intern(&Ty::Comp(lo.clone()));
-            let hi_id = interner.intern(&Ty::Comp(hi.clone()));
-            prop_assert_eq!(interner.subtype(lo_id, hi_id), comp_subtype(&lo, &hi));
-        }
     }
 }

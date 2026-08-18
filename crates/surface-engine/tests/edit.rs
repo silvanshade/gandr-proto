@@ -1369,7 +1369,7 @@ mod tests
     /// The soundness oracle: `apply(old, diff(old, new))` ≡ `new` (mod holes).
     mod oracle
     {
-        use gandr_core_checker::strategies::binder_name;
+        use gandr_core_checker_tools::strategies::binder_name;
         use proptest::collection::vec;
         use proptest::prelude::*;
 

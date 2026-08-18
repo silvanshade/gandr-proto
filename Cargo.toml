@@ -5,6 +5,7 @@
 resolver = "3"
 members = [
   "crates/core-checker",
+  "crates/core-checker-tools",
   "crates/core-incremental",
   "crates/core-sequent",
   "crates/kernel-core",
@@ -142,6 +143,7 @@ path = "crates/surface-driver"
 # Core CBPV bidirectional checker and defunctionalized typing machine.
 # consumers:
 # - gandr
+# - gandr-core-checker-tools
 # - gandr-core-incremental
 # - gandr-core-sequent
 # - gandr-runtime-effects
@@ -150,6 +152,14 @@ path = "crates/surface-driver"
 # - gandr-theory-levitation
 [workspace.dependencies.gandr-core-checker]
 path = "crates/core-checker"
+
+# Free proptest generators over the core CBPV syntax and types, plus the
+# checker-versus-machine conformance suite that drives them.
+# consumers:
+# - gandr-core-checker (dev)
+# - gandr-surface-engine (dev)
+[workspace.dependencies.gandr-core-checker-tools]
+path = "crates/core-checker-tools"
 
 # Item-granular incremental typing: the parser-agnostic item seam, dependency
 # footprints, and the validated-resume checkpoint engine.
@@ -399,8 +409,8 @@ default-features = false
 
 # Property-based testing framework.
 # consumers:
-# - gandr-core-checker
 # - gandr-core-checker (dev)
+# - gandr-core-checker-tools
 # - gandr-core-incremental (dev)
 # - gandr-core-sequent (dev)
 # - gandr-kernel-core (dev)

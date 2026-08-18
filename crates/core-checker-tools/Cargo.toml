@@ -1,0 +1,33 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-checker-tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Shared proptest generators for the core CBPV syntax and types, and the checker-versus-machine conformance suite that exercises them"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "conformance"
+path = "tests/lib.rs"
+
+[dependencies]
+# The core CBPV checker whose syntax, types, and two typing faces these
+# generators build terms for and the conformance suite compares. The edge is a
+# library dependency because `strategies` names the checker's own `ValueType`,
+# `CompType`, and `Grade` in its public signatures.
+gandr-core-checker.workspace = true
+proptest.workspace = true
+
+[features]
+default = []
+# Regex-backed builtins (`regex.extract`, `string.escape`) in the checker, so
+# the conformance rows that exercise them are generated rather than skipped.
+full = ["gandr-core-checker/full"]
+
+[lints]
+workspace = true

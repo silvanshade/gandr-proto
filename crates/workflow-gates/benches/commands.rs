@@ -437,7 +437,7 @@ fn bench_mutation_planning(criterion: &mut Criterion)
 /// Benchmark source-policy analyzers callable without external processes.
 fn bench_source_policy_checks(criterion: &mut Criterion)
 {
-    let soundness_path = Path::new("crates/gandr-core/src/conformance.rs");
+    let soundness_path = Path::new("crates/core-checker-tools/tests/conformance.rs");
 
     let mut group = criterion.benchmark_group("source_policy_checks");
     group.throughput(Throughput::Bytes(

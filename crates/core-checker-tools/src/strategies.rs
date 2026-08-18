@@ -2,23 +2,24 @@
 //!
 //! These are the *free* (input-free / random / grammar-directed) generators —
 //! grades, binder names, leaf and recursive value/computation types, and hole
-//! identifiers — lifted out of the in-crate conformance suite so they are
-//! reusable by other crates (e.g. `gandr-pipeline`'s totality properties) and
-//! by the type-directed generation lane.
+//! identifiers. Being grammar-directed rather than type-directed, they produce
+//! mostly ill-typed terms, which is what the agreement properties want.
 //!
-//! The module is gated `#[cfg(any(test, feature = "gandr_test_strategies"))]`:
-//! it is always present for the crate's own tests, and an external consumer
-//! turns it on with the `gandr_test_strategies` feature (which pulls in
-//! `proptest`). The *type-directed, well-typed* generators stay in the
-//! conformance suite — they are coupled to that harness and belong to the
-//! deferred generation lane.
+//! Three consumers share them: this crate's own conformance suite,
+//! `gandr-core-checker`'s inline property tests, and `gandr-surface-engine`'s
+//! edit and totality suites. That spread is why they are an ordinary library
+//! module of a crate one tier above the checker rather than a feature-gated
+//! module inside it.
+//!
+//! The *type-directed, well-typed* generators stay beside the conformance
+//! suite that drives them: they are coupled to that harness and have no second
+//! consumer to justify promoting them here.
 
+use gandr_core_checker::boundary::GenerationDepth;
+use gandr_core_checker::grade::Grade;
+use gandr_core_checker::types::CompType;
+use gandr_core_checker::types::ValueType;
 use proptest::prelude::*;
-
-use crate::boundary::GenerationDepth;
-use crate::grade::Grade;
-use crate::types::CompType;
-use crate::types::ValueType;
 
 /// A small pool of binder names (deliberately overlapping, to exercise
 /// shadowing).
@@ -198,7 +199,9 @@ pub fn any_grade() -> impl Strategy<Value = Grade>
     prop_oneof![
         Just(Grade::ZERO),
         Just(Grade::ONE),
-        Just(Grade::fin(crate::boundary::GradeBound::from(3_u64))),
+        Just(Grade::fin(gandr_core_checker::boundary::GradeBound::from(
+            3_u64
+        ))),
         Just(Grade::OMEGA),
     ]
 }

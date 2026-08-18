@@ -51,7 +51,11 @@ serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
-gandr-core-checker = { workspace = true, features = ["gandr_test_strategies"] }
+# The free proptest generators over the core CBPV syntax and types. The checker
+# itself is already a library dependency above; this dev entry adds only the
+# generators, which live one tier up so the checker crate carries no test-only
+# surface.
+gandr-core-checker-tools.workspace = true
 proptest.workspace = true
 
 [features]

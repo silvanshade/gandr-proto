@@ -20,7 +20,8 @@
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators
-//! in lockstep per ADR-9:
+//! in lockstep per ADR-9 — the conformance suite and the free generators it
+//! shares live in `gandr-core-checker-tools`, one tier above this crate:
 //!
 //! - **A2.1 integer literals** — [`syntax::Value::Int`] inferring the rigid
 //!   `Integer` atom (the A2.1 literal axiom in the gandr roadmap);
@@ -80,9 +81,3 @@ pub mod subtype;
 pub mod syntax;
 pub mod types;
 pub mod unify;
-
-#[cfg(any(test, feature = "gandr_test_strategies"))]
-pub mod strategies;
-
-#[cfg(test)]
-mod conformance;

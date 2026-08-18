@@ -3,9 +3,8 @@
 //!
 //! These generate grammar-shaped source — well-formed bindings and signatures,
 //! variable references, shell blocks, and deliberately broken fragments — from
-//! the shared `gandr_core_checker::strategies` generators (the
-//! `proptest-strategies` feature) and assert two behavioural properties over
-//! it:
+//! the shared `gandr_core_checker_tools::strategies` generators and assert two
+//! behavioural properties over it:
 //!
 //! 1. `lower::lower_source_total` is **total**: it yields a `Lowered` for every
 //!    input and never panics (the "no parse wall" guarantee).
@@ -30,9 +29,9 @@ mod tests
     use gandr_core_checker::control::Dir;
     use gandr_core_checker::error::TypeError;
     use gandr_core_checker::machine;
-    use gandr_core_checker::strategies::binder_name;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::types::Ty;
+    use gandr_core_checker_tools::strategies::binder_name;
     use gandr_core_incremental::region::Item;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;

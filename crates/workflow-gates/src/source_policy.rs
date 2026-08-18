@@ -34,7 +34,7 @@ crate::semantic_copy!(pub struct AsciiCaseInsensitiveFlag(bool));
 crate::semantic_copy!(pub struct AsciiBytesEqIgnoreCaseFlag(bool));
 
 /// Default Rust conformance source governed by the soundness-oracle policy.
-pub const DEFAULT_SOUNDNESS_ORACLE_FILE: &str = "crates/core-checker/src/conformance.rs";
+pub const DEFAULT_SOUNDNESS_ORACLE_FILE: &str = "crates/core-checker-tools/tests/conformance.rs";
 
 /// Exact doc tag that marks a free-generator soundness oracle.
 const WITNESS_TAG: &str = "SOUNDNESS-ORACLE-WITNESS:";
@@ -699,7 +699,7 @@ mod tests
     {
         let source = source.into().0;
         return analyze_soundness_source(
-            Path::new("crates/core-checker/src/conformance.rs"),
+            Path::new("crates/core-checker-tools/tests/conformance.rs"),
             source,
         );
     }

@@ -592,6 +592,7 @@ dependencies = [
 name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
+ "gandr-core-checker-tools",
  "gandr-kernel-core",
  "gandr-kernel-strata",
  "gandr-theory-nominal-automata",
@@ -599,6 +600,14 @@ dependencies = [
  "proptest",
  "regex",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gandr-core-checker-tools"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "proptest",
 ]
 
 [[package]]
@@ -706,6 +715,7 @@ name = "gandr-surface-engine"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
+ "gandr-core-checker-tools",
  "gandr-core-incremental",
  "gandr-core-sequent",
  "gandr-kernel-core",
