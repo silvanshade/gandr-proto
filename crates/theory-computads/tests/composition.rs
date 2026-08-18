@@ -46,7 +46,14 @@
 //!   is the **measurement** the refinement was required to take first: over a
 //!   corpus of certificate pairs built from real description-route rules, it
 //!   runs the superseded union reading beside the shipped pairwise one, and
-//!   reports the over-decline the refinement recovers.
+//!   pins the over-decline the refinement recovers.
+//! - [`the_seam_edge_is_drawn_exactly_when_the_left_emits_and_the_right_absorbs`]
+//!   pins the criterion corner by corner over the four endpoint-role
+//!   combinations, and
+//!   [`the_ordinary_sequential_seam_is_what_the_union_reading_declined`] is the
+//!   focused regression: restoring the union reading fails on a value produced
+//!   on one side and consumed on the other, which is what composing two
+//!   certificates is.
 //! - [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]
 //!   and [`invertible_composition_is_well_defined_on_the_replay_quotient`]
 //!   bound the damage: the graft's boundary is data replay-equivalence already
@@ -64,6 +71,8 @@
 //! [`the_acyclicity_verdict_is_not_invariant_under_certificate_identity`]: tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity
 //! [`a_single_polarity_partner_hides_the_divergence_from_every_probe`]: tests::a_single_polarity_partner_hides_the_divergence_from_every_probe
 //! [`the_refined_seam_criterion_declines_strictly_less_than_the_union_reading`]: tests::the_refined_seam_criterion_declines_strictly_less_than_the_union_reading
+//! [`the_seam_edge_is_drawn_exactly_when_the_left_emits_and_the_right_absorbs`]: tests::the_seam_edge_is_drawn_exactly_when_the_left_emits_and_the_right_absorbs
+//! [`the_ordinary_sequential_seam_is_what_the_union_reading_declined`]: tests::the_ordinary_sequential_seam_is_what_the_union_reading_declined
 //! [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]: tests::the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not
 //! [`invertible_composition_is_well_defined_on_the_replay_quotient`]: tests::invertible_composition_is_well_defined_on_the_replay_quotient
 
@@ -535,6 +544,13 @@ mod tests
         // independent oracle rather than as a second production path. It reads
         // only the public store metadata, so it cannot drift into agreeing with
         // the gate by sharing its implementation.
+        //
+        // Every measured pair satisfies the **sequential seam**
+        // (`a.joins_at == b.overlap.peak`), because that is the precondition
+        // under which an admitted composite means anything: each partner is
+        // re-seated on the left certificate's join and its recorded leg
+        // replayed from there. So a recovered decline is a composition that
+        // was available all along, and the fixture proves it by replaying it.
         let (store, corpus) = certificate_corpus();
         assert!(
             corpus.len() >= 4,
@@ -544,15 +560,15 @@ mod tests
         let mut union_declines = 0_usize;
         let mut shipped_declines = 0_usize;
         let mut recovered = 0_usize;
+        let mut composable = 0_usize;
         for left in &corpus {
             for right in &corpus {
                 pairs = pairs.saturating_add(1);
                 let union = union_reading(left, right, &store);
-                let shipped = compose_directed(left, right, &store);
                 if union {
                     union_declines = union_declines.saturating_add(1);
                 }
-                match shipped {
+                match compose_directed(left, right, &store) {
                     | Err(_) => {
                         shipped_declines = shipped_declines.saturating_add(1);
                         assert!(
@@ -574,36 +590,255 @@ mod tests
             recovered,
             "the over-decline is exactly the recovered set, since the refinement is monotone"
         );
-        assert!(
-            recovered > 0,
-            "measured, not asserted: over {pairs} pairs the superseded reading declined \
-             {union_declines} and the shipped criterion declines {shipped_declines}, so the \
-             refinement recovers {recovered}"
+        assert_eq!(
+            RecoveredCount::from(18_usize),
+            RecoveredCount::from(recovered),
+            "the measured over-decline, pinned: over {pairs} ordered pairs the superseded \
+             reading declined {union_declines} and the shipped criterion declines \
+             {shipped_declines}"
         );
         assert!(
             shipped_declines > 0,
-            "and the gate is refined rather than removed — it still declines {shipped_declines} \
-             of {pairs}"
+            "while the gate is refined rather than removed — it still declines \
+             {shipped_declines} of {pairs}"
         );
 
-        // The counts above range over every ordered pair, because the gate's
-        // verdict is a function of the two certificates and the store alone.
-        // What a recovered composition is *worth* needs the sequential seam as
-        // well (`a.joins_at == b.overlap.peak`), so one recovered pair is built
-        // to satisfy it and the composite is replayed.
-        let (mut seamed, left) = mixed_certificate();
-        let two_step = presentation(&left, &left.path_a);
-        let partner = replayed_onward_partner(&mut seamed, &left);
+        // The counts above are verdicts, and a verdict is a function of the two
+        // certificates and the store alone. What an admitted composition is
+        // *worth* needs the sequential seam as well
+        // (`a.joins_at == b.overlap.peak`), which two certificates drawn
+        // independently from a corpus almost never satisfy. So the composable
+        // half is measured over pairs built to satisfy it: for each
+        // certificate, the partner is one further step of a description-route
+        // cell taken at that certificate's own join.
+        //
+        // What this half adds is that the gate never admits a composable pair
+        // whose graft fails to replay. That a *recovered* pair replays is
+        // pinned by name in
+        // `the_ordinary_sequential_seam_is_what_the_union_reading_declined`,
+        // whose fixture is exactly a composable pair the superseded reading
+        // declined; no certificate the description route produces carries the
+        // producer-and-consumer-on-one-hole shape that would make the
+        // superseded reading decline a partner built this way.
+        for left in &corpus {
+            let Some(partner) = one_step_certificate(&store, &left.overlap, &left.joins_at)
+            else {
+                continue;
+            };
+            composable = composable.saturating_add(1);
+            match compose_directed(left, &partner, &store) {
+                | Err(_) => assert!(
+                    union_reading(left, &partner, &store),
+                    "a shipped decline is a decline under the superseded reading too"
+                ),
+                | Ok(composite) => assert!(
+                    bool::from(composite.replay(&store)),
+                    "a composable pair the gate admits composes into a certificate that replays"
+                ),
+            }
+        }
         assert!(
-            union_reading(&two_step, &partner, &seamed),
-            "the superseded reading declines this pair: a mixed hole on one side set both flags"
+            composable > 0,
+            "the composable half ran: {composable} certificates carry a further step at their \
+             own join"
         );
-        let composite = compose_directed(&two_step, &partner, &seamed)
-            .expect("the shipped criterion admits it: the partner carries no `Both` endpoint");
+    }
+
+    /// A count of recovered compositions — the measurement's pinned figure.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct RecoveredCount(usize);
+
+    impl From<usize> for RecoveredCount
+    {
+        fn from(value: usize) -> Self
+        {
+            Self(value)
+        }
+    }
+
+    #[test]
+    fn the_ordinary_sequential_seam_is_what_the_union_reading_declined()
+    {
+        // The focused regression: restoring the union reading fails here, and
+        // the failure names the defect rather than a count. One seam hole,
+        // produced on the left and consumed on the right — a value handed
+        // across the seam and used, which is what composing two certificates
+        // IS. The superseded reading saw one producer occurrence and one
+        // consumer occurrence, set both flags, and declined it.
+        let (store, left, right) = variance_pair(SeamHoleMixed(false), SeamHoleMixed(false));
         assert!(
-            bool::from(composite.replay(&seamed)),
-            "and the composition the refinement recovers is a real certificate — it replays"
+            union_reading(&left, &right, &store),
+            "the superseded reading declines the ordinary sequential seam"
         );
+        let composite = compose_directed(&left, &right, &store)
+            .expect("the shipped criterion admits it: no endpoint both emits and absorbs");
+        assert!(
+            bool::from(composite.replay(&store)),
+            "and the composition it admits replays"
+        );
+    }
+
+    #[test]
+    fn the_seam_edge_is_drawn_exactly_when_the_left_emits_and_the_right_absorbs()
+    {
+        // The criterion, pinned combination by combination rather than
+        // described. Each side of a seam hole carries one of three roles, and
+        // what decides an edge is a pair of them: `Producer` emits only,
+        // `Consumer` absorbs only, `Mixed` does both. A directed cycle needs an
+        // edge each way through one `(cell, hole)` node, so it needs a side
+        // that both emits and absorbs — on BOTH sides.
+        //
+        // The four combinations below are the corners: neither side mixed, one
+        // side mixed in either orientation, and both. Only the last declines,
+        // and each of the other three composes into a certificate that replays.
+        for &(label, left_mixed, right_mixed, declines) in &[
+            ("producer left, consumer right", false, false, false),
+            ("mixed left, consumer right", true, false, false),
+            ("producer left, mixed right", false, true, false),
+            ("mixed on both sides", true, true, true),
+        ] {
+            let (store, a, b) =
+                variance_pair(SeamHoleMixed(left_mixed), SeamHoleMixed(right_mixed));
+            match compose_directed(&a, &b, &store) {
+                | Err(obstruction) => {
+                    assert!(
+                        declines,
+                        "{label}: a loop needs a side that emits and absorbs at each end"
+                    );
+                    assert!(
+                        obstruction.cycle.len() >= 2,
+                        "{label}: the decline carries the closed walk, not an empty cycle"
+                    );
+                },
+                | Ok(composite) => {
+                    assert!(
+                        !declines,
+                        "{label}: both sides emit and absorb, so the flow closes a loop"
+                    );
+                    assert!(
+                        bool::from(composite.replay(&store)),
+                        "{label}: the admitted composite replays"
+                    );
+                },
+            }
+        }
+    }
+
+    /// Whether a fixture's seam hole is worn at both polarities in one cell.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct SeamHoleMixed(bool);
+
+    /// A composable certificate pair over **one** seam hole, each side wearing
+    /// it at one polarity or at both.
+    ///
+    /// The left cell carries the hole in producer position and the right cell
+    /// in consumer position, which is the ordinary sequential seam: a value
+    /// handed across and used. `mixed` adds the other polarity in the same
+    /// cell, which is the dinaturality shape. Each side records exactly one
+    /// cell, so the gate sees one seam bucket with one endpoint per side and
+    /// the fixture is a statement about that endpoint pair alone.
+    ///
+    /// The pair satisfies the sequential seam by construction: the right
+    /// certificate's peak is the left's replayed join.
+    fn variance_pair(
+        left_mixed: SeamHoleMixed,
+        right_mixed: SeamHoleMixed,
+    ) -> (CellStore, Tracelet, Tracelet)
+    {
+        let mut store = CellStore::new();
+        let left_cell = store.insert(if left_mixed.0 {
+            mixed_step(
+                FixtureHoleName("s"),
+                OperationName("in0"),
+                OperationName("mid0"),
+            )
+        }
+        else {
+            split_step(
+                FixtureHoleName("s"),
+                FixtureHoleName("t"),
+                OperationName("in0"),
+                OperationName("mid0"),
+            )
+        });
+        let right_cell = store.insert(if right_mixed.0 {
+            mixed_step(
+                FixtureHoleName("s"),
+                OperationName("mid0"),
+                OperationName("out0"),
+            )
+        }
+        else {
+            // The consumer side of the seam hole: `s` sits in the return
+            // continuation, so the cell classifies it `Consumer`.
+            Cell::new(
+                CmdPat::cut(
+                    Polarity::Positive,
+                    ProdPat::meta("u"),
+                    ConsPat::op("mid0", [], ConsPat::meta("s")),
+                ),
+                CmdPat::cut(
+                    Polarity::Positive,
+                    ProdPat::meta("u"),
+                    ConsPat::op("out0", [], ConsPat::meta("s")),
+                ),
+                Orientation::PolarityDerived,
+                CellProvenance::SurfaceRule,
+            )
+        });
+        let template = composition_overlap(&store, left_cell, right_cell);
+        let peak = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::meta("s"),
+            ConsPat::op("in0", [], ConsPat::meta("t")),
+        );
+        let left = one_step_certificate(&store, &template, &peak)
+            .expect("the left cell applies at the fixture's peak");
+        assert_eq!(
+            alloc::vec![left_cell],
+            participating(&left),
+            "the left certificate records the left cell and nothing else"
+        );
+        let right = one_step_certificate(&store, &template, &left.joins_at)
+            .expect("the right cell applies at the left certificate's join");
+        assert_eq!(
+            alloc::vec![right_cell],
+            participating(&right),
+            "the right certificate records the right cell and nothing else"
+        );
+        (store, left, right)
+    }
+
+    /// A one-step certificate over a cloned `template` overlap, applying the
+    /// one store cell that fires at `peak`.
+    ///
+    /// The join is the **schematic** reduct — one budgeted normalization step,
+    /// which matches and instantiates rather than skolemizing. That matters
+    /// because the gate reads the seam variables off the left certificate's
+    /// recorded join: a join taken from a replay is ground, carries no
+    /// metavariables, and would present the gate with an empty seam.
+    ///
+    /// The overlap is a carrier for the recorded peak: the gate and replay both
+    /// read `overlap.peak`, and what these fixtures are about is the boundary a
+    /// certificate records rather than the critical pair that produced it.
+    fn one_step_certificate(
+        store: &CellStore,
+        template: &Overlap,
+        peak: &CmdPat,
+    ) -> Option<Tracelet>
+    {
+        let stepped = gandr_theory_computads::normalize(store, peak, 1_usize.into());
+        let step = stepped.path.first()?.clone();
+        let mut overlap = template.clone();
+        overlap.peak = peak.clone();
+        Some(Tracelet {
+            overlap,
+            path_a: alloc::vec![step.clone()],
+            path_b: alloc::vec![step],
+            joins_at: stepped.normal,
+        })
     }
 
     /// A corpus of real certificates over one store, for the measurement.
