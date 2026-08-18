@@ -1547,12 +1547,23 @@ fn unpack_statement() -> Regex
     ])
 }
 
-/// Build a computation-binding statement: `run PAT <- E ;`.
+/// Build a computation-binding statement: `run PAT : B <- E ;`.
+///
+/// The optional `: B` names the **bound computation's** type, so it is a
+/// computation type (`F A`, and the other negative formers) rather than the
+/// type of the name the pattern binds. The binder keyword already says which
+/// category is bound; the annotation says which computation type the source is
+/// checked against, and the lowerer spends it through the existing computation
+/// ascription.
+///
+/// No pattern form carries a top-level `:`, so the tile after the pattern
+/// discriminates the annotated and bare spellings with no lookahead.
 fn bind_statement() -> Regex
 {
     seq([
         t(TileLabel("run")),
         h(Sort::Pattern),
+        opt(seq([t(TileLabel(":")), h(Sort::Type)])),
         t(TileLabel("<-")),
         h(Sort::Expression),
         t(TileLabel(";")),
@@ -1661,10 +1672,27 @@ fn if_tail() -> Regex
     seq([
         t(TileLabel("if")),
         h(Sort::Expression),
+        opt(answer_type()),
         block(),
         t(TileLabel("else")),
         block(),
     ])
+}
+
+/// Build the eliminator answer-type slot: `-> T` after the scrutinee.
+///
+/// The slot is the **constant motive** of a check-only eliminator — `-> T` is
+/// the motive `[_. T]`, the degenerate case of the motive slot a dependent
+/// split will later widen. Placing it between the scrutinee and the body is
+/// what makes the widening additive: a dependent motive replaces this slot's
+/// contents, never its position.
+///
+/// It is locally decidable wherever it appears: the tile after the scrutinee is
+/// `->` or the body's opener, so the optional tail `≐`-continues on one tile
+/// and needs no lookahead.
+fn answer_type() -> Regex
+{
+    seq([t(TileLabel("->")), h(Sort::Type)])
 }
 
 /// Build a `co` field.
@@ -2146,6 +2174,10 @@ fn primary_expressions(
     // {}` over an uninhabited type parses; the reserved
     // with-view `case e with e { … }` adds an optional `with`
     // scrutinee, the `with` tile separating the two Expression holes.
+    // The answer type `-> T` sits after everything being eliminated — past the
+    // `with` view rather than between it and the scrutinee — because a motive
+    // quantifies over the whole target, so a later dependent motive occupies
+    // this same position without moving the view.
     let mut case = r(
         RuleName("case_expression"),
         Provenance("case_expression"),
@@ -2155,6 +2187,7 @@ fn primary_expressions(
             t(TileLabel("case")),
             h(s),
             opt(seq([t(TileLabel("with")), h(s)])),
+            opt(answer_type()),
             t(TileLabel("{")),
             opt(comma1(arm())),
             t(TileLabel("}")),
@@ -2170,8 +2203,13 @@ fn primary_expressions(
         SurfaceForm("case_with_view"),
         AdaptationReason("reserved parse-and-decline: the optional `with e` scrutinee view; the empty-arm option additionally admits the absurd match `case x {}`"),
     ));
+    case.adaptations.push(Adaptation::new(
+        RuleName("case_expression"),
+        SurfaceForm("case_answer_type"),
+        AdaptationReason("folded into case_expression: the optional `-> T` answer type is an inline slot after the scrutinee and the reserved `with` view, not a standalone form; it is the constant motive `[_. T]`, and the later dependent motive replaces its contents rather than its position"),
+    ));
     out.push(case);
-    out.push(r(
+    let mut if_expression = r(
         RuleName("if_expression"),
         Provenance("if_expression"),
         s,
@@ -2179,11 +2217,18 @@ fn primary_expressions(
         seq([
             t(TileLabel("if")),
             h(s),
+            opt(answer_type()),
             block(),
             t(TileLabel("else")),
             alt([block(), if_tail()]),
         ]),
+    );
+    if_expression.adaptations.push(Adaptation::new(
+        RuleName("if_expression"),
+        SurfaceForm("if_answer_type"),
+        AdaptationReason("folded into if_expression: the optional `-> T` answer type is an inline slot after the condition, carried by the nested `else if` tail as well as the head, not a standalone form; it is the constant motive `[_. T]`"),
     ));
+    out.push(if_expression);
     // Control-flow atoms.
     // Each is keyword-led — a fresh first-token discriminator, siblings of
     // `if` / `case` at `expression.atom`, flowing into `expression_statement`

@@ -1,0 +1,10 @@
+// Failure golden: an eliminator answer type naming a value type.
+//
+// The slot is the eliminator's constant motive, and `if` answers with a
+// computation, so `Integer` is the wrong category. The lowerer declines it by
+// name rather than repairing it into the returner `F Integer` -- repairing it
+// would put a type in the term that the source never wrote.
+if true -> Integer { ret 1 } else { ret 2 }
+
+//@ mode: shell
+//@ expect-shell-error: an eliminator answer type must be a computation type

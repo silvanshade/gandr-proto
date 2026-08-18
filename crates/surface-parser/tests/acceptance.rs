@@ -193,6 +193,102 @@ fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
     );
     Ok(())
 }
+
+#[test]
+fn eliminator_answer_types_mold_clean() -> Result<(), Box<dyn Error>>
+{
+    // The optional `-> T` slot sits after the scrutinee on both check-only
+    // eliminators, on the nested `else if` tail as well as the head, and past
+    // the reserved `with` view on `case`. The bare spellings are unchanged.
+    let pbg = built();
+    let annotated = [
+        "if flag -> F Integer { ret 1 } else { ret 2 }",
+        "if flag -> F Integer { ret 1 } else if other -> F Integer { ret 2 } else { ret 3 }",
+        "if flag { ret 1 } else if other -> F Integer { ret 2 } else { ret 3 }",
+        "case subject -> F Integer { Inl(x) => ret x, Inr(y) => ret y }",
+        "case subject with view -> F Integer { Inl(x) => ret x, Inr(y) => ret y }",
+        "case subject -> F Integer { }",
+        "if flag -> U[1] (F Integer) -> F Integer { ret f } else { ret g }",
+    ];
+    for src in annotated {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "the answer-type slot molds clean in {src:?}; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    let bare = [
+        "if flag { ret 1 } else { ret 2 }",
+        "case subject { Inl(x) => ret x, Inr(y) => ret y }",
+    ];
+    for src in bare {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "the unannotated eliminator still molds clean in {src:?}; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    // The slot sits between the scrutinee and the body: an answer type written
+    // after the body requires repair. A missing scrutinee is a hole the molder
+    // fills without an obligation, so its refusal is the lowerer's
+    // (`gandr-surface-engine`), not the parser's.
+    let rejected = ["if flag { ret 1 } -> F Integer else { ret 2 }"];
+    for src in rejected {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            !bool::from(result.is_clean()),
+            "an answer type outside its slot must require repair in {src:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn run_binder_annotation_molds_clean() -> Result<(), Box<dyn Error>>
+{
+    // `run PAT : B <- E ;` names the bound computation's type. No pattern form
+    // carries a top-level `:`, so the annotated and bare spellings discriminate
+    // on the tile after the pattern.
+    let pbg = built();
+    let annotated = [
+        "run value : F Integer <- action;",
+        "def bind() -> F Integer { run value : F Integer <- action; ret value }",
+        "def bind() -> F Integer { run (left, right) : F Integer <- action; ret left }",
+    ];
+    for src in annotated {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "`run PAT : B <- E;` molds clean in {src:?}; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    // The annotation rides the computation bind alone: the value bind keeps the
+    // unannotated spelling the binder lane landed.
+    let rejected = parse(pbg, SourceSlice::from("val value : Integer = expression;"))?;
+    assert!(
+        !bool::from(rejected.is_clean()),
+        "the value bind takes no annotation slot"
+    );
+    Ok(())
+}
 /// The ruled circuit block form molds to a **zero-obligation** reading, over
 /// the worked examples the ruling records verbatim
 /// (`spec:surface-language/circuit-cells.md` §"The block form,
@@ -712,16 +808,21 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // The two rung-07 simple-builtins examples under `builtins/` cover
     // `bool.not` / `int.div` / `int.mod` / `list.length` / `list.get` /
     // `string.append` / `string.length` and the zero-divisor blame golden.
-    // The base bucket is the forty-six top-level `model/` and `pathological/`
+    // The eliminator answer type and the `run` bind annotation add five at the
+    // top level: one model program for the two annotated surfaces, and four
+    // goldens — a value type in each of the two slots, an answer type the
+    // branches cannot check against, and an `else if` chain annotated on a tail
+    // rung instead of its head.
+    // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        116, base_count,
-        "the model + pathological trees are 116 files (53 model + 63 pathological, including the two description-member fixtures)"
+        121, base_count,
+        "the model + pathological trees are 121 files (54 model + 67 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        116, base_clean,
-        "all 116 model + pathological files mold clean"
+        121, base_clean,
+        "all 121 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

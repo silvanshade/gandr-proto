@@ -14,3 +14,11 @@ def absurd(x: Void) -> F Integer {
 def classify(xs: List(Integer)) -> F Integer {
   case xs with len(xs) { 0 => ret 0, _ => ret 1 }
 }
+
+// Reserved with-view carrying an answer type: the `-> T` slot sits past the
+// view, because a motive quantifies over everything being eliminated. The
+// answer type itself has graduated (`examples/model/31-eliminator-answer-types.gandr`);
+// this combination is parse-only because the `with` view has not.
+def classify_annotated(xs: List(Integer)) -> F Integer {
+  case xs with len(xs) -> F Integer { 0 => ret 0, _ => ret 1 }
+}

@@ -1,16 +1,17 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 203
-; corpus-fixtures-b3sum: 62428b52eeeb2fda9dbe1d9f8cdaefeedfabe61a9d8d43e5f920750736ec7f86
+; items: 211
+; corpus-fixtures-b3sum: 3bc60b2899b90f4843acc958aaae9aa04df42591b2cdfee2a544ae1c40d14017
 ; class declared-data: 8
 ; class effects-control: 11
 ; class eligible: 23
-; class hole-unknown: 12
+; class hole-unknown: 14
 ; class identity: 9
+; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 3
-; class open-free-name: 81
+; class not-typeable: 5
+; class open-free-name: 83
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -92,6 +93,10 @@ model/30-packages.gandr	1	package
 model/30-packages.gandr	2	package
 model/30-packages.gandr	3	open-free-name
 model/30-packages.gandr	4	open-free-name
+model/31-eliminator-answer-types.gandr	0	kernel-rejected
+model/31-eliminator-answer-types.gandr	1	open-free-name
+model/31-eliminator-answer-types.gandr	2	kernel-rejected
+model/31-eliminator-answer-types.gandr	3	open-free-name
 model/attributes/doc-and-deprecated.gandr	0	open-free-name
 model/attributes/module-metadata.gandr	0	eligible
 model/attributes/query-via-report.gandr	0	eligible
@@ -155,6 +160,9 @@ pathological/data/non-exhaustive-match.gandr	0	declared-data
 pathological/data/non-exhaustive-match.gandr	1	open-free-name
 pathological/deep-record-update-cost.gandr	0	structural-stock
 pathological/deep-record-update-cost.gandr	1	structural-stock
+pathological/eliminator-answer-type-mismatch.gandr	0	not-typeable
+pathological/eliminator-answer-type-tail-rung-only.gandr	0	not-typeable
+pathological/eliminator-answer-type-value-typed.gandr	0	hole-unknown
 pathological/ffi-interior-nul.gandr	0	effects-control
 pathological/ffi-wrong-arity.gandr	0	hole-unknown
 pathological/host-module-uncalled-selection.gandr	0	hole-unknown
@@ -200,6 +208,7 @@ pathological/package-payload-not-a-thunk.gandr	0	eligible
 pathological/package-payload-not-a-thunk.gandr	1	open-free-name
 pathological/record-update-non-record.gandr	0	eligible
 pathological/record-update-non-record.gandr	1	native
+pathological/run-bind-annotation-value-typed.gandr	0	hole-unknown
 pathological/shared-then-updated.gandr	0	structural-stock
 pathological/shared-then-updated.gandr	1	open-free-name
 pathological/shared-then-updated.gandr	2	open-free-name

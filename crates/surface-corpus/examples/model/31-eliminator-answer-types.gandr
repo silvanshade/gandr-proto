@@ -1,0 +1,54 @@
+// Answer types on the check-only eliminators, and the `run` bind's annotation.
+//
+// `if` and `case` are **check-only**: neither one synthesizes its own type, so
+// each needs an expected type handed to it from outside. Inside a definition
+// the signature supplies one -- `def pick() -> F Integer { case … }` in
+// `06-sums-and-case.gandr` works for exactly that reason. An expression-only
+// program has no signature to supply it, and before the answer-type slot there
+// was no way to write one down at the eliminator itself.
+//
+// The slot is `-> T`, written after the scrutinee:
+//
+//   * `if c -> T { … } else { … }`
+//   * `case v -> T { … }`
+//
+// `T` is a **computation** type, because that is what an eliminator answers
+// with. It is the eliminator's motive in its degenerate, constant form -- the
+// answer does not depend on which branch was taken, so one type covers every
+// arm. A dependent motive would replace what is written in this slot without
+// moving the slot.
+//
+// The `run` bind carries the same idea on the binder side. `run x : B <- t ;`
+// annotates the **bound computation** `t` with the computation type `B`; the
+// name `x` is then bound to whatever `B` returns. So `run x : F Integer <- t ;`
+// binds `x : Integer`, and the annotation is about `t`.
+
+// A check-only `if`, standing on its own with no enclosing signature.
+if true -> F Integer { ret 1 } else { ret 2 }
+
+// A check-only `case`, likewise. The injection still needs its own ascription:
+// the answer type says what the `case` produces, never what it consumes.
+case (Inl(41) : Integer + String) -> F Integer {
+  Inl(x) => ret (x + 1),
+  Inr(s) => ret 0
+}
+
+// An `else if` chain is a stack of eliminators, one per rung, and each rung
+// carries its own slot. The head is the one that needs it: annotating the head
+// gives every rung below it an expected type to check against, while
+// annotating only a tail rung leaves the head with nothing and the program is
+// rejected. Checking flows outside-in.
+if false -> F Integer { ret 0 } else if true { ret 1 } else { ret 2 }
+
+// The binder-side annotation. Both spellings below are the same program: the
+// annotation is spent as an ordinary computation ascription on the source of
+// the bind, so nothing about the binding itself changes.
+{
+  run x : F Integer <- ret 40;
+  run y <- (ret 2 : F Integer);
+  ret (x + y)
+}
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: 42

@@ -73,23 +73,30 @@ mod tests
         );
     }
 
-    /// The numbered/root corpus is exactly 29 model programs and 32
+    /// The numbered/root corpus is exactly 30 model programs and 36
     /// pathological programs; feature subtrees are independently registered.
     ///
     /// The package rung moved both counts: one model program for the three
     /// package forms, and four failure goldens — the abstraction leak, the
     /// uninferable `pack`, the grade-zero opening, and the payload whose shape
     /// leaves the package no grade to read.
+    ///
+    /// The eliminator answer type and the `run` bind annotation moved both
+    /// again: one model program for the two annotated surfaces, and four
+    /// failure goldens — a value type in each of the two slots, an answer type
+    /// the branches cannot check against (which is what shows the annotation is
+    /// checked rather than recorded), and an `else if` chain annotated on a
+    /// tail rung instead of its head.
     #[test]
-    fn frozen_root_fixture_cardinality_is_29_and_32()
+    fn frozen_root_fixture_cardinality_is_30_and_36()
     {
         assert_eq!(
-            29,
+            30,
             direct_gandr_files(&crate_root().join(MODEL_DIR)).len(),
             "frozen model root"
         );
         assert_eq!(
-            32,
+            36,
             direct_gandr_files(&crate_root().join(PATHOLOGICAL_DIR)).len(),
             "frozen pathological root"
         );

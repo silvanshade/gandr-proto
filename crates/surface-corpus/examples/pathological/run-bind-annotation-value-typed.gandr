@@ -1,0 +1,12 @@
+// Failure golden: a `run` bind annotation naming a value type.
+//
+// `run x : B <- t ;` annotates the bound computation `t`, not the name `x`, so
+// `B` is a computation type. Writing the binder's own type there is the reading
+// the spelling does not have, and it is declined rather than guessed at.
+{
+  run x : Integer <- ret 1;
+  ret x
+}
+
+//@ mode: shell
+//@ expect-shell-error: a run bind annotation must be a computation type

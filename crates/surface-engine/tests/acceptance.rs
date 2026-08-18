@@ -586,6 +586,187 @@ mod tests
             };
             assert_eq!("_", discard, "`t;` binds the discard name");
         }
+        /// The eliminator answer type `-> B` and the `run` bind's `: B` are
+        /// spellings of the existing computation ascription: each wraps exactly
+        /// what `(e : B)` wraps, `Force(Annot(Thunk(e), U_ω B))`, and leaves
+        /// the term underneath it untouched.
+        #[test]
+        fn answer_types_and_bind_annotations_are_the_computation_ascription()
+        {
+            /// The computation under a `Force(Annot(Thunk(·), U_ω B))` wrapper,
+            /// with the wrapper's ascribed type.
+            fn unwrap_ascription(comp: &Comp) -> (CompType, Rc<Comp>)
+            {
+                let Comp::Force(ref annotated) = *comp
+                else {
+                    panic!("the ascription encoding forces its thunk, got {comp:?}");
+                };
+                let Value::Annot(ref thunked, ref ty) = **annotated
+                else {
+                    panic!("the ascription encoding annotates its thunk, got {annotated:?}");
+                };
+                let Value::Thunk(_, ref body) = **thunked
+                else {
+                    panic!("the ascription encoding thunks its body, got {thunked:?}");
+                };
+                let ValueType::Thunk(_, ref ascribed) = **ty
+                else {
+                    panic!("the ascription's type is a graded thunk, got {ty:?}");
+                };
+                (ascribed.as_ref().clone(), Rc::clone(body))
+            }
+
+            let expected = CompType::returner(ValueType::integer());
+
+            // `if` keeps its `IfSugar` case underneath the ascription, and the
+            // bare spelling is that case with nothing around it.
+            let annotated_if = sole_term("thunk { if true -> F Integer { ret 1 } else { ret 2 } }");
+            let Term::Value(Value::Thunk(_, ref body)) = annotated_if
+            else {
+                panic!("expected a thunk, got {annotated_if:?}");
+            };
+            let (ascribed, inner) = unwrap_ascription(body);
+            assert_eq!(expected, ascribed, "the `if` answer type is the ascription");
+            let bare_if = sole_term("thunk { if true { ret 1 } else { ret 2 } }");
+            let Term::Value(Value::Thunk(_, ref bare_body)) = bare_if
+            else {
+                panic!("expected a thunk, got {bare_if:?}");
+            };
+            assert_eq!(
+                **bare_body, *inner,
+                "the annotated `if` wraps exactly the unannotated one"
+            );
+
+            // `case` takes the slot on the sum eliminator the same way.
+            let annotated_case = sole_term(
+                "thunk { case Inl(1) -> F Integer { Inl(x) => ret x, Inr(y) => ret y } }",
+            );
+            let Term::Value(Value::Thunk(_, ref case_body)) = annotated_case
+            else {
+                panic!("expected a thunk, got {annotated_case:?}");
+            };
+            let (case_ascribed, case_inner) = unwrap_ascription(case_body);
+            assert_eq!(
+                expected, case_ascribed,
+                "the `case` answer type is the ascription"
+            );
+            let bare_case = sole_term("thunk { case Inl(1) { Inl(x) => ret x, Inr(y) => ret y } }");
+            let Term::Value(Value::Thunk(_, ref bare_case_body)) = bare_case
+            else {
+                panic!("expected a thunk, got {bare_case:?}");
+            };
+            assert_eq!(
+                **bare_case_body, *case_inner,
+                "the annotated `case` wraps exactly the unannotated one"
+            );
+
+            // The `run` annotation ascribes the bound computation — the source
+            // of the bind — and not the binder's own type.
+            let annotated_bind = sole_term("thunk { run x : F Integer <- ret 1; ret x }");
+            let Term::Value(Value::Thunk(_, ref bind_body)) = annotated_bind
+            else {
+                panic!("expected a thunk, got {annotated_bind:?}");
+            };
+            let Comp::Bind(ref source, ref binder, _) = **bind_body
+            else {
+                panic!("expected a bind, got {bind_body:?}");
+            };
+            assert_eq!("x", binder, "the annotation leaves the binder alone");
+            let (bind_ascribed, bind_inner) = unwrap_ascription(source);
+            assert_eq!(
+                expected, bind_ascribed,
+                "the `run` annotation ascribes the bound computation"
+            );
+            assert!(
+                matches!(*bind_inner, Comp::Ret(_)),
+                "the bound computation survives underneath, got {bind_inner:?}"
+            );
+        }
+        /// Every synthesized layer of an eliminator answer type is tagged
+        /// [`ElabKind::CompAscription`], so the display layer can tell the
+        /// user's `if` from the ascription encoding built around it.
+        #[test]
+        fn answer_type_layers_carry_the_ascription_elaboration_tag()
+        {
+            let lowered = lower_ok("if true -> F Integer { ret 1 } else { ret 2 }");
+            for path in [vec![0_u32], vec![0, 0], vec![0, 0, 0]] {
+                let entry = lowered
+                    .origin
+                    .get_path(&path)
+                    .unwrap_or_else(|| panic!("origin path {path:?} recorded"));
+                assert_eq!(
+                    Some(ElabKind::CompAscription),
+                    entry.elaboration,
+                    "generated ascription layer {path:?} must be tagged"
+                );
+            }
+            let inner = lowered
+                .origin
+                .get_path(&[0, 0, 0, 0])
+                .expect("the user's eliminator remains below the synthesized thunk");
+            assert_eq!(
+                Some(ElabKind::IfSugar),
+                inner.elaboration,
+                "the ascription wraps the user's `if`, it does not replace it"
+            );
+        }
+        /// An `else if` rung is its own eliminator with its own slot, so an
+        /// answer type on the tail is not read as the head's.
+        #[test]
+        fn an_else_if_rung_carries_its_own_answer_type()
+        {
+            let lowered =
+                lower_ok("if true { ret 1 } else if false -> F Integer { ret 2 } else { ret 3 }");
+            let head = lowered
+                .origin
+                .get_path(&[0_u32])
+                .expect("the head eliminator is recorded");
+            assert_eq!(
+                Some(ElabKind::IfSugar),
+                head.elaboration,
+                "the unannotated head stays a bare `if`, with no ascription wrapper"
+            );
+
+            let Term::Comp(ref comp) = lowered.items.first().expect("one item").term
+            else {
+                panic!("an `if` chain lowers to a computation");
+            };
+            let Comp::Case(_, _, (_, ref alternative)) = *comp
+            else {
+                panic!("`if` lowers to a case, got {comp:?}");
+            };
+            assert!(
+                matches!(**alternative, Comp::Force(_)),
+                "the annotated rung carries the ascription encoding, got {alternative:?}"
+            );
+        }
+        /// Both annotation slots name a **computation** type, and a value type
+        /// in either is declined by name rather than repaired into `F T`.
+        #[test]
+        fn value_typed_annotations_are_declined_by_name()
+        {
+            assert!(
+                matches!(
+                    lower_err("if true -> Integer { ret 1 } else { ret 2 }"),
+                    LowerError::EliminatorAnswerNotComputation { .. }
+                ),
+                "an `if` answer type must be a computation type"
+            );
+            assert!(
+                matches!(
+                    lower_err("case Inl(1) -> Integer { Inl(x) => ret x, Inr(y) => ret y }"),
+                    LowerError::EliminatorAnswerNotComputation { .. }
+                ),
+                "a `case` answer type must be a computation type"
+            );
+            assert!(
+                matches!(
+                    lower_err("thunk { run x : Integer <- ret 1; ret x }"),
+                    LowerError::RunBindAnnotationNotComputation { .. }
+                ),
+                "a `run` bind annotation must be a computation type"
+            );
+        }
         /// A user-written hole `?`/`?name` lowers in *strict* mode (it is a
         /// legitimate axiom, not a total-mode recovery artifact) and takes the
         /// sort of its consuming position.

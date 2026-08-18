@@ -1,0 +1,8 @@
+// Failure golden: an eliminator answer type the branches cannot check against.
+//
+// The answer type is checked rather than recorded: it is spent as the ordinary
+// computation ascription, so both branches must check at `F String`, and an
+// `Integer`-returning branch is a type error at the annotation.
+if true -> F String { ret 1 } else { ret 2 }
+
+//@ expect-diagnostic: String

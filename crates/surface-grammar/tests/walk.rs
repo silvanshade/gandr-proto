@@ -60,24 +60,27 @@ mod contracts
     /// judgment members, the four-glyph arrow grid, the two-sided port lists
     /// with parameter-side binders, and the top-level `oper` / `rule`
     /// declaration with its `node` / `feed` body statements.
-    /// The rule-face migration then made `==>` the description-rule face former
-    /// beside the retired `~>`, which stays admissible only so a stale face
-    /// reaches the elaborator's decline. The nested generator-block form then
-    /// gave the `data` / `codata` heads typed parameter binders and the
-    /// `: Idx -> Type` annotation, and the generator member its local
-    /// telescope + `-->` signature — while the retired Haskell-style head
-    /// (bare parameters, no annotation) and the field-tuple member stay
-    /// admissible so a stale declaration reaches the elaborator's retirement
-    /// decline with the respelling hint. The sign block's members then became
-    /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
-    /// load-bearing at sign item level, closing each member's trailing sort
-    /// hole before the next member's lead can cross it.
-    /// The pattern-position typed hole then added the `?` tile and its optional
+    /// The description-rule face former is `==>`, beside the retired `~>`,
+    /// which stays admissible only so a stale face reaches the elaborator's
+    /// decline. The nested generator-block form gives the `data` / `codata`
+    /// heads typed parameter binders and the `: Idx -> Type` annotation, and
+    /// the generator member its local telescope + `-->` signature — while the
+    /// retired Haskell-style head (bare parameters, no annotation) and the
+    /// field-tuple member stay admissible so a stale declaration reaches the
+    /// elaborator's retirement decline with the respelling hint. The sign
+    /// block's members are `;`-terminated (owner directive, gandr-ng9.14): the
+    /// terminator is load-bearing at sign item level, closing each member's
+    /// trailing sort hole before the next member's lead can cross it.
+    /// The pattern-position typed hole carries the `?` tile and its optional
     /// `hole_name` tail at `pattern.atom`, so a hole written in a pattern slot
     /// is molded at `Sort::Pattern` instead of borrowing the expression mold.
-    /// The `unknown_type` Type-sort atom (gandr-89k) re-folds the fingerprint
-    /// again: the gradual top `?` joins the grammar as a one-tile type rule.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x2b7a_ed64_e0c7_14be);
+    /// The `unknown_type` Type-sort atom (gandr-89k) is the gradual top `?`, a
+    /// one-tile type rule. The check-only eliminators carry an optional `-> T`
+    /// answer type after the scrutinee — on `if`, on its nested `else if` tail,
+    /// and on `case` past the reserved `with` view — and the `run` bind carries
+    /// an optional `: B` computation-type annotation between its pattern and
+    /// its `<-`.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x147b_04fc_9dfb_35ef);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -155,7 +158,17 @@ mod contracts
     /// The `unknown_type` atom adds one: the gradual top `?`
     /// is a third `?`-labelled occurrence beside the Expression hole and the
     /// receive-session prefix (gandr-89k).
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2152);
+    /// The eliminator answer type and the `run` bind's annotation add
+    /// **twenty-three**, split the way the inventory always splits. The answer
+    /// type is three: one `->` and Type hole each for `if`, for its nested
+    /// `else if` tail, and for `case`, because none of those forms is inlined
+    /// anywhere else. The bind annotation is twenty: its `:` and Type hole ride
+    /// the **statement alternation**, which every block position inlines, so
+    /// one optional tail is multiplied by the twenty block sites — the same
+    /// arithmetic `val`, `run`, and `unpack` already pay for their keywords.
+    /// Neither widens a label from single- to multi-mold: `->` and `:` are
+    /// multi-mold already.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2175);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -183,12 +196,12 @@ mod contracts
         (",", 86),
         ("-", 2),
         ("-->", 20),
-        ("->", 12),
+        ("->", 15),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 179),
+        (":", 199),
         (":>", 2),
         (";", 223),
         ("<", 4),

@@ -80,6 +80,14 @@ pub const FIELD_CONSTRUCTOR: SyntaxField = SyntaxField("constructor");
 pub const FIELD_LEFT: SyntaxField = SyntaxField("left");
 pub const FIELD_RIGHT: SyntaxField = SyntaxField("right");
 pub const FIELD_CONDITION: SyntaxField = SyntaxField("condition");
+/// A check-only eliminator's optional answer type — the `-> T` after the
+/// scrutinee on `if` and `case`.
+///
+/// It is a field of its own rather than a reuse of [`FIELD_TYPE`] because a
+/// `case`'s scrutinee already occupies [`FIELD_VALUE`] and its arms carry their
+/// own patterns and bodies: the answer type is a third, independent slot on the
+/// same node.
+pub const FIELD_ANSWER: SyntaxField = SyntaxField("answer");
 /// The package introduction `pack [ T , … ] E`.
 pub const PACK_EXPRESSION: SyntaxKind = SyntaxKind("pack_expression");
 /// The package elimination `unpack m : Sig = E ;`, binding `m` over the rest

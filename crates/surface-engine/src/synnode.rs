@@ -961,6 +961,19 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::BIND_STATEMENT, node_kinds::FIELD_SOURCE) => {
                 self.after(label::LEFT_ARROW)
             },
+            // The `run` bind's optional computation-type annotation: the type
+            // between the `:` and the binding `<-`. No pattern form carries a
+            // top-level `:`, so the delimiters are unambiguous, and the bare
+            // spelling has no `:` at all — which is what makes the absent
+            // annotation a `None` rather than a recovery.
+            | (node_kinds::BIND_STATEMENT, node_kinds::FIELD_TYPE) => {
+                self.between(label::COLON, label::LEFT_ARROW)
+            },
+            // A check-only eliminator's optional answer type `-> T`.
+            | (
+                node_kinds::IF_EXPRESSION | node_kinds::CASE_EXPRESSION,
+                node_kinds::FIELD_ANSWER,
+            ) => self.answer_type(),
             // A projection's field and a copattern clause's observation are both
             // the ident after a `.`; a `case` arm's and a copattern clause's
             // body are both the expression after a `=>`.
@@ -3067,6 +3080,47 @@ impl<'tree> SynNode<'tree>
             ));
         }
         self.nth_brace_block(SignificantIndex(1))
+    }
+
+    /// A check-only eliminator's answer type: the named child after the `->`
+    /// that precedes the form's body.
+    ///
+    /// The `->` must be located **relative to the first `{`** rather than by a
+    /// plain forward scan, because the melder keeps an `if … else if …` chain
+    /// flat: a scan that took the first `->` anywhere in the form would read a
+    /// nested `else if`'s answer type as the outer `if`'s whenever the outer
+    /// one carries none.
+    ///
+    /// # Contract
+    /// - ensures: returns the answer type when a top-level `->` sits before the
+    ///   first top-level `{`, and [`None`] for the unannotated spelling.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — the residue is the two scan boundaries, and each
+    ///   has one distinguishing input. Dropping the first-`{` bound is killed
+    ///   by an `if … else if c -> B { … }` chain whose head carries no answer
+    ///   type: an unbounded scan reads the tail rung's type as the head's, so
+    ///   the head acquires an ascription layer the source never wrote.
+    ///   Returning a tile rather than a named child is killed by any annotated
+    ///   form, whose `->` is immediately followed by the type node.
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::an_else_if_rung_carries_its_own_answer_type`
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::answer_types_and_bind_annotations_are_the_computation_ascription`
+    fn answer_type(self) -> Option<Self>
+    {
+        let sig = self.sig();
+        let body = sig
+            .iter()
+            .position(|&node| self.tree.tile_label(node) == Some(label::LBRACE))
+            .unwrap_or(sig.len());
+        let arrow = sig
+            .get(.. body)?
+            .iter()
+            .position(|&node| self.tree.tile_label(node) == Some(label::RIGHT_ARROW))?;
+        sig.get(arrow.saturating_add(1) .. body)?
+            .iter()
+            .find(|&&id| self.is_named(id).0)
+            .map(|&id| Self::wrap(self.tree, id))
     }
 
     // --- Spans & bracket matching --------------------------------------------

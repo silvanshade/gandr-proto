@@ -1,0 +1,9 @@
+// Failure golden: an `else if` chain annotated on a tail rung and not the head.
+//
+// Each rung of a chain is its own eliminator with its own slot, and checking
+// flows outside-in: the head still needs an expected type of its own. An answer
+// type further down the chain never reaches it, so the head is refused as the
+// check-only form it is.
+if false { ret 0 } else if true -> F Integer { ret 1 } else { ret 2 }
+
+//@ expect-diagnostic: case only checks

@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/eliminator-answer-type-mismatch.gandr
+; sexp-b3sum: 1adb818e8944574dab7f5bb065e2fef017089fc0a945388870fce4279fc9a7cd
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Int(1))

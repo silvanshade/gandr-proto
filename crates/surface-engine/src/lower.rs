@@ -536,6 +536,31 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// A check-only eliminator whose `-> T` answer type is a value type.
+    ///
+    /// The slot is the eliminator's **constant motive**, and an `if` or `case`
+    /// answers with a computation, so the motive's body is a computation type.
+    /// A value type there names the wrong category outright, and reading it as
+    /// the returner `F T` would invent a type the source did not write.
+    #[error("an eliminator answer type must be a computation type at bytes {byte_range:?}")]
+    EliminatorAnswerNotComputation
+    {
+        /// The answer type's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A `run` bind whose `: B` annotation is a value type.
+    ///
+    /// The annotation names the type of the **bound computation**, not of the
+    /// name the pattern binds — `run x : F A <- t ;` binds `x : A` — so a value
+    /// type there is the reading the spelling does not have.
+    #[error("a run bind annotation must be a computation type at bytes {byte_range:?}")]
+    RunBindAnnotationNotComputation
+    {
+        /// The annotation's byte range.
+        byte_range: SourceRange,
+    },
+
     /// A package signature declaring one abstract type component twice.
     ///
     /// The second binder would shadow the first everywhere in the payload, so
@@ -3325,6 +3350,10 @@ impl Lowerer<'_>
     /// case ([`Comp::Case`], `Inl` / `Inr`). The classification is
     /// syntactic — the constructor names, decidable at lowering with no
     /// type information.
+    ///
+    /// An optional `-> B` answer type wraps whichever eliminator the dispatch
+    /// selects, so all three — declared-data, list, and sum — take the
+    /// annotation through the one slot ([`Self::ascribe_answer`]).
     fn case(
         &mut self,
         node: SynNode<'_>,
@@ -3334,7 +3363,9 @@ impl Lowerer<'_>
         // absurd match over an uninhabited datatype — no arm reveals the
         // constructor family, so it can only be the declared-data eliminator),
         // lowers to `Comp::DataCase` (the lowering contract Decision 3).
-        if bool::from(self.case_arms_are_data(node)) || bool::from(Self::case_arms_empty(node)) {
+        let body = if bool::from(self.case_arms_are_data(node))
+            || bool::from(Self::case_arms_empty(node))
+        {
             self.data_case(node)
         }
         else if bool::from(self.case_arms_are_list(node)) {
@@ -3342,7 +3373,8 @@ impl Lowerer<'_>
         }
         else {
             self.sum_case(node)
-        }
+        }?;
+        self.ascribe_answer(node, body)
     }
 
     /// Whether any arm of a `case` uses a list constructor (`Nil` / `Cons`), so
@@ -3690,6 +3722,10 @@ impl Lowerer<'_>
     /// Lowers `if c { t } else { u }` to a `case` on `1 + 1`
     /// ([`ElabKind::IfSugar`]); the consequence is the `inj1` (`true`) arm,
     /// matching [`Self::boolean_literal`]'s polarity.
+    ///
+    /// An optional `-> B` answer type wraps the resulting case
+    /// ([`Self::ascribe_answer`]). A nested `else if` is its own eliminator and
+    /// carries its own slot, so a chain may annotate every rung, some, or none.
     fn if_sugar(
         &mut self,
         node: SynNode<'_>,
@@ -3736,6 +3772,7 @@ impl Lowerer<'_>
                 alternative.origin,
             ]),
         )?;
+        let body = self.ascribe_answer(node, body)?;
         Self::wrap_hoists(hoists, body, node)
     }
 
@@ -6817,6 +6854,117 @@ impl Lowerer<'_>
         )
     }
 
+    /// Reads the optional annotation at `field` as a computation type.
+    ///
+    /// The two annotated surfaces this serves — a check-only eliminator's
+    /// `-> T` answer type and a `run` bind's `: B` — both name a computation
+    /// type, so a value type in either slot is declined by name rather than
+    /// repaired into the returner `F T`: repairing it would put a type in the
+    /// term that the source never wrote.
+    ///
+    /// # Contract
+    /// - ensures: returns [`None`] for the unannotated spelling and the lowered
+    ///   computation type for the annotated one.
+    /// - fails: returns `not_comp(range)` when the annotation is a value type;
+    ///   propagates type-lowering failures otherwise.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — the three outcomes are separated by three
+    ///   inputs, one per branch: an absent field, a computation-typed
+    ///   annotation, and a value-typed annotation, each asserted by the exact
+    ///   result or error variant the branch produces. There is no boundary to
+    ///   sweep: the discriminator is a two-variant sum.
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::answer_types_and_bind_annotations_are_the_computation_ascription`
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::value_typed_annotations_are_declined_by_name`
+    fn computation_annotation<F>(
+        &self,
+        node: SynNode<'_>,
+        field: SyntaxField,
+        not_comp: F,
+    ) -> LowerResult<Option<CompType>>
+    where
+        F: FnOnce(SourceRange) -> LowerError,
+    {
+        let Some(ty_node) = node.child_by_field_name(field)
+        else {
+            return Ok(None);
+        };
+        let lowered = self.lower_type_node(ty_node)?;
+        match lowered {
+            | Ty::Comp(ascription) => Ok(Some(ascription)),
+            | Ty::Value(_) => Err(not_comp(ty_node.byte_range())),
+        }
+    }
+
+    /// Applies a check-only eliminator's answer type to its lowered body.
+    ///
+    /// `if c -> B { … } else { … }` and `case v -> B { … }` mean exactly their
+    /// unannotated forms under the existing computation ascription, so the
+    /// answer type spends itself through [`Self::comp_ascribed_binding`] and
+    /// the eliminator's own lowering is untouched. Nothing in the checker
+    /// distinguishes the two spellings, which is what makes `-> B` the constant
+    /// motive `[_. B]` rather than a new elimination rule.
+    ///
+    /// # Contract
+    /// - ensures: returns `body` unchanged when the source wrote no answer
+    ///   type, and the `force ((thunk body) : U_ω B)` encoding when it did.
+    /// - fails: [`LowerError::EliminatorAnswerNotComputation`] for a
+    ///   value-typed slot; arena allocation and readback failures otherwise.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 agreement on the wrapping — the annotated eliminator's
+    ///   body is asserted **equal to the separately lowered unannotated one**,
+    ///   so a mutant that alters what is wrapped, or wraps the wrong side,
+    ///   diverges from an oracle external to this method. L3 residue: the
+    ///   absent-annotation branch, asserted by the origin tree carrying
+    ///   [`ElabKind::IfSugar`] at the top with no ascription layer above it.
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::answer_types_and_bind_annotations_are_the_computation_ascription`
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::answer_type_layers_carry_the_ascription_elaboration_tag`
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::an_else_if_rung_carries_its_own_answer_type`
+    fn ascribe_answer(
+        &self,
+        node: SynNode<'_>,
+        body: COut,
+    ) -> LowerResult<COut>
+    {
+        let answer = self.computation_annotation(node, node_kinds::FIELD_ANSWER, |byte_range| {
+            LowerError::EliminatorAnswerNotComputation { byte_range }
+        })?;
+        match answer {
+            | Some(ascription) => Self::comp_ascribed_binding(node, body, ascription),
+            | None => Ok(body),
+        }
+    }
+
+    /// Reads a `run` bind's optional `: B` annotation.
+    ///
+    /// # Contract
+    /// - ensures: returns [`None`] for the bare `run p <- t ;` and the lowered
+    ///   computation type for the annotated spelling.
+    /// - fails: [`LowerError::RunBindAnnotationNotComputation`] for a
+    ///   value-typed annotation; propagates type-lowering failures otherwise.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — the method selects one field and one error
+    ///   variant, so the bare bind, the computation-typed annotation, and the
+    ///   value-typed annotation exhaust it, each asserted exactly. Reading the
+    ///   wrong field is killed by the bare bind, whose statement has no `:` at
+    ///   all.
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::answer_types_and_bind_annotations_are_the_computation_ascription`
+    /// - witness: `gandr-surface-engine::acceptance::tests::lowering_shapes::value_typed_annotations_are_declined_by_name`
+    pub(super) fn run_bind_annotation(
+        &self,
+        node: SynNode<'_>,
+    ) -> LowerResult<Option<CompType>>
+    {
+        self.computation_annotation(node, node_kinds::FIELD_TYPE, |byte_range| {
+            LowerError::RunBindAnnotationNotComputation { byte_range }
+        })
+    }
+
     /// Recovers a malformed module definition as a value-hole binding when its
     /// name is still available.
     ///
@@ -7361,6 +7509,8 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::OpaqueAscriptionUnelaborated { ref byte_range }
         | LowerError::PackagePayloadNotGradedThunk { ref byte_range }
         | LowerError::UnpackNeedsPackageSignature { ref byte_range }
+        | LowerError::EliminatorAnswerNotComputation { ref byte_range }
+        | LowerError::RunBindAnnotationNotComputation { ref byte_range }
         | LowerError::DuplicatePackageComponent { ref byte_range, .. }
         | LowerError::TypeSortMismatch { ref byte_range, .. }
         | LowerError::UnknownObservation { ref byte_range, .. }
@@ -7401,6 +7551,12 @@ fn note_of(error: &LowerError) -> HoleNote
         },
         | LowerError::UnpackNeedsPackageSignature { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::UNPACK_STATEMENT,
+        },
+        | LowerError::RunBindAnnotationNotComputation { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::BIND_STATEMENT,
+        },
+        | LowerError::EliminatorAnswerNotComputation { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::CASE_EXPRESSION,
         },
         | LowerError::MarkedReferenceOutsideRecursiveScope { .. }
         | LowerError::ReservedNamedMeasure { .. }

@@ -1109,13 +1109,30 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
                     | Ok(source) => source,
                     | Err(error) => return Self::returned(Err(error)),
                 };
+                // `run p : B <- t ;` means `run p <- (t : B) ;`: the optional
+                // annotation names the bound computation's type and is spent
+                // through the existing computation ascription, so the bind
+                // itself lowers identically either way.
+                let annotation = match self.lowerer.run_bind_annotation(first) {
+                    | Ok(annotation) => annotation,
+                    | Err(error) => return Self::returned(Err(error)),
+                };
                 Self::descend(
                     Request::CompExpr { node: source },
-                    move |_machine, output| match expect_comp(output, source) {
-                        | Ok(bound) => Self::continue_bound_statement(
-                            bound, binder, rest, tail, block_node, span,
-                        ),
-                        | Err(error) => Self::returned(Err(error)),
+                    move |_machine, output| {
+                        let bound =
+                            expect_comp(output, source).and_then(|bound| match annotation {
+                                | Some(ascription) => {
+                                    Lowerer::comp_ascribed_binding(source, bound, ascription)
+                                },
+                                | None => Ok(bound),
+                            });
+                        match bound {
+                            | Ok(bound) => Self::continue_bound_statement(
+                                bound, binder, rest, tail, block_node, span,
+                            ),
+                            | Err(error) => Self::returned(Err(error)),
+                        }
                     },
                 )
             },

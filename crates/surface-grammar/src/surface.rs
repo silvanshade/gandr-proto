@@ -240,6 +240,7 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     // reserved / folded / diverged member surfaces (adaptation surfaces)
     "bare_type_params",
     "braced_variable_expansion",
+    "case_answer_type",
     "case_with_view",
     "circuit_body",
     "circuit_member",
@@ -250,6 +251,7 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     "def_rec",
     "feed_statement",
     "grade_prefix",
+    "if_answer_type",
     "node_statement",
     "op_member",
     "parameterized_observation",
