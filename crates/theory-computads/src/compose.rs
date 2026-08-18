@@ -30,20 +30,43 @@
 //!
 //! Nodes are `(CellId, hole)` — the metavariable holes of the cells the two
 //! certificates fire, restricted to those the **seam variables** (the holes of
-//! `a.joins_at`) touch. Edges carry the face-internal flow across the seam,
-//! read through [`CellAlphabet::hole_flow`]:
+//! `a.joins_at`) touch. An edge is a flow, and a flow runs from a position that
+//! **emits** into the seam to one that **absorbs** from it. Each endpoint's
+//! role is read through [`CellAlphabet::hole_flow`] and decides both halves:
 //!
-//! - a [`SeamRole::Forward`] hole flows forward, `a`-side → `b`-side;
-//! - a [`SeamRole::Backward`] hole flows backward, `b`-side → `a`-side;
-//! - a [`SeamRole::Both`] hole (the sequent `Mixed` — a name at both
-//!   polarities, which `μ`/`μ̃` and cocase create) flows **both** ways, so a
-//!   shared `Both` seam hole closes a loop.
+//! - a [`SeamRole::Forward`] endpoint (the sequent `Producer`) emits only;
+//! - a [`SeamRole::Backward`] endpoint (the sequent `Consumer`) absorbs only;
+//! - a [`SeamRole::Both`] endpoint (the sequent `Mixed` — a name at both
+//!   polarities, which `μ`/`μ̃` and cocase create) does both.
+//!
+//! **The criterion is pairwise.** For one seam hole and one pair of endpoints,
+//! the `a`-side one on the left and the `b`-side one on the right, the edge
+//! `a → b` exists exactly when the left emits and the right absorbs, and the
+//! edge `b → a` exactly when the right emits and the left absorbs. So a hole
+//! produced on one side and consumed on the other carries one edge and no loop
+//! — the ordinary sequential seam — while a hole that is `Both` on each side
+//! carries two and closes one. **A shared `Both` seam hole remains the
+//! canonical cause of a decline**, and it is now the *only* two-endpoint cause.
 //!
 //! The criterion is a **sufficient** loop-freeness check (conservative by
 //! design: the reversal trigger of ADR-69 is "refine the criterion, never
-//! remove the gate"). A single cell is never gated — with no seam there are no
-//! edges, so cell *application* (as opposed to certificate *composition*) is
-//! untouched.
+//! remove the gate"). Two coarsenings remain deliberately, and each is a
+//! *superset* of the flows a pair can carry, so each can only decline where a
+//! finer reading would admit:
+//!
+//! - **the seam-name approximation** — a hole is identified across cells by its
+//!   [`CellAlphabet::Hole`] *name*, so two cells that happen to spell an
+//!   unrelated hole alike contribute endpoints to one seam bucket. Closing this
+//!   needs a renaming between each cell's holes and the seam term's, and a
+//!   certificate step records only `(cell, position)` — never the matching
+//!   substitution — so the renaming is recoverable only by replaying, which
+//!   would turn a bounded static check into a re-execution;
+//! - **the complete-bipartite pairing** — every `a`-side endpoint of a hole is
+//!   paired with every `b`-side endpoint of it, because which occurrence meets
+//!   which across the seam is again substitution data the certificate omits.
+//!
+//! A single cell is never gated — with no seam there are no edges, so cell
+//! *application* (as opposed to certificate *composition*) is untouched.
 //!
 //! # The verdict is not a certificate invariant
 //!
@@ -290,9 +313,14 @@ impl<A: CellAlphabet> VarFlowGraph<A>
     /// # Contract
     /// - ensures: a dense graph whose nodes are the `(cell, hole)` endpoints
     ///   the seam variables (the holes of `a.joins_at`) touch across `a`'s and
-    ///   `b`'s participating cells, and whose edges are the face-internal flow
-    ///   — `a`→`b` for a forward role, `b`→`a` for a backward role, both for a
-    ///   [`SeamRole::Both`] role; every edge target is a valid node index.
+    ///   `b`'s participating cells, and whose edges are the pairwise flow — for
+    ///   each `(a`-endpoint, `b`-endpoint`)` pair of one hole, `a`→`b` when the
+    ///   `a`-side [`emits`] and the `b`-side [`absorbs`], and `b`→`a` when the
+    ///   `b`-side emits and the `a`-side absorbs; every edge target is a valid
+    ///   node index.
+    /// - provides: the loop-freeness graph of the composed seam, containing
+    ///   every flow a pair of endpoints can carry and no edge neither endpoint
+    ///   justifies.
     /// - panics: none.
     #[inline]
     fn build(
@@ -311,22 +339,14 @@ impl<A: CellAlphabet> VarFlowGraph<A>
                 // Not shared across the seam — no cross flow.
                 continue;
             }
-            let forward = a_endpoints
-                .iter()
-                .chain(&b_endpoints)
-                .any(|&(_, _, role)| bool::from(forward_role(role)));
-            let backward = a_endpoints
-                .iter()
-                .chain(&b_endpoints)
-                .any(|&(_, _, role)| bool::from(backward_role(role)));
             for a_endpoint in &a_endpoints {
                 for b_endpoint in &b_endpoints {
                     let node_a = builder.intern(a_endpoint.0, &a_endpoint.1);
                     let node_b = builder.intern(b_endpoint.0, &b_endpoint.1);
-                    if forward {
+                    if bool::from(emits(a_endpoint.2)) && bool::from(absorbs(b_endpoint.2)) {
                         builder.edge(node_a, node_b);
                     }
-                    if backward {
+                    if bool::from(emits(b_endpoint.2)) && bool::from(absorbs(a_endpoint.2)) {
                         builder.edge(node_b, node_a);
                     }
                 }
@@ -469,16 +489,28 @@ impl<A: CellAlphabet> GraphBuilder<A>
     }
 }
 
-/// Whether a flow role contributes the **forward** direction.
+/// Whether an endpoint **emits** into the seam — the producer half of a flow
+/// edge.
+///
+/// # Contract
+/// - ensures: positive for [`SeamRole::Forward`] and [`SeamRole::Both`], the
+///   two roles carrying a producer occurrence.
+/// - panics: none.
 #[inline]
-fn forward_role(role: SeamRole) -> VarianceFlowRole
+fn emits(role: SeamRole) -> VarianceFlowRole
 {
     VarianceFlowRole::from(matches!(role, SeamRole::Forward | SeamRole::Both))
 }
 
-/// Whether a flow role contributes the **backward** direction.
+/// Whether an endpoint **absorbs** from the seam — the consumer half of a flow
+/// edge.
+///
+/// # Contract
+/// - ensures: positive for [`SeamRole::Backward`] and [`SeamRole::Both`], the
+///   two roles carrying a consumer occurrence.
+/// - panics: none.
 #[inline]
-fn backward_role(role: SeamRole) -> VarianceFlowRole
+fn absorbs(role: SeamRole) -> VarianceFlowRole
 {
     VarianceFlowRole::from(matches!(role, SeamRole::Backward | SeamRole::Both))
 }

@@ -2,12 +2,11 @@
 //! `proposal-vdc-reflection.md` §4.3, §9).
 //!
 //! These crate-level fixtures **mirror the intended surface corpus programs**
-//! `compose-directed-cycle.gandr` and `fanout-family.gandr` (§9). The surface
-//! `rule` blocks still parse-and-decline in the pipeline (the ADR-54 acceptance
-//! flip is a separate open bead), so composition cannot yet be
-//! exercised end-to-end from a runnable `.gandr` file; the intended programs
-//! are realized here over the engine's public API instead, and the surface-case
-//! gap is a reported residual.
+//! `compose-directed-cycle.gandr` and `fanout-family.gandr` (§9), realized over
+//! the engine's public API. A description's `rule` members do reach the cell
+//! store today (the description route), so the corpus measurement below builds
+//! its cells that way; what these fixtures still need the API for is the
+//! *certificate* level, which no surface syntax reaches.
 //!
 //! - [`directed_composition_declines_a_mixed_variance_cycle`] mirrors
 //!   **`compose-directed-cycle.gandr`**: two mixed-variance certificates whose
@@ -38,11 +37,16 @@
 //!   the **counterexample**: a cell support is not certificate data, so two
 //!   presentations of one certificate can reach the gate as two inputs, and
 //!   here they reach `Err` and `Ok` — with the admitted composite replaying.
-//! - [`a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation`]
-//!   is why that divergence needs a partner chosen for it. The gate reads its
-//!   two flow flags off **both** sides' endpoints together, so one mixed seam
-//!   hole anywhere decides the verdict and every presentation then agrees —
-//!   which looks like invariance and is not.
+//! - [`a_single_polarity_partner_hides_the_divergence_from_every_probe`] is why
+//!   that divergence needs a partner chosen for it. A loop takes a `Both`
+//!   endpoint on **each** side, so a partner carrying none admits every
+//!   presentation and the left side's presentation stops mattering — which
+//!   looks like invariance and is not.
+//! - [`the_refined_seam_criterion_declines_strictly_less_than_the_union_reading`]
+//!   is the **measurement** the refinement was required to take first: over a
+//!   corpus of certificate pairs built from real description-route rules, it
+//!   runs the superseded union reading beside the shipped pairwise one, and
+//!   reports the over-decline the refinement recovers.
 //! - [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]
 //!   and [`invertible_composition_is_well_defined_on_the_replay_quotient`]
 //!   bound the damage: the graft's boundary is data replay-equivalence already
@@ -58,7 +62,8 @@
 //! [`fanout_family_is_a_multi_sum_not_a_single_rule`]: tests::fanout_family_is_a_multi_sum_not_a_single_rule
 //! [`the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`]: tests::the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer
 //! [`the_acyclicity_verdict_is_not_invariant_under_certificate_identity`]: tests::the_acyclicity_verdict_is_not_invariant_under_certificate_identity
-//! [`a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation`]: tests::a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation
+//! [`a_single_polarity_partner_hides_the_divergence_from_every_probe`]: tests::a_single_polarity_partner_hides_the_divergence_from_every_probe
+//! [`the_refined_seam_criterion_declines_strictly_less_than_the_union_reading`]: tests::the_refined_seam_criterion_declines_strictly_less_than_the_union_reading
 //! [`the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not`]: tests::the_composite_is_a_certificate_invariant_even_where_the_verdict_is_not
 //! [`invertible_composition_is_well_defined_on_the_replay_quotient`]: tests::invertible_composition_is_well_defined_on_the_replay_quotient
 
@@ -347,13 +352,18 @@ mod tests
             "and the two-step presentation records one"
         );
 
-        // The partner carries the join's two holes at ONE polarity each, so it
-        // contributes no backward flow of its own and the verdict is left to
-        // say what the presentation put in front of it.
-        let onward = onward_certificate(&mut store, &fused_derivation);
+        // The partner carries the join's producer hole at BOTH polarities. A
+        // seam loop needs an endpoint that emits and absorbs on each side, so
+        // the partner supplies one half unconditionally and the presentation in
+        // front of the gate supplies — or fails to supply — the other. That is
+        // what makes the probe sensitive to the presentation rather than to the
+        // partner.
+        let onward = mixed_onward_certificate(&mut store, &fused_derivation);
 
-        let declined = compose_directed(&two_step, &onward, &store)
-            .expect_err("the two-step presentation records a mixed seam hole, which loops");
+        let declined = compose_directed(&two_step, &onward, &store).expect_err(
+            "the two-step presentation records a mixed seam hole, which meets the partner's and \
+             loops",
+        );
         let recorded = participating(&two_step);
         assert!(
             declined.cycle.iter().any(|node| recorded.contains(&node.0)),
@@ -368,25 +378,32 @@ mod tests
     }
 
     #[test]
-    fn a_mixed_seam_hole_on_either_side_closes_the_loop_whatever_the_presentation()
+    fn a_single_polarity_partner_hides_the_divergence_from_every_probe()
     {
         // Why the divergence above needs a partner chosen for it, and why
-        // three replay-equivalent presentations were once measured agreeing.
-        // The gate reads the forward and backward flags off the union of BOTH
-        // sides' endpoints, so one mixed seam hole anywhere in either
-        // certificate closes the loop and the other side's presentation stops
-        // mattering. Against a partner that carries one, every presentation
-        // declines — which looks like invariance and is not.
-        let (store, a, b) = mixed_pair();
-        let two_step = presentation(&a, &a.path_a);
-        let single_step = presentation(&a, &a.path_b);
+        // replay-equivalent presentations were once measured agreeing. A seam
+        // loop needs an endpoint that both emits and absorbs on EACH side, so a
+        // partner whose seam holes are single-polarity contributes no half of
+        // one, and every presentation of the left certificate is then admitted
+        // — including the one carrying a mixed hole of its own. The agreement
+        // is the partner's doing, not the certificate's.
+        let (mut store, fused_derivation) = mixed_certificate();
+        let two_step = presentation(&fused_derivation, &fused_derivation.path_a);
+        let single_step = presentation(&fused_derivation, &fused_derivation.path_b);
+        assert!(
+            variances(&two_step, &store).contains(&CellVariance::Mixed),
+            "the hypothesis: one presentation does record a mixed hole"
+        );
+        let onward = replayed_onward_partner(&mut store, &fused_derivation);
         for (label, presented) in [
             ("the two-step form", &two_step),
             ("the fused form", &single_step),
         ] {
+            let admitted = compose_directed(presented, &onward, &store)
+                .unwrap_or_else(|_| panic!("{label} composes: the partner closes no loop"));
             assert!(
-                compose_directed(presented, &b, &store).is_err(),
-                "{label} declines against a partner whose own seam hole is mixed"
+                bool::from(admitted.replay(&store)),
+                "{label} composite is a real certificate — it replays"
             );
         }
         assert_ne!(
@@ -500,6 +517,352 @@ mod tests
             from_two_step.path_a, from_single_step.path_a,
             "while the recorded derivations still differ, which is the point of the quotient"
         );
+    }
+
+    #[test]
+    fn the_refined_seam_criterion_declines_strictly_less_than_the_union_reading()
+    {
+        // The measurement the refinement owed before it was taken (ADR-69's
+        // "refine the criterion, never remove the gate"). The superseded
+        // reading took its two flow flags from the UNION of both sides'
+        // endpoints and then drew the whole bipartite edge set, so one producer
+        // occurrence anywhere and one consumer occurrence anywhere closed a
+        // loop between every pair — which is the ordinary sequential seam, not
+        // a cycle. The shipped reading asks each pair: does the left endpoint
+        // emit and the right absorb?
+        //
+        // `union_reading` below is that superseded criterion, kept here as an
+        // independent oracle rather than as a second production path. It reads
+        // only the public store metadata, so it cannot drift into agreeing with
+        // the gate by sharing its implementation.
+        let (store, corpus) = certificate_corpus();
+        assert!(
+            corpus.len() >= 4,
+            "the corpus carries several real certificates, not one probe"
+        );
+        let mut pairs = 0_usize;
+        let mut union_declines = 0_usize;
+        let mut shipped_declines = 0_usize;
+        let mut recovered = 0_usize;
+        for left in &corpus {
+            for right in &corpus {
+                pairs = pairs.saturating_add(1);
+                let union = union_reading(left, right, &store);
+                let shipped = compose_directed(left, right, &store);
+                if union {
+                    union_declines = union_declines.saturating_add(1);
+                }
+                match shipped {
+                    | Err(_) => {
+                        shipped_declines = shipped_declines.saturating_add(1);
+                        assert!(
+                            union,
+                            "the refinement only ever admits more: a shipped decline is a \
+                             decline under the superseded reading too"
+                        );
+                    },
+                    | Ok(_) => {
+                        if union {
+                            recovered = recovered.saturating_add(1);
+                        }
+                    },
+                }
+            }
+        }
+        assert_eq!(
+            union_declines.saturating_sub(shipped_declines),
+            recovered,
+            "the over-decline is exactly the recovered set, since the refinement is monotone"
+        );
+        assert!(
+            recovered > 0,
+            "measured, not asserted: over {pairs} pairs the superseded reading declined \
+             {union_declines} and the shipped criterion declines {shipped_declines}, so the \
+             refinement recovers {recovered}"
+        );
+        assert!(
+            shipped_declines > 0,
+            "and the gate is refined rather than removed — it still declines {shipped_declines} \
+             of {pairs}"
+        );
+
+        // The counts above range over every ordered pair, because the gate's
+        // verdict is a function of the two certificates and the store alone.
+        // What a recovered composition is *worth* needs the sequential seam as
+        // well (`a.joins_at == b.overlap.peak`), so one recovered pair is built
+        // to satisfy it and the composite is replayed.
+        let (mut seamed, left) = mixed_certificate();
+        let two_step = presentation(&left, &left.path_a);
+        let partner = replayed_onward_partner(&mut seamed, &left);
+        assert!(
+            union_reading(&two_step, &partner, &seamed),
+            "the superseded reading declines this pair: a mixed hole on one side set both flags"
+        );
+        let composite = compose_directed(&two_step, &partner, &seamed)
+            .expect("the shipped criterion admits it: the partner carries no `Both` endpoint");
+        assert!(
+            bool::from(composite.replay(&seamed)),
+            "and the composition the refinement recovers is a real certificate — it replays"
+        );
+    }
+
+    /// A corpus of real certificates over one store, for the measurement.
+    ///
+    /// The cells are the **description route's own**: a `Nat` signature with
+    /// `add` and `double` and their four written faces, elaborated through
+    /// [`elaborate_data_desc`] exactly as a `data` block's rule members are —
+    /// so the measurement runs over rules a user could write, not over probes
+    /// shaped to produce an answer. The certificates are every composition
+    /// overlap the resulting store enumerates, fused; the mixed- and
+    /// split-variance step cells are appended so the corpus also carries the
+    /// dinaturality shape a written first-order rule cannot spell.
+    ///
+    /// [`elaborate_data_desc`]: gandr_theory_computads::elaborate_data_desc
+    fn certificate_corpus() -> (CellStore, alloc::vec::Vec<Tracelet>)
+    {
+        use gandr_theory_levitation::Attrs;
+        use gandr_theory_levitation::BridgeArity;
+        use gandr_theory_levitation::Code;
+        use gandr_theory_levitation::CtorDesc;
+        use gandr_theory_levitation::DeclPolarity;
+        use gandr_theory_levitation::FreeTerm;
+        use gandr_theory_levitation::NominalId;
+        use gandr_theory_levitation::OperDesc;
+        use gandr_theory_levitation::RuleFace;
+        use gandr_theory_levitation::SignDesc;
+        use gandr_theory_levitation::SortRef;
+        use gandr_theory_levitation::SurfaceSpan;
+
+        let nat_op = |name: &str, inputs: alloc::vec::Vec<SortRef>| {
+            OperDesc::new(
+                name,
+                BridgeArity::single_output(inputs, SortRef::new("out", "Nat")),
+                Attrs::empty(),
+            )
+        };
+        let face = |lhs: FreeTerm, rhs: FreeTerm| {
+            RuleFace::new(
+                lhs,
+                rhs,
+                alloc::vec::Vec::new(),
+                SurfaceSpan::new(0_usize.into(), 0_usize.into()),
+            )
+        };
+        let desc = SignDesc::new(
+            NominalId::new(0_u64.into(), "Nat"),
+            alloc::vec::Vec::new(),
+            [
+                CtorDesc::new("Zero", Code::Unit, "Nat", Attrs::empty()),
+                CtorDesc::new("Succ", Code::var("Nat"), "Nat", Attrs::empty()),
+            ],
+            [
+                nat_op("add", alloc::vec![
+                    SortRef::new("m", "Nat"),
+                    SortRef::new("n", "Nat")
+                ]),
+                nat_op("double", alloc::vec![SortRef::new("m", "Nat")]),
+            ],
+            [
+                face(
+                    FreeTerm::op("add", [FreeTerm::ctor("Zero", []), FreeTerm::var("n")]),
+                    FreeTerm::var("n"),
+                ),
+                face(
+                    FreeTerm::op("add", [
+                        FreeTerm::ctor("Succ", [FreeTerm::var("m")]),
+                        FreeTerm::var("n"),
+                    ]),
+                    FreeTerm::ctor("Succ", [FreeTerm::op("add", [
+                        FreeTerm::var("m"),
+                        FreeTerm::var("n"),
+                    ])]),
+                ),
+                face(
+                    FreeTerm::op("double", [FreeTerm::ctor("Zero", [])]),
+                    FreeTerm::ctor("Zero", []),
+                ),
+                face(
+                    FreeTerm::op("double", [FreeTerm::ctor("Succ", [FreeTerm::var("m")])]),
+                    FreeTerm::ctor("Succ", [FreeTerm::ctor("Succ", [FreeTerm::op(
+                        "double",
+                        [FreeTerm::var("m")],
+                    )])]),
+                ),
+            ],
+            DeclPolarity::Data,
+            Attrs::empty(),
+        );
+        let elaborated = gandr_theory_computads::elaborate_data_desc(&desc);
+        assert!(
+            elaborated.declined_faces.is_empty() && elaborated.declined_opers.is_empty(),
+            "the corpus description elaborates whole, so the measurement runs over real rules"
+        );
+        let mut store = elaborated.store;
+        // The dinaturality shape, which a written first-order face cannot
+        // spell: a hole worn at both polarities.
+        let mixed_left = store.insert(mixed_step(
+            FixtureHoleName("r"),
+            OperationName("dn1"),
+            OperationName("mid1"),
+        ));
+        let mixed_right = store.insert(mixed_step(
+            FixtureHoleName("s"),
+            OperationName("mid1"),
+            OperationName("up1"),
+        ));
+        let split_left = store.insert(split_step(
+            FixtureHoleName("p"),
+            FixtureHoleName("c"),
+            OperationName("dn2"),
+            OperationName("mid2"),
+        ));
+        let split_right = store.insert(split_step(
+            FixtureHoleName("q"),
+            FixtureHoleName("d"),
+            OperationName("mid2"),
+            OperationName("up2"),
+        ));
+        let mut corpus = alloc::vec::Vec::new();
+        corpus.push(fused(&mut store, mixed_left, mixed_right));
+        corpus.push(fused(&mut store, split_left, split_right));
+        // Every composition overlap the description's own cells enumerate.
+        let overlaps: alloc::vec::Vec<Overlap> = enumerate_overlaps(&store)
+            .into_iter()
+            .filter(|candidate| candidate.kind == OverlapKind::Composition)
+            .collect();
+        for overlap in overlaps {
+            if let Some((_, certificate)) = derive_fused(&overlap, &mut store) {
+                corpus.push(certificate);
+            }
+        }
+        (store, corpus)
+    }
+
+    /// The **superseded** seam criterion, as an independent oracle.
+    ///
+    /// For each hole of `a`'s recorded join it collects the `(cell, hole)`
+    /// endpoints on both sides, takes one forward flag and one backward flag
+    /// over their **union**, and draws every bipartite edge in each flagged
+    /// direction. A decline is any directed cycle in that graph — which, for a
+    /// complete bipartite edge set, is exactly "both flags are set and both
+    /// sides are non-empty".
+    ///
+    /// # Contract
+    /// - ensures: positive exactly when some seam hole of `a.joins_at` has an
+    ///   endpoint on each side and the union of those endpoints carries a
+    ///   producer occurrence and a consumer occurrence.
+    /// - panics: none.
+    fn union_reading(
+        a: &Tracelet,
+        b: &Tracelet,
+        store: &CellStore,
+    ) -> bool
+    {
+        let a_cells = participating(a);
+        let b_cells = participating(b);
+        for hole in seam_hole_names(&a.joins_at) {
+            let a_side = endpoint_variances(&a_cells, &hole, store);
+            let b_side = endpoint_variances(&b_cells, &hole, store);
+            if a_side.is_empty() || b_side.is_empty() {
+                continue;
+            }
+            let forward = a_side
+                .iter()
+                .chain(&b_side)
+                .any(|variance| matches!(*variance, CellVariance::Producer | CellVariance::Mixed));
+            let backward = a_side
+                .iter()
+                .chain(&b_side)
+                .any(|variance| matches!(*variance, CellVariance::Consumer | CellVariance::Mixed));
+            if forward && backward {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// The distinct metavariable **names** of a command pattern — the seam
+    /// variables, keyed exactly as the gate keys them.
+    fn seam_hole_names(cmd: &CmdPat) -> alloc::vec::Vec<alloc::string::String>
+    {
+        let CmdPat::Cut {
+            ref prod, ref cons, ..
+        } = *cmd;
+        let mut names = alloc::vec::Vec::new();
+        collect_producer_names(prod, &mut names);
+        collect_consumer_names(cons, &mut names);
+        names
+    }
+
+    /// Append the distinct metavariable names of a producer pattern.
+    fn collect_producer_names(
+        prod: &ProdPat,
+        names: &mut alloc::vec::Vec<alloc::string::String>,
+    )
+    {
+        match *prod {
+            | ProdPat::Meta(ref var) => push_name(&var.name, names),
+            | ProdPat::Ctor { ref args, .. } => {
+                for arg in args {
+                    collect_producer_names(arg, names);
+                }
+            },
+        }
+    }
+
+    /// Append the distinct metavariable names of a consumer pattern.
+    fn collect_consumer_names(
+        cons: &ConsPat,
+        names: &mut alloc::vec::Vec<alloc::string::String>,
+    )
+    {
+        match *cons {
+            | ConsPat::Meta(ref var) => push_name(&var.name, names),
+            | ConsPat::Op {
+                ref args, ref ret, ..
+            } => {
+                for arg in args {
+                    collect_producer_names(arg, names);
+                }
+                collect_consumer_names(ret, names);
+            },
+            | ConsPat::Frame { ref ret, .. } => collect_consumer_names(ret, names),
+            | ConsPat::Top => {},
+        }
+    }
+
+    /// Push `name` if it is not already recorded.
+    fn push_name(
+        name: &str,
+        names: &mut alloc::vec::Vec<alloc::string::String>,
+    )
+    {
+        if !names.iter().any(|held| held == name) {
+            names.push(alloc::string::String::from(name));
+        }
+    }
+
+    /// The variance each of `cells` classifies `hole` at, skipping cells that
+    /// do not carry it.
+    fn endpoint_variances(
+        cells: &[CellId],
+        hole: &str,
+        store: &CellStore,
+    ) -> alloc::vec::Vec<CellVariance>
+    {
+        let mut out = alloc::vec::Vec::new();
+        for &cell in cells {
+            let Some(entry) = store.get(cell)
+            else {
+                continue;
+            };
+            for var in &entry.meta.vars {
+                if &*var.var.name == hole {
+                    out.push(var.variance);
+                }
+            }
+        }
+        out
     }
 
     /// The variance of every hole of every cell a certificate records.
@@ -675,10 +1038,10 @@ mod tests
     /// A partner certificate for `certificate`'s join, recording one cell that
     /// wears the join's two holes at **one polarity each**.
     ///
-    /// The single-polarity choice is what makes it a fair probe: the gate reads
-    /// its forward and backward flags off both sides' endpoints together, so a
-    /// partner carrying a mixed hole of its own would decide the verdict before
-    /// the left presentation was consulted.
+    /// A single-polarity partner contributes no half of a seam loop, so it
+    /// admits every presentation shown to it — which is what makes it the right
+    /// probe for the *invertible* lane, whose composite must be an invariant
+    /// with no gate in the way at all.
     ///
     /// Its overlap is a carrier for the recorded peak: the gate and replay both
     /// read `overlap.peak`, and what this fixture is about is the boundary a
@@ -691,6 +1054,47 @@ mod tests
         let cell = store.insert(split_step(
             FixtureHoleName("s"),
             FixtureHoleName("s'"),
+            OperationName("up1"),
+            OperationName("up3"),
+        ));
+        let mut overlap = certificate.overlap.clone();
+        overlap.peak = certificate.joins_at.clone();
+        let step = gandr_theory_computads::CellApp {
+            cell,
+            at: gandr_theory_computads::Pos::root(),
+        };
+        Tracelet {
+            overlap,
+            path_a: alloc::vec![step.clone()],
+            path_b: alloc::vec![step],
+            joins_at: CmdPat::cut(
+                Polarity::Positive,
+                ProdPat::meta("s"),
+                ConsPat::op("up3", [], ConsPat::meta("s'")),
+            ),
+        }
+    }
+
+    /// A partner certificate for `certificate`'s join recording one cell whose
+    /// hole is worn at **both** polarities on the join's producer name.
+    ///
+    /// The counterpart of [`onward_certificate`], and the pair is what makes a
+    /// presentation probe honest. A seam loop needs an endpoint that emits and
+    /// absorbs on **each** side, so this partner supplies one half and leaves
+    /// the other to whichever presentation is shown; the single-polarity
+    /// partner supplies neither and admits them all.
+    ///
+    /// Its cell reduces the same join as [`onward_certificate`]'s: matching
+    /// `⟨s | up1(; s')⟩` binds the producer `s` and the consumer `s` to
+    /// different images, because a metavariable's identity is its
+    /// `(name, category)` pair.
+    fn mixed_onward_certificate(
+        store: &mut CellStore,
+        certificate: &Tracelet,
+    ) -> Tracelet
+    {
+        let cell = store.insert(mixed_step(
+            FixtureHoleName("s"),
             OperationName("up1"),
             OperationName("up3"),
         ));
