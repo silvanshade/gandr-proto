@@ -801,13 +801,19 @@ fn take_built(
     taken
 }
 
-/// The hole identity a pattern hole carries: its start byte.
+/// The hole identity a pattern hole carries **for the analysis**: its start
+/// byte.
 ///
 /// The offset is used rather than a minted serial so the analysis stays a
-/// function of the source it reads. Minting from the lowerer's allocator would
-/// make a pattern hole shift the identifiers of the expression holes around it,
-/// which would move lowered terms and so move checkpoints — for a hole that
-/// never reaches the core at all.
+/// function of the source it reads, and so re-analyzing a retained submission
+/// reproduces the identities it first reported.
+///
+/// **This is not the identity the compiled term carries.** A pattern hole that
+/// stops a match reaches the core as a `Comp::Hole` whose identity comes from
+/// the lowerer's own allocator ([`crate::lower::pattern`]), so the goal stream
+/// addresses it exactly as it addresses an expression hole. The two
+/// identities answer different questions — which unfinished test this is, and
+/// which core node stands for it — and neither is derivable from the other.
 fn hole_id_of(node: SynNode<'_>) -> PatternHoleId
 {
     PatternHoleId::from(u32::try_from(node.byte_range().0.start).unwrap_or(u32::MAX))

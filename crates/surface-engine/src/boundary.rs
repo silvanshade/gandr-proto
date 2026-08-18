@@ -305,6 +305,10 @@ semantic_borrowed_str!(
     pub struct ObservationName;
 );
 semantic_borrowed_str!(
+    /// Borrowed core variable name a compiled pattern column is held in.
+    pub struct CoreVariableName;
+);
+semantic_borrowed_str!(
     /// Borrowed circuit member, declaration, or binder name.
     pub struct CircuitName;
 );
@@ -451,6 +455,14 @@ semantic_copy!(
 semantic_copy!(
     /// Arity of a declared data constructor.
     pub struct ConstructorArity(usize);
+);
+semantic_copy!(
+    /// Number of constructors a datatype declares.
+    pub struct ConstructorCount(usize);
+);
+semantic_copy!(
+    /// Number of sub-patterns one compound pattern frame assembles.
+    pub struct SubPatternCount(usize);
 );
 semantic_copy!(
     /// Number of binders required by a surface lambda role.

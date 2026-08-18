@@ -235,6 +235,14 @@ pub enum ElabKind
     /// The inner synthesized splits (and fresh scrutinee variables) of an
     /// n-ary tuple pattern `let (x, y, z) = v;`.
     SplitNest,
+    /// A nested constructor pattern's own eliminator: `case m { Just(Just(x))
+    /// => t }` ⇒ an inner `DataCase` on the outer constructor's payload, with
+    /// every tag the nested pattern does not name a missing-arm hole.
+    PatternNest,
+    /// A pattern binder the arm body sees under a nested test, or an
+    /// as-binder: `p as x` ⇒ `Bind(Ret v, x, …)`. The name is bound rather
+    /// than substituted so the binder keeps one occurrence and cannot capture.
+    PatternAlias,
     /// A module-select `M.l` whose value is a known module name ⇒ the flat
     /// qualified `Var("M.l")` (the module layer's namespace half — pure
     /// elaboration, unlike the structural `t.fst` / `t.snd` projection the
@@ -374,6 +382,23 @@ pub enum HoleNote
     {
         /// The malformed node's kind.
         kind: SyntaxKind,
+    },
+    /// A `case` arm the *user* left indeterminate: a pattern hole stands
+    /// where a test would, so the constructor tags that arm shadows can be
+    /// neither taken nor passed over and the match stops here.
+    ///
+    /// **Distinct from [`Self::MissingCaseArm`], and the distinction is the
+    /// point.** A missing arm is a match the source never wrote a branch for;
+    /// an indeterminate one is a branch the source wrote and did not finish.
+    /// Both reach the same runtime outcome, so the note is the only place the
+    /// two stay apart — and filling the hole discharges this one while nothing
+    /// the author writes inside the arm discharges the other. The optional
+    /// `name` is the `?name` identifier, carried to address the hole and
+    /// ignored by typing exactly as [`Self::UserHole`]'s is.
+    IndeterminatePattern
+    {
+        /// The `?name` identifier, when the user named the hole.
+        name: Option<String>,
     },
     /// A hole the *user wrote* (`?` or `?name`), not one recovered from a
     /// `LowerError`. Unlike every other variant it is created in both strict

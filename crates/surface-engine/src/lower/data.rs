@@ -33,11 +33,14 @@
 //!   constructor's is the field value directly, and a many-field constructor's
 //!   is the right-nested product of its fields; a `case` arm destructures the
 //!   product positionally into its field binders.
-//! * **Single-level patterns.** A `case` arm is a constructor name plus binders
-//!   (`Some(x)` / `RGB(r, g, b)`); nested / Maranget-general patterns stay with
-//!   the patterns bead.
+//! * **Ordered arms, one per head.** A `case` arm's pattern is compiled by
+//!   [`super::pattern`], which admits constructor patterns nested to any depth,
+//!   wildcard and binder sub-patterns, as-binders, and pattern holes. Two arms
+//!   sharing one constructor head are declined by name, because reaching the
+//!   second needs an arm body two branches can jump to and the core has no
+//!   former for one.
 
-use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::string::ToString as _;
@@ -66,6 +69,8 @@ use super::VOut;
 use super::entry;
 use super::named_non_extra_children;
 use super::node_kinds;
+use super::pattern;
+use super::pattern::ArmVerdict;
 use super::required_field;
 use super::types as ty_lower;
 use crate::boundary::ConstructorArity;
@@ -79,6 +84,20 @@ use crate::live_match;
 use crate::origin::ElabKind;
 use crate::origin::OriginNode;
 use crate::synnode::SynNode;
+
+/// One `case` arm, read into its compiled verdict with its body already
+/// lowered where the arm has one to run.
+///
+/// # Contract
+/// - ensures: `body` is `Some` exactly for a constructor-headed arm — an
+///   indeterminate arm never runs a body and a declined arm has none to run.
+struct CaseRow<'tree>
+{
+    /// What the compiler concluded about the arm's pattern.
+    verdict: ArmVerdict<'tree>,
+    /// The lowered arm body, for a constructor-headed arm.
+    body: Option<COut>,
+}
 
 /// A `data D(ā) { … }` declaration's registered shape (declared-data design):
 /// its minted core-local nominal id, its usable constructor names, and — the
@@ -469,7 +488,7 @@ impl Lowerer<'_>
 
     /// The declared field count of constructor `tag` of datatype `data_name`
     /// (its arity) — the length of the flattened payload [`Code`].
-    fn field_arity(
+    pub(super) fn field_arity(
         &self,
         data_name: DataTypeName<'_>,
         tag: ConstructorTag,
@@ -777,29 +796,38 @@ impl Lowerer<'_>
     /// [`Comp::DataCase`] (declared-data design Decision 3), arms placed by
     /// constructor tag.
     ///
-    /// Every arm's constructor must belong to one datatype (the scrutinee's);
-    /// the arms are assembled into a vector of length `k` (the datatype's
-    /// constructor count), arm `i` handling tag `i`, so the runtime β-rule's
-    /// tag-indexed selection lands the right arm. A missing constructor is a
-    /// non-exhaustive `case` (strict: [`LowerError::MissingCaseArm`]; total: a
-    /// hole arm). Each arm binds the constructor's payload — a discard for a
-    /// nullary constructor, the field for a one-field constructor, and a fresh
-    /// payload variable positionally destructured into the field binders for a
-    /// many-field constructor ([`Self::data_case_arm`]).
+    /// The arms are read through [`super::pattern`], which is where the
+    /// ordered surface arms become the core's tag-indexed ones. This function
+    /// owns only what is specific to the declared-data eliminator: resolving
+    /// the one datatype every arm must share, walking the tags, and assembling
+    /// the term.
+    ///
+    /// **The tag walk is the precedence rule.** For each tag the arms are read
+    /// in source order and the first one that settles the tag takes it: a
+    /// constructor arm naming that tag takes it with its body, and an
+    /// indeterminate arm takes it with a stuck hole, because a hole standing
+    /// where a test would neither matches nor refutes and so stops every later
+    /// arm from being reachable. A tag no arm settles is a missing-arm hole,
+    /// exactly as before.
     ///
     /// # Contract
     /// - ensures: on a data-constructor arm set over one datatype, the term is
     ///   `Comp::DataCase(scrut, arms)` with `arms.len()` = the datatype's
     ///   constructor count and each arm at its tag.
+    /// - ensures: an arm carrying a pattern hole occupies the tags it shadows
+    ///   with a `Comp::Hole` rather than being dropped, so those tags stop
+    ///   falling through to the arms written after it.
     /// - fails: [`LowerError`] for a malformed arm, a cross-datatype arm set,
-    ///   an unknown constructor, a binder count other than the constructor's
-    ///   declared field count, or (strict) a missing constructor.
+    ///   an unknown constructor, an argument count other than the constructor's
+    ///   declared field count, a pattern form outside the compiled set, or
+    ///   (strict) a missing constructor.
     /// - panics: none.
     /// # Termination
     /// - reason: each case arm lowers only its proper pattern and body
     ///   descendants.
     /// - measure: remaining source nodes beneath the case expression.
     /// - boundedness: the parsed CST is finite.
+    /// - input recursion: none.
     #[cfg_attr(
         dylint_lib = "non_local_effect_before_unhandled_error",
         allow(
@@ -824,110 +852,31 @@ impl Lowerer<'_>
         // exactly as one it does not.
         self.record_match_site(node, &scrut_value);
 
-        // Collect the arms as (tag, binder, body), and the datatype every arm
-        // must share.
-        let mut data_name: Option<String> = None;
-        let mut filled: BTreeMap<ConstructorTag, (String, COut)> = BTreeMap::new();
-        for arm_node in named_non_extra_children(node) {
-            if arm_node.kind() != node_kinds::ARM {
-                continue;
-            }
-            let (this_data, tag, binder, body) = match self.data_case_arm(arm_node) {
-                | Err(_) if bool::from(self.total()) => continue,
-                | other => other?,
-            };
-            match data_name {
-                | Some(ref existing) if existing != &this_data => {
-                    // A cross-datatype arm set is out of fragment (the scrutinee
-                    // has one nominal type); total mode drops the stray arm.
-                    if bool::from(self.total()) {
-                        continue;
-                    }
-                    return Err(LowerError::Unsupported {
-                        kind: arm_node.kind(),
-                        byte_range: arm_node.byte_range(),
-                    });
-                },
-                | Some(_) => {},
-                | None => data_name = Some(this_data),
-            }
-            if filled.contains_key(&tag) {
-                // A duplicate arm for one constructor; total mode keeps the
-                // first (the `sum_case` discipline).
-                if bool::from(self.total()) {
-                    continue;
-                }
-                return Err(LowerError::Unsupported {
-                    kind: arm_node.kind(),
-                    byte_range: arm_node.byte_range(),
-                });
-            }
-            filled.insert(tag, (binder, body));
-        }
-
-        let Some(data_name) = data_name
+        let mut rows = self.case_rows(node)?;
+        let Some(data_name) = rows.iter().find_map(|row| match row.verdict {
+            | ArmVerdict::Head { ref data, .. } => Some(data.clone()),
+            | ArmVerdict::Indeterminate(_) | ArmVerdict::Declined { .. } => None,
+        })
         else {
-            // The absurd empty match `case v {}`: an arm-less `DataCase` over
-            // the scrutinee's (uninhabited) data type, which the core checks
-            // vacuously against the expected answer (declared-data design Decision 3).
-            if Self::case_arms_empty(node).into() {
-                let body = COut::from_legacy_comp(
-                    &Comp::DataCase(Rc::new(scrut_value), Vec::new()),
-                    OriginNode::new(entry(node, None), alloc::vec![scrut.origin]),
-                )?;
-                return Self::wrap_hoists(hoists, body, node);
-            }
-            // Otherwise every arm dropped in total mode; fall back to a hole so
-            // the pipeline stays total.
-            let error = LowerError::Unsupported {
-                kind: node.kind(),
-                byte_range: node.byte_range(),
-            };
-            if !bool::from(self.total()) {
-                return Err(error);
-            }
-            let hole = self.comp_hole(node, &error)?;
-            return Self::wrap_hoists(hoists, hole, node);
+            return self.data_case_without_constructors(node, &rows, scrut, hoists);
         };
-        let ctor_count = self.data.get(&data_name).map_or(0, |decl| decl.ctors.len());
+        let ctor_count = usize::from(self.constructor_count(data_name.as_str().into()));
 
-        // Assemble the arms in tag order; a missing constructor is a
-        // non-exhaustive match (strict) or a hole arm (total). The DataCase's
-        // origin children are the scrutinee followed by each arm body in tag
-        // order.
+        // The arms in tag order. The `DataCase` origin children are the
+        // scrutinee followed by each arm body in tag order.
         let mut arms: Vec<(String, Rc<Comp>)> = Vec::with_capacity(ctor_count);
         let mut arm_origins: Vec<OriginNode> = alloc::vec![scrut.origin];
-        for tag in 0 .. ctor_count {
-            let (binder, body_comp, body_origin) = match filled.remove(&tag.into()) {
-                | Some((binder, body)) => (
-                    binder,
-                    {
-                        let readback_comp = body.readback_comp()?;
-                        core::convert::identity(readback_comp)
-                    },
-                    body.origin,
-                ),
-                | None => {
-                    let error = LowerError::MissingCaseArm {
-                        constructor: node_kinds::DISCARD_BINDER,
-                        byte_range: node.byte_range(),
-                    };
-                    if !bool::from(self.total()) {
-                        return Err(error);
-                    }
-                    let hole = self.comp_hole(node, &error)?;
-                    (
-                        node_kinds::DISCARD_BINDER.to_owned(),
-                        {
-                            let readback_comp = hole.readback_comp()?;
-                            core::convert::identity(readback_comp)
-                        },
-                        hole.origin,
-                    )
-                },
-            };
-            arms.push((binder, Rc::new(body_comp)));
-            arm_origins.push(body_origin);
+        for slot in 0 .. ctor_count {
+            let tag = ConstructorTag::from(slot);
+            let (binder, body) = self.data_case_slot(node, &mut rows, tag)?;
+            arms.push((
+                binder,
+                Rc::new({
+                    let readback_comp = body.readback_comp()?;
+                    core::convert::identity(readback_comp)
+                }),
+            ));
+            arm_origins.push(body.origin);
         }
 
         let body = COut::from_legacy_comp(
@@ -937,97 +886,237 @@ impl Lowerer<'_>
         Self::wrap_hoists(hoists, body, node)
     }
 
-    /// Parses one declared-data `case` arm: a `constructor_pattern` naming a
-    /// declared constructor with exactly its declared field count of binders,
-    /// and the arm's body in computation position. Returns the constructor's
-    /// datatype name, its tag, the payload binder the `DataCase` arm binds, and
-    /// the lowered body — for a many-field constructor the body is wrapped in
-    /// the nested `split`s that positionally destructure the product payload
-    /// into the field binders (declared-data design arity growth).
+    /// Reads every arm of `node` into its compiled verdict, in source order.
+    ///
+    /// Bodies are lowered here, in source order, and only for the arms that
+    /// survive as constructor-headed — the order and the set together are what
+    /// keep hole identifiers, and so lowered terms and checkpoints, exactly
+    /// where they were for a `case` this compiler did not change the meaning
+    /// of.
     ///
     /// # Contract
-    /// - ensures: the pattern's binder count equals the constructor's declared
-    ///   field count; a nullary constructor binds a discard, a one-field
-    ///   constructor binds the field directly, a many-field constructor binds a
-    ///   fresh payload variable destructured into the field binders.
-    /// - fails: [`LowerError::Unsupported`] for a malformed pattern, an unknown
-    ///   constructor, or a binder count other than the declared field count.
+    /// - ensures: one row per `arm` child, in source order.
+    /// - fails: strict mode propagates the first declined arm; total mode
+    ///   carries the decline as the row's verdict for the tag walk to skip.
     /// - panics: none.
-    /// # Termination
-    /// - reason: arm lowering descends into the proper arm body subtree.
-    /// - measure: remaining source nodes beneath the case arm.
-    /// - boundedness: the parsed CST is finite.
-    fn data_case_arm(
+    fn case_rows<'tree>(
+        &mut self,
+        node: SynNode<'tree>,
+    ) -> LowerResult<Vec<CaseRow<'tree>>>
+    {
+        let arm_nodes: Vec<SynNode<'tree>> = named_non_extra_children(node)
+            .into_iter()
+            .filter(|arm| arm.kind() == node_kinds::ARM)
+            .collect();
+        let mut rows: Vec<CaseRow<'tree>> = Vec::with_capacity(arm_nodes.len());
+        let mut data_name: Option<String> = None;
+        let mut claimed: BTreeSet<ConstructorTag> = BTreeSet::new();
+        for arm_node in arm_nodes {
+            let pattern = required_field(arm_node, node_kinds::FIELD_PATTERN)?;
+            let plan = pattern::read_pattern(pattern);
+            let mut verdict = self.classify_arm(plan)?;
+            // The declared field count is the eliminator's own contract, so the
+            // arity check belongs here rather than in the classifier.
+            if let ArmVerdict::Head {
+                ref data,
+                tag,
+                ref arguments,
+                ..
+            } = verdict
+            {
+                let arity = usize::from(self.field_arity(data.as_str().into(), tag));
+                if arguments.len() != arity {
+                    verdict = ArmVerdict::Declined {
+                        kind: pattern.kind(),
+                        byte_range: pattern.byte_range(),
+                    };
+                }
+            }
+            if let ArmVerdict::Declined { kind, byte_range } = verdict {
+                if !bool::from(self.total()) {
+                    return Err(ArmVerdict::declined_error(kind, byte_range));
+                }
+                rows.push(CaseRow {
+                    verdict: ArmVerdict::Declined { kind, byte_range },
+                    body: None,
+                });
+                continue;
+            }
+            let body = match verdict {
+                | ArmVerdict::Head { .. } => {
+                    let body_node = required_field(arm_node, node_kinds::FIELD_BODY)?;
+                    Some(self.comp_expr(body_node)?)
+                },
+                // An indeterminate arm never runs its body, so the body is not
+                // lowered: lowering it would mint hole identifiers and origin
+                // entries for a term nothing can reach.
+                | ArmVerdict::Indeterminate(_) | ArmVerdict::Declined { .. } => None,
+            };
+            // The datatype and the tag are settled after the body is lowered,
+            // so an arm this eliminator cannot place still consumes the hole
+            // identifiers and origin entries its body would have consumed —
+            // which is what keeps a program with a stray or repeated arm
+            // lowering to exactly the term it lowered to before.
+            if let ArmVerdict::Head { ref data, tag, .. } = verdict {
+                let owner = data_name.get_or_insert_with(|| data.clone()).clone();
+                let stray = *data != owner;
+                // Two arms sharing one constructor head are distinguishable
+                // only by their arguments, and reaching the second needs an
+                // arm body two branches can jump to. The core has no former
+                // for that, so the later arm is declined by name rather than
+                // compiled into a branch that silently never runs.
+                let shadowed = !claimed.insert(tag);
+                if stray || shadowed {
+                    if !bool::from(self.total()) {
+                        return Err(LowerError::Unsupported {
+                            kind: arm_node.kind(),
+                            byte_range: arm_node.byte_range(),
+                        });
+                    }
+                    verdict = ArmVerdict::Declined {
+                        kind: arm_node.kind(),
+                        byte_range: arm_node.byte_range(),
+                    };
+                }
+            }
+            rows.push(CaseRow { verdict, body });
+        }
+        Ok(rows)
+    }
+
+    /// Settles one constructor tag against the arms, in source order.
+    ///
+    /// # Contract
+    /// - ensures: the first arm that settles `tag` supplies it — a matching
+    ///   constructor arm its body, an indeterminate arm a stuck hole — and a
+    ///   tag no arm settles takes a missing-arm hole.
+    /// - fails: strict mode fails on a duplicate arm for one constructor, a
+    ///   cross-datatype arm, or a missing constructor.
+    /// - panics: none.
+    fn data_case_slot(
         &mut self,
         node: SynNode<'_>,
-    ) -> LowerResult<(String, ConstructorTag, String, COut)>
+        rows: &mut [CaseRow<'_>],
+        tag: ConstructorTag,
+    ) -> LowerResult<(String, COut)>
     {
-        enum BinderPlan
-        {
-            Discard,
-            Direct(String),
-            Destructure(Vec<String>),
+        for row in rows.iter_mut() {
+            let head = match row.verdict {
+                | ArmVerdict::Declined { .. } => continue,
+                | ArmVerdict::Indeterminate(ref stuck) => {
+                    let stuck = Self::stuck_slot(stuck)?;
+                    return Ok((node_kinds::DISCARD_BINDER.to_owned(), stuck));
+                },
+                | ArmVerdict::Head {
+                    tag: arm_tag,
+                    ref arguments,
+                    ref aliases,
+                    node: ctor_node,
+                    ..
+                } => (arm_tag, arguments.clone(), aliases.clone(), ctor_node),
+            };
+            let (arm_tag, arguments, aliases, ctor_node) = head;
+            if arm_tag != tag {
+                continue;
+            }
+            let Some(body) = row.body.take()
+            else {
+                continue;
+            };
+            return self.data_case_arm(ctor_node, &arguments, &aliases, body);
         }
+        let error = LowerError::MissingCaseArm {
+            constructor: node_kinds::DISCARD_BINDER,
+            byte_range: node.byte_range(),
+        };
+        if !bool::from(self.total()) {
+            return Err(error);
+        }
+        self.missing_arm(node)
+    }
 
-        let pattern = required_field(node, node_kinds::FIELD_PATTERN)?;
-        if pattern.kind() != node_kinds::CONSTRUCTOR_PATTERN {
-            return Err(LowerError::Unsupported {
-                kind: pattern.kind(),
-                byte_range: pattern.byte_range(),
-            });
+    /// Compiles one constructor-headed arm into its `DataCase` slot.
+    ///
+    /// # Contract
+    /// - ensures: the payload binder follows the arity discipline, the argument
+    ///   patterns' nesting wraps the body outermost-test-first, and the
+    ///   as-binders name the scrutinee around the whole arm.
+    /// - fails: [`LowerError::Unsupported`] naming an argument form outside the
+    ///   compiled set.
+    /// - panics: none.
+    fn data_case_arm(
+        &mut self,
+        ctor_node: SynNode<'_>,
+        arguments: &[pattern::PatternPlan<'_>],
+        aliases: &[(String, SynNode<'_>)],
+        body: COut,
+    ) -> LowerResult<(String, COut)>
+    {
+        let (components, nesting) = self.nest_arguments(arguments.to_vec())?;
+        let wrapped = self.fold_nesting(nesting, body)?;
+        let (payload, mut wrapped) = self.bind_payload(ctor_node, &components, wrapped)?;
+        // An as-binder names the scrutinee itself, so it wraps the whole arm
+        // rather than any one field; the innermost binder is applied first so
+        // source order reads outward.
+        for &(ref binder, alias_node) in aliases.iter().rev() {
+            wrapped =
+                Self::alias_value(alias_node, payload.as_str().into(), binder.clone(), wrapped)?;
         }
-        let constructor = required_field(pattern, node_kinds::FIELD_CONSTRUCTOR)?;
-        let name = {
-            let text = self.text(constructor)?;
-            core::convert::identity(text)
+        Ok((payload, wrapped))
+    }
+
+    /// The `case` with no constructor-headed arm at all: either the absurd
+    /// empty match, an arm set every one of whose arms is indeterminate, or an
+    /// arm set total-mode lowering dropped entirely.
+    ///
+    /// # Contract
+    /// - ensures: the absurd `case v {}` is the arm-less `DataCase`; an
+    ///   indeterminate arm set is one stuck hole; anything else is the total
+    ///   fallback hole.
+    /// - fails: strict mode fails on an arm set with no compilable arm.
+    /// - panics: none.
+    fn data_case_without_constructors(
+        &mut self,
+        node: SynNode<'_>,
+        rows: &[CaseRow<'_>],
+        scrut: VOut,
+        hoists: Vec<Hoist>,
+    ) -> LowerResult<COut>
+    {
+        if Self::case_arms_empty(node).into() {
+            // The absurd empty match `case v {}`: an arm-less `DataCase` over
+            // the scrutinee's (uninhabited) data type, which the core checks
+            // vacuously against the expected answer (declared-data design
+            // Decision 3).
+            let scrut_value = scrut.readback_value()?;
+            let body = COut::from_legacy_comp(
+                &Comp::DataCase(Rc::new(scrut_value), Vec::new()),
+                OriginNode::new(entry(node, None), alloc::vec![scrut.origin]),
+            )?;
+            return Self::wrap_hoists(hoists, body, node);
         }
-        .to_owned();
-        let Some(entry) = self.constructors.get(&name)
-        else {
-            return Err(LowerError::Unsupported {
-                kind: constructor.kind(),
-                byte_range: constructor.byte_range(),
-            });
-        };
-        let data_name = entry.0.clone();
-        let tag = ConstructorTag::from(entry.1);
-        let arity = self.field_arity(data_name.as_str().into(), tag);
-        let arguments: Vec<SynNode<'_>> =
-            pattern.children_by_field_name(node_kinds::FIELD_ARGUMENT);
-        // The pattern must bind exactly the constructor's fields.
-        if arguments.len() != usize::from(arity) {
-            return Err(LowerError::Unsupported {
-                kind: pattern.kind(),
-                byte_range: pattern.byte_range(),
-            });
+        // An arm set whose first settling arm is indeterminate settles nothing
+        // for any scrutinee, so the whole match is stuck on that hole — no
+        // datatype has to be resolved to say so.
+        let indeterminate = rows.iter().find_map(|row| match row.verdict {
+            | ArmVerdict::Indeterminate(ref stuck) => Some(stuck),
+            | ArmVerdict::Head { .. } | ArmVerdict::Declined { .. } => None,
+        });
+        if let Some(stuck) = indeterminate {
+            let stuck = Self::stuck_slot(stuck)?;
+            return Self::wrap_hoists(hoists, stuck, node);
         }
-        let binder_plan = match (arguments.first(), arguments.len()) {
-            // A nullary constructor binds nothing — a discard for the unit
-            // payload.
-            | (_, 0) => BinderPlan::Discard,
-            // A one-field constructor binds the field directly.
-            | (Some(&sole), 1) => {
-                let binder = self.pattern_binder(sole)?;
-                BinderPlan::Direct(binder)
-            },
-            // A many-field constructor binds a fresh payload variable, then
-            // destructures its product positionally into the field binders.
-            | _ => {
-                let binders = arguments
-                    .iter()
-                    .map(|&arg| self.pattern_binder(arg))
-                    .collect::<LowerResult<Vec<String>>>()?;
-                BinderPlan::Destructure(binders)
-            },
+        // Otherwise every arm dropped in total mode; fall back to a hole so
+        // the pipeline stays total.
+        let error = LowerError::Unsupported {
+            kind: node.kind(),
+            byte_range: node.byte_range(),
         };
-        let body_node = required_field(node, node_kinds::FIELD_BODY)?;
-        let body = self.comp_expr(body_node)?;
-        let (binder, body) = match binder_plan {
-            | BinderPlan::Discard => (node_kinds::DISCARD_BINDER.to_owned(), body),
-            | BinderPlan::Direct(binder) => (binder, body),
-            | BinderPlan::Destructure(binders) => self.destructure_payload(node, &binders, body)?,
-        };
-        Ok((data_name, tag, binder, body))
+        if !bool::from(self.total()) {
+            return Err(error);
+        }
+        let hole = self.comp_hole(node, &error)?;
+        Self::wrap_hoists(hoists, hole, node)
     }
 
     /// Wraps `body` in the nested `split`s that positionally destructure a
@@ -1044,7 +1133,7 @@ impl Lowerer<'_>
     /// - ensures: the returned body evaluates `body` under `binders` bound to
     ///   the payload's positional components (`binders.len() - 1` `split`s).
     /// - panics: none.
-    fn destructure_payload(
+    pub(super) fn destructure_payload(
         &mut self,
         arm_node: SynNode<'_>,
         binders: &[String],

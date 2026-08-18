@@ -99,6 +99,15 @@
 pub(crate) mod codata;
 pub(crate) mod data;
 pub mod node_kinds;
+#[cfg_attr(
+    dylint_lib = "non_topologically_sorted_functions",
+    allow(
+        unknown_lints,
+        non_topologically_sorted_functions,
+        reason = "the worklist modules place their public drivers before the step helpers for readability; the caller-before-callee rule conflicts with that deliberate top-down layout pending a layout redesign"
+    )
+)]
+mod pattern;
 mod recursion_surface;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -3359,6 +3368,13 @@ impl Lowerer<'_>
         node: SynNode<'_>,
     ) -> LowerResult<COut>
     {
+        // An arm set whose FIRST arm settles nothing settles nothing for any
+        // scrutinee, so the match is stuck before an eliminator is even
+        // chosen — and choosing one would mean reading a constructor family
+        // out of arms that name none.
+        if let Some(stuck) = self.case_stuck_at_the_first_arm(node)? {
+            return self.ascribe_answer(node, stuck);
+        }
         // A `case` over declared constructors, or an EMPTY `case v {}` (the
         // absurd match over an uninhabited datatype — no arm reveals the
         // constructor family, so it can only be the declared-data eliminator),
@@ -3375,6 +3391,48 @@ impl Lowerer<'_>
             self.sum_case(node)
         }?;
         self.ascribe_answer(node, body)
+    }
+
+    /// The whole `case` as one stuck hole, when its first arm is indeterminate
+    /// for every scrutinee.
+    ///
+    /// The scrutinee is still lowered and its hoists still wrap the result, so
+    /// the effects a scrutinee expression performs are performed exactly as
+    /// they would be if a branch had been taken. The match is still recorded
+    /// for the live analysis, so the verdicts a reader sees are the verdicts
+    /// the arms earn rather than the ones the compiler could act on.
+    ///
+    /// # Contract
+    /// - ensures: `Some` exactly when the first arm settles nothing for any
+    ///   scrutinee, and then the term is the scrutinee's hoists wrapped around
+    ///   one `Comp::Hole`.
+    /// - ensures: the hole is produced in strict mode as well as total mode — a
+    ///   hole the user wrote is a legitimate term, never a recovery artifact.
+    /// - fails: propagates scrutinee lowering failure.
+    /// - panics: none.
+    fn case_stuck_at_the_first_arm(
+        &mut self,
+        node: SynNode<'_>,
+    ) -> LowerResult<Option<COut>>
+    {
+        let Some(first) = named_non_extra_children(node)
+            .into_iter()
+            .find(|arm| arm.kind() == node_kinds::ARM)
+        else {
+            return Ok(None);
+        };
+        let Some(stuck) = self.arm_indeterminacy(first)?
+        else {
+            return Ok(None);
+        };
+        let mut hoists = Vec::new();
+        let scrut_node = required_field(node, node_kinds::FIELD_VALUE)?;
+        let scrut = self.value_expr(scrut_node, &mut hoists)?;
+        let scrut_value = scrut.readback_value()?;
+        self.record_match_site(node, &scrut_value);
+        let stuck = Self::stuck_slot(&stuck)?;
+        let wrapped = Self::wrap_hoists(hoists, stuck, node)?;
+        Ok(Some(wrapped))
     }
 
     /// Whether any arm of a `case` uses a list constructor (`Nil` / `Cons`), so
@@ -3413,9 +3471,17 @@ impl Lowerer<'_>
 
         let mut inl: Option<(String, COut)> = None;
         let mut inr: Option<(String, COut)> = None;
+        // The first arm that settles nothing stops every arm after it from
+        // being reachable, so the slots it leaves unfilled are stuck on its
+        // hole rather than missing.
+        let mut stuck: Option<pattern::StuckPattern> = None;
         for arm_node in named_non_extra_children(node) {
             if arm_node.kind() != node_kinds::ARM {
                 continue;
+            }
+            if let Some(indeterminate) = self.arm_indeterminacy(arm_node)? {
+                stuck = Some(indeterminate);
+                break;
             }
             // Total mode skips unlowerable arms (the module doc's recorded
             // skipped-arm coarseness); an unfilled `Inl`/`Inr` slot becomes
@@ -3444,36 +3510,17 @@ impl Lowerer<'_>
         }
         let left = match inl {
             | Some(left) => left,
-            | None => {
-                let error = LowerError::MissingCaseArm {
-                    constructor: node_kinds::NAME_INL,
-                    byte_range: node.byte_range(),
-                };
-                if !bool::from(self.total()) {
-                    return Err(error);
-                }
-                // The hole *is* the missing arm's body (total mode).
-                (node_kinds::DISCARD_BINDER.to_owned(), {
-                    let hole = self.comp_hole(node, &error)?;
-                    core::convert::identity(hole)
-                })
-            },
+            | None => (node_kinds::DISCARD_BINDER.to_owned(), {
+                let hole = self.unfilled_slot(node, node_kinds::NAME_INL.into(), stuck.as_ref())?;
+                core::convert::identity(hole)
+            }),
         };
         let right = match inr {
             | Some(right) => right,
-            | None => {
-                let error = LowerError::MissingCaseArm {
-                    constructor: node_kinds::NAME_INR,
-                    byte_range: node.byte_range(),
-                };
-                if !bool::from(self.total()) {
-                    return Err(error);
-                }
-                (node_kinds::DISCARD_BINDER.to_owned(), {
-                    let hole = self.comp_hole(node, &error)?;
-                    core::convert::identity(hole)
-                })
-            },
+            | None => (node_kinds::DISCARD_BINDER.to_owned(), {
+                let hole = self.unfilled_slot(node, node_kinds::NAME_INR.into(), stuck.as_ref())?;
+                core::convert::identity(hole)
+            }),
         };
         let body = COut::from_legacy_comp(
             &Comp::Case(
@@ -3565,9 +3612,16 @@ impl Lowerer<'_>
 
         let mut nil: Option<COut> = None;
         let mut cons: Option<(String, String, COut)> = None;
+        // As `sum_case`: the first arm that settles nothing stops every arm
+        // after it from being reachable.
+        let mut stuck: Option<pattern::StuckPattern> = None;
         for arm_node in named_non_extra_children(node) {
             if arm_node.kind() != node_kinds::ARM {
                 continue;
+            }
+            if let Some(indeterminate) = self.arm_indeterminacy(arm_node)? {
+                stuck = Some(indeterminate);
+                break;
             }
             // Total mode skips unlowerable arms (the recorded skipped-arm
             // coarseness); an unfilled `Nil`/`Cons` slot becomes a hole below.
@@ -3603,36 +3657,19 @@ impl Lowerer<'_>
 
         let nil = match nil {
             | Some(nil) => nil,
-            | None => {
-                let error = LowerError::MissingCaseArm {
-                    constructor: node_kinds::NAME_NIL,
-                    byte_range: node.byte_range(),
-                };
-                if !bool::from(self.total()) {
-                    return Err(error);
-                }
-                self.comp_hole(node, &error)?
-            },
+            | None => self.unfilled_slot(node, node_kinds::NAME_NIL.into(), stuck.as_ref())?,
         };
         let (head, tail, cons) = match cons {
             | Some(cons) => cons,
-            | None => {
-                let error = LowerError::MissingCaseArm {
-                    constructor: node_kinds::NAME_CONS,
-                    byte_range: node.byte_range(),
-                };
-                if !bool::from(self.total()) {
-                    return Err(error);
-                }
-                (
-                    node_kinds::DISCARD_BINDER.to_owned(),
-                    node_kinds::DISCARD_BINDER.to_owned(),
-                    {
-                        let hole = self.comp_hole(node, &error)?;
-                        core::convert::identity(hole)
-                    },
-                )
-            },
+            | None => (
+                node_kinds::DISCARD_BINDER.to_owned(),
+                node_kinds::DISCARD_BINDER.to_owned(),
+                {
+                    let hole =
+                        self.unfilled_slot(node, node_kinds::NAME_CONS.into(), stuck.as_ref())?;
+                    core::convert::identity(hole)
+                },
+            ),
         };
 
         let body = COut::from_legacy_comp(
