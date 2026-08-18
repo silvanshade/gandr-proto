@@ -306,9 +306,11 @@ impl Certificate
     /// - ensures: `nbe`'s semantic arena is left at the population it was
     ///   handed, whichever verdict is returned — each constraint replays inside
     ///   a watermark [`Self::replay_one`] truncates back to before it returns.
-    ///   The syntax store and its interner grow, identically on every verdict,
-    ///   because they are content-keyed caches a definitional environment names
-    ///   by handle; nothing truncation drops can be named through them.
+    ///   The syntax store and its interner do grow, and are not restored: they
+    ///   are content-keyed caches whose handles a definitional environment
+    ///   names, so nothing the truncation drops can be reached through them.
+    ///   How far they grow depends on which verdict is reached, because a
+    ///   refutation returns before replaying the remaining constraints.
     /// - provides: the self-certifying half of the service — a validator small
     ///   enough to read, resting entirely on machinery the solver does not own.
     /// - panics: none.
