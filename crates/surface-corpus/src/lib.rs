@@ -1893,6 +1893,73 @@ mod tests
     }
 
     #[test]
+    fn desc_mode_reports_the_eta_cells_a_declaration_licensed()
+    {
+        // The two η directives, both arms each. A wrapper declaration states
+        // the inverse face and licenses one cell; a two-constructor type
+        // licenses none and says which half is missing.
+        assert!(
+            check_case(concat!(
+                "data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; \
+                 rule unwrap(MkWrap(x)) ==> x; }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-eta-cells: 1\n"
+            ))
+            .is_empty(),
+            "the licensed declaration mints one η cell"
+        );
+        assert!(
+            check_case(concat!(
+                "data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; \
+                 rule unwrap(MkWrap(x)) ==> x; }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-eta-cells: 4\n"
+            ))
+            .iter()
+            .any(|failure| failure.contains("expected 4 η cell(s)")),
+            "a wrong η count fails with the measured count"
+        );
+        assert!(
+            check_case(concat!(
+                "data Pair : Type { Zip : Pair; Zap : Pair; oper fst(p : Pair) -> Pair; }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-no-eta: 2 constructors\n"
+            ))
+            .is_empty(),
+            "a two-constructor type licenses none, and the reason names the count"
+        );
+        assert!(
+            check_case(concat!(
+                "data Pair : Type { Zip : Pair; Zap : Pair; oper fst(p : Pair) -> Pair; }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-no-eta: no such wording\n"
+            ))
+            .iter()
+            .any(|failure| failure.contains("expected an η decline containing")),
+            "an unmatched η-decline substring reports the reasons it did find"
+        );
+        assert!(
+            parse_case(concat!(
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-eta-cells: several\n"
+            ))
+            .unwrap_err()
+            .contains("needs an integer"),
+            "a non-integer η count is rejected at parse time"
+        );
+    }
+
+    #[test]
     fn desc_mode_reports_the_cell_layer_wire()
     {
         // The description → cell store wire, exercised through the harness: a

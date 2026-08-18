@@ -1683,6 +1683,129 @@ mod tests
         );
     }
 
+    #[test]
+    fn the_inverse_face_is_recognized_by_its_shape_and_nothing_looser()
+    {
+        // Each way a face can fail to be the inverse, separated pointwise. The
+        // licence is a shape, so every near-miss has to miss.
+        use gandr_theory_levitation::Attrs;
+
+        let wrapper_with = |lhs: FreeTerm, rhs: FreeTerm| {
+            SignDesc::new(
+                NominalId::new(0_u64.into(), "Wrap"),
+                Vec::new(),
+                [CtorDesc::new(
+                    "MkWrap",
+                    Code::var("Nat"),
+                    "Wrap",
+                    Attrs::empty(),
+                )],
+                [OperDesc::new(
+                    "unwrap",
+                    BridgeArity::single_output(
+                        [SortRef::new("w", "Wrap")],
+                        SortRef::new("out", "Nat"),
+                    ),
+                    Attrs::empty(),
+                )],
+                [face(lhs, rhs)],
+                DeclPolarity::Data,
+                Attrs::empty(),
+            )
+        };
+        let unwrap_of = |inner: FreeTerm| FreeTerm::op("unwrap", [inner]);
+        let mk = |inner: FreeTerm| FreeTerm::ctor("MkWrap", [inner]);
+
+        for (label, desc) in [
+            (
+                "the face applies a different operation",
+                wrapper_with(
+                    FreeTerm::op("other", [mk(FreeTerm::var("x"))]),
+                    FreeTerm::var("x"),
+                ),
+            ),
+            (
+                "the operation is applied to a variable rather than a constructor",
+                wrapper_with(unwrap_of(FreeTerm::var("x")), FreeTerm::var("x")),
+            ),
+            (
+                "the face's left-hand side is not an operation application at all",
+                wrapper_with(mk(FreeTerm::var("x")), FreeTerm::var("x")),
+            ),
+            (
+                "the operation is applied to a different constructor",
+                wrapper_with(
+                    unwrap_of(FreeTerm::ctor("Other", [FreeTerm::var("x")])),
+                    FreeTerm::var("x"),
+                ),
+            ),
+            (
+                "the constructor's field is not a variable",
+                wrapper_with(
+                    unwrap_of(mk(FreeTerm::ctor("Zero", []))),
+                    FreeTerm::var("x"),
+                ),
+            ),
+            (
+                "the result is a different variable",
+                wrapper_with(unwrap_of(mk(FreeTerm::var("x"))), FreeTerm::var("y")),
+            ),
+            (
+                "the result is not a variable at all",
+                wrapper_with(unwrap_of(mk(FreeTerm::var("x"))), mk(FreeTerm::var("x"))),
+            ),
+            (
+                "the operation takes more than the constructed argument",
+                wrapper_with(
+                    FreeTerm::op("unwrap", [mk(FreeTerm::var("x")), FreeTerm::var("y")]),
+                    FreeTerm::var("x"),
+                ),
+            ),
+            (
+                "the constructor takes more than one field",
+                wrapper_with(
+                    unwrap_of(FreeTerm::ctor("MkWrap", [
+                        FreeTerm::var("x"),
+                        FreeTerm::var("y"),
+                    ])),
+                    FreeTerm::var("x"),
+                ),
+            ),
+        ] {
+            let elaborated = elaborate_data_desc(&desc);
+            assert!(
+                elaborated.eta.is_empty(),
+                "{label}: no η cell, because the licence is the inverse face's shape"
+            );
+            assert_eq!(
+                Some(EtaElaborateError::NoInverseFace),
+                elaborated.declined_eta,
+                "{label}: and the decline names the half that is missing"
+            );
+        }
+
+        // A face whose left-hand side is not an operation is also outside the
+        // fragment, so the description route declines it as a face too — the
+        // η licence and the elaboration gate are separate verdicts on one
+        // shape, and both are reported.
+        let not_an_operation = wrapper_with(mk(FreeTerm::var("x")), FreeTerm::var("x"));
+        let elaborated = elaborate_data_desc(&not_an_operation);
+        let &(index, ref error) = elaborated
+            .declined_faces
+            .first()
+            .expect("the face is declined by the elaboration gate as well");
+        assert_eq!(
+            DeclinedFaceIndex::from(0_usize),
+            index,
+            "the decline is reported against the face's own index"
+        );
+        assert_eq!(
+            &ElaborateError::LhsNotOperation,
+            error,
+            "and the decline names the shape the fragment cannot carry"
+        );
+    }
+
     /// A single-constructor `Wrap` description whose `unwrap` operation carries
     /// the inverse face — the shape an η law is licensed by.
     fn wrapper(polarity: DeclPolarity) -> SignDesc

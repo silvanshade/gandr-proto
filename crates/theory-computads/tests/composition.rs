@@ -973,6 +973,29 @@ mod tests
         (store, corpus)
     }
 
+    #[test]
+    fn a_recorded_cell_the_store_does_not_hold_contributes_no_endpoint()
+    {
+        // The defensive arm, exercised rather than assumed. A certificate
+        // records cell ids, and the gate resolves them against the store it is
+        // handed — so a certificate shown a store that no longer holds one of
+        // its cells must contribute nothing for that cell rather than refuse or
+        // panic. The gate is a bounded static check on whatever it is given.
+        let (store, left, right) = variance_pair(SeamHoleMixed(true), SeamHoleMixed(true));
+        compose_directed(&left, &right, &store)
+            .expect_err("the mixed pair declines against the store that holds its cells");
+
+        // The same two certificates, against an empty store: every recorded id
+        // resolves to nothing, so the graph has no nodes and nothing loops.
+        let empty = CellStore::new();
+        let composite = compose_directed(&left, &right, &empty)
+            .expect("no endpoint resolves, so no edge is drawn and the seam is acyclic");
+        assert_eq!(
+            left.overlap.peak, composite.overlap.peak,
+            "and the graft is still the sequential one"
+        );
+    }
+
     /// The **superseded** seam criterion, as an independent oracle.
     ///
     /// For each hole of `a`'s recorded join it collects the `(cell, hole)`

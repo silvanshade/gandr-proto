@@ -341,6 +341,83 @@ mod tests
         elaborated.descs
     }
 
+    #[test]
+    fn a_constructor_line_is_a_value_generator_and_every_refusal_renders()
+    {
+        // The two arms the declared fixtures do not reach. A body line may
+        // apply a constructor rather than an operation or a rewrite, which is
+        // the third role a label can be worn in; and each refusal has a reading
+        // a caller may show a user, which is worth having exercised rather than
+        // merely written.
+        let ctor_body = CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Ctor("Succ".into()),
+                [FreeTerm::var("x")],
+                "z",
+            ))],
+            "z",
+        );
+        let wiring = circuit_wiring(&ctor_body).expect("a constructor line reads as a diagram");
+        assert_eq!(
+            EdgeCount(1_usize),
+            wiring.edge_count(),
+            "one line, one generator"
+        );
+        let generator = wiring
+            .generators()
+            .first()
+            .expect("the diagram holds the line's generator");
+        assert_eq!(
+            gandr_theory_circuit_algebras::interface::GeneratorSort::Value,
+            generator.label.sort,
+            "a constructor head is worn in the value role"
+        );
+
+        let ground = CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("add".into()),
+                [FreeTerm::ctor("Zero", []), FreeTerm::var("y")],
+                "z",
+            ))],
+            "z",
+        );
+        let not_a_port = circuit_wiring(&ground).expect_err("a ground argument names no port");
+        assert!(
+            alloc::format!("{not_a_port}").contains("Zero(…)"),
+            "the refusal names the argument it could not read"
+        );
+
+        let line = |head: &str| {
+            CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op(head.into()),
+                [FreeTerm::var("x")],
+                "z",
+            ))
+        };
+        let fan_in = CircuitBody::new([line("f"), line("g")], "z");
+        let not_a_wiring = circuit_wiring(&fan_in).expect_err("two lines cannot bind one port");
+        assert!(
+            alloc::format!("{not_a_wiring}").contains("not a wiring diagram"),
+            "the refusal says the diagram is the thing that refused it"
+        );
+        assert!(
+            alloc::format!("{}", CircuitEmbedError::Wiring(not_a_wiring))
+                .contains("not a wiring diagram"),
+            "and the embedding error passes a reading refusal through unchanged"
+        );
+
+        let descs = declared_descs(TestText(NESTED_CONGRUENCES));
+        let desc = signature_with_circuits(&descs);
+        let cong1 = named_circuit(desc, RuleName("cong1"));
+        let cong2 = named_circuit(desc, RuleName("cong2"));
+        let exhausted = embed_circuit_rule(&cong1.body, &cong2.body, MatchBudget(0_usize))
+            .expect_err("a zero budget cannot complete a search");
+        assert!(
+            alloc::format!("{exhausted}").contains("larger budget"),
+            "and a search decline says what to do about it"
+        );
+    }
+
     /// The one description of `descs` that declares circuit rules — the source
     /// carries a `data` block beside its `sign` block, and only the second has
     /// any.

@@ -860,6 +860,52 @@ mod tests
         );
     }
 
+    #[test]
+    fn the_root_position_is_the_only_one_that_reports_root()
+    {
+        assert!(
+            bool::from(Pos::root().is_root()),
+            "the empty path is the root"
+        );
+        assert!(
+            !bool::from(Pos::from_indices([0_usize]).is_root()),
+            "and one step down is not"
+        );
+    }
+
+    #[test]
+    fn the_per_category_sizes_count_their_own_subtree()
+    {
+        // The three size faces agree on one term: a cut is its two halves plus
+        // itself, so the whole exceeds each part by more than one only because
+        // the parts are counted whole.
+        let cmd = peano_add_s();
+        let CmdPat::Cut {
+            ref prod, ref cons, ..
+        } = cmd;
+        let producer = prod_size(prod);
+        let consumer = cons_size(cons);
+        assert_eq!(
+            PatternSize::from(2_usize),
+            producer,
+            "`Succ(m)` is the constructor and its argument"
+        );
+        assert_eq!(
+            PatternSize::from(3_usize),
+            consumer,
+            "`add(n; α)` is the frame, its argument, and its return continuation"
+        );
+        assert_eq!(
+            PatternSize::from(
+                usize::from(producer)
+                    .saturating_add(usize::from(consumer))
+                    .saturating_add(1_usize)
+            ),
+            cmd_size(&cmd),
+            "and the cut is both halves plus itself"
+        );
+    }
+
     fn peano_add_s() -> CmdPat
     {
         // ⟨Succ(m) | add(n; α)⟩
