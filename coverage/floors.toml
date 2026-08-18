@@ -115,6 +115,7 @@ target_percent = 80.00
 "crates/surface-engine/src/lower.rs" = 85.18
 "crates/surface-engine/src/lower/codata.rs" = 78.35
 "crates/surface-engine/src/lower/data.rs" = 83.58
+"crates/surface-engine/src/lower/pattern.rs" = 89.69
 "crates/surface-engine/src/lower/recursion_surface.rs" = 92.42
 "crates/surface-engine/src/lower/recursive.rs" = 82.77
 "crates/surface-engine/src/lower/types.rs" = 86.11

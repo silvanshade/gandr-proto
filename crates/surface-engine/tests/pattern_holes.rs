@@ -33,8 +33,12 @@ mod tests
 
     use gandr_core_term::outcome::Blame;
     use gandr_core_term::outcome::Eval;
+    use gandr_core_term::syntax::Comp;
     use gandr_core_term::syntax::Value;
     use gandr_runtime_effects::ShellOutcome;
+    use gandr_surface_engine::lower::lower_source_total;
+    use gandr_surface_engine::origin::TermRef;
+    use gandr_surface_engine::origin::resolve;
     use gandr_surface_engine::run::RunError;
     use gandr_surface_engine::run::run_source;
     use gandr_surface_engine::session::Session;
@@ -441,6 +445,63 @@ mod tests
                 .iter()
                 .any(|note| note.contains("IndeterminatePattern") && note.contains("branch")),
             "the `?name` identifier is what addresses the hole in the goal stream"
+        );
+    }
+
+    // --- The path into a compiled arm ----------------------------------------
+
+    /// Every arm body of a declared-data case is addressable by an origin path,
+    /// and an index past the last constructor addresses nothing.
+    ///
+    /// The stepper carried no arm for this eliminator at all, so nothing inside
+    /// one could be addressed — which is why the notes above reached no
+    /// consumer until it did. The out-of-range half is the same claim from the
+    /// other side: the walk stops at the constructor count rather than reading
+    /// past it.
+    #[test]
+    fn every_arm_of_a_declared_data_case_is_addressable()
+    {
+        let source = alloc::format!(
+            "{COLOR} def c = (Red : Color); case c {{ Red => ret 0, Green => ret 1, Blue => ret 2 \
+             }}"
+        );
+        let lowered = lower_source_total(source.as_str().into())
+            .expect("total lowering fails only when the parser is unavailable");
+        let Some(item) = lowered.items.last()
+        else {
+            panic!("expected the case item, got none");
+        };
+        let term = &item.term;
+        for tag in 0 .. 3_u32 {
+            let arm = tag.checked_add(1).expect("three arms fit");
+            let path = alloc::vec![arm];
+            assert!(
+                matches!(
+                    resolve(term, path.as_slice()),
+                    Some(TermRef::Comp(&Comp::Ret(_)))
+                ),
+                "arm at tag {tag} must be addressable as child {arm}"
+            );
+        }
+        let scrutinee = alloc::vec![0_u32];
+        assert!(
+            matches!(resolve(term, scrutinee.as_slice()), Some(TermRef::Value(_))),
+            "the scrutinee is the value child"
+        );
+        let past_end = alloc::vec![4_u32];
+        assert!(
+            resolve(term, past_end.as_slice()).is_none(),
+            "an index past the last constructor addresses nothing"
+        );
+        // A node with no child at the asked index addresses nothing either,
+        // and the two answers come from different places: the case walks its
+        // own arm vector, every other former falls through to the stepper's
+        // catch-all. Both are pinned because the case arm was added between
+        // them and could have swallowed the second.
+        let inner = alloc::vec![1_u32, 1_u32];
+        assert!(
+            resolve(term, inner.as_slice()).is_none(),
+            "the first arm's `ret` has no child at index one"
         );
     }
 

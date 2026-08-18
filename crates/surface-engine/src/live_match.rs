@@ -810,7 +810,7 @@ fn take_built(
 ///
 /// **This is not the identity the compiled term carries.** A pattern hole that
 /// stops a match reaches the core as a `Comp::Hole` whose identity comes from
-/// the lowerer's own allocator ([`crate::lower::pattern`]), so the goal stream
+/// the lowerer's own allocator, in the arm-compilation seam, so the goal stream
 /// addresses it exactly as it addresses an expression hole. The two
 /// identities answer different questions — which unfinished test this is, and
 /// which core node stands for it — and neither is derivable from the other.
