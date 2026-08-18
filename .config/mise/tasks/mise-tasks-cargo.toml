@@ -23,23 +23,25 @@ export RUSTUP_TOOLCHAIN
 # Trailing task arguments are package names: bare runs lint the whole workspace
 # (the merge-wall scope), while `mise run cargo:clippy gandr-theory-computads`
 # lints only the named packages for fast per-module iteration. Package-scoped
-# runs enable `full` only when every selected package declares that feature.
+# runs qualify `full` per package so mixed selections retain each declared
+# feature without inventing one for packages that do not declare it.
 clippy_scope() {
   if [ "$#" -eq 0 ]; then
-    set -- --workspace --all-features
+    set -- --workspace --features=full
   else
     metadata=$(cargo metadata --no-deps --format-version 1)
-    has_full=true
+    features=
     for package in "$@"; do
-      if ! printf '%s' "$metadata" | jq -e --arg package "$package" \
+      if printf '%s' "$metadata" | jq -e --arg package "$package" \
         '.packages[] | select(.name == $package) | .features | has("full")' >/dev/null
       then
-        has_full=false
+        features="$features $package/full"
       fi
     done
+    features=${features# }
     set -- $(for package in "$@"; do printf -- '--package %s ' "$package"; done)
-    if [ "$has_full" = true ]; then
-      set -- "$@" --features=full
+    if [ -n "$features" ]; then
+      set -- "$@" --features="$features"
     fi
   fi
   cargo clippy "$@" --all-targets -- -D warnings -A clippy::std_instead_of_core

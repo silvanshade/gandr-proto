@@ -122,7 +122,7 @@ const EXPECTED_DYLINT_FACADE_TASKS: &[&str] = &["cargo:dylint:local", "cargo:dyl
 /// hole takes the task's trailing package arguments and defaults to the whole
 /// workspace — the default is locked separately, so the merge wall's bare
 /// invocation keeps the enabled-workspace scope. Package-scoped invocations
-/// select `full` only when every named package declares it.
+/// qualify `full` per package, including mixed selections.
 const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "cargo",
     "clippy",
@@ -1278,14 +1278,20 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     assert!(
         cargo_clippy_script
             .0
-            .contains("set -- \"$@\" --features=full"),
-        "packages declaring full must retain that feature in scoped Clippy"
+            .contains("features=\"$features $package/full\""),
+        "package-scoped cargo:clippy must qualify full per package"
     );
     assert!(
         cargo_clippy_script
             .0
-            .contains("set -- --workspace --all-features"),
-        "workspace cargo:clippy must retain the all-features wall"
+            .contains("set -- \"$@\" --features=\"$features\""),
+        "mixed package selections must pass all declared features together"
+    );
+    assert!(
+        cargo_clippy_script
+            .0
+            .contains("set -- --workspace --features=full"),
+        "workspace cargo:clippy must retain its original full-feature wall"
     );
     let clippy_commands = parse_cargo_invocations(cargo_clippy_script);
     let [ref workspace_pass] = *clippy_commands.as_slice()
