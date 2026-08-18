@@ -12,11 +12,11 @@
 
 use alloc::rc::Rc;
 
-use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::term::syntax::Comp;
-use gandr_core_checker::term::syntax::Side;
-use gandr_core_checker::term::syntax::Value;
 use gandr_core_sequent::machine::run_comp;
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Value;
 
 /// The fixture the compile host reads, relative to this crate's manifest.
 const FIXTURE_PATH: &str = "../../runtime/compile-host/fixtures/positive-core-samples.txt";
