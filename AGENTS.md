@@ -46,7 +46,7 @@ The full statement of the identifier rule, with the anchoring and linking conven
 
 ## Description is a hypothesis, not evidence
 
-**Any text describing an artifact is a guide to what to expect, and never proof of what is.** This binds on every describing surface in this tree without exception: Rust doc comments and rustdoc, per-crate status files, corpus example prose, the specification corpus, tracker items, and commit messages.
+**Any text describing an artifact is a guide to what to expect, and never proof of what is.** This binds on every describing surface in this tree without exception: Rust doc comments and rustdoc, crate READMEs, corpus example prose, the specification corpus, tracker items, and commit messages.
 Read it to know where to look and what shape to expect.
 **Then verify against the thing itself** — the definition, the rule, the test, the tree.
 
@@ -72,6 +72,11 @@ That is the normal case, not an unlucky one.
 - **Surgical changes; structural evaluation first.** Make the task-scoped change without unrelated rewrites, but first ask whether the change should extract shared functionality, prune duplication, or draw a module boundary.
   Act when that remains in scope; otherwise file a tracker item.
   Surface the opportunity either way.
+- **A crate is simple and does one thing well, and buildout keeps testing that.** Before adding functionality to a large crate, ask whether the addition belongs in a new or split-out subcrate — a submodule with multiple consumers (the parent crate plus any other workspace crate, tests included) is the strongest signal.
+  Act when the split remains in scope; otherwise extend the reorganization programme epic `gandr-sewb`.
+  Surfacing the opportunity is mandatory either way.
+- **A touched crate carries its README, and its docs stay simple.** An agent touching a crate that lacks a `README.md` writes it in the same change, in the shape [`docs/workflow/docs.md`](docs/workflow/docs.md) §"The crate README" rules; a non-conforming README is rewritten to that shape.
+  Crate-side documentation is simple item-level rustdoc plus the design-by-contract detail; detailed theoretical exposition is reduced out of comments once confirmed held in the design record, and a doc or comment found stale, historical, or stateful is rewritten on contact rather than deferred.
 - **Leave touched areas better.** Report undocumented engineering improvements and hazards; noticing and staying silent is the failure mode.
   Descriptions that disagree with what they describe are the highest-frequency instance — see §"Description is a hypothesis, not evidence" for the routing and the reporting obligation.
 - **State uncertainty.** Say when current code or documentation does not prove a claim, and report unexpected harness, tool, or configuration failures immediately.
@@ -92,6 +97,7 @@ Work here often arrives **dispatched from the maintainer's private research work
 - **The only reference to that private context this repository admits is an `ss-` bead identifier, cited in a bead** ([`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The `ss-` identifier is the one permitted reference to the maintainer's private research context").
   Tracked content — code, tests, documentation, commit messages — carries no such reference, and every landing must stand on its own: a contributor without access to that workspace must be able to understand it from this repository alone.
 - Dispatched work lands through this repository's own worktree lifecycle and merge wall, exactly as native work does.
+- Closeout on this side keeps [`ARCHITECTURE.md`](ARCHITECTURE.md) current: a landing that adds, splits, or retires a crate, or moves a tier edge, updates the map in the same arc.
 
 ## Owner decisions and the bright line
 
@@ -221,5 +227,5 @@ A finished task leaves durable state: tracker items updated and synchronized, de
 At session close:
 
 - complete the lifecycle in [`docs/workflow/worktrees.md`](docs/workflow/worktrees.md), [`docs/workflow/ci.md`](docs/workflow/ci.md), and [`docs/workflow/tracker.md`](docs/workflow/tracker.md);
-- keep history local while no remote exists; once one exists, push reviewed, signed work to `main` at arc boundaries rather than per commit;
+- push reviewed, signed work to `main` at arc boundaries rather than per commit;
 - apply the consolidated residuals-bead rule from the tracker workflow, marking inapplicable faces explicitly.

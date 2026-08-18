@@ -13,7 +13,7 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 
 ## Source of truth
 
-- **Code**: local `main` only — no git remote is configured during the reboot bootstrap; once the gandr remote lands, `main` receives **signed** pushes only.
+- **Code**: `main`, with the `origin` remote receiving **signed** pushes only, at arc boundaries rather than per commit.
 - **Work**: beads (prefix `gandr-`) in a local Dolt database syncing out-of-band from git to DoltHub — push after every write, pull before reads ([workflow/tracker.md](workflow/tracker.md)).
 - **Design**: the specification corpus (cited as `spec:`, held outside this repository) is authoritative over every other document in this tree; programme ordering lives in `gandr-e08j`, and `gandr-fcw` retains the reboot rationale while the per-file `docs/adr/` log remains deferred until a decision log is deliberately re-introduced.
   Deep design context also arrives **dispatched** from the maintainer's private research workspace (`AGENTS.md` §"Dispatched work"); what this repository relies on is restated here, and beads may cite that context as `ss-` identifiers.

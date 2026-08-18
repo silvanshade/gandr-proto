@@ -8,24 +8,39 @@
 ## Documentation economy — the gandr posture
 
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
-The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
-Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (owner, 2026-07-21, `gandr-fid.0`; the 2026-07-21 fidelity audits measured the first absorption pass at ~50-70% retention because this scoping was implicit).
+The standing posture: **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
+Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (`gandr-fid.0`; the fidelity audits measured a first absorption pass at ~50-70% retention because this scoping was implicit).
 Every `spec:` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
 - **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
 - **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
 - **Concise, scannable, chunked** — lead with a summary or table; split by concern instead of appending.
-- **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
+- **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here"): reachable from it, never inlined into it.
 - **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
   When uncertain whether content is load-bearing, treat it as load-bearing.
   For spec absorption — work that happens in the corpus's own workspace, not here — the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree.
 - **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the contributor's private workspace, never in the tracked tree (`AGENTS.md` §"Commits and publishable history").
   What a survey _decides_ gets distilled into the design record; the survey itself does not move into `docs/`.
 
-Per-crate `crates/*/docs/STATUS.xml` is the lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
-Legacy `STATUS.md` migrates opportunistically.
-CHANGELOG is retired as a document class: fold dated changes into STATUS plus beads and git history; do not create a new CHANGELOG in either format.
-Per-crate ADR/METRICS/OPTIMIZATION files are legacy material outside the three prose classes, and TODO files are retired because beads tracks work.
+**The per-crate `docs/` tier is retired entirely** — no STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION, or TODO files under any crate, in either format; beads tracks work, the root `CHANGELOG.md` is the one changelog, and the relocated records live in the maintainer's private research workspace.
+
+## The crate README
+
+**Every workspace crate carries a `README.md`, and an agent touching a crate that lacks one writes it in the same change.** The README is **brief and concise** — a routing surface, not a design document — and it states, in order:
+
+- what the crate is intended for, with a short explanation and **no detailed theory**;
+- what the crate currently provides;
+- what the crate has planned but not yet implemented;
+- how to **use** the crate, where usage is meaningful — not every crate needs this;
+- the theoretical ideas the crate relies on, by name (tracelets, circuit algebras, and kin);
+- the primary theoretical resources — papers, books — the crate relies on, cited **fully explicitly**: full title, authors, year, and a stable identifier (DOI, ISBN, arXiv id).
+  Never a bare citekey — this repository holds no reference register.
+
+An existing README that does not fit this shape is rewritten to it, and content outside the shape is dropped or rehomed.
+
+**Crate-side documentation beyond the README is simple item-level rustdoc plus the design-by-contract detail** (`# Contract` / `# Adequacy`, per [rust.md](rust.md)).
+Detailed theoretical exposition does not live in doc comments: it belongs to the design record, and a comment found carrying it is reduced once its content is confirmed held there.
+A crate doc or comment found stale, historical, or stateful — narrating what the code used to do, carrying retired ADR prose or forbidden reference styles — **is rewritten on contact rather than deferred**: the timeless voice, the reference discipline, nothing else.
 
 ## Specification corpus and the doc tool
 
@@ -39,16 +54,16 @@ They share one minimal block/inline substrate (`section`, `prose`, `list`, `tabl
 - **research records** — `<research-record>`: status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), bibliography citations.
   **This class has no home in this repository any more**: `docs/research/` left with the corpus, and the class definition survives only for the parked tool's revisit.
 - **workflow docs** — `docs/workflow/*.xml` (`<workflow-doc>`): a required `read-when` banner and rule/convention lists.
-- **the per-crate lean tier** — `crates/*/docs/STATUS.xml` (`<crate-status>`): a `crate` scope, dated sections, current-state prose.
+- **the per-crate lean tier** — `<crate-status>`: **this class has no home in this repository any more** — the per-crate `docs/` tier is retired, and the class definition survives only for the parked tool’s revisit.
 
 The status lifecycle is the shared five-value vocabulary (`built | partial | adopted-unbuilt | design-pass | dormant`); a research proposal under review authors as `design-pass`, its human status phrase carried in the banner.
 
-**The tool is parked** (owner directive, 2026-07-30): the crate is commented out of the workspace pending a complete revisit, so its class gate (`check-docs`) and its `docs-xml` treefmt formatter are both disabled and the wiring is kept verbatim for the revisit.
-Until it returns, the three tracked `.xml` documents are unformatted and unvalidated by any gate — treat that as the reason to keep the Markdown tail rather than as licence to author more XML by hand.
+**The tool is parked**: the crate is commented out of the workspace pending a complete revisit, so its class gate (`check-docs`) and its `docs-xml` treefmt formatter are both disabled and the wiring is kept verbatim for the revisit.
+Until it returns, the tracked `.xml` document — `docs/workflow/beads-graph-sweep.xml` — is unformatted and unvalidated by any gate — treat that as the reason to keep the Markdown tail rather than as licence to author more XML by hand.
 
-**Authoring policy (`gandr-712`).** A class with an XML home takes new documents as **XML**, not Markdown; Markdown is the legacy tail there (research, workflow, per-crate STATUS), migrating opportunistically when touched, never in a mass sweep.
+**Authoring policy (`gandr-712`).** A class with an XML home takes new documents as **XML**, not Markdown; Markdown is the legacy tail there (workflow docs), migrating opportunistically when touched, never in a mass sweep.
 The design corpus is the exception and is not on that path: it authors as Markdown under `spec:`.
-CHANGELOG has no XML class and is retired: do not create one in either format; fold dated changes into STATUS plus beads and git history.
+CHANGELOG has no XML class and is retired below the root: do not create a per-crate one in either format; dated changes go to the root `CHANGELOG.md` plus beads and git history.
 `.md` and `.xml` coexist until those tails are gone.
 The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail and for the design corpus — they are the workarounds for Markdown's lack of first-class math.
 Repository entrypoints whose consumers require Markdown names (`README.md`, `AGENTS.md`, `CLAUDE.md`) are routing adapters, not authored-document classes: keep them thin and point substantive material into the class homes.
@@ -90,7 +105,7 @@ Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the c
 
 ## The unordered-list marker is `-`
 
-Every unordered list takes `-`, at every nesting depth (owner ruling, 2026-08-10); `rumdl.toml` `[ul-style] style = "dash"` is what enforces it, and MD004 under `treefmt` is where a stray marker is caught.
+Every unordered list takes `-`, at every nesting depth; `rumdl.toml` `[ul-style] style = "dash"` is what enforces it, and MD004 under `treefmt` is where a stray marker is caught.
 The two reasons are both about what the character does when it is _not_ being read as a marker.
 `*` is also the emphasis token, so a leading `*` and an emphasis span opened later on the same line are one character playing two roles — the ambiguity the section below spends its length on.
 And `*` is auto-paired by editors, which completes the typed marker into `**` and turns a new list item into a dangling strong-emphasis run.
