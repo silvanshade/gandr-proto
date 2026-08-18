@@ -303,7 +303,12 @@ impl CheckpointStore for FileCheckpointStore
     ///   itself rests on `create_new`'s exclusivity and the `AlreadyExists`
     ///   arm, which a reader checks. The partial-write leg is likewise
     ///   structural: the guard is armed before the first byte, and no reachable
-    ///   input fails a write to a file just created.
+    ///   input fails a write to a file just created. Its ordering — close the
+    ///   handle, then let the guard unlink — is likewise unwitnessable here,
+    ///   because the platform that refuses to unlink an open file is not the
+    ///   one these tests run on; the explicit `drop` is what makes the
+    ///   documented cleanup hold off Unix, and a comment at the call says so
+    ///   because reverse-declaration drop order would silently undo it.
     /// - witness: `tests::a_failed_file_store_strands_no_temporary_in_the_record_directory`
     /// - witness: `tests::a_store_never_writes_through_a_file_it_did_not_create`
     /// - witness: `tests::concurrent_stores_of_one_address_leave_the_record_and_no_temporary`
@@ -373,8 +378,9 @@ impl TemporaryRecord
     /// - provides: the staging half of the store's atomic replacement.
     /// - fails: [`CheckpointStoreError::Io`] when a candidate cannot be created
     ///   for a reason other than already existing, when the write fails — in
-    ///   which case the partly written file is removed before returning — or
-    ///   when [`MAX_TEMPORARY_ATTEMPTS`] consecutive candidates already exist.
+    ///   which case the handle is closed and the partly written file removed
+    ///   before returning, in that order and on every platform — or when
+    ///   [`MAX_TEMPORARY_ATTEMPTS`] consecutive candidates already exist.
     /// - panics: none.
     ///
     /// # Errors
@@ -413,6 +419,13 @@ impl TemporaryRecord
             };
             let written = std::io::Write::write_all(&mut file, artifact)
                 .and_then(|()| std::io::Write::flush(&mut file));
+            // Close the handle here, explicitly, before either exit. Locals drop
+            // in reverse declaration order, so leaving this to scope exit would
+            // run the guard's `remove_file` while the file is still open — which
+            // Unix permits and Windows refuses, making the documented cleanup
+            // platform-dependent. The rename on the success path wants the
+            // handle closed for the same reason.
+            drop(file);
             let outcome = written.map_err(|error| {
                 drop(error);
                 CheckpointStoreError::Io
