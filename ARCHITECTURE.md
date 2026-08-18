@@ -13,21 +13,23 @@ It routes into the authoritative docs instead of restating them; where two docs 
 
 gandr is a dependently typed language and shell built around a minimal certified kernel.
 A polarized CBPV core is checked by a bidirectional typing machine, lowered by static focusing onto a polarized System-L command IL, and executed by the L machine.
+The compiled route for that IL is MLIR, reached through a C++26 host under `runtime/compile-host/`; its first slice compiles the positive core.
 Higher-dimensional rewriting — budgeted Squier completion over an oriented cell store, with replayable tracelet certificates reflected through a virtual-double-category judgement layer — is the computational-univalence story.
 Persistence is content-addressed and untrusted; the mechanized metatheory is Agda and lives in the separate `gandr-metatheory` repository.
 
 ## Repository layout
 
-| Path                                     | Holds                                                                                                            |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `crates/`                                | the Rust workspace; the domains, the member count and its counting convention are below                          |
-| `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
-| `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
-| `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))          |
-| `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                                  |
-| `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                       |
-| `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
-| [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog; the per-crate `docs/` tier it replaced is gone                                   |
+| Path                                     | Holds                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `crates/`                                | the Rust workspace; the domains, the member count and its counting convention are below                     |
+| `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                    |
+| `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace          |
+| `runtime/`                               | the C++ tree: the C++26 MLIR compilation host, built by CMake against a discovered MLIR, off the merge wall |
+| `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))     |
+| `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                             |
+| `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                  |
+| `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                           |
+| [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog; the per-crate `docs/` tier it replaced is gone                              |
 
 Referenced by guidance but not landed: hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
 
@@ -125,13 +127,17 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
    Source: [docs/workflow/docs.md](docs/workflow/docs.md).
 8. **History is publishable.** Tracked content and commit messages are project-concern only; contributor-concern material lives outside the tree.
    Source: [AGENTS.md](AGENTS.md).
+9. **The compilation host is discovered, not pinned, and therefore off the merge wall.** `runtime/compile-host/` builds against an installed MLIR whose version must match the compiling clang; the wall is Rust-only, and the host's own gates are the `compile-host:*` tasks.
+   What the wall does carry is the Rust half of the host's agreement differential: `crates/core-sequent/tests/compile_host_agreement.rs` holds `runtime/compile-host/fixtures/positive-core-samples.txt` to what the L machine answers, and the host's `jit_agrees_with_the_fixture_on_every_sample` case holds the compiled slice to the same file.
+   Sources: [runtime/compile-host/README.md](runtime/compile-host/README.md), [.config/mise/tasks/mise-tasks-compile-host.toml](.config/mise/tasks/mise-tasks-compile-host.toml).
 
 ## Routing
 
-| Question                     | Authoritative source                                                                                     |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| What is the language design? | `spec:README.md` — the four track documents, held outside this repository                                |
-| Why was it decided?          | the project's pages in the maintainer's private research workspace + the beads tracker                   |
-| What is a crate's status?    | its `Cargo.toml` description and its crate-root rustdoc — the per-crate `docs/` tier is gone             |
-| How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                            |
-| What studies back a design?  | the design record itself — the studies behind it are held in the maintainer's private research workspace |
+| Question                      | Authoritative source                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| What is the language design?  | `spec:README.md` — the four track documents, held outside this repository                                        |
+| Why was it decided?           | the project's pages in the maintainer's private research workspace + the beads tracker                           |
+| What is a crate's status?     | its `Cargo.toml` description and its crate-root rustdoc — the per-crate `docs/` tier is gone                     |
+| What compiles gandr natively? | [runtime/compile-host/README.md](runtime/compile-host/README.md) — the slice it covers and the block it does not |
+| How do I work on X?           | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                                    |
+| What studies back a design?   | the design record itself — the studies behind it are held in the maintainer's private research workspace         |
