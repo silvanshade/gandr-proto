@@ -234,6 +234,7 @@ mod tests
     use gandr_theory_cell_complexes::EventIndex;
     use gandr_theory_cell_complexes::PositionOrder;
     use gandr_theory_cell_complexes::PrimMultiplicity;
+    use gandr_theory_cell_complexes::ReplayLevel;
     use gandr_theory_cell_complexes::TranspositionCount;
     use gandr_theory_cell_complexes_tools::adversarial::CollidingAddresses;
     use gandr_theory_cell_complexes_tools::adversarial::IncomparablePositions;
@@ -528,6 +529,102 @@ mod tests
         assert!(
             bool::from(replay_equivalent(&a, &b, &store)),
             "and the replay oracle identifies them all the same — NF-distinct means nothing"
+        );
+    }
+
+    #[test]
+    fn a_two_member_replay_level_reaches_one_term_in_both_permitted_orders()
+    {
+        // The sequent alphabet remains a singleton by construction: one sequent
+        // command has one command position, so no two applications can share a
+        // replay level. This fixture uses the dev-only toy inhabitant instead,
+        // where the two leaf positions are genuinely independent.
+        let (store, _cell, peak, forward) = spine_fixture(RedexCount(2));
+        let backward = alloc::vec![forward[1].clone(), forward[0].clone()];
+        let join = run(&store, &peak, &forward);
+        assert_eq!(
+            join,
+            run(&store, &peak, &backward),
+            "both permitted within-level orders reach the same term"
+        );
+
+        let forward_witness = normalize_certified(&store, &peak, &join, &forward)
+            .expect("the forward independent order replays");
+        let backward_witness = normalize_certified(&store, &peak, &join, &backward)
+            .expect("the backward independent order replays");
+        let forward_plan = forward_witness.replay_plan();
+        let backward_plan = backward_witness.replay_plan();
+        assert_eq!(
+            CausalDepth::from(1_usize),
+            forward_plan.critical_path(),
+            "two independent positions occupy one replay level"
+        );
+        assert_eq!(
+            forward_plan.levels().len(),
+            backward_plan.levels().len(),
+            "both plans preserve the same dependency-level count"
+        );
+        assert_eq!(
+            2,
+            forward_plan
+                .levels()
+                .first()
+                .expect("the independent level exists")
+                .len(),
+            "the level retains both distinct applications"
+        );
+        let level = forward_plan
+            .levels()
+            .first()
+            .expect("the independent level exists");
+        assert_ne!(
+            level[0].at, level[1].at,
+            "the batch contains two distinct positions rather than one reused position"
+        );
+        assert_ne!(
+            forward, backward,
+            "the fixture supplies two distinct permitted within-level orders"
+        );
+
+        let forward_reached = forward_plan
+            .replay_with_fuel(&store, forward_plan.critical_path())
+            .expect("the forward critical-path budget is sufficient")
+            .expect("the forward plan returns a reached term");
+        let backward_reached = backward_plan
+            .replay_with_fuel(&store, backward_plan.critical_path())
+            .expect("the backward critical-path budget is sufficient")
+            .expect("the backward plan returns a reached term");
+        assert_eq!(
+            join, forward_reached,
+            "forward replay reaches the declared join"
+        );
+        assert_eq!(
+            join, backward_reached,
+            "backward replay reaches the declared join"
+        );
+        assert_eq!(
+            forward_witness.normal_form(),
+            backward_witness.normal_form(),
+            "the certified normal forms agree exactly"
+        );
+        assert!(
+            bool::from(replay_equivalent(
+                &tracelet_over(&peak, &join, forward.clone(), forward),
+                &tracelet_over(&peak, &join, backward.clone(), backward),
+                &store,
+            )),
+            "the two certificates agree at replay-equivalence"
+        );
+        assert!(
+            matches!(
+                forward_plan.replay_level(
+                    &store,
+                    &ToyAlphabet::skolemize(&peak),
+                    ReplayLevel::from(1_usize),
+                ),
+                Err(NormalFormObstruction::InvalidReplayLevel { .. })
+            ),
+            "a second level is refused rather than serializing the batch"
         );
     }
 
