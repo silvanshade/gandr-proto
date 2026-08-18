@@ -55,7 +55,7 @@ The order-maintenance problem; list-labeling over a sparse integer universe; pre
 
 ## Primary references
 
-- Dietz and Sleator, _Two Algorithms for Maintaining Order in a List_, Proceedings of the Nineteenth Annual ACM Symposium on Theory of Computing (STOC 1987), 365–372, `doi:10.1145/28395.28434` — the problem statement this crate solves.
-- Itai, Konheim and Rodeh, _A Sparse Table Implementation of Priority Queues_, Automata, Languages and Programming (ICALP 1981), Lecture Notes in Computer Science 115, 417–431, `doi:10.1007/3-540-10843-2_34` — the list-labeling scheme the relabel rule here refines.
-- Bender, Cole, Demaine, Farach-Colton and Zito, _Two Simplified Algorithms for Maintaining Order in a List_, Algorithms (ESA 2002), Lecture Notes in Computer Science 2461, 152–164, `doi:10.1007/3-540-45749-6_17` — the simplified algorithms and the amortized analysis the density cap is taken from.
+- Dietz and Sleator, _Two Algorithms for Maintaining Order in a List_, Symposium on Theory of Computing (STOC), 1987, `doi:10.1145/28395.28434` — the problem statement this crate solves.
+- Itai, Konheim and Rodeh, _A Sparse Table Implementation of Priority Queues_, Automata, Languages and Programming (ICALP), 1981, `doi:10.1007/3-540-10843-2_34` — the list-labeling scheme the relabel rule here refines.
+- Bender, Cole, Demaine, Farach-Colton and Zito, _Two Simplified Algorithms for Maintaining Order in a List_, European Symposium on Algorithms (ESA), 2002, `doi:10.1007/3-540-45749-6_17` — the simplified algorithms and the amortized analysis the density cap is taken from.
 - Porter, Kirisame, Wei, Panchekha and Omar, _Incremental Bidirectional Typing via Order Maintenance_, 2025, arXiv:2504.08946 — the consumer this crate was commissioned for, and the source of the pre/post-order interval test.

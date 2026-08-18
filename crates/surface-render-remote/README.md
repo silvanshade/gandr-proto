@@ -50,5 +50,5 @@ Binary session types, as the shape the message set is designed to admit later; p
 
 ## Primary references
 
-- Kohei Honda, Vasco T. Vasconcelos and Makoto Kubo, _Language Primitives and Type Discipline for Structured Communication-Based Programming_, Programming Languages and Systems (ESOP 1998), Lecture Notes in Computer Science 1381, 122–138, `doi:10.1007/BFb0053567` — the binary session-type discipline the message set is shaped to accept.
-- Simon J. Gay and Malcolm Hole, _Subtyping for Session Types in the Pi Calculus_, Acta Informatica 42:2–3 (2005), 191–225, `doi:10.1007/s00236-005-0177-z` — the subtyping account behind the intent that a later typed endpoint not break today's consumers.
+- Kohei Honda, Vasco T. Vasconcelos and Makoto Kubo, _Language Primitives and Type Discipline for Structured Communication-Based Programming_, European Symposium on Programming (ESOP), 1998, `doi:10.1007/BFb0053567` — the binary session-type discipline the message set is shaped to accept.
+- Simon J. Gay and Malcolm Hole, _Subtyping for Session Types in the Pi Calculus_, Acta Informatica, 2005, `doi:10.1007/s00236-005-0177-z` — the subtyping account behind the intent that a later typed endpoint not break today's consumers.

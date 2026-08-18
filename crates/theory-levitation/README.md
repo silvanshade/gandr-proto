@@ -67,4 +67,4 @@ Levitation, and the universe of datatype descriptions as an inductive object; ge
 
 ## Primary references
 
-- James Chapman, Pierre-Évariste Dagand, Conor McBride and Peter Morris, _The Gentle Art of Levitation_, Proceedings of the 15th ACM SIGPLAN International Conference on Functional Programming (ICFP 2010), 3–14, `doi:10.1145/1863543.1863547` — the levitated universe of descriptions this crate realizes, and the source of the staging discipline that keeps the meta-theory functions host-side until each is moved deliberately.
+- James Chapman, Pierre-Évariste Dagand, Conor McBride and Peter Morris, _The Gentle Art of Levitation_, International Conference on Functional Programming (ICFP), 2010, `doi:10.1145/1863543.1863547` — the levitated universe of descriptions this crate realizes, and the source of the staging discipline that keeps the meta-theory functions host-side until each is moved deliberately.

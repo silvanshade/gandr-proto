@@ -63,6 +63,6 @@ Precedence graphs for mixfix parsing; Kahn's topological sort; Kosaraju's strong
 
 ## Primary references
 
-- Nils Anders Danielsson and Ulf Norell, _Parsing Mixfix Operators_, Implementation and Application of Functional Languages (IFL 2008), Lecture Notes in Computer Science 5836, 80–99, 2011, `doi:10.1007/978-3-642-24452-0_5` — the precedence-graph presentation the precedence DAG follows.
-- A. B. Kahn, _Topological Sorting of Large Networks_, Communications of the ACM 5:11 (1962), 558–562, `doi:10.1145/368996.369025` — the topological sort, whose ready-set tie-break is where this crate's determinism is pinned.
-- Robert Paige and Robert E. Tarjan, _Three Partition Refinement Algorithms_, SIAM Journal on Computing 16:6 (1987), 973–989, `doi:10.1137/0216062` — the refinement discipline behind the coarsest strong bisimulation partition.
+- Nils Anders Danielsson and Ulf Norell, _Parsing Mixfix Operators_, 2011, `doi:10.1007/978-3-642-24452-0_5` — the precedence-graph presentation the precedence DAG follows.
+- A. B. Kahn, _Topological Sorting of Large Networks_, Communications of the ACM, 1962, `doi:10.1145/368996.369025` — the topological sort, whose ready-set tie-break is where this crate's determinism is pinned.
+- Robert Paige and Robert E. Tarjan, _Three Partition Refinement Algorithms_, SIAM Journal on Computing, 1987, `doi:10.1137/0216062` — the refinement discipline behind the coarsest strong bisimulation partition.

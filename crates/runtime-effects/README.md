@@ -50,6 +50,6 @@ Algebraic effects and handlers; delimited continuations and the reification of a
 
 ## Primary references
 
-- Gordon D. Plotkin and Matija Pretnar, _Handling Algebraic Effects_, Logical Methods in Computer Science 9:4 (2013), `doi:10.2168/LMCS-9(4:23)2013` — the handler discipline the top-level host handler instantiates.
+- Gordon D. Plotkin and Matija Pretnar, _Handling Algebraic Effects_, Logical Methods in Computer Science, 2013, `doi:10.2168/LMCS-9(4:23)2013` — the handler discipline the top-level host handler instantiates.
 - Paul Blain Levy, _Call-By-Push-Value: A Functional/Imperative Synthesis_, Springer Netherlands, 2003, `doi:10.1007/978-94-007-0954-6` — the value and computation split the machine and the outcome vocabulary are built on.
-- Daniel Hillerström and Sam Lindley, _Liberating Effects with Rows and Handlers_, Proceedings of the 1st International Workshop on Type-Driven Development (TyDe 2016), 15–27, `doi:10.1145/2976022.2976033` — the row-based account of effect signatures the vacuous row here is measured against.
+- Daniel Hillerström and Sam Lindley, _Liberating Effects with Rows and Handlers_, Type-Driven Development (TyDe), 2016, `doi:10.1145/2976022.2976033` — the row-based account of effect signatures the vacuous row here is measured against.

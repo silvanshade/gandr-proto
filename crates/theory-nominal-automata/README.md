@@ -64,7 +64,7 @@ Nominal sets and atom permutation; freshness and finite support; nominal unifica
 
 ## Primary references
 
-- Christian Urban, Andrew M. Pitts and Murdoch J. Gabbay, _Nominal Unification_, Theoretical Computer Science 323:1–3 (2004), 473–497, `doi:10.1016/j.tcs.2004.06.016` — the unitary most-general unifiers that the atom-versus-variable sort boundary exists to preserve.
-- Lutz Schröder, Dexter Kozen, Stefan Milius and Thorsten Wißmann, _Nominal Automata with Name Binding_, Foundations of Software Science and Computation Structures (FoSSaCS 2017), Lecture Notes in Computer Science 10203, 124–142, `doi:10.1007/978-3-662-54458-7_8` (arXiv:1603.01455) — the regular nondeterministic nominal automaton model and the inclusion result the catalogue records.
-- Simon Prucker and Lutz Schröder, _Nominal Tree Automata with Name Allocation_, 35th International Conference on Concurrency Theory (CONCUR 2024), LIPIcs 311, article 35, `doi:10.4230/LIPIcs.CONCUR.2024.35` — the tree and term model, and the name-dropping construction on it.
+- Christian Urban, Andrew M. Pitts and Murdoch J. Gabbay, _Nominal Unification_, Theoretical Computer Science, 2004, `doi:10.1016/j.tcs.2004.06.016` — the unitary most-general unifiers that the atom-versus-variable sort boundary exists to preserve.
+- Lutz Schröder, Dexter Kozen, Stefan Milius and Thorsten Wißmann, _Nominal Automata with Name Binding_, Foundations of Software Science and Computation Structures (FoSSaCS), 2017, arXiv:1603.01455 — the regular nondeterministic nominal automaton model and the inclusion result the catalogue records.
+- Simon Prucker and Lutz Schröder, _Nominal Tree Automata with Name Allocation_, International Conference on Concurrency Theory (CONCUR), 2024, `doi:10.4230/LIPIcs.CONCUR.2024.35` — the tree and term model, and the name-dropping construction on it.
 - Simon Prucker, Stefan Milius and Lutz Schröder, _Nominal Automata with Name Deallocation_, 2026, arXiv:2603.24468 — the deallocation model this crate's automaton layer is built to, and the source of its name-erasure condition.

@@ -46,5 +46,5 @@ Defunctionalization; continuation frames as first-order data; the abstract-machi
 
 ## Primary references
 
-- John C. Reynolds, _Definitional Interpreters for Higher-Order Programming Languages_, Higher-Order and Symbolic Computation 11:4 (1998), 363–397, `doi:10.1023/A:1010027404223` — the original defunctionalization construction, which is what makes a machine's continuation a closed data type rather than a closure.
-- Olivier Danvy and Lasse R. Nielsen, _Defunctionalization at Work_, Proceedings of the 3rd ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming (PPDP '01), 2001, 162–174, `doi:10.1145/773184.773202` — the systematic derivation this crate's request/frame/output protocol follows.
+- John C. Reynolds, _Definitional Interpreters for Higher-Order Programming Languages_, Higher-Order and Symbolic Computation, 1998, `doi:10.1023/A:1010027404223` — the original defunctionalization construction, which is what makes a machine's continuation a closed data type rather than a closure.
+- Olivier Danvy and Lasse R. Nielsen, _Defunctionalization at Work_, Principles and Practice of Declarative Programming (PPDP), 2001, `doi:10.1145/773184.773202` — the systematic derivation this crate's request/frame/output protocol follows.
