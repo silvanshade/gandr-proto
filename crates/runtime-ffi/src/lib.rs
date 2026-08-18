@@ -144,15 +144,20 @@ impl FfiHost
 {
     /// Loads the declared foreign modules and no others.
     ///
-    /// # Errors
     /// Returns [`FfiError::Library`] when a declared library cannot be loaded,
-    /// or [`FfiError::Marshal`] for an unsupported ABI or duplicate module.
+    /// or [`FfiError::Marshal`] for an unsupported ABI or malformed
+    /// declaration.
+    ///
+    /// # Errors
+    /// Returns a typed error when a declaration is malformed or its library
+    /// cannot be loaded.
     #[inline]
     pub fn new(modules: Vec<ForeignModule>) -> Result<Self, FfiError>
     {
         let mut names = BTreeSet::new();
         let mut loaded = Vec::with_capacity(modules.len());
         for declaration in modules {
+            Self::validate_declaration(&declaration)?;
             let signature = declaration.name.clone();
             if !names.insert(signature.clone()) {
                 return Err(FfiError::Marshal {
@@ -183,6 +188,44 @@ impl FfiHost
             });
         }
         Ok(Self { modules: loaded })
+    }
+
+    /// Rejects malformed declarations before any dynamic library is loaded.
+    fn validate_declaration(declaration: &ForeignModule) -> Result<(), FfiError>
+    {
+        let marshal = |operation: String, detail: &str| FfiError::Marshal {
+            signature: declaration.name.clone(),
+            operation,
+            detail: detail.to_owned(),
+        };
+        if declaration.name.is_empty() {
+            return Err(marshal(String::new(), "foreign module name is empty"));
+        }
+        if declaration.library.is_empty() {
+            return Err(marshal(String::new(), "foreign library path is empty"));
+        }
+        let mut operations = BTreeSet::new();
+        for function in &declaration.functions {
+            if function.op.is_empty() {
+                return Err(marshal(String::new(), "foreign operation name is empty"));
+            }
+            if !operations.insert(function.op.clone()) {
+                return Err(marshal(function.op.clone(), "duplicate foreign operation"));
+            }
+            let mut parameters = BTreeSet::new();
+            for parameter in &function.params {
+                if parameter.name.is_empty() {
+                    return Err(marshal(
+                        function.op.clone(),
+                        "foreign parameter name is empty",
+                    ));
+                }
+                if !parameters.insert(parameter.name.clone()) {
+                    return Err(marshal(function.op.clone(), "duplicate foreign parameter"));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Dispatches one host offer against the declared foreign registry.
@@ -953,6 +996,77 @@ mod tests
                 Value::record(Vec::<(String, Value)>::new())
             )),
             FfiAction::Decline
+        ));
+    }
+    #[test]
+    fn undeclared_signature_declines()
+    {
+        let host = FfiHost::new(Vec::new()).expect("empty registry loads");
+        let operation = effect::host::HostOp::new(
+            EffectSig::new("other".into(), vec![]),
+            "missing".into(),
+            Value::record(Vec::<(String, Value)>::new()),
+        );
+        assert!(matches!(host.dispatch(&operation), FfiAction::Decline));
+    }
+
+    #[test]
+    fn malformed_declaration_is_refused_before_library_loading()
+    {
+        let Err(error) = FfiHost::new(vec![ForeignModule {
+            name: String::new(),
+            abi: "c".to_owned(),
+            library: String::new(),
+            types: Vec::new(),
+            functions: vec![ForeignFn {
+                op: "duplicate".to_owned(),
+                params: Vec::new(),
+                result: CType::Void,
+            }],
+        }])
+        else {
+            panic!("empty declaration must be refused");
+        };
+        assert!(matches!(
+            error,
+            FfiError::Marshal {
+                detail,
+                ..
+            } if detail == "foreign module name is empty"
+        ));
+    }
+
+    #[test]
+    fn duplicate_foreign_operation_is_refused()
+    {
+        let Err(error) = FfiHost::new(vec![ForeignModule {
+            name: "module".to_owned(),
+            abi: "c".to_owned(),
+            library: "missing".to_owned(),
+            types: Vec::new(),
+            functions: vec![
+                ForeignFn {
+                    op: "same".to_owned(),
+                    params: Vec::new(),
+                    result: CType::Void,
+                },
+                ForeignFn {
+                    op: "same".to_owned(),
+                    params: Vec::new(),
+                    result: CType::Void,
+                },
+            ],
+        }])
+        else {
+            panic!("duplicate operation must be refused");
+        };
+        assert!(matches!(
+            error,
+            FfiError::Marshal {
+                operation,
+                detail,
+                ..
+            } if operation == "same" && detail == "duplicate foreign operation"
         ));
     }
 
