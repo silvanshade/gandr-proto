@@ -1,0 +1,3 @@
+docs(repo): preserve human coauthor trailers
+
+Co-Authored-By: Alice Example <alice@example.net>

@@ -1,13 +1,13 @@
 import { type Plugin, type Rule, RuleConfigSeverity, type UserConfig } from "@commitlint/types";
 
 // ── Canonical agent co-author registry ───────────────────────────────────────
-// A `Co-Authored-By` whose email host is a machine-agent provider must match one
-// of the canonical trailer strings below BYTE-FOR-BYTE (key casing included).
-// Human co-authors (any other host) are unconstrained beyond a valid shape. New
-// models/variants require an explicit entry here — strict by design, to keep
+// A `Co-Authored-By` with an agent-shaped name must match one of the canonical
+// trailer strings below BYTE-FOR-BYTE (key casing included), regardless of email
+// host. Human co-authors (any other name) are unconstrained beyond a valid shape.
+// New models/variants require an explicit entry here — strict by design, to keep
 // agent attribution uniform across the publishable history. Agent attribution
-// itself is project-concern (honest provenance); extend the registry here,
-// with owner authorization.
+// itself is project-concern (honest provenance); extend the registry here, with
+// owner authorization.
 const AGENT_EMAIL_HOSTS: readonly string[] = ["anthropic.com", "moonshot.ai", "openai.com"];
 
 const CANONICAL_AGENT_TRAILERS: readonly string[] = [
@@ -19,11 +19,17 @@ const CANONICAL_AGENT_TRAILERS: readonly string[] = [
   "Co-Authored-By: OpenAI Codex GPT-5.6 Sol <noreply@openai.com>",
 ];
 
-// A `Co-authored-by:` trailer of any key casing, capturing the email so the host
-// can classify the co-author as agent vs human.
-const COAUTHOR_LINE = /^co-authored-by:[ \t]*.+?[ \t]*<(?<email>[^>]+)>[ \t]*$/i;
+// A `Co-authored-by:` trailer of any key casing, capturing the name and email so
+// the name can classify the co-author as agent vs human.
+const COAUTHOR_LINE = /^co-authored-by:[ \t]*(?<name>.+?)[ \t]*<(?<email>[^>]+)>[ \t]*$/i;
 
-// Custom rule: enforce that every agent `Co-Authored-By` trailer is canonical.
+// Agent-shaped names are classified independently of their email host so an
+// unregistered agent cannot bypass the canonical registry with a human-looking
+// address. This is deliberately a shape check, not a second agent registry.
+const AGENT_NAME_SHAPE = /\b(?:anthropic|claude|codex|gpt|kimi|openai)\b/i;
+
+// Custom rule: enforce that every agent-shaped `Co-Authored-By` trailer is
+// canonical.
 const coAuthoredByCanonical: Rule = (parsed) => {
   const raw = parsed.raw ?? [parsed.header, parsed.body, parsed.footer].filter(Boolean).join("\n");
   const offenders: string[] = [];
@@ -31,9 +37,12 @@ const coAuthoredByCanonical: Rule = (parsed) => {
     const line = rawLine.trimEnd();
     const match = COAUTHOR_LINE.exec(line);
     if (match === null) continue;
+    const name = match.groups?.name ?? "";
     const email = match.groups?.email ?? "";
     const host = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
-    const isAgent = AGENT_EMAIL_HOSTS.some((agentHost) => host === agentHost || host.endsWith(`.${agentHost}`));
+    const isAgent =
+      AGENT_NAME_SHAPE.test(name) ||
+      AGENT_EMAIL_HOSTS.some((agentHost) => host === agentHost || host.endsWith(`.${agentHost}`));
     if (!isAgent) continue;
     if (!CANONICAL_AGENT_TRAILERS.includes(line)) offenders.push(line);
   }

@@ -1,0 +1,3 @@
+fix(repo): reject unregistered agent trailers
+
+Co-Authored-By: OpenAI Codex GPT-9 Unknown <12345@users.noreply.github.com>
