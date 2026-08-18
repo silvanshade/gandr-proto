@@ -1,5 +1,6 @@
-//! The recursive bidirectional checker (`type-system.md` §"Core rules";
-//! `typing-machine.md` §"The recursive checker, before defunctionalization").
+//! The recursive bidirectional checker (`spec:implementation/type-system.md`
+//! §"Core rules"; `spec:implementation/typing-machine.md` §"The recursive
+//! checker, before defunctionalization").
 //!
 //! This is the direct-style implementation the typing machine is *derived*
 //! from. Introduction forms check, elimination forms infer their principal
@@ -949,9 +950,9 @@ impl Rec
 
     /// Rule Bind⇕: infer the bound computation, type the continuation in the
     /// original direction, union the bound row into the result, then **finish
-    /// against the original direction** (`type-system.md` §"Core rules"; the
-    /// bottom-up row arithmetic of A3.2 `+effects`, `effects-control-shell.md`
-    /// §1.2 via [`combine_bind_row`]).
+    /// against the original direction** (`spec:implementation/type-system.md`
+    /// §"Core rules"; the bottom-up row arithmetic of A3.2 `+effects`,
+    /// `effects-control-shell.md` §1.2 via [`combine_bind_row`]).
     ///
     /// The final [`finish_comp`] is load-bearing: the continuation is typed in
     /// `dir`, but unioning the bound row can *grow* the result's row past the
@@ -1030,14 +1031,15 @@ impl Rec
         }
     }
 
-    /// Rule Dup (`type-system.md` §"Grades"): split a thunk's usage budget into
-    /// a pair. **Check-only** — the split grades `r`/`s` are determined solely
-    /// by the expectation `F (U_r B × U_s B)`, so `dup` in inference position
-    /// (or checked against any other shape) is stuck (annotate / supply the
-    /// expectation), exactly as injections and lazy pairs. The thunk `v ⇑ U_g
-    /// B_v` is inferred and the **conservation** law `r + s ⊑ g` is enforced —
-    /// the additive accounting `+` of §"Grades": the two halves' budgets
-    /// together may not exceed the original. The (reflexive) grade match and
+    /// Rule Dup (`spec:implementation/type-system.md` §"Grades"): split a
+    /// thunk's usage budget into a pair. **Check-only** — the split grades
+    /// `r`/`s` are determined solely by the expectation `F (U_r B × U_s
+    /// B)`, so `dup` in inference position (or checked against any other
+    /// shape) is stuck (annotate / supply the expectation), exactly as
+    /// injections and lazy pairs. The thunk `v ⇑ U_g B_v` is inferred and
+    /// the **conservation** law `r + s ⊑ g` is enforced — the additive
+    /// accounting `+` of §"Grades": the two halves' budgets together may
+    /// not exceed the original. The (reflexive) grade match and
     /// body subsumption are then discharged by the inlined Sub rule
     /// ([`finish_comp`]) against the expectation. A matched `Unknown` scrutinee
     /// (`dup ?hole`, A2.2 holes extension) emits no grade constraint and splits
@@ -1111,14 +1113,14 @@ impl Rec
         finish_comp(natural, dir)
     }
 
-    /// Rule Drop (`type-system.md` §"Grades"): discard a thunk's usage budget,
-    /// returning `F 1`. The side condition `0 ⊑ r` is **vacuous on the
-    /// default carrier** `ℕ ∪ {ω}` (`0` is the bottom of `⊑`), so any thunk
-    /// grade is accepted; a carrier whose `0` is not the bottom would
-    /// reinstate the check here. The result `F 1` depends on neither the
-    /// thunk's grade nor its body, so a matched `Unknown` scrutinee
-    /// (`drop ?hole`, A2.2 holes extension) returns `F 1` just the same, with
-    /// no grade constraint emitted.
+    /// Rule Drop (`spec:implementation/type-system.md` §"Grades"): discard a
+    /// thunk's usage budget, returning `F 1`. The side condition `0 ⊑ r` is
+    /// **vacuous on the default carrier** `ℕ ∪ {ω}` (`0` is the bottom of
+    /// `⊑`), so any thunk grade is accepted; a carrier whose `0` is not the
+    /// bottom would reinstate the check here. The result `F 1` depends on
+    /// neither the thunk's grade nor its body, so a matched `Unknown`
+    /// scrutinee (`drop ?hole`, A2.2 holes extension) returns `F 1` just
+    /// the same, with no grade constraint emitted.
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
