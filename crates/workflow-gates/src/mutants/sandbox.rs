@@ -1213,7 +1213,7 @@ pub(super) fn sandbox_boot_plan(
 {
     MsbPlan::new(vec![
         os("run"),
-        os("--snapshot"),
+        os("--from-snapshot"),
         config.snapshot().to_os_string(),
         os("--detach"),
         os("--name"),
@@ -1232,8 +1232,8 @@ pub(super) fn sandbox_boot_plan(
         os("--no-net"),
         os("--max-duration"),
         os(mode.sandbox_timeout().into().0),
-        os("--security-model"),
-        os("complete"),
+        os("--security"),
+        os("restricted"),
         os("--no-tty"),
     ])
 }
@@ -2534,6 +2534,14 @@ mod tests
         let boot = plan.boot();
 
         assert!(
+            contains_arg(boot.args(), "--from-snapshot").into().0,
+            "boot plan must use the msb 0.6.9 snapshot flag"
+        );
+        assert!(
+            !contains_arg(boot.args(), "--snapshot").into().0,
+            "boot plan must not use the removed snapshot flag"
+        );
+        assert!(
             contains_arg(boot.args(), "--mount-disk").into().0,
             "boot plan must attach only the btrfs cache as a disk image"
         );
@@ -2546,8 +2554,8 @@ mod tests
             "boot plan must carry resource limits"
         );
         assert_eq!(
-            Some(OsStr::new("complete")),
-            arg_after(boot.args(), "--security-model"),
+            Some(OsStr::new("restricted")),
+            arg_after(boot.args(), "--security"),
             "boot plan must request the complete security model"
         );
         assert!(

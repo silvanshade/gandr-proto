@@ -16,6 +16,7 @@ use std::path::PathBuf;
 
 mod containment;
 pub mod range;
+pub mod record;
 mod report;
 mod sandbox;
 
@@ -195,6 +196,20 @@ trait MutantsHost
 
     /// Publish a completed report into the workspace.
     ///
+    /// Convert raw cargo-mutants output into the authoritative record report.
+    ///
+    /// Test doubles may leave this boundary empty; the production adapter must
+    /// emit canonical records before publication.
+    fn canonicalize_report(
+        &mut self,
+        _report: &Path,
+        _workspace_root: &Path,
+        _base: String,
+    ) -> Result<(), GateError>
+    {
+        Ok(())
+    }
+
     /// # Errors
     /// Returns report publication failures.
     fn publish_report(
@@ -311,6 +326,24 @@ impl MutantsHost for SupportMutantsHost
     {
         let bytes = bytes.into().0;
         support::write_atomic(path, bytes)
+    }
+
+    #[inline]
+    fn canonicalize_report(
+        &mut self,
+        report: &Path,
+        _workspace_root: &Path,
+        base: String,
+    ) -> Result<(), GateError>
+    {
+        let records = record::convert_cargo_mutants_report(report, base)
+            .map_err(|error| GateError::operational(error.to_string()))?;
+        let bytes = serde_json::to_string_pretty(&records).map_err(|error| {
+            GateError::operational(format!(
+                "mutants-vm: cannot serialize canonical records: {error}"
+            ))
+        })?;
+        support::write_atomic(&report.join("mutation-records.json"), bytes.as_bytes())
     }
 
     #[inline]
@@ -670,7 +703,7 @@ where
     match range::plan_in_diff_campaign(diff, &diff_text) {
         | range::RangeCampaignPlan::NoRustChanges { report } => {
             run_no_rust_campaign(runner, sink, options, mode, &diff_text, report)?;
-            publish_campaign_result(host, options)?;
+            publish_campaign_result(host, options, CampaignPublicationKind::NoMutation)?;
             cleanup_success_workspace(host, options)
         },
         | range::RangeCampaignPlan::RunInDiff { .. } => {
@@ -1548,10 +1581,21 @@ fn temporary_sandbox_name(mode: sandbox::CampaignMode) -> Result<sandbox::Sandbo
     ))
 }
 
+/// Publication kind is explicit so raw-file presence cannot select policy.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CampaignPublicationKind
+{
+    /// A no-Rust or no-mutants-selected campaign summary.
+    NoMutation,
+    /// A contained cargo-mutants campaign requiring canonical records.
+    MutationBearing,
+}
+
 /// Publish the temporary report with rollback protection.
 fn publish_campaign_result<Host>(
     host: &mut Host,
     options: &MutantsOptions,
+    kind: CampaignPublicationKind,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
@@ -1562,6 +1606,45 @@ where
             "mutants-vm: campaign report was not preserved; temporary data remains at {}",
             options.working_report.display()
         )));
+    }
+    if kind == CampaignPublicationKind::MutationBearing {
+        let raw_findings = options.working_report.join("mutants.json");
+        if !host
+            .path_exists(&raw_findings)
+            .map(|value| value.into().0)?
+        {
+            return Err(GateError::operational(format!(
+                "mutants-vm: mutation-bearing campaign is missing raw mutants.json at {}",
+                raw_findings.display()
+            )));
+        }
+        let base = host.run_git_output(
+            &[OsString::from("rev-parse"), OsString::from("HEAD")],
+            Some(&options.workspace_root),
+            true,
+        )?;
+        if !crate::semantic_value::<SuccessFlag, _>(base.success()).0 {
+            return Err(GateError::operational(
+                "mutants-vm: cannot resolve bounded report base identity",
+            ));
+        }
+        let base = crate::semantic_value::<StdoutText<'_>, _>(base.stdout())
+            .0
+            .trim()
+            .to_owned();
+        if base.is_empty() {
+            return Err(GateError::operational(
+                "mutants-vm: bounded report base identity is empty",
+            ));
+        }
+        host.canonicalize_report(&options.working_report, &options.workspace_root, base)?;
+        let canonical = options.working_report.join("mutation-records.json");
+        if !host.path_exists(&canonical).map(|value| value.into().0)? {
+            return Err(GateError::operational(format!(
+                "mutants-vm: canonical mutation report was not produced at {}",
+                canonical.display()
+            )));
+        }
     }
     host.publish_report(&options.working_report, &options.workspace_root)
 }
@@ -1591,7 +1674,11 @@ where
     );
     let summary =
         sandbox::execute_campaign_request(runner, sink, &config, &request, campaign.diff_source)?;
-    publish_campaign_result(host, campaign.options)?;
+    publish_campaign_result(
+        host,
+        campaign.options,
+        CampaignPublicationKind::MutationBearing,
+    )?;
     cleanup_success_workspace(host, campaign.options)?;
     if summary.succeeded().into().0 {
         return Ok(());
@@ -1997,6 +2084,52 @@ mod tests
     /// Snapshot routing formats the cache image and creates the reusable
     /// snapshot through only fake host and msb outcomes.
     #[test]
+    fn publication_allows_no_mutation_summary_but_requires_canonical_mutation_report() -> TestResult
+    {
+        let no_mutation = TestWorkspace::create("no-mutation-summary")?;
+        let no_options = test_options(no_mutation.path(), &no_mutation.path().join("scratch"));
+        std::fs::create_dir_all(&no_options.working_report)?;
+        std::fs::write(
+            no_options.working_report.join("campaign.nuon"),
+            "{schema: 1, report: 'no-rust-changes'}",
+        )?;
+        publish_campaign_result(
+            &mut FakeHost::default(),
+            &no_options,
+            CampaignPublicationKind::NoMutation,
+        )?;
+
+        let mutation = TestWorkspace::create("missing-canonical-report")?;
+        let mutation_options = test_options(mutation.path(), &mutation.path().join("scratch"));
+        std::fs::create_dir_all(&mutation_options.working_report)?;
+        std::fs::write(
+            mutation_options.working_report.join("campaign.nuon"),
+            "{schema: 1, report: 'cargo-mutants'}",
+        )?;
+        let missing_raw = publish_campaign_result(
+            &mut FakeHost::default(),
+            &mutation_options,
+            CampaignPublicationKind::MutationBearing,
+        )
+        .expect_err("mutation-bearing publication must reject missing raw mutants.json");
+        assert!(missing_raw.to_string().contains("missing raw mutants.json"));
+        std::fs::write(mutation_options.working_report.join("mutants.json"), "[]")?;
+        let mut host = FakeHost::new(vec![host_stdout("base-001\n")], Vec::new(), Vec::new());
+        let error = publish_campaign_result(
+            &mut host,
+            &mutation_options,
+            CampaignPublicationKind::MutationBearing,
+        )
+        .expect_err("mutation report must require canonical artifact");
+        assert!(
+            error
+                .to_string()
+                .contains("canonical mutation report was not produced")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn snapshot_command_runs_builder_lifecycle_without_booting_vm() -> TestResult
     {
         let fixture = TestWorkspace::create("snapshot-route")?;
@@ -2022,6 +2155,7 @@ mod tests
                 msb_success(),
             ],
         );
+        support::HOST_FILESYSTEM.create_dir_all(&options.working_report)?;
         let mut sink = report_sink();
 
         run_with_environment(
@@ -2218,7 +2352,14 @@ mod tests
     {
         let fixture = TestWorkspace::create("sweep-route")?;
         let options = test_options(fixture.path(), &fixture.path().join("scratch"));
-        let mut host = FakeHost::new(Vec::new(), vec![host_success()], Vec::new());
+        let mut host = FakeHost::new(
+            vec![host_stdout(
+                "base-001
+",
+            )],
+            vec![host_success()],
+            Vec::new(),
+        );
         let mut infrastructure = FakeInfrastructure::present();
         let mut runner = FakeMsbAdapter::new(Vec::new(), vec![
             msb_success(),
@@ -2229,6 +2370,9 @@ mod tests
             msb_success(),
             msb_success(),
         ]);
+        support::HOST_FILESYSTEM.create_dir_all(&options.working_report)?;
+        std::fs::write(options.working_report.join("mutants.json"), "[]")?;
+        std::fs::write(options.working_report.join("mutation-records.json"), "[]")?;
         let mut sink = report_sink();
 
         run_with_environment(
@@ -2242,7 +2386,9 @@ mod tests
 
         let calls = runner.rendered_calls();
         assert!(
-            calls.iter().any(|call| call.starts_with("run --snapshot")),
+            calls
+                .iter()
+                .any(|call| call.starts_with("run --from-snapshot")),
             "sweep should boot exactly one sandbox"
         );
         assert!(
@@ -2278,7 +2424,14 @@ mod tests
     {
         let fixture = TestWorkspace::create("contained-failure")?;
         let options = test_options(fixture.path(), &fixture.path().join("scratch"));
-        let mut host = FakeHost::new(Vec::new(), vec![host_success()], Vec::new());
+        let mut host = FakeHost::new(
+            vec![host_stdout(
+                "base-001
+",
+            )],
+            vec![host_success()],
+            Vec::new(),
+        );
         let mut runner = FakeMsbAdapter::new(Vec::new(), vec![
             msb_success(),
             msb_success(),
@@ -2289,6 +2442,9 @@ mod tests
             msb_success(),
             msb_success(),
         ]);
+        support::HOST_FILESYSTEM.create_dir_all(&options.working_report)?;
+        std::fs::write(options.working_report.join("mutants.json"), "[]")?;
+        std::fs::write(options.working_report.join("mutation-records.json"), "[]")?;
         let mut sink = report_sink();
 
         let error = run_contained_campaign(&mut host, &mut runner, &mut sink, &ContainedCampaign {
@@ -2387,9 +2543,10 @@ mod tests
         let options = test_options(fixture.path(), &fixture.path().join("scratch"));
         let mut host = FakeHost::default();
 
-        let error = publish_campaign_result(&mut host, &options)
-            .err()
-            .ok_or_else(|| GateError::operational("missing summary unexpectedly published"))?;
+        let error =
+            publish_campaign_result(&mut host, &options, CampaignPublicationKind::NoMutation)
+                .err()
+                .ok_or_else(|| GateError::operational("missing summary unexpectedly published"))?;
 
         assert!(
             error
@@ -2469,10 +2626,40 @@ mod tests
         Ok(())
     }
 
-    /// Return a support report sink.
-    fn report_sink() -> sandbox::SupportCampaignReportSink
+    /// Test sink emits the minimal raw and canonical artifacts required by
+    /// the mutation-bearing publication boundary.
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    struct TestCampaignReportSink;
+
+    impl sandbox::CampaignReportSink for TestCampaignReportSink
     {
-        sandbox::SupportCampaignReportSink
+        fn create_empty_report(
+            &mut self,
+            report_dir: &Path,
+        ) -> Result<(), GateError>
+        {
+            support::HOST_FILESYSTEM.create_dir_all(report_dir)
+        }
+
+        fn write_campaign(
+            &mut self,
+            report_dir: &Path,
+            summary: &sandbox::CampaignSummary,
+        ) -> Result<(), GateError>
+        {
+            support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
+            support::write_atomic(
+                &report_dir.join("campaign.nuon"),
+                summary.to_nuon().as_bytes(),
+            )?;
+            support::write_atomic(&report_dir.join("mutants.json"), b"[]")?;
+            support::write_atomic(&report_dir.join("mutation-records.json"), b"[]")
+        }
+    }
+
+    fn report_sink() -> TestCampaignReportSink
+    {
+        TestCampaignReportSink
     }
 
     /// Host Git helpers ignore injected Git repository override variables.
