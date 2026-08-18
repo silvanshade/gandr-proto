@@ -5,7 +5,10 @@
 //! `gandr-theory-computads` owns the cell engine; neither names the other, and
 //! the seam that lets one consume the other is supplied here, above both. These
 //! tests drive that seam from written `sign` blocks rather than from
-//! hand-built diagrams, so what they exercise is the route a source takes.
+//! hand-built diagrams, so every redex occurrence they report is derived from
+//! source a user could write. The two hand-built fixtures are refusals rather
+//! than occurrences: a body the surface would never produce, kept so the
+//! reading's own refusal arms are separated.
 
 /// Circuit matcher-seam tests.
 #[cfg(test)]
@@ -30,7 +33,6 @@ mod tests
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
-    use gandr_theory_levitation::CircuitRedex;
     use gandr_theory_levitation::FrameHead;
     use gandr_theory_levitation::FreeTerm;
 
@@ -43,14 +45,18 @@ mod tests
     /// puts a second frame on top of the same shape.
     const NESTED_CONGRUENCES: &str = "data Nat : Type {\n  Zero : Nat;\n  Succ : (n : Nat) --> \
                                       Nat;\n}\n\nsign Nat {\n  sort Nat : Type;\n  oper add : \
-                                      (Nat, Nat) --> Nat;\n\n  rule cong1 : (\n    rule p : Nat \
+                                      (Nat, Nat) --> Nat;\n  oper neg : (Nat) --> Nat;\n\n  rule cong1 : (\n    rule p : Nat \
                                       ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : \
                                       Nat) {\n    node : p(x) ==> (x\u{2032});\n    node : \
                                       add(x\u{2032}, y) --> (z);\n  };\n\n  rule cong2 : (\n    \
                                       rule p : Nat ==> Nat,\n    data x : Nat,\n    data y : Nat,\n    \
                                       data w : Nat\n  ) ==> (v : Nat) {\n    node : p(x) ==> \
                                       (x\u{2032});\n    node : add(x\u{2032}, y) --> (z);\n    \
-                                      node : add(z, w) --> (v);\n  };\n}";
+                                      node : add(z, w) --> (v);\n  };\n\n  rule viaOper : (\n    \
+                                      data x : Nat\n  ) ==> (z : Nat) {\n    node : neg(x) --> \
+                                      (z);\n  };\n\n  rule viaRewrite : (\n    rule neg : Nat \
+                                      ==> Nat,\n    data x : Nat\n  ) ==> (z : Nat) {\n    node \
+                                      : neg(x) ==> (z);\n  };\n}";
 
     #[test]
     fn a_two_line_body_reads_as_a_diagram_with_one_internal_wire()
@@ -60,8 +66,10 @@ mod tests
         // list, so it is an internal wire — produced by the redex line and read
         // by the frame line, and therefore neither a boundary input nor a
         // boundary output.
-        let body = cong1_body();
-        let wiring = circuit_wiring(&body).expect("the body reads as a diagram");
+        let descs = declared_descs(TestText(NESTED_CONGRUENCES));
+        let desc = signature_with_circuits(&descs);
+        let cong1 = named_circuit(desc, RuleName("cong1"));
+        let wiring = circuit_wiring(&cong1.body).expect("the body reads as a diagram");
         assert_eq!(
             WireCount(4_usize),
             wiring.wire_count(),
@@ -133,7 +141,8 @@ mod tests
         // frame stacked on its output, so `cong1`'s diagram sits inside it.
         let descs = declared_descs(TestText(NESTED_CONGRUENCES));
         let desc = signature_with_circuits(&descs);
-        let (cong1, cong2) = two_circuits(desc);
+        let cong1 = named_circuit(desc, RuleName("cong1"));
+        let cong2 = named_circuit(desc, RuleName("cong2"));
         let matching = embed_circuit_rule(&cong1.body, &cong2.body, MatchBudget(4_096_usize))
             .expect("both bodies are diagrams and the search completes");
         assert!(
@@ -159,7 +168,8 @@ mod tests
         // occur in the smaller one.
         let descs = declared_descs(TestText(NESTED_CONGRUENCES));
         let desc = signature_with_circuits(&descs);
-        let (cong1, cong2) = two_circuits(desc);
+        let cong1 = named_circuit(desc, RuleName("cong1"));
+        let cong2 = named_circuit(desc, RuleName("cong2"));
         let matching = embed_circuit_rule(&cong2.body, &cong1.body, MatchBudget(4_096_usize))
             .expect("both bodies are diagrams and the search completes");
         assert_eq!(
@@ -170,6 +180,72 @@ mod tests
     }
 
     #[test]
+    fn one_spelling_in_two_roles_is_two_boxes()
+    {
+        // Why a generator's label carries its role beside its name. `viaOper`
+        // applies the declared operation `neg`; `viaRewrite` applies a rewrite
+        // parameter that is also spelled `neg`. Same name, same arity, same
+        // wiring — one input, one output, one line — and they are two different
+        // boxes. A reading that kept only the name would match either into the
+        // other, which is the collision the sort vocabulary exists to stop, and
+        // it is exactly the collision that a fired rewrite having no role of
+        // its own would have reintroduced.
+        let descs = declared_descs(TestText(NESTED_CONGRUENCES));
+        let desc = signature_with_circuits(&descs);
+        let via_oper = named_circuit(desc, RuleName("viaOper"));
+        let via_rewrite = named_circuit(desc, RuleName("viaRewrite"));
+
+        // The hypothesis: the two bodies really are the same shape.
+        let operation = circuit_wiring(&via_oper.body).expect("the operation body reads");
+        let rewrite = circuit_wiring(&via_rewrite.body).expect("the rewrite body reads");
+        assert_eq!(
+            operation.wire_count(),
+            rewrite.wire_count(),
+            "the two bodies name the same number of ports"
+        );
+        assert_eq!(
+            operation.edge_count(),
+            rewrite.edge_count(),
+            "and each is one line"
+        );
+
+        for (label, pattern, target) in [
+            (
+                "a rewrite into an operation",
+                &via_rewrite.body,
+                &via_oper.body,
+            ),
+            (
+                "an operation into a rewrite",
+                &via_oper.body,
+                &via_rewrite.body,
+            ),
+        ] {
+            let matching = embed_circuit_rule(pattern, target, MatchBudget(4_096_usize))
+                .expect("both bodies are diagrams and the search completes");
+            assert_eq!(
+                0_usize,
+                matching.admitted_count().0,
+                "{label}: one spelling worn in two roles is two boxes, not one"
+            );
+        }
+
+        // And each does embed in itself, so the refusal above is the role and
+        // not a shape the matcher cannot see at all.
+        for (label, body) in [
+            ("the operation body", &via_oper.body),
+            ("the rewrite body", &via_rewrite.body),
+        ] {
+            let matching = embed_circuit_rule(body, body, MatchBudget(4_096_usize))
+                .expect("the search completes");
+            assert!(
+                matching.admitted_count().0 > 0_usize,
+                "{label} embeds in itself"
+            );
+        }
+    }
+
+    #[test]
     fn an_exhausted_budget_declines_rather_than_reporting_no_match()
     {
         // A truncated enumeration presented as a complete one is the error the
@@ -177,7 +253,8 @@ mod tests
         // admitted set.
         let descs = declared_descs(TestText(NESTED_CONGRUENCES));
         let desc = signature_with_circuits(&descs);
-        let (cong1, cong2) = two_circuits(desc);
+        let cong1 = named_circuit(desc, RuleName("cong1"));
+        let cong2 = named_circuit(desc, RuleName("cong2"));
         let error = embed_circuit_rule(&cong1.body, &cong2.body, MatchBudget(0_usize))
             .expect_err("a zero budget cannot complete a search");
         assert!(
@@ -252,27 +329,6 @@ mod tests
         );
     }
 
-    /// `cong1`'s body, built directly: one redex line feeding one frame line.
-    fn cong1_body() -> CircuitBody
-    {
-        CircuitBody::new(
-            [
-                CircuitNode::Redex(CircuitRedex::new(
-                    "p",
-                    FreeTerm::var("x"),
-                    FreeTerm::var("x\u{2032}"),
-                    "x\u{2032}",
-                )),
-                CircuitNode::Frame(CircuitFrame::new(
-                    FrameHead::Op("add".into()),
-                    [FreeTerm::var("x\u{2032}"), FreeTerm::var("y")],
-                    "z",
-                )),
-            ],
-            "z",
-        )
-    }
-
     /// Elaborate a source's declarations, asserting the source is well formed.
     fn declared_descs(source: TestText<'_>) -> alloc::vec::Vec<gandr_theory_levitation::SignDesc>
     {
@@ -298,17 +354,20 @@ mod tests
             .expect("the sign block declares circuit rules")
     }
 
-    /// The two circuit rules of a description whose block declares exactly two.
-    fn two_circuits(
-        desc: &gandr_theory_levitation::SignDesc
-    ) -> (
-        &gandr_theory_levitation::CircuitRule,
-        &gandr_theory_levitation::CircuitRule,
-    )
+    /// A circuit rule of a description, by the name its block wrote.
+    fn named_circuit<'desc>(
+        desc: &'desc gandr_theory_levitation::SignDesc,
+        name: RuleName<'_>,
+    ) -> &'desc gandr_theory_levitation::CircuitRule
     {
-        let mut circuits = desc.circuits.iter();
-        let first = circuits.next().expect("the block declares a first rule");
-        let second = circuits.next().expect("the block declares a second rule");
-        (first, second)
+        desc.circuits
+            .iter()
+            .find(|rule| rule.name.as_ref() == name.0)
+            .unwrap_or_else(|| panic!("the block declares `{}`", name.0))
     }
+
+    /// A circuit rule's declared name, as a fixture names it.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct RuleName<'fixture>(&'fixture str);
 }
