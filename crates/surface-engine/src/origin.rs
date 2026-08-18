@@ -259,15 +259,16 @@ pub enum ElabKind
     /// Functional record update `#{ r | ℓ = v, … }` ⇒ a fresh-record rebuild
     /// `recordupdate r #{ℓ = v, …}` over
     /// [`gandr_core_term::prim::NativePrim::RecordUpdate`] (value-semantics
-    /// MVP, `proposal-value-semantics-mvp.md` §3.1). The tag
+    /// MVP, `spec:surface-language/value-semantics.md`). The tag
     /// marks the synthesized application so a diagnostic can un-sugar the
     /// update back to its base-and-overrides, and the surface unparser can
     /// re-sugar it.
     RecordUpdate,
     /// A foreign call `m.op(args)` whose `m` is an `extern`-declared module ⇒
     /// `perform m.op {payload}` against the module's per-library effect
-    /// signature (proposal-ffi.md §3.1). The synthesized `Perform` carries this
-    /// tag; the argument record retains its own origin.
+    /// signature (`spec:implementation/foreign-interface.md`). The synthesized
+    /// `Perform` carries this tag; the argument record retains its own
+    /// origin.
     ForeignPerform,
     /// A copattern definition's `Cosplit` case-tree node lowered to the
     /// record-of-thunks carrier `#{ πᵢ = thunk_ω tᵢ }` (codata design §4.2

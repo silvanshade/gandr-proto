@@ -713,7 +713,8 @@ pub enum Strictness
 }
 
 /// One entity attribute lexed off a `def` item's leading `@[…]` block, before
-/// registry resolution and payload typing (proposal-attributes.md §2).
+/// registry resolution and payload typing
+/// (`spec:surface-language/attributes.md`).
 ///
 /// Lowering is deliberately name-and-payload only: the schema lookup, the
 /// payload typing against that schema, duplicate/arity checks, and the
@@ -740,8 +741,8 @@ pub struct RawAttr
 }
 
 /// A lowered attribute payload: its value-fragment term plus whether it is in
-/// the value fragment at all (proposal-attributes.md §3.3 — a payload is data,
-/// never an `F`-computation).
+/// the value fragment at all (`spec:surface-language/attributes.md` — a payload
+/// is data, never an `F`-computation).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RawPayload
 {
@@ -906,10 +907,10 @@ pub struct Lowered
     /// exist, because it is the user's stated contract.
     pub items: Vec<Item>,
     /// The foreign modules declared by `extern` blocks, in source order
-    /// (proposal-ffi.md §2). `extern` blocks are declarations, not runnable
-    /// items, so they contribute no [`Item`]; a native FFI handler
-    /// consumes these to resolve C symbols and marshal the
-    /// boundary (§5.1).
+    /// (`spec:implementation/foreign-interface.md`). `extern` blocks are
+    /// declarations, not runnable items, so they contribute no [`Item`]; a
+    /// native FFI handler consumes these to resolve C symbols and marshal
+    /// the boundary.
     pub foreign: Vec<ForeignModule>,
     /// Import declarations in source order. Each declaration contributes a
     /// root binding to [`Self::import_scope`] and qualifies it through
@@ -936,8 +937,8 @@ pub struct Lowered
     /// [`crate::origin`]).
     pub origin: OriginMap,
     /// The raw entity attributes off each item's leading `@[…]` blocks, in
-    /// source order (proposal-attributes.md §2); resolved and typed by the
-    /// [`crate::attributes`] pass.
+    /// source order (`spec:surface-language/attributes.md`); resolved and typed
+    /// by the [`crate::attributes`] pass.
     pub attributes: Vec<RawAttr>,
     /// The namespace scope after this source's imports have been merged with
     /// the scope supplied to seeded lowering. Imports touch only its visible
@@ -1195,10 +1196,10 @@ pub fn lower_source_with_shadow_policy(
 
 /// Parses `source` and lowers it totally, seeded with `foreign` modules
 /// declared by earlier submissions (the REPL session's persistent `extern`
-/// registry — proposal-ffi.md §2).
+/// registry — `spec:implementation/foreign-interface.md`).
 ///
-/// The seeded modules are visible to this source's foreign-call elaboration
-/// (§3.1), exactly as an earlier `def` is visible through the session context;
+/// The seeded modules are visible to this source's foreign-call elaboration,
+/// exactly as an earlier `def` is visible through the session context;
 /// the source's own `extern` blocks are added on top. The returned
 /// [`Lowered::foreign`] carries only *this* source's declared blocks (what the
 /// caller should merge into its accumulating registry), not the seed.
@@ -1232,13 +1233,13 @@ pub fn lower_source_total_with_foreign(
 
 /// Parses `source` and lowers it totally, seeded with both the `foreign`
 /// (`extern`) and `codata` declaration registries a REPL session accumulated
-/// from earlier submissions (proposal-ffi.md §2; the codata-declaration
-/// contract). A later line's copattern definition `def rec f() -> C` is
-/// coverage-checked against, and a later `s.π` observation is disambiguated by,
-/// a `codata C` block declared on an earlier line — exactly as an `extern`
-/// module or a `def` bridges lines. The returned [`Lowered::foreign`] /
-/// [`Lowered::codata`] carry only *this* source's own declarations (what the
-/// caller merges into its registries).
+/// from earlier submissions (`spec:implementation/foreign-interface.md`; the
+/// codata-declaration contract). A later line's copattern definition `def rec
+/// f() -> C` is coverage-checked against, and a later `s.π` observation is
+/// disambiguated by, a `codata C` block declared on an earlier line — exactly
+/// as an `extern` module or a `def` bridges lines. The returned
+/// [`Lowered::foreign`] / [`Lowered::codata`] carry only *this* source's own
+/// declarations (what the caller merges into its registries).
 ///
 /// # Contract
 /// - ensures: a copattern definition or observation elaborates against a
@@ -1973,10 +1974,11 @@ struct Lowerer<'src>
     /// The lowering mode.
     strictness: Strictness,
     /// The foreign modules declared by `extern` blocks, keyed by namespace
-    /// (proposal-ffi.md §2). Built in a pre-pass at the start of
-    /// [`Self::source_file`] so a later item's call `m.op(args)` can elaborate
-    /// against the module declared earlier in the same source; a call selecting
-    /// a member of one of these elaborates to a `perform` (§3.1).
+    /// (`spec:implementation/foreign-interface.md`). Built in a pre-pass at the
+    /// start of [`Self::source_file`] so a later item's call `m.op(args)`
+    /// can elaborate against the module declared earlier in the same
+    /// source; a call selecting a member of one of these elaborates to a
+    /// `perform`.
     foreign: BTreeMap<String, ForeignModule>,
     /// Namespace bindings accumulated by earlier sources, plus this source's
     /// accepted imports as lowering proceeds.
@@ -2703,13 +2705,14 @@ impl Lowerer<'_>
         }
 
         // A call `m.op(args)` whose `m` is an `extern`-declared module
-        // elaborates to `perform m.op {payload}` (proposal-ffi.md §3.1) rather
-        // than the ordinary force-and-apply spine below; a reserved host
-        // module (`fs` / `env` / `proc`) elaborates the same way against its
-        // host signature. An `extern`-declared module shadows a host module of
-        // the same name (a user declaration wins over the ambient surface). A
-        // failed foreign or host call (unknown op, arity mismatch) elides the
-        // whole call in total mode.
+        // elaborates to `perform m.op {payload}`
+        // (`spec:implementation/foreign-interface.md`) rather than the ordinary
+        // force-and-apply spine below; a reserved host module (`fs` / `env` /
+        // `proc`) elaborates the same way against its host signature. An
+        // `extern`-declared module shadows a host module of the same name (a
+        // user declaration wins over the ambient surface). A failed foreign or
+        // host call (unknown op, arity mismatch) elides the whole call in total
+        // mode.
         if function.kind() == node_kinds::PROJECTION_EXPRESSION {
             match self.foreign_call(node, function, &arguments) {
                 | Ok(Some(perform)) => return Ok(EOut::Comp(perform)),
@@ -2798,7 +2801,8 @@ impl Lowerer<'_>
 
     /// Elaborates a foreign call `m.op(args)` to `perform m.op {payload}` when
     /// `m` is an `extern`-declared module and `op` one of its functions
-    /// (proposal-ffi.md §3.1) — the "a foreign call is an effect op" rule.
+    /// (`spec:implementation/foreign-interface.md`) — the "a foreign call is an
+    /// effect op" rule.
     ///
     /// The payload is the argument record keyed by parameter name; the
     /// synthesized `Perform` carries the module's per-library effect signature
@@ -3979,8 +3983,8 @@ impl Lowerer<'_>
     }
 
     /// Lowers a functional record update `#{ r | ℓ = v, … }` (value-semantics
-    /// MVP, `proposal-value-semantics-mvp.md` §3.1) to a fresh-record rebuild
-    /// `recordupdate r #{ ℓ = v, … }` over
+    /// MVP, `spec:surface-language/value-semantics.md`) to a fresh-record
+    /// rebuild `recordupdate r #{ ℓ = v, … }` over
     /// [`gandr_core_term::prim::NativePrim::RecordUpdate`]
     /// ([`ElabKind::RecordUpdate`]).
     ///
@@ -5112,9 +5116,9 @@ impl Lowerer<'_>
         else {
             // Pre-pass: collect every `extern` block into the foreign registry
             // before lowering any item, so a call `m.op(args)` elaborates
-            // against its module regardless of source order (proposal-ffi.md
-            // §2/§3.1). `extern` blocks are declarations, not runnable items —
-            // they contribute no [`Item`].
+            // against its module regardless of source order
+            // (`spec:implementation/foreign-interface.md`). `extern` blocks are
+            // declarations, not runnable items — they contribute no [`Item`].
             for child in named_non_extra_children(root) {
                 if child.kind() != node_kinds::EXTERN_BLOCK {
                     continue;
@@ -5536,9 +5540,10 @@ impl Lowerer<'_>
     }
 
     /// Collects the leading `@[…]` attribute blocks of one item node into
-    /// [`RawAttr`]s keyed on `item_index` (proposal-attributes.md §2). A node
-    /// with no `attribute` field (an expression item, or any non-`def` form)
-    /// contributes nothing.
+    /// [`RawAttr`]s keyed on `item_index`
+    /// (`spec:surface-language/attributes.md`). A node with no `attribute`
+    /// field (an expression item, or any non-`def` form) contributes
+    /// nothing.
     ///
     /// Name-and-payload only: the schema lookup and typing are the
     /// [`crate::attributes`] pass. The payload lowers to its value fragment
@@ -5622,11 +5627,11 @@ impl Lowerer<'_>
     }
 
     /// Lowers one `extern "abi" from "library" [as name] { … }` block to a
-    /// [`ForeignModule`] (proposal-ffi.md §2). The optional `name` alias is
-    /// the module namespace; when omitted, the `library` string supplies it.
-    /// Each `type Name;` is an opaque handle type (§4.4) and each bodyless
-    /// `def name(params) -> T;` is a foreign function whose members bind as
-    /// the lowering contract module members.
+    /// [`ForeignModule`] (`spec:implementation/foreign-interface.md`). The
+    /// optional `name` alias is the module namespace; when omitted, the
+    /// `library` string supplies it. Each `type Name;` is an opaque handle
+    /// type and each bodyless `def name(params) -> T;` is a foreign
+    /// function whose members bind as the lowering contract module members.
     ///
     /// # Contract
     /// - ensures: on success, a [`ForeignModule`] named by the alias or library
@@ -5700,8 +5705,8 @@ impl Lowerer<'_>
 
     /// Lowers one `extern` foreign-function signature `def name(params) -> T;`
     /// to a [`ForeignFn`], mapping each parameter and the result through the
-    /// MVP boundary (proposal-ffi.md §4). `opaque` is the set of opaque
-    /// handle types the enclosing block declares.
+    /// MVP boundary (`spec:implementation/foreign-interface.md`). `opaque` is
+    /// the set of opaque handle types the enclosing block declares.
     fn extern_function(
         &self,
         node: SynNode<'_>,
@@ -5749,10 +5754,11 @@ impl Lowerer<'_>
         Ok(ForeignFn { op, params, result })
     }
 
-    /// Maps an `extern`-boundary type node to its [`CType`] (proposal-ffi.md
-    /// §4): the six numeric atoms by identity (§4.1), `CStr` to a string copy
-    /// (§4.2), a declared opaque handle to `Ptr` (§4.4), and `Unit` to a `void`
-    /// slot. Everything else is outside the MVP boundary.
+    /// Maps an `extern`-boundary type node to its [`CType`]
+    /// (`spec:implementation/foreign-interface.md`): the six numeric atoms by
+    /// identity, `CStr` to a string copy, a declared opaque handle to `Ptr`,
+    /// and `Unit` to a `void` slot. Everything else is outside the MVP
+    /// boundary.
     fn boundary_ctype(
         &self,
         node: SynNode<'_>,
@@ -7981,7 +7987,7 @@ mod tests
         Ok(())
     }
 
-    // --- FFI extern-block elaboration (proposal-ffi.md §2, §3.1, §4) ----------
+    // --- FFI extern-block elaboration ----------------------------------------
 
     #[test]
     fn extern_block_registers_a_foreign_module_and_no_runnable_item() -> Result<(), String>
@@ -8419,7 +8425,7 @@ mod tests
     fn undeclared_boundary_type_is_rejected() -> Result<(), String>
     {
         // `Integer` is not a boundary atom — the boundary demands a concrete
-        // fixed-width atom (proposal-ffi.md §4.1).
+        // fixed-width atom (`spec:implementation/foreign-interface.md`).
         let source = "extern \"c\" from \"m\" {\n  def f(x: Integer) -> f64;\n}";
         let error = lower_source(source.into())
             .err()

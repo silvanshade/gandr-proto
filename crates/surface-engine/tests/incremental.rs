@@ -1,5 +1,6 @@
 //! The differential gate over **real surface source**: incremental validated
-//! resume ≡ from-scratch re-typing (`incremental-pipeline.md` §"Checkpoints and
+//! resume ≡ from-scratch re-typing
+//! (`spec:implementation/incremental-pipeline.md` §"Checkpoints and
 //! the reuse rule" through §"Derivation merging and identity stability").
 //!
 //! `gandr-core-incremental` gates its engine against an in-tree item-source

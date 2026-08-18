@@ -1,7 +1,7 @@
-//! The corpus walker (ADR-84): every `.gandr` example under
-//! `examples/` parses its `//@` directives, runs in its declared mode, and
-//! meets its expectations; model examples must additionally open with a
-//! literate comment header (the learn-by-example discipline).
+//! The corpus walker: every `.gandr` example under `examples/` parses its
+//! `//@` directives, runs in its declared mode, and meets its expectations;
+//! model examples must additionally open with a literate comment header (the
+//! learn-by-example discipline).
 
 /// Corpus walker tests.
 #[cfg(test)]
@@ -113,7 +113,7 @@ mod tests
     #[test]
     fn surface_tree_is_populated_literate_and_firewalled()
     {
-        // The W4d surface fold-in tree (`wyrd-ku0f`) is PBG-only and firewalled
+        // The surface reservation tree is PBG-only and firewalled
         // from execution: the corpus walker runs the model and pathological
         // trees only (never `SURFACE_DIR`), so these fixtures never lower or
         // evaluate — their gate is the PBG parser's zero-obligation sweep. This
@@ -167,8 +167,9 @@ mod tests
             let source = fs::read_to_string(&file)
                 .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", file.display()));
             // A model example opens with prose commentary (a shebang line may
-            // precede it), not with code and not with a bare directive: the
-            // literate discipline of ADR-52 Decision C.
+            // precede it), not with code and not with a bare directive. The
+            // model tree is pedagogy and the pathological tree is testing, and
+            // the literate header is what keeps the two apart on sight.
             let mut lines = source.lines().peekable();
             if lines.peek().is_some_and(|line| line.starts_with("#!/")) {
                 let _shebang = lines.next();
