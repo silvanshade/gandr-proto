@@ -146,6 +146,11 @@ trait MutantsHost
         args: &[OsString],
         cwd: Option<&Path>,
     ) -> Result<HostCommandOutcome, GateError>;
+    /// Run bounded Cargo metadata and retain JSON stdout.
+    fn run_cargo_metadata(
+        &mut self,
+        cwd: Option<&Path>,
+    ) -> Result<HostCommandOutcome, GateError>;
 
     /// Return whether a path exists.
     ///
@@ -280,7 +285,28 @@ impl MutantsHost for SupportMutantsHost
         ))
     }
 
-    #[inline]
+    fn run_cargo_metadata(
+        &mut self,
+        cwd: Option<&Path>,
+    ) -> Result<HostCommandOutcome, GateError>
+    {
+        let output = support::run_output(
+            OsStr::new("cargo"),
+            &[
+                os("metadata"),
+                os("--format-version"),
+                os("1"),
+                os("--no-deps"),
+            ],
+            cwd,
+            false,
+        )?;
+        Ok(HostCommandOutcome::new(
+            output.success().into().0,
+            output.code().into().0,
+            output.stdout_lossy().to_string(),
+        ))
+    }
     fn path_exists(
         &mut self,
         path: &Path,
@@ -1006,7 +1032,7 @@ where
     Sink: sandbox::CampaignReportSink,
     P: Into<PackageText<'semantic>>,
 {
-    let package = validate_package_in_workspace(options, package.into().0)?;
+    let package = validate_package_in_workspace(host, options, package.into().0)?;
     require_campaign_infra(infrastructure, options)?;
     write_source_archive(host, options, "HEAD")?;
     prepare_report_dir(host, &options.working_report)?;
@@ -1032,32 +1058,24 @@ where
     Err(campaign_failure())
 }
 /// Verify the selected package exists in current Cargo metadata.
-fn validate_package_in_workspace<'semantic, P>(
+fn validate_package_in_workspace<'semantic, Host, P>(
+    host: &mut Host,
     options: &MutantsOptions,
     package: P,
 ) -> Result<String, GateError>
 where
+    Host: MutantsHost,
     P: Into<NameText<'semantic>>,
 {
     let package = validate_package_name(package)?;
-    let output = support::run_output(
-        OsStr::new("cargo"),
-        &[
-            os("metadata"),
-            os("--format-version"),
-            os("1"),
-            os("--no-deps"),
-        ],
-        Some(options.workspace_root.as_path()),
-        false,
-    )?;
+    let output = host.run_cargo_metadata(Some(options.workspace_root.as_path()))?;
     if !output.success().into().0 {
         return Err(GateError::operational(
             "mutants package: cargo metadata failed while validating package",
         ));
     }
-    let metadata: serde_json::Value = serde_json::from_str(output.stdout_lossy().as_ref())
-        .map_err(|error| {
+    let metadata: serde_json::Value =
+        serde_json::from_str(output.stdout().into().0).map_err(|error| {
             GateError::operational(format!(
                 "mutants package: cargo metadata was invalid: {error}"
             ))
@@ -1929,8 +1947,12 @@ mod tests
         git_outputs: VecDeque<HostCommandOutcome>,
         /// Queued Git status outcomes.
         git_statuses: VecDeque<HostCommandOutcome>,
-        /// Queued non-Git status outcomes.
+        /// Queued non-Git host status outcomes.
         host_statuses: VecDeque<HostCommandOutcome>,
+        /// Number of injected metadata calls.
+        metadata_calls: usize,
+        /// Injected Cargo metadata result.
+        metadata_output: Option<HostCommandOutcome>,
     }
 
     impl FakeHost
@@ -1949,7 +1971,25 @@ mod tests
                 git_outputs: VecDeque::from(git_outputs),
                 git_statuses: VecDeque::from(git_statuses),
                 host_statuses: VecDeque::from(host_statuses),
+                metadata_calls: 0,
+                metadata_output: None,
             }
+        }
+
+        fn with_metadata<'semantic, S>(
+            mut self,
+            stdout: S,
+        ) -> Self
+        where
+            S: Into<StdoutText<'semantic>>,
+        {
+            let stdout = stdout.into().0;
+            self.metadata_output = Some(HostCommandOutcome::new(
+                true,
+                Some(0_i32),
+                stdout.to_owned(),
+            ));
+            self
         }
     }
 
@@ -2009,6 +2049,16 @@ mod tests
                     render_call(args)
                 ))
             })
+        }
+        fn run_cargo_metadata(
+            &mut self,
+            _cwd: Option<&Path>,
+        ) -> Result<HostCommandOutcome, GateError>
+        {
+            self.metadata_calls = self.metadata_calls.saturating_add(1);
+            self.metadata_output
+                .take()
+                .ok_or_else(|| GateError::operational("fake host has no metadata result"))
         }
 
         fn path_exists(
@@ -2903,6 +2953,46 @@ mod tests
             scratch_root.join("diff.patch"),
             scratch_root.join("report"),
         )
+    }
+
+    /// An absent package fails before infrastructure, archive, report, sink, or
+    /// msb work.
+    #[test]
+    fn absent_package_refuses_before_side_effects() -> TestResult
+    {
+        let root =
+            std::env::temp_dir().join(format!("gandr-mutants-absent-{}", std::process::id()));
+        let scratch = root.join("scratch");
+        support::HOST_FILESYSTEM.create_dir_all(&scratch)?;
+        let options = test_options(&root, &scratch);
+        let mut host = FakeHost::new(Vec::new(), Vec::new(), Vec::new())
+            .with_metadata(r#"{"packages":[{"name":"present"}]}"#);
+        let mut infrastructure = FakeInfrastructure::present();
+        let mut runner = FakeMsbAdapter::default();
+        let mut sink = sandbox::SupportCampaignReportSink;
+        let error = run_package_campaign_with_environment(
+            &mut host,
+            &mut infrastructure,
+            &mut runner,
+            &mut sink,
+            &options,
+            "absent",
+        )
+        .expect_err("absent package must be rejected");
+        assert!(
+            error
+                .to_string()
+                .contains("not a package in the current workspace")
+        );
+        assert!(host.git_output_calls.is_empty());
+        assert!(host.git_status_calls.is_empty());
+        assert!(host.host_status_calls.is_empty());
+        assert_eq!(1, host.metadata_calls);
+        assert!(runner.calls.is_empty());
+        assert!(!options.source_archive.exists());
+        assert!(!options.working_report.exists());
+        support::HOST_FILESYSTEM.remove_dir_all(&root)?;
+        Ok(())
     }
 
     /// Build a successful msb output outcome.
