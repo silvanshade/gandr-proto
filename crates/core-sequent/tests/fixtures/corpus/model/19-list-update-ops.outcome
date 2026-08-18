@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/19-list-update-ops.gandr
-; sexp-b3sum: f1e6c2726797ac4e08788e6f1298b511d39e4f81c5ebc55b5c8749206c4d15dc
+; source-b3sum: 893774541a2872f03be8f0a0a049ab360d67fc22f89b1ab9e46198bf72584df2
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 9
 Ret(List([Int(10), Int(20), Int(30)]))

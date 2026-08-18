@@ -2,11 +2,10 @@
 //!
 //! The front end is available again at rung F4, so the semantic sweeps consume
 //! the surface-corpus model and pathological examples through
-//! [`gandr_surface_engine::lower::lower_source_total`] instead of decoding the
-//! B1 pre-lowered s-expression captures. The checked-in `.sexp` files remain as
-//! byte/provenance anchors for the three invariant manifests, but never supply
-//! executable terms. F4 staging O6 keeps the FFI-capability and regex fixtures'
-//! semantic anchors frozen until those optional features land.
+//! [`gandr_surface_engine::lower::lower_source_total`]. Corpus provenance is
+//! derived directly from each checked-in `.gandr` source; no pre-lowered
+//! representation is consulted. F4 staging O6 keeps the FFI-capability and
+//! regex fixtures' semantic anchors frozen until those optional features land.
 
 use std::fs;
 use std::path::Path;
@@ -45,17 +44,18 @@ impl core::fmt::Display for CorpusTree
     }
 }
 
-/// One live-lowered corpus source and its checked-in B1 byte anchor.
+/// One live-lowered corpus source and its source-byte snapshot.
 pub struct Fixture
 {
     /// Corpus-relative source path (`model/foo.gandr`).
     pub source: String,
-    /// Path of the corresponding checked-in `.sexp` byte anchor.
-    pub path: PathBuf,
+    /// Path of the checked-in `.gandr` source bytes.
+    pub source_path: PathBuf,
+    /// Path of the corresponding checked-in `.outcome` snapshot.
+    pub snapshot_path: PathBuf,
     /// Live terms produced by total lowering, in source order.
     pub items: Vec<Term>,
-    /// Whether F4 staging O6 freezes this fixture's pre-feature semantic
-    /// record.
+    /// Whether F4 staging O6 freezes this fixture's semantic record.
     ///
     /// The live terms still execute; only comparison against the immutable
     /// `.outcome` and partition rows is deferred until the feature lands.
@@ -67,7 +67,7 @@ pub struct Fixture
 /// # Contract
 ///
 /// - requires: `tree` names a directory under the surface corpus's `examples/`
-///   tree and every source has one B1 `.sexp` anchor.
+///   tree.
 /// - ensures: returns one fixture per `.gandr` source, sorted by relative path,
 ///   with items produced only by live total lowering.
 /// - provides: the single corpus-input seam shared by the differential,
@@ -95,16 +95,17 @@ pub fn read_tree(tree: CorpusTree) -> Vec<Fixture>
             .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", source_path.display()));
         let lowered = lower_source_total(text.as_str().into())
             .unwrap_or_else(|error| panic!("{source} must lower totally: {error}"));
-        let path = fixture_root().join(relative).with_extension("sexp");
+        let snapshot_path = fixture_root().join(relative).with_extension("outcome");
         assert!(
-            path.is_file(),
-            "{source}: missing byte anchor `{}`",
-            path.display()
+            snapshot_path.is_file(),
+            "{source}: missing outcome snapshot `{}`",
+            snapshot_path.display()
         );
         fixtures.push(Fixture {
             snapshot_is_feature_frozen: FEATURE_FROZEN_SOURCES.contains(&source.as_str()),
             source,
-            path,
+            source_path,
+            snapshot_path,
             items: lowered.items.into_iter().map(|item| item.term).collect(),
         });
     }
@@ -113,24 +114,48 @@ pub fn read_tree(tree: CorpusTree) -> Vec<Fixture>
 
 /// A BLAKE3 fixture-provenance digest over one or more corpus trees.
 ///
-/// The fold is intentionally byte-for-byte identical to the retired B1 reader:
-/// path and file bytes remain the authority for the partition/export manifests
-/// even though execution now comes from live lowering.
+/// Each record is framed by the repository-relative source path, a NUL byte,
+/// the lowercase BLAKE3 digest of the exact `.gandr` source bytes, and a LF.
+/// Source bytes are the authority for all corpus manifests.
 pub fn corpus_fixtures_b3sum(trees: &[CorpusTree]) -> String
 {
     let mut hasher = blake3::Hasher::new();
     for &tree in trees {
         for fixture in read_tree(tree) {
-            let bytes = fs::read(&fixture.path).unwrap_or_else(|error| {
-                panic!("cannot read fixture `{}`: {error}", fixture.path.display())
+            let bytes = fs::read(&fixture.source_path).unwrap_or_else(|error| {
+                panic!(
+                    "cannot read corpus source `{}`: {error}",
+                    fixture.source_path.display()
+                )
             });
-            hasher.update(fixture.source.as_bytes());
-            hasher.update(&[0x00]);
-            hasher.update(blake3::hash(&bytes).to_hex().as_bytes());
-            hasher.update(&[0x0a]);
+            update_fixture_digest(
+                &mut hasher,
+                SourcePath(&fixture.source),
+                SourceBytes(&bytes),
+            );
         }
     }
     hasher.finalize().to_hex().to_string()
+}
+
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+struct SourcePath<'source>(&'source str);
+
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+struct SourceBytes<'bytes>(&'bytes [u8]);
+
+fn update_fixture_digest(
+    hasher: &mut blake3::Hasher,
+    source: SourcePath<'_>,
+    bytes: SourceBytes<'_>,
+)
+{
+    hasher.update(source.0.as_bytes());
+    hasher.update(&[0x00]);
+    hasher.update(blake3::hash(bytes.0).to_hex().as_bytes());
+    hasher.update(&[0x0a]);
 }
 
 /// Collects every `.gandr` file under `dir` with an explicit directory
@@ -171,12 +196,37 @@ fn surface_corpus_root() -> PathBuf
         "/../surface-corpus/examples"
     ))
 }
-
-/// Root of the immutable B1 `.sexp`/`.outcome` anchors.
+/// Root of the checked-in corpus outcome snapshots.
 fn fixture_root() -> PathBuf
 {
     PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/corpus"
     ))
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::SourceBytes;
+    use super::SourcePath;
+    use super::update_fixture_digest;
+
+    #[test]
+    fn source_byte_changes_change_the_framed_digest()
+    {
+        let mut first = blake3::Hasher::new();
+        update_fixture_digest(
+            &mut first,
+            SourcePath("model/example.gandr"),
+            SourceBytes(b"def value = 1;"),
+        );
+        let mut second = blake3::Hasher::new();
+        update_fixture_digest(
+            &mut second,
+            SourcePath("model/example.gandr"),
+            SourceBytes(b"def value = 2;"),
+        );
+        assert_ne!(first.finalize(), second.finalize());
+    }
 }

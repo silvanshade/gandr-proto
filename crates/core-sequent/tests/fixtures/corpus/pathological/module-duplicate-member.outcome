@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/module-duplicate-member.gandr
-; sexp-b3sum: 40d4d2514087c44ef5f27c710c2430c6eeedc6fc1edf114782d7905e684df31a
+; source-b3sum: 2cdecd37e82cfe464474d4e66ee501382c146ac612a96f11e046f911238a394a
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Blame(Hole)

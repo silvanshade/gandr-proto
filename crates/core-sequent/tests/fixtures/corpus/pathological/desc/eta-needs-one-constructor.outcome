@@ -1,5 +1,5 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/desc/eta-needs-one-constructor.gandr
-; sexp-b3sum: b0c21ed9156f09426114b0492d2142d1a7ca0ca330c90ab429837c8c0f8c4c63
+; source-b3sum: e220bd43469ac13411cad354e22b3cee6a4d07afff92e91e4a901c307d3e1b49
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 0

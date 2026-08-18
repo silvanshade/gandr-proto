@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/03-arithmetic.gandr
-; sexp-b3sum: 045397ca968c50ae5e62e9df7afd6b7baa3e6c9f13eaae85a30d0668df621f37
+; source-b3sum: 816eb59644bdce0ca006bbb24dda9e16b8c007f29b40a5aa63e662a305f44127
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 3
 Stuck(ForcedNonThunk)

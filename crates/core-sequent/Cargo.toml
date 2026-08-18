@@ -21,9 +21,9 @@ path = "tests/lib.rs"
 gandr-core-term.workspace = true
 
 [dev-dependencies]
-# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
+# BLAKE3 digests the exact `.gandr` source bytes for the outcome-snapshot
 # provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
-# provenance convention the pre-lowered corpus fixtures already carry.
+# provenance convention shared by the corpus manifests.
 blake3.workspace = true
 # The checker's kernel bridge and recursive judgement, for the export gate and
 # the ported conformance-soundness rows. A test-only edge: the focusing

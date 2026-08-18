@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/package-payload-not-a-thunk.gandr
-; sexp-b3sum: a31763cf0888413a0f672942dc2719ae64011e016a3978f3609c3a944281c099
+; source-b3sum: 11c958668b04f4bf9749ce6c8e71711152323997bcafba9ce425fc99429a7ad9
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Int(1))

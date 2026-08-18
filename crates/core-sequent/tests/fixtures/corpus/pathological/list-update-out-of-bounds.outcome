@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/list-update-out-of-bounds.gandr
-; sexp-b3sum: 2657ec3f4563e3bba7f6c4b3b26e0fb6622400f5af03c78b5ada9445d9709eb6
+; source-b3sum: 546eea9eee276822af8a014219a7a90a3c0cd69712024a0812783e27dcb34610
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Stuck(ForcedNonThunk)

@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/12-typed-holes.gandr
-; sexp-b3sum: da8ad6d1f51e49728571ba8449275a26bed3664c5a2fda763b56deba0dd56628
+; source-b3sum: 2db7e7df4f31220a9aee71b6f02baca6970a8b468ab8003ebaa590b3b635b3d0
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Blame(Hole)

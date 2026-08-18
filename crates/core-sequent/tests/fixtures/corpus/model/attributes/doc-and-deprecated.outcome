@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/attributes/doc-and-deprecated.gandr
-; sexp-b3sum: 6be3a659ad3863464c5bff188dfdabb4523411dd550db176ced851deea4d23d6
+; source-b3sum: 04a3c257406eb0b833131f3c32a907a741e220cf06d143610eb21f2361dd2c7c
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Thunk(Omega, Abs("x", None, Bind(App(App(Force(Var("mul")), Var("x")), Var("x")), "%tmp0", Ret(Var("%tmp0"))))))

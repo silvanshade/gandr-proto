@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/builtins/int-division-by-zero.gandr
-; sexp-b3sum: e153f6581a9caa91579540d9c74187e76921426168eb1975ff98033eed0a652f
+; source-b3sum: 8adb38da3092f54863b8042cde349f71ce0d1c0979ea1a6494f13b1f501ca804
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Stuck(ForcedNonThunk)

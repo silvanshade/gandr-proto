@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/modules/module-binder-shadows-a-host.gandr
-; sexp-b3sum: b4282e3a5ec319d50e8c2c16a3b7797acaa63e5432fe1c93b1eb784514643303
+; source-b3sum: 6d7043780eacc41085f0399c187b46d31a13c0c3c31feb4c4b98da88351f2393
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Thunk(Omega, Abs("env", None, Perform(EffectSig { name: "Env", ops: [EffectOp { name: "get", payload: Atom("String"), reply: Atom("String") }, EffectOp { name: "path", payload: Unit, reply: List(Atom("String")) }] }, "get", Str("HOME")))))

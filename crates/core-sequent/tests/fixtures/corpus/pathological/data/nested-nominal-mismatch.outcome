@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/data/nested-nominal-mismatch.gandr
-; sexp-b3sum: bc5eb86a563c892c9b019f1a3d261c66df98f5fb7202a7e33b9b85c8ad89b2cd
+; source-b3sum: 5c8e6030c93a08e335fca2bd25934b87f85d4a8c18e29e5f30ed142e1aa90d32
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(List([Other]))

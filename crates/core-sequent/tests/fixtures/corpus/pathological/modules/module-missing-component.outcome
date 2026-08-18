@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/modules/module-missing-component.gandr
-; sexp-b3sum: d1a7943c82e2f05e3d09d452f55f06ca4a7c8ebe54e31c13a8016c51a84893ed
+; source-b3sum: 101dcf8937b5f54df272dc3121ecebb936f73df06af44ca170df7a8c59659ee9
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Record([("absent", Hole(0)), ("present", Int(1))]))

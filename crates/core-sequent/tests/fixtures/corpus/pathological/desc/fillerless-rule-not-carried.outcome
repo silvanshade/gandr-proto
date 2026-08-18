@@ -1,5 +1,5 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/desc/fillerless-rule-not-carried.gandr
-; sexp-b3sum: ac745b60c51f549bc5e028a219a8aea8230ca582b564c7e0eed5536d6b36b47d
+; source-b3sum: cb77593945cb2146aa342eeb49b228c9458a90651521469b64055cdfd08122b1
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 0

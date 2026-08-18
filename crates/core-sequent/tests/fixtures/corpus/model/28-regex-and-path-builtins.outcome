@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/28-regex-and-path-builtins.gandr
-; sexp-b3sum: f3d3a6fe85b6d97f96347302fb962a8327ebbe0f932acbf3daa8dbffa0a8c84b
+; source-b3sum: 203f9134ee9c625e5e9adffa6c995fd58ebe5e470050f64a3f5a5d53914bbdb5
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 5
 Stuck(RecordProjNonRecord)

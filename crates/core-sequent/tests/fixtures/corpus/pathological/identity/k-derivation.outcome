@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/identity/k-derivation.gandr
-; sexp-b3sum: 78b412c343e8fe7e4f8c60f3af980136bced5e354b779db6a0eed6e5dfee0edd
+; source-b3sum: 68f1092fd32a8fef36d25b8feefb84ce28626f76435b675cd1891fa4b58eec11
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Thunk(Omega, Abs("n", None, Abs("p", None, Abs("q", None, Case(Var("p"), ("_", Hole(0)), ("_", Hole(1))))))))

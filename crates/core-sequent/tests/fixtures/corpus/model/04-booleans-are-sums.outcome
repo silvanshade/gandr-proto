@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/04-booleans-are-sums.gandr
-; sexp-b3sum: 64656217df31e172738bdaee65640aa03567843e9459cf0fc140b7ef1d31b48e
+; source-b3sum: b343e6905d448ae88bc0ddcdc4c3f687d9078a029890229c719fced965c5b5a6
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Stuck(ForcedNonThunk)

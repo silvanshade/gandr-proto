@@ -27,9 +27,9 @@
 //! * `artifact-identity` — the outer [`ArtifactIdentity`] (massive-term design
 //!   §6, the b3sum-provenance successor): `BLAKE3` of the manifest binding the
 //!   chunker commitment, record count, root node hash, and inner format
-//!   version. This is the artifact-level provenance; the per-fixture-file
-//!   `.sexp` b3sum (the `corpus-fixtures-b3sum` header) is the input-level
-//!   provenance — two layers, two planes.
+//!   version. This is the artifact-level provenance; the source-byte BLAKE3
+//!   digest (`corpus-fixtures-b3sum`) is the input-level provenance — two
+//!   layers, two planes.
 //!
 //! **Wall-clock decode time is advisory only** — emitted to stderr per item,
 //! never persisted and never asserted (it is CI-flaky; pinning it would make

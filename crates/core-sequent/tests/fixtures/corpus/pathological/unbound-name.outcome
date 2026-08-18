@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/unbound-name.gandr
-; sexp-b3sum: 23b5722b2742d35febf127c165b701504bdc4be699f99af0541edea53293bc51
+; source-b3sum: 124f548a717b848e9b9c15847b6dad6f62d477f9a3f310981ee5a8ead467d92d
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Var("nowhere"))

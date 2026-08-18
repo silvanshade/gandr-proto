@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/ill-typed-ascription.gandr
-; sexp-b3sum: d6555b80bdf45c61242426ace3c66c3da49e9b6d0ea7818d3327640111344e61
+; source-b3sum: ee5b40ab363ebb811983788a507b0f3774ea80c987fd14e1af30ab6f95a98cfa
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Str("five"))

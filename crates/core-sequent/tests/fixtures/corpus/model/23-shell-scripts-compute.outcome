@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/23-shell-scripts-compute.gandr
-; sexp-b3sum: cf5213079874343da465b1d655cf2472b7e27c87383c921f32b2f5144bd5cbc8
+; source-b3sum: 5be21e50e44bb9bc6ce9312c9f8a1d6c5261c23b156141f4d166cfb1b8c839a3
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Blame(PerformNoHandler)

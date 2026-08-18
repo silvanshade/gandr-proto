@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/codata/codata-parameterized.gandr
-; sexp-b3sum: 9ec8cd81a933ae9f234f2d16e5511fae43b62586000806dfee9888dcf47a95b7
+; source-b3sum: d17088ba0271e81ac05bafce63c4eb3a71328933de4a3229c7af8b8c7ac66864
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Thunk(Omega, Abs("n", None, Ret(Record({"doubled": Thunk(Omega, App(App(Force(Var("add")), Var("n")), Var("n")))})))))

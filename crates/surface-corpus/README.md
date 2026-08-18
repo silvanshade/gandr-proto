@@ -11,7 +11,9 @@ It is also the integration tie-point across the front-end crates — a change th
 - **Directives.** Each runnable example declares how to run itself and what to expect through `//@ key: value` lines, which are ordinary comments to the grammar and so never perturb the program.
 - **Directives for the description route.** Beside the rule-face and cell counts, an example can ask how many η cells its declarations licensed and why one licensed none — the latter reported rather than diagnosed, because licensing no η law is the ordinary case.
 - **Six run modes.** The session engine, the runtime host for shell programs, the foreign-call path, lowering alone, the phase-L0 sequent inspector, and the stage-0 description elaborator.
-- **A frozen root cardinality.** The number of programs directly under each tree is pinned by a test whose comment records what moved it, so a feature landing that forgets its corpus treatment fails rather than passing quietly.
+- A frozen root cardinality.
+  The number of programs directly under each tree is pinned by a test whose comment records what moved it, so a feature landing that forgets its corpus treatment fails rather than passing quietly.
+  Downstream sequent gates derive provenance from each source's repository-relative path and exact `.gandr` bytes; no pre-lowered anchor file is required.
 
 ## Planned but not implemented
 

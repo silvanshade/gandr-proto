@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/deep-record-update-cost.gandr
-; sexp-b3sum: b8eac9fa515c613aa4e75643ccc608135a9ef6485eb1e4a192298fdb38d00e9c
+; source-b3sum: f81a9e5490dbc13acb811bd0b35ff7d14052fd6795c476121b0ec7e56f62670c
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Record([("a", Record([("b", Record([("c", Int(1))]))]))]))

@@ -28,42 +28,28 @@
 //!
 //! The full-realization counts (106 / 54) stay asserted as floors.
 //!
-//! # Snapshots and their provenance
+//! Snapshots and their provenance.
 //!
-//! Each corpus `.sexp` fixture has a sibling `.outcome` record under the
-//! corpus-fixture model/pathological directories, carrying a provenance header
-//! (the `.gandr` source path, the BLAKE3 digest of the `.sexp` fixture bytes,
-//! the generator identity, and the item count) and one line per item — the
-//! `Debug` rendering of that item's [`canonical`] outcome. The header's
-//! `sexp-b3sum` is checked against the live fixture digest on every run, so a
-//! changed fixture forces a re-bless rather than silently comparing against a
-//! stale record.
+//! Each corpus `.outcome` record carries a provenance header containing the
+//! `.gandr` source path, the BLAKE3 digest of the exact source bytes, the
+//! generator identity, and the item count. The source digest is checked on
+//! every run, so a changed source forces a re-bless rather than silently
+//! comparing against stale records.
 //!
-//! **Regeneration** is reproducible and documented: run the ignored-by-default
+//! Regeneration is reproducible and documented: run the ignored-by-default
 //! [`tests::bless_corpus_outcomes`] generator with
 //! `GANDR_BLESS_CORPUS_OUTCOMES` set (e.g. `GANDR_BLESS_CORPUS_OUTCOMES=1 cargo
 //! nextest run -p gandr-core-sequent bless_corpus_outcomes`). It rewrites every
-//! `.outcome` record from the current L machine, mirroring how the pre-lowered
-//! `.sexp` fixtures document their own capture. The records here were blessed
-//! from the final oracle-agreeing run.
-//!
-//! When these snapshots were first frozen (B1 stage F) the sweep additionally
-//! cross-checked that each item's retiring-CEK-oracle outcome rendered to the
-//! same snapshot, so both anchors (L and the oracle) agreed with the fixture
-//! before the CEK was removed. That cross-check retired with the CEK; the sweep
-//! is now L-vs-snapshot only.
+//! `.outcome` record from the current L machine.
 //!
 //! The items are lowered live from the ported source corpus
-//! ([`crate::common`]); the checked-in `.sexp` files remain only as
-//! immutable byte/provenance anchors for the outcome records and kernel
-//! manifests.
+//! ([`crate::common`]); executable terms never come from a checked-in fixture.
 
 #[cfg(test)]
 mod tests
 {
     use std::fs;
     use std::path::Path;
-    use std::path::PathBuf;
 
     use gandr_core_sequent::boundary::CorpusItemCount;
     use gandr_core_sequent::boundary::UnsupportedFormerStatus;
@@ -166,7 +152,7 @@ mod tests
                 fixture.items.len(),
                 "outcome snapshot `{}` records {} outcomes for {} items; regenerate with \
                  {BLESS_ENV}=1",
-                outcome_path(&fixture.path).display(),
+                fixture.snapshot_path.display(),
                 expected.len(),
                 fixture.items.len()
             );
@@ -235,28 +221,21 @@ mod tests
         mismatches: Vec<String>,
     }
 
-    /// The sibling `.outcome` snapshot path for a `.sexp` fixture.
-    fn outcome_path(sexp: &Path) -> PathBuf
+    /// Returns the lowercase BLAKE3 digest of the source bytes.
+    fn source_digest(source: &Path) -> String
     {
-        sexp.with_extension("outcome")
-    }
-
-    /// The lowercase BLAKE3 digest of a `.sexp` fixture's bytes, the snapshot's
-    /// provenance anchor.
-    fn sexp_digest(sexp: &Path) -> String
-    {
-        let bytes = fs::read(sexp)
-            .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", sexp.display()));
+        let bytes = fs::read(source)
+            .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", source.display()));
         String::from(blake3::hash(&bytes).to_hex().as_str())
     }
 
     /// Reads a fixture's sibling `.outcome` record, verifying the recorded
-    /// `sexp-b3sum` still matches the live fixture bytes, and returns the
+    /// source digest still matches the live `.gandr` bytes, and returns the
     /// per-item expected canonical-outcome renderings in file order.
     fn read_snapshot(fixture: &Fixture) -> Vec<String>
     {
-        let path = outcome_path(&fixture.path);
-        let text = fs::read_to_string(&path).unwrap_or_else(|error| {
+        let path = &fixture.snapshot_path;
+        let text = fs::read_to_string(path).unwrap_or_else(|error| {
             panic!(
                 "cannot read outcome snapshot `{}` ({error}); regenerate with {BLESS_ENV}=1",
                 path.display()
@@ -264,19 +243,19 @@ mod tests
         });
         let recorded = header_field(SnapshotHeader {
             text: &text,
-            name: "sexp-b3sum",
+            name: "source-b3sum",
         })
         .unwrap_or_else(|| {
             panic!(
-                "outcome snapshot `{}` is missing its `sexp-b3sum` provenance header",
+                "outcome snapshot `{}` is missing its `source-b3sum` provenance header",
                 path.display()
             )
         });
-        let actual = sexp_digest(&fixture.path);
+        let actual = source_digest(&fixture.source_path);
         assert_eq!(
             recorded,
             actual,
-            "outcome snapshot `{}` is stale (recorded fixture b3sum {recorded} != live \
+            "outcome snapshot `{}` is stale (recorded source b3sum {recorded} != live \
              {actual}); regenerate with {BLESS_ENV}=1",
             path.display()
         );
@@ -292,7 +271,7 @@ mod tests
         let mut lines = vec![
             "; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)".to_owned(),
             format!("; source: {}", fixture.source),
-            format!("; sexp-b3sum: {}", sexp_digest(&fixture.path)),
+            format!("; source-b3sum: {}", source_digest(&fixture.source_path)),
             format!(
                 "; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes \
                  ({BLESS_ENV}=1)"
@@ -305,9 +284,12 @@ mod tests
         }
         let mut out = lines.join("\n");
         out.push('\n');
-        let path = outcome_path(&fixture.path);
-        fs::write(&path, out)
-            .unwrap_or_else(|error| panic!("cannot write `{}`: {error}", path.display()));
+        fs::write(&fixture.snapshot_path, out).unwrap_or_else(|error| {
+            panic!(
+                "cannot write `{}`: {error}",
+                fixture.snapshot_path.display()
+            )
+        });
     }
 
     /// One provenance-header lookup.

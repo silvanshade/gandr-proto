@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/codata/missing-observation.gandr
-; sexp-b3sum: 7b257ee6b55569b88cde6d8b24a15018e3c4108cdc152515736f25506d035677
+; source-b3sum: 20a743f308932248269202480b9e9582a5fabdffd6ca5e7b66a2ebf2aa41d20b
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 1
 Ret(Record([("x", Thunk(Omega, Ret(Int(0))))]))
