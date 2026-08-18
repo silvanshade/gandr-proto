@@ -1010,6 +1010,123 @@ mod tests
         assert!(matches!(host.dispatch(&operation), FfiAction::Decline));
     }
 
+    #[cfg(feature = "native-fixture")]
+    #[test]
+    fn every_declaration_refusal_precedes_library_loading()
+    {
+        let cases = [
+            (
+                "empty module",
+                ForeignModule {
+                    name: String::new(),
+                    abi: "c".to_owned(),
+                    library: "path-that-must-not-be-opened".to_owned(),
+                    types: Vec::new(),
+                    functions: Vec::new(),
+                },
+                "foreign module name is empty",
+            ),
+            (
+                "empty library",
+                ForeignModule {
+                    name: "module".to_owned(),
+                    abi: "c".to_owned(),
+                    library: String::new(),
+                    types: Vec::new(),
+                    functions: Vec::new(),
+                },
+                "foreign library path is empty",
+            ),
+            (
+                "empty operation",
+                ForeignModule {
+                    name: "module".to_owned(),
+                    abi: "c".to_owned(),
+                    library: "path-that-must-not-be-opened".to_owned(),
+                    types: Vec::new(),
+                    functions: vec![ForeignFn {
+                        op: String::new(),
+                        params: Vec::new(),
+                        result: CType::Void,
+                    }],
+                },
+                "foreign operation name is empty",
+            ),
+            (
+                "duplicate operation",
+                ForeignModule {
+                    name: "module".to_owned(),
+                    abi: "c".to_owned(),
+                    library: "path-that-must-not-be-opened".to_owned(),
+                    types: Vec::new(),
+                    functions: vec![
+                        ForeignFn {
+                            op: "same".to_owned(),
+                            params: Vec::new(),
+                            result: CType::Void,
+                        },
+                        ForeignFn {
+                            op: "same".to_owned(),
+                            params: Vec::new(),
+                            result: CType::Void,
+                        },
+                    ],
+                },
+                "duplicate foreign operation",
+            ),
+            (
+                "empty parameter",
+                ForeignModule {
+                    name: "module".to_owned(),
+                    abi: "c".to_owned(),
+                    library: "path-that-must-not-be-opened".to_owned(),
+                    types: Vec::new(),
+                    functions: vec![ForeignFn {
+                        op: "call".to_owned(),
+                        params: vec![ForeignParam {
+                            name: String::new(),
+                            c_type: CType::U32,
+                        }],
+                        result: CType::Void,
+                    }],
+                },
+                "foreign parameter name is empty",
+            ),
+            (
+                "duplicate parameter",
+                ForeignModule {
+                    name: "module".to_owned(),
+                    abi: "c".to_owned(),
+                    library: "path-that-must-not-be-opened".to_owned(),
+                    types: Vec::new(),
+                    functions: vec![ForeignFn {
+                        op: "call".to_owned(),
+                        params: vec![
+                            ForeignParam {
+                                name: "same".to_owned(),
+                                c_type: CType::U32,
+                            },
+                            ForeignParam {
+                                name: "same".to_owned(),
+                                c_type: CType::U32,
+                            },
+                        ],
+                        result: CType::Void,
+                    }],
+                },
+                "duplicate foreign parameter",
+            ),
+        ];
+
+        for (label, declaration, expected) in cases {
+            let Err(FfiError::Marshal { detail, .. }) = FfiHost::new(vec![declaration])
+            else {
+                panic!("{label}: declaration was not refused before loading");
+            };
+            assert_eq!(detail, expected, "{label}: unexpected refusal");
+        }
+    }
+
     #[test]
     fn malformed_declaration_is_refused_before_library_loading()
     {
