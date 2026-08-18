@@ -813,16 +813,21 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // goldens — a value type in each of the two slots, an answer type the
     // branches cannot check against, and an `else if` chain annotated on a tail
     // rung instead of its head.
+    // The eta-cell minting adds two under `desc/`: the model program for a
+    // declaration that states both halves of the law an eta cell cancels — one
+    // constructor and the operation carrying its inverse face — and the golden
+    // for a two-constructor type, where the law is false at every constructor
+    // but one and the route declines by name.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        121, base_count,
-        "the model + pathological trees are 121 files (54 model + 67 pathological, including the two description-member fixtures)"
+        123, base_count,
+        "the model + pathological trees are 123 files (55 model + 68 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        121, base_clean,
-        "all 121 model + pathological files mold clean"
+        123, base_clean,
+        "all 123 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");
