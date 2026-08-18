@@ -17,10 +17,16 @@ The first production lowering slice — the L machine's **positive core** — en
   A constructor's arity is checked there, against the arity its tag declares — the builder accepts a two-field tag given one field, and only the verifier objects.
 - **Duplication and discard are effectful.** Both operations declare memory effects, and their lowering increments a heap ledger.
   A canonicalization cannot delete accounted work, and the regression witness reads the ledger back rather than trusting the declaration.
+- A **bounds check the compiled code carries itself.** Every allocation compares against the heap's own extent, read from the descriptor the caller passed, and a run that would not fit sets an exhaustion flag and returns rather than writing past it.
+  The reference walk refuses at the same word, so the two agree on short, exact and oversized heaps.
 - A **structural lowering** from the dialect to `func`/`cf`/`arith`/`memref`, then the standard conversion to the LLVM dialect, then the JIT.
 - A **reference interpreter** over the same image, sharing the heap layout and the value rendering with the compiled path and nothing else.
 - An **agreement fixture** stating what gandr's Rust L machine answers for each named program.
   The Rust side pins the fixture to the machine; this side pins the compiled slice to the fixture.
+- A **C boundary**, `include/gandr/compile_host/abi.h`, built as the shared library `gandr-compile-host-abi`.
+  An encoded image goes in; a rendered value, both ledger counters, the arena words consumed, and a typed status come out.
+  It is C rather than C++ because a caller sharing a C++ ABI with this host would have to share its MLIR installation too, and it is a separate library because nothing should have to link the host in order to build.
+  `crates/runtime-compile-host` is the Rust side of it: it lowers a checked core computation into an image, encodes it, and resolves this boundary by name at run time.
 
 ## What is planned and absent
 
@@ -32,9 +38,10 @@ The honest boundary of this slice, restated so nothing here is read as more than
 - **reified continuations** — no boxed consumer, no resume, no shift;
 - **the unconditional jump** — no top-level definition table and no call.
 
-Also absent: a bridge from the Rust side.
-The image is the plain-old-data boundary a foreign caller would hand over, and the interop layer that would hand it over — `cxx`, per the ruled lowering boundary — is not built.
-The compiled code carries **no bounds check** on its heap: the host sizes the heap from the image's own allocation bound, so the guarantee is the caller's rather than the compiled code's.
+What the excluded block costs, stated precisely because it is the re-test trigger for the one prediction the slice still cannot measure: every route to a **runtime frame stack** in the L machine passes through a value this image cannot represent.
+A handled `perform` binds its resumption as a boxed continuation at every hit, `shift` captures one by definition, an application builds a closure, and a `force` builds a thunk.
+The lowering materializes a frame only where it cannot inline a region, which is exactly at a capture — so the frame-stack prediction waits on the codata and reified-continuation rungs rather than on a `perform` operation by itself.
+
 There is no optimization of the emitted program beyond what the standard MLIR pipeline does, and no measurement of the compiled program's throughput.
 
 ## Using it
@@ -53,6 +60,7 @@ The compiling clang must be the one that ships beside the discovered MLIR; the c
 | `mise run compile-host:fuzz-smoke`   | replay every committed fuzz seed through the entry surface             |
 | `mise run compile-host:fuzz`         | run an AFL++ campaign over the entry surface                           |
 | `mise run compile-host:mutants`      | apply the curated mutant catalogue and require the suite to catch each |
+| `mise run compile-host:wall`         | run the gates above when a usable MLIR is present, and say so when not |
 
 The binary itself has modes for looking at intermediate stages:
 
@@ -62,9 +70,12 @@ runtime/compile-host/build/gandr-compile-host --dump-lowered=case
 runtime/compile-host/build/gandr-compile-host --interpret-samples
 ```
 
-None of these tasks is on the merge wall.
-The wall is Rust-only and every contributor runs it; requiring an MLIR installation to land a Rust change would be a much larger claim than this slice makes.
-The Rust half of the agreement differential is on the wall, inside `mise run cargo:nextest`.
+`compile-host:wall` **is** on the merge wall, and the rest are not.
+It runs the gates above on a checkout with a usable MLIR installation and prints a named skip on one without, because requiring an installation the repository does not pin would be a much larger claim than this slice makes.
+`GANDR_COMPILE_HOST_STRICT=1` turns the skip into a failure.
+
+Two things ride the wall unconditionally beside it: the Rust half of the agreement differential, and the source-level contract gate in `crates/runtime-compile-host/tests/contract.rs`, which holds this host's declared numbers and disciplines to what the Rust mirror assumes.
+Neither reaches behaviour — that is what the conditional lane is for.
 
 ## The ideas it rests on
 

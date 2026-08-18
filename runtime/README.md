@@ -6,6 +6,7 @@ The C++ tree. gandr's compilation host lives here, distinct from the Rust worksp
 | ----------------------------------------- | ---------------------------------------------------------------------- |
 | [`compile-host/`](compile-host/README.md) | the C++26 MLIR compilation host: dialect, lowering, JIT, and its tests |
 
-This tree is not part of the Rust workspace and is not built by `mise run gate:merge`.
-Its toolchain is a **discovered** MLIR installation rather than a pinned dependency, so requiring it on the merge wall would make every Rust change depend on an installation the wall cannot provide.
+This tree is not part of the Rust workspace, and nothing in that workspace links it: [`crates/runtime-compile-host`](../crates/runtime-compile-host/README.md) is the Rust side of the boundary and resolves the host's C ABI by name at run time, so a checkout with no MLIR still builds and tests everything there.
+
+Its toolchain is a **discovered** MLIR installation rather than a pinned dependency, so the merge wall requires it conditionally rather than absolutely: `mise run gate:merge` runs `compile-host:wall`, which runs this tree's gates when a usable installation is present and prints a named skip when it is not.
 The named `compile-host:*` tasks are its entry points; [`compile-host/README.md`](compile-host/README.md) lists them.
