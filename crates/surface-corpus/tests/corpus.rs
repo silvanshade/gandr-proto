@@ -73,7 +73,7 @@ mod tests
         );
     }
 
-    /// The numbered/root corpus is exactly 30 model programs and 36
+    /// The numbered/root corpus is exactly 31 model programs and 40
     /// pathological programs; feature subtrees are independently registered.
     ///
     /// The package rung moved both counts: one model program for the three
@@ -87,16 +87,24 @@ mod tests
     /// the branches cannot check against (which is what shows the annotation is
     /// checked rather than recorded), and an `else if` chain annotated on a
     /// tail rung instead of its head.
+    ///
+    /// Executable pattern holes moved both a third time: one model program for
+    /// the `?` pattern atom in a whole arm and inside a constructor, and four
+    /// failure goldens — the later arm the hole shadows, the constructor no arm
+    /// covers that the hole holds in front of, the payload hole that leaves its
+    /// head test alone, and the first-arm hole that settles nothing for any
+    /// scrutinee. The surface tree lost its `pattern-holes.gandr` reservation
+    /// in the same change, which is what promotion means.
     #[test]
-    fn frozen_root_fixture_cardinality_is_30_and_36()
+    fn frozen_root_fixture_cardinality_is_31_and_40()
     {
         assert_eq!(
-            30,
+            31,
             direct_gandr_files(&crate_root().join(MODEL_DIR)).len(),
             "frozen model root"
         );
         assert_eq!(
-            36,
+            40,
             direct_gandr_files(&crate_root().join(PATHOLOGICAL_DIR)).len(),
             "frozen pathological root"
         );

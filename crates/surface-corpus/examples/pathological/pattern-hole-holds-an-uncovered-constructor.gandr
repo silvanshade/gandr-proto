@@ -1,0 +1,27 @@
+// Failure golden: a constructor with no arm of its own is held by the hole
+// rather than reported uncovered.
+// (Pathological tree: testing artifact, not pedagogy.)
+//
+// `Green` is uncovered in the finished program too -- no arm names it. What
+// the hole changes is WHICH failure it reaches: an uncovered constructor is a
+// coverage gap the author closes by adding an arm, while a held one is an
+// unfinished test the author closes by finishing the pattern. Both halt with
+// `Blame::Hole`, so the two are told apart by the note the hole carries and by
+// which scrutinees reach it -- never by the outcome alone.
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
+
+def classify(c : Color) -> F Integer {
+  case c {
+    Red => ret 0,
+    ? => ret 1,
+    Blue => ret 2
+  }
+}
+
+classify(Green)
+
+//@ expect-blame: hole

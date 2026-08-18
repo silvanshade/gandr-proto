@@ -1,0 +1,68 @@
+// A typed hole in pattern position: an arm you have not finished writing.
+//
+// `?` is already the expression hole -- a term with a typing rule rather than
+// a parse failure with a placeholder (12). In a *pattern* slot the same token
+// spells the same idea one level down: not a value you have not written, but a
+// **test** you have not written. `case c { Red => ret 0, ? => ret 1, ... }`
+// says "when `c` is `Red`, answer 0; and there is a second branch here whose
+// pattern I have not decided yet".
+//
+// The consequence is the part worth learning, and it is not the obvious one.
+// An unfinished test is neither satisfied nor refuted, so a scrutinee that
+// reaches it **stops**. It does not fall through to the arms written after it,
+// because whether the hole would have matched first is exactly what has not
+// been decided -- and it does not take the hole's own arm either, because a
+// hole is not a wildcard. Reading it either way would have the machine guess,
+// and a guess here is a wrong answer that looks like a right one.
+//
+// So a hole in a match partitions the constructors into two groups: the ones
+// settled *before* it, which run exactly as they always did, and the ones it
+// stands in front of, which are held until you finish the pattern.
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
+
+// `Red` is settled by its own arm, which precedes the hole -- so this function
+// answers `0` for `Red` today, unfinished match and all. `Green` and `Blue`
+// both reach the hole and stop; the pathological tree carries those two,
+// because a stopped program is a testing artifact rather than a lesson.
+def classify(c : Color) -> F Integer {
+  case c {
+    Red => ret 0,
+    ? => ret 1,
+    Blue => ret 2
+  }
+}
+
+// A hole can also sit *inside* a constructor pattern, where it leaves the head
+// alone and unfinishes only the payload. `Just(?)` cannot decide a `Just` --
+// the payload test is missing -- but it refutes a `Nothing` outright, because
+// the head is written. That is why `describe` still answers for `Nothing`.
+data Maybe : Type {
+  Nothing : Maybe;
+  Just : (x : Integer) --> Maybe;
+}
+
+def describe(m : Maybe) -> F Integer {
+  case m {
+    Just(?) => ret 100,
+    Nothing => ret 200
+  }
+}
+
+// Filling a hole is an ordinary edit to the source, not a mode change: the arm
+// was already a real arm, so writing `Green` where the `?` is turns the two
+// held constructors into a settled one and a genuinely uncovered one. Nothing
+// about the rest of the file has to be re-read to do it.
+describe(Nothing)
+
+// The harness checks. `expect: goal` rather than `expect: clean`, and the
+// difference is the lesson repeated once more: a hole is reported as a GOAL --
+// the thing the machine needs you to provide -- not as an error, and a program
+// carrying one is unfinished rather than wrong.
+//@ expect: goal
+//@ expect-def: classify
+//@ expect-def: describe
+//@ expect-last-value: 200

@@ -1,0 +1,28 @@
+// Failure golden: an arm set whose first arm settles nothing settles nothing
+// for any scrutinee.
+// (Pathological tree: testing artifact, not pedagogy.)
+//
+// No arm here names a constructor, so nothing in the source reveals which
+// eliminator the match is -- and nothing has to, because the answer is the
+// same whatever the scrutinee turns out to be. A match whose first arm is
+// unfinished is one hole, and asking which constructor family it eliminates
+// would be reading a family out of arms that name none.
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
+
+// The definition is therefore holey outright: its whole body is the hole, so
+// the machine reports a goal for it and never evaluates it. That is the shape
+// this golden pins -- an all-hole arm set does not produce a match with
+// unfinished branches, it produces no match at all.
+def classify(c : Color) -> F Integer {
+  case c {
+    ?branch => ret 1
+  }
+}
+
+classify
+
+//@ expect: goal

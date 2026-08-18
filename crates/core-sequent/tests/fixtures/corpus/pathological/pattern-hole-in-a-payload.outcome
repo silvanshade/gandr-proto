@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/pattern-hole-in-a-payload.gandr
+; source-b3sum: ae76e1cbb7aabee3192bb3b57c53329a947843b177dbb1f759f11bdc4060c007
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("m", None, DataCase(Var("m"), [("_", Ret(Int(200))), ("%tmp0", Hole(0))]))))
+Stuck(ForcedNonThunk)

@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/pattern-hole-shadows-a-later-arm.gandr
+; source-b3sum: 67851f8cc96632c974f6e9b629ad9e0a4cf6b8720f627fc021fa45054e9e9147
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("c", None, DataCase(Var("c"), [("_", Ret(Int(0))), ("_", Hole(0)), ("_", Hole(0))]))))
+Stuck(ForcedNonThunk)

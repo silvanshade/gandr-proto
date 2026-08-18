@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/pattern-hole-as-the-first-arm.gandr
+; source-b3sum: 0225be04f0def9c19c4f476b42ba8ebea559eb3a11a7ff6fb37b0d9c7598d5fa
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("c", None, Hole(0))))
+Ret(Var("classify"))

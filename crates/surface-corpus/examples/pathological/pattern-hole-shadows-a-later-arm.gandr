@@ -1,0 +1,29 @@
+// Failure golden: an unfinished pattern stops the arms written after it.
+// (Pathological tree: testing artifact, not pedagogy.)
+//
+// `Blue` has an arm of its own, and before pattern holes compiled it took that
+// arm -- the hole failed the reader's constructor-pattern shape check and was
+// dropped, so the match ran as though the programmer had written nothing. That
+// is the reading a hole must never get: whether the hole matches `Blue` is
+// precisely what has not been decided, so reaching the `Blue` arm would be a
+// guess about an undecided test.
+//
+// The halt is DEFINED (`Blame::Hole`), the same halt a gradual hole meeting an
+// elimination always produced -- not a panic, and not a stuck configuration.
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
+
+def classify(c : Color) -> F Integer {
+  case c {
+    Red => ret 0,
+    ? => ret 1,
+    Blue => ret 2
+  }
+}
+
+classify(Blue)
+
+//@ expect-blame: hole

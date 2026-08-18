@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/pattern-hole-holds-an-uncovered-constructor.gandr
+; source-b3sum: c09b56b966929a80897271bb3df5a9a51525e15713dd47f4f7f418df984073f1
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("c", None, DataCase(Var("c"), [("_", Ret(Int(0))), ("_", Hole(0)), ("_", Hole(0))]))))
+Stuck(ForcedNonThunk)

@@ -719,8 +719,8 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let files = gandr_files(&examples);
     assert!(files.len() >= 50, "corpus is populated ({})", files.len());
 
-    // Per-tree accounting: model + pathological hold at 116 / 116 clean — 53
-    // files under `model/` and 63 under `pathological/`, counted by path — and
+    // Per-tree accounting: model + pathological hold at 128 / 128 clean — 56
+    // files under `model/` and 72 under `pathological/`, counted by path — and
     // the surface tree must be non-empty and clean; the single gate spans all
     // three trees.
     let mut clean = 0_usize;
@@ -818,16 +818,23 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // constructor and the operation carrying its inverse face — and the golden
     // for a two-constructor type, where the law is false at every constructor
     // but one and the route declines by name.
+    // Executable pattern holes add five at the top level: one model program
+    // for the `?` pattern atom in a whole arm and inside a constructor, and
+    // four goldens — the later arm the hole shadows, the constructor no arm
+    // covers that the hole holds in front of, the payload hole that leaves its
+    // head test alone, and the first-arm hole that settles nothing for any
+    // scrutinee. The same change retired the surface tree's
+    // `pattern-holes.gandr` reservation, which is what promoting one means.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        123, base_count,
-        "the model + pathological trees are 123 files (55 model + 68 pathological, including the two description-member fixtures)"
+        128, base_count,
+        "the model + pathological trees are 128 files (56 model + 72 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        123, base_clean,
-        "all 123 model + pathological files mold clean"
+        128, base_clean,
+        "all 128 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

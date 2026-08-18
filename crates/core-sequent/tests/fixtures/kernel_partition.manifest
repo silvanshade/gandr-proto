@@ -1,17 +1,17 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 211
-; corpus-fixtures-b3sum: 004f662592a226f6c0e9bb04fb01a1486ba51057e4589239e743ca1501f3263a
-; class declared-data: 8
+; items: 222
+; corpus-fixtures-b3sum: 3fe902acaf1349e98d5018d4bb9130d61a230871002eb49f8fec2f0cbf6eaa5e
+; class declared-data: 13
 ; class effects-control: 11
 ; class eligible: 23
-; class hole-unknown: 14
+; class hole-unknown: 15
 ; class identity: 9
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
 ; class not-typeable: 5
-; class open-free-name: 83
+; class open-free-name: 88
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -97,6 +97,9 @@ model/31-eliminator-answer-types.gandr	0	kernel-rejected
 model/31-eliminator-answer-types.gandr	1	open-free-name
 model/31-eliminator-answer-types.gandr	2	kernel-rejected
 model/31-eliminator-answer-types.gandr	3	open-free-name
+model/32-pattern-holes.gandr	0	declared-data
+model/32-pattern-holes.gandr	1	declared-data
+model/32-pattern-holes.gandr	2	open-free-name
 model/attributes/doc-and-deprecated.gandr	0	open-free-name
 model/attributes/module-metadata.gandr	0	eligible
 model/attributes/query-via-report.gandr	0	eligible
@@ -206,6 +209,14 @@ pathological/package-pack-never-infers.gandr	0	package
 pathological/package-pack-never-infers.gandr	1	open-free-name
 pathological/package-payload-not-a-thunk.gandr	0	eligible
 pathological/package-payload-not-a-thunk.gandr	1	open-free-name
+pathological/pattern-hole-as-the-first-arm.gandr	0	hole-unknown
+pathological/pattern-hole-as-the-first-arm.gandr	1	open-free-name
+pathological/pattern-hole-holds-an-uncovered-constructor.gandr	0	declared-data
+pathological/pattern-hole-holds-an-uncovered-constructor.gandr	1	open-free-name
+pathological/pattern-hole-in-a-payload.gandr	0	declared-data
+pathological/pattern-hole-in-a-payload.gandr	1	open-free-name
+pathological/pattern-hole-shadows-a-later-arm.gandr	0	declared-data
+pathological/pattern-hole-shadows-a-later-arm.gandr	1	open-free-name
 pathological/record-update-non-record.gandr	0	eligible
 pathological/record-update-non-record.gandr	1	native
 pathological/run-bind-annotation-value-typed.gandr	0	hole-unknown

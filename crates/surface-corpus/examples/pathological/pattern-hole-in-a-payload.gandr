@@ -1,0 +1,24 @@
+// Failure golden: a hole inside a constructor pattern unfinishes the payload
+// test and leaves the head test alone.
+// (Pathological tree: testing artifact, not pedagogy.)
+//
+// `Just(?)` writes the head and not the payload. A `Nothing` scrutinee is
+// refuted by the written head and takes its own arm (the model program shows
+// that half); a `Just` passes the head test and then meets the unfinished one,
+// which is where it stops. Reading the whole arm as unfinished would have
+// stopped `Nothing` too -- a branch the programmer had already settled.
+data Maybe : Type {
+  Nothing : Maybe;
+  Just : (x : Integer) --> Maybe;
+}
+
+def describe(m : Maybe) -> F Integer {
+  case m {
+    Just(?) => ret 100,
+    Nothing => ret 200
+  }
+}
+
+describe(Just(3))
+
+//@ expect-blame: hole
