@@ -6,7 +6,8 @@
 
 ## Current provision
 
-The crate exposes the `mutants` facade for snapshot, changed-range, scheduled, and sweep campaigns.
+The crate exposes the `mutants` facade for snapshot, changed-range, scheduled, single-package, and sweep campaigns.
+Package campaigns validate one exact name on the host, archive current `HEAD`, run the existing guest with `--package`, publish before reporting survivors, and clean temporary state.
 `mutants::record` defines deterministic, replayable mutation records with exact source edits, bounded base identities, and distinct killed, compile-error, and survivor verdicts.
 Compile errors are never survivors; replay applies exact one-hunk edits, rejects base mismatches and ambiguous sites, and preserves multi-line patches as provenance.
 
@@ -17,7 +18,7 @@ Full-campaign scheduling remains an explicit task surface rather than a merge ga
 
 ## Usage
 
-Use the named tasks (`mise run mutants:push`, `mutants:merge`, `mutants:scheduled`, or `mutants:sweep`).
+Use the named tasks (`mise run mutants:push`, `mutants:merge`, `mutants:scheduled`, `mutants:package <name>`, or `mutants:sweep`).
 Library consumers can serialize a `MutationRecord` with `to_json`, decode it with `from_json`, and apply it with `reapply` after validating the repository base.
 
 ## Named ideas and references

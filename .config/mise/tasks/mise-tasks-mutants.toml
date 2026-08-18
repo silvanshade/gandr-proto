@@ -36,6 +36,15 @@ run = """
 cargo run --quiet -p gandr-workflow-gates -- mutants merge
 """
 
+["mutants:package"]
+description = "Run a contained mutation campaign for exactly one Cargo package"
+usage = '''
+arg "<package>" help="Exact nonempty Cargo package name"
+'''
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants package "${usage_package?}"
+"""
+
 ["mutants:scheduled"]
 description = "Run a changed-code mutation campaign over an explicit revision range, inside an ephemeral microVM"
 usage = '''

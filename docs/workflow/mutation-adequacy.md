@@ -22,7 +22,11 @@ Direct and scheduled campaigns use this same record contract after their cargo-m
 ## Campaign lifecycle
 
 Mutation experiments run only as scheduled standalone campaigns through the contained `mise run mutants:*` tasks — never as pre-push, pre-merge, or CI gates.
-**A full mutation run is outside the completion scope of every task, feature, and epic.** At the completion of work that adds or substantially refactors production Rust, the consolidated closeout residuals bead names a standalone future campaign, retaining its required `discovered-from` provenance but creating no blocking dependency back to the completed implementation; it names the completed bead/epic, commit range, and intended scope.
+`mutants package <name>` is the narrow host entry point for one exact nonempty, unpadded Cargo package: it archives current `HEAD`, boots the ordinary ephemeral microVM, invokes the existing guest with `--package <name>` and no diff restriction, and publishes the canonical report before returning survivor failure.
+It never falls back to workspace scope.
+Every package campaign retains the mandatory raw `mutation-records.json`, canonical report publication, sequential `cargo mutants --jobs 1`, rollback, and cleanup contract.
+A full mutation run is outside the completion scope of every task, feature, and epic.
+At the completion of work that adds or substantially refactors production Rust, the consolidated closeout residuals bead names a standalone future campaign, retaining its required `discovered-from` provenance but creating no blocking dependency back to the completed implementation; it names the completed bead/epic, commit range, and intended scope.
 A cheap contained run against named mutants MAY serve as focused verification when the tooling supports it; inability to do so never blocks completion.
 This campaign is the mutation-adequacy face of the consolidated closeout **residuals bead** ([tracker.md](tracker.md) §“Feature landing and residual closeout”), filed together with the task's manual, corpus, and other-residual faces — tracker.md is the canonical closeout rule.
 

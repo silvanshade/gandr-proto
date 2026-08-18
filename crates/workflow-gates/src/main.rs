@@ -738,6 +738,7 @@ where
         .ok_or_else(|| GateError::usage("mutants requires a mode"))?;
     let mode_text = os_string_into_utf8("mutants mode", mode)?;
     match mode_text.as_str() {
+        | "package" => parse_mutants_package(arguments),
         | "snapshot" => parse_mutants_host(MutantsHostMode::Snapshot, arguments),
         | "push" => parse_mutants_host(MutantsHostMode::Push, arguments),
         | "merge" => parse_mutants_host(MutantsHostMode::Merge, arguments),
@@ -749,6 +750,26 @@ where
             "unsupported mutants mode `{other}`"
         ))),
     }
+}
+fn parse_mutants_package<Arguments>(arguments: Arguments) -> Result<Command, GateError>
+where
+    Arguments: IntoIterator<Item = OsString>,
+{
+    let mut arguments = arguments.into_iter();
+    let package = arguments
+        .next()
+        .ok_or_else(|| GateError::usage("mutants package requires one package name"))?;
+    if arguments.next().is_some() {
+        return Err(GateError::usage(
+            "mutants package requires exactly one package name",
+        ));
+    }
+    let package = os_string_into_utf8("mutants package", package)?;
+    let options = MutantsCommonOptions::default().into_host_options(MutantsHostMode::Package)?;
+    Ok(Command::Mutants {
+        command: mutants::MutantsCommand::Package { package },
+        options,
+    })
 }
 
 /// Parse guest-side mutants flags.
@@ -1376,6 +1397,7 @@ where
             | MutantsHostMode::Scheduled => {
                 consume_mutants_scheduled_argument(&argument, &mut arguments, &mut scheduled)?;
             },
+            | MutantsHostMode::Package
             | MutantsHostMode::Snapshot
             | MutantsHostMode::Merge
             | MutantsHostMode::Sweep
@@ -1389,6 +1411,11 @@ where
             range: push.into_range_plan()?,
         },
         | MutantsHostMode::Merge => mutants::MutantsCommand::Merge,
+        | MutantsHostMode::Package => {
+            return Err(GateError::usage(
+                "mutants package must be parsed with its package name",
+            ));
+        },
         | MutantsHostMode::Scheduled => {
             let (from_ref, to_ref) = scheduled.into_required_refs()?;
             mutants::MutantsCommand::Scheduled { from_ref, to_ref }
@@ -1975,6 +2002,8 @@ enum MutantsHostMode
     Merge,
     /// Run a scheduled campaign.
     Scheduled,
+    /// Run a package-scoped campaign.
+    Package,
     /// Run a full sweep campaign.
     Sweep,
     /// Clean stray owned sandboxes.
@@ -1991,6 +2020,7 @@ impl MutantsHostMode
             | Self::Push => ModeText("push"),
             | Self::Merge => ModeText("merge"),
             | Self::Scheduled => ModeText("scheduled"),
+            | Self::Package => ModeText("package"),
             | Self::Sweep => ModeText("sweep"),
             | Self::Clean => ModeText("clean"),
         }

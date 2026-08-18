@@ -473,7 +473,12 @@ pub enum MutantsCommand
     },
     /// Run a changed-code pre-merge campaign against `main...HEAD`.
     Merge,
-    /// Run a scheduled changed-code campaign over validated refs.
+    /// Run a contained campaign for exactly one validated Cargo package.
+    Package
+    {
+        /// Exact Cargo package name selected on the host.
+        package: String,
+    },
     Scheduled
     {
         /// Lower endpoint branch/tag/commit-ish token.
@@ -604,6 +609,14 @@ where
                 &archive_ref,
             )
         },
+        | MutantsCommand::Package { ref package } => run_package_campaign_with_environment(
+            host,
+            infrastructure,
+            runner,
+            sink,
+            options,
+            package,
+        ),
         | MutantsCommand::Sweep => {
             run_sweep_with_environment(host, infrastructure, runner, sink, options)
         },
@@ -975,6 +988,56 @@ where
         return Ok(());
     }
     Err(campaign_failure())
+}
+/// Execute one current-HEAD package campaign inside the contained guest.
+fn run_package_campaign_with_environment<Host, Infrastructure, Runner, Sink>(
+    host: &mut Host,
+    infrastructure: &mut Infrastructure,
+    runner: &mut Runner,
+    sink: &mut Sink,
+    options: &MutantsOptions,
+    package: &str,
+) -> Result<(), GateError>
+where
+    Host: MutantsHost,
+    Infrastructure: sandbox::SandboxInfrastructure,
+    Runner: sandbox::MsbAdapter,
+    Sink: sandbox::CampaignReportSink,
+{
+    let package = validate_package_name(package)?;
+    require_campaign_infra(infrastructure, options)?;
+    write_source_archive(host, options, "HEAD")?;
+    prepare_report_dir(host, &options.working_report)?;
+    let sandbox_name = temporary_sandbox_name(sandbox::CampaignMode::Package)?;
+    let request = sandbox::CampaignRequest::new_package(
+        &sandbox_name,
+        &options.source_archive,
+        &options.working_report,
+        &package,
+    );
+    let summary = sandbox::execute_campaign_request(
+        runner,
+        sink,
+        &sandbox::SandboxConfig::new(&options.cache_image),
+        &request,
+        "",
+    )?;
+    cleanup_success_workspace(host, options)?;
+    if summary.succeeded().into().0 {
+        return Ok(());
+    }
+    Err(campaign_failure())
+}
+
+fn validate_package_name(package: &str) -> Result<String, GateError>
+{
+    let scope = containment::CargoMutantsScope::package(package)?;
+    match scope {
+        | containment::CargoMutantsScope::Package { name } => Ok(name),
+        | containment::CargoMutantsScope::Workspace => Err(GateError::usage(
+            "mutants package requires one package name",
+        )),
+    }
 }
 
 /// Write a tracked-file source archive for the guest.

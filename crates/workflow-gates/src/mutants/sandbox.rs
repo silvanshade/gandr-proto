@@ -128,6 +128,8 @@ pub(super) enum CampaignMode
     Merge,
     /// Scheduled changed-line mutation campaign.
     Scheduled,
+    /// Single-package mutation campaign.
+    Package,
     /// Whole-workspace sweep campaign.
     Sweep,
 }
@@ -143,6 +145,7 @@ impl CampaignMode
             | Self::Push => return "push",
             | Self::Merge => return "merge",
             | Self::Scheduled => return "scheduled",
+            | Self::Package => return "package",
             | Self::Sweep => return "sweep",
         }
     }
@@ -154,7 +157,7 @@ impl CampaignMode
     {
         match self {
             | Self::Push | Self::Merge | Self::Scheduled => return true,
-            | Self::Sweep => return false,
+            | Self::Package | Self::Sweep => return false,
         }
     }
 
@@ -165,7 +168,7 @@ impl CampaignMode
     {
         match self {
             | Self::Push | Self::Merge | Self::Scheduled => return GUEST_IN_DIFF_TIMEOUT,
-            | Self::Sweep => return GUEST_SWEEP_TIMEOUT,
+            | Self::Package | Self::Sweep => return GUEST_SWEEP_TIMEOUT,
         }
     }
 
@@ -176,7 +179,7 @@ impl CampaignMode
     {
         match self {
             | Self::Push | Self::Merge | Self::Scheduled => return SANDBOX_IN_DIFF_TIMEOUT,
-            | Self::Sweep => return SANDBOX_SWEEP_TIMEOUT,
+            | Self::Package | Self::Sweep => return SANDBOX_SWEEP_TIMEOUT,
         }
     }
 }
@@ -393,16 +396,14 @@ impl MsbPlan
 ///
 /// # Adequacy
 /// - hypothesis: L3 only — execution and fast-path tests distinguish the single
-///   sandbox path from no-Rust no-VM publication.
-/// - witness: `mutants::sandbox::tests::teardown_error_takes_precedence_over_payload_error`
-/// - witness: `mutants::sandbox::tests::non_rust_diff_skips_vm_and_writes_report`
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct CampaignRequest<'request>
 {
     /// Campaign mode.
     mode: CampaignMode,
     /// Sandbox name.
     sandbox_name: &'request SandboxName,
+    /// Optional exact package selector.
+    package: Option<&'request str>,
     /// Host source archive path.
     source_archive: &'request Path,
     /// Host diff path for diff-scoped modes.
@@ -413,9 +414,6 @@ pub(super) struct CampaignRequest<'request>
 
 impl<'request> CampaignRequest<'request>
 {
-    /// Build a campaign request.
-    #[inline]
-    #[must_use]
     pub(crate) fn new(
         mode: CampaignMode,
         sandbox_name: &'request SandboxName,
@@ -427,8 +425,29 @@ impl<'request> CampaignRequest<'request>
         Self {
             mode,
             sandbox_name,
+            package: None,
             source_archive,
             diff,
+            report_dir,
+        }
+    }
+
+    /// Build a package-scoped campaign request.
+    #[inline]
+    #[must_use]
+    pub(crate) fn new_package(
+        sandbox_name: &'request SandboxName,
+        source_archive: &'request Path,
+        report_dir: &'request Path,
+        package: &'request str,
+    ) -> Self
+    {
+        Self {
+            mode: CampaignMode::Package,
+            sandbox_name,
+            package: Some(package),
+            source_archive,
+            diff: None,
             report_dir,
         }
     }
@@ -534,7 +553,7 @@ impl CampaignExecutionPlan
             copy_source: copy_source_plan(request.sandbox_name, request.source_archive),
             copy_diff,
             extract: extract_source_plan(request.sandbox_name),
-            guest: guest_execution_plan(request.sandbox_name, request.mode),
+            guest: guest_execution_plan(request.sandbox_name, request.mode, request.package),
             probe_report: probe_report_plan(request.sandbox_name),
             copy_report: copy_report_plan(request.sandbox_name, request.report_dir),
             stop: stop_plan(request.sandbox_name),
@@ -1294,6 +1313,7 @@ pub(super) fn extract_source_plan(name: &SandboxName) -> MsbPlan
 pub(super) fn guest_execution_plan(
     name: &SandboxName,
     mode: CampaignMode,
+    package: Option<&str>,
 ) -> MsbPlan
 {
     let mut args = vec![
@@ -1331,6 +1351,10 @@ pub(super) fn guest_execution_plan(
         os("mutants"),
         os("guest"),
     ];
+    if let Some(package) = package {
+        args.push(os("--package"));
+        args.push(OsString::from(package));
+    }
     if mode.needs_diff().into().0 {
         args.push(os("--diff"));
         args.push(os(GUEST_DIFF));
