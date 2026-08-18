@@ -1,0 +1,282 @@
+#include "gandr/compile_host/emit.hpp"
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
+#include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "mlir/Conversion/UBToLLVM/UBToLLVM.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/UB/IR/UBOps.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+
+#include "gandr/compile_host/dialect.hpp"
+
+namespace gandr::compile_host
+{
+namespace
+{
+
+/// The dialect value type every producer in an emitted module carries.
+[[nodiscard]] mlir::Type value_type(mlir::MLIRContext& context)
+{
+    return dialect::ValueType::get(&context);
+}
+
+/// The emitted entry point's signature: the caller's heap in, the produced
+/// value's heap offset out.
+[[nodiscard]] mlir::FunctionType entry_signature(mlir::MLIRContext& context)
+{
+    mlir::Builder builder(&context);
+    const mlir::Type heap = mlir::MemRefType::get({mlir::ShapedType::kDynamic}, builder.getI64Type());
+    return builder.getFunctionType({heap}, {builder.getI64Type()});
+}
+
+/// The emitter's per-walk state.
+struct EmitState
+{
+    /// The builder, whose insertion point stays at the end of the block the
+    /// next operation belongs to.
+    mlir::OpBuilder& builder;
+    /// The image being walked.
+    const Image& image;
+    /// The bindings in scope, innermost last, as dialect values.
+    std::vector<mlir::Value> environment;
+};
+
+/// Emits one image node, recursively over its operands.
+///
+/// The recursion is bounded by `max_emit_depth`, checked on entry: the emitter
+/// runs on generated and decoded images, so the bound is what makes it total
+/// rather than merely careful.
+[[nodiscard]] Expected<mlir::Value> emit_node(
+    EmitState& state,
+    NodeIndex node_index,
+    std::size_t depth)
+{
+    if (depth > max_emit_depth) {
+        return host_error(ErrorKind::LimitExceeded, "image nests deeper than the host admits");
+    }
+
+    const Node& node = state.image.nodes[node_index.value];
+    mlir::OpBuilder& builder = state.builder;
+    const mlir::Location location = builder.getUnknownLoc();
+    const mlir::Type produced = value_type(*builder.getContext());
+
+    switch (node.kind) {
+    case NodeKind::Lit: {
+        auto op = dialect::LitOp::create(builder, location, produced, node.literal);
+        return op.getResult();
+    }
+    case NodeKind::Var: {
+        if (node.binder >= state.environment.size()) {
+            return host_error(ErrorKind::MalformedImage, "variable names no binder in scope");
+        }
+        return state.environment[state.environment.size() - 1 - node.binder];
+    }
+    case NodeKind::Ctor: {
+        std::vector<mlir::Value> fields;
+        fields.reserve(node.operands.size());
+        for (const NodeIndex operand : node.operands) {
+            const Expected<mlir::Value> field = emit_node(state, operand, depth + 1);
+            if (!field.has_value()) {
+                return field;
+            }
+            fields.push_back(*field);
+        }
+        auto op = dialect::CtorOp::create(
+            builder, location, produced, dialect::tag_to_attribute(node.tag), fields);
+        return op.getResult();
+    }
+    case NodeKind::Dup: {
+        const Expected<mlir::Value> source = emit_node(state, node.operands[0], depth + 1);
+        if (!source.has_value()) {
+            return source;
+        }
+        auto op = dialect::DupOp::create(builder, location, produced, *source);
+        return op.getResult();
+    }
+    case NodeKind::Drop: {
+        const Expected<mlir::Value> source = emit_node(state, node.operands[0], depth + 1);
+        if (!source.has_value()) {
+            return source;
+        }
+        auto op = dialect::DropOp::create(builder, location, produced, *source);
+        return op.getResult();
+    }
+    case NodeKind::Bind: {
+        const Expected<mlir::Value> bound = emit_node(state, node.operands[0], depth + 1);
+        if (!bound.has_value()) {
+            return bound;
+        }
+        auto frame = dialect::BindOp::create(builder, location, produced, *bound);
+        mlir::Block* body = builder.createBlock(&frame.getBody(), frame.getBody().end(), {produced}, {location});
+        state.environment.push_back(body->getArgument(0));
+        const Expected<mlir::Value> answer = emit_node(state, node.operands[1], depth + 1);
+        state.environment.pop_back();
+        if (!answer.has_value()) {
+            return answer;
+        }
+        dialect::YieldOp::create(builder, location, *answer);
+        builder.setInsertionPointAfter(frame);
+        return frame.getResult();
+    }
+    case NodeKind::Case: {
+        const Expected<mlir::Value> scrutinee = emit_node(state, node.operands[0], depth + 1);
+        if (!scrutinee.has_value()) {
+            return scrutinee;
+        }
+        auto dispatch = dialect::CaseOp::create(builder, location, produced, *scrutinee);
+        for (std::size_t arm_index = 0; arm_index < 2; ++arm_index) {
+            mlir::Region& arm = (arm_index == 0) ? dispatch.getLeftArm() : dispatch.getRightArm();
+            mlir::Block* body = builder.createBlock(&arm, arm.end(), {produced}, {location});
+            state.environment.push_back(body->getArgument(0));
+            const Expected<mlir::Value> answer =
+                emit_node(state, node.operands[1 + arm_index], depth + 1);
+            state.environment.pop_back();
+            if (!answer.has_value()) {
+                return answer;
+            }
+            dialect::YieldOp::create(builder, location, *answer);
+        }
+        builder.setInsertionPointAfter(dispatch);
+        return dispatch.getResult();
+    }
+    case NodeKind::Cut:
+        return emit_node(state, node.operands[0], depth + 1);
+    }
+    return host_error(ErrorKind::MalformedImage, "image holds a node of no declared kind");
+}
+
+} // namespace
+
+std::unique_ptr<mlir::MLIRContext> make_context()
+{
+    mlir::DialectRegistry registry;
+    registry.insert<
+        dialect::GandrDialect,
+        mlir::arith::ArithDialect,
+        mlir::cf::ControlFlowDialect,
+        mlir::func::FuncDialect,
+        mlir::memref::MemRefDialect,
+        mlir::ub::UBDialect,
+        mlir::LLVM::LLVMDialect>();
+    // Without these the one-shot conversion to the LLVM dialect *succeeds and
+    // does nothing*: the pass finds no pattern interface on the dialects it
+    // meets and leaves them in place, so the failure surfaces only later, as a
+    // module that will not translate.
+    mlir::arith::registerConvertArithToLLVMInterface(registry);
+    mlir::cf::registerConvertControlFlowToLLVMInterface(registry);
+    mlir::registerConvertFuncToLLVMInterface(registry);
+    mlir::registerConvertMemRefToLLVMInterface(registry);
+    mlir::ub::registerConvertUBToLLVMInterface(registry);
+
+    mlir::registerBuiltinDialectTranslation(registry);
+    mlir::registerLLVMDialectTranslation(registry);
+
+    auto context = std::make_unique<mlir::MLIRContext>(registry);
+    context->loadAllAvailableDialects();
+    return context;
+}
+
+Expected<mlir::OwningOpRef<mlir::ModuleOp>> emit_module(mlir::MLIRContext& context, const Image& image)
+{
+    if (!image_is_wellformed(image)) {
+        return host_error(ErrorKind::MalformedImage, "image failed the structural check");
+    }
+
+    mlir::OpBuilder builder(&context);
+    const mlir::Location location = builder.getUnknownLoc();
+    mlir::OwningOpRef<mlir::ModuleOp> module = mlir::ModuleOp::create(builder, location);
+
+    builder.setInsertionPointToEnd(module->getBody());
+    auto entry = mlir::func::FuncOp::create(
+        builder, location, std::string(entry_point_name), entry_signature(context));
+    entry->setAttr("llvm.emit_c_interface", builder.getUnitAttr());
+    mlir::Block* body = entry.addEntryBlock();
+    builder.setInsertionPointToEnd(body);
+
+    EmitState state{.builder = builder, .image = image, .environment = {}};
+    const Expected<mlir::Value> produced = emit_node(state, image.root, 0);
+    if (!produced.has_value()) {
+        return std::unexpected(produced.error());
+    }
+    dialect::CutOp::create(builder, location, *produced);
+
+    return module;
+}
+
+mlir::OwningOpRef<mlir::ModuleOp> emit_malformed_arity_module(mlir::MLIRContext& context)
+{
+    mlir::OpBuilder builder(&context);
+    const mlir::Location location = builder.getUnknownLoc();
+    mlir::OwningOpRef<mlir::ModuleOp> module = mlir::ModuleOp::create(builder, location);
+
+    builder.setInsertionPointToEnd(module->getBody());
+    auto entry = mlir::func::FuncOp::create(
+        builder, location, std::string(entry_point_name), entry_signature(context));
+    entry->setAttr("llvm.emit_c_interface", builder.getUnitAttr());
+    mlir::Block* body = entry.addEntryBlock();
+    builder.setInsertionPointToEnd(body);
+
+    const mlir::Type produced = value_type(context);
+    auto only_field = dialect::LitOp::create(builder, location, produced, std::int64_t{1});
+    // The pair tag declares two fields and is given one. The builder accepts
+    // it; the operation verifier is the only thing that does not.
+    auto malformed = dialect::CtorOp::create(
+        builder,
+        location,
+        produced,
+        dialect::tag_to_attribute(CtorTag::Pair),
+        mlir::ValueRange{only_field.getResult()});
+    dialect::CutOp::create(builder, location, malformed.getResult());
+
+    return module;
+}
+
+mlir::OwningOpRef<mlir::ModuleOp> emit_accounted_work_witness_module(mlir::MLIRContext& context)
+{
+    mlir::OpBuilder builder(&context);
+    const mlir::Location location = builder.getUnknownLoc();
+    mlir::OwningOpRef<mlir::ModuleOp> module = mlir::ModuleOp::create(builder, location);
+
+    builder.setInsertionPointToEnd(module->getBody());
+    auto entry = mlir::func::FuncOp::create(
+        builder, location, std::string(entry_point_name), entry_signature(context));
+    entry->setAttr("llvm.emit_c_interface", builder.getUnitAttr());
+    mlir::Block* body = entry.addEntryBlock();
+    builder.setInsertionPointToEnd(body);
+
+    const mlir::Type produced = value_type(context);
+    auto accounted = dialect::LitOp::create(builder, location, produced, std::int64_t{4});
+    dialect::DupOp::create(builder, location, produced, accounted.getResult());
+    dialect::DropOp::create(builder, location, produced, accounted.getResult());
+    auto answer = dialect::LitOp::create(builder, location, produced, std::int64_t{0});
+    dialect::CutOp::create(builder, location, answer.getResult());
+
+    return module;
+}
+
+std::size_t count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic)
+{
+    std::size_t total = 0;
+    const std::string qualified = std::string("gandr.") + std::string(mnemonic);
+    module->walk([&total, &qualified](mlir::Operation* op) {
+        if (op->getName().getStringRef() == qualified) {
+            total += 1;
+        }
+    });
+    return total;
+}
+
+} // namespace gandr::compile_host

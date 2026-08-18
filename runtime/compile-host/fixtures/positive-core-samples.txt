@@ -1,0 +1,18 @@
+# The L machine's answer to each program the compile host compiles.
+#
+# Columns: program name, then the produced value in the canonical grammar
+# `(int N) | (unit) | (pair V V) | (inl V) | (inr V)`.
+#
+# The Rust side of the differential is
+# `crates/core-sequent/tests/compile_host_agreement.rs`, which fails when this
+# file and the L machine disagree. The compiled side is the compile host's own
+# `jit_agrees_with_the_fixture_on_every_sample` case, and the two together are
+# the agreement the slice claims.
+cut	(int 5)
+bind	(int 7)
+case	(int 3)
+ctor	(pair (int 1) (int 2))
+dup	(pair (int 4) (int 4))
+drop	(unit)
+compound	(int 8)
+accounted-work	(int 0)

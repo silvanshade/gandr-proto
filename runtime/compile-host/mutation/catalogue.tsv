@@ -1,0 +1,21 @@
+# The compilation host's curated mutant catalogue.
+#
+# Columns, tab separated: the mutant's name, the file it edits relative to
+# runtime/compile-host, and the sed expression that applies it. The campaign
+# (mise run compile-host:mutants) applies each row to a scratch copy of the
+# tree and requires the regression suite to fail; a row whose edit matches
+# nothing is reported as a catalogue defect rather than as a kill.
+#
+# Every row names a decision surface the slice claims to defend, so the
+# catalogue reads as the claim list and the campaign reads as its audit. The
+# coverage is exactly as wide as this file — that is the cost of a curated set
+# and it is the honest statement of what the campaign measures.
+constructor-arity-forgets-the-pair	include/gandr/compile_host/image.hpp	s|        return 2;|        return 1;|
+duplication-declared-pure	src/dialect/GandrOps.td	s|def Gandr_DupOp : Gandr_Op<"dup", \[MemoryEffects<\[MemRead, MemWrite\]>\]>|def Gandr_DupOp : Gandr_Op<"dup", [Pure]>|
+discard-declared-pure	src/dialect/GandrOps.td	s|def Gandr_DropOp : Gandr_Op<"drop", \[MemoryEffects<\[MemRead, MemWrite\]>\]>|def Gandr_DropOp : Gandr_Op<"drop", [Pure]>|
+verifier-wall-skipped-before-passes	src/pipeline.cpp	s|    const Expected<void> verified = verify_module(module);|    const Expected<void> verified = Expected<void>{};|
+duplication-ledger-not-recorded	src/lower.cpp	s|            record_work(state, HeapLayout::duplication_ledger);||
+discard-ledger-not-recorded	src/lower.cpp	s|            record_work(state, HeapLayout::discard_ledger);||
+dispatch-takes-the-wrong-arm	src/lower.cpp	s|word_constant(state, static_cast<std::int64_t>(CellTag::Inl)))|word_constant(state, static_cast<std::int64_t>(CellTag::Inr)))|
+literal-cell-carries-the-wrong-tag	src/lower.cpp	s|store_word(state, cell, 0, word_constant(state, static_cast<std::int64_t>(CellTag::Int)));|store_word(state, cell, 0, word_constant(state, static_cast<std::int64_t>(CellTag::Unit)));|
+constructor-fields-stored-in-reverse	src/lower.cpp	s|                field_offset += 1;|                field_offset -= 1;|
