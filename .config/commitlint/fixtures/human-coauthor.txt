@@ -1,3 +1,3 @@
 docs(repo): preserve human coauthor trailers
 
-Co-Authored-By: Alice Example <alice@example.net>
+Co-Authored-By: Claude Shannon <claude.shannon@example.net>

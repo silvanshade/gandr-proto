@@ -25,8 +25,10 @@ const COAUTHOR_LINE = /^co-authored-by:[ \t]*(?<name>.+?)[ \t]*<(?<email>[^>]+)>
 
 // Agent-shaped names are classified independently of their email host so an
 // unregistered agent cannot bypass the canonical registry with a human-looking
-// address. This is deliberately a shape check, not a second agent registry.
-const AGENT_NAME_SHAPE = /\b(?:anthropic|claude|codex|gpt|kimi|openai)\b/i;
+// address. Require the versioned forms represented by the registry rather than
+// treating provider or model names alone as agent evidence.
+const AGENT_NAME_SHAPE =
+  /\b(?:Claude (?:Fable|Opus) \d+|Kimi k\d+|OpenAI Codex GPT-\d+(?:\.\d+)*|GPT-\d+(?:\.\d+)*)\b/i;
 
 // Custom rule: enforce that every agent-shaped `Co-Authored-By` trailer is
 // canonical.
