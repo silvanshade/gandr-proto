@@ -1,7 +1,8 @@
 # core-checker-tools
 
-Test-facing machinery for `gandr-core-checker`, held one tier above it so the checker crate carries the checking path and nothing else.
+Test-facing machinery for the core checker and its typing machine, held above both so neither crate carries test-only code in the source tree of the checking path.
 No shipping crate takes a library dependency on this one; every consumer is a test target.
+Since the checker split, this crate is also what carries the step-for-step invariant between the two realizations: they are two crates now, and the suite that compares them drives both from outside.
 
 ## Current provision
 
@@ -30,8 +31,8 @@ gandr-core-checker-tools.workspace = true
 use gandr_core_checker_tools::strategies::binder_name;
 ```
 
-`gandr-core-checker` itself is such a consumer: its inline property tests use these generators, so the checker dev-depends on this crate while this crate library-depends on the checker.
-That dev-dependency cycle is deliberate and is the arrangement Cargo admits — the non-development graph stays acyclic, so nothing propagates to a consumer of either crate.
+The generators name only `gandr-core-term`, so a consumer of them links the substrate and nothing above it; the two typing faces the conformance suite compares are this crate's own development dependencies.
+`gandr-core-checker` dev-depends on this crate for its inline property tests, so the pair still carries a development cycle, which is the arrangement Cargo admits — the non-development graph stays acyclic, so nothing propagates to a consumer of either crate.
 
 ## Theoretical ideas relied on
 
@@ -44,7 +45,7 @@ That dev-dependency cycle is deliberate and is the arrangement Cargo admits — 
 
 ## Primary references
 
-- Mads Sig Ager, Dariusz Biernacki, Olivier Danvy, and Jan Midtgaard, "A Functional Correspondence between Evaluators and Abstract Machines", Proceedings of the 5th ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming (PPDP), 2003.
-  Locator unverified: this repository holds no reference register, and the DOI was not confirmed against the publisher record at the time of writing.
+- Mads Sig Ager, Dariusz Biernacki, Olivier Danvy, and Jan Midtgaard, "A Functional Correspondence between Evaluators and Abstract Machines", in _Proceedings of the 5th ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming_ (PPDP '03), ACM, 2003, 8–19.
+  DOI [10.1145/888251.888254](https://doi.org/10.1145/888251.888254).
 - Koen Claessen and John Hughes, "QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs", Proceedings of the 5th ACM SIGPLAN International Conference on Functional Programming (ICFP), 2000.
-  Locator unverified, on the same grounds.
+  Locator unverified: this repository holds no reference register, and no stable identifier was confirmed against a publisher record at the time of writing.
