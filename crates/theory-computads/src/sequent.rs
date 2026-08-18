@@ -39,6 +39,7 @@ use crate::boundary::PrimeNameRef;
 use crate::boundary::SubstitutionDecision;
 use crate::cell::Cell;
 use crate::cell::CellStore;
+use crate::order::reduction_cmp;
 use crate::pattern::Cat;
 use crate::pattern::CmdPat;
 use crate::pattern::ConsPat;
@@ -48,7 +49,6 @@ use crate::pattern::Pos;
 use crate::pattern::ProdPat;
 use crate::pattern::Sym;
 use crate::pattern::collect_cmd_metavars;
-use crate::pattern::reduction_cmp;
 use crate::pattern::splice_at;
 use crate::pattern::subterm_at;
 use crate::pattern::transform_node;
@@ -122,7 +122,7 @@ pub enum Orientation
     /// by `ε`).
     PolarityDerived,
     /// The orientation is chosen by the completion reduction order
-    /// ([`crate::pattern::reduction_cmp`]).
+    /// ([`crate::order::reduction_cmp`]).
     CompletionDerived,
 }
 

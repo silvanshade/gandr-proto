@@ -21,6 +21,8 @@ mod linearity;
 #[cfg(test)]
 mod normal_form;
 #[cfg(test)]
+mod order;
+#[cfg(test)]
 mod pathway;
 #[cfg(test)]
 mod shift;

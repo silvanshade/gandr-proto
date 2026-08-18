@@ -38,7 +38,6 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 
 use gandr_core_sequent::il::Polarity;
 
@@ -729,34 +728,9 @@ pub fn cons_size(cons: &ConsPat) -> PatternSize
     node_size(Node::Cons(cons.clone()))
 }
 
-/// The **reduction order** on command patterns — a well-founded, size-based
-/// orientation (`proposal-sequent-kernel.md` §7.3.3, Knuth–Bendix orientation).
-///
-/// A completion critical pair `(s, t)` is oriented `s ~> t` when `s` is
-/// strictly larger, `t ~> s` when `t` is. Equal size is reported
-/// [`Ordering::Equal`] and the pair is left as an obstruction (the engine never
-/// guesses an orientation that could break termination). The order is a size
-/// measure only — a deliberately simple, obviously-well-founded choice for the
-/// bounded engine, not a full recursive path order.
-///
-/// # Contract
-/// - ensures: [`Ordering::Greater`] iff `a` is strictly larger than `b`,
-///   [`Ordering::Less`] iff strictly smaller, [`Ordering::Equal`] on equal
-///   size.
-/// - panics: none.
-#[inline]
-#[must_use]
-pub fn reduction_cmp(
-    a: &CmdPat,
-    b: &CmdPat,
-) -> Ordering
-{
-    cmd_size(a).cmp(&cmd_size(b))
-}
-
 /// The **size** of a command pattern (its node count) — the well-founded
-/// measure the reduction order [`reduction_cmp`] uses to orient completion
-/// rules.
+/// measure the reduction order ([`crate::order::reduction_cmp`]) compares
+/// before it consults the path order.
 ///
 /// # Contract
 /// - ensures: a positive count, monotone under subterm inclusion.

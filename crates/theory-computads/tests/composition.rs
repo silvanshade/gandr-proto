@@ -564,7 +564,7 @@ mod tests
         for left in &corpus {
             for right in &corpus {
                 pairs = pairs.saturating_add(1);
-                let union = union_reading(left, right, &store);
+                let union = union_reading(left, right, &store).0;
                 if union {
                     union_declines = union_declines.saturating_add(1);
                 }
@@ -628,7 +628,7 @@ mod tests
             composable = composable.saturating_add(1);
             match compose_directed(left, &partner, &store) {
                 | Err(_) => assert!(
-                    union_reading(left, &partner, &store),
+                    union_reading(left, &partner, &store).0,
                     "a shipped decline is a decline under the superseded reading too"
                 ),
                 | Ok(composite) => assert!(
@@ -668,7 +668,7 @@ mod tests
         // consumer occurrence, set both flags, and declined it.
         let (store, left, right) = variance_pair(SeamHoleMixed(false), SeamHoleMixed(false));
         assert!(
-            union_reading(&left, &right, &store),
+            union_reading(&left, &right, &store).0,
             "the superseded reading declines the ordinary sequential seam"
         );
         let composite = compose_directed(&left, &right, &store)
@@ -991,13 +991,13 @@ mod tests
         a: &Tracelet,
         b: &Tracelet,
         store: &CellStore,
-    ) -> bool
+    ) -> UnionReadingDecline
     {
         let a_cells = participating(a);
         let b_cells = participating(b);
         for hole in seam_hole_names(&a.joins_at) {
-            let a_side = endpoint_variances(&a_cells, &hole, store);
-            let b_side = endpoint_variances(&b_cells, &hole, store);
+            let a_side = endpoint_variances(&a_cells, SeamHoleName(&hole), store);
+            let b_side = endpoint_variances(&b_cells, SeamHoleName(&hole), store);
             if a_side.is_empty() || b_side.is_empty() {
                 continue;
             }
@@ -1010,78 +1010,42 @@ mod tests
                 .chain(&b_side)
                 .any(|variance| matches!(*variance, CellVariance::Consumer | CellVariance::Mixed));
             if forward && backward {
-                return true;
+                return UnionReadingDecline(true);
             }
         }
-        false
+        UnionReadingDecline(false)
     }
+
+    /// The superseded criterion's verdict on one pair.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct UnionReadingDecline(bool);
 
     /// The distinct metavariable **names** of a command pattern — the seam
     /// variables, keyed exactly as the gate keys them.
     fn seam_hole_names(cmd: &CmdPat) -> alloc::vec::Vec<alloc::string::String>
     {
-        let CmdPat::Cut {
-            ref prod, ref cons, ..
-        } = *cmd;
-        let mut names = alloc::vec::Vec::new();
-        collect_producer_names(prod, &mut names);
-        collect_consumer_names(cons, &mut names);
+        let mut occurrences = alloc::vec::Vec::new();
+        gandr_theory_computads::pattern::collect_cmd_metavars(cmd, &mut occurrences);
+        let mut names: alloc::vec::Vec<alloc::string::String> = alloc::vec::Vec::new();
+        for var in occurrences {
+            if !names.iter().any(|held| held.as_str() == &*var.name) {
+                names.push(alloc::string::String::from(&*var.name));
+            }
+        }
         names
     }
 
-    /// Append the distinct metavariable names of a producer pattern.
-    fn collect_producer_names(
-        prod: &ProdPat,
-        names: &mut alloc::vec::Vec<alloc::string::String>,
-    )
-    {
-        match *prod {
-            | ProdPat::Meta(ref var) => push_name(&var.name, names),
-            | ProdPat::Ctor { ref args, .. } => {
-                for arg in args {
-                    collect_producer_names(arg, names);
-                }
-            },
-        }
-    }
-
-    /// Append the distinct metavariable names of a consumer pattern.
-    fn collect_consumer_names(
-        cons: &ConsPat,
-        names: &mut alloc::vec::Vec<alloc::string::String>,
-    )
-    {
-        match *cons {
-            | ConsPat::Meta(ref var) => push_name(&var.name, names),
-            | ConsPat::Op {
-                ref args, ref ret, ..
-            } => {
-                for arg in args {
-                    collect_producer_names(arg, names);
-                }
-                collect_consumer_names(ret, names);
-            },
-            | ConsPat::Frame { ref ret, .. } => collect_consumer_names(ret, names),
-            | ConsPat::Top => {},
-        }
-    }
-
-    /// Push `name` if it is not already recorded.
-    fn push_name(
-        name: &str,
-        names: &mut alloc::vec::Vec<alloc::string::String>,
-    )
-    {
-        if !names.iter().any(|held| held == name) {
-            names.push(alloc::string::String::from(name));
-        }
-    }
+    /// A seam hole's name, as the superseded oracle keys it.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct SeamHoleName<'fixture>(&'fixture str);
 
     /// The variance each of `cells` classifies `hole` at, skipping cells that
     /// do not carry it.
     fn endpoint_variances(
         cells: &[CellId],
-        hole: &str,
+        hole: SeamHoleName<'_>,
         store: &CellStore,
     ) -> alloc::vec::Vec<CellVariance>
     {
@@ -1092,7 +1056,7 @@ mod tests
                 continue;
             };
             for var in &entry.meta.vars {
-                if &*var.var.name == hole {
+                if &*var.var.name == hole.0 {
                     out.push(var.variance);
                 }
             }
