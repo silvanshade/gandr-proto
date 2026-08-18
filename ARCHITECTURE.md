@@ -77,8 +77,8 @@ tier 4   core-machine → core-checker, core-term
 tier 5   core-incremental → core-checker, core-machine, core-term, theory-orders
 tier 6   surface-engine → core-checker, core-incremental, core-machine, core-sequent, core-term,
          kernel-core, runtime-effects, storage-artifact, storage-prolly-trees, surface-grammar,
-         surface-parser, surface-render-remote, surface-syntax, theory-computads,
-         theory-levitation, theory-nominal-automata, theory-recursion
+         surface-parser, surface-render-remote, surface-syntax, theory-circuit-algebras,
+         theory-computads, theory-levitation, theory-nominal-automata, theory-recursion
 tier 7   runtime-ffi → core-sequent, core-term, runtime-effects, surface-engine
 tier 8   surface-corpus → core-sequent, core-term, runtime-effects, runtime-ffi,
          surface-engine, theory-levitation
@@ -113,7 +113,9 @@ The rules the graph enforces:
 2. **Dependencies point inward.** Leaves stay leaves; no library crate may depend on `surface-driver` or on any `workflow-*` tooling crate (they sit off-tier by construction).
 3. **Theory substrate is self-contained.** The `theory-*` leaves (graphs, orders, nominal-automata, recursion) have zero workspace dependencies; the higher theory (levitation, computads, circuit-algebras, virtual-doctrines) stacks over `core-*` — directly, or through another `theory-*` crate, as `circuit-algebras` does — and takes no direct dependency on `storage-*`, `runtime-*`, or `surface-*`.
    The reading is the direct one on both halves, and the rule constrains the edges a `theory-*` manifest may declare.
-   `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches completion by being supplied at the engine's instantiation site, and the reverse **library** edge is a dependency cycle the resolver rejects (a `[dev-dependencies]` cycle Cargo does admit, so a test-only edge is refused by this rule rather than by the resolver) (`spec:implementation/circuit-terms.md`, `circuit-terms-question-12`).
+   `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches a consumer by being supplied where the engine is instantiated, and the reverse **library** edge is a dependency cycle the resolver rejects (a `[dev-dependencies]` cycle Cargo does admit, so a test-only edge is refused by this rule rather than by the resolver) (`spec:implementation/circuit-terms.md`, `circuit-terms-question-12`).
+   That supply point is `surface-engine`, which already sits above both for independent reasons; the matcher edge adds no tier movement of its own.
+   The direction is the whole of the guarantee — both theory crates are named by one consumer above them, and the reverse edge is a cycle rather than a rule anyone keeps.
 4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery, and the kernel never links them.
    Their shipping consumers are `theory-computads` (portable step identities through the canonical BLAKE3 framing) and `surface-engine` (artifact minting and the block-store boundary); `core-sequent` links them from its tests only, for the kernel export gate.
    The direction is what the rule constrains: `storage-*` depends on `kernel-core` and on itself, never upward.
