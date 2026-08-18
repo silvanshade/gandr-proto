@@ -15,6 +15,7 @@ use crate::support;
 crate::semantic_copy!(pub struct SucceededFlag(bool));
 crate::semantic_copy!(pub struct SuccessFlag(bool));
 crate::semantic_str!(pub struct DiffSourceText);
+crate::semantic_str!(pub struct PackageText);
 crate::semantic_str!(pub struct ScratchNameText);
 crate::semantic_str!(pub struct ContextText);
 crate::semantic_str!(pub struct ValueText);
@@ -414,6 +415,9 @@ pub(super) struct CampaignRequest<'request>
 
 impl<'request> CampaignRequest<'request>
 {
+    /// Build a non-package campaign request.
+    #[inline]
+    #[must_use]
     pub(crate) fn new(
         mode: CampaignMode,
         sandbox_name: &'request SandboxName,
@@ -435,17 +439,19 @@ impl<'request> CampaignRequest<'request>
     /// Build a package-scoped campaign request.
     #[inline]
     #[must_use]
-    pub(crate) fn new_package(
+    pub(crate) fn new_package<P>(
         sandbox_name: &'request SandboxName,
         source_archive: &'request Path,
         report_dir: &'request Path,
-        package: &'request str,
+        package: P,
     ) -> Self
+    where
+        P: Into<PackageText<'request>>,
     {
         Self {
             mode: CampaignMode::Package,
             sandbox_name,
-            package: Some(package),
+            package: Some(package.into().0),
             source_archive,
             diff: None,
             report_dir,
@@ -1310,11 +1316,13 @@ pub(super) fn extract_source_plan(name: &SandboxName) -> MsbPlan
 /// Build the guest mutation command plan.
 #[inline]
 #[must_use]
-pub(super) fn guest_execution_plan(
+pub(super) fn guest_execution_plan<'semantic, P>(
     name: &SandboxName,
     mode: CampaignMode,
-    package: Option<&str>,
+    package: Option<P>,
 ) -> MsbPlan
+where
+    P: Into<PackageText<'semantic>>,
 {
     let mut args = vec![
         os("exec"),
@@ -1353,7 +1361,7 @@ pub(super) fn guest_execution_plan(
     ];
     if let Some(package) = package {
         args.push(os("--package"));
-        args.push(OsString::from(package));
+        args.push(OsString::from(package.into().0));
     }
     if mode.needs_diff().into().0 {
         args.push(os("--diff"));

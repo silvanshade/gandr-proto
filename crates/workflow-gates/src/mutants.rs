@@ -41,6 +41,7 @@ crate::semantic_str!(pub struct StdoutText);
 crate::semantic_str!(pub struct ValueText);
 crate::semantic_str!(pub struct TestNameText);
 crate::semantic_str!(pub struct NameText);
+crate::semantic_str!(pub struct PackageText);
 crate::semantic_optional_copy!(pub struct OptionalCodeCode(i32));
 crate::semantic_copy!(pub struct PathExistsFlag(bool));
 crate::semantic_copy!(pub struct GitStatusSuccessFlag(bool));
@@ -990,21 +991,22 @@ where
     Err(campaign_failure())
 }
 /// Execute one current-HEAD package campaign inside the contained guest.
-fn run_package_campaign_with_environment<Host, Infrastructure, Runner, Sink>(
+fn run_package_campaign_with_environment<'semantic, Host, Infrastructure, Runner, Sink, P>(
     host: &mut Host,
     infrastructure: &mut Infrastructure,
     runner: &mut Runner,
     sink: &mut Sink,
     options: &MutantsOptions,
-    package: &str,
+    package: P,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
     Infrastructure: sandbox::SandboxInfrastructure,
     Runner: sandbox::MsbAdapter,
     Sink: sandbox::CampaignReportSink,
+    P: Into<PackageText<'semantic>>,
 {
-    let package = validate_package_name(package)?;
+    let package = validate_package_in_workspace(options, package.into().0)?;
     require_campaign_infra(infrastructure, options)?;
     write_source_archive(host, options, "HEAD")?;
     prepare_report_dir(host, &options.working_report)?;
@@ -1028,9 +1030,58 @@ where
     }
     Err(campaign_failure())
 }
-
-fn validate_package_name(package: &str) -> Result<String, GateError>
+/// Verify the selected package exists in current Cargo metadata.
+fn validate_package_in_workspace<'semantic, P>(
+    options: &MutantsOptions,
+    package: P,
+) -> Result<String, GateError>
+where
+    P: Into<NameText<'semantic>>,
 {
+    let package = validate_package_name(package)?;
+    let output = support::run_output(
+        OsStr::new("cargo"),
+        &[
+            os("metadata"),
+            os("--format-version"),
+            os("1"),
+            os("--no-deps"),
+        ],
+        Some(options.workspace_root.as_path()),
+        false,
+    )?;
+    if !output.success().into().0 {
+        return Err(GateError::operational(
+            "mutants package: cargo metadata failed while validating package",
+        ));
+    }
+    let metadata: serde_json::Value = serde_json::from_str(output.stdout_lossy().as_ref())
+        .map_err(|error| {
+            GateError::operational(format!(
+                "mutants package: cargo metadata was invalid: {error}"
+            ))
+        })?;
+    let found = metadata
+        .get("packages")
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|packages| {
+            packages.iter().any(|entry| {
+                entry.get("name").and_then(serde_json::Value::as_str) == Some(package.as_str())
+            })
+        });
+    if !found {
+        return Err(GateError::usage(format!(
+            "mutants package: `{package}` is not a package in the current workspace"
+        )));
+    }
+    Ok(package)
+}
+/// Validate package syntax and return its exact Cargo name.
+fn validate_package_name<'semantic, P>(package: P) -> Result<String, GateError>
+where
+    P: Into<NameText<'semantic>>,
+{
+    let package = package.into().0;
     let scope = containment::CargoMutantsScope::package(package)?;
     match scope {
         | containment::CargoMutantsScope::Package { name } => Ok(name),
@@ -1039,7 +1090,6 @@ fn validate_package_name(package: &str) -> Result<String, GateError>
         )),
     }
 }
-
 /// Write a tracked-file source archive for the guest.
 fn write_source_archive<'semantic, Host, A>(
     host: &mut Host,

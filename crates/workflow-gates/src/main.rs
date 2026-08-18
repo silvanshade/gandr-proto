@@ -751,6 +751,7 @@ where
         ))),
     }
 }
+/// Parse the exact package-scoped host mutation command.
 fn parse_mutants_package<Arguments>(arguments: Arguments) -> Result<Command, GateError>
 where
     Arguments: IntoIterator<Item = OsString>,
