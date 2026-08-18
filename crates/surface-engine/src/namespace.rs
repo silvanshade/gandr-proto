@@ -139,8 +139,8 @@
 //! 1. **Resolution at the elaboration boundary.** A path is resolved — here by
 //!    [`scope::Scope::resolve`] — to whatever the consumer bound at it, and
 //!    what that payload *is* varies today. A declared datatype's identity is a
-//!    [`gandr_core_checker::types::DataId`]: a declaration-order serial plus
-//!    the declared name, minted per declaration, so two `data Boolean`
+//!    [`gandr_core_checker::term::types::DataId`]: a declaration-order serial
+//!    plus the declared name, minted per declaration, so two `data Boolean`
 //!    declarations are distinct types. A user definition is still a string
 //!    binder in the checker's context. Only lowerer-minted binders and hole
 //!    addresses are atoms. What this layer contributes at that boundary is
@@ -159,7 +159,7 @@
 //!
 //! [`gandr_theory_nominal_automata::Atom`]: gandr_theory_nominal_automata::Atom
 //! [`gandr_theory_nominal_automata::Gensym`]: gandr_theory_nominal_automata::Gensym
-//! [`gandr_core_checker::types::DataId`]: gandr_core_checker::types::DataId
+//! [`gandr_core_checker::term::types::DataId`]: gandr_core_checker::term::types::DataId
 
 pub mod event;
 pub mod modifier;

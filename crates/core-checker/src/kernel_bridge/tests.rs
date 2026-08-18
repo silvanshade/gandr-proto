@@ -30,12 +30,12 @@ use super::lower_value_definition;
 use super::lower_value_type;
 use crate::effect::EffectSig;
 use crate::prim::NativePrim;
-use crate::syntax::Comp;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::DataId;
-use crate::types::SealId;
-use crate::types::ValueType;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::DataId;
+use crate::term::types::SealId;
+use crate::term::types::ValueType;
 
 /// An empty naming environment (the closed-program case).
 fn closed() -> BridgeContext
@@ -131,7 +131,10 @@ fn drop_erases_to_return_unit()
     // `drop (thunk (ret unit))` lowers (the thunk body is validated, the drop
     // itself erases to `return ()`).
     let mut arena = TermArena::new();
-    let thunk = Value::thunk(crate::grade::Grade::OMEGA, Comp::Ret(Rc::new(Value::Unit)));
+    let thunk = Value::thunk(
+        crate::discipline::grade::Grade::OMEGA,
+        Comp::Ret(Rc::new(Value::Unit)),
+    );
     let dropped = Comp::Drop(Rc::new(thunk));
     assert!(
         lower_comp(&closed(), &mut arena, &dropped).is_ok(),
@@ -143,7 +146,10 @@ fn drop_erases_to_return_unit()
 fn dup_erases_to_return_pair()
 {
     let mut arena = TermArena::new();
-    let thunk = Value::thunk(crate::grade::Grade::OMEGA, Comp::Ret(Rc::new(Value::Unit)));
+    let thunk = Value::thunk(
+        crate::discipline::grade::Grade::OMEGA,
+        Comp::Ret(Rc::new(Value::Unit)),
+    );
     let duplicated = Comp::Dup(Rc::new(thunk));
     assert!(
         lower_comp(&closed(), &mut arena, &duplicated).is_ok(),

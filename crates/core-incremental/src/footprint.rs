@@ -23,7 +23,7 @@
 //! `tyvars` in the footprint were re-assigned") becomes "no *name* the item
 //! read had its binding change", the same soundness shape one stratum up.
 //!
-//! [`Ctx`]: gandr_core_checker::ctx::Ctx
+//! [`Ctx`]: gandr_core_checker::term::ctx::Ctx
 //!
 //! # Soundness direction
 //!
@@ -42,9 +42,9 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
 
 use crate::boundary::DefinitionName;
 use crate::boundary::MatchDecision;
@@ -396,9 +396,9 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
 
     use super::footprint_of;
     use crate::boundary::DefinitionName;

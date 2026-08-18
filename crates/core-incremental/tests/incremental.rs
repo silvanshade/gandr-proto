@@ -35,9 +35,9 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::checkpoint::ItemTyping;
     use gandr_core_incremental::checkpoint::Resume;
     use gandr_core_incremental::checkpoint::checkpoint_program;

@@ -17,7 +17,7 @@ path = "tests/lib.rs"
 
 [dependencies]
 # The core value-type + grade vocabulary the description leaves decorate: field
-# codes carry a `gandr_core_checker::grade::Grade` (V5), the erased usage
+# codes carry a `gandr_core_checker::discipline::grade::Grade` (V5), the erased usage
 # annotation the grade decoder reads into the semiring.
 gandr-core-checker.workspace = true
 

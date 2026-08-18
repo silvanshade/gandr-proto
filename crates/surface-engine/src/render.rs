@@ -11,9 +11,9 @@
 //! spelling. The shared pretty-printer family the design calls for is not
 //! built; until it is, a face consumes this module.
 
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 
 /// Renders a type (either polarity).
 ///
@@ -192,14 +192,14 @@ fn render_type(root: RenderNode<'_>) -> String
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::boundary::TypeAtomName;
+    use gandr_core_checker::discipline::boundary::TypeAtomName;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::effect::EffectRow;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::grade::Grade;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::DataId;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::DataId;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     #[test]
     fn value_ty_covers_every_reachable_former()
     {

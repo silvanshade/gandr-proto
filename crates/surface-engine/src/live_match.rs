@@ -123,10 +123,10 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::mark::Mark;
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::discipline::mark::Mark;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Value;
 use gandr_core_incremental::stream::BranchStatus;
 use gandr_core_incremental::stream::Liveness;
 use gandr_core_incremental::stream::MatchOrigin as PublishedOrigin;

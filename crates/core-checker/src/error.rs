@@ -13,9 +13,9 @@
 
 use thiserror::Error;
 
-use crate::grade::Grade;
-use crate::syntax::Term;
-use crate::types::Ty;
+use crate::discipline::grade::Grade;
+use crate::term::syntax::Term;
+use crate::term::types::Ty;
 
 /// Result type for this crate's typing operations.
 pub type GandrCoreResult<T> = Result<T, TypeError>;

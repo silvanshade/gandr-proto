@@ -20,10 +20,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::ptr;
 
-use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::discipline::boundary::OperationName;
 use gandr_core_checker::effect;
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Value;
 use gandr_runtime_effects::HostAction;
 use gandr_runtime_effects::ShellHandler;
 use gandr_surface_engine::ffi::CType;
@@ -539,7 +539,7 @@ pub enum FfiShellOutcome
 /// Returns [`FfiError`] when a declared native library cannot be loaded.
 #[inline]
 pub fn run_program(
-    comp: &gandr_core_checker::syntax::Comp,
+    comp: &gandr_core_checker::term::syntax::Comp,
     modules: Vec<ForeignModule>,
 ) -> Result<FfiShellOutcome, FfiError>
 {
@@ -554,7 +554,7 @@ pub fn run_program(
 /// Returns [`FfiError`] when a declared native library cannot be loaded.
 #[inline]
 pub fn run_program_with_prelude(
-    comp: &gandr_core_checker::syntax::Comp,
+    comp: &gandr_core_checker::term::syntax::Comp,
     prelude: &[(String, Value)],
     modules: Vec<ForeignModule>,
 ) -> Result<FfiShellOutcome, FfiError>
@@ -975,7 +975,7 @@ mod tests
             }],
         };
         let signature = foreign.effect_sig();
-        let computation = gandr_core_checker::syntax::Comp::perform(
+        let computation = gandr_core_checker::term::syntax::Comp::perform(
             signature,
             effect::host::PROC_EXIT,
             Value::record([("code".to_owned(), Value::i32(7_i32))]),

@@ -41,8 +41,8 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::boundary::VariableLevel;
-use crate::grade::Grade;
+use crate::discipline::boundary::VariableLevel;
+use crate::discipline::grade::Grade;
 use crate::nbe::Normalizer;
 use crate::nbe::eval::ForceMode;
 use crate::nbe::eval::eval_comp;
@@ -59,16 +59,16 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::syntax::CompNode;
-use crate::syntax::CompNodeId;
-use crate::syntax::CompTypeNode;
-use crate::syntax::OpClauseNode;
-use crate::syntax::Side;
-use crate::syntax::ValueNode;
-use crate::syntax::ValueNodeId;
-use crate::syntax::WalkBaseNode;
-use crate::syntax::WalkMotiveNode;
-use crate::types::DataId;
+use crate::term::syntax::CompNode;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::CompTypeNode;
+use crate::term::syntax::OpClauseNode;
+use crate::term::syntax::Side;
+use crate::term::syntax::ValueNode;
+use crate::term::syntax::ValueNodeId;
+use crate::term::syntax::WalkBaseNode;
+use crate::term::syntax::WalkMotiveNode;
+use crate::term::types::DataId;
 
 /// How readback treats the two faces and the definitional environment.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -138,7 +138,9 @@ pub(crate) fn level_name(level: VariableLevel) -> String
 /// - witness: `nbe::tests::a_parser_rejects_every_name_readback_cannot_produce`
 #[inline]
 #[must_use]
-pub(crate) fn parse_level_name(name: crate::boundary::NameRef<'_>) -> Option<VariableLevel>
+pub(crate) fn parse_level_name(
+    name: crate::discipline::boundary::NameRef<'_>
+) -> Option<VariableLevel>
 {
     let name = <&str>::from(name);
     let body = name.strip_prefix('\u{ab}')?.strip_suffix('\u{bb}')?;
@@ -223,7 +225,7 @@ enum ValueFinish
     /// Rebuild a constructor value.
     Ctor(DataId, usize),
     /// Rebuild a packed module over these witness types.
-    Pack(Vec<crate::syntax::ValueTypeNodeId>),
+    Pack(Vec<crate::term::syntax::ValueTypeNodeId>),
     /// Rebuild a thunk from the computation on the computation stack.
     Thunk(Grade),
 }
@@ -271,7 +273,7 @@ enum CompFinish
     /// Rebuild a capture over its binder.
     Shift(String),
     /// Rebuild a computation hole.
-    Hole(crate::syntax::HoleId),
+    Hole(crate::term::syntax::HoleId),
     /// Re-apply one frustrated application to the computation beneath it.
     Apply,
     /// Re-apply one frustrated projection.

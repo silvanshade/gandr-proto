@@ -51,22 +51,22 @@
 
 use alloc::rc::Rc;
 
-use crate::boundary::IntegerLiteral;
-use crate::boundary::NameRef;
-use crate::boundary::PackageArity;
-use crate::boundary::SubtypeDecision;
-use crate::control::Dir;
+use crate::discipline::boundary::IntegerLiteral;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::PackageArity;
+use crate::discipline::boundary::SubtypeDecision;
 use crate::error::TypeError;
+use crate::machine::control::Dir;
 use crate::nbe::Normalizer;
 use crate::nbe::conv::converts;
 use crate::nbe::conv::type_converts;
-use crate::types::CompType;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::term::types::CompType;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// Completes the integer-literal rule under a direction (ADR-39 D4) — the
 /// checking-mode-polymorphic counterpart of [`finish_value`] for
-/// [`crate::syntax::Value::Int`].
+/// [`crate::term::syntax::Value::Int`].
 ///
 /// In inference mode an integer literal is the rigid `Integer` atom (frozen,
 /// A2.1). In checking mode it additionally accepts any integer numeric atom it
@@ -457,10 +457,10 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                             Rc::clone(lo_snd)
                         }
                         else {
-                            Rc::new(crate::identity::subst_valuetype(
+                            Rc::new(crate::judgements::identity::subst_valuetype(
                                 lo_snd,
                                 NameRef::from(lo_binder.as_str()),
-                                &crate::syntax::Value::var(NameRef::from(hi_binder.as_str())),
+                                &crate::term::syntax::Value::var(NameRef::from(hi_binder.as_str())),
                             ))
                         };
                         let nbe = nbe.get_or_insert_with(Normalizer::new);
@@ -499,19 +499,25 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                             return false.into();
                         }
                         let arity = PackageArity::from(lo_abstracts.len());
-                        let witnesses = crate::package::canonical_witnesses(arity);
+                        let witnesses = crate::judgements::package::canonical_witnesses(arity);
                         // A refused alignment is not a relation that failed but
                         // one that could not be decided, and an undecided
                         // relation is refused rather than assumed: the
                         // permissive direction here would relate an abstraction
                         // to a representation.
-                        let Ok(lo_aligned) =
-                            crate::package::instantiate(lo_abstracts, lo_payload, &witnesses)
+                        let Ok(lo_aligned) = crate::judgements::package::instantiate(
+                            lo_abstracts,
+                            lo_payload,
+                            &witnesses,
+                        )
                         else {
                             return false.into();
                         };
-                        let Ok(hi_aligned) =
-                            crate::package::instantiate(hi_abstracts, hi_payload, &witnesses)
+                        let Ok(hi_aligned) = crate::judgements::package::instantiate(
+                            hi_abstracts,
+                            hi_payload,
+                            &witnesses,
+                        )
                         else {
                             return false.into();
                         };
@@ -519,11 +525,15 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                         // so it is normalized away here and decided once by the
                         // leg above rather than twice — invariance would
                         // otherwise win and the contravariant leg would never
-                        // fire (`crate::package::comparable_payload`).
-                        let lo_aligned =
-                            Rc::new(crate::package::comparable_payload(lo_grade, &lo_aligned));
-                        let hi_aligned =
-                            Rc::new(crate::package::comparable_payload(hi_grade, &hi_aligned));
+                        // fire (`crate::judgements::package::comparable_payload`).
+                        let lo_aligned = Rc::new(crate::judgements::package::comparable_payload(
+                            lo_grade,
+                            &lo_aligned,
+                        ));
+                        let hi_aligned = Rc::new(crate::judgements::package::comparable_payload(
+                            hi_grade,
+                            &hi_aligned,
+                        ));
                         goals.push(SubtypeGoal::Value(
                             Rc::clone(&hi_aligned),
                             Rc::clone(&lo_aligned),
@@ -576,7 +586,7 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
 #[inline]
 #[must_use]
 pub(crate) fn pick<T>(
-    side: crate::syntax::Side,
+    side: crate::term::syntax::Side,
     fst: &Rc<T>,
     snd: &Rc<T>,
 ) -> T
@@ -584,8 +594,8 @@ where
     T: Clone,
 {
     match side {
-        | crate::syntax::Side::Fst => fst.as_ref().clone(),
-        | crate::syntax::Side::Snd => snd.as_ref().clone(),
+        | crate::term::syntax::Side::Fst => fst.as_ref().clone(),
+        | crate::term::syntax::Side::Snd => snd.as_ref().clone(),
     }
 }
 
@@ -595,8 +605,8 @@ mod tests
     use alloc::rc::Rc;
 
     use super::value_subtype;
-    use crate::types::SealId;
-    use crate::types::ValueType;
+    use crate::term::types::SealId;
+    use crate::term::types::ValueType;
 
     /// The top-level reflexive entry `value_subtype(&x, &x)` short-circuits
     /// through the `core::ptr::eq` fast-path (ADR-50 Decision B).
@@ -615,28 +625,31 @@ mod tests
     #[test]
     fn path_endpoints_relate_up_to_beta_since_the_normalizer_decides_them()
     {
-        let redex = Rc::new(crate::syntax::Value::Thunk(
-            crate::grade::Grade::ONE,
-            Rc::new(crate::syntax::Comp::app(
-                crate::syntax::Comp::lam(
+        let redex = Rc::new(crate::term::syntax::Value::Thunk(
+            crate::discipline::grade::Grade::ONE,
+            Rc::new(crate::term::syntax::Comp::app(
+                crate::term::syntax::Comp::lam(
                     "x",
-                    crate::syntax::Comp::ret(crate::syntax::Value::var(
-                        crate::boundary::NameRef::from("x"),
+                    crate::term::syntax::Comp::ret(crate::term::syntax::Value::var(
+                        crate::discipline::boundary::NameRef::from("x"),
                     )),
                 ),
-                crate::syntax::Value::Int(3),
+                crate::term::syntax::Value::Int(3),
             )),
         ));
-        let contractum = Rc::new(crate::syntax::Value::Thunk(
-            crate::grade::Grade::ONE,
-            Rc::new(crate::syntax::Comp::ret(crate::syntax::Value::Int(3))),
+        let contractum = Rc::new(crate::term::syntax::Value::Thunk(
+            crate::discipline::grade::Grade::ONE,
+            Rc::new(crate::term::syntax::Comp::ret(
+                crate::term::syntax::Value::Int(3),
+            )),
         ));
-        let path =
-            |lhs: &Rc<crate::syntax::Value>, rhs: &Rc<crate::syntax::Value>| ValueType::Path {
+        let path = |lhs: &Rc<crate::term::syntax::Value>, rhs: &Rc<crate::term::syntax::Value>| {
+            ValueType::Path {
                 ty: Rc::new(ValueType::integer()),
                 lhs: Rc::clone(lhs),
                 rhs: Rc::clone(rhs),
-            };
+            }
+        };
         let reduced = path(&contractum, &contractum);
         let unreduced = path(&redex, &redex);
         assert!(bool::from(value_subtype(&unreduced, &reduced)));
@@ -644,9 +657,11 @@ mod tests
         // Endpoints that are genuinely apart still do not relate.
         let apart = path(
             &contractum,
-            &Rc::new(crate::syntax::Value::Thunk(
-                crate::grade::Grade::ONE,
-                Rc::new(crate::syntax::Comp::ret(crate::syntax::Value::Int(4))),
+            &Rc::new(crate::term::syntax::Value::Thunk(
+                crate::discipline::grade::Grade::ONE,
+                Rc::new(crate::term::syntax::Comp::ret(
+                    crate::term::syntax::Value::Int(4),
+                )),
             )),
         );
         assert!(!bool::from(value_subtype(&reduced, &apart)));

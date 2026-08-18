@@ -18,19 +18,19 @@ mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::boundary::IntegerLiteral;
-    use gandr_core_checker::control::Dir;
-    use gandr_core_checker::ctx::Ctx;
+    use gandr_core_checker::discipline::boundary::IntegerLiteral;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::effect::EffectRow;
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::machine::control::Dir;
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Side;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::SealId;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::ctx::Ctx;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Side;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::SealId;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine::run_comp;
 
     /// `U_ω (F payload)`.
@@ -177,7 +177,7 @@ mod tests
         for (side, answer) in [(Side::Fst, 7_i64), (Side::Snd, 42_i64)] {
             let program = dispatch(side);
             let expected = CompType::returner(ValueType::integer());
-            let (checked, _) = gandr_core_checker::checker::run_comp(
+            let (checked, _) = gandr_core_checker::judgements::checker::run_comp(
                 Ctx::new(),
                 program.clone(),
                 Dir::Check(expected.clone()),

@@ -147,7 +147,9 @@ mod tests
     #[test]
     fn stats_and_dump_report_a_terminal_cut()
     {
-        let comp = gandr_core_checker::syntax::Comp::ret(gandr_core_checker::syntax::Value::Unit);
+        let comp = gandr_core_checker::term::syntax::Comp::ret(
+            gandr_core_checker::term::syntax::Value::Unit,
+        );
         let focused = focus::focus_comp(&comp).expect("focuses");
         let population = stats(&focused);
         assert_eq!(1, usize::from(population.commands), "one command");

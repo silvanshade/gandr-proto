@@ -30,10 +30,10 @@
 //!   IL shares the workspace's arena/`NodeId` idioms rather than reintroducing
 //!   `Rc`/`Box` recursion.
 //! - [`focus`] — `𝓕` (and the value/stack companions `𝓥`/`𝓚`), taking a
-//!   checked-core [`gandr_core_checker::syntax::Comp`] /
-//!   [`gandr_core_checker::syntax::Value`] to a focused command. It is the only
-//!   entry into the IL, administrative-redex-avoiding, and **total** on
-//!   well-formed core terms.
+//!   checked-core [`gandr_core_checker::term::syntax::Comp`] /
+//!   [`gandr_core_checker::term::syntax::Value`] to a focused command. It is
+//!   the only entry into the IL, administrative-redex-avoiding, and **total**
+//!   on well-formed core terms.
 //!
 //! # Correspondence and adaptations
 //!

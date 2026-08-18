@@ -30,7 +30,7 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::discipline::grade::Grade;
 
 use crate::boundary::CellCount;
 use crate::boundary::CellIndex;
@@ -332,7 +332,7 @@ impl Store
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::boundary::GradeBound;
+    use gandr_core_checker::discipline::boundary::GradeBound;
 
     use super::*;
 

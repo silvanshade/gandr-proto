@@ -11,7 +11,7 @@
 //! same versioned [`Report`] envelope. The incremental-pipeline design's
 //! *marks* slot is **populated** ([`marks`]): one [`MarkReport`] per node
 //! mark from the total semantic marking layer
-//! ([`gandr_core_checker::mark`]), source-ranged through the same
+//! ([`gandr_core_checker::discipline::mark`]), source-ranged through the same
 //! `OriginMap`. The *obligations* slot is populated too ([`obligations`]): one
 //! [`ObligationReport`] per repair the melder made while recovering the source,
 //! carried from the parse through [`Lowered`] with its class and responsible
@@ -79,24 +79,24 @@
 
 use core::ops::Range;
 
-use gandr_core_checker::control::Control;
-use gandr_core_checker::control::Dir;
-use gandr_core_checker::ctx::Ctx;
+use gandr_core_checker::discipline::mark::Mark;
+use gandr_core_checker::discipline::mark::Marking;
+use gandr_core_checker::discipline::mark::mark_comp;
+use gandr_core_checker::discipline::mark::mark_value;
 use gandr_core_checker::error::TypeError;
 use gandr_core_checker::machine::FailureState;
 use gandr_core_checker::machine::Frame;
 use gandr_core_checker::machine::Outcome;
+use gandr_core_checker::machine::control::Control;
+use gandr_core_checker::machine::control::Dir;
 use gandr_core_checker::machine::step;
-use gandr_core_checker::mark::Mark;
-use gandr_core_checker::mark::Marking;
-use gandr_core_checker::mark::mark_comp;
-use gandr_core_checker::mark::mark_value;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
@@ -514,16 +514,17 @@ pub enum MarkDetail
 
 /// One source-ranged semantic [`Mark`] from the total marking layer.
 ///
-/// The [`Mark`] (from [`gandr_core_checker::mark`], `semantic marker`) is
-/// mapped through its node's structural path to a source span via the
-/// [`OriginMap`](crate::origin): one `MarkReport` per node mark, in (item,
+/// The [`Mark`] (from [`gandr_core_checker::discipline::mark`], `semantic
+/// marker`) is mapped through its node's structural path to a source span via
+/// the [`OriginMap`](crate::origin): one `MarkReport` per node mark, in (item,
 /// path, mark) order. A mark whose node is not `origin::resolve`-addressable —
 /// a reified-stack interior decorated as a bonus entry — has no source
 /// identity and is dropped from this surface until a stack-descent resync
 /// lands; every reported mark therefore carries a span in source. The
-/// incremental `dirty` bit ([`gandr_core_checker::mark::NodeFacts`]) is not
-/// surfaced here: its producer is the order-maintenance-backed edit layer,
-/// which is designed and not built, so the field would be a dead `false`.
+/// incremental `dirty` bit
+/// ([`gandr_core_checker::discipline::mark::NodeFacts`]) is not surfaced here:
+/// its producer is the order-maintenance-backed edit layer, which is designed
+/// and not built, so the field would be a dead `false`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 pub struct MarkReport
@@ -1517,8 +1518,8 @@ fn goal_to_report(goal: &Goal) -> GoalReport
 /// Computes the semantic marks for a lowered file: one [`MarkReport`] per
 /// `origin`-addressable node mark from the total marking layer.
 ///
-/// Marks come from [`gandr_core_checker::mark`] (`semantic marker`) and retain
-/// (item, path, mark) order.
+/// Marks come from [`gandr_core_checker::discipline::mark`] (`semantic marker`)
+/// and retain (item, path, mark) order.
 ///
 /// Each item is marked against its ascription (checking mode) or in inference
 /// mode — exactly the direction [`initial_state`](crate::goals) drives the

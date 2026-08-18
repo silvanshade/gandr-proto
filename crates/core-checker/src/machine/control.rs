@@ -8,12 +8,12 @@
 
 use alloc::rc::Rc;
 
-use crate::boundary::FieldName;
-use crate::syntax::Comp;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::discipline::boundary::FieldName;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// The bidirectional mode: inference (`⇑`) or checking (`⇓`) against an
 /// expected type.

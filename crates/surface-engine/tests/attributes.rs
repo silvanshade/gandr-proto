@@ -18,7 +18,7 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Value;
     use gandr_surface_engine::attributes::AttrFinding;
     use gandr_surface_engine::attributes::AttrPass;
     use gandr_surface_engine::attributes::AttrTier;

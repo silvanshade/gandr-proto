@@ -10,10 +10,10 @@
 //! one tier above this crate, so an inline `cfg(test)` module could not unify
 //! types with them.
 
-use gandr_core_checker::intern::TypeInterner;
-use gandr_core_checker::subtype::comp_subtype;
-use gandr_core_checker::subtype::value_subtype;
-use gandr_core_checker::types::Ty;
+use gandr_core_checker::discipline::subtype::comp_subtype;
+use gandr_core_checker::discipline::subtype::value_subtype;
+use gandr_core_checker::term::intern::TypeInterner;
+use gandr_core_checker::term::types::Ty;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
 use proptest::prelude::*;

@@ -20,15 +20,15 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::checker::run_comp;
-    use gandr_core_checker::control::Dir;
-    use gandr_core_checker::ctx::Ctx;
+    use gandr_core_checker::judgements::checker::run_comp;
+    use gandr_core_checker::machine::control::Dir;
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::ctx::Ctx;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine::run_comp as evaluate;
     use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::lower_source;
@@ -72,7 +72,7 @@ mod tests
     fn item_term(
         source: TestText<'_>,
         name: TestText<'_>,
-    ) -> Result<gandr_core_checker::syntax::Term, LowerError>
+    ) -> Result<gandr_core_checker::term::syntax::Term, LowerError>
     {
         let source = source.0;
         let name = name.0;
@@ -97,7 +97,7 @@ mod tests
     {
         let name = name.0;
         let term = item_term(source, name.into()).expect("the item lowers");
-        let gandr_core_checker::syntax::Term::Value(Value::Thunk(_, body)) = term
+        let gandr_core_checker::term::syntax::Term::Value(Value::Thunk(_, body)) = term
         else {
             panic!("`{name}` lowers to a thunked function, got {term:?}");
         };
@@ -113,7 +113,7 @@ mod tests
     {
         let source = dispatch_source("Integer".into(), "7".into());
         let make = item_term((&source).into(), "make".into()).expect("the packing item lowers");
-        let gandr_core_checker::syntax::Term::Value(Value::Pack { ref witnesses, .. }) = make
+        let gandr_core_checker::term::syntax::Term::Value(Value::Pack { ref witnesses, .. }) = make
         else {
             panic!("`make` lowers to a pack, got {make:?}");
         };
@@ -185,7 +185,7 @@ mod tests
     {
         let source = dispatch_source("String".into(), "\"seven\"".into());
         let make = item_term((&source).into(), "make".into()).expect("the packing item lowers");
-        let gandr_core_checker::syntax::Term::Value(Value::Pack { ref witnesses, .. }) = make
+        let gandr_core_checker::term::syntax::Term::Value(Value::Pack { ref witnesses, .. }) = make
         else {
             panic!("`make` lowers to a pack");
         };
@@ -282,7 +282,7 @@ mod tests
     }
 
     /// The single atom of the outermost `unpack` in a computation.
-    fn sole_unpack_atom(comp: &Comp) -> gandr_core_checker::types::SealId
+    fn sole_unpack_atom(comp: &Comp) -> gandr_core_checker::term::types::SealId
     {
         let Comp::Unpack { ref atoms, .. } = *comp
         else {
@@ -292,7 +292,7 @@ mod tests
     }
 
     /// The single atom of the next `unpack` below the outermost one.
-    fn nested_unpack_atom(comp: &Comp) -> gandr_core_checker::types::SealId
+    fn nested_unpack_atom(comp: &Comp) -> gandr_core_checker::term::types::SealId
     {
         let mut current = comp.clone();
         let mut seen_outer = false;

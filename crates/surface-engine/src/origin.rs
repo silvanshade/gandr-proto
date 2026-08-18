@@ -17,11 +17,11 @@
 
 use alloc::collections::BTreeMap;
 
-use gandr_core_checker::boundary::PathIndex;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::syntax::WalkBase;
+use gandr_core_checker::discipline::boundary::PathIndex;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::syntax::WalkBase;
 use gandr_surface_syntax::NodeId;
 use gandr_surface_syntax::StableHash;
 

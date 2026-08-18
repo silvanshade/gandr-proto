@@ -43,16 +43,16 @@
 //! and convertible arguments are convertible, which is strictly more than
 //! syntactic equality would give.
 //!
-//! [`FlatArena`]: crate::syntax::FlatArena
+//! [`FlatArena`]: crate::term::syntax::FlatArena
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::boundary::ConstructorTag;
-use crate::boundary::NameRef;
-use crate::boundary::SemanticHash;
-use crate::boundary::TermRetention;
-use crate::boundary::UnfoldPermission;
+use crate::discipline::boundary::ConstructorTag;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::SemanticHash;
+use crate::discipline::boundary::TermRetention;
+use crate::discipline::boundary::UnfoldPermission;
 use crate::nbe::Normalizer;
 use crate::nbe::sem::Closure;
 use crate::nbe::sem::ClosureId;
@@ -76,12 +76,12 @@ use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_str;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::syntax::CompNode;
-use crate::syntax::CompNodeId;
-use crate::syntax::Side;
-use crate::syntax::ValueNode;
-use crate::syntax::ValueNodeId;
-use crate::syntax::ValueTypeNodeId;
+use crate::term::syntax::CompNode;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::Side;
+use crate::term::syntax::ValueNode;
+use crate::term::syntax::ValueNodeId;
+use crate::term::syntax::ValueTypeNodeId;
 
 /// How far a force drives its subject.
 ///
@@ -511,7 +511,7 @@ enum ValueFinish
     /// Rebuild a reflexivity witness.
     Here,
     /// Rebuild a constructor value.
-    Ctor(crate::types::DataId, ConstructorTag),
+    Ctor(crate::term::types::DataId, ConstructorTag),
     /// Rebuild a packed module over these witness types.
     Pack(Vec<ValueTypeNodeId>),
 }

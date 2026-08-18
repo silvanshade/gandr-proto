@@ -27,15 +27,15 @@ mod tests
     use std::fs;
     use std::path::PathBuf;
 
-    use gandr_core_checker::checker::infer_comp;
-    use gandr_core_checker::checker::infer_value;
-    use gandr_core_checker::ctx::Ctx;
+    use gandr_core_checker::judgements::checker::infer_comp;
+    use gandr_core_checker::judgements::checker::infer_value;
     use gandr_core_checker::kernel_bridge::BridgeContext;
     use gandr_core_checker::kernel_bridge::lower_comp;
     use gandr_core_checker::kernel_bridge::lower_comp_type;
     use gandr_core_checker::kernel_bridge::lower_value;
     use gandr_core_checker::kernel_bridge::lower_value_type;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::ctx::Ctx;
+    use gandr_core_checker::term::syntax::Term;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::LevelSignature;
     use gandr_kernel_core::read;

@@ -15,9 +15,9 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
 use gandr_surface_engine::boundary::MatchDecision;
 use gandr_surface_engine::boundary::ScopeSegment;
 use gandr_surface_engine::boundary::SourceRange;

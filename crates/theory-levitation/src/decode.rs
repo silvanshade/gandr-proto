@@ -3,15 +3,16 @@
 //!
 //! Stage 0 keeps `decode` host-side as unwritten meta-theory; **stage 1 writes
 //! it**: [`decode`] interprets a first-order [`Code`] into a core
-//! [`gandr_core_checker::types::ValueType`], and [`decode_desc`] interprets a
-//! whole tagged [`SignDesc`] (the μ decoder, [`DeclPolarity::Data`]) into the
-//! coproduct over its constructors. This is the single non-negotiable
-//! *dependent* capability the simply-typed checker lacked — a function *from
-//! data into the universe of types* — realized here as a total host function
-//! over the decidable first-order fragment `{1, var, ×, σ}` plus the V5
-//! [`Code::Field`] leaf. The decoded types are elements of the code universe
-//! [`gandr_core_checker::types::ValueType::Universe`] (feature 1) and use the
-//! dependent pair [`gandr_core_checker::types::ValueType::Sigma`] (feature 2)
+//! [`gandr_core_checker::term::types::ValueType`], and [`decode_desc`]
+//! interprets a whole tagged [`SignDesc`] (the μ decoder,
+//! [`DeclPolarity::Data`]) into the coproduct over its constructors. This is
+//! the single non-negotiable *dependent* capability the simply-typed checker
+//! lacked — a function *from data into the universe of types* — realized here
+//! as a total host function over the decidable first-order fragment `{1, var,
+//! ×, σ}` plus the V5 [`Code::Field`] leaf. The decoded types are elements of
+//! the code universe [`gandr_core_checker::term::types::ValueType::Universe`]
+//! (feature 1) and use the dependent pair
+//! [`gandr_core_checker::term::types::ValueType::Sigma`] (feature 2)
 //! nowhere yet — the current fragment is non-dependent, so it decodes into the
 //! non-dependent positive core (`1`, `×`, `+`, atoms); `Σ` is the stage-1
 //! capability that becomes `decode`'s target when a genuinely dependent σ
@@ -20,7 +21,7 @@
 //!
 //! **Decidable equality is preserved** (proposal §3): [`decode`] is a total
 //! *function* over the decidable-`Eq` [`Code`] fragment into the
-//! structurally-`Eq` [`gandr_core_checker::types::ValueType`], so
+//! structurally-`Eq` [`gandr_core_checker::term::types::ValueType`], so
 //! structurally-equal codes decode to structurally-equal types — the property
 //! content-addressing and matching-modulo depend on.
 //!
@@ -40,8 +41,8 @@
 //! interprets a self-sort `var` as the provided carrier (an opaque atom at
 //! the datatype's use site), keeping the fragment first-order and total.
 
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::term::types::ValueType;
 
 use crate::code::Code;
 use crate::code::Name;
@@ -66,11 +67,11 @@ pub enum DecodeError
     /// An **applied** named type (`Vec(a)` — a [`ValueTypeRef::Ctor`] with
     /// arguments): the frozen core has no generic type application for
     /// arbitrary heads — a declared type enters as a minted
-    /// [`gandr_core_checker::types::ValueType::Data`] handle at the *pipeline*
-    /// seam, which `gandr-theory-levitation` cannot mint (it holds no
-    /// [`gandr_core_checker::types::DataId`] allocator) — so an applied
-    /// reference is deferred to that seam. Carries the offending head name
-    /// for the diagnostic.
+    /// [`gandr_core_checker::term::types::ValueType::Data`] handle at the
+    /// *pipeline* seam, which `gandr-theory-levitation` cannot mint (it
+    /// holds no [`gandr_core_checker::term::types::DataId`] allocator) — so
+    /// an applied reference is deferred to that seam. Carries the offending
+    /// head name for the diagnostic.
     AppliedType(Name),
     /// A `codata` description: its ν decoder targets the *negative computation*
     /// universe (observations), a later lane (proposal §5). The μ
@@ -295,7 +296,7 @@ fn decode_prim(prim: PrimTy) -> ValueType
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
 
     use super::*;
     use crate::code::AtomSort;

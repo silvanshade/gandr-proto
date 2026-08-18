@@ -91,25 +91,25 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::boundary::ContinuationName;
-use gandr_core_checker::boundary::FieldName;
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::discipline::boundary::ContinuationName;
+use gandr_core_checker::discipline::boundary::FieldName;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::discipline::boundary::OperationName;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::effect::EffectSig;
 use gandr_core_checker::effect::host::HostHandler;
 use gandr_core_checker::effect::host::HostOp;
 use gandr_core_checker::effect::host::HostReply;
-use gandr_core_checker::grade::Grade;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::STEP_BUDGET;
 use gandr_core_checker::outcome::StuckReason;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::DataId;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::DataId;
 
 use crate::boundary::CommandHoleStatus;
 use crate::boundary::CommandUnsupportedStatus;
@@ -2555,10 +2555,10 @@ fn read_lit(lit: &Lit) -> Value
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Value;
 
     use crate::focus::focus_comp;
     use crate::machine::LMachine;

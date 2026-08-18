@@ -2,20 +2,20 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::boundary::GradeBound;
+use gandr_core_checker::discipline::boundary::GradeBound;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::effect::EffectRow;
 use gandr_core_checker::error::TypeError;
 use gandr_core_checker::error::text;
-use gandr_core_checker::grade::Grade;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 
 use crate::checkpoint::Checkpoints;
 use crate::checkpoint::ItemCheckpoint;
@@ -1558,10 +1558,9 @@ fn decode_token(
             let body = pop_comp(nodes)?;
             let motive = if let Some(binder) = binder {
                 let body = pop_comp_type(nodes)?;
-                Some(Box::new(gandr_core_checker::syntax::SplitMotive::new(
-                    binder.as_str(),
-                    body,
-                )))
+                Some(Box::new(
+                    gandr_core_checker::term::syntax::SplitMotive::new(binder.as_str(), body),
+                ))
             }
             else {
                 None
@@ -1629,13 +1628,13 @@ fn decode_token(
             let scrut = pop_value(nodes)?;
             nodes.push(Node::Comp(Comp::Walk {
                 scrut: Rc::new(scrut),
-                motive: Box::new(gandr_core_checker::syntax::WalkMotive::new(
+                motive: Box::new(gandr_core_checker::term::syntax::WalkMotive::new(
                     x.as_str(),
                     y.as_str(),
                     q.as_str(),
                     motive_body,
                 )),
-                base: gandr_core_checker::syntax::WalkBase::new(base_x.as_str(), base_body),
+                base: gandr_core_checker::term::syntax::WalkBase::new(base_x.as_str(), base_body),
             }));
         },
         | _ => return Err(CheckpointStoreError::Corrupt),

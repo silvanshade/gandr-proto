@@ -1,12 +1,12 @@
 //! The defunctionalized typing machine (`typing-machine.md` §"Machine state"
 //! through §"The step function", core subset).
 //!
-//! Derived from [`crate::checker`] by the functional correspondence: CPS
-//! transform the recursive checker, then defunctionalize the continuations.
-//! Each [`Frame`] constructor is the defunctionalized image of one pending
-//! recursive call site; the stack *is* the continuation (frames carry no
-//! continuation pointers), and control is the explicit `Descend`/`Return`
-//! register of `typing-machine.md` §"Control".
+//! Derived from [`crate::judgements::checker`] by the functional
+//! correspondence: CPS transform the recursive checker, then defunctionalize
+//! the continuations. Each [`Frame`] constructor is the defunctionalized image
+//! of one pending recursive call site; the stack *is* the continuation (frames
+//! carry no continuation pointers), and control is the explicit
+//! `Descend`/`Return` register of `typing-machine.md` §"Control".
 //!
 //! Frame naming relative to the spec's inventory (`typing-machine.md` §"The
 //! frame inventory"), with the `K` prefix dropped for Rust style:
@@ -33,10 +33,10 @@
 //! `Γ` is **not** restored on error. A failing [`step`] returns
 //! [`Outcome::Error`] carrying a [`FailureState`] whose `Γ` is the context as
 //! it stood at the failure point (`typing-machine.md` §"Error handling": "the
-//! contexts at that point"). The recursive [`crate::checker`], by contrast,
-//! unwinds `Γ` along the host call stack as the error propagates — so the two
-//! `Γ`s differ on the error path, which is why the conformance suite compares
-//! [`crate::error::TypeError`] values, never machine `Γ`.
+//! contexts at that point"). The recursive [`crate::judgements::checker`], by
+//! contrast, unwinds `Γ` along the host call stack as the error propagates — so
+//! the two `Γ`s differ on the error path, which is why the conformance suite
+//! compares [`crate::error::TypeError`] values, never machine `Γ`.
 //!
 //! # Frame-pop ordering convention
 //!
@@ -53,20 +53,19 @@
 //! does in the recursive checker, which likewise unwinds `Γ` before its
 //! delivering `finish_comp`.)
 
+pub mod control;
+pub mod stack;
+
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
-use crate::boundary::MachineStepCount;
-use crate::boundary::StackDepth;
-use crate::checker::base_diagonal_type;
-use crate::checker::motive_result_type;
-use crate::checker::split_expectations;
-use crate::checker::split_unknown_expectations;
-use crate::control::Control;
-use crate::control::Dir;
-use crate::control::Trace;
-use crate::control::unrc;
-use crate::ctx::Ctx;
+use crate::discipline::boundary::MachineStepCount;
+use crate::discipline::boundary::StackDepth;
+use crate::discipline::grade::Grade;
+use crate::discipline::subtype::finish_comp;
+use crate::discipline::subtype::finish_int_literal;
+use crate::discipline::subtype::finish_value;
+use crate::discipline::subtype::pick;
 use crate::effect::EffectOp;
 use crate::effect::EffectRow;
 use crate::effect::combine_bind_row;
@@ -75,25 +74,29 @@ use crate::effect::resolve_handler_coverage;
 use crate::effect::resume_stack_type;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::grade::Grade;
-use crate::stack::arrow_components;
-use crate::stack::returner_components;
-use crate::stack::stk_components;
-use crate::stack::with_component;
-use crate::subtype::finish_comp;
-use crate::subtype::finish_int_literal;
-use crate::subtype::finish_value;
-use crate::subtype::pick;
-use crate::syntax::Comp;
-use crate::syntax::FlatArena;
-use crate::syntax::OpClause;
-use crate::syntax::Side;
-use crate::syntax::Stack;
-use crate::syntax::Term;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::judgements::checker::base_diagonal_type;
+use crate::judgements::checker::motive_result_type;
+use crate::judgements::checker::split_expectations;
+use crate::judgements::checker::split_unknown_expectations;
+use crate::machine::control::Control;
+use crate::machine::control::Dir;
+use crate::machine::control::Trace;
+use crate::machine::control::unrc;
+use crate::machine::stack::arrow_components;
+use crate::machine::stack::returner_components;
+use crate::machine::stack::stk_components;
+use crate::machine::stack::with_component;
+use crate::term::ctx::Ctx;
+use crate::term::syntax::Comp;
+use crate::term::syntax::FlatArena;
+use crate::term::syntax::OpClause;
+use crate::term::syntax::Side;
+use crate::term::syntax::Stack;
+use crate::term::syntax::Term;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// A typing-stack frame: one pending obligation of the suspended derivation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -203,8 +206,9 @@ pub enum Frame
     /// elements and the result type are stored (rule List⇓; ADR-40 D3). Each
     /// element is descended in `elem_dir`; when none remain the stored `result`
     /// (`List A` for the list case, `Unknown` for the matched-hole case) is
-    /// returned. The machine image of [`crate::checker`]'s `rule_list` loop, so
-    /// the per-element `Descend`/`Return` sequence matches step for step.
+    /// returned. The machine image of [`crate::judgements::checker`]'s
+    /// `rule_list` loop, so the per-element `Descend`/`Return` sequence
+    /// matches step for step.
     List
     {
         /// The elements still to type, in order.
@@ -219,9 +223,10 @@ pub enum Frame
     /// A record literal's fields are pending; each field is typed in its
     /// per-label direction and accumulated into `typed`, then `finish_value`
     /// finishes against `dir` (rule Record⇑/Record⇓; ADR-45 D3). The machine
-    /// image of [`crate::checker`]'s `rule_record` loop, so the per-field
-    /// `Descend`/`Return` sequence matches step for step. Fields are processed
-    /// in the canonical (sorted-label) order of the `BTreeMap`.
+    /// image of [`crate::judgements::checker`]'s `rule_record` loop, so the
+    /// per-field `Descend`/`Return` sequence matches step for step. Fields
+    /// are processed in the canonical (sorted-label) order of the
+    /// `BTreeMap`.
     Record
     {
         /// The fields still to type, `(label, value)` in sorted-label order.
@@ -253,7 +258,7 @@ pub enum Frame
     /// looked up in the inferred record type and `F A` is finished against
     /// `dir` (rule `RecordProj`⇑; ADR-45 D4). The image of [`Frame::Force`];
     /// the record value is **retained** so a missing-field stuck error carries
-    /// the same term as [`crate::checker`]'s `rule_record_proj`.
+    /// the same term as [`crate::judgements::checker`]'s `rule_record_proj`.
     RecordProj
     {
         /// The record value being projected (retained for the stuck-error
@@ -409,7 +414,7 @@ pub enum Frame
         snd_name: String,
         /// The optional dependent motive `(z). M` (ADR-82); `None` is the
         /// check-only motive-less split.
-        motive: Option<Box<crate::syntax::SplitMotive>>,
+        motive: Option<Box<crate::term::syntax::SplitMotive>>,
         /// The scrutinee value `v` (the motive's `z` is instantiated to it for
         /// the answer `M[v/z]`).
         scrut: Value,
@@ -600,9 +605,9 @@ pub enum Frame
     WalkScrut
     {
         /// The motive `(x y q). C`.
-        motive: crate::syntax::WalkMotive,
+        motive: crate::term::syntax::WalkMotive,
         /// The diagonal base `(x). c`.
-        base: crate::syntax::WalkBase,
+        base: crate::term::syntax::WalkBase,
         /// The scrutinee value `p` (the motive's `q` is instantiated to it).
         scrut: Value,
         /// The direction the `Walk` itself was typed in.
@@ -809,14 +814,15 @@ pub enum Outcome
 ///   returning `(Ok(ty), trace)` on success (`ty` is `Ty::Value`-rooted) or
 ///   `(Err(error), trace)` on the first failure; the `Trace` records every
 ///   control register visited (equal, event for event, to
-///   `crate::checker::run_value` on the same input).
+///   `crate::judgements::checker::run_value` on the same input).
 /// - provides: the `Trace` is returned in both arms; on failure the
 ///   `FailureState` is dropped here — drive `step` directly to inspect it.
 /// - fails: the result arm is `Err` with the first `TypeError`
 ///   (`UnboundVariable`, `TypeMismatch`, `ShapeMismatch`, `StuckExpr`, or
 ///   `GradeError`).
 /// - panics: none; the frame stack lives on the heap, so adversarial-depth
-///   terms do not overflow the host stack (unlike `crate::checker`).
+///   terms do not overflow the host stack (unlike
+///   `crate::judgements::checker`).
 #[inline]
 pub fn run_value(
     ctx: Ctx,
@@ -834,14 +840,15 @@ pub fn run_value(
 ///   outcome, returning `(Ok(ty), trace)` on success (`ty` is
 ///   `Ty::Comp`-rooted) or `(Err(error), trace)` on the first failure; the
 ///   `Trace` records every control register visited (equal, event for event, to
-///   `crate::checker::run_comp` on the same input).
+///   `crate::judgements::checker::run_comp` on the same input).
 /// - provides: the `Trace` is returned in both arms; on failure the
 ///   `FailureState` is dropped here — drive `step` directly to inspect it.
 /// - fails: the result arm is `Err` with the first `TypeError`
 ///   (`UnboundVariable`, `TypeMismatch`, `ShapeMismatch`, `StuckExpr`, or
 ///   `GradeError`).
 /// - panics: none; the frame stack lives on the heap, so adversarial-depth
-///   terms do not overflow the host stack (unlike `crate::checker`).
+///   terms do not overflow the host stack (unlike
+///   `crate::judgements::checker`).
 #[inline]
 pub fn run_comp(
     ctx: Ctx,
@@ -1024,22 +1031,25 @@ fn step_value(
 ) -> Result<Control, TypeError>
 {
     match value {
-        | Value::Var(name) => match ctx.lookup(crate::boundary::NameRef::from(name.as_str())) {
-            | Some(found) => {
-                let ty = found.clone();
-                finish_value(ty, dir).map(return_value)
-            },
-            | None => Err(TypeError::UnboundVariable { name }),
+        | Value::Var(name) => {
+            match ctx.lookup(crate::discipline::boundary::NameRef::from(name.as_str())) {
+                | Some(found) => {
+                    let ty = found.clone();
+                    finish_value(ty, dir).map(return_value)
+                },
+                | None => Err(TypeError::UnboundVariable { name }),
+            }
         },
         | Value::Unit => finish_value(ValueType::Unit, dir).map(return_value),
         // Rule Int⇑/Int⇓ (A2.1 literals extension; ADR-39 D4): a literal axiom,
         // as Unit — no frame is pushed, matching the recursive checker step.
         // `finish_int_literal` carries the Rust `{integer}` checking-mode
         // widening, so machine and checker stay lock-step.
-        | Value::Int(literal) => {
-            finish_int_literal(crate::boundary::IntegerLiteral::from(literal), dir)
-                .map(return_value)
-        },
+        | Value::Int(literal) => finish_int_literal(
+            crate::discipline::boundary::IntegerLiteral::from(literal),
+            dir,
+        )
+        .map(return_value),
         // Rule Str⇑/Str⇓ (value-model ladder, ADR-38): a literal axiom, as Int
         // — no frame is pushed, matching the recursive checker step for step.
         | Value::Str(_) => finish_value(ValueType::string(), dir).map(return_value),
@@ -1064,7 +1074,7 @@ fn step_value(
                     ref binder,
                     snd: ref tail,
                 }) => {
-                    let tail_ty = crate::identity::subst_valuetype(tail, binder, &fst);
+                    let tail_ty = crate::judgements::identity::subst_valuetype(tail, binder, &fst);
                     (Dir::Check(head.as_ref().clone()), Dir::Check(tail_ty))
                 },
                 | _ => dir.pair_components(),
@@ -1154,8 +1164,9 @@ fn step_value(
             let mut iter = fields.into_iter();
             match iter.next() {
                 | Some((label, field_value)) => {
-                    let field_dir =
-                        dir.record_field_dir(crate::boundary::FieldName::from(label.as_str()));
+                    let field_dir = dir.record_field_dir(
+                        crate::discipline::boundary::FieldName::from(label.as_str()),
+                    );
                     stack.push(Frame::Record {
                         remaining: iter.collect(),
                         current_label: label,
@@ -1310,7 +1321,7 @@ fn step_value(
                 abstracts,
                 payload: signature_payload,
             }) => {
-                let expected = crate::package::pack_payload_expectation(
+                let expected = crate::judgements::package::pack_payload_expectation(
                     grade,
                     &abstracts,
                     signature_payload.as_ref(),
@@ -1319,7 +1330,7 @@ fn step_value(
                 let expected = match expected {
                     | Ok(expected) => expected,
                     | Err(refusal) => {
-                        return Err(crate::package::refusal_error(
+                        return Err(crate::judgements::package::refusal_error(
                             refusal,
                             Term::Value(Value::Pack { witnesses, payload }),
                         ));
@@ -1653,7 +1664,9 @@ fn step_comp(
         // its payload type. An absent op is stuck before the payload is
         // descended (matching the recursive checker step for step).
         | Comp::Perform(sig, op, arg) => match sig
-            .op(crate::boundary::OperationName::from(op.as_str()))
+            .op(crate::discipline::boundary::OperationName::from(
+                op.as_str(),
+            ))
             .cloned()
         {
             | Some(op_def) => {
@@ -1857,7 +1870,7 @@ fn step_comp(
                             upper: grade,
                         });
                     }
-                    let bound = crate::package::unpack_binding(
+                    let bound = crate::judgements::package::unpack_binding(
                         grade,
                         abstracts,
                         signature_payload.as_ref(),
@@ -1866,7 +1879,7 @@ fn step_comp(
                     match bound {
                         | Ok(bound) => bound,
                         | Err(refusal) => {
-                            return Err(crate::package::refusal_error(
+                            return Err(crate::judgements::package::refusal_error(
                                 refusal,
                                 Term::Comp(Comp::Unpack {
                                     scrut,
@@ -2058,8 +2071,9 @@ fn step_return(
             let mut iter = remaining.into_iter();
             match iter.next() {
                 | Some((label, field_value)) => {
-                    let field_dir =
-                        dir.record_field_dir(crate::boundary::FieldName::from(label.as_str()));
+                    let field_dir = dir.record_field_dir(
+                        crate::discipline::boundary::FieldName::from(label.as_str()),
+                    );
                     stack.push(Frame::Record {
                         remaining: iter.collect(),
                         current_label: label,
@@ -2456,9 +2470,9 @@ fn step_return(
                     binder,
                     snd: tail,
                 } => {
-                    let tail_ty = crate::identity::subst_valuetype(
+                    let tail_ty = crate::judgements::identity::subst_valuetype(
                         &tail,
-                        crate::boundary::NameRef::from(binder.as_str()),
+                        crate::discipline::boundary::NameRef::from(binder.as_str()),
                         &Value::var(&fst_name),
                     );
                     let (body_expected, result) =
@@ -2559,7 +2573,7 @@ fn step_return(
                     });
                 },
             };
-            let residual = eps_t.without(crate::boundary::EffectSignatureName::from(
+            let residual = eps_t.without(crate::discipline::boundary::EffectSignatureName::from(
                 sig_name.as_str(),
             ));
             let (ret_var, ret_body) = ret;
@@ -2815,8 +2829,8 @@ fn handle_advance(
 ///
 /// Shared by the initial `stk K` step ([`step_value`]) and the
 /// [`Frame::StkArg`] / [`Frame::StkBind`] pops; the per-frame type destructures
-/// are the `crate::stack` helpers shared with the checker, so the two faces
-/// cannot drift.
+/// are the `crate::machine::stack` helpers shared with the checker, so the two
+/// faces cannot drift.
 fn walk_stack(
     stack: Stack,
     input: CompType,
@@ -2877,9 +2891,9 @@ fn walk_stack(
 
 /// Machine-only depth tests: the frame stack lives on the heap, so the
 /// machine's nesting bound is memory, not the host call stack. These terms
-/// are far beyond what the recursive [`crate::checker`] could survive (its
-/// recursion would need hundreds of megabytes of call stack), so they are
-/// deliberately *not* part of the conformance pairing.
+/// are far beyond what the recursive [`crate::judgements::checker`] could
+/// survive (its recursion would need hundreds of megabytes of call stack), so
+/// they are deliberately *not* part of the conformance pairing.
 #[cfg(test)]
 mod tests
 {
@@ -3027,9 +3041,9 @@ mod arena_boundary_tests
     use alloc::rc::Rc;
 
     use super::diagnostic_abs_term;
-    use crate::syntax::Comp;
-    use crate::syntax::Term;
-    use crate::syntax::Value;
+    use crate::term::syntax::Comp;
+    use crate::term::syntax::Term;
+    use crate::term::syntax::Value;
 
     /// The unannotated-abstraction stuck diagnostic is a public compatibility
     /// readback boundary: it reconstructs the legacy term only after routing

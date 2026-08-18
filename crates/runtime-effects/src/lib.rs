@@ -42,12 +42,13 @@
 //! `gandr_surface_engine::run::run_source` composes the engine's lowering,
 //! linking, and prelude checking with [`run_program_with_prelude`]. This
 //! headless host accepts already-lowered, hand-built
-//! [`Comp`](gandr_core_checker::syntax::Comp) programs through [`run_program`].
+//! [`Comp`](gandr_core_checker::term::syntax::Comp) programs through
+//! [`run_program`].
 //!
 //! ```
 //! use gandr_core_checker::effect;
-//! use gandr_core_checker::syntax::Comp;
-//! use gandr_core_checker::syntax::Value;
+//! use gandr_core_checker::term::syntax::Comp;
+//! use gandr_core_checker::term::syntax::Value;
 //! use gandr_runtime_effects::run_program;
 //!
 //! // perform Exec::exec {program: "true", args: []} >>= r. ret r

@@ -52,13 +52,13 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::boundary::BacktrackStatus;
-use crate::boundary::ClosureArity;
-use crate::boundary::NameRef;
-use crate::boundary::ProgressStatus;
-use crate::boundary::UnfoldPermission;
-use crate::boundary::ValueEquality;
-use crate::identity::subst_valuetype;
+use crate::discipline::boundary::BacktrackStatus;
+use crate::discipline::boundary::ClosureArity;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::ProgressStatus;
+use crate::discipline::boundary::UnfoldPermission;
+use crate::discipline::boundary::ValueEquality;
+use crate::judgements::identity::subst_valuetype;
 use crate::nbe::Normalizer;
 use crate::nbe::eval::ForceMode;
 use crate::nbe::eval::apply;
@@ -83,9 +83,9 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::ValueType;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::ValueType;
 
 /// The speculation state a goal is compared under.
 ///
@@ -537,7 +537,7 @@ fn unfold_value_side(
 fn value_height(
     nbe: &Normalizer,
     id: SemValueId,
-) -> Result<Option<crate::boundary::DefinitionHeightLevel>, SemError>
+) -> Result<Option<crate::discipline::boundary::DefinitionHeightLevel>, SemError>
 {
     let node = nbe.arena().value(id)?;
     Ok(match *node.node() {
@@ -584,10 +584,10 @@ fn comp_goal(
             Ok(ValueEquality::from(true))
         },
         | (&SemCompNode::LazyPair(..), _) | (_, &SemCompNode::LazyPair(..)) => {
-            let left_fst = project(nbe, lhs, crate::syntax::Side::Fst, state.force())?;
-            let right_fst = project(nbe, rhs, crate::syntax::Side::Fst, state.force())?;
-            let left_snd = project(nbe, lhs, crate::syntax::Side::Snd, state.force())?;
-            let right_snd = project(nbe, rhs, crate::syntax::Side::Snd, state.force())?;
+            let left_fst = project(nbe, lhs, crate::term::syntax::Side::Fst, state.force())?;
+            let right_fst = project(nbe, rhs, crate::term::syntax::Side::Fst, state.force())?;
+            let left_snd = project(nbe, lhs, crate::term::syntax::Side::Snd, state.force())?;
+            let right_snd = project(nbe, rhs, crate::term::syntax::Side::Snd, state.force())?;
             goals.push(Frame::Comp(left_snd, right_snd, state));
             goals.push(Frame::Comp(left_fst, right_fst, state));
             Ok(ValueEquality::from(true))
@@ -1063,8 +1063,8 @@ fn head_goal(
 /// Returns [`SemError`] when a source node does not resolve.
 fn same_effect_head(
     nbe: &Normalizer,
-    lhs: crate::syntax::CompNodeId,
-    rhs: crate::syntax::CompNodeId,
+    lhs: crate::term::syntax::CompNodeId,
+    rhs: crate::term::syntax::CompNodeId,
 ) -> Result<ValueEquality, SemError>
 {
     if lhs == rhs {
@@ -1072,16 +1072,16 @@ fn same_effect_head(
     }
     let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
         | (
-            crate::syntax::CompNode::Perform(left_sig, left_op, _),
-            crate::syntax::CompNode::Perform(right_sig, right_op, _),
+            crate::term::syntax::CompNode::Perform(left_sig, left_op, _),
+            crate::term::syntax::CompNode::Perform(right_sig, right_op, _),
         ) => left_sig == right_sig && left_op == right_op,
         | (
-            crate::syntax::CompNode::Handle {
+            crate::term::syntax::CompNode::Handle {
                 sig: left_sig,
                 ops: left_ops,
                 ..
             },
-            crate::syntax::CompNode::Handle {
+            crate::term::syntax::CompNode::Handle {
                 sig: right_sig,
                 ops: right_ops,
                 ..
@@ -1113,8 +1113,8 @@ fn same_effect_head(
 /// Returns [`SemError`] when a source node does not resolve.
 fn same_package_head(
     nbe: &Normalizer,
-    lhs: crate::syntax::CompNodeId,
-    rhs: crate::syntax::CompNodeId,
+    lhs: crate::term::syntax::CompNodeId,
+    rhs: crate::term::syntax::CompNodeId,
 ) -> Result<ValueEquality, SemError>
 {
     if lhs == rhs {
@@ -1122,12 +1122,12 @@ fn same_package_head(
     }
     let decided = match (syntax_comp(nbe, lhs)?, syntax_comp(nbe, rhs)?) {
         | (
-            crate::syntax::CompNode::Unpack {
+            crate::term::syntax::CompNode::Unpack {
                 signature: left_signature,
                 atoms: left_atoms,
                 ..
             },
-            crate::syntax::CompNode::Unpack {
+            crate::term::syntax::CompNode::Unpack {
                 signature: right_signature,
                 atoms: right_atoms,
                 ..

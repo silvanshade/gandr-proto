@@ -49,9 +49,9 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::boundary::TypeSerial;
-use crate::types::SealId;
-pub use crate::types::SealSite;
+use crate::discipline::boundary::TypeSerial;
+use crate::term::types::SealId;
+pub use crate::term::types::SealSite;
 
 /// Why a minting or a re-minting check failed.
 ///
@@ -288,7 +288,7 @@ mod tests
     use super::SealError;
     use super::SealSite;
     use super::SealTable;
-    use crate::boundary::TypeSerial;
+    use crate::discipline::boundary::TypeSerial;
 
     /// A two-component sealing: `Counter` sealing `t` and `u`.
     fn counter_sites() -> [SealSite; 2]

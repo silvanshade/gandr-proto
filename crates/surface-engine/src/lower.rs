@@ -123,26 +123,26 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::boundary::SealComponentName;
-use gandr_core_checker::boundary::SealDeclarationName;
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::discipline::boundary::SealComponentName;
+use gandr_core_checker::discipline::boundary::SealDeclarationName;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::nominal::GandrSort;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::ArenaBridgeError;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::CompNodeId;
-use gandr_core_checker::syntax::FlatArena;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::syntax::ValueNodeId;
-use gandr_core_checker::syntax::WalkBase;
-use gandr_core_checker::syntax::WalkMotive;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::SealId;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::syntax::ArenaBridgeError;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::CompNodeId;
+use gandr_core_checker::term::syntax::FlatArena;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::syntax::ValueNodeId;
+use gandr_core_checker::term::syntax::WalkBase;
+use gandr_core_checker::term::syntax::WalkMotive;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::SealId;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
@@ -2086,8 +2086,8 @@ impl Lowerer<'_>
 
     /// Mints a fresh hole identifier — the next [`GandrSort::HoleAddr`] atom's
     /// identity, projected to the
-    /// [`HoleId`](gandr_core_checker::syntax::HoleId) addressing handle the
-    /// IR carries.
+    /// [`HoleId`](gandr_core_checker::term::syntax::HoleId) addressing handle
+    /// the IR carries.
     fn fresh_hole(&mut self) -> FreshHoleId
     {
         u32::from(
@@ -3877,13 +3877,13 @@ impl Lowerer<'_>
     /// hoisted, as a tuple component is). The fields are keyed by label into a
     /// canonical (sorted) [`BTreeMap`], and the origin children follow that
     /// sorted order — the order the checker / machine / mark descend the field
-    /// values (`gandr_core_checker::checker`'s `rule_record`), so the per-field
-    /// origin indices line up across the faces. The empty record `#{}`
-    /// lowers to an empty [`Value::Record`]; a duplicate label is an error
-    /// (strict) and keeps the last field (total). The source fields are
-    /// deduplicated to their last-wins survivor *before* lowering, so a
-    /// discarded duplicate field is never lowered — its hoisted effects
-    /// would otherwise run dead in total mode.
+    /// values (`gandr_core_checker::judgements::checker`'s `rule_record`), so
+    /// the per-field origin indices line up across the faces. The empty
+    /// record `#{}` lowers to an empty [`Value::Record`]; a duplicate label
+    /// is an error (strict) and keeps the last field (total). The source
+    /// fields are deduplicated to their last-wins survivor *before*
+    /// lowering, so a discarded duplicate field is never lowered — its
+    /// hoisted effects would otherwise run dead in total mode.
     fn record_expr(
         &mut self,
         node: SynNode<'_>,

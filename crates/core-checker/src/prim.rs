@@ -5,22 +5,23 @@
 )]
 
 //! Native (Rust-backed) builtin primitives — the registry behind
-//! [`crate::syntax::Comp::Native`] (ADR-42; the MVP module layer's
+//! [`crate::term::syntax::Comp::Native`] (ADR-42; the MVP module layer's
 //! native-builtin substrate).
 //!
 //! A builtin combinator cannot be written as a closed term over the v0 IR —
-//! there is no recursion / fixpoint ([`crate::syntax::Comp::ListCase`] is
+//! there is no recursion / fixpoint ([`crate::term::syntax::Comp::ListCase`] is
 //! non-recursive) — so the iteration / table / arithmetic combinators are
-//! realized in Rust. Because [`crate::syntax::Comp`] derives `Clone` / `Debug`
-//! / `Eq` / `PartialEq` *and* is the L machine's runtime focus type, a native
-//! node cannot carry a Rust `fn` / closure: a closure is not `Eq`, and a `fn`
-//! pointer's address equality is not stable (the compiler may merge or
+//! realized in Rust. Because [`crate::term::syntax::Comp`] derives `Clone` /
+//! `Debug` / `Eq` / `PartialEq` *and* is the L machine's runtime focus type, a
+//! native node cannot carry a Rust `fn` / closure: a closure is not `Eq`, and a
+//! `fn` pointer's address equality is not stable (the compiler may merge or
 //! duplicate functions), which would corrupt the structural equality the
 //! `checker ≡ machine` and `eval ≡ run` differentials rely on. So the node
 //! carries an **opaque tag** — a [`NativePrim`] — and the Rust behavior lives
-//! here in a by-value registry, exactly as [`crate::syntax::Comp::Perform`]
-//! carries an operation *name* resolved against an inline signature rather than
-//! a handler closure (ADR-33 D3). This keeps the IR inspectable and comparable.
+//! here in a by-value registry, exactly as
+//! [`crate::term::syntax::Comp::Perform`] carries an operation *name* resolved
+//! against an inline signature rather than a handler closure (ADR-33 D3). This
+//! keeps the IR inspectable and comparable.
 //!
 //! MVP scope: the registry started with two neutral
 //! demonstrator combinators — `Id` (the identity `I`) and `Const` (the constant
@@ -58,24 +59,24 @@ use std::path::Path;
 #[cfg(feature = "gandr_feat_regex")]
 use regex::Regex;
 
-use crate::boundary::AppliedArgCount;
-use crate::boundary::BooleanAtom;
-use crate::boundary::I64Literal;
-use crate::boundary::ListIndex;
-use crate::boundary::NameRef;
-use crate::boundary::PrimitiveArity;
-use crate::boundary::PrimitivePredicate;
-use crate::boundary::RegexLiteralText;
-use crate::boundary::ShortCircuitFlag;
-use crate::grade::Grade;
-use crate::syntax::Comp;
-use crate::syntax::NumLit;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::ValueType;
+use crate::discipline::boundary::AppliedArgCount;
+use crate::discipline::boundary::BooleanAtom;
+use crate::discipline::boundary::I64Literal;
+use crate::discipline::boundary::ListIndex;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::PrimitiveArity;
+use crate::discipline::boundary::PrimitivePredicate;
+use crate::discipline::boundary::RegexLiteralText;
+use crate::discipline::boundary::ShortCircuitFlag;
+use crate::discipline::grade::Grade;
+use crate::term::syntax::Comp;
+use crate::term::syntax::NumLit;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::ValueType;
 
 /// An opaque identifier for a Rust-backed builtin primitive — the tag carried
-/// by [`crate::syntax::Comp::Native`].
+/// by [`crate::term::syntax::Comp::Native`].
 ///
 /// The tag is `Copy` and compares by value, so a `Comp::Native` stays `Clone` /
 /// `Debug` / `Eq` / `PartialEq` (the derive the machine and the differential
@@ -173,7 +174,7 @@ pub enum NativePrim
     /// `get r ℓ` — look a **dynamic** string label `ℓ` up in a manifest record
     /// `r`, returning an `Optional` (`A + 1`). The native layer's
     /// answer to the dynamic access the static
-    /// [`crate::syntax::Comp::RecordProj`] cannot express.
+    /// [`crate::term::syntax::Comp::RecordProj`] cannot express.
     Get,
     /// `insert r ℓ v` — extend / override the field `ℓ` of a manifest record
     /// `r` with `v`, returning the extended record.
@@ -692,12 +693,12 @@ fn binop_closure() -> ValueType
 fn as_bool(value: &Value) -> Option<BooleanAtom>
 {
     match unannotated(value) {
-        | Value::Inj(crate::syntax::Side::Fst, payload)
+        | Value::Inj(crate::term::syntax::Side::Fst, payload)
             if matches!(unannotated(payload.as_ref()), Value::Unit) =>
         {
             Some(BooleanAtom::from(true))
         },
-        | Value::Inj(crate::syntax::Side::Snd, payload)
+        | Value::Inj(crate::term::syntax::Side::Snd, payload)
             if matches!(unannotated(payload.as_ref()), Value::Unit) =>
         {
             Some(BooleanAtom::from(false))

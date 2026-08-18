@@ -46,7 +46,7 @@
 
 use alloc::vec::Vec;
 
-use crate::boundary::VariableLevel;
+use crate::discipline::boundary::VariableLevel;
 use crate::nbe::Normalizer;
 use crate::nbe::sem::Elim;
 use crate::nbe::sem::Rigid;

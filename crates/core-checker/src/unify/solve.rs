@@ -36,16 +36,16 @@
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::boundary::ConstraintIndex;
-use crate::boundary::HoleId;
-use crate::boundary::MetaFreedom;
-use crate::boundary::RigidStatus;
-use crate::boundary::SolverBudget;
-use crate::boundary::SolverSteps;
-use crate::boundary::UnfoldPermission;
-use crate::boundary::ValueEquality;
-use crate::boundary::VariableLevel;
-use crate::grade::Grade;
+use crate::discipline::boundary::ConstraintIndex;
+use crate::discipline::boundary::HoleId;
+use crate::discipline::boundary::MetaFreedom;
+use crate::discipline::boundary::RigidStatus;
+use crate::discipline::boundary::SolverBudget;
+use crate::discipline::boundary::SolverSteps;
+use crate::discipline::boundary::UnfoldPermission;
+use crate::discipline::boundary::ValueEquality;
+use crate::discipline::boundary::VariableLevel;
+use crate::discipline::grade::Grade;
 use crate::nbe::Normalizer;
 use crate::nbe::conv;
 use crate::nbe::eval;
@@ -65,9 +65,9 @@ use crate::nbe::sem::SemError;
 use crate::nbe::sem::SemValueId;
 use crate::nbe::sem::SemValueNode;
 use crate::nbe::sem::ValueUnfold;
-use crate::subst::HoleRepl;
-use crate::syntax::Comp;
-use crate::syntax::Value;
+use crate::term::subst::HoleRepl;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Value;
 use crate::unify::Constraint;
 use crate::unify::certify::Certificate;
 use crate::unify::certify::Postponed;
@@ -989,10 +989,30 @@ fn step_comp(
         // Lazy-pair eta, as ordinary conversion decides it: a lazy pair against
         // anything compares by projecting both.
         | (&SemCompNode::LazyPair(..), _) | (_, &SemCompNode::LazyPair(..)) => {
-            let left_fst = eval::project(nbe, lhs, crate::syntax::Side::Fst, ForceMode::WeakHead)?;
-            let right_fst = eval::project(nbe, rhs, crate::syntax::Side::Fst, ForceMode::WeakHead)?;
-            let left_snd = eval::project(nbe, lhs, crate::syntax::Side::Snd, ForceMode::WeakHead)?;
-            let right_snd = eval::project(nbe, rhs, crate::syntax::Side::Snd, ForceMode::WeakHead)?;
+            let left_fst = eval::project(
+                nbe,
+                lhs,
+                crate::term::syntax::Side::Fst,
+                ForceMode::WeakHead,
+            )?;
+            let right_fst = eval::project(
+                nbe,
+                rhs,
+                crate::term::syntax::Side::Fst,
+                ForceMode::WeakHead,
+            )?;
+            let left_snd = eval::project(
+                nbe,
+                lhs,
+                crate::term::syntax::Side::Snd,
+                ForceMode::WeakHead,
+            )?;
+            let right_snd = eval::project(
+                nbe,
+                rhs,
+                crate::term::syntax::Side::Snd,
+                ForceMode::WeakHead,
+            )?;
             machine.push_comp(goal, left_snd, right_snd);
             machine.push_comp(goal, left_fst, right_fst);
             Ok(Step::Pushed)

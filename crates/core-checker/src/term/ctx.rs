@@ -27,10 +27,10 @@
 //! contract). The conformance suite therefore compares
 //! [`crate::error::TypeError`] values, not `Γ`.
 
-use crate::boundary::ContextEmptyStatus;
-use crate::boundary::ContextLength;
-use crate::boundary::NameRef;
-use crate::types::ValueType;
+use crate::discipline::boundary::ContextEmptyStatus;
+use crate::discipline::boundary::ContextLength;
+use crate::discipline::boundary::NameRef;
+use crate::term::types::ValueType;
 
 /// The linear context zone `Σ` (the effects and control record's one-shot
 /// linearity section; ADR-33 D5):

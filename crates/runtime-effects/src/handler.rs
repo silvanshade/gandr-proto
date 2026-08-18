@@ -32,9 +32,9 @@ use std::process::Command as ProcCommand;
 use std::process::Stdio;
 use std::process::id as process_id;
 
-use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::discipline::boundary::OperationName;
 use gandr_core_checker::effect;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::term::syntax::Value;
 
 use crate::boundary::FilePath;
 use crate::boundary::GlobMatch;
@@ -791,7 +791,7 @@ fn glob_segment(cursor: GlobCursor<'_>) -> GlobMatch
 mod tests
 {
     use gandr_core_checker::effect;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Value;
 
     use super::ShellHandler;
     use super::glob_paths;

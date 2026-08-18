@@ -114,10 +114,10 @@
 //!   feature 3): the decoder `Desc → ValueType`, interpreting the decidable
 //!   first-order fragment `{1, var, ×, σ}` (+ the [`Code::Field`] leaf) into
 //!   the core value-type universe. It targets the frozen-core code universe
-//!   ([`gandr_core_checker::types::ValueType::Universe`], feature 1); the
-//!   dependent pair [`gandr_core_checker::types::ValueType::Sigma`] (feature 2)
-//!   is the stage-1 capability the decoder will target once a dependent σ
-//!   *code* lands (the current fragment is non-dependent — see the
+//!   ([`gandr_core_checker::term::types::ValueType::Universe`], feature 1); the
+//!   dependent pair [`gandr_core_checker::term::types::ValueType::Sigma`]
+//!   (feature 2) is the stage-1 capability the decoder will target once a
+//!   dependent σ *code* lands (the current fragment is non-dependent — see the
 //!   [`decode`](mod@decode) module docs).
 //! * [`typed_rule`] — the **typed 2-cell face**: a stage-0 [`RuleFace`] refined
 //!   with a decoded [`PatternContext`] (the "dependent Σ over the signature",
@@ -139,9 +139,9 @@ pub mod rule;
 pub mod typed_rule;
 pub mod wellformed;
 
-pub use gandr_core_checker::boundary::ConstructorTag;
-pub use gandr_core_checker::boundary::NameRef;
-pub use gandr_core_checker::boundary::StringText;
+pub use gandr_core_checker::discipline::boundary::ConstructorTag;
+pub use gandr_core_checker::discipline::boundary::NameRef;
+pub use gandr_core_checker::discipline::boundary::StringText;
 
 pub use crate::arity::BridgeArity;
 pub use crate::arity::SortRef;

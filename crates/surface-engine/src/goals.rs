@@ -37,16 +37,16 @@ use alloc::collections::BTreeMap;
 use core::ops::Deref;
 use core::ops::Range;
 
-use gandr_core_checker::control::Control;
-use gandr_core_checker::control::Dir;
-use gandr_core_checker::ctx::Ctx;
 use gandr_core_checker::machine;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::HoleId;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::machine::control::Control;
+use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::HoleId;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
 
 use crate::boundary::ContextLength;

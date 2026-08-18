@@ -10,7 +10,7 @@
 //! extension points is a field here, so the anti-retrofit checklist is
 //! satisfied by construction (the levitation design's §3).
 
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::discipline::grade::Grade;
 
 use crate::arity::BridgeArity;
 use crate::boundary::NominalSerial;

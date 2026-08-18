@@ -15,7 +15,7 @@
 //! [`crate::effect::host`] is the host seam's: the boundary is
 //! representation-independent and survives the machine that realizes it.
 
-use crate::syntax::Comp;
+use crate::term::syntax::Comp;
 
 /// A **defined** runtime halt (ADR-34 D4): a typed outcome that is *not* an
 /// undefined stuck.

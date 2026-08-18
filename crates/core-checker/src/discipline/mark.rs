@@ -2,19 +2,19 @@
 //! al., *Total Type Error Localization and Recovery with Holes*, POPL 2024).
 //!
 //! This is a *third* realization of the type system, additive to the
-//! [`crate::checker`] / [`crate::machine`] pair and **never a modification of
-//! either** — the conformance lockstep (ADR-9) stays untouched. Where the
-//! checker is fail-fast (the first [`crate::error::TypeError`] short-circuits
-//! the whole derivation), the marker is **total over type errors**: it
-//! decorates *every* node, and at each of the five abort sites it records a
-//! localized [`Mark`] and recovers, so typing continues. (Totality is over
-//! *type* errors only — the traversal is direct-style, as the checker, so a
-//! term that exceeds the host call stack still aborts the process; see
+//! [`crate::judgements::checker`] / [`crate::machine`] pair and **never a
+//! modification of either** — the conformance lockstep (ADR-9) stays untouched.
+//! Where the checker is fail-fast (the first [`crate::error::TypeError`]
+//! short-circuits the whole derivation), the marker is **total over type
+//! errors**: it decorates *every* node, and at each of the five abort sites it
+//! records a localized [`Mark`] and recovers, so typing continues. (Totality is
+//! over *type* errors only — the traversal is direct-style, as the checker, so
+//! a term that exceeds the host call stack still aborts the process; see
 //! [`mark_value`].) Recovery generalizes the existing hole discipline — a node
 //! whose subsumption, shape, grade, scope, or rule lookup fails recovers with
 //! the matched-`Unknown` type the checker already uses for
-//! [`crate::syntax::Value::Hole`] (`subtype.rs`, `stack.rs`). Every recovery
-//! fallback is `Unknown` / `EffectRow::EMPTY` — consistent/bottom in
+//! [`crate::term::syntax::Value::Hole`] (`subtype.rs`, `stack.rs`). Every
+//! recovery fallback is `Unknown` / `EffectRow::EMPTY` — consistent/bottom in
 //! `subtype.rs`, hence *absorbing*: a recovered child can never make a parent's
 //! subsumption fail, which is exactly what keeps recovery from cascading
 //! spurious marks (the no-false-positive half of the oracle). A refactor must
@@ -35,9 +35,9 @@
 //!
 //! The oracle is *tight*, not approximate: recovery is type-stable (in checking
 //! mode a failed node recovers with the *expected* type — exactly what the
-//! inlined Sub rule [`crate::subtype::finish_value`] returns on success), so a
-//! well-typed program takes only success paths and the marker's per-node types
-//! coincide with the checker's there.
+//! inlined Sub rule [`crate::discipline::subtype::finish_value`] returns on
+//! success), so a well-typed program takes only success paths and the marker's
+//! per-node types coincide with the checker's there.
 //!
 //! # Decoration is a side-table keyed by stable node identity
 //!
@@ -67,9 +67,9 @@
 //! ➜ stable origin id ➜ span) and setting the dirty bit from the edit / order-
 //! maintenance layer is the deferred pipeline-side consumer; [`NodeFacts`]
 //! carries `dirty` (the representation is complete) but the marker leaves it at
-//! its `false` default. A reified stack [`crate::syntax::Value::Stk`] is typed
-//! with full `Γ; answer` fidelity, and its interior frames are decorated under
-//! explicit compatibility paths as *bonus* entries (they are not
+//! its `false` default. A reified stack [`crate::term::syntax::Value::Stk`] is
+//! typed with full `Γ; answer` fidelity, and its interior frames are decorated
+//! under explicit compatibility paths as *bonus* entries (they are not
 //! `origin::resolve`-addressable — the Stk-descent resync is deferred).
 
 use alloc::collections::BTreeMap;
@@ -77,19 +77,17 @@ use alloc::rc::Rc;
 use alloc::vec::IntoIter;
 use alloc::vec::Vec;
 
-use crate::boundary::ContextLength;
-use crate::boundary::ErrorStatus;
-use crate::boundary::I64Literal;
-use crate::boundary::MarkingEmptyStatus;
-use crate::boundary::PathIndex;
-use crate::boundary::PathSegments;
-use crate::checker::base_diagonal_type;
-use crate::checker::motive_result_type;
-use crate::checker::split_expectations;
-use crate::checker::split_unknown_expectations;
-use crate::control::Dir;
-use crate::control::unrc;
-use crate::ctx::Ctx;
+use crate::discipline::boundary::ContextLength;
+use crate::discipline::boundary::ErrorStatus;
+use crate::discipline::boundary::I64Literal;
+use crate::discipline::boundary::MarkingEmptyStatus;
+use crate::discipline::boundary::PathIndex;
+use crate::discipline::boundary::PathSegments;
+use crate::discipline::grade::Grade;
+use crate::discipline::subtype::comp_subtype;
+use crate::discipline::subtype::int_literal_fits;
+use crate::discipline::subtype::pick;
+use crate::discipline::subtype::value_subtype;
 use crate::effect::EffectRow;
 use crate::effect::EffectSig;
 use crate::effect::combine_bind_row;
@@ -98,40 +96,42 @@ use crate::effect::resolve_handler_coverage;
 use crate::effect::resume_stack_type;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::grade::Grade;
-use crate::stack::arrow_components;
-use crate::stack::returner_components;
-use crate::stack::stk_components;
-use crate::stack::with_component;
-use crate::subtype::comp_subtype;
-use crate::subtype::int_literal_fits;
-use crate::subtype::pick;
-use crate::subtype::value_subtype;
-use crate::syntax::Comp;
-use crate::syntax::CompNode;
-use crate::syntax::CompNodeId;
-use crate::syntax::FlatArena;
-use crate::syntax::HoleId;
-use crate::syntax::OpClause;
-use crate::syntax::OpClauseNode;
-use crate::syntax::Side;
-use crate::syntax::SplitMotive;
-use crate::syntax::SplitMotiveNode;
-use crate::syntax::Stack;
-use crate::syntax::StackNode;
-use crate::syntax::StackNodeId;
-use crate::syntax::Value;
-use crate::syntax::ValueNode;
-use crate::syntax::ValueNodeId;
-use crate::syntax::ValueTypeNodeId;
-use crate::syntax::WalkBase;
-use crate::syntax::WalkBaseNode;
-use crate::syntax::WalkMotive;
-use crate::syntax::WalkMotiveNode;
-use crate::types::CompType;
-use crate::types::SealId;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::judgements::checker::base_diagonal_type;
+use crate::judgements::checker::motive_result_type;
+use crate::judgements::checker::split_expectations;
+use crate::judgements::checker::split_unknown_expectations;
+use crate::machine::control::Dir;
+use crate::machine::control::unrc;
+use crate::machine::stack::arrow_components;
+use crate::machine::stack::returner_components;
+use crate::machine::stack::stk_components;
+use crate::machine::stack::with_component;
+use crate::term::ctx::Ctx;
+use crate::term::syntax::Comp;
+use crate::term::syntax::CompNode;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::FlatArena;
+use crate::term::syntax::HoleId;
+use crate::term::syntax::OpClause;
+use crate::term::syntax::OpClauseNode;
+use crate::term::syntax::Side;
+use crate::term::syntax::SplitMotive;
+use crate::term::syntax::SplitMotiveNode;
+use crate::term::syntax::Stack;
+use crate::term::syntax::StackNode;
+use crate::term::syntax::StackNodeId;
+use crate::term::syntax::Value;
+use crate::term::syntax::ValueNode;
+use crate::term::syntax::ValueNodeId;
+use crate::term::syntax::ValueTypeNodeId;
+use crate::term::syntax::WalkBase;
+use crate::term::syntax::WalkBaseNode;
+use crate::term::syntax::WalkMotive;
+use crate::term::syntax::WalkMotiveNode;
+use crate::term::types::CompType;
+use crate::term::types::SealId;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// A stable node identity for marking facts.
 ///
@@ -485,7 +485,7 @@ impl Marking
 }
 
 /// Marks a value under a direction: the total counterpart of
-/// [`crate::checker::run_value`].
+/// [`crate::judgements::checker::run_value`].
 ///
 /// # Contract
 /// - ensures: returns a [`Marking`] decorating every `origin::resolve`-
@@ -495,10 +495,11 @@ impl Marking
 ///   / checked type.
 /// - provides: the total semantic marking (the agent stream's mark substrate).
 /// - panics: none. "Total" means *type* totality — every node is decorated and
-///   every `TypeError` abort site recovers to a mark. Like [`crate::checker`]
-///   the traversal is direct-style (it recurses on the host call stack), so a
-///   term whose nesting exceeds the thread's stack aborts the process (stack
-///   overflow); there is no machine-backed marker for adversarial-depth input.
+///   every `TypeError` abort site recovers to a mark. Like
+///   [`crate::judgements::checker`] the traversal is direct-style (it recurses
+///   on the host call stack), so a term whose nesting exceeds the thread's
+///   stack aborts the process (stack overflow); there is no machine-backed
+///   marker for adversarial-depth input.
 #[inline]
 #[must_use]
 pub fn mark_value(
@@ -518,7 +519,7 @@ pub fn mark_value(
 }
 
 /// Marks a computation under a direction: the total counterpart of
-/// [`crate::checker::run_comp`].
+/// [`crate::judgements::checker::run_comp`].
 ///
 /// # Contract
 /// - ensures: returns a [`Marking`] decorating every `origin::resolve`-
@@ -549,8 +550,8 @@ pub fn mark_comp(
 }
 
 /// The marking traversal's state: the typing context, the ambient `reset`
-/// answer (as [`crate::checker`]), the stable arena carrier, the accumulating
-/// facts table, and the current compatibility path snapshot.
+/// answer (as [`crate::judgements::checker`]), the stable arena carrier, the
+/// accumulating facts table, and the current compatibility path snapshot.
 struct Marker
 {
     /// The two-zone typing context `Γ; Σ`.
@@ -1421,7 +1422,7 @@ enum InternFrame
         /// Optional Rc cache key for the parent.
         cache_key: Option<*const Value>,
         /// Data id.
-        id: crate::types::DataId,
+        id: crate::term::types::DataId,
         /// Constructor tag.
         tag: usize,
     },
@@ -2142,9 +2143,9 @@ impl Marker
                     snd: tail,
                 }) = dir
                 {
-                    let tail_ty = crate::identity::subst_valuetype(
+                    let tail_ty = crate::judgements::identity::subst_valuetype(
                         &tail,
-                        crate::boundary::NameRef::from(binder.as_str()),
+                        crate::discipline::boundary::NameRef::from(binder.as_str()),
                         &fst,
                     );
                     let result_ty = ValueType::Sigma {
@@ -2422,7 +2423,7 @@ impl Marker
                     abstracts,
                     payload: signature_payload,
                 }) => {
-                    let expected = crate::package::pack_payload_expectation(
+                    let expected = crate::judgements::package::pack_payload_expectation(
                         grade,
                         &abstracts,
                         signature_payload.as_ref(),
@@ -2446,7 +2447,9 @@ impl Marker
                             );
                         },
                         | Err(refusal) => {
-                            pending.marks.push(crate::package::refusal_mark(refusal));
+                            pending
+                                .marks
+                                .push(crate::judgements::package::refusal_mark(refusal));
                             self.schedule_child_value(
                                 0,
                                 payload,
@@ -2728,7 +2731,7 @@ impl Marker
                         payload: ref signature_payload,
                     } => {
                         if bool::from(Grade::ONE.leq(grade)) {
-                            let bound = crate::package::unpack_binding(
+                            let bound = crate::judgements::package::unpack_binding(
                                 grade,
                                 abstracts,
                                 signature_payload.as_ref(),
@@ -2737,7 +2740,9 @@ impl Marker
                             match bound {
                                 | Ok(bound) => bound,
                                 | Err(refusal) => {
-                                    pending.marks.push(crate::package::refusal_mark(refusal));
+                                    pending
+                                        .marks
+                                        .push(crate::judgements::package::refusal_mark(refusal));
                                     ValueType::Unknown
                                 },
                             }
@@ -2887,7 +2892,9 @@ impl Marker
                 );
             },
             | Comp::Perform(sig, op, arg) => match sig
-                .op(crate::boundary::OperationName::from(op.as_str()))
+                .op(crate::discipline::boundary::OperationName::from(
+                    op.as_str(),
+                ))
                 .cloned()
             {
                 | Some(op_def) => {
@@ -3224,7 +3231,8 @@ impl Marker
     {
         let next_index = u32::from(next_index.into());
         if let Some((label, value)) = fields.next() {
-            let field_dir = dir.record_field_dir(crate::boundary::FieldName::from(label.as_str()));
+            let field_dir =
+                dir.record_field_dir(crate::discipline::boundary::FieldName::from(label.as_str()));
             self.schedule_child_value(
                 next_index,
                 value,
@@ -3295,17 +3303,18 @@ impl Marker
             next_index,
         } = handler;
         if let Some(clause) = ops.next() {
-            let (payload_ty, resume_ty) =
-                match sig.op(crate::boundary::OperationName::from(clause.op.as_str())) {
-                    | Some(op_def) => (
-                        op_def.payload().clone(),
-                        resume_stack_type(&answer, op_def.reply().clone()),
-                    ),
-                    | None => (
-                        ValueType::Unknown,
-                        ValueType::stk(CompType::Unknown, CompType::Unknown),
-                    ),
-                };
+            let (payload_ty, resume_ty) = match sig.op(
+                crate::discipline::boundary::OperationName::from(clause.op.as_str()),
+            ) {
+                | Some(op_def) => (
+                    op_def.payload().clone(),
+                    resume_stack_type(&answer, op_def.reply().clone()),
+                ),
+                | None => (
+                    ValueType::Unknown,
+                    ValueType::stk(CompType::Unknown, CompType::Unknown),
+                ),
+            };
             self.ctx.bind(clause.payload.clone(), payload_ty);
             self.ctx.bind(clause.resume.clone(), resume_ty);
             self.schedule_child_comp(
@@ -3826,9 +3835,9 @@ impl Marker
                         binder,
                         snd: tail,
                     } => {
-                        let tail_ty = crate::identity::subst_valuetype(
+                        let tail_ty = crate::judgements::identity::subst_valuetype(
                             &tail,
-                            crate::boundary::NameRef::from(binder.as_str()),
+                            crate::discipline::boundary::NameRef::from(binder.as_str()),
                             &Value::var(&fst_name),
                         );
                         let (body_expected, result_ty) = split_expectations(
@@ -5675,7 +5684,7 @@ impl Marker
     {
         match self
             .ctx
-            .lookup(crate::boundary::NameRef::from(name.as_str()))
+            .lookup(crate::discipline::boundary::NameRef::from(name.as_str()))
         {
             | Some(found) => finish_value(found.clone(), dir, marks),
             | None => {
@@ -5813,7 +5822,8 @@ fn analyzed_comp(dir: &Dir<CompType>) -> Option<Ty>
 }
 
 /// Completes the integer-literal rule under a direction in the marking pass
-/// (ADR-39 D4) — the marking twin of [`crate::subtype::finish_int_literal`].
+/// (ADR-39 D4) — the marking twin of
+/// [`crate::discipline::subtype::finish_int_literal`].
 ///
 /// Inference yields `Integer`; checking accepts any integer numeric atom the
 /// literal is representable in ([`int_literal_fits`], the Rust `{integer}`
@@ -5834,7 +5844,7 @@ where
         | Dir::Infer => ValueType::integer(),
         | Dir::Check(expected) => {
             if bool::from(int_literal_fits(
-                crate::boundary::IntegerLiteral::from(n),
+                crate::discipline::boundary::IntegerLiteral::from(n),
                 &expected,
             )) {
                 expected

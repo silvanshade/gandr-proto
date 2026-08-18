@@ -24,41 +24,41 @@ use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::boundary::IntegerLiteral;
-use crate::boundary::NameRef;
-use crate::boundary::OperationName;
-use crate::control::Control;
-use crate::control::Dir;
-use crate::control::Trace;
-use crate::control::unrc;
-use crate::ctx::Ctx;
+use crate::discipline::boundary::IntegerLiteral;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::OperationName;
+use crate::discipline::grade::Grade;
+use crate::discipline::subtype::finish_comp;
+use crate::discipline::subtype::finish_int_literal;
+use crate::discipline::subtype::finish_value;
+use crate::discipline::subtype::pick;
 use crate::effect::EffectRow;
 use crate::effect::EffectSig;
 use crate::effect::combine_bind_row;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::grade::Grade;
-use crate::identity::subst_comptype;
-use crate::stack::arrow_components;
-use crate::stack::returner_components;
-use crate::stack::stk_components;
-use crate::stack::with_component;
-use crate::subtype::finish_comp;
-use crate::subtype::finish_int_literal;
-use crate::subtype::finish_value;
-use crate::subtype::pick;
-use crate::syntax::Comp;
-use crate::syntax::FlatArena;
-use crate::syntax::OpClause;
-use crate::syntax::SplitMotive;
-use crate::syntax::Stack;
-use crate::syntax::Term;
-use crate::syntax::Value;
-use crate::syntax::WalkBase;
-use crate::syntax::WalkMotive;
-use crate::types::CompType;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::judgements::identity::subst_comptype;
+use crate::machine::control::Control;
+use crate::machine::control::Dir;
+use crate::machine::control::Trace;
+use crate::machine::control::unrc;
+use crate::machine::stack::arrow_components;
+use crate::machine::stack::returner_components;
+use crate::machine::stack::stk_components;
+use crate::machine::stack::with_component;
+use crate::term::ctx::Ctx;
+use crate::term::syntax::Comp;
+use crate::term::syntax::FlatArena;
+use crate::term::syntax::OpClause;
+use crate::term::syntax::SplitMotive;
+use crate::term::syntax::Stack;
+use crate::term::syntax::Term;
+use crate::term::syntax::Value;
+use crate::term::syntax::WalkBase;
+use crate::term::syntax::WalkMotive;
+use crate::term::types::CompType;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// Runs the checker on a value and returns the result with its trace.
 ///
@@ -496,7 +496,8 @@ impl Rec
     ///
     /// A pair *checked against* a dependent pair `Σ(x:A).B` checks its first
     /// component against the head `A`, then its second against `B[v₁/x]` — the
-    /// value-into-type substitution ([`crate::identity::subst_valuetype`]) that
+    /// value-into-type substitution
+    /// ([`crate::judgements::identity::subst_valuetype`]) that
     /// makes the tail depend on the *actual* first component `v₁`. Every other
     /// direction (an inferred pair, or a pair checked against `Prod` /
     /// `Unknown` / any non-`Σ` type) is the non-dependent Pair rule
@@ -520,8 +521,11 @@ impl Rec
         }) = dir
         {
             self.value(fst.as_ref().clone(), Dir::Check(head.as_ref().clone()))?;
-            let tail_ty =
-                crate::identity::subst_valuetype(&tail, NameRef::from(binder.as_str()), &fst);
+            let tail_ty = crate::judgements::identity::subst_valuetype(
+                &tail,
+                NameRef::from(binder.as_str()),
+                &fst,
+            );
             self.value(unrc(snd), Dir::Check(tail_ty))?;
             return Ok(ValueType::Sigma {
                 fst: head,
@@ -546,7 +550,7 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_inj(
         &mut self,
-        side: crate::syntax::Side,
+        side: crate::term::syntax::Side,
         payload: Rc<Value>,
         dir: Dir<ValueType>,
     ) -> Result<ValueType, TypeError>
@@ -585,13 +589,13 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_ctor<T>(
         &mut self,
-        id: crate::types::DataId,
+        id: crate::term::types::DataId,
         tag: T,
         payload: Rc<Value>,
         dir: Dir<ValueType>,
     ) -> Result<ValueType, TypeError>
     where
-        T: Into<crate::boundary::ConstructorTag>,
+        T: Into<crate::discipline::boundary::ConstructorTag>,
     {
         let tag = tag.into();
         match dir {
@@ -663,7 +667,7 @@ impl Rec
                 abstracts,
                 payload: signature_payload,
             }) => {
-                let expected = crate::package::pack_payload_expectation(
+                let expected = crate::judgements::package::pack_payload_expectation(
                     grade,
                     &abstracts,
                     signature_payload.as_ref(),
@@ -672,7 +676,7 @@ impl Rec
                 let expected = match expected {
                     | Ok(expected) => expected,
                     | Err(refusal) => {
-                        return Err(crate::package::refusal_error(
+                        return Err(crate::judgements::package::refusal_error(
                             refusal,
                             Term::Value(Value::Pack { witnesses, payload }),
                         ));
@@ -768,7 +772,8 @@ impl Rec
     {
         let mut constructed: BTreeMap<String, Rc<ValueType>> = BTreeMap::new();
         for (label, value) in fields {
-            let field_dir = dir.record_field_dir(crate::boundary::FieldName::from(label.as_str()));
+            let field_dir =
+                dir.record_field_dir(crate::discipline::boundary::FieldName::from(label.as_str()));
             let field_ty = self.value(unrc(value), field_dir)?;
             constructed.insert(label, Rc::new(field_ty));
         }
@@ -1392,7 +1397,7 @@ impl Rec
                 binder,
                 snd: tail,
             } => {
-                let tail_ty = crate::identity::subst_valuetype(
+                let tail_ty = crate::judgements::identity::subst_valuetype(
                     &tail,
                     NameRef::from(binder.as_str()),
                     &Value::var(&fst_name),
@@ -1456,7 +1461,7 @@ impl Rec
         &mut self,
         scrut: Rc<Value>,
         signature: Rc<ValueType>,
-        atoms: Vec<crate::types::SealId>,
+        atoms: Vec<crate::term::types::SealId>,
         binder: String,
         body: Rc<Comp>,
         dir: Dir<CompType>,
@@ -1487,7 +1492,7 @@ impl Rec
                         upper: grade,
                     });
                 }
-                let bound = crate::package::unpack_binding(
+                let bound = crate::judgements::package::unpack_binding(
                     grade,
                     abstracts,
                     signature_payload.as_ref(),
@@ -1496,7 +1501,7 @@ impl Rec
                 match bound {
                     | Ok(bound) => bound,
                     | Err(refusal) => {
-                        return Err(crate::package::refusal_error(
+                        return Err(crate::judgements::package::refusal_error(
                             refusal,
                             Term::Comp(Comp::Unpack {
                                 scrut,
@@ -1574,7 +1579,7 @@ impl Rec
     /// - input recursion: structurally finite checked-term descent.
     fn rule_prj(
         &mut self,
-        side: crate::syntax::Side,
+        side: crate::term::syntax::Side,
         target: Rc<Comp>,
         dir: Dir<CompType>,
     ) -> Result<CompType, TypeError>
@@ -1814,8 +1819,8 @@ impl Rec
     /// infers the continuation, and folds the consumed row in exactly as
     /// [`Self::rule_bind`] does (via [`combine_bind_row`]); a projection
     /// frame consumes a lazy product. The per-frame destructures are the
-    /// `crate::stack` helpers shared with the typing machine, and only the
-    /// *sub-terms* (an argument value, a bind continuation) log trace
+    /// `crate::machine::stack` helpers shared with the typing machine, and only
+    /// the *sub-terms* (an argument value, a bind continuation) log trace
     /// events — the structural walk does not — so the machine's frame walk
     /// produces the identical trace.
     /// # Termination
@@ -1981,9 +1986,9 @@ impl Rec
     /// A`, construct the natural type `Path A v v` (both endpoints are the
     /// witness), and finish through the inlined Sub rule. In checking mode
     /// against an expected `Path A′ x y` the subsumption
-    /// ([`crate::subtype::value_subtype`]'s `Path` arm) enforces carrier
-    /// invariance `A ≡ A′` and endpoint equality `x ≡ᵥ v`, `y ≡ᵥ v` — the
-    /// design's `Here⇓` premises — while an `Unknown` expectation
+    /// ([`crate::discipline::subtype::value_subtype`]'s `Path` arm) enforces
+    /// carrier invariance `A ≡ A′` and endpoint equality `x ≡ᵥ v`, `y ≡ᵥ v`
+    /// — the design's `Here⇓` premises — while an `Unknown` expectation
     /// degenerates to consistency and any non-`Path` expectation is a
     /// type mismatch (only `Path` types are inhabited by `here`). Rung 1 infers
     /// the witness (rather than checking it against the expected carrier),
@@ -2013,8 +2018,8 @@ impl Rec
     /// gandr's first **dependent** eliminator, and — unlike [`Self::rule_case`]
     /// — inference-capable: the explicit motive supplies the result type. The
     /// motive is untraced pure type computation
-    /// ([`crate::identity::subst_comptype`] instantiates it); the two
-    /// traced premises are the scrutinee (value, inferred) and the base
+    /// ([`crate::judgements::identity::subst_comptype`] instantiates it); the
+    /// two traced premises are the scrutinee (value, inferred) and the base
     /// body (computation, checked), so the control trace is exactly
     /// [`Self::rule_split`]'s shape with a checked body. A matched
     /// `Unknown` scrutinee (A2.2 holes discipline) binds the base at `Unknown`
@@ -2212,9 +2217,9 @@ mod tests
     use alloc::rc::Rc;
 
     use super::diagnostic_abs_term;
-    use crate::syntax::Comp;
-    use crate::syntax::Term;
-    use crate::syntax::Value;
+    use crate::term::syntax::Comp;
+    use crate::term::syntax::Term;
+    use crate::term::syntax::Value;
 
     /// The unannotated-abstraction stuck diagnostic is a public compatibility
     /// readback boundary: it reconstructs the legacy term only after routing

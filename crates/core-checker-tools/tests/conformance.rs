@@ -45,32 +45,32 @@
 
 use alloc::rc::Rc;
 
-use gandr_core_checker::boundary::CoherenceDecision;
-use gandr_core_checker::boundary::GenerationDepth;
-use gandr_core_checker::boundary::I64Slice;
-use gandr_core_checker::boundary::IntegerLiteral;
-use gandr_core_checker::boundary::NumericLiteralName;
-use gandr_core_checker::boundary::Staticness;
-use gandr_core_checker::checker;
-use gandr_core_checker::control::Dir;
-use gandr_core_checker::control::Trace;
-use gandr_core_checker::ctx::Ctx;
+use gandr_core_checker::discipline::boundary::CoherenceDecision;
+use gandr_core_checker::discipline::boundary::GenerationDepth;
+use gandr_core_checker::discipline::boundary::I64Slice;
+use gandr_core_checker::discipline::boundary::IntegerLiteral;
+use gandr_core_checker::discipline::boundary::NumericLiteralName;
+use gandr_core_checker::discipline::boundary::Staticness;
+use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_checker::discipline::subtype::comp_subtype;
+use gandr_core_checker::discipline::subtype::value_subtype;
 use gandr_core_checker::effect::EffectOp;
 use gandr_core_checker::effect::EffectRow;
 use gandr_core_checker::effect::EffectSig;
 use gandr_core_checker::error::TypeError;
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::judgements::checker;
 use gandr_core_checker::machine;
-use gandr_core_checker::subtype::comp_subtype;
-use gandr_core_checker::subtype::value_subtype;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::OpClause;
-use gandr_core_checker::syntax::SplitMotive;
-use gandr_core_checker::syntax::Stack;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::machine::control::Trace;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::OpClause;
+use gandr_core_checker::term::syntax::SplitMotive;
+use gandr_core_checker::term::syntax::Stack;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_checker_tools::strategies::any_grade;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
@@ -119,9 +119,9 @@ fn base_scope() -> Scope
 fn io_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("IO"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("IO"),
         vec![EffectOp::new(
-            gandr_core_checker::boundary::OperationName::from("print"),
+            gandr_core_checker::discipline::boundary::OperationName::from("print"),
             integer(),
             ValueType::Unit,
         )],
@@ -195,7 +195,7 @@ fn both_value(
 /// Whether a value type is *static* (`Unknown`-free). On static types
 /// consistent subtyping coincides with the old structural subtyping and is
 /// transitive; with `Unknown` it deliberately is not (see
-/// [`gandr_core_checker::subtype`]
+/// [`gandr_core_checker::discipline::subtype`]
 /// and [`holes::consistency_is_not_transitive`]).
 /// # Termination
 /// - reason: the helper drains an explicit finite type worklist.
@@ -309,8 +309,12 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
         for widened in [
             Grade::ZERO,
             Grade::ONE,
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(2_u64)),
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(3_u64)),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                2_u64,
+            )),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                3_u64,
+            )),
             Grade::OMEGA,
         ] {
             if bool::from(widened.leq(grade)) && widened != grade {
@@ -329,7 +333,7 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
 /// reference evaluator's frozen outcome snapshots).
 mod declared_data
 {
-    use gandr_core_checker::types::DataId;
+    use gandr_core_checker::term::types::DataId;
 
     use super::*;
 
@@ -426,7 +430,7 @@ mod declared_data
 /// depends on the first.
 mod levitation
 {
-    use gandr_core_checker::subtype::value_subtype;
+    use gandr_core_checker::discipline::subtype::value_subtype;
 
     use super::*;
     /// A pair whose second component is a reflexivity proof *of its first*
@@ -546,10 +550,10 @@ mod levitation
 /// and a package is not a graded thunk however alike the two look.
 mod packages
 {
-    use gandr_core_checker::boundary::NameRef;
-    use gandr_core_checker::boundary::TypeSerial;
-    use gandr_core_checker::package;
-    use gandr_core_checker::types::SealId;
+    use gandr_core_checker::discipline::boundary::NameRef;
+    use gandr_core_checker::discipline::boundary::TypeSerial;
+    use gandr_core_checker::judgements::package;
+    use gandr_core_checker::term::types::SealId;
 
     use super::*;
 
@@ -1143,7 +1147,7 @@ mod packages
                     ValueType::atom("t"),
                     ValueType::atom(
                         package::canonical_binder(
-                            gandr_core_checker::boundary::PackageArity::from(0_usize),
+                            gandr_core_checker::discipline::boundary::PackageArity::from(0_usize),
                         )
                         .as_str(),
                     ),
@@ -1357,7 +1361,7 @@ mod split_motive
 /// Example-based tests over the core-CBPV worked examples.
 mod examples
 {
-    use gandr_core_checker::control::Control;
+    use gandr_core_checker::machine::control::Control;
 
     use super::*;
 
@@ -1506,12 +1510,12 @@ mod examples
         assert_eq!(
             depths,
             vec![
-                gandr_core_checker::boundary::StackDepth::from(0_usize),
-                gandr_core_checker::boundary::StackDepth::from(1),
-                gandr_core_checker::boundary::StackDepth::from(2),
-                gandr_core_checker::boundary::StackDepth::from(2),
-                gandr_core_checker::boundary::StackDepth::from(1),
-                gandr_core_checker::boundary::StackDepth::from(0),
+                gandr_core_checker::discipline::boundary::StackDepth::from(0_usize),
+                gandr_core_checker::discipline::boundary::StackDepth::from(1),
+                gandr_core_checker::discipline::boundary::StackDepth::from(2),
+                gandr_core_checker::discipline::boundary::StackDepth::from(2),
+                gandr_core_checker::discipline::boundary::StackDepth::from(1),
+                gandr_core_checker::discipline::boundary::StackDepth::from(0),
             ],
             "the stack depth must follow the worked Example 1 derivation"
         );
@@ -1594,7 +1598,9 @@ mod positive
     fn dup_conserves_grade()
     {
         let thunk = Value::thunk(
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(2)),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                2,
+            )),
             Comp::ret(Value::int(1)),
         );
         let half = ValueType::thunk(Grade::ONE, CompType::returner(integer()));
@@ -1617,7 +1623,9 @@ mod positive
     fn drop_discards_thunk_budget()
     {
         let thunk = Value::thunk(
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(2)),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                2,
+            )),
             Comp::ret(Value::int(1)),
         );
         let result = agree_comp(&Ctx::new(), &Comp::drop(thunk), &Dir::Infer);
@@ -1888,7 +1896,7 @@ mod positive
 mod negative
 {
     use gandr_core_checker::error::text;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::syntax::Term;
 
     use super::*;
 
@@ -2027,7 +2035,9 @@ mod negative
         let result = agree_comp(&Ctx::new(), &Comp::dup(thunk), &Dir::Check(expected));
         assert_eq!(
             Err(TypeError::GradeError {
-                lower: Grade::fin(gandr_core_checker::boundary::GradeBound::from(2)),
+                lower: Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                    2
+                )),
                 upper: Grade::ONE
             }),
             result,
@@ -2042,7 +2052,9 @@ mod negative
     fn dup_in_inference_is_stuck()
     {
         let dup = Comp::dup(Value::thunk(
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(2)),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                2,
+            )),
             Comp::ret(Value::int(1)),
         ));
         let result = agree_comp(&Ctx::new(), &dup, &Dir::Infer);
@@ -2612,9 +2624,9 @@ mod subtype_rows
     fn state_row() -> EffectRow
     {
         EffectRow::singleton(EffectSig::new(
-            gandr_core_checker::boundary::EffectSignatureName::from("State"),
+            gandr_core_checker::discipline::boundary::EffectSignatureName::from("State"),
             alloc::vec![EffectOp::new(
-                gandr_core_checker::boundary::OperationName::from("get"),
+                gandr_core_checker::discipline::boundary::OperationName::from("get"),
                 ValueType::Unit,
                 int(),
             )],
@@ -2644,7 +2656,7 @@ mod subtype_rows
 mod holes
 {
     use gandr_core_checker::error::text;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::syntax::Term;
 
     use super::*;
     /// Rule Hole⇑: a hole infers `Unknown`, in both sorts; the identifier is
@@ -2919,7 +2931,7 @@ mod holes
     /// `Unknown` consistency rows: both directions, both sorts — plus the
     /// recorded **non-transitivity witness** (`Int ≲ ? ≲ Str` yet
     /// `Int ⋦ Str`): consistent subtyping is reflexive but deliberately not
-    /// transitive (`gandr_core_checker::subtype` module doc).
+    /// transitive (`gandr_core_checker::discipline::subtype` module doc).
     #[test]
     fn consistency_is_not_transitive()
     {
@@ -2981,7 +2993,7 @@ mod holes
 mod effects
 {
     use gandr_core_checker::error::text;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::syntax::Term;
 
     use super::*;
     /// Rule Op⇑: `perform State.get ()` infers the singleton-row returner
@@ -3396,7 +3408,7 @@ mod effects
 mod control
 {
     use gandr_core_checker::error::text;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::syntax::Term;
 
     use super::*;
     /// Rule Reify⇓: the empty stack is the identity `ε : B ⇒ B`, so `stk ε`
@@ -4069,8 +4081,12 @@ fn grade_geq(lower: Grade) -> BoxedStrategy<Grade>
     for candidate in [
         Grade::ZERO,
         Grade::ONE,
-        Grade::fin(gandr_core_checker::boundary::GradeBound::from(2_u64)),
-        Grade::fin(gandr_core_checker::boundary::GradeBound::from(3_u64)),
+        Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+            2_u64,
+        )),
+        Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+            3_u64,
+        )),
         Grade::OMEGA,
     ] {
         if bool::from(lower.leq(candidate)) {
@@ -5320,9 +5336,9 @@ fn forceable_grade() -> impl Strategy<Value = Grade>
 {
     prop_oneof![
         Just(Grade::ONE),
-        Just(Grade::fin(gandr_core_checker::boundary::GradeBound::from(
-            2_u64
-        ))),
+        Just(Grade::fin(
+            gandr_core_checker::discipline::boundary::GradeBound::from(2_u64)
+        )),
         Just(Grade::OMEGA)
     ]
 }
@@ -5565,7 +5581,7 @@ fn arb_effect_sig() -> impl Strategy<Value = EffectSig>
 fn empty_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("Empty"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("Empty"),
         Vec::new(),
     )
 }
@@ -5753,7 +5769,8 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                     // Reflexive same-constructor arms above keep the
                     // `core::ptr::eq` short-circuit a PURE optimization for the
                     // coherence relation too; a future variant must add one
-                    // (see the `gandr_core_checker::subtype::value_subtype` note it mirrors).
+                    // (see the `gandr_core_checker::discipline::subtype::value_subtype` note it
+                    // mirrors).
                     | _ => return false.into(),
                 }
             },
@@ -5800,7 +5817,8 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                     // Reflexive same-constructor arms keep the `core::ptr::eq`
                     // short-circuit a PURE optimization; a future variant must
                     // add one (see
-                    // `coherence_value_subtype` and `gandr_core_checker::subtype::comp_subtype`).
+                    // `coherence_value_subtype` and
+                    // `gandr_core_checker::discipline::subtype::comp_subtype`).
                     | _ => return false.into(),
                 }
             },
@@ -5848,7 +5866,7 @@ enum RebuildFrame
     },
     ValueData
     {
-        id: gandr_core_checker::types::DataId,
+        id: gandr_core_checker::term::types::DataId,
         arity: usize,
     },
     ValueSigma(String),
@@ -6142,8 +6160,9 @@ fn deep_rebuild_value_yields_distinct_child_addresses()
     assert_eq!(original, rebuilt);
     // Yet every interior `Rc` is a fresh allocation: extract the two `Prod`
     // children from each and confirm no address is shared. The `match (a, b)`
-    // idiom (mirroring `gandr_core_checker::subtype`) keeps the explicit reference
-    // patterns clippy demands without tripping `needless_borrowed_reference`.
+    // idiom (mirroring `gandr_core_checker::discipline::subtype`) keeps the
+    // explicit reference patterns clippy demands without tripping
+    // `needless_borrowed_reference`.
     match (&original, &rebuilt) {
         | (&ValueType::Prod(ref o_fst, ref o_snd), &ValueType::Prod(ref r_fst, ref r_snd)) => {
             assert!(!Rc::ptr_eq(o_fst, r_fst), "first Prod child shares an Rc");
@@ -6197,9 +6216,9 @@ fn deep_rebuild_value(ty: &ValueType) -> ValueType
 /// positions). Each is related to its [`deep_rebuild_value`] copy, whose fresh
 /// `Rc`s keep the `core::ptr::eq` short-circuit from pre-empting the arm under
 /// test. A future `ValueType` variant whose reflexive arm lands in
-/// [`gandr_core_checker::subtype::value_subtype`] but is omitted from the
-/// coherence copy fails here every run, without relying on the free generator
-/// reaching the new constructor.
+/// [`gandr_core_checker::discipline::subtype::value_subtype`] but is omitted
+/// from the coherence copy fails here every run, without relying on the free
+/// generator reaching the new constructor.
 #[test]
 fn coherence_value_subtype_reflexivity_arm_sweep()
 {
@@ -6218,7 +6237,9 @@ fn coherence_value_subtype_reflexivity_arm_sweep()
         ValueType::thunk(Grade::ZERO, CompType::returner(ValueType::Unit)),
         ValueType::thunk(Grade::ONE, CompType::returner(ValueType::integer())),
         ValueType::thunk(
-            Grade::fin(gandr_core_checker::boundary::GradeBound::from(2)),
+            Grade::fin(gandr_core_checker::discipline::boundary::GradeBound::from(
+                2,
+            )),
             CompType::returner(ValueType::integer()),
         ),
         ValueType::thunk(
@@ -6361,9 +6382,10 @@ fn comp_near_misses(b_prime: &CompType) -> Vec<CompType>
 }
 
 /// The value-sort analogue of [`comp_coherence_violation`]: the grade leg of
-/// [`gandr_core_checker::types::ValueType::Thunk`] plays the role the effect
-/// row plays for computations (see [`value_near_misses`]). Coherence is decided
-/// up to integer-literal defaulting ([`coherence_value_subtype`], ADR-48).
+/// [`gandr_core_checker::term::types::ValueType::Thunk`] plays the role the
+/// effect row plays for computations (see [`value_near_misses`]). Coherence is
+/// decided up to integer-literal defaulting ([`coherence_value_subtype`],
+/// ADR-48).
 fn value_coherence_violation(
     value: &Value,
     extra: ValueType,
@@ -6500,15 +6522,15 @@ fn integer_computation_does_not_widen_to_sized_returner()
 fn state_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("State"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("State"),
         vec![
             EffectOp::new(
-                gandr_core_checker::boundary::OperationName::from("get"),
+                gandr_core_checker::discipline::boundary::OperationName::from("get"),
                 ValueType::Unit,
                 integer(),
             ),
             EffectOp::new(
-                gandr_core_checker::boundary::OperationName::from("put"),
+                gandr_core_checker::discipline::boundary::OperationName::from("put"),
                 integer(),
                 ValueType::Unit,
             ),
@@ -6774,7 +6796,7 @@ proptest! {
     /// (§"Algorithmic subtyping and the worklist solver") **on static types**:
     /// `A <: B` and `B <: C` imply `A <: C` when no `Unknown` is involved. With
     /// `Unknown` the relation is consistent subtyping, which is deliberately
-    /// not transitive (`gandr_core_checker::subtype` module doc; the witness is pinned by
+    /// not transitive (`gandr_core_checker::discipline::subtype` module doc; the witness is pinned by
     /// [`holes::consistency_is_not_transitive`]).
     #[test]
     fn value_subtype_is_transitive_on_static_types(
@@ -6855,7 +6877,7 @@ proptest! {
     ///
     /// Why it (almost) cannot raise a false alarm on a *correct* checker: an
     /// inferring form's check mode applies the inlined Sub rule directly
-    /// ([`gandr_core_checker::subtype::finish_comp`], literally `comp_subtype(constructed,
+    /// ([`gandr_core_checker::discipline::subtype::finish_comp`], literally `comp_subtype(constructed,
     /// expected)`) — every elimination, and every leaf (variable, hole) bottoming
     /// out at a consistent-subtype check or at `Unknown`, which relates to
     /// everything — or, for the few direction-*forwarding* forms (`split`),
@@ -6920,7 +6942,7 @@ proptest! {
     /// Subsumption-coherence for the value sort: the value-mode
     /// analogue of [`infer_check_subsumption_coherence_comp`] (see
     /// [`value_coherence_violation`]). The effect row is absent, but the grade
-    /// leg of [`gandr_core_checker::types::ValueType::Thunk`] plays the same role — an
+    /// leg of [`gandr_core_checker::term::types::ValueType::Thunk`] plays the same role — an
     /// inferred `U_r B` checked against the grade-tightened `U_ω B` near-miss
     /// exercises the `ω ⊑ r` leg directly. The bare-integer-literal defaulting
     /// (ADR-39 D4) is a value leaf too, so this oracle also compares up to
@@ -7003,11 +7025,11 @@ proptest! {
     /// session endpoints, held capabilities, acquired channels — is a deferred
     /// `+feature`), so a reified stack captures no obligations and `resume` /
     /// `discard` / duplication are unrestricted. This is the conformance
-    /// meta-invariant the [`gandr_core_checker::ctx::Sigma`] and [`gandr_core_checker::stack`] module docs
+    /// meta-invariant the [`gandr_core_checker::term::ctx::Sigma`] and [`gandr_core_checker::machine::stack`] module docs
     /// reference: it pins the "vacuous in v0" claim across the **whole** free
     /// generator space — the new `stk` / `resume` / `reset` / `shift` control
     /// terms included — so the one-shot/linear discipline (whose laws are
-    /// directly unit-tested over [`gandr_core_checker::ctx::Sigma`]) is not merely "green
+    /// directly unit-tested over [`gandr_core_checker::term::ctx::Sigma`]) is not merely "green
     /// because nothing ever touches `Σ`". A future rule that binds into `Σ`
     /// without the full linear discipline trips this.
     #[test]
@@ -7184,9 +7206,9 @@ mod combinators
     fn an_effectful_closure_is_rejected_by_a_pure_combinator()
     {
         let sig = EffectSig::new(
-            gandr_core_checker::boundary::EffectSignatureName::from("Bang"),
+            gandr_core_checker::discipline::boundary::EffectSignatureName::from("Bang"),
             vec![EffectOp::new(
-                gandr_core_checker::boundary::OperationName::from("bang"),
+                gandr_core_checker::discipline::boundary::OperationName::from("bang"),
                 ValueType::Unknown,
                 ValueType::Unknown,
             )],
@@ -7213,9 +7235,9 @@ mod combinators
     {
         let sig = || {
             EffectSig::new(
-                gandr_core_checker::boundary::EffectSignatureName::from("Bang"),
+                gandr_core_checker::discipline::boundary::EffectSignatureName::from("Bang"),
                 vec![EffectOp::new(
-                    gandr_core_checker::boundary::OperationName::from("bang"),
+                    gandr_core_checker::discipline::boundary::OperationName::from("bang"),
                     ValueType::Unknown,
                     ValueType::Unknown,
                 )],
@@ -7297,8 +7319,8 @@ mod combinators
 /// `agree_value` / `agree_comp` differential.
 mod identity_types
 {
-    use gandr_core_checker::syntax::WalkBase;
-    use gandr_core_checker::syntax::WalkMotive;
+    use gandr_core_checker::term::syntax::WalkBase;
+    use gandr_core_checker::term::syntax::WalkMotive;
 
     use super::*;
 
@@ -7346,7 +7368,7 @@ mod identity_types
     /// engines: `walk(here(7), (x y q). F(Path Integer y x), (x). ret here(x))`
     /// infers `F(Path Integer 7 7)`. The motive binds **both** endpoints, so
     /// this row exercises the value-into-type substitution
-    /// (`gandr_core_checker::identity`).
+    /// (`gandr_core_checker::judgements::identity`).
     #[test]
     fn walk_back_infers_instantiated_motive()
     {

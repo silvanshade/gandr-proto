@@ -3,11 +3,11 @@
 //!
 //! One traversal, two rules. [`subst_value`] replaces a free value variable
 //! inside a source value, respecting binder shadowing; it is what the identity
-//! former's motive instantiation drives ([`crate::identity`] calls it at each
-//! [`crate::types::ValueType::Path`] endpoint). [`subst_holes_value`] and
-//! [`subst_holes_comp`] replace **solved holes** by their solutions, which is
-//! how a unifier's certificate is applied to a term before the ordinary
-//! conversion engine re-checks it ([`crate::unify`]).
+//! former's motive instantiation drives ([`crate::judgements::identity`] calls
+//! it at each [`crate::term::types::ValueType::Path`] endpoint).
+//! [`subst_holes_value`] and [`subst_holes_comp`] replace **solved holes** by
+//! their solutions, which is how a unifier's certificate is applied to a term
+//! before the ordinary conversion engine re-checks it ([`crate::unify`]).
 //!
 //! The two rules differ in exactly two places and share everything else. A
 //! variable substitution is blocked by a binder of the same name; a hole
@@ -26,14 +26,14 @@ use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 
-use crate::boundary::HoleId;
-use crate::boundary::HoleOccurrence;
-use crate::boundary::NameRef;
-use crate::syntax::Comp;
-use crate::syntax::OpClause;
-use crate::syntax::Stack;
-use crate::syntax::Value;
-use crate::syntax::WalkBase;
+use crate::discipline::boundary::HoleId;
+use crate::discipline::boundary::HoleOccurrence;
+use crate::discipline::boundary::NameRef;
+use crate::term::syntax::Comp;
+use crate::term::syntax::OpClause;
+use crate::term::syntax::Stack;
+use crate::term::syntax::Value;
+use crate::term::syntax::WalkBase;
 
 /// Capture-avoiding substitution of `repl` for the free value variable `name`
 /// inside a **value** — the value-into-value entry of the iterative [`Subst`]
@@ -41,10 +41,10 @@ use crate::syntax::WalkBase;
 /// shared, reusing its binder-shadowing discipline).
 ///
 /// This is the substitution the identity former's motive instantiation drives
-/// (`crate::identity` calls it at each [`crate::types::ValueType::Path`]
-/// endpoint). Exposed to the crate (`pub(crate)`) precisely so motive
-/// instantiation shares one proven substitution rather than reimplementing
-/// capture-avoidance.
+/// (`crate::judgements::identity` calls it at each
+/// [`crate::term::types::ValueType::Path`] endpoint). Exposed to the crate
+/// (`pub(crate)`) precisely so motive instantiation shares one proven
+/// substitution rather than reimplementing capture-avoidance.
 ///
 /// # Contract
 /// - ensures: returns `value` with every free `name` replaced by `repl`,

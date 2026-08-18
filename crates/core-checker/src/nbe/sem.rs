@@ -67,35 +67,35 @@
 //! normalizer with its run still live, and both repeat the opposite order.
 //!
 //! [`intern`]: crate::nbe::intern
-//! [`FlatArena`]: crate::syntax::FlatArena
+//! [`FlatArena`]: crate::term::syntax::FlatArena
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::boundary::ApproximateDepth;
-use crate::boundary::ConstructorTag;
-use crate::boundary::DefinitionHeightLevel;
-use crate::boundary::GuardDecision;
-use crate::boundary::HoleOccurrence;
-use crate::boundary::NameRef;
-use crate::boundary::NodeIndex;
-use crate::boundary::RigidStatus;
-use crate::boundary::SemanticHash;
-use crate::boundary::SemanticNodeCount;
-use crate::boundary::SemanticNodeIndex;
-use crate::boundary::SpineLength;
-use crate::boundary::VariableLevel;
-use crate::grade::Grade;
+use crate::discipline::boundary::ApproximateDepth;
+use crate::discipline::boundary::ConstructorTag;
+use crate::discipline::boundary::DefinitionHeightLevel;
+use crate::discipline::boundary::GuardDecision;
+use crate::discipline::boundary::HoleOccurrence;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::NodeIndex;
+use crate::discipline::boundary::RigidStatus;
+use crate::discipline::boundary::SemanticHash;
+use crate::discipline::boundary::SemanticNodeCount;
+use crate::discipline::boundary::SemanticNodeIndex;
+use crate::discipline::boundary::SpineLength;
+use crate::discipline::boundary::VariableLevel;
+use crate::discipline::grade::Grade;
 use crate::prim::NativePrim;
-use crate::syntax::CompNodeId;
-use crate::syntax::HoleId;
-use crate::syntax::NumLit;
-use crate::syntax::Side;
-use crate::syntax::StackNodeId;
-use crate::syntax::ValueNodeId;
-use crate::syntax::ValueTypeNodeId;
-use crate::types::DataId;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::HoleId;
+use crate::term::syntax::NumLit;
+use crate::term::syntax::Side;
+use crate::term::syntax::StackNodeId;
+use crate::term::syntax::ValueNodeId;
+use crate::term::syntax::ValueTypeNodeId;
+use crate::term::types::DataId;
 
 /// Defines a transparent arena id with its explicit conversions and its
 /// checked index projection.
@@ -601,8 +601,8 @@ pub enum SemValueNode
     /// The witnesses are **types**, so they stay syntax ids: this domain has no
     /// semantic type former to evaluate them into, and nothing about a package
     /// asks for one — the abstraction step every package rule performs
-    /// ([`crate::package::instantiate`]) is a typing operation with no
-    /// term-level residue. Naming syntax rather than copying it is the
+    /// ([`crate::judgements::package::instantiate`]) is a typing operation with
+    /// no term-level residue. Naming syntax rather than copying it is the
     /// [`Self::Reified`] discipline, and retaining it rather than dropping
     /// it is what keeps two packs at different representations
     /// distinguishable.

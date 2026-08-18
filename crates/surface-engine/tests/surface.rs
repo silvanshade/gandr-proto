@@ -18,10 +18,10 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Side;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Side;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
     use gandr_core_incremental::region::Item;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::lower::LowerError;
@@ -369,11 +369,11 @@ mod tests
     #[test]
     fn def_function_sugar_thunks_a_curried_abstraction()
     {
-        use gandr_core_checker::grade::Grade;
-        use gandr_core_checker::syntax::Comp;
-        use gandr_core_checker::types::CompType;
-        use gandr_core_checker::types::Ty;
-        use gandr_core_checker::types::ValueType;
+        use gandr_core_checker::discipline::grade::Grade;
+        use gandr_core_checker::term::syntax::Comp;
+        use gandr_core_checker::term::types::CompType;
+        use gandr_core_checker::term::types::Ty;
+        use gandr_core_checker::term::types::ValueType;
 
         // A fully-annotated `def f(x: A) -> B { … }` derives the ascription
         // `U_ω (A → B)` and thunks a curried abstraction; because the ascription
@@ -448,7 +448,7 @@ mod tests
     #[test]
     fn a_top_level_value_with_a_hoisted_computation_wraps_into_a_bind()
     {
-        use gandr_core_checker::syntax::Comp;
+        use gandr_core_checker::term::syntax::Comp;
 
         // A value item that embeds a computation (a call in a tuple slot) leaves
         // a hoist; `finalize_term` coerces the value through `Ret` and wraps the

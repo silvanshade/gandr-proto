@@ -35,17 +35,17 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::boundary::EffectContains;
-use crate::boundary::EffectRowEmptyStatus;
-use crate::boundary::EffectSignatureName;
-use crate::boundary::EffectSubsetDecision;
-use crate::boundary::OperationName;
+use crate::discipline::boundary::EffectContains;
+use crate::discipline::boundary::EffectRowEmptyStatus;
+use crate::discipline::boundary::EffectSignatureName;
+use crate::discipline::boundary::EffectSubsetDecision;
+use crate::discipline::boundary::OperationName;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::syntax::OpClause;
-use crate::types::CompType;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::term::syntax::OpClause;
+use crate::term::types::CompType;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// A single effect operation `op : A ↠ B` (the effects and control record's
 /// operation and handle rules).
@@ -187,8 +187,8 @@ impl EffectSig
 /// [`Self::union`], [`Self::without`], [`Self::contains`], [`Self::is_subset`],
 /// [`Self::is_empty`], [`Self::signatures`]) plus the forwarding-free [`Debug`]
 /// impl below. The pure returner `F A ≡ F^⟨⟩ A` is exactly the [`Self::EMPTY`]
-/// case, and [`crate::types::CompType`]'s `Debug` renders it with no row so the
-/// spelling stays `F(payload)` (ADR-33 D1).
+/// case, and [`crate::term::types::CompType`]'s `Debug` renders it with no row
+/// so the spelling stays `F(payload)` (ADR-33 D1).
 #[derive(Clone, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct EffectRow(Repr);
@@ -360,7 +360,8 @@ impl EffectRow
 ///   `F` until a later stage carries them on negative types).
 ///
 /// Shared by the recursive checker and the typing machine (as
-/// [`crate::subtype::finish_comp`]) so the two produce *equal* results.
+/// [`crate::discipline::subtype::finish_comp`]) so the two produce *equal*
+/// results.
 ///
 /// # Contract
 /// - ensures: returns `F^{bound_row ∪ ε_u} C` for a returner `cont_ty = F^{ε_u}
@@ -426,10 +427,10 @@ pub(crate) fn resume_stack_type(
 /// may leak.
 ///
 /// Finishing it against the answer `F^ε C` (via
-/// [`crate::subtype::finish_comp`]) makes the inlined Sub rule's row leg `ε_t ∖
-/// E ⊆ ε` the soundness check — the residual `t` may perform unhandled must fit
-/// the answer's row. A matched-hole answer yields `Unknown`, which absorbs any
-/// residual. Shared by the checker and the machine.
+/// [`crate::discipline::subtype::finish_comp`]) makes the inlined Sub rule's
+/// row leg `ε_t ∖ E ⊆ ε` the soundness check — the residual `t` may perform
+/// unhandled must fit the answer's row. A matched-hole answer yields `Unknown`,
+/// which absorbs any residual. Shared by the checker and the machine.
 #[inline]
 #[must_use]
 pub(crate) fn handle_natural_type(

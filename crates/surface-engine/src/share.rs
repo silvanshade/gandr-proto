@@ -124,25 +124,25 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use gandr_core_checker::boundary::EffectSignatureName;
-use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::discipline::boundary::EffectSignatureName;
+use gandr_core_checker::discipline::boundary::OperationName;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::effect::EffectOp;
 use gandr_core_checker::effect::EffectRow;
 use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::grade::Grade;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::OpClause;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::SplitMotive;
-use gandr_core_checker::syntax::Stack;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::syntax::WalkBase;
-use gandr_core_checker::syntax::WalkMotive;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::DataId;
-use gandr_core_checker::types::SealId;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::OpClause;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::SplitMotive;
+use gandr_core_checker::term::syntax::Stack;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::syntax::WalkBase;
+use gandr_core_checker::term::syntax::WalkMotive;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::DataId;
+use gandr_core_checker::term::types::SealId;
+use gandr_core_checker::term::types::ValueType;
 
 /// The seam-name prefix a [`ShareNode::Graft`] template uses for its plug
 /// positions: `seam.0`, `seam.1`, … in canonical enumeration.

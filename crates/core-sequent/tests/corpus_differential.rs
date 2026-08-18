@@ -68,8 +68,8 @@ mod tests
 
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::outcome::StuckReason;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Term;
     use gandr_core_sequent::boundary::CorpusItemCount;
     use gandr_core_sequent::boundary::UnsupportedFormerStatus;
     use gandr_core_sequent::differential::canonical;

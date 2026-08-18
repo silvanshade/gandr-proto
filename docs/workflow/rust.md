@@ -209,7 +209,7 @@ An in-scope item links by its bare name (`` [`Value`] ``); a cross-module item u
   /// - input recursion: none.
   ```
 
-  `- input recursion: none.` is required everywhere except the model recursive checker in `gandr-core-checker::checker::Rec`, if that implementation is still recursive.
+  `- input recursion: none.` is required everywhere except the model recursive checker in `gandr-core-checker::judgements::checker::Rec`, if that implementation is still recursive.
   That checker may instead name structural descent through the finite checked term, because serving as the direct recursive reference model is its purpose; the defunctionalized machine remains the adversarial-depth path.
   Tail-call position does not remove this obligation because Rust does not guarantee tail-call optimization; a genuinely iterative implementation is not recursive and needs no termination section.
 - `# Adequacy`: `- hypothesis:` — a falsifiable claim naming which adequacy-ladder rung kills each decision surface's mutants, plus the distinguishing inputs and observations for the pointwise residue — then one `- witness:` bullet per witnessing test (crate-qualified when it lives in another crate).

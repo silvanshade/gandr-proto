@@ -19,7 +19,7 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::boundary::ConstructorTag;
+    use gandr_core_checker::discipline::boundary::ConstructorTag;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
     use gandr_theory_levitation::Code;
     use gandr_theory_levitation::DeclPolarity;

@@ -19,8 +19,8 @@
 //! (a sibling lane owns `cell.rs`). A typed face *wraps* a stage-0 face;
 //! nothing about the stage-0 encoding changes.
 
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::term::types::ValueType;
 
 use crate::boundary::ContextTotality;
 use crate::code::Code;
@@ -162,7 +162,7 @@ impl TypedRuleFace
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
 
     use super::*;
     use crate::code::Attrs;

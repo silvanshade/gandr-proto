@@ -107,10 +107,10 @@ use gandr_core_checker::effect::host::FIELD_STDOUT;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::StuckReason;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Value;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Value;
 use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
@@ -1688,8 +1688,8 @@ fn desc_unit_consumer_failure(descs: &[SignDesc]) -> Option<String>
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::discipline::grade::Grade;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::machine::run_comp;
 
     use super::*;

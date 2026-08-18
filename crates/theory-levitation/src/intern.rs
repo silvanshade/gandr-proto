@@ -121,7 +121,7 @@ impl CodeInterner
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
 
     use super::*;
     use crate::code::Attrs;

@@ -9,13 +9,13 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::grade::Grade;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_incremental::region::Item;
 
 use crate::boundary::AscriptionPresence;
@@ -325,18 +325,18 @@ fn ascribe_comp_payload(
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::control::Dir;
-    use gandr_core_checker::ctx::Ctx;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::effect::EffectRow;
-    use gandr_core_checker::grade::Grade;
     use gandr_core_checker::machine;
+    use gandr_core_checker::machine::control::Dir;
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::ctx::Ctx;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::region::Item;
     use gandr_core_sequent::machine::run_comp;
 

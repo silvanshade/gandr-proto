@@ -1,7 +1,7 @@
 //! The elaborator-side **kernel bridge**.
 //!
-//! A total lowering from the checked core CBPV forms ([`crate::syntax`],
-//! [`crate::types`]) into the minimal certified kernel's closed **S1
+//! A total lowering from the checked core CBPV forms ([`crate::term::syntax`],
+//! [`crate::term::types`]) into the minimal certified kernel's closed **S1
 //! vocabulary** ([`gandr_kernel_core`], the kernel-boundary design record
 //! §7).
 //!
@@ -76,12 +76,12 @@ use gandr_kernel_core::ValueId;
 use gandr_kernel_core::ValueTypeId;
 use thiserror::Error;
 
-use crate::syntax::Comp;
-use crate::syntax::Side as CoreSide;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::SealId;
-use crate::types::ValueType;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Side as CoreSide;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::SealId;
+use crate::term::types::ValueType;
 
 /// Why a core form has no image in the closed S1 vocabulary.
 ///

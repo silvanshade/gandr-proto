@@ -17,7 +17,7 @@ use std::io::Write as _;
 use std::process::ExitCode;
 
 use gandr_core_checker::outcome::Eval;
-use gandr_core_checker::syntax::Comp;
+use gandr_core_checker::term::syntax::Comp;
 use gandr_runtime_ffi::FfiRunError;
 use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source_file;

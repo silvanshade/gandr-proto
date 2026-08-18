@@ -22,8 +22,8 @@
 //! not represented here because [`crate::Code`] *cannot encode* a higher-order
 //! field — that decline lands at elaboration, before a `SignDesc` exists.
 
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::boundary::StringText;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::discipline::boundary::StringText;
 
 use crate::arity::BridgeArity;
 use crate::boundary::DiagnosticMessage;
@@ -735,7 +735,7 @@ mod tests
             Code::prod(
                 Code::field(
                     crate::code::ValueTypeRef::Param("a".into()),
-                    gandr_core_checker::grade::Grade::ONE,
+                    gandr_core_checker::discipline::grade::Grade::ONE,
                     Attrs::empty(),
                 ),
                 Code::var("List"),

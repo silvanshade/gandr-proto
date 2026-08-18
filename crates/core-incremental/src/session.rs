@@ -105,9 +105,9 @@ impl<S> IncrementalSession<S>
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
 
     use super::*;
     use crate::persistence::FileCheckpointStore;

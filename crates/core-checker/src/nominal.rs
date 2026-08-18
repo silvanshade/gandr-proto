@@ -35,10 +35,11 @@ pub enum GandrSort
     /// name a synthesized `Bind` introduces when a value position is lifted to
     /// a computation (the lowerer).
     TmpHoist,
-    /// **Atom-role.** A pipeline hole *address* ([`crate::syntax::HoleId`]):
-    /// typing-transparent addressing, **not** a unification variable — two
-    /// holes with different identifiers type identically (ADR-41 D3). The
-    /// Ψ+σ-bearing object is the CMTT staging node, not an atom.
+    /// **Atom-role.** A pipeline hole *address*
+    /// ([`crate::term::syntax::HoleId`]): typing-transparent addressing,
+    /// **not** a unification variable — two holes with different
+    /// identifiers type identically (ADR-41 D3). The Ψ+σ-bearing object is
+    /// the CMTT staging node, not an atom.
     HoleAddr,
     /// **Atom-role, reserved.** A sealed abstract type's identity: the name an
     /// opaque ascription binds one abstract type component to.
@@ -48,9 +49,10 @@ pub enum GandrSort
     /// its sealing site*, so that an admission point can re-elaborate, re-mint
     /// and refuse a recorded sequence a re-run does not reproduce; a monotone
     /// allocator offers never-reused identities, which is a different property.
-    /// [`crate::seal::SealTable`] therefore assigns positional serials keyed on
-    /// [`crate::seal::SealSite`], and this variant records that a sealed atom
-    /// is atom-role rather than that it comes from the shared allocator.
+    /// [`crate::judgements::seal::SealTable`] therefore assigns positional
+    /// serials keyed on [`crate::judgements::seal::SealSite`], and this
+    /// variant records that a sealed atom is atom-role rather than that it
+    /// comes from the shared allocator.
     ///
     /// It is a name and never an unknown, which is the load-bearing half. A
     /// sealed type is not a type the checker is waiting to learn — it is one

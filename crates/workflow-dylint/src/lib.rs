@@ -1076,7 +1076,7 @@ fn expr_for_hir_id<'tcx>(
 }
 
 /// Return whether `def_id` is an inherent method on
-/// `gandr_core_checker::checker::Rec`.
+/// `gandr_core_checker::judgements::checker::Rec`.
 ///
 /// # Contract
 ///
@@ -1084,7 +1084,7 @@ fn expr_for_hir_id<'tcx>(
 ///   lint pass.
 /// - ensures: returns an affirmative [`ModelCheckerInputRecursion`] exactly
 ///   when the item is an inherent method whose fully peeled receiver `ADT` is
-///   `gandr_core_checker::checker::Rec`.
+///   `gandr_core_checker::judgements::checker::Rec`.
 /// - provides: the sole model-checker exception to the input-recursion policy.
 /// - panics: none under rustc's late-lint function-definition invariants.
 ///
@@ -1156,7 +1156,7 @@ fn absolute_def_path(
 /// Return whether `path` is the one allowed checker recursion receiver path.
 fn is_model_checker_rec_path(path: DefPathText<'_>) -> ModelCheckerRecPath
 {
-    ModelCheckerRecPath(path.0 == "gandr_core_checker::checker::Rec")
+    ModelCheckerRecPath(path.0 == "gandr_core_checker::judgements::checker::Rec")
 }
 
 /// One work item of the order-preserving primitive-signature traversal.
@@ -1515,15 +1515,18 @@ mod tests
     fn ui_model_checker_rec_path_scope()
     {
         assert!(
-            is_model_checker_rec_path("gandr_core_checker::checker::Rec".into()).0,
+            is_model_checker_rec_path("gandr_core_checker::judgements::checker::Rec".into()).0,
             "the exact checker receiver path is accepted"
         );
         assert!(
-            !is_model_checker_rec_path("gandr_core_checker::mark::Rec".into()).0,
+            !is_model_checker_rec_path("gandr_core_checker::discipline::mark::Rec".into()).0,
             "a same-named type in another module is rejected"
         );
         assert!(
-            !is_model_checker_rec_path("termination::gandr_core_checker::checker::Rec".into()).0,
+            !is_model_checker_rec_path(
+                "termination::gandr_core_checker::judgements::checker::Rec".into()
+            )
+            .0,
             "a prefixed lookalike path is rejected"
         );
     }

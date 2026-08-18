@@ -2,9 +2,9 @@
 //!
 //! A `data D(ā) { C₀, C₁(x: A), … }` block declares generative-nominal
 //! **constructors** (1-cells). A constructor application `C(v̄)` introduces a
-//! value of `D(ā)` — the [`gandr_core_checker::syntax::Value::Ctor`] tagged
-//! value — and a `case v { Cᵢ(x̄ᵢ) => eᵢ }` eliminates it through the
-//! [`gandr_core_checker::syntax::Comp::DataCase`] case-over-the-tag
+//! value of `D(ā)` — the [`gandr_core_checker::term::syntax::Value::Ctor`]
+//! tagged value — and a `case v { Cᵢ(x̄ᵢ) => eᵢ }` eliminates it through the
+//! [`gandr_core_checker::term::syntax::Comp::DataCase`] case-over-the-tag
 //! (declared-data design Decisions 2/3).
 //!
 //! # The pipeline seam (declared-data design Decision 4)
@@ -12,9 +12,9 @@
 //! This module is the single seam that maps a
 //! `gandr_theory_levitation::NominalId` (serial + name, minted by
 //! [`crate::desc_elab::elaborate_data_descs`]) to the core-local
-//! [`gandr_core_checker::types::DataId`] the runtime former compares on. The
-//! registry [`DataDecl`] holds the decl table the frozen core deliberately does
-//! **not** carry — the constructor enumeration (names in tag order) — so
+//! [`gandr_core_checker::term::types::DataId`] the runtime former compares on.
+//! The registry [`DataDecl`] holds the decl table the frozen core deliberately
+//! does **not** carry — the constructor enumeration (names in tag order) — so
 //! constructor application, `case` lowering, the `D(ā)` type former, and the
 //! renderer all resolve against it.
 //!
@@ -43,15 +43,15 @@ use alloc::string::String;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use gandr_core_checker::boundary::ConstructorTag;
-use gandr_core_checker::boundary::DataTypeName;
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::DataId;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::discipline::boundary::ConstructorTag;
+use gandr_core_checker::discipline::boundary::DataTypeName;
+use gandr_core_checker::discipline::boundary::NameRef;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::DataId;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::PrimTy;

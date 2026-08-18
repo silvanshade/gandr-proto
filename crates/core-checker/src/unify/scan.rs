@@ -32,15 +32,15 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::boundary::EscapeStatus;
-use crate::boundary::HoleId;
-use crate::boundary::NameRef;
-use crate::boundary::OpaqueOccurrence;
-use crate::boundary::VariableLevel;
+use crate::discipline::boundary::EscapeStatus;
+use crate::discipline::boundary::HoleId;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::OpaqueOccurrence;
+use crate::discipline::boundary::VariableLevel;
 use crate::nbe::quote::parse_level_name;
-use crate::syntax::Comp;
-use crate::syntax::Stack;
-use crate::syntax::Value;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Stack;
+use crate::term::syntax::Value;
 
 /// What one scan found.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -93,9 +93,9 @@ impl Occurrences
     pub(super) fn mentions(
         &self,
         hole: HoleId,
-    ) -> crate::boundary::HoleOccurrence
+    ) -> crate::discipline::boundary::HoleOccurrence
     {
-        crate::boundary::HoleOccurrence::from(self.holes.contains(&hole))
+        crate::discipline::boundary::HoleOccurrence::from(self.holes.contains(&hole))
     }
 }
 

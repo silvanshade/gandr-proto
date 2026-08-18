@@ -43,34 +43,34 @@
 //! its canonical representative, is a wrong answer rather than a missed hit.
 //!
 //! The table is a deduplicator, not an equality oracle. It is disjoint from the
-//! type interner ([`crate::intern`]) and it takes nothing into the trusted
-//! base.
+//! type interner ([`crate::term::intern`]) and it takes nothing into the
+//! trusted base.
 //!
 //! [`SemArena`]: crate::nbe::sem::SemArena
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use crate::boundary::BinderName;
-use crate::boundary::BinderScope;
-use crate::boundary::InternedSyntaxCount;
-use crate::boundary::SemanticHash;
-use crate::boundary::SemanticNodeCount;
-use crate::boundary::ValueEquality;
+use crate::discipline::boundary::BinderName;
+use crate::discipline::boundary::BinderScope;
+use crate::discipline::boundary::InternedSyntaxCount;
+use crate::discipline::boundary::SemanticHash;
+use crate::discipline::boundary::SemanticNodeCount;
+use crate::discipline::boundary::ValueEquality;
 use crate::nbe::sem::mix_hashable;
 use crate::nbe::sem::mix_word;
 use crate::nbe::sem::seed;
-use crate::syntax::CompNode;
-use crate::syntax::CompNodeId;
-use crate::syntax::CompTypeNode;
-use crate::syntax::CompTypeNodeId;
-use crate::syntax::FlatArena;
-use crate::syntax::StackNode;
-use crate::syntax::StackNodeId;
-use crate::syntax::ValueNode;
-use crate::syntax::ValueNodeId;
-use crate::syntax::ValueTypeNode;
-use crate::syntax::ValueTypeNodeId;
+use crate::term::syntax::CompNode;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::CompTypeNode;
+use crate::term::syntax::CompTypeNodeId;
+use crate::term::syntax::FlatArena;
+use crate::term::syntax::StackNode;
+use crate::term::syntax::StackNodeId;
+use crate::term::syntax::ValueNode;
+use crate::term::syntax::ValueNodeId;
+use crate::term::syntax::ValueTypeNode;
+use crate::term::syntax::ValueTypeNodeId;
 
 /// One token in a canonical key's stream.
 #[repr(transparent)]
@@ -217,9 +217,9 @@ impl SyntaxInterner
     pub fn is_empty(
         &self,
         face: Face,
-    ) -> crate::boundary::InternerEmptyStatus
+    ) -> crate::discipline::boundary::InternerEmptyStatus
     {
-        crate::boundary::InternerEmptyStatus::from(usize::from(self.len(face)) == 0)
+        crate::discipline::boundary::InternerEmptyStatus::from(usize::from(self.len(face)) == 0)
     }
 
     /// Interns `term` into `face`'s table and returns that face's canonical
@@ -960,7 +960,7 @@ fn visit_value_type<'term>(
             payload,
         } => {
             // The abstract components are binders over the payload, discharged
-            // by `crate::package::instantiate`, so the labels never reach the
+            // by `crate::judgements::package::instantiate`, so the labels never reach the
             // stream: they open the type scope and their occurrences emit an
             // index. Two signatures that differ only in how they spell a
             // component are one key, which is the same relation subtyping

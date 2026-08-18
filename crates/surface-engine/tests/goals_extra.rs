@@ -35,7 +35,7 @@ mod tests
                 .any(|item| item.name.as_deref() == Some("f")
                     && matches!(
                         item.ascription,
-                        Some(gandr_core_checker::types::Ty::Comp(_))
+                        Some(gandr_core_checker::term::types::Ty::Comp(_))
                     )),
             "the signature ascribes a computation type: {:?}",
             lowered

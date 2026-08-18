@@ -32,16 +32,16 @@ mod tests
     use std::io::Write as _;
     use std::path::PathBuf;
 
-    use gandr_core_checker::checker;
-    use gandr_core_checker::control::Dir;
     use gandr_core_checker::error::TypeError;
+    use gandr_core_checker::judgements::checker;
     use gandr_core_checker::machine;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::machine::control::Dir;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_incremental::region::Item;
     use gandr_surface_engine::goals::Goal;
     use gandr_surface_engine::goals::goals_report;

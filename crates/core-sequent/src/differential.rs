@@ -48,18 +48,18 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::StuckReason;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::HoleId;
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Stack;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::DataId;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::HoleId;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Stack;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::DataId;
 
 use crate::boundary::DifferentialAgreement;
 
@@ -381,9 +381,9 @@ fn canonical_data_id() -> DataId
 mod tests
 {
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::ValueType;
 
     use super::*;
 

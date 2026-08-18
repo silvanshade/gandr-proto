@@ -21,8 +21,8 @@
 //! surface (`core-ir-contract.md` §4). Swapping in a different semiring is an
 //! edit to this module alone.
 
-use crate::boundary::GradeBound;
-use crate::boundary::GradeOrderDecision;
+use crate::discipline::boundary::GradeBound;
+use crate::discipline::boundary::GradeOrderDecision;
 
 /// A usage grade drawn from the default instantiation `ℕ ∪ {ω}`.
 ///

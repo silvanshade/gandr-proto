@@ -19,7 +19,7 @@
 //! is why the generic programs are driven by the [`SignDesc`] (the σ tag), not
 //! a bare [`Code`].
 
-use gandr_core_checker::boundary::ConstructorTag;
+use gandr_core_checker::discipline::boundary::ConstructorTag;
 
 use crate::boundary::GenericEquality;
 use crate::boundary::SerializedDescText;
@@ -492,7 +492,7 @@ pub(crate) fn render_free_term(term: &crate::rule::FreeTerm) -> String
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
 
     use super::*;
     use crate::code::Attrs;

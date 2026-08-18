@@ -23,10 +23,10 @@
 mod tests
 {
     use gandr_core_checker::kernel_bridge::BridgeRejection;
-    use gandr_core_checker::syntax::Term;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::Ty;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::syntax::Term;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::Ty;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
     use gandr_surface_engine::boundary::DefinitionName;

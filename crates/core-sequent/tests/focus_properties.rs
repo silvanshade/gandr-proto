@@ -16,23 +16,23 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::boundary::EffectSignatureName;
-    use gandr_core_checker::boundary::GenerationDepth;
-    use gandr_core_checker::boundary::NameRef;
-    use gandr_core_checker::boundary::OperationName;
+    use gandr_core_checker::discipline::boundary::EffectSignatureName;
+    use gandr_core_checker::discipline::boundary::GenerationDepth;
+    use gandr_core_checker::discipline::boundary::NameRef;
+    use gandr_core_checker::discipline::boundary::OperationName;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::grade::Grade;
     use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::OpClause;
-    use gandr_core_checker::syntax::Stack;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::syntax::WalkBase;
-    use gandr_core_checker::syntax::WalkMotive;
-    use gandr_core_checker::types::CompType;
-    use gandr_core_checker::types::DataId;
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::OpClause;
+    use gandr_core_checker::term::syntax::Stack;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::syntax::WalkBase;
+    use gandr_core_checker::term::syntax::WalkMotive;
+    use gandr_core_checker::term::types::CompType;
+    use gandr_core_checker::term::types::DataId;
+    use gandr_core_checker::term::types::ValueType;
     use gandr_core_sequent::FocusOrigin;
     use gandr_core_sequent::focus_comp;
     use gandr_core_sequent::focus_value;

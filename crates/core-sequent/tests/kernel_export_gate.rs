@@ -68,13 +68,13 @@ mod tests
     use std::path::PathBuf;
     use std::time::Instant;
 
-    use gandr_core_checker::checker::infer_comp;
-    use gandr_core_checker::checker::infer_value;
-    use gandr_core_checker::ctx::Ctx;
+    use gandr_core_checker::judgements::checker::infer_comp;
+    use gandr_core_checker::judgements::checker::infer_value;
     use gandr_core_checker::kernel_bridge::BridgeContext;
     use gandr_core_checker::kernel_bridge::lower_computation_definition;
     use gandr_core_checker::kernel_bridge::lower_value_definition;
-    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::term::ctx::Ctx;
+    use gandr_core_checker::term::syntax::Term;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::LevelParamCount;
     use gandr_kernel_core::LevelSignature;

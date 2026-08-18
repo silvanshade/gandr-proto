@@ -253,7 +253,7 @@ mod tests
 {
     use alloc::vec;
 
-    use gandr_core_checker::types::ValueType;
+    use gandr_core_checker::term::types::ValueType;
 
     use super::*;
 

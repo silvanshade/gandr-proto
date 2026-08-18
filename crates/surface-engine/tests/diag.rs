@@ -582,13 +582,13 @@ mod tests
         #[test]
         fn surface_marks_are_never_dropped()
         {
-            use gandr_core_checker::control::Dir;
-            use gandr_core_checker::ctx::Ctx;
-            use gandr_core_checker::mark::Marking;
-            use gandr_core_checker::mark::mark_comp;
-            use gandr_core_checker::mark::mark_value;
-            use gandr_core_checker::syntax::Term;
-            use gandr_core_checker::types::Ty;
+            use gandr_core_checker::discipline::mark::Marking;
+            use gandr_core_checker::discipline::mark::mark_comp;
+            use gandr_core_checker::discipline::mark::mark_value;
+            use gandr_core_checker::machine::control::Dir;
+            use gandr_core_checker::term::ctx::Ctx;
+            use gandr_core_checker::term::syntax::Term;
+            use gandr_core_checker::term::types::Ty;
             use gandr_core_incremental::region::Item;
 
             fn marking_of(

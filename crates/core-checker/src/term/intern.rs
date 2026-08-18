@@ -3,17 +3,19 @@
 //!
 //! Two consumers share this one facility:
 //!
-//! - the **incremental marking** layer ([`crate::mark`]) keys Porter's per-node
-//!   dual-type cache on interned [`TypeId`]s, so an unchanged node compares its
-//!   type in O(1) instead of the structural O(tree-size) `==`;
+//! - the **incremental marking** layer ([`crate::discipline::mark`]) keys
+//!   Porter's per-node dual-type cache on interned [`TypeId`]s, so an unchanged
+//!   node compares its type in O(1) instead of the structural O(tree-size)
+//!   `==`;
 //! - **subtyping** ([`TypeInterner::subtype`]) reuses the same identity to
 //!   short-circuit the *reflexive* leg of the subtype relation: two types that
 //!   intern to the same id are structurally equal, hence (consistent) subtypes,
 //!   with no structural descent. Reflexivity is admissible, never a rule
 //!   (`type-system.md` §"Algorithmic subtyping and the worklist solver"), so
 //!   this is a pure optimization — the structural
-//!   [`crate::subtype::value_subtype`] / [`crate::subtype::comp_subtype`]
-//!   decides every non-reflexive pair.
+//!   [`crate::discipline::subtype::value_subtype`] /
+//!   [`crate::discipline::subtype::comp_subtype`] decides every non-reflexive
+//!   pair.
 //!
 //! # Intern-hit discipline (Lean 4 `Expr` interning, adapted)
 //!
@@ -39,12 +41,12 @@
 //! # Content-key discipline
 //!
 //! Interning covers the immutable value graph, and every content-bearing field
-//! is part of the key: a [`crate::grade::Grade`] inside a `Thunk` and an
-//! [`crate::effect::EffectRow`] inside an `F` both participate — the derived
-//! `Hash` / `Eq` descend into them, and both are canonical (`EffectRow` is a
-//! name-ordered `BTreeMap`, so union order is immaterial). Thunks that differ
-//! only in grade, or returners that differ only in row, therefore intern to
-//! *distinct* ids.
+//! is part of the key: a [`crate::discipline::grade::Grade`] inside a `Thunk`
+//! and an [`crate::effect::EffectRow`] inside an `F` both participate — the
+//! derived `Hash` / `Eq` descend into them, and both are canonical (`EffectRow`
+//! is a name-ordered `BTreeMap`, so union order is immaterial). Thunks that
+//! differ only in grade, or returners that differ only in row, therefore intern
+//! to *distinct* ids.
 //!
 //! # The term-face design's ADR-49 doors (binding on this interim)
 //!
@@ -60,14 +62,14 @@ use alloc::vec::Vec;
 use core::hash::Hash as _;
 use core::hash::Hasher as _;
 
-use crate::boundary::InternedTypeCount;
-use crate::boundary::InternerEmptyStatus;
-use crate::boundary::SubtypeDecision;
-use crate::boundary::TypeHash;
-use crate::boundary::TypeTableIndex;
-use crate::subtype::comp_subtype;
-use crate::subtype::value_subtype;
-use crate::types::Ty;
+use crate::discipline::boundary::InternedTypeCount;
+use crate::discipline::boundary::InternerEmptyStatus;
+use crate::discipline::boundary::SubtypeDecision;
+use crate::discipline::boundary::TypeHash;
+use crate::discipline::boundary::TypeTableIndex;
+use crate::discipline::subtype::comp_subtype;
+use crate::discipline::subtype::value_subtype;
+use crate::term::types::Ty;
 
 /// A canonical, interned identity for a type — O(1) equality for the
 /// unchanged-type optimization (Porter's per-node dual-type cache).
@@ -168,7 +170,7 @@ impl TypeInterner
     /// Decides `sub ≲ sup` on two interned ids, using intern identity as an
     /// O(1) reflexive/atom short-circuit before any structural descent — the
     /// interned analogue of the `core::ptr::eq` fast path in
-    /// [`crate::subtype::value_subtype`], but catching
+    /// [`crate::discipline::subtype::value_subtype`], but catching
     /// *structurally* equal address-distinct types too (they share an id).
     ///
     /// # Contract
@@ -177,13 +179,14 @@ impl TypeInterner
     ///   returns `false`).
     /// - ensures: returns `true` iff the type at `sub` is a consistent subtype
     ///   of the type at `sup` — same-sort structural subtyping via
-    ///   [`crate::subtype::value_subtype`] / [`crate::subtype::comp_subtype`].
-    ///   Identical ids return `true` in O(1) (reflexivity, admissible per
-    ///   `type-system.md` §"Algorithmic subtyping and the worklist solver"); a
-    ///   value id against a computation id returns `false` (no value type is a
-    ///   subtype of a computation type, and vice versa). The verdict equals the
-    ///   structural relation on the resolved types, so the id short-circuit is
-    ///   a pure optimization.
+    ///   [`crate::discipline::subtype::value_subtype`] /
+    ///   [`crate::discipline::subtype::comp_subtype`]. Identical ids return
+    ///   `true` in O(1) (reflexivity, admissible per `type-system.md`
+    ///   §"Algorithmic subtyping and the worklist solver"); a value id against
+    ///   a computation id returns `false` (no value type is a subtype of a
+    ///   computation type, and vice versa). The verdict equals the structural
+    ///   relation on the resolved types, so the id short-circuit is a pure
+    ///   optimization.
     /// - panics: none.
     ///
     /// # Adequacy
@@ -308,12 +311,12 @@ mod tests
 {
     use super::TypeId;
     use super::TypeInterner;
-    use crate::boundary::InternedTypeCount;
-    use crate::grade::Grade;
-    use crate::subtype::value_subtype;
-    use crate::types::CompType;
-    use crate::types::Ty;
-    use crate::types::ValueType;
+    use crate::discipline::boundary::InternedTypeCount;
+    use crate::discipline::grade::Grade;
+    use crate::discipline::subtype::value_subtype;
+    use crate::term::types::CompType;
+    use crate::term::types::Ty;
+    use crate::term::types::ValueType;
 
     /// structurally distinct type mints a fresh id (miss). Each `fresh_nested`
     /// call allocates fresh `Rc`s throughout, so a same-id verdict is genuine

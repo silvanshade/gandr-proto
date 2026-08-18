@@ -40,12 +40,12 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::control::Dir;
-use gandr_core_checker::ctx::Ctx;
 use gandr_core_checker::error::TypeError;
 use gandr_core_checker::machine;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::machine::control::Dir;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::ValueType;
 
 use crate::boundary::AttributeName;
 use crate::boundary::EditDistance;

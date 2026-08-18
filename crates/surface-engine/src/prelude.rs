@@ -26,12 +26,12 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::ctx::Ctx;
-use gandr_core_checker::grade::Grade;
+use gandr_core_checker::discipline::grade::Grade;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::ValueType;
 
 use crate::boundary::PreludeMemberName;
 use crate::boundary::PreludeModuleName;

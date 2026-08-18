@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use gandr_core_checker::syntax::Term;
+use gandr_core_checker::term::syntax::Term;
 use gandr_surface_engine::lower::lower_source_total;
 
 /// Sources whose pre-feature semantic records remain frozen at F4 staging O6.

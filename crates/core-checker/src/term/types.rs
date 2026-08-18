@@ -10,15 +10,15 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::boundary::BinderName;
-use crate::boundary::DataTypeName;
-use crate::boundary::SealComponentName;
-use crate::boundary::SealDeclarationName;
-use crate::boundary::TypeAtomName;
-use crate::boundary::TypeSerial;
+use crate::discipline::boundary::BinderName;
+use crate::discipline::boundary::DataTypeName;
+use crate::discipline::boundary::SealComponentName;
+use crate::discipline::boundary::SealDeclarationName;
+use crate::discipline::boundary::TypeAtomName;
+use crate::discipline::boundary::TypeSerial;
+use crate::discipline::grade::Grade;
 use crate::effect::EffectRow;
-use crate::grade::Grade;
-use crate::syntax::Value;
+use crate::term::syntax::Value;
 
 /// The **core-local nominal identity** of a declared datatype (ADR-80).
 ///
@@ -169,8 +169,8 @@ impl fmt::Display for SealSite
 /// `serial` minting assigned. The site is what makes re-minting
 /// *deterministic*: elaborating the same program again meets the same sites in
 /// the same order and mints the same serials, so "these atoms are fresh" is a
-/// claim [`SealTable`](crate::seal::SealTable) can re-derive rather than one
-/// the elaborator asserts.
+/// claim [`SealTable`](crate::judgements::seal::SealTable) can re-derive rather
+/// than one the elaborator asserts.
 ///
 /// Two seals of the same component in two declarations are distinct, and two
 /// seals of the same declaration's component are the *same* — which is exactly
@@ -199,8 +199,8 @@ impl SealId
     ///
     /// # Contract
     /// - requires: nothing; uniqueness is
-    ///   [`SealTable`](crate::seal::SealTable)'s obligation, not this
-    ///   constructor's.
+    ///   [`SealTable`](crate::judgements::seal::SealTable)'s obligation, not
+    ///   this constructor's.
     /// - ensures: preserves all three fields exactly; two ids are equal iff all
     ///   three are.
     /// - provides: the identity an opaque ascription binds an abstract type
@@ -310,9 +310,10 @@ pub enum ValueType
     /// string / numeric scalars of ADR-38/39 occupy the [`Atom`] slot): the
     /// element type is its parameter. Subtyping is **covariant** in the element
     /// (`List A <: List A′` iff `A <: A′`), the same positive-former
-    /// decomposition as [`Prod`] / [`Sum`] ([`crate::subtype`]). Its value is
-    /// the flat-vector [`crate::syntax::Value::List`]; its eliminator the
-    /// structural [`crate::syntax::Comp::ListCase`]. General value-level `μ⁺`
+    /// decomposition as [`Prod`] / [`Sum`] ([`crate::discipline::subtype`]).
+    /// Its value is the flat-vector [`crate::term::syntax::Value::List`];
+    /// its eliminator the structural
+    /// [`crate::term::syntax::Comp::ListCase`]. General value-level `μ⁺`
     /// recursive types are the deferred later rung.
     ///
     /// [`Atom`]: ValueType::Atom
@@ -335,11 +336,12 @@ pub enum ValueType
     /// `{ℓᵢ:Aᵢ} <: {mⱼ:Bⱼ}` iff every supertype field `mⱼ:Bⱼ` is present in the
     /// subtype with `Aⱼ <: Bⱼ` (a record with *more* fields is a subtype —
     /// width — and each shared field is covariant — depth); see
-    /// [`crate::subtype`]. Its value is the [`crate::syntax::Value::Record`]
-    /// literal; its eliminator the field projection
-    /// [`crate::syntax::Comp::RecordProj`]. The row-typed open record
-    /// `{ℓ:A | ρ}` is the bracketed `+poly` upgrade (a closed record is the
-    /// empty-tail special case — a refinement, not a retrofit).
+    /// [`crate::discipline::subtype`]. Its value is the
+    /// [`crate::term::syntax::Value::Record`] literal; its eliminator the
+    /// field projection [`crate::term::syntax::Comp::RecordProj`]. The
+    /// row-typed open record `{ℓ:A | ρ}` is the bracketed `+poly` upgrade
+    /// (a closed record is the empty-tail special case — a refinement, not
+    /// a retrofit).
     ///
     /// [`Prod`]: ValueType::Prod
     Record(
@@ -370,9 +372,9 @@ pub enum ValueType
     /// occur inside a type: given a value type `A` and two values `x y : A`,
     /// `Path A x y` classifies proofs that `x` and `y` are equal.
     ///
-    /// Introduced by [`crate::syntax::Value::Here`] (`here(v) : Path A v v`)
-    /// and eliminated by the full Martin-Löf eliminator
-    /// [`crate::syntax::Comp::Walk`] (motive over both endpoints and the
+    /// Introduced by [`crate::term::syntax::Value::Here`] (`here(v) : Path A v
+    /// v`) and eliminated by the full Martin-Löf eliminator
+    /// [`crate::term::syntax::Comp::Walk`] (motive over both endpoints and the
     /// path), whose sole computation rule is the definitional β on `here`
     /// (`walk(here(v), C, (x). c) ↦ c[v/x]`). There is **no K, no UIP, no
     /// definitional proof-irrelevance, and no η** — the without-K
@@ -412,15 +414,16 @@ pub enum ValueType
     /// decl table the pipeline holds, so the core carries only the nominal tag
     /// (ADR-80 Decision 5).
     ///
-    /// Introduced by [`crate::syntax::Value::Ctor`] (constructor-tagged values)
-    /// and eliminated by [`crate::syntax::Comp::DataCase`] (a case over the
-    /// tag). Subtyping compares the nominal `id` first (equality —
-    /// generativity), then `args` **covariantly** and positionally (the
-    /// same positive-former decomposition as [`Sum`]/[`List`];
-    /// parameter-variance tracking is a later rung — MVP datatypes are
-    /// covariant). An **empty** `args` on either side is treated as
-    /// consistent with any instantiation (the value-level carries the
-    /// nominal tag, not the instantiation; see [`crate::subtype`]).
+    /// Introduced by [`crate::term::syntax::Value::Ctor`] (constructor-tagged
+    /// values) and eliminated by [`crate::term::syntax::Comp::DataCase`] (a
+    /// case over the tag). Subtyping compares the nominal `id` first
+    /// (equality — generativity), then `args` **covariantly** and
+    /// positionally (the same positive-former decomposition as
+    /// [`Sum`]/[`List`]; parameter-variance tracking is a later rung — MVP
+    /// datatypes are covariant). An **empty** `args` on either side is
+    /// treated as consistent with any instantiation (the value-level
+    /// carries the nominal tag, not the instantiation; see
+    /// [`crate::discipline::subtype`]).
     ///
     /// [`Sum`]: ValueType::Sum
     /// [`List`]: ValueType::List
@@ -465,20 +468,21 @@ pub enum ValueType
     /// (like [`Path`](ValueType::Path) does through its endpoints, but under a
     /// binder).
     ///
-    /// Introduced by the eager pair [`crate::syntax::Value::Pair`] **checked**
-    /// against a `Sigma` (the intro is direction-driven: an inferred pair is a
-    /// [`Prod`](ValueType::Prod), a pair *checked* against `Σ(x:A).B` checks
-    /// its first component against `A` and its second against `B[v₁/x]` —
-    /// the value-into-type substitution of
-    /// [`crate::identity::subst_valuetype`]). Eliminated by the product /
-    /// dependent-pair eliminator [`crate::syntax::Comp::Split`]: a `split v as
-    /// (p, q) [z. M] in t` over a `v ⇑ Σ(x:A).B` binds `p : A` and `q :
-    /// B[p/x]`, and — with an explicit dependent motive `(z). M` — checks
-    /// the body against `M[(p, q)/z]` and delivers `M[v/z]` (rule
-    /// `SplitMotive`⇑, ADR-82); the motive-less split is check-only (rule
-    /// Split⇓). The machine runs a `Σ`-typed pair / split exactly as a
-    /// product one — the runtime is type-erased for these nodes (the motive
-    /// is inert), so no new evaluation rule is needed (ADR-81/82).
+    /// Introduced by the eager pair [`crate::term::syntax::Value::Pair`]
+    /// **checked** against a `Sigma` (the intro is direction-driven: an
+    /// inferred pair is a [`Prod`](ValueType::Prod), a pair *checked*
+    /// against `Σ(x:A).B` checks its first component against `A` and its
+    /// second against `B[v₁/x]` — the value-into-type substitution of
+    /// [`crate::judgements::identity::subst_valuetype`]). Eliminated by the
+    /// product / dependent-pair eliminator
+    /// [`crate::term::syntax::Comp::Split`]: a `split v as (p, q) [z. M] in
+    /// t` over a `v ⇑ Σ(x:A).B` binds `p : A` and `q : B[p/x]`, and — with
+    /// an explicit dependent motive `(z). M` — checks the body against
+    /// `M[(p, q)/z]` and delivers `M[v/z]` (rule `SplitMotive`⇑, ADR-82);
+    /// the motive-less split is check-only (rule Split⇓). The machine runs
+    /// a `Σ`-typed pair / split exactly as a product one — the runtime is
+    /// type-erased for these nodes (the motive is inert), so no new
+    /// evaluation rule is needed (ADR-81/82).
     ///
     /// **Predicative head.** The head `A` is a *small* value type (level 0); a
     /// `Σ` over [`Universe`](ValueType::Universe) (a type-parametric `Σ`, i.e.
@@ -513,10 +517,10 @@ pub enum ValueType
     /// representation, so no code path can unfold one, and a leak is not a
     /// check that has to succeed — it is a value that cannot be written.
     /// Subtyping compares the [`SealId`] and relates a seal to nothing
-    /// else, not even to the type it was sealed from ([`crate::subtype`]):
-    /// sealing is *generative*, so two ascriptions of structurally
-    /// identical implementations yield types that do not interchange,
-    /// exactly as two `data` declarations do.
+    /// else, not even to the type it was sealed from
+    /// ([`crate::discipline::subtype`]): sealing is *generative*, so two
+    /// ascriptions of structurally identical implementations yield types
+    /// that do not interchange, exactly as two `data` declarations do.
     ///
     /// It has no introduction and no eliminator of its own. Values of a sealed
     /// type are the values the sealed module exports, at the types the
@@ -546,9 +550,9 @@ pub enum ValueType
     /// annotated** so no rule ever guesses it. Packing supplies its witness
     /// types explicitly ([`Value::Pack`], check-only) and unpacking supplies
     /// the signature it eliminates at
-    /// ([`Comp::Unpack`](crate::syntax::Comp::Unpack), check-only). Checking a
-    /// given large type is easy; guessing one is fenced, and the fence is what
-    /// keeps the frozen core's decidability where it was.
+    /// ([`Comp::Unpack`](crate::term::syntax::Comp::Unpack), check-only).
+    /// Checking a given large type is easy; guessing one is fenced, and the
+    /// fence is what keeps the frozen core's decidability where it was.
     ///
     /// # Binders are names, and abstraction happens at the elimination
     ///
@@ -572,9 +576,9 @@ pub enum ValueType
     /// which is exactly [`Thunk`](ValueType::Thunk)'s job description — and it
     /// is nonetheless a **separate former with a separate eliminator and no
     /// coercion in either direction**.
-    /// [`Comp::Force`](crate::syntax::Comp::Force) refuses a package and
-    /// [`Comp::Unpack`](crate::syntax::Comp::Unpack) refuses a thunk;
-    /// [`crate::subtype`] relates a package only to a package.
+    /// [`Comp::Force`](crate::term::syntax::Comp::Force) refuses a package and
+    /// [`Comp::Unpack`](crate::term::syntax::Comp::Unpack) refuses a thunk;
+    /// [`crate::discipline::subtype`] relates a package only to a package.
     /// Forcing a package would hand a client the payload at the packer's
     /// witness types with no atom minted anywhere — the abstraction leak with
     /// no symptom — so the two formers stay apart at the representation, and
@@ -593,8 +597,9 @@ pub enum ValueType
     {
         /// The usage grade `r` — how many times this package may be unpacked.
         ///
-        /// [`Comp::Unpack`](crate::syntax::Comp::Unpack) requires `1 ⊑ r`,
-        /// exactly as [`Comp::Force`](crate::syntax::Comp::Force) does of a
+        /// [`Comp::Unpack`](crate::term::syntax::Comp::Unpack) requires `1 ⊑
+        /// r`, exactly as
+        /// [`Comp::Force`](crate::term::syntax::Comp::Force) does of a
         /// thunk, so a `Package_0` is a package that may be transported and
         /// never opened.
         grade: Grade,
@@ -603,7 +608,7 @@ pub enum ValueType
         /// These are binders: an occurrence inside `payload` is an
         /// [`Atom`](ValueType::Atom) of the same name, and the whole list is
         /// discharged in one simultaneous substitution at pack and at unpack
-        /// ([`crate::package`]).
+        /// ([`crate::judgements::package`]).
         abstracts: Vec<String>,
         /// The payload value type `A`, in whose scope every name in
         /// `abstracts` is bound.
@@ -618,7 +623,7 @@ pub enum ValueType
     /// variable that would carry no constraints collapses to one unknown.
     /// Subsumption treats it as **consistent in both directions** (a
     /// bidirectional wildcard, not a top or bottom type); see
-    /// [`crate::subtype`] for the recorded decision tree and the
+    /// [`crate::discipline::subtype`] for the recorded decision tree and the
     /// transitivity caveat. Elimination forms whose principal premise infers
     /// `Unknown` succeed with `Unknown`-filled components (the Hazelnut
     /// *matched type* operation, degenerated likewise).
@@ -638,7 +643,7 @@ impl ValueType
     }
 
     /// The rigid atom `Integer`, the type of integer literals
-    /// ([`crate::syntax::Value::Int`]; A2.1 literals extension).
+    /// ([`crate::term::syntax::Value::Int`]; A2.1 literals extension).
     ///
     /// Both the checker and the machine type literals with this constructor,
     /// so it is the single point of truth for the atom's spelling.
@@ -650,8 +655,8 @@ impl ValueType
     }
 
     /// The rigid atom `String`, the type of string literals
-    /// ([`crate::syntax::Value::Str`]; the value-model ladder's first scalar
-    /// rung, ADR-38).
+    /// ([`crate::term::syntax::Value::Str`]; the value-model ladder's first
+    /// scalar rung, ADR-38).
     ///
     /// Like [`ValueType::integer`], the string type is a rigid [`Atom`], not a
     /// dedicated former — Stage 1's base scalars are nominal atoms (the value
@@ -866,8 +871,8 @@ impl ValueType
     ///
     /// # Contract
     /// - requires: nothing; a duplicate label is a defect the typing rules
-    ///   refuse ([`crate::package::instantiate`]), not this constructor's
-    ///   business.
+    ///   refuse ([`crate::judgements::package::instantiate`]), not this
+    ///   constructor's business.
     /// - ensures: preserves the grade, the binder order, and the payload
     ///   exactly.
     /// - panics: none.

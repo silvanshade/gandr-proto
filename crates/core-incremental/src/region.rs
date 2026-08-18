@@ -28,13 +28,13 @@
 //! detection is parser-agnostic by construction. A [`Program`] is the ordered
 //! item list of one revision.
 //!
-//! [`Term`]: gandr_core_checker::syntax::Term
+//! [`Term`]: gandr_core_checker::term::syntax::Term
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::syntax::Term;
-use gandr_core_checker::types::Ty;
+use gandr_core_checker::term::syntax::Term;
+use gandr_core_checker::term::types::Ty;
 
 /// One lowered top-level item: the parser-agnostic unit the checkpoint engine
 /// aligns, footprints, and types.

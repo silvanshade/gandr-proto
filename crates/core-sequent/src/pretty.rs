@@ -13,8 +13,8 @@ use alloc::string::String;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use gandr_core_checker::syntax::NumLit;
-use gandr_core_checker::syntax::Side;
+use gandr_core_checker::term::syntax::NumLit;
+use gandr_core_checker::term::syntax::Side;
 
 use crate::boundary::RenderDepth;
 use crate::boundary::RenderToken;
@@ -719,10 +719,10 @@ fn native_name(prim: gandr_core_checker::prim::NativePrim) -> RenderToken<'stati
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::discipline::grade::Grade;
     use gandr_core_checker::prim::NativePrim;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Value;
 
     use super::*;
     use crate::focus;

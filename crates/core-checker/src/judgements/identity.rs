@@ -1,6 +1,6 @@
 //! Identity-type support: the value-into-type substitution that instantiates
-//! the [`Comp::Walk`](crate::syntax::Comp::Walk) motive (ADR-76; the identity
-//! and univalence design's §4).
+//! the [`Comp::Walk`](crate::term::syntax::Comp::Walk) motive (ADR-76; the
+//! identity and univalence design's §4).
 //!
 //! `Path A x y` is gandr's first dependent former — terms occur inside a type —
 //! and it needs two pieces of machinery the non-dependent core never did. One
@@ -8,8 +8,8 @@
 //!
 //! * **Value-into-type substitution** ([`subst_valuetype`] /
 //!   [`subst_comptype`]) is this module's: the identity eliminator's typing
-//!   rule ([`crate::checker`] / [`crate::machine`]) drives it to form the
-//!   base's expected type `C[x/y][here(x)/q]` and the result type
+//!   rule ([`crate::judgements::checker`] / [`crate::machine`]) drives it to
+//!   form the base's expected type `C[x/y][here(x)/q]` and the result type
 //!   `C[a/x][b/y][p/q]`.
 //! * **Definitional equality on the endpoints** is not. The `≡ᵥ` the identity
 //!   subtyping arm decides its endpoints with is now
@@ -22,21 +22,21 @@
 //! Types carry **no binders** (`Path A x y` does not bind `x`/`y` — they are
 //! value *occurrences*), so type substitution is capture-free structural
 //! recursion that delegates the one binder-bearing case — a value under a thunk
-//! — to the proven capture-avoiding engine [`crate::subst::subst_value`]. The
-//! substitution engine runs as an explicit heap worklist (the ADR-47 iterative
-//! discipline), so even an adversarially deep type substitutes without
-//! overflowing the host call stack.
+//! — to the proven capture-avoiding engine [`crate::term::subst::subst_value`].
+//! The substitution engine runs as an explicit heap worklist (the ADR-47
+//! iterative discipline), so even an adversarially deep type substitutes
+//! without overflowing the host call stack.
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
-use crate::boundary::NameRef;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::grade::Grade;
 use crate::effect::EffectRow;
-use crate::grade::Grade;
-use crate::subst::subst_value;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::ValueType;
+use crate::term::subst::subst_value;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::ValueType;
 
 /// Substitutes the value `repl` for the free value variable `name` inside a
 /// **value type**, the type-level half of the identity eliminator's motive
@@ -45,8 +45,8 @@ use crate::types::ValueType;
 /// Types carry no binders, so this is capture-free structural recursion; the
 /// only place a value occurs inside a type is an [`ValueType::Path`] endpoint
 /// (and its carrier), where the substitution delegates to the capture-avoiding
-/// value engine [`crate::subst::subst_value`]. Every non-`Path` former simply
-/// rebuilds its children.
+/// value engine [`crate::term::subst::subst_value`]. Every non-`Path` former
+/// simply rebuilds its children.
 ///
 /// # Contract
 /// - ensures: returns `ty` with every free `name` in an `Path` endpoint (at any
@@ -79,8 +79,8 @@ where
 
 /// Substitutes the value `repl` for the free value variable `name` inside a
 /// **computation type** — the entry the
-/// [`Comp::Walk`](crate::syntax::Comp::Walk) motive is instantiated through
-/// (ADR-76).
+/// [`Comp::Walk`](crate::term::syntax::Comp::Walk) motive is instantiated
+/// through (ADR-76).
 ///
 /// The computation-type analogue of [`subst_valuetype`]: capture-free
 /// structural recursion, with value occurrences reached only through the
@@ -160,7 +160,7 @@ enum ValueFinish<'type_>
     Path(&'type_ Value, &'type_ Value),
     /// Rebuild a declared-data application from its id and rebuilt arguments
     /// (the `usize` is the argument count).
-    Data(crate::types::DataId, usize),
+    Data(crate::term::types::DataId, usize),
     /// Rebuild a dependent pair `Σ(x : A). B`, substituting into the tail only
     /// when the binder does not shadow the substituted name.
     Sigma

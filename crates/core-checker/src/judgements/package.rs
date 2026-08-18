@@ -59,22 +59,22 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::boundary::PackageArity;
-use crate::boundary::TypeAtomName;
+use crate::discipline::boundary::PackageArity;
+use crate::discipline::boundary::TypeAtomName;
+use crate::discipline::grade::Grade;
+use crate::discipline::mark::Mark;
 use crate::effect::EffectRow;
 use crate::error::TypeError;
 use crate::error::text;
-use crate::grade::Grade;
-use crate::mark::Mark;
-use crate::syntax::Comp;
-use crate::syntax::Stack;
-use crate::syntax::Term;
-use crate::syntax::Value;
-use crate::types::CompType;
-use crate::types::DataId;
-use crate::types::SealId;
-use crate::types::Ty;
-use crate::types::ValueType;
+use crate::term::syntax::Comp;
+use crate::term::syntax::Stack;
+use crate::term::syntax::Term;
+use crate::term::syntax::Value;
+use crate::term::types::CompType;
+use crate::term::types::DataId;
+use crate::term::types::SealId;
+use crate::term::types::Ty;
+use crate::term::types::ValueType;
 
 /// Why discharging a package's binders could not be completed.
 ///
@@ -467,7 +467,8 @@ pub fn canonical_binder(index: PackageArity) -> String
 /// The canonical binder atoms for a package of `arity`, in position order.
 ///
 /// The witness list [`instantiate`] takes when a caller wants α-alignment
-/// rather than instantiation — [`crate::subtype`]'s package arm is the caller.
+/// rather than instantiation — [`crate::discipline::subtype`]'s package arm is
+/// the caller.
 #[inline]
 #[must_use]
 pub fn canonical_witnesses(arity: PackageArity) -> Vec<Rc<ValueType>>
@@ -1225,9 +1226,9 @@ mod tests
     use alloc::vec::Vec;
 
     use super::*;
-    use crate::boundary::GradeBound;
+    use crate::discipline::boundary::GradeBound;
     use crate::effect::EffectRow;
-    use crate::syntax::Value;
+    use crate::term::syntax::Value;
 
     /// `U_ω (F payload)` — the thunked module returner shape every package
     /// payload takes.

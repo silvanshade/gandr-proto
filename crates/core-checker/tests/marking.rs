@@ -19,32 +19,32 @@ use alloc::rc::Rc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use gandr_core_checker::boundary::GenerationDepth;
-use gandr_core_checker::boundary::PathPrefixMut;
-use gandr_core_checker::boundary::PathSetMut;
-use gandr_core_checker::checker;
-use gandr_core_checker::control::Dir;
-use gandr_core_checker::ctx::Ctx;
+use gandr_core_checker::discipline::boundary::GenerationDepth;
+use gandr_core_checker::discipline::boundary::PathPrefixMut;
+use gandr_core_checker::discipline::boundary::PathSetMut;
+use gandr_core_checker::discipline::grade::Grade;
+use gandr_core_checker::discipline::mark::Mark;
+use gandr_core_checker::discipline::mark::MarkNodeId;
+use gandr_core_checker::discipline::mark::Marking;
+use gandr_core_checker::discipline::mark::mark_comp;
+use gandr_core_checker::discipline::mark::mark_value;
 use gandr_core_checker::effect::EffectOp;
 use gandr_core_checker::effect::EffectRow;
 use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::grade::Grade;
-use gandr_core_checker::intern::TypeInterner;
-use gandr_core_checker::intern::type_hash;
-use gandr_core_checker::mark::Mark;
-use gandr_core_checker::mark::MarkNodeId;
-use gandr_core_checker::mark::Marking;
-use gandr_core_checker::mark::mark_comp;
-use gandr_core_checker::mark::mark_value;
+use gandr_core_checker::judgements::checker;
+use gandr_core_checker::machine::control::Dir;
 use gandr_core_checker::prim::NativePrim;
-use gandr_core_checker::syntax::Comp;
-use gandr_core_checker::syntax::OpClause;
-use gandr_core_checker::syntax::Side;
-use gandr_core_checker::syntax::Stack;
-use gandr_core_checker::syntax::Value;
-use gandr_core_checker::types::CompType;
-use gandr_core_checker::types::Ty;
-use gandr_core_checker::types::ValueType;
+use gandr_core_checker::term::ctx::Ctx;
+use gandr_core_checker::term::intern::TypeInterner;
+use gandr_core_checker::term::intern::type_hash;
+use gandr_core_checker::term::syntax::Comp;
+use gandr_core_checker::term::syntax::OpClause;
+use gandr_core_checker::term::syntax::Side;
+use gandr_core_checker::term::syntax::Stack;
+use gandr_core_checker::term::syntax::Value;
+use gandr_core_checker::term::types::CompType;
+use gandr_core_checker::term::types::Ty;
+use gandr_core_checker::term::types::ValueType;
 use gandr_core_checker_tools::strategies::any_grade;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
@@ -715,7 +715,7 @@ fn package_terms_agree_with_the_checker()
 
     let mut ctx = Ctx::new();
     ctx.bind("p".to_owned(), signature.clone());
-    let atom = gandr_core_checker::types::SealId::new(0_u64, "counter", "t");
+    let atom = gandr_core_checker::term::types::SealId::new(0_u64, "counter", "t");
     // The consumer keeps the seed abstract: it binds it and returns unit,
     // which needs nothing of its type.
     let opaque_use = Comp::bind(
@@ -974,9 +974,9 @@ fn curated_well_typed_novel_forms_agree()
     // that performs both Other and Ask, against the answer F^⟨Other⟩ Int —
     // exercises rule_handle's residual-row finish (ε_t ∖ E ⊆ ε, ε = ⟨Other⟩).
     let other = EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("Other"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("Other"),
         vec![EffectOp::new(
-            gandr_core_checker::boundary::OperationName::from("op"),
+            gandr_core_checker::discipline::boundary::OperationName::from("op"),
             ValueType::Unit,
             ValueType::Unit,
         )],
@@ -1351,9 +1351,9 @@ fn interner_is_canonical_over_rows_and_grades()
     // returners over them intern identically.
     let ask = EffectRow::singleton(ask_sig());
     let put = EffectRow::singleton(EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("Put"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("Put"),
         vec![EffectOp::new(
-            gandr_core_checker::boundary::OperationName::from("put"),
+            gandr_core_checker::discipline::boundary::OperationName::from("put"),
             ValueType::Unit,
             ValueType::Unit,
         )],
@@ -1382,9 +1382,9 @@ fn interner_is_canonical_over_rows_and_grades()
 fn ask_sig() -> EffectSig
 {
     EffectSig::new(
-        gandr_core_checker::boundary::EffectSignatureName::from("Ask"),
+        gandr_core_checker::discipline::boundary::EffectSignatureName::from("Ask"),
         vec![EffectOp::new(
-            gandr_core_checker::boundary::OperationName::from("ask"),
+            gandr_core_checker::discipline::boundary::OperationName::from("ask"),
             ValueType::Unit,
             ValueType::integer(),
         )],

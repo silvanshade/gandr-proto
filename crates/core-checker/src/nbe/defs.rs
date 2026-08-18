@@ -35,15 +35,15 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::boundary::DefinitionCount;
-use crate::boundary::DefinitionHeightLevel;
-use crate::boundary::NameRef;
-use crate::boundary::ScopeDepth;
-use crate::syntax::CompNode;
-use crate::syntax::CompNodeId;
-use crate::syntax::FlatArena;
-use crate::syntax::ValueNode;
-use crate::syntax::ValueNodeId;
+use crate::discipline::boundary::DefinitionCount;
+use crate::discipline::boundary::DefinitionHeightLevel;
+use crate::discipline::boundary::NameRef;
+use crate::discipline::boundary::ScopeDepth;
+use crate::term::syntax::CompNode;
+use crate::term::syntax::CompNodeId;
+use crate::term::syntax::FlatArena;
+use crate::term::syntax::ValueNode;
+use crate::term::syntax::ValueNodeId;
 
 /// Whether the engine may unfold a definition speculatively.
 ///
@@ -167,9 +167,9 @@ impl Definitions
     /// Whether no scope binds any name.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> crate::boundary::InternerEmptyStatus
+    pub fn is_empty(&self) -> crate::discipline::boundary::InternerEmptyStatus
     {
-        crate::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
+        crate::discipline::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
     }
 
     /// Opens a nested scope.

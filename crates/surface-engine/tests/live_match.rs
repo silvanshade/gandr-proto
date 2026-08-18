@@ -24,11 +24,11 @@ mod tests
     use alloc::string::String;
     use alloc::vec::Vec;
 
-    use gandr_core_checker::mark::Mark;
+    use gandr_core_checker::discipline::mark::Mark;
     use gandr_core_checker::outcome::Eval;
-    use gandr_core_checker::syntax::Comp;
-    use gandr_core_checker::syntax::Value;
-    use gandr_core_checker::types::DataId;
+    use gandr_core_checker::term::syntax::Comp;
+    use gandr_core_checker::term::syntax::Value;
+    use gandr_core_checker::term::types::DataId;
     use gandr_core_incremental::boundary::MatchOrdinal;
     use gandr_core_incremental::boundary::SourceItemOrdinal;
     use gandr_core_incremental::boundary::SubmissionOrdinal;
