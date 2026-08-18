@@ -121,15 +121,13 @@ const EXPECTED_DYLINT_FACADE_TASKS: &[&str] = &["cargo:dylint:local", "cargo:dyl
 /// included (the Dylint driver is an in-workspace crate). The `"$@"` scope
 /// hole takes the task's trailing package arguments and defaults to the whole
 /// workspace — the default is locked separately, so the merge wall's bare
-/// invocation keeps the enabled-workspace scope. The trailing
-/// `-A clippy::std_instead_of_core` is the lane-scoped residual of the
-/// nightly-2026-05-28 rollback (docs/workflow/rust.md "Toolchain upgrades").
+/// invocation keeps the enabled-workspace scope. Package-scoped invocations
+/// select `full` only when every named package declares it.
 const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "cargo",
     "clippy",
     "\"$@\"",
     "--all-targets",
-    "--features=full",
     "--",
     "-D",
     "warnings",
@@ -1266,6 +1264,28 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     assert!(
         cargo_clippy_script.0.contains("set -- --workspace"),
         "cargo:clippy must default its package-scope hole to the whole workspace"
+    );
+    assert!(
+        cargo_clippy_script
+            .0
+            .contains("cargo metadata --no-deps --format-version 1"),
+        "package-scoped cargo:clippy must inspect declared package features"
+    );
+    assert!(
+        cargo_clippy_script.0.contains(".features | has(\"full\")"),
+        "package-scoped cargo:clippy must derive full-feature support from metadata"
+    );
+    assert!(
+        cargo_clippy_script
+            .0
+            .contains("set -- \"$@\" --features=full"),
+        "packages declaring full must retain that feature in scoped Clippy"
+    );
+    assert!(
+        cargo_clippy_script
+            .0
+            .contains("set -- --workspace --all-features"),
+        "workspace cargo:clippy must retain the all-features wall"
     );
     let clippy_commands = parse_cargo_invocations(cargo_clippy_script);
     let [ref workspace_pass] = *clippy_commands.as_slice()
