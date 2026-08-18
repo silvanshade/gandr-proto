@@ -8,40 +8,43 @@ None of them is the semantic oracle — replay, in `gandr-theory-coherent-resolu
 
 The causal order and the normal form are mutually dependent, and the crate boundary encloses both: an event's canonical key digests its causal past, and the causal order is read back to schedule the normal form.
 
-## What it provides
+## Current provision
 
 - The earned shift-equivalence witness: two adjacent applications at disjoint positions with trivial overlap are one composite transformation, granted per pair against the decided guard and carrying the convexity conjunct's discharge as a certificate rather than a recomputed sweep.
   This is the crate's single independence relation.
 - The finite event partial order of a recorded derivation: its events, the dependence edges the guard decides, the causal precedence order, the layering, and the exchange witness carrying one sequentialization to another as licensed adjacent transpositions.
 - The certificate normal form: unique primitive factorization by content address, integer-graded multiplicities, and a causal canonical schedule, whose equality is a decidable sound under-approximation of replay-equality.
   Normal-form-equal implies replay-equal; the converse is never claimed.
+- The deterministic `ReplayPlan` projection: antichain levels retain dependency order, expose critical-path fuel, and replay a level or a complete plan without flattening independent work into a serialized schedule.
 - The atom-occurrence flow projection over certificate legs, which witnesses the shift quotient rather than certificate identity.
 - A polarized footprint prototype beside the shift guard, measuring where a polarized reading would license commutations the guard refuses.
 
 The flow projection and the footprint test are prototypes and neither has a consumer.
 Both say so at their own module heads, and neither replaces the guard.
 
-## What is planned and absent
+## Planned but absent
 
 - The trace seam and spinal duplication from the sharing programme.
 - Any consumer for the flow projection or the footprint test.
 
 ## Using it
 
-Ask whether two adjacent applications commute, and read the obstruction when they do not.
+Ask whether two adjacent applications commute, project a certified derivation into replay levels, and read the obstruction when they do not.
 
 ```rust
 use gandr_theory_deep_inference::derive_shift_equivalence;
 
 let witness = derive_shift_equivalence(&store, first, second, convexity)?;
+let plan = certified.replay_plan();
+let reached = plan.replay_with_fuel(&store, plan.critical_path())?;
 ```
 
 The content addresses this crate computes are process-local.
 Nothing may persist or transmit one; the durable identity is minted at the transport boundary in `gandr-theory-decomposition-spaces`.
 
-## Theoretical ideas it relies on
+## Theoretical ideas relied on
 
-Deep inference and atomic flows; permutation of inference steps; trace monoids over an independence relation; causal orders and their linear extensions; content-addressed canonical keys.
+Deep inference and atomic flows; permutation of inference steps; trace monoids over an independence relation; causal orders and their linear extensions; content-addressed canonical keys; critical-path replay.
 
 ## Primary references
 
