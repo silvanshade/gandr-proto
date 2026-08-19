@@ -519,17 +519,12 @@ mod tests
     use crate::boundary::FramePayload;
     use crate::protocol::TokenUnit;
 
-    fn payload(body: &str) -> FramePayload<'_>
-    {
-        FramePayload::from(body.as_bytes())
-    }
-
     #[test]
     fn initialize_advertises_the_token_legend()
     {
         let mut server = Server::new();
-        let outcome = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.as_slice(),
         ));
         let Some(message) = outcome.messages.first()
         else {
@@ -547,8 +542,8 @@ mod tests
     fn semantic_tokens_full_answers_a_known_document()
     {
         let mut server = Server::new();
-        let initialized = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+        let initialized = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.as_slice(),
         ));
         assert!(
             initialized
@@ -557,8 +552,8 @@ mod tests
                 .is_some_and(|message| message.get("result").is_some()),
             "initialize must succeed before documents are opened"
         );
-        let opened = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/example.gandr","languageId":"gandr","version":1,"text":"def f = 42;\n"}}}"#,
+        let opened = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/example.gandr","languageId":"gandr","version":1,"text":"def f = 42;\n"}}}"#.as_slice(),
         ));
         assert!(
             opened.messages.iter().any(|message| {
@@ -567,8 +562,8 @@ mod tests
             }),
             "didOpen must publish diagnostics rather than stay silent"
         );
-        let outcome = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/example.gandr"}}}"#,
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/example.gandr"}}}"#.as_slice(),
         ));
         let Some(message) = outcome.messages.first()
         else {
@@ -598,8 +593,8 @@ mod tests
             units[0 .. 5],
             "the first token is `def` as a keyword at line 0 column 0"
         );
-        let hover = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#,
+        let hover = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#.as_slice(),
         ));
         assert!(
             hover.messages.first().is_some_and(|message| {
@@ -607,8 +602,8 @@ mod tests
             }),
             "advertised hover must be honoured"
         );
-        let completion = server.handle_payload(payload(
-            r#"{"jsonrpc":"2.0","id":4,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#,
+        let completion = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":4,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#.as_slice(),
         ));
         assert!(
             completion.messages.first().is_some_and(|message| {
