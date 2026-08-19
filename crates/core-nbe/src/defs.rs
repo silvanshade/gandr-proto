@@ -376,17 +376,17 @@ fn mentioned_names(
                     | ValueNode::Record(ref fields) => {
                         work.extend(fields.values().map(|field| Task::Value(*field)));
                     },
-                    | ValueNode::Thunk(_, body) => work.push(Task::Comp(body)),
+                    // A thunk suspends a computation and an embedding names
+                    // the value one returns; heights must see the names either
+                    // mentions, so both descend into the computation child.
+                    | ValueNode::Thunk(_, body) | ValueNode::Run(body) => {
+                        work.push(Task::Comp(body));
+                    },
                     // A packed module's witnesses are types, and this scan
                     // walks no type at all — an ascription's is skipped for the
                     // same reason. Heights order *definitions*, and a
                     // definition binds a value name.
                     | ValueNode::Pack { payload, .. } => work.push(Task::Value(payload)),
-                    // A pure-computation embedding mentions every name its
-                    // computation mentions, and heights must see them: the
-                    // embedding is the one value form whose child is a
-                    // computation an unfolding rule reaches.
-                    | ValueNode::Run(body) => work.push(Task::Comp(body)),
                     | ValueNode::Annot(inner, _) => work.push(Task::Value(inner)),
                 }
             },

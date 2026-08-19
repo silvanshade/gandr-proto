@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/identity/compound-endpoint-is-not-erased.gandr
+; source-b3sum: b01c1024bd00cee16ebf5f1b682eeb146f2e8f9abdb5fa0310179b34c43b8b8a
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("x", None, Bind(App(App(Force(Var("add")), Var("x")), Var("x")), "%tmp0", Ret(Var("%tmp0"))))))
+Ret(Thunk(Omega, Abs("x", None, Ret(Int(5)))))

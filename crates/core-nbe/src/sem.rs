@@ -631,9 +631,21 @@ pub enum SemValueNode
     /// spelling of a value that already has one, and conversion would owe a
     /// case it should never see.
     ///
-    /// Compared by congruence on the computation, which is the ordinary
-    /// computation-conversion path one level down.
-    Run(SemCompId),
+    /// **Suspended, not evaluated at construction.** Running the computation
+    /// here would put the value evaluator and the computation machine in one
+    /// host-recursive cycle over caller-controlled input, which is the depth
+    /// hazard every machine in this workspace is written to avoid. The
+    /// embedding therefore carries its computation as a nullary closure and
+    /// **conversion resolves it**, where the comparison already runs on an
+    /// explicit goal stack — and conversion is the only consumer that needs the
+    /// resolved value, because deciding that an endpoint written as an
+    /// application equals the endpoint written as its result is the whole point
+    /// of the former.
+    ///
+    /// Readback returns the embedding rather than the value it would compute:
+    /// a diagnostic naming the term the author wrote is more use than one
+    /// naming a value they did not.
+    Run(ClosureId),
     /// A neutral value: a rigid head with no eliminator that could fire.
     ///
     /// Value neutrals carry no spine, and that is a fact about the calculus

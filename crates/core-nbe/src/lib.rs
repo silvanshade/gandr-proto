@@ -1379,12 +1379,14 @@ mod tests
     // ── the pure-computation embedding ──────────────────────────────────────
 
     #[test]
-    fn an_embedding_of_a_reducible_computation_is_its_result()
+    fn an_embedding_is_suspended_rather_than_evaluated()
     {
         let mut nbe = Normalizer::new();
-        // `run ((λx. ret x) 7)` is the value `7`, not a second spelling of it:
-        // the embedding computes, so nothing is minted and the endpoint a type
-        // carries is the ordinary literal.
+        // Evaluation suspends the embedding over its environment, as it
+        // suspends a thunk, and for a structural reason: running the
+        // computation in the value walk would close a host-recursive cycle with
+        // the computation machine over a caller-controlled term. Conversion is
+        // where it computes.
         let embedded = Value::run(Comp::app(
             Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
             Value::Int(7),
@@ -1393,7 +1395,7 @@ mod tests
         let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
         assert!(matches!(
             *nbe.arena().value(evaluated).unwrap().node(),
-            SemValueNode::Int(7)
+            SemValueNode::Run(_)
         ));
     }
 
@@ -1436,19 +1438,15 @@ mod tests
     fn a_stuck_embedding_reads_back_as_itself()
     {
         let mut nbe = Normalizer::new();
-        // What an open law-field type needs: the endpoint normalizes as far as
-        // its arguments allow and no further, and quoting it returns the
-        // embedding rather than dropping it.
+        // What an open law-field type needs: quoting an embedding returns the
+        // embedding rather than dropping it, so a diagnostic names the term the
+        // author wrote.
         let stuck = Value::run(Comp::app(
             Comp::force(Value::var(NameRef::from("comp"))),
             Value::var(NameRef::from("f")),
         ));
         let node = lower(&mut nbe, &stuck);
         let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
-        assert!(matches!(
-            *nbe.arena().value(evaluated).unwrap().node(),
-            SemValueNode::Run(_)
-        ));
         let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
         assert!(matches!(
             *nbe.syntax().values.get(quoted).unwrap(),
@@ -1458,8 +1456,8 @@ mod tests
 
     // ── the recursion former ────────────────────────────────────────────────
 
-    /// `fix self. λ x. case x { inj1 _ ⇒ ret 1 | inj2 y ⇒ (force self)(inj1 y)
-    /// }`
+    /// The fixture `fix self. λ x. case x { inj1 _ ⇒ ret 1 | inj2 y ⇒ (force
+    /// self)(inj1 y) }`.
     ///
     /// One unfold per constructor layer, and a base case at the left
     /// injection — the smallest recursion that has to reduce for a closed

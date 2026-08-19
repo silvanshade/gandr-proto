@@ -414,6 +414,11 @@ copy_wrapper!(
     "Whether unfolding a definition made case-tree progress."
 );
 copy_wrapper!(
+    CanonicalArgumentStatus,
+    bool,
+    "Whether an application waiting on the machine's frame stack carries a      canonical argument — the progress gate a fixpoint unfolds behind."
+);
+copy_wrapper!(
     RigidStatus,
     bool,
     "Whether no unfolding rule is reachable inside a semantic value."

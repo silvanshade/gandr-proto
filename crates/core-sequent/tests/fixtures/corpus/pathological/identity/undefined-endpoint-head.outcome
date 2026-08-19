@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/identity/undefined-endpoint-head.gandr
+; source-b3sum: ffb3ccef73d2db7e556d785e169743b9a506ca56da0166df3b4a4f04af4911c0
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Thunk(Omega, Abs("x", None, Ret(Here(Var("x"))))))

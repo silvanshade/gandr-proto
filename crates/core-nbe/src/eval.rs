@@ -48,7 +48,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_term::boundary::CanonicalArgumentStatus;
 use gandr_core_term::boundary::ConstructorTag;
+use gandr_core_term::boundary::ConversionFuel;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::SemanticHash;
 use gandr_core_term::boundary::TermRetention;
@@ -328,9 +330,7 @@ fn value_guard(
         | SemValueNode::Reified(_) => {
             Guard::leaf(seed(SemanticHash::from(kind::REIFIED))).with_unfolding()
         },
-        | SemValueNode::Run(body) => Guard::leaf(seed(SemanticHash::from(kind::RUN)))
-            .fold(arena.comp(body)?.guard())
-            .with_unfolding(),
+        | SemValueNode::Run(_) => Guard::leaf(seed(SemanticHash::from(kind::RUN))).with_unfolding(),
         | SemValueNode::Rigid(ref head, face) => {
             let hash = match *head {
                 | Rigid::Level(level) => mix_word(
@@ -570,8 +570,8 @@ enum ValueTask
 /// # Termination
 /// - reason: the walk drains an explicit task stack over one finite term.
 /// - measure: pending tasks on the stack.
-/// - boundedness: terms are finite node graphs and thunk bodies are suspended
-///   rather than entered.
+/// - boundedness: terms are finite node graphs; a thunk body and a
+///   pure-computation embedding are both suspended rather than entered.
 /// - input recursion: none.
 #[inline]
 pub fn eval_value(
@@ -664,20 +664,13 @@ fn visit_value(
             suspend(nbe, SemValueNode::Reified(stack), env, term, done)?;
         },
         | ValueNode::Run(body) => {
-            // **The embedding computes.** Run the computation to weak-head
-            // form: one that reaches `return v` IS the value `v`, so no node
-            // is minted and the type it sits in normalizes exactly as far as
-            // its arguments allow. One that does not — stuck on a variable, or
-            // out of budget — stays a neutral value, which is what makes an
-            // open law-field type readable back as itself.
-            let whnf = eval_comp(nbe, env, body, ForceMode::Unfold)?;
-            match *nbe.arena().comp(whnf)?.node() {
-                | SemCompNode::Return(produced) => done.push(Evaluated {
-                    id: produced,
-                    retained: TermRetention::from(false),
-                }),
-                | _ => suspend(nbe, SemValueNode::Run(whnf), env, term, done)?,
-            }
+            // Suspended over its environment, exactly as a thunk is, and for a
+            // structural reason rather than a preference: running the
+            // computation here would close a host-recursive cycle between this
+            // walk and the computation machine, over a term the caller
+            // controls. Conversion resolves it instead, on its own goal stack.
+            let cell = closure(nbe, env, Vec::new(), body)?;
+            suspend(nbe, SemValueNode::Run(cell), env, term, done)?;
         },
         | ValueNode::Annot(inner, _) => work.push(ValueTask::Visit(inner)),
         | ValueNode::Pair(fst, snd) => {
@@ -1016,7 +1009,7 @@ fn run_machine(
     // says — the budget one force may spend — and exhausting it stops
     // unfolding and answers on the neutral face, which loses completeness on
     // that fixpoint and never soundness.
-    let mut fuel = u32::from(nbe.fuel());
+    let mut fuel = nbe.fuel();
     loop {
         phase = match phase {
             | Phase::Descend(env, node) => descend(nbe, env, node, mode, &mut stack, &mut fuel)?,
@@ -1188,7 +1181,7 @@ pub fn rerun_spine(
 fn has_canonical_argument(
     nbe: &Normalizer,
     stack: &[Frame],
-) -> Result<bool, SemError>
+) -> Result<CanonicalArgumentStatus, SemError>
 {
     for frame in stack {
         let Frame::Elim(Elim::Apply(arg)) = *frame
@@ -1196,10 +1189,10 @@ fn has_canonical_argument(
             continue;
         };
         if !matches!(*nbe.arena().value(arg)?.node(), SemValueNode::Rigid(..)) {
-            return Ok(true);
+            return Ok(CanonicalArgumentStatus::from(true));
         }
     }
-    Ok(false)
+    Ok(CanonicalArgumentStatus::from(false))
 }
 
 /// One descend step: consume a syntax node, pushing the eliminators it passes.
@@ -1213,7 +1206,7 @@ fn descend(
     node: CompNodeId,
     mode: ForceMode,
     stack: &mut Vec<Frame>,
-    fuel: &mut u32,
+    fuel: &mut ConversionFuel,
 ) -> Result<Phase, SemError>
 {
     match syntax_comp(nbe, node)? {
@@ -1593,8 +1586,9 @@ fn descend(
             // the safe one**: a refusal to unfold reports two terms unequal
             // that a longer budget might have equated, so exhaustion costs
             // completeness and never soundness.
-            if *fuel > 0 && has_canonical_argument(nbe, stack)? {
-                *fuel = fuel.saturating_sub(1);
+            let remaining = u32::from(*fuel);
+            if remaining > 0 && bool::from(has_canonical_argument(nbe, stack)?) {
+                *fuel = ConversionFuel::from(remaining.saturating_sub(1));
                 // The self-reference is a thunk of **this very fixpoint**,
                 // closed over the environment the fixpoint was reached in — so
                 // forcing it re-enters this same node in that same environment.

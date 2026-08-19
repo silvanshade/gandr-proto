@@ -66,6 +66,7 @@ use gandr_core_term::types::ValueType;
 use crate::Normalizer;
 use crate::eval::ForceMode;
 use crate::eval::apply;
+use crate::eval::enter_nullary;
 use crate::eval::eval_value;
 use crate::eval::force_head;
 use crate::eval::force_value;
@@ -300,6 +301,34 @@ fn backtrack(
     Ok(BacktrackStatus::from(false))
 }
 
+/// Resolves a suspended pure-computation embedding to the value it returns.
+///
+/// Returns `id` unchanged when the value is not an embedding, or when running
+/// its computation does not reach a returner — stuck on a variable, or out of
+/// budget. Budget exhaustion here is a **refusal carrying its evidence** rather
+/// than an unsound acceptance: an unresolved embedding compares by congruence,
+/// which can only report unequal what a longer run might have equated.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn resolve_embedding(
+    nbe: &mut Normalizer,
+    id: SemValueId,
+    node: &SemValueNode,
+) -> Result<SemValueId, SemError>
+{
+    let SemValueNode::Run(cell) = *node
+    else {
+        return Ok(id);
+    };
+    let whnf = enter_nullary(nbe, cell, ForceMode::Unfold)?;
+    match *nbe.arena().comp(whnf)?.node() {
+        | SemCompNode::Return(produced) => Ok(produced),
+        | _ => Ok(id),
+    }
+}
+
 /// Compares one value pair, pushing the sub-goals it decomposes into.
 ///
 /// Returns whether the pair is still viable; `false` fails the goal.
@@ -334,6 +363,23 @@ fn value_goal(
     {
         return Ok(ValueEquality::from(true));
     }
+    // **Resolve a suspended pure-computation embedding before comparing.**
+    //
+    // The embedding is suspended at construction rather than evaluated, so this
+    // is where it computes — and this is the only consumer that needs it to,
+    // because deciding that an endpoint written as an application equals the
+    // endpoint written as its result is the whole reason the former exists.
+    //
+    // Resolution runs the computation and, when it reaches a returner, replaces
+    // the embedding with the value it produced; a computation stuck on a
+    // variable leaves the embedding alone and the pair falls through to the
+    // congruence arm below. Either side may resolve, so the rule fires on both.
+    let resolved_lhs = resolve_embedding(nbe, lhs, &lhs_node)?;
+    let resolved_rhs = resolve_embedding(nbe, rhs, &rhs_node)?;
+    if resolved_lhs != lhs || resolved_rhs != rhs {
+        goals.push(Frame::Value(resolved_lhs, resolved_rhs, state));
+        return Ok(ValueEquality::from(true));
+    }
     // Step 3: structural comparison, head mismatch first.
     match (&lhs_node, &rhs_node) {
         | (&SemValueNode::Unit, &SemValueNode::Unit) => return Ok(ValueEquality::from(true)),
@@ -357,11 +403,11 @@ fn value_goal(
             return Ok(ValueEquality::from(decided));
         },
         | (&SemValueNode::Run(left), &SemValueNode::Run(right)) => {
-            // Congruence on the embedded computation, which is the ordinary
-            // computation-conversion path one level down. Neither side is a
-            // returner — a returner is consumed at evaluation — so this is
-            // exactly the stuck-against-stuck case.
-            goals.push(Frame::Comp(left, right, state));
+            // Both sides resolved to something other than a returner — stuck on
+            // a variable, or out of budget — so the only equality on offer is
+            // congruence under the embedding, which is the ordinary
+            // computation-conversion path one level down.
+            closures_goal(nbe, left, right, ClosureArity::from(0_usize), state, goals)?;
             return Ok(ValueEquality::from(true));
         },
         | (&SemValueNode::Pair(left_fst, left_snd), &SemValueNode::Pair(right_fst, right_snd)) => {

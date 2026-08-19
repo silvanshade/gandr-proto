@@ -497,9 +497,10 @@ fn quote_value_task(
             work.push(Task::FinishValue(ValueFinish::Thunk(grade)));
             work.push(Task::Comp(whnf));
         },
-        | SemValueNode::Run(body) => {
+        | SemValueNode::Run(cell) => {
+            let (_, whnf) = open(nbe, cell, mode)?;
             work.push(Task::FinishValue(ValueFinish::Run));
-            work.push(Task::Comp(body));
+            work.push(Task::Comp(whnf));
         },
     }
     Ok(())

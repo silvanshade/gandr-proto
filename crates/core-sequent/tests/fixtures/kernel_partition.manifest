@@ -1,17 +1,17 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 222
-; corpus-fixtures-b3sum: 3fe902acaf1349e98d5018d4bb9130d61a230871002eb49f8fec2f0cbf6eaa5e
+; items: 225
+; corpus-fixtures-b3sum: c8a969b42cfad73f557d088924eadfb84b869f46f26d7dc4e12fafc984540fc8
 ; class declared-data: 13
 ; class effects-control: 11
 ; class eligible: 23
 ; class hole-unknown: 15
-; class identity: 9
+; class identity: 10
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 5
-; class open-free-name: 88
+; class not-typeable: 6
+; class open-free-name: 89
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -171,7 +171,10 @@ pathological/ffi-wrong-arity.gandr	0	hole-unknown
 pathological/host-module-uncalled-selection.gandr	0	hole-unknown
 pathological/host-module-unknown-member.gandr	0	hole-unknown
 pathological/host-module-wrong-arity.gandr	0	hole-unknown
+pathological/identity/compound-endpoint-is-not-erased.gandr	0	open-free-name
+pathological/identity/compound-endpoint-is-not-erased.gandr	1	not-typeable
 pathological/identity/k-derivation.gandr	0	hole-unknown
+pathological/identity/undefined-endpoint-head.gandr	0	identity
 pathological/ill-typed-ascription.gandr	0	not-typeable
 pathological/kernel-admission-boundary.gandr	0	eligible
 pathological/kernel-admission-boundary.gandr	1	open-free-name
