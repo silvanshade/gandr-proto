@@ -901,8 +901,26 @@ impl Session
                 // never accepted through it.
                 let (_, residual) = subst_holes_value(value.as_ref(), &HoleSubstitution::default());
                 if !bool::from(residual) {
-                    self.ctx
-                        .define(NameRef::from(name.0), Rc::new((*value).clone()));
+                    let body = Rc::new((*value).clone());
+                    self.ctx.define(NameRef::from(name.0), Rc::clone(&body));
+                    // **And the resume base, which is the context that actually
+                    // checks.** `diag::report` reads `ctx`, but the typings the
+                    // outcomes are read from come from `resume_with` over
+                    // `base_ctx` — so a chain reaching only `ctx` would be
+                    // populated everywhere except where conversion consults it.
+                    //
+                    // **Two things that present identically here behave
+                    // completely differently, and nothing in the type system
+                    // says so.** A type *binding* needs no help: a re-checked
+                    // program rebinds each name as it re-processes the item
+                    // declaring it, so bindings arrive on their own. **An
+                    // unfolding rule has no such path** — nothing in the
+                    // program re-derives one — so it must be carried on the
+                    // base itself.
+                    //
+                    // Anything context-carried added here faces the same fork,
+                    // and the call sites look the same either way.
+                    self.base_ctx.define(NameRef::from(name.0), body);
                 }
             }
             self.ctx.bind(name.0.to_owned(), value_type.clone());
@@ -1001,6 +1019,75 @@ mod tests
             alloc::vec!["plain".to_owned(), "idf".to_owned()],
             "the chain is in admission order, which is what makes a definition's \
              height a well-founded fold over what precedes it"
+        );
+    }
+
+    /// **A law proved from source, across a definition.** The endpoint applies
+    /// a saturated definition whose body returns its argument, so it reduces to
+    /// that argument and the reflexivity witness types.
+    ///
+    /// # What this covers that the unit tests could not
+    ///
+    /// The conversion rule itself is witnessed in `core-nbe`, where the
+    /// definition is installed directly. **That cannot see whether a
+    /// session-bound definition reaches the context conversion actually
+    /// consults** — and for a while it did not: the chain reached `ctx`, which
+    /// the diagnostics read, while the outcomes are typed from `resume_with`
+    /// over `base_ctx`, which had none. Every mechanism test passed and every
+    /// law refused.
+    ///
+    /// The separating half is the second submission: the same shape against a
+    /// definition that returns something else must still refuse, or an
+    /// acceptance here would be a relation that accepts anything.
+    #[test]
+    fn a_law_over_a_definition_types_from_source()
+    {
+        let mut session = Session::new();
+        let _pick = session
+            .submit("def pick(a: Type, f: U[\u{3c9}] (a -> F a)) -> F (U(a -> F a)) { ret f }")
+            .expect("the definition lowers");
+        let law = session
+            .submit(
+                "def law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), \
+                 f)) { ret here(f) }",
+            )
+            .expect("the law lowers");
+        let refusals: Vec<&ItemOutcome> = law
+            .outcomes
+            .iter()
+            .filter(|outcome| matches!(**outcome, ItemOutcome::TypeError { .. }))
+            .collect();
+        assert!(
+            refusals.is_empty(),
+            "a law whose endpoint applies a definition returning its argument \
+             must type: {refusals:?}"
+        );
+    }
+
+    /// The separating half: the same law shape over a definition that returns
+    /// something **else** must refuse. Without it, the acceptance above would
+    /// pass for a checker that accepted every identity type.
+    #[test]
+    fn a_law_over_a_definition_that_returns_otherwise_is_refused()
+    {
+        let mut session = Session::new();
+        let _fst = session
+            .submit(
+                "def fst(a: Type, f: U[\u{3c9}] (a -> F a), g: U[\u{3c9}] (a -> F a)) -> F (U(a \
+                 -> F a)) { ret f }",
+            )
+            .expect("the definition lowers");
+        let law = session
+            .submit(
+                "def bad(a: Type, f: U[\u{3c9}] (a -> F a), g: U[\u{3c9}] (a -> F a)) -> \
+                 F(Path((U(a -> F a)), fst(a, f, g), g)) { ret here(g) }",
+            )
+            .expect("the law lowers");
+        assert!(
+            law.outcomes
+                .iter()
+                .any(|outcome| matches!(*outcome, ItemOutcome::TypeError { .. })),
+            "a law asserting the wrong endpoint was accepted"
         );
     }
 
