@@ -25,6 +25,11 @@ extend-exclude = [
   ".claude/worktrees/",
   "*.typ",
   "docs/manual/refs.yml",
+  # The clang policy files are byte-for-byte copies of the ss-56o.1 spike's
+  # generated configs (docs/workflow/cpp.md §Provenance); option names such as
+  # `MemCpyNames` are clang-tidy identifiers, not prose.
+  ".clang-format",
+  ".clang-tidy",
   # The corpus hayagriva bibliography was excluded here for the same reason as
   # docs/manual/refs.yml — citation keys and author names are identifiers, not
   # prose. It left the repository with the specification corpus, so the entry is
