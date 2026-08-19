@@ -832,6 +832,31 @@ fn step_value(
             machine.push_comp(goal, left, right);
             return Ok(Step::Pushed);
         },
+        // **Eta for the thunk**, the same clause conversion carries, because
+        // the two must decide one relation. A clause added to one consumer and
+        // not the other splits definitional equality across them, and a solver
+        // that refuted what the checker accepts would be reporting a fact about
+        // which component asked rather than about the terms.
+        //
+        // This is the residue the note above already names: a canonical form
+        // facing a neutral is the **eta residue**, left to the walk rather than
+        // refuted because a clash is not what the theory licenses there. `U`
+        // has one destructor, so forcing both sides is what resolves it.
+        //
+        // The grade condition is conversion's: `force` requires `1 ≤ r`, so at
+        // grade `0` this arm does not exist and the comparison stays
+        // structural.
+        //
+        // A metavariable cannot reach here — every flex path returns above, so
+        // this arm can never intercept a solution.
+        | (&SemValueNode::Thunk(grade, _), _) | (_, &SemValueNode::Thunk(grade, _))
+            if bool::from(Grade::ONE.leq(grade)) =>
+        {
+            let left = eval::force_head(nbe, lhs, ForceMode::WeakHead)?;
+            let right = eval::force_head(nbe, rhs, ForceMode::WeakHead)?;
+            machine.push_comp(goal, left, right);
+            return Ok(Step::Pushed);
+        },
         | (
             &SemValueNode::Rigid(Rigid::Level(left), _),
             &SemValueNode::Rigid(Rigid::Level(right), _),

@@ -2613,6 +2613,109 @@ mod tests
         );
     }
 
+    /// **Eta for the thunk**, in both directions. `thunk (force f)` and `f`
+    /// classify the same value at `U_r` when `1 ≤ r`, because `U` has one
+    /// destructor and forcing both sides exhibits the equality.
+    #[test]
+    fn a_thunk_eta_expands_against_a_variable_in_both_directions()
+    {
+        let mut nbe = Normalizer::new();
+        let bare = Rc::new(Value::var(NameRef::from("f")));
+        let expanded = thunk(Comp::force(Value::var(NameRef::from("f"))));
+        assert!(
+            bool::from(nbe.converts(&expanded, &bare)),
+            "a thunk of a force did not convert with the variable it forces"
+        );
+        assert!(
+            bool::from(nbe.converts(&bare, &expanded)),
+            "thunk eta is not symmetric"
+        );
+    }
+
+    /// **At grade 0 the rule does not exist.** `thunk (force v) ≡ v` is a
+    /// theorem of *ungraded* call-by-push-value; grading makes it conditional
+    /// in exactly one place, because `force` requires `1 ≤ r`. Eta-expanding an
+    /// erased thunk would manufacture a `force` the grade discipline refuses,
+    /// so the comparison stays structural there.
+    ///
+    /// This is the separating half of the rule above: without it, a test
+    /// showing only the acceptance would pass for an arm that ignored grades
+    /// entirely.
+    #[test]
+    fn an_erased_thunk_does_not_eta_expand()
+    {
+        let mut nbe = Normalizer::new();
+        let bare = Rc::new(Value::var(NameRef::from("f")));
+        let erased = Rc::new(Value::thunk(
+            gandr_core_term::grade::Grade::ZERO,
+            Comp::force(Value::var(NameRef::from("f"))),
+        ));
+        assert!(
+            !bool::from(nbe.converts(&erased, &bare)),
+            "a 0-graded thunk eta-expanded, manufacturing a force the grade \
+             discipline refuses"
+        );
+        assert!(
+            !bool::from(nbe.converts(&bare, &erased)),
+            "the grade-0 refusal is not symmetric"
+        );
+    }
+
+    /// The integration witness: a law whose endpoint is a **thunked
+    /// application over a definition** equals the variable it reduces to.
+    ///
+    /// This is the shape a setoid unit law takes — and it is the unit of the
+    /// `U` adjunction stated as a law. It needs three things at once: delta
+    /// across the definition, beta through the application spine, and thunk
+    /// eta at the end. Each is separately witnessed above and in the family
+    /// tests; this is the one that shows they compose.
+    #[test]
+    fn a_thunked_application_over_a_definition_equals_what_it_reduces_to()
+    {
+        let mut nbe = Normalizer::new();
+        // `k = thunk(λp q r s g. force g)` — an operation whose result is its
+        // last argument forced, which is what a unit law's left-hand side
+        // reduces to.
+        let body = Comp::lam(
+            "p",
+            Comp::lam(
+                "q",
+                Comp::lam(
+                    "r",
+                    Comp::lam(
+                        "s",
+                        Comp::lam("g", Comp::force(Value::var(NameRef::from("g")))),
+                    ),
+                ),
+            ),
+        );
+        nbe.define(
+            NameRef::from("k"),
+            &Value::thunk(gandr_core_term::grade::Grade::OMEGA, body),
+        )
+        .expect("the definition lowers");
+
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let mut spine = Comp::force(var("k"));
+        for argument in ["a", "b", "c", "d", "f"] {
+            spine = Comp::app(spine, var(argument));
+        }
+        let stated = thunk(spine);
+        let witnessed = Rc::new(var("f"));
+        assert!(
+            bool::from(nbe.converts(&stated, &witnessed)),
+            "a thunked five-argument application over a definition did not \
+             reduce to the variable it returns"
+        );
+
+        // The separating case: the same spine against a *different* variable
+        // must refuse, or the acceptance above says nothing.
+        assert!(
+            !bool::from(nbe.converts(&stated, &Rc::new(var("g")))),
+            "the comparison accepted a variable the spine does not return"
+        );
+    }
+
     /// `Hom(a, b)` over the two given index values.
     fn hom(
         lhs: Rc<Value>,

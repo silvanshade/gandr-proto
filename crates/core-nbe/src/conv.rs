@@ -60,6 +60,7 @@ use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::ProgressStatus;
 use gandr_core_term::boundary::UnfoldPermission;
 use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::grade::Grade;
 use gandr_core_term::identity::occurs_free_comptype;
 use gandr_core_term::identity::subst_comptype;
 use gandr_core_term::identity::subst_valuetype;
@@ -519,6 +520,42 @@ fn value_goal(
             }
             let left = crate::eval::enter_nullary(nbe, left_cell, state.force())?;
             let right = crate::eval::enter_nullary(nbe, right_cell, state.force())?;
+            goals.push(Frame::Comp(left, right, state));
+            return Ok(ValueEquality::from(true));
+        },
+        // **Eta for the thunk**, the positive-side companion of the function
+        // and lazy-pair rules below: a thunk is compared with anything by
+        // **forcing both** and comparing the computations.
+        //
+        // # It is destructor-directed, which is what makes it safe
+        //
+        // `U` has exactly one destructor, and this rule is that destructor
+        // applied to both sides — mechanically the same shape as applying two
+        // functions to a fresh variable. It asserts no equality that `force`
+        // does not exhibit. That is what separates it from the positive eta
+        // this relation deliberately excludes: unit-singleton and surjective-
+        // pair eta are **type-directed identifications** the checker asserts
+        // where no destructor witnesses them, and they stay out.
+        //
+        // # The grade condition, which is gandr's and not CBPV's
+        //
+        // `thunk (force V) ≡ V` is a theorem of ungraded call-by-push-value.
+        // Grading makes it conditional in exactly one place: `force` requires
+        // `1 ≤ r`, so at grade `0` an eta expansion would manufacture a `force`
+        // the grade discipline refuses. **At grade 0 this arm does not exist**
+        // and the comparison stays structural — which is the posture the
+        // 0-graded coherence-cell idiom will meet.
+        //
+        // The grade is read from the thunk side rather than from a type,
+        // because this comparison carries no type: it is structural over
+        // semantic values. A `thunk_r M` inhabits `U_r B`, so the value's own
+        // grade **is** the type's, and the condition is decided from what is
+        // in hand.
+        | (&SemValueNode::Thunk(grade, _), _) | (_, &SemValueNode::Thunk(grade, _))
+            if bool::from(Grade::ONE.leq(grade)) =>
+        {
+            let left = force_head(nbe, lhs, state.force())?;
+            let right = force_head(nbe, rhs, state.force())?;
             goals.push(Frame::Comp(left, right, state));
             return Ok(ValueEquality::from(true));
         },
