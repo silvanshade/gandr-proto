@@ -1064,6 +1064,43 @@ mod tests
         );
     }
 
+    /// **The same two definitions in ONE source.** A corpus file is one source
+    /// submitted once, so this is the shape every `.gandr` file has — and it
+    /// must type exactly as the two-submission form does.
+    ///
+    /// # Why this is a separate test from the one above
+    ///
+    /// The two-submission form passed while this one refused, and the
+    /// difference was invisible from either test alone. A definition reached
+    /// the conversion context between *submissions* and not between *items*,
+    /// so a law applying a definition declared two lines above it was refused
+    /// while the identical pair split across two submissions was proved.
+    ///
+    /// **No law in any corpus file could type**, however correct the law, the
+    /// rule and the chain all were. The granularity was the whole bug.
+    #[test]
+    fn a_law_over_a_definition_types_when_both_arrive_in_one_source()
+    {
+        let mut session = Session::new();
+        let submission = session
+            .submit(
+                "def pick(a: Type, f: U[\u{3c9}] (a -> F a)) -> F (U(a -> F a)) { ret f }\ndef \
+                 law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) \
+                 { ret here(f) }",
+            )
+            .expect("both definitions lower");
+        let refusals: Vec<&ItemOutcome> = submission
+            .outcomes
+            .iter()
+            .filter(|outcome| matches!(**outcome, ItemOutcome::TypeError { .. }))
+            .collect();
+        assert!(
+            refusals.is_empty(),
+            "a law must type against a definition declared earlier in the same \
+             source, exactly as it does across two submissions: {refusals:?}"
+        );
+    }
+
     /// The separating half: the same law shape over a definition that returns
     /// something **else** must refuse. Without it, the acceptance above would
     /// pass for a checker that accepted every identity type.

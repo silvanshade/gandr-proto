@@ -56,12 +56,16 @@
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_checker::judgements::control::Dir;
+use gandr_core_term::boundary::NameRef;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Term;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
@@ -331,7 +335,7 @@ pub fn checkpoint_with(
     for item in &program.items {
         let footprint = footprint_of(&item.term);
         let typing = type_item(item, &ctx, footprint.has_hole.into());
-        thread_binding(&mut ctx, &typing);
+        thread_binding(&mut ctx, &item.term, &typing);
         items.push(ItemCheckpoint {
             name: item.name.clone(),
             ascription: item.ascription.clone(),
@@ -450,7 +454,7 @@ pub fn resume_with(
                 typing,
             }
         };
-        thread_binding(&mut ctx, &checkpoint.typing);
+        thread_binding(&mut ctx, &checkpoint.term, &checkpoint.typing);
         if let Some(slot) = checkpoints.get_mut(edited_index.0) {
             *slot = Some(checkpoint);
         }
@@ -691,6 +695,7 @@ fn align_by_name(
 /// type against it (the cross-item bridge, type-level).
 fn thread_binding(
     ctx: &mut Ctx,
+    term: &Term,
     typing: &ItemTyping,
 )
 {
@@ -701,6 +706,26 @@ fn thread_binding(
     } = *typing
     {
         ctx.bind(name.clone(), value_type.clone());
+        // **And its unfolding rule, so a later item can compute across it.**
+        //
+        // The binding above and the definition here look like one operation and
+        // are two, which is why this is easy to miss: a re-typed program
+        // rebinds each name as this loop re-processes the item declaring it, so
+        // **bindings arrive on their own and unfolding rules do not**. A chain
+        // threaded only outside this loop reaches the next submission and never
+        // the next *item*, so a law field applying a definition declared two
+        // lines above it is refused while the identical pair in two submissions
+        // is proved.
+        //
+        // A body carrying an unsolved hole is excluded, exactly as the session
+        // excludes one: a hole is consistent with everything, so unfolding into
+        // one would let a law be proved *through* the hole.
+        if let Term::Value(ref value) = *term {
+            let (_, residual) = subst_holes_value(value, &HoleSubstitution::default());
+            if !bool::from(residual) {
+                ctx.define(NameRef::from(name.as_str()), Rc::new(value.clone()));
+            }
+        }
     }
 }
 
@@ -779,7 +804,7 @@ fn resume_all_dirty(
     let mut checkpoints: Vec<ItemCheckpoint> = Vec::with_capacity(edited.items.len());
     for (item, footprint) in edited.items.iter().zip(edited_footprints) {
         let typing = type_item(item, &ctx, footprint.has_hole.into());
-        thread_binding(&mut ctx, &typing);
+        thread_binding(&mut ctx, &item.term, &typing);
         checkpoints.push(ItemCheckpoint {
             name: item.name.clone(),
             ascription: item.ascription.clone(),
