@@ -1521,6 +1521,7 @@ pub enum FamilyUnfoldStep
 /// # Contract
 /// - ensures: returns each applicable step at most once, most-preferred first.
 /// - panics: none.
+#[inline]
 #[must_use]
 pub fn default_family_unfold_order(context: &FamilyUnfoldContext) -> Vec<FamilyUnfoldStep>
 {
@@ -1795,16 +1796,17 @@ fn family_congruence(
     rhs: &ValueType,
 ) -> ValueEquality
 {
-    let (
-        &ValueType::Family {
-            head: ref left_head,
-            args: ref left_args,
-        },
-        &ValueType::Family {
-            head: ref right_head,
-            args: ref right_args,
-        },
-    ) = (lhs, rhs)
+    let ValueType::Family {
+        head: ref left_head,
+        args: ref left_args,
+    } = *lhs
+    else {
+        return ValueEquality::from(false);
+    };
+    let ValueType::Family {
+        head: ref right_head,
+        args: ref right_args,
+    } = *rhs
     else {
         return ValueEquality::from(false);
     };
@@ -1869,13 +1871,13 @@ fn unfold_family(
 ///   binder occurs free on one side and has no counterpart on the other.
 /// - panics: none.
 fn align_binders(
-    left_binder: &Option<String>,
-    right_binder: &Option<String>,
+    left_binder: Option<&str>,
+    right_binder: Option<&str>,
     left_res: &Rc<CompType>,
     right_res: &Rc<CompType>,
 ) -> Option<Rc<CompType>>
 {
-    match (left_binder.as_deref(), right_binder.as_deref()) {
+    match (left_binder, right_binder) {
         | (None, None) => Some(Rc::clone(right_res)),
         | (Some(left), Some(right)) => {
             if left == right {
@@ -1933,7 +1935,12 @@ fn comp_type_goal(
                 res: ref right_res,
             },
         ) => {
-            let Some(right_res) = align_binders(left_binder, right_binder, left_res, right_res)
+            let Some(right_res) = align_binders(
+                left_binder.as_deref(),
+                right_binder.as_deref(),
+                left_res,
+                right_res,
+            )
             else {
                 return ValueEquality::from(false);
             };

@@ -2750,7 +2750,7 @@ mod tests
         let dependent = dependent_pi("a");
         let CompType::Arrow { ref res, .. } = dependent
         else {
-            unreachable!("the constructor built a function type")
+            panic!("the constructor built a function type")
         };
         let plain = CompType::arrow(ValueType::integer(), res.as_ref().clone());
         assert!(
