@@ -414,6 +414,16 @@ copy_wrapper!(
     "Whether unfolding a definition made case-tree progress."
 );
 copy_wrapper!(
+    EndpointArity,
+    usize,
+    "Number of arguments in an applied identity-type endpoint."
+);
+copy_wrapper!(
+    IdentityTypeHead,
+    bool,
+    "Whether a parse node is the identity type former, under either of the two      molds the parser can give it."
+);
+copy_wrapper!(
     CanonicalArgumentStatus,
     bool,
     "Whether an application waiting on the machine's frame stack carries a      canonical argument — the progress gate a fixpoint unfolds behind."

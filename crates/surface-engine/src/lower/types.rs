@@ -24,7 +24,9 @@
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
+use gandr_core_term::boundary::EndpointArity;
 use gandr_core_term::boundary::GradeBound;
+use gandr_core_term::boundary::IdentityTypeHead;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
@@ -468,7 +470,7 @@ fn lower_type_tree(
                     // The carrier is scheduled as an ordinary type child; the
                     // endpoints lower through the endpoint fragment.
                     | node_kinds::PATH_TYPE | node_kinds::CALL_EXPRESSION
-                        if path_type_head(source, node) =>
+                        if bool::from(path_type_head(source, node)) =>
                     {
                         let children = path_type_arguments(node);
                         let [carrier, lhs_node, rhs_node] = *children.as_slice()
@@ -1065,88 +1067,172 @@ fn pop_type_results(
 ///
 /// [`LowerError::InvalidIntegerLiteral`] for a non-`i64` numeral;
 /// [`LowerError::Unsupported`] for any non-number, non-variable endpoint.
-#[cfg_attr(
-    dylint_lib = "recursive_function_needs_termination",
-    allow(
-        unknown_lints,
-        recursive_function_needs_termination,
-        reason = "descends a finite parsed argument list; each call is strictly inside the caller's node, so the measure is the remaining subtree"
-    )
-)]
+/// One pending step in the iterative endpoint lowering.
+enum EndpointTask<'tree>
+{
+    /// Lower one endpoint node.
+    Node(SynNode<'tree>),
+    /// Rebuild an application from the head value and `arity` argument values
+    /// already on the result stack.
+    Apply(SynNode<'tree>, EndpointArity),
+}
+
+/// Lowers one identity-type endpoint.
+///
+/// # The fragment, and why it stops where it does
+///
+/// An endpoint is a **term occurring in a type**. The fragment is a bare name,
+/// an integer literal, a parenthesized endpoint, and an application — which is
+/// what a law field states about its operations and nothing wider.
+///
+/// **An applied operation becomes the pure-computation embedding.** In
+/// call-by-push-value an application is a computation, so naming the value it
+/// produces is what puts it in a type at all; the embedding's own typing rule
+/// enforces purity, and nothing is assumed here. The spine is the ordinary one,
+/// the head forced and each argument applied, exactly as the expression lowerer
+/// builds a call.
+///
+/// **Both molds are read.** An endpoint parsed at the expression sort arrives
+/// as a call; one reached through the type-sorted grammar arrives as a type
+/// application. The node kinds differ and the content does not — the head and
+/// the argument subtrees are present either way — so this is a *reading* of the
+/// parse rather than a reinterpretation of a value as a type. The sort of the
+/// node says which production matched; the sort of the **term** is fixed here.
+///
+/// **Anything else declines by name.** An endpoint the engine cannot represent
+/// is not an absence in the author's program — they wrote something, and the
+/// engine cannot read it — so recording it as a hole would record the wrong
+/// fact and let the checker validate a type the source does not state.
+///
+/// # Errors
+///
+/// [`LowerError::Unsupported`] outside the fragment;
+/// [`LowerError::InvalidIntegerLiteral`] on an unparseable literal;
+/// [`LowerError::MalformedNode`] on a structurally broken node.
+///
+/// # Termination
+/// - reason: the walk drains an explicit task stack over one finite parse tree.
+/// - measure: pending tasks on the stack.
+/// - boundedness: every task pushed names a node strictly inside the node that
+///   pushed it, and a parse tree is finite.
+/// - input recursion: none.
 fn lower_endpoint_value(
     source: PipelineSource<'_>,
     node: SynNode<'_>,
 ) -> LowerResult<Value>
 {
+    let mut pending = alloc::vec![EndpointTask::Node(node)];
+    let mut built: Vec<Value> = Vec::new();
+    while let Some(task) = pending.pop() {
+        match task {
+            | EndpointTask::Node(current) => {
+                schedule_endpoint(source, current, &mut pending, &mut built)?;
+            },
+            | EndpointTask::Apply(head_node, arity) => {
+                let start = built.len().saturating_sub(usize::from(arity));
+                let arguments = built.split_off(start);
+                let head = built.pop().ok_or_else(|| LowerError::MalformedNode {
+                    kind: head_node.kind(),
+                    byte_range: head_node.byte_range(),
+                })?;
+                let mut applied = Comp::Force(Rc::new(head));
+                for argument in arguments {
+                    applied = Comp::App(Rc::new(applied), Rc::new(argument));
+                }
+                built.push(Value::Run(Rc::new(applied)));
+            },
+        }
+    }
+    built.pop().ok_or_else(|| LowerError::MalformedNode {
+        kind: node.kind(),
+        byte_range: node.byte_range(),
+    })
+}
+
+/// Schedules one endpoint node: pushes its value, or queues its children and
+/// the frame that rebuilds it.
+fn schedule_endpoint<'tree>(
+    source: PipelineSource<'_>,
+    node: SynNode<'tree>,
+    pending: &mut Vec<EndpointTask<'tree>>,
+    built: &mut Vec<Value>,
+) -> LowerResult<()>
+{
     match node.kind() {
         | node_kinds::NUMBER => {
             let text = node_text(source, node)?;
             match text.parse::<i64>() {
-                | Ok(literal) => Ok(Value::Int(literal)),
-                | Err(_parse_error) => Err(LowerError::InvalidIntegerLiteral {
-                    text: text.to_owned(),
-                    byte_range: node.byte_range(),
-                }),
+                | Ok(literal) => built.push(Value::Int(literal)),
+                | Err(_parse_error) => {
+                    return Err(LowerError::InvalidIntegerLiteral {
+                        text: text.to_owned(),
+                        byte_range: node.byte_range(),
+                    });
+                },
             }
         },
         // A bare name. Both spellings arrive here: an endpoint parsed at the
-        // expression sort is an `identifier`, and one reached through the older
+        // expression sort is an `identifier`, and one reached through the
         // type-sorted route is a `type_identifier` or `type_variable`.
         | node_kinds::IDENTIFIER | node_kinds::TYPE_VARIABLE | node_kinds::TYPE_IDENTIFIER => {
-            node_text(source, node).map(|text| Value::var(text.0))
+            built.push(node_text(source, node).map(|text| Value::var(text.0))?);
         },
         | node_kinds::PARENTHESIZED_EXPRESSION => {
             let children = named_non_extra_children(node);
             match *children.as_slice() {
-                | [inner] => lower_endpoint_value(source, inner),
-                | _ => Err(LowerError::MalformedNode {
-                    kind: node.kind(),
-                    byte_range: node.byte_range(),
-                }),
+                | [inner] => pending.push(EndpointTask::Node(inner)),
+                | _ => {
+                    return Err(LowerError::MalformedNode {
+                        kind: node.kind(),
+                        byte_range: node.byte_range(),
+                    });
+                },
             }
         },
-        // **An applied operation.** `comp(id(a), f)` is a computation in
-        // call-by-push-value, so naming the value it produces is what puts it in
-        // a type at all — that is the pure-computation embedding, and it is why
-        // widening this function alone was never going to be enough.
-        //
-        // The spine is the ordinary one: the head is forced and each argument is
-        // applied, exactly as the expression lowerer builds a call, and the
-        // whole application is embedded. The embedding's own typing rule is
-        // what enforces purity; nothing is assumed here.
         | node_kinds::CALL_EXPRESSION => {
             let function = required_field(node, node_kinds::FIELD_FUNCTION)?;
             let arguments_node = required_field(node, node_kinds::FIELD_ARGUMENTS)?;
-            let head = lower_endpoint_value(source, function)?;
-            embed_application(source, head, named_non_extra_children(arguments_node))
+            let arguments = named_non_extra_children(arguments_node);
+            schedule_application(node, function, arguments, pending);
         },
-        // The same application, reached through the **type**-sorted grammar.
-        //
-        // An endpoint sits inside a type, so the parser reads it at the type
-        // sort and an applied operation arrives as a type application rather
-        // than a call. The node kinds differ and the content does not: the head
-        // and the argument subtrees are both here, so the endpoint lowers to
-        // the same embedding it would from the expression sort. That is what
-        // makes this a **reading** of the parse rather than a reinterpretation
-        // of a value as a type — the sort of the node is a fact about which
-        // production matched, and the sort of the TERM is fixed by this
-        // function.
         | node_kinds::TYPE_APPLICATION => {
             let constructor = required_field(node, node_kinds::FIELD_CONSTRUCTOR)?;
-            let head = node_text(source, constructor).map(|text| Value::var(text.0))?;
             let arguments = node.children_by_field_name(node_kinds::FIELD_ARGUMENT);
-            embed_application(source, head, arguments)
+            schedule_application(node, constructor, arguments, pending);
         },
-        // **Declined by name rather than degraded.** An endpoint the engine
-        // cannot represent is not an absence in the author's program — they
-        // wrote something, and it is the engine that cannot read it — so
-        // recording it as a hole would record the wrong fact and let the
-        // checker validate a type the source does not state.
-        | kind => Err(LowerError::Unsupported {
-            kind,
-            byte_range: node.byte_range(),
-        }),
+        | kind => {
+            return Err(LowerError::Unsupported {
+                kind,
+                byte_range: node.byte_range(),
+            });
+        },
     }
+    Ok(())
+}
+
+/// Queues an application's head and arguments beneath the frame that rebuilds
+/// it. A zero-argument head is **not** embedded: a bare name is already a
+/// value, and wrapping it would make `x` and `run (force x)` two spellings of
+/// one endpoint for no gain.
+fn schedule_application<'tree>(
+    node: SynNode<'tree>,
+    head: SynNode<'tree>,
+    arguments: Vec<SynNode<'tree>>,
+    pending: &mut Vec<EndpointTask<'tree>>,
+)
+{
+    if arguments.is_empty() {
+        pending.push(EndpointTask::Node(head));
+        return;
+    }
+    pending.push(EndpointTask::Apply(
+        node,
+        EndpointArity::from(arguments.len()),
+    ));
+    for argument in arguments.into_iter().rev() {
+        pending.push(EndpointTask::Node(argument));
+    }
+    pending.push(EndpointTask::Node(head));
 }
 
 /// Whether `node` is the identity type former, under either of the two molds
@@ -1159,14 +1245,16 @@ fn lower_endpoint_value(
 fn path_type_head(
     source: PipelineSource<'_>,
     node: SynNode<'_>,
-) -> bool
+) -> IdentityTypeHead
 {
     if node.kind() == node_kinds::PATH_TYPE {
-        return true;
+        return IdentityTypeHead::from(true);
     }
-    required_field(node, node_kinds::FIELD_FUNCTION)
-        .and_then(|function| node_text(source, function))
-        .is_ok_and(|text| text.0 == node_kinds::NAME_PATH_TYPE)
+    IdentityTypeHead::from(
+        required_field(node, node_kinds::FIELD_FUNCTION)
+            .and_then(|function| node_text(source, function))
+            .is_ok_and(|text| text.0 == node_kinds::NAME_PATH_TYPE),
+    )
 }
 
 /// The carrier and the two endpoint nodes of an identity type, under either
@@ -1180,33 +1268,6 @@ fn path_type_arguments(node: SynNode<'_>) -> Vec<SynNode<'_>>
     required_field(node, node_kinds::FIELD_ARGUMENTS)
         .map(named_non_extra_children)
         .unwrap_or_default()
-}
-
-/// Builds the pure-computation embedding of `head` applied to `arguments`.
-///
-/// The spine is the ordinary call-by-push-value one — the head is forced and
-/// each argument applied in order, exactly as the expression lowerer builds a
-/// call — and the saturated application is embedded, because an application is
-/// a computation and only a value may occur in a type.
-///
-/// A zero-argument head is **not** embedded: a bare name is already a value,
-/// and wrapping it would make `x` and `run (force x)` two spellings of one
-/// endpoint for no gain.
-fn embed_application(
-    source: PipelineSource<'_>,
-    head: Value,
-    arguments: Vec<SynNode<'_>>,
-) -> LowerResult<Value>
-{
-    if arguments.is_empty() {
-        return Ok(head);
-    }
-    let mut applied = Comp::Force(Rc::new(head));
-    for argument in arguments {
-        let lowered = lower_endpoint_value(source, argument)?;
-        applied = Comp::App(Rc::new(applied), Rc::new(lowered));
-    }
-    Ok(Value::Run(Rc::new(applied)))
 }
 
 /// The `member` field nodes of a product/sum/lazy-product type (the grammar

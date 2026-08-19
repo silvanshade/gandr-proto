@@ -844,14 +844,14 @@ impl Rec
     /// value in every context the type occurs in — which is exactly what a
     /// value appearing in a type has to be. An effectful computation denotes no
     /// such thing, and the decline is by name
-    /// ([`crate::error::text::RUN_NEEDS_PURITY`]); widening it to a
+    /// ([`gandr_core_term::error::text::RUN_NEEDS_PURITY`]); widening it to a
     /// pure-enough reading would admit a type whose meaning depends on where it
     /// is read, and no such reading exists.
     ///
     /// A computation that is not a returner at all — a function, a lazy pair —
     /// returns nothing to name, and declines separately
-    /// ([`crate::error::text::RUN_NEEDS_RETURNER`]). The matched `Unknown`
-    /// (A2.2 holes) delivers `Unknown`, the standing discipline.
+    /// ([`gandr_core_term::error::text::RUN_NEEDS_RETURNER`]). The matched
+    /// `Unknown` (A2.2 holes) delivers `Unknown`, the standing discipline.
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
