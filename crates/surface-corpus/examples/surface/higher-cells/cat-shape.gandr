@@ -1,0 +1,25 @@
+// CatShape sign block (gandr-0ika). Parse-only surface witness for the
+// higher-cells flagship. Semantics graduate under gandr-0ika once Model(S)
+// elaborates a type family: type Hom : Ob -> Ob -> Type.
+//
+// Large by default. No level annotations. Indexed sort Hom(dom, cod) is the
+// one sort that pushes this past the monoid example.
+//
+// Never lowered. The checking instance lives under examples/model/higher-cells/.
+
+sign CatShape {
+  sort Ob : Type;
+  sort Hom(dom: Ob, cod: Ob) : Type;
+
+  oper id : (a : Ob) --> Hom(a, a);
+  oper comp : (f : Hom(a, b), g : Hom(b, c)) --> Hom(a, c);
+
+  rule unitL : comp(id(a), f) ==> f;
+  rule unitR : comp(f, id(b)) ==> f;
+  rule assoc : comp(comp(f, g), h) ==> comp(f, comp(g, h));
+
+  rule triangle : (assoc(f, id(b), g) then comp(f, unitL(g)))
+              ==> comp(unitR(f), g);
+  rule pentagon : (assoc(comp(f, g), h, k) then assoc(f, g, comp(h, k)))
+              ==> (comp(assoc(f, g, h), k) then assoc(f, comp(g, h), k) then comp(f, assoc(g, h, k)));
+}

@@ -1,0 +1,92 @@
+// The category of discrete setoids, ascribed to a hand-written Model(CatShape).
+//
+// An object is a type. A hom is a function. Equality is Path, so the laws
+// are checked against setoid equality. Discrete setoids are setoids: the
+// carrier is the type, the equality is identity. Large by default. No level
+// annotations. Universe is Russell-style.
+//
+// Two modules, on purpose. SetoidCatLaws is written with landed type
+// components so the item closes and the engine reaches the here-based law
+// fields. The goal that must check is
+// Path((a -> F b), comp(a, b, b, id(a), f), f).
+//
+// SetoidCat is the honest Model(CatShape) signature, including
+// type Hom : Ob -> Ob -> Type. That form currently swallows the rest of
+// the file and still binds, so it sits last: the law module stays visible
+// and this module is the witness for the silent bind.
+
+module SetoidCatLaws : #{
+  type Ob = Type,
+  id: (a: Type) -> F (a -> F a),
+  comp: (a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c)) -> F (a -> F c),
+  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, b, b, id(a), f), f)),
+  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, a, b, f, id(b)), f)),
+  assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((a -> F d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
+} {
+  def id(a: Type, x: a) -> F a {
+    ret x
+  }
+
+  def comp(a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c), x: a) -> F c {
+    run y <- f(x);
+    g(y)
+  }
+
+  def unitL(a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, b, b, id(a), f), f)) {
+    ret here(f)
+  }
+
+  def unitR(a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, a, b, f, id(b)), f)) {
+    ret here(f)
+  }
+
+  def assoc(a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((a -> F d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h)))) {
+    ret here(comp(a, c, d, comp(a, b, c, f, g), h))
+  }
+}
+
+def marker = 1;
+marker
+
+module SetoidCat : #{
+  type Ob : Type,
+  type Hom : Ob -> Ob -> Type,
+  id: (a: Ob) -> F Hom(a, a),
+  comp: (a: Ob, b: Ob, c: Ob, f: Hom(a, b), g: Hom(b, c)) -> F Hom(a, c),
+  unitL: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f)),
+  unitR: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f)),
+  assoc: (a: Ob, b: Ob, c: Ob, d: Ob, f: Hom(a, b), g: Hom(b, c), h: Hom(c, d)) -> F(Path(Hom(a, d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
+} {
+  type Ob = Type;
+
+  def id(a: Ob, x: a) -> F a {
+    ret x
+  }
+
+  def comp(a: Ob, b: Ob, c: Ob, f: Hom(a, b), g: Hom(b, c), x: a) -> F c {
+    run y <- f(x);
+    g(y)
+  }
+
+  def unitL(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f)) {
+    ret here(f)
+  }
+
+  def unitR(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f)) {
+    ret here(f)
+  }
+
+  def assoc(a: Ob, b: Ob, c: Ob, d: Ob, f: Hom(a, b), g: Hom(b, c), h: Hom(c, d)) -> F(Path(Hom(a, d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h)))) {
+    ret here(comp(a, c, d, comp(a, b, c, f, g), h))
+  }
+}
+
+// The harness checks. Flagship acceptance is expect: clean once the Path
+// composite endpoints parse and here(f) checks, and once type Hom : Ob -> Ob
+// -> Type is a real type component. Today the law fields are
+// MissingDelimiter goals and the kinded Hom module binds without a decline.
+//@ expect: goal
+//@ expect-def: SetoidCatLaws
+//@ expect-def: marker
+//@ expect-def: SetoidCat
+//@ expect-last-value: 1

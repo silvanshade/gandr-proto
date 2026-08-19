@@ -1,0 +1,27 @@
+// CatShape as a presentation: two sorts, identity and composition, the three
+// laws, and the two coherences. This is the higher-cells flagship written as
+// a sign block so the description elaborator is the first engine to see the
+// indexed sort Hom(dom, cod).
+//
+// It is written this way because Model(CatShape) needs type Hom : Ob -> Ob ->
+// Type, and that family is what this block presents. Large by default. No
+// level annotations. Universe is Russell-style. The generated Model is not
+// this file; the hand-written signature and the setoids instance are
+// cat-shape-setoids.gandr.
+
+sign CatShape {
+  sort Ob : Type;
+  sort Hom(dom: Ob, cod: Ob) : Type;
+
+  oper id : (a : Ob) --> Hom(a, a);
+  oper comp : (f : Hom(a, b), g : Hom(b, c)) --> Hom(a, c);
+
+  rule unitL : comp(id(a), f) ==> f;
+  rule unitR : comp(f, id(b)) ==> f;
+  rule assoc : comp(comp(f, g), h) ==> comp(f, comp(g, h));
+}
+
+// Flagship render includes sort Hom(dom: Ob, cod: Ob) and the oper/rule
+// members. The elaborator currently keeps only sort Ob.
+//@ mode: desc
+//@ expect-desc-render: sign CatShape { sort Ob : Type; }
