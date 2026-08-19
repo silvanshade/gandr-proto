@@ -80,16 +80,23 @@ fn paint_source(block: &TranscriptBlock) -> Line<'static>
             continue;
         }
         if start > cursor {
-            spans.push(Span::raw(source[cursor .. start].to_owned()));
+            let Some(gap) = source.get(cursor .. start)
+            else {
+                continue;
+            };
+            spans.push(Span::raw(gap.to_owned()));
         }
-        spans.push(Span::styled(
-            source[start .. end].to_owned(),
-            style_of(span.role),
-        ));
+        let Some(piece) = source.get(start .. end)
+        else {
+            continue;
+        };
+        spans.push(Span::styled(piece.to_owned(), style_of(span.role)));
         cursor = end;
     }
-    if cursor < source.len() && source.is_char_boundary(cursor) {
-        spans.push(Span::raw(source[cursor ..].to_owned()));
+    if let Some(tail) = source.get(cursor ..)
+        && !tail.is_empty()
+    {
+        spans.push(Span::raw(tail.to_owned()));
     }
     if spans.is_empty() {
         Line::from(block.source.clone())
