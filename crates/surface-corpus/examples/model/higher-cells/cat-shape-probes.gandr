@@ -1,8 +1,16 @@
 // Isolated probes for the CatShape neighbourhood. Each form is its own
 // item so a swallow or a silent Unknown cannot hide behind a sibling.
 //
+// path_var is honest: variable carrier, variable endpoints.
+// path_fun is a carrier bug, not an endpoint bug: the function-type
+// carrier becomes Unknown and the endpoints survive as Var(f).
+// path_app erases the whole Path to F(Unknown).
+// ix_id is honest: a variable data index stays Atom(n).
+// ix_ctor is a data-index fact, not a Path-endpoint spelling rule:
+// a literal index has nowhere to live because Data stores arguments
+// as value types. Ix(1) becomes Ix(Unknown).
+//
 // Literal Path endpoints already check in identity/here-formation.gandr.
-// These are the compound and constructor-index cases the instances need.
 
 def path_var(a : Type, x : a) -> F Path(a, x, x) {
   ret here(x)
