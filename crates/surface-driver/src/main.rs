@@ -180,9 +180,9 @@ fn main() -> ExitCode
 /// - requires: `arguments` begins with the executable name.
 /// - ensures: a usage request prints [`USAGE`] to standard output and reports
 ///   [`EXIT_COMPLETED`]; a run request reports the status [`classify`] derives
-///   from the run; a repl or tui request reports the face's own status;
-///   `lsp --capabilities` prints the advertised initialize result and `lsp`
-///   serves the protocol on stdio.
+///   from the run; a repl or tui request reports the face's own status; `lsp
+///   --capabilities` prints the advertised initialize result and `lsp` serves
+///   the protocol on stdio.
 /// - provides: the driver's complete argument-to-status behaviour, separated
 ///   from the process boundary so a test can drive it.
 /// - fails: a malformed command line prints [`USAGE`] to standard error and
@@ -280,18 +280,17 @@ fn batch_status(status: BatchStatus) -> ExitStatus
 ///
 /// # Contract
 /// - requires: `arguments` begins with the executable name, which is skipped.
-/// - ensures: no operand is the read-evaluate loop; `tui` and `tui --smoke`
-///   are the terminal face; `lsp` and `lsp --capabilities` are the
-///   language-server face; `--help` / `-h` is usage; one non-flag operand is a
-///   script path.
+/// - ensures: no operand is the read-evaluate loop; `tui` and `tui --smoke` are
+///   the terminal face; `lsp` and `lsp --capabilities` are the language-server
+///   face; `--help` / `-h` is usage; one non-flag operand is a script path.
 /// - provides: the command table.
 /// - fails: returns `None` for an unknown flag, a second script operand, and
 ///   for `tui` or `lsp` with an unknown flag.
 /// - panics: none.
 /// - intension: a subcommand name is matched before the one-operand rule, so
 ///   `tui` and `lsp` are commands rather than script paths. A bare `-` and a
-///   non-UTF-8 argument beginning with `-` are both taken as paths: there is
-///   no standard-input face for `-` to mean, and a path is not required to be
+///   non-UTF-8 argument beginning with `-` are both taken as paths: there is no
+///   standard-input face for `-` to mean, and a path is not required to be
 ///   UTF-8.
 ///
 /// # Adequacy
