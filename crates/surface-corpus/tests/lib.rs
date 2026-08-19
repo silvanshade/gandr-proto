@@ -3,3 +3,6 @@
 
 #[cfg(test)]
 mod corpus;
+
+#[cfg(test)]
+mod flagship_probe;
