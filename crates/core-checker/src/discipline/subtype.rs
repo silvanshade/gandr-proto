@@ -329,14 +329,29 @@ fn subtype_goals(
     mut goals: Vec<SubtypeGoal>,
 ) -> SubtypeDecision
 {
-    // The typing context is carried here so the normalizer this function mints
-    // can be built from the definitional environment the context holds, rather
-    // than empty. **Every mint in this function takes the same environment or
-    // none does**: two normalizers minted from one crate with different
-    // environments would be a site-dependent definitional equality, which is
-    // the same defect a strategy deciding a judgement would be, arriving as a
-    // mint instead of a policy.
-    let _ = ctx;
+    // One mint function for every normalizer this run builds. **Every mint
+    // takes the same environment or none does**: two normalizers minted from
+    // one crate with different environments would be a site-dependent
+    // definitional equality — the same defect a strategy deciding a judgement
+    // would be, arriving as a mint instead of a policy. Routing all four
+    // invariant positions through one closure is what makes that structural
+    // rather than a rule someone has to remember.
+    //
+    // The environment is the one the typing context carries. An empty context
+    // reproduces the pre-unfolding relation exactly, so nothing that does not
+    // populate one changes behaviour.
+    let mint = || {
+        let mut nbe = Normalizer::new();
+        for (name, body) in ctx.definition_chain() {
+            // A definition that fails to lower contributes no unfolding rule,
+            // which is the same state as a sealed atom: conversion is finer
+            // than it could have been, never wrong. Unfolding only merges
+            // equivalence classes, so a missing rule can cost a refusal and can
+            // never produce an acceptance the full environment would refute.
+            let _ = nbe.define(NameRef::from(name.as_str()), body.as_ref());
+        }
+        nbe
+    };
     // The normalizer is minted only if an invariant position is actually met,
     // and it is then reused for every one in this run.
     //
@@ -430,7 +445,7 @@ fn subtype_goals(
                     // pair keeps that decision in one place rather than
                     // re-deriving the spine comparison here.
                     | (&ValueType::Family { .. }, &ValueType::Family { .. }) => {
-                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        let nbe = nbe.get_or_insert_with(mint);
                         if !bool::from(type_converts(nbe, sub.as_ref(), sup.as_ref())) {
                             return false.into();
                         }
@@ -452,7 +467,7 @@ fn subtype_goals(
                         // a two-way subtyping pass, because widening a path
                         // without transport is unsound and conversion is the
                         // relation that says so directly.
-                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        let nbe = nbe.get_or_insert_with(mint);
                         if !bool::from(converts(nbe, lo_lhs, hi_lhs))
                             || !bool::from(converts(nbe, lo_rhs, hi_rhs))
                             || !bool::from(type_converts(nbe, lo_ty, hi_ty))
@@ -512,7 +527,7 @@ fn subtype_goals(
                                 )),
                             ))
                         };
-                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        let nbe = nbe.get_or_insert_with(mint);
                         if !bool::from(type_converts(nbe, lo_fst, hi_fst))
                             || !bool::from(type_converts(nbe, &lo_snd_aligned, hi_snd))
                         {
@@ -640,7 +655,7 @@ fn subtype_goals(
                     // is the duplication the identity rung already paid for
                     // once.
                     | (&CompType::Arrow { .. }, &CompType::Arrow { .. }) => {
-                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        let nbe = nbe.get_or_insert_with(mint);
                         if !bool::from(comp_type_converts(nbe, sub.as_ref(), sup.as_ref())) {
                             return false.into();
                         }
@@ -738,6 +753,74 @@ pub fn interned_subtype(
 #[cfg(test)]
 mod tests
 {
+
+    /// **A law field that computes across a definition.** This is the target
+    /// the whole definitional-environment slice exists for.
+    ///
+    /// `idf` is a top-level definition — a thunked identity function. The law
+    /// says `idf(f)` equals `f`, so its type is `Path A (force idf applied to
+    /// f) f` and its witness is `here(f)`, whose natural type is `Path A f f`.
+    /// Accepting the witness means the checker reduced the endpoint **through
+    /// the definition**: delta on `idf`, then force, then beta.
+    ///
+    /// **The pair is the evidence, not the acceptance.** The same two types
+    /// under a context with an EMPTY chain must be refused, because there `idf`
+    /// is a free variable and the endpoint is stuck. A test showing only the
+    /// acceptance would pass equally for a relation that accepted everything.
+    #[test]
+    fn a_law_field_computes_across_a_definition_and_only_with_the_chain()
+    {
+        use alloc::rc::Rc;
+
+        use gandr_core_term::boundary::NameRef;
+        use gandr_core_term::syntax::Comp;
+        use gandr_core_term::syntax::Value;
+
+        // `idf = thunk(λx. ret x)`, the definition the endpoint reduces through.
+        let identity = Rc::new(Value::thunk(
+            gandr_core_term::grade::Grade::OMEGA,
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+        ));
+        // The endpoint as written: `force idf` applied to `f`, thunked so it
+        // sits in value position.
+        let applied = Rc::new(Value::thunk(
+            gandr_core_term::grade::Grade::OMEGA,
+            Comp::app(
+                Comp::force(Value::var(NameRef::from("idf"))),
+                Value::var(NameRef::from("f")),
+            ),
+        ));
+        let plain = Rc::new(Value::thunk(
+            gandr_core_term::grade::Grade::OMEGA,
+            Comp::ret(Value::var(NameRef::from("f"))),
+        ));
+        let path = |lhs: &Rc<Value>, rhs: &Rc<Value>| ValueType::Path {
+            ty: Rc::new(ValueType::integer()),
+            lhs: Rc::clone(lhs),
+            rhs: Rc::clone(rhs),
+        };
+        // The law's stated type, and the type its reflexivity witness has.
+        let stated = path(&applied, &plain);
+        let witnessed = path(&plain, &plain);
+
+        // With the definition in scope, the endpoint reduces and the law holds.
+        let mut with_chain = Ctx::new();
+        with_chain.define(NameRef::from("idf"), Rc::clone(&identity));
+        assert!(
+            bool::from(value_subtype(&with_chain, &witnessed, &stated)),
+            "the reflexivity witness was refused against a law whose endpoint \
+             reduces through a definition in scope"
+        );
+
+        // Without it, `idf` is free, the endpoint is stuck, and the same law is
+        // refused. This is the separating half.
+        let empty = Ctx::new();
+        assert!(
+            !bool::from(value_subtype(&empty, &witnessed, &stated)),
+            "the law was accepted with an empty definition chain, so the \
+             acceptance above is not evidence that anything unfolded"
+        );
+    }
     use alloc::rc::Rc;
 
     use gandr_core_term::ctx::Ctx;

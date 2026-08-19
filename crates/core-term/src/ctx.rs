@@ -27,10 +27,12 @@
 //! `Γ` contract). The conformance suite therefore compares
 //! [`crate::error::TypeError`] values, not `Γ`.
 
+use alloc::rc::Rc;
+
 use crate::boundary::ContextEmptyStatus;
 use crate::boundary::ContextLength;
 use crate::boundary::NameRef;
-use crate::defs::Definitions;
+use crate::syntax::Value;
 use crate::types::ValueType;
 
 /// The linear context zone `Σ` (the effects and control record's one-shot
@@ -146,8 +148,8 @@ pub struct Ctx
     entries: Vec<(String, ValueType)>,
     /// The linear zone `Σ` (vacuous in v0).
     sigma: Sigma,
-    /// The **definitional environment**: which names carry an unfolding rule,
-    /// at what height, and how transparently.
+    /// The **definition chain**: the names carrying an unfolding rule, in the
+    /// order they were admitted.
     ///
     /// It lives on the context rather than beside it because conversion is
     /// reached from three implementations through one relation, and a
@@ -155,10 +157,22 @@ pub struct Ctx
     /// definitional equality. Carrying it here is what makes "the same
     /// environment everywhere" structural instead of a convention.
     ///
+    /// # It is the chain, not a compiled environment
+    ///
+    /// A compiled [`crate::defs::Definitions`] names its bodies by arena id,
+    /// and an arena id is only meaningful in the arena that minted it. A
+    /// context is cloned into whatever normalizer a conversion mints, so
+    /// carrying compiled ids here would hand a fresh arena ids it never
+    /// allocated — every one dangling, and dangling silently, because a
+    /// definition that fails to resolve is indistinguishable from one that was
+    /// never there. Carrying **syntax** instead lets each normalizer lower the
+    /// chain into its own arena, which is also what gives the heights their
+    /// real values: they are computed in admission order at that point.
+    ///
     /// Empty is the valid initial state and is exactly the pre-unfolding
     /// behaviour, so a context built anywhere without one behaves as it always
     /// did.
-    defs: Definitions,
+    defs: Vec<(String, Rc<Value>)>,
 }
 
 impl Ctx
@@ -171,30 +185,45 @@ impl Ctx
         Self::default()
     }
 
-    /// The definitional environment this context carries.
+    /// The definition chain this context carries, in admission order.
     #[inline]
     #[must_use]
-    pub fn definitions(&self) -> &Definitions
+    pub fn definition_chain(&self) -> &[(String, Rc<Value>)]
     {
         &self.defs
     }
 
-    /// The definitional environment, mutably — how a caller populates it.
+    /// Appends one definition to the chain.
+    ///
+    /// Order is the whole content of the chain: a definition's height is one
+    /// above the tallest it references, and referencing only what precedes it
+    /// is what makes that a well-founded fold rather than a fixpoint.
+    ///
+    /// # Contract
+    /// - requires: `body` mentions only names already in the chain.
+    /// - ensures: `name` unfolds to `body` in every conversion this context
+    ///   reaches.
+    /// - panics: none.
     #[inline]
-    pub fn definitions_mut(&mut self) -> &mut Definitions
+    pub fn define<'source, N>(
+        &mut self,
+        name: N,
+        body: Rc<Value>,
+    ) where
+        N: Into<NameRef<'source>>,
     {
-        &mut self.defs
+        self.defs.push((name.into().as_ref().to_owned(), body));
     }
 
-    /// Returns a context carrying `defs` (builder style).
+    /// Returns a context carrying `chain` (builder style).
     #[inline]
     #[must_use]
-    pub fn with_definitions(
+    pub fn with_definition_chain(
         mut self,
-        defs: Definitions,
+        chain: Vec<(String, Rc<Value>)>,
     ) -> Self
     {
-        self.defs = defs;
+        self.defs = chain;
         self
     }
 
