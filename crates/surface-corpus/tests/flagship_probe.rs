@@ -23,6 +23,7 @@
 mod tests
 {
     use std::fs;
+    use std::path::Path;
 
     use gandr_surface_engine::session::ItemOutcome;
     use gandr_surface_engine::session::Session;
@@ -30,9 +31,15 @@ mod tests
     /// The setoid instance, relative to the corpus crate root.
     const SETOIDS: &str = "examples/model/higher-cells/cat-shape-setoids.gandr";
 
+    /// The setoid instance as a path, for the helper below.
+    fn setoids() -> &'static Path
+    {
+        Path::new(SETOIDS)
+    }
+
     /// Elaborates `path` and returns each definition's name beside the debug
     /// rendering of its type, printing the whole submission for diagnosis.
-    fn elaborated_definitions(path: &str) -> Vec<(String, String)>
+    fn elaborated_definitions(path: &Path) -> Vec<(String, String)>
     {
         let text = fs::read_to_string(path).expect("example must be readable");
         let mut session = Session::new();
@@ -40,7 +47,7 @@ mod tests
             .submit(text.as_str())
             .expect("lowering must be total");
         let mut definitions = Vec::new();
-        println!("=== {path} ===");
+        println!("=== {} ===", path.display());
         for (index, outcome) in submission.outcomes.iter().enumerate() {
             match *outcome {
                 | ItemOutcome::Definition {
@@ -181,7 +188,7 @@ mod tests
     #[test]
     fn the_left_unit_law_is_checked()
     {
-        let bound = elaborated_definitions(SETOIDS)
+        let bound = elaborated_definitions(setoids())
             .into_iter()
             .any(|(name, _rendered)| name == "unitL");
         assert!(
@@ -193,7 +200,7 @@ mod tests
     #[test]
     fn the_setoid_operations_are_fully_written()
     {
-        for (name, rendered) in elaborated_definitions(SETOIDS) {
+        for (name, rendered) in elaborated_definitions(setoids()) {
             if name != "id" && name != "comp" {
                 continue;
             }
