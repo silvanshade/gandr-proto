@@ -3585,7 +3585,7 @@ impl Marker
                         ValueType::Unknown
                     },
                 };
-                let ty = finish_value(produced, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, produced, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | MarkFrame::ValueThunkAfterBody {

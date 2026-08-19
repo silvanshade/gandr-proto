@@ -4357,7 +4357,7 @@ impl FlatArena
                 let id = self
                     .comp_types
                     .alloc(CompTypeNode::Arrow {
-                        binder: binder.map(alloc::string::ToString::to_string),
+                        binder: binder.map(str::to_owned),
                         arg,
                         res,
                     })
@@ -5492,7 +5492,7 @@ impl FlatArena
                 let res = pop_read_comp_type(results)?;
                 let arg = pop_read_value_type(results)?;
                 results.push(StructuralRoot::CompType(CompType::Arrow {
-                    binder: binder.map(alloc::string::ToString::to_string),
+                    binder: binder.map(str::to_owned),
                     arg: Rc::new(arg),
                     res: Rc::new(res),
                 }));

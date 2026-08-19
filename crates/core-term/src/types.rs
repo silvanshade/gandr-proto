@@ -1036,10 +1036,12 @@ impl ValueType
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn family(
-        head: impl Into<String>,
+    pub fn family<H>(
+        head: H,
         args: Vec<Rc<Value>>,
     ) -> Self
+    where
+        H: Into<String>,
     {
         let head = head.into();
         if args.is_empty() {
@@ -1091,11 +1093,13 @@ impl CompType
     /// whether it is needed (the [`Arrow`](Self::Arrow) variant docs say why).
     #[inline]
     #[must_use]
-    pub fn pi(
-        binder: impl Into<String>,
+    pub fn pi<B>(
+        binder: B,
         arg: ValueType,
         res: Self,
     ) -> Self
+    where
+        B: Into<String>,
     {
         Self::Arrow {
             binder: Some(binder.into()),

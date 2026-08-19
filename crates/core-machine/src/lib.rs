@@ -2195,7 +2195,7 @@ fn step_return(
                     });
                 },
             };
-            finish_value(produced, dir).map(return_value)
+            finish_value(ctx, produced, dir).map(return_value)
         },
         | Frame::Annot { dir } => {
             let checked = expect_value(ty)?;

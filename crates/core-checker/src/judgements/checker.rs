@@ -896,7 +896,7 @@ impl Rec
                 });
             },
         };
-        finish_value(produced, dir)
+        finish_value(&self.ctx, produced, dir)
     }
 
     /// Rule Annot: check the value against the ascription, then finish (§"Core
