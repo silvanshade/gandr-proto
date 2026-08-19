@@ -30,7 +30,7 @@ pub fn draw(
         ])
         .split(frame.area());
     let mut transcript = String::new();
-    for block in app.transcript() {
+    for block in &app.transcript {
         transcript.push_str(&block.source);
         transcript.push('\n');
         for pair in &block.lines {
@@ -47,12 +47,12 @@ pub fn draw(
     }
     if let Some(area) = layout.get(1) {
         frame.render_widget(
-            Paragraph::new(app.input())
+            Paragraph::new(app.input.as_str())
                 .block(Block::default().title(" input ").borders(Borders::ALL)),
             *area,
         );
     }
     if let Some(area) = layout.get(2) {
-        frame.render_widget(Paragraph::new(app.status()), *area);
+        frame.render_widget(Paragraph::new(app.status.as_str()), *area);
     }
 }

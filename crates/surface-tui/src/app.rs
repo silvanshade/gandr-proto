@@ -57,11 +57,11 @@ pub struct App
     /// The shared read-evaluate loop.
     loop_state: SessionLoop,
     /// The current input buffer.
-    input: String,
+    pub(crate) input: String,
     /// Submitted transcript blocks, newest last.
-    transcript: Vec<TranscriptBlock>,
+    pub(crate) transcript: Vec<TranscriptBlock>,
     /// Status text drawn in the footer.
-    status: String,
+    pub(crate) status: String,
 }
 
 impl App
@@ -81,30 +81,6 @@ impl App
             transcript: Vec::new(),
             status: String::from("Enter submits · q quits"),
         }
-    }
-
-    /// Borrow the input buffer.
-    #[inline]
-    #[must_use]
-    pub fn input(&self) -> &str
-    {
-        &self.input
-    }
-
-    /// Borrow the transcript.
-    #[inline]
-    #[must_use]
-    pub fn transcript(&self) -> &[TranscriptBlock]
-    {
-        &self.transcript
-    }
-
-    /// Borrow the status line.
-    #[inline]
-    #[must_use]
-    pub fn status(&self) -> &str
-    {
-        &self.status
     }
 
     /// Apply one key.
