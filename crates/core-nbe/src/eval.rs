@@ -54,6 +54,7 @@ use gandr_core_term::boundary::ConversionFuel;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::SemanticHash;
 use gandr_core_term::boundary::TermRetention;
+use gandr_core_term::boundary::TrivialContinuation;
 use gandr_core_term::boundary::UnfoldPermission;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::syntax::CompNode;
@@ -926,6 +927,45 @@ pub fn force_value(
     Ok(current)
 }
 
+/// Whether a sequence continuation is `ret x` for its own single binder `x` —
+/// the trivial continuation the returner's eta rule collapses.
+///
+/// Read from the stored syntax rather than by entering the closure. Entering
+/// would evaluate a body whose depth the caller chooses, from inside the
+/// machine's own step; the shape is decidable without it.
+///
+/// # Contract
+/// - ensures: `true` exactly when the continuation binds one variable and
+///   returns that variable and nothing else.
+/// - panics: none.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on an unresolvable id.
+fn returns_its_own_binder(
+    nbe: &Normalizer,
+    cont: ClosureId,
+) -> Result<TrivialContinuation, SemError>
+{
+    let (binder, body) = {
+        let closure = nbe.arena().closure(cont)?;
+        let [ref binder] = *closure.binders()
+        else {
+            return Ok(TrivialContinuation::from(false));
+        };
+        (binder.clone(), closure.body())
+    };
+    let store = nbe.syntax();
+    // Shallow reads: two nodes, never a read-back of the whole body.
+    let Some(&CompNode::Ret(carried)) = store.comps.get(body)
+    else {
+        return Ok(TrivialContinuation::from(false));
+    };
+    Ok(TrivialContinuation::from(
+        matches!(store.values.get(carried), Some(ValueNode::Var(name)) if *name == binder),
+    ))
+}
+
 /// The unfolding face a neutral computation inherits from the value at its
 /// head.
 fn head_face(
@@ -1661,6 +1701,37 @@ fn unwind(
                 let (env, body) = enter(nbe, cell, &[])?;
                 Phase::Descend(env, body)
             }
+        },
+        // **Eta for the returner, as a normal form rather than a comparison
+        // rule.** `M >>= ret` is `M`, so a sequence whose continuation returns
+        // exactly its own binder never joins the spine — the neutral unwinds
+        // unchanged and the bind is simply not there.
+        //
+        // Putting the collapse here rather than in conversion is what makes it
+        // **structurally** impossible for two consumers to disagree about it:
+        // the identification is in the domain, so everything reading the domain
+        // inherits it. A comparison arm would only satisfy that audit.
+        //
+        // # The check is syntactic, and deliberately
+        //
+        // A continuation is trivial when its body is `ret x` for its own single
+        // binder `x` — read off the stored syntax without entering the closure.
+        // Entering it would mean evaluating a body of caller-chosen depth from
+        // inside the machine's own step, which is the host-recursion hazard the
+        // walk discipline refuses. The shape is decidable from what is in hand.
+        //
+        // # No side condition
+        //
+        // The bind binder carries **no grade**, so unlike thunk eta there is
+        // nothing to check. And the row agrees by construction: `ret` carries
+        // the empty row and the bind's row is the join, so the collapsed and
+        // uncollapsed forms perform exactly the same effects. The rule removes
+        // a bind; it never commutes one past another, which is the species that
+        // would reorder effects.
+        | (SemCompNode::Neutral(_), Elim::Sequence(cont))
+            if bool::from(returns_its_own_binder(nbe, cont)?) =>
+        {
+            Phase::Unwind(id)
         },
         | (SemCompNode::Neutral(stuck), elim) => {
             let extended = {

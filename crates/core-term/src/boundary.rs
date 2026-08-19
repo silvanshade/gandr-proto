@@ -394,6 +394,11 @@ copy_wrapper!(
     "Definitional height of a definition body in the unfolding order."
 );
 copy_wrapper!(
+    TrivialContinuation,
+    bool,
+    "Whether a sequence continuation returns exactly its own binder."
+);
+copy_wrapper!(
     FreeOccurrence,
     bool,
     "Whether a variable occurs free inside a type."

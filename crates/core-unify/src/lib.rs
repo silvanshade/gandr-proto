@@ -1152,7 +1152,7 @@ mod tests
     }
 
     #[test]
-    fn a_sequencing_continuation_in_a_spine_postpones()
+    fn a_trivial_sequencing_continuation_collapses_and_solves()
     {
         let (_nbe, _solver, certificate) =
             run(context(&[(HoleId::from(0_u32), MetaSort::Comp)]), vec![
@@ -1165,9 +1165,30 @@ mod tests
                     Comp::ret(Value::Int(1)),
                 ),
             ]);
+        // **This used to postpone as a sequenced spine and now solves**, and
+        // the cause is the returner's eta rule rather than a change to the
+        // fragment's own discipline. `bind(?m, r. ret r)` collapses to `?m` in
+        // the normal form, so by the time the fragment test runs there is no
+        // sequence in the spine to be outside it.
+        //
+        // The solution is unique: `bind(?m, r. ret r) ≡ ret 1` gives
+        // `?m ≡ ret 1` by that same rule, so nothing more general exists to
+        // lose. A postponement becoming a most-general solution is availability
+        // gained at no cost to soundness.
+        //
+        // This is the normal-form route doing exactly what was wanted of it —
+        // every consumer of the domain inherits the identification, and the
+        // unifier is a consumer.
+        assert!(
+            certificate.residual().is_empty(),
+            "a trivial bind should collapse before the fragment test sees it"
+        );
         assert_eq!(
-            sole_residual(&certificate).reason(),
-            PostponeReason::SequencedSpine
+            certificate
+                .comp_solution(HoleId::from(0_u32))
+                .map(|solution| (**solution).clone()),
+            Some(Comp::ret(Value::Int(1))),
+            "the collapse must leave the most general solution"
         );
     }
 

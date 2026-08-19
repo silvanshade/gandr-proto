@@ -2716,6 +2716,65 @@ mod tests
         );
     }
 
+    /// **Eta for the returner**: `M >>= ret` is `M`, the right unit of the
+    /// bind — the `F` half of the adjunction whose `U` half is thunk eta.
+    ///
+    /// It is a **normal-form** rule rather than a comparison rule: a sequence
+    /// whose continuation returns its own binder never joins the neutral's
+    /// spine, so every consumer of the domain inherits the identification and
+    /// two of them cannot disagree about it by construction.
+    #[test]
+    fn a_trivial_bind_collapses_against_the_computation_it_sequences()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let neutral = || Comp::app(Comp::force(var("f")), var("z"));
+        let sequenced = thunk(Comp::bind(neutral(), "y", Comp::ret(var("y"))));
+        let bare = thunk(neutral());
+        assert!(
+            bool::from(nbe.converts(&sequenced, &bare)),
+            "a bind returning its own binder did not collapse"
+        );
+        assert!(
+            bool::from(nbe.converts(&bare, &sequenced)),
+            "returner eta is not symmetric"
+        );
+    }
+
+    /// **The separating witness.** A continuation that is *not*
+    /// return-of-binder must not collapse — returning something else, or
+    /// returning a different variable. Without this, the acceptance above would
+    /// pass for a rule that dropped every sequence.
+    #[test]
+    fn a_bind_returning_anything_else_does_not_collapse()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let neutral = || Comp::app(Comp::force(var("f")), var("z"));
+        let bare = thunk(neutral());
+
+        // Returns a *different* variable: the bound value is discarded.
+        let discards = thunk(Comp::bind(neutral(), "y", Comp::ret(var("w"))));
+        assert!(
+            !bool::from(nbe.converts(&discards, &bare)),
+            "a bind discarding its binder collapsed, which drops a value"
+        );
+
+        // Returns a constant rather than the binder.
+        let constant = thunk(Comp::bind(neutral(), "y", Comp::ret(Value::Int(3))));
+        assert!(
+            !bool::from(nbe.converts(&constant, &bare)),
+            "a bind returning a constant collapsed"
+        );
+
+        // Continues with something that is not a `ret` at all.
+        let continues = thunk(Comp::bind(neutral(), "y", Comp::force(var("y"))));
+        assert!(
+            !bool::from(nbe.converts(&continues, &bare)),
+            "a bind whose continuation is not a return collapsed"
+        );
+    }
+
     /// `Hom(a, b)` over the two given index values.
     fn hom(
         lhs: Rc<Value>,
