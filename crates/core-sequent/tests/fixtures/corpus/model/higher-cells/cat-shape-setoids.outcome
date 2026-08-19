@@ -2,13 +2,14 @@
 ; source: model/higher-cells/cat-shape-setoids.gandr
 ; source-b3sum: ac889822717d791cfa1a9285653421fe98eb2e2497be68641c0887fd0ba81774
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
-; items: 9
+; items: 10
 Ret(Record([]))
 Ret(Thunk(Omega, Abs("a", None, Abs("x", None, Ret(Var("x"))))))
 Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y")))))))))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("f", None, Ret(Here(Var("f"))))))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("f", None, Ret(Here(Var("f"))))))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("d", None, Abs("f", None, Abs("g", None, Abs("h", None, Bind(App(App(App(App(App(Force(Var("comp")), Var("a")), Var("b")), Var("c")), Var("f")), Var("g")), "%tmp0", Bind(App(App(App(App(App(Force(Var("comp")), Var("a")), Var("c")), Var("d")), Var("%tmp0")), Var("h")), "%tmp1", Ret(Here(Var("%tmp1"))))))))))))))
 Ret(Hole(0))
-Ret(Hole(1))
-Ret(Hole(2))
 Ret(Int(1))
 Ret(Var("marker"))
 Ret(Record([]))
