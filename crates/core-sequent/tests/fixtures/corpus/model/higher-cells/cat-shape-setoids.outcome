@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/higher-cells/cat-shape-setoids.gandr
-; source-b3sum: 5928cdb08757a9c2d24c45034ce09c59c90fe4e3557eedfa47bb97a2750a14da
+; source-b3sum: 8a99b557ad00ba13d100831c9210adb08a156dd2e813299e7222ca265d54b4fc
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 10
 Ret(Hole(0))
