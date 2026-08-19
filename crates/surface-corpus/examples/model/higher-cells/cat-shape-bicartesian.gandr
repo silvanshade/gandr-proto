@@ -1,0 +1,55 @@
+// Bicartesian structure of CAT, as further CatShape instances.
+//
+// Empty and unit first: the initial category has no objects, so every
+// map out of it is the empty match. The terminal category has one object
+// and one hom, the identity. Product objects are pairs and product homs
+// are pairs of homs. Coproduct objects are a sum; coproduct homs are the
+// indexed family with only same-side constructors, so mixed pairs are
+// empty by construction.
+//
+// Laws stay here-based. Clean results in the Path-endpoint neighbourhood
+// are provisional until the silent-Unknown hole note lands.
+
+data Empty : Type {}
+
+data EmptyHom(a : Empty, b : Empty) : Type {}
+
+def empty_id(a : Empty) -> F EmptyHom(a, a) {
+  case a {}
+}
+
+data UnitOb : Type {
+  Star : UnitOb;
+}
+
+data UnitHom(a : UnitOb, b : UnitOb) : Type {
+  UnitId : UnitHom(a, b);
+}
+
+def unit_id(a : UnitOb) -> F UnitHom(a, a) {
+  ret UnitId
+}
+
+data PairOb(a : Type, b : Type) : Type {
+  Pair : (x : a, y : b) --> PairOb(a, b);
+}
+
+data SumOb(a : Type, b : Type) : Type {
+  Inl : (x : a) --> SumOb(a, b);
+  Inr : (y : b) --> SumOb(a, b);
+}
+
+data HomPlus(l : Type, r : Type, x : SumOb(l, r), y : SumOb(l, r)) : Type {
+  HomInl : (a : l, b : l, f : Integer) --> HomPlus(l, r, Inl(a), Inl(b));
+  HomInr : (c : r, d : r, g : Integer) --> HomPlus(l, r, Inr(c), Inr(d));
+}
+
+def empty_probe() -> F EmptyHom(Star, Star) {
+  empty_id(Star)
+}
+
+// The harness checks. empty_id is the empty match on a type with no
+// constructors. HomPlus states the coproduct family; it is not yet a
+// bound definition.
+//@ expect-def: empty_id
+//@ expect-def: unit_id
