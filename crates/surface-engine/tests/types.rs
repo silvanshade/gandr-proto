@@ -46,12 +46,10 @@ mod tests
         // structured error, total resolves the signature to the sort-free
         // `Value(Unknown)` fallback.
         let unsupported: &[&str] = &[
-            "Integer | Unit",        // union
-            "Integer /\\ Unit",      // intersection
-            "List(Integer, Unit)",   // `List` is unary — wrong arity
-            "Path(Integer, x)",      // `Path` is ternary — wrong arity
-            "Path(Integer, (x), y)", // compound endpoint is not rung-1
-            "Pair(Integer, Unit)",   // non-`List`/`Path` type constructor
+            "Integer | Unit",      // union
+            "Integer /\\ Unit",    // intersection
+            "List(Integer, Unit)", // `List` is unary — wrong arity
+            "Pair(Integer, Unit)", // non-`List`/`Path` type constructor
         ];
         for input in unsupported {
             assert!(
@@ -69,6 +67,48 @@ mod tests
             );
         }
     }
+    #[test]
+    fn a_wrong_arity_identity_type_fails_at_the_parse()
+    {
+        // **A stated type with the wrong arity is malformed source, not absent
+        // source**, so it is a hard error at the site rather than a hole. The
+        // identity former has a production of its own that lists exactly a
+        // carrier and two endpoints, so a two-argument `Path` no longer reaches
+        // the lowering at all: the parse refuses it first.
+        //
+        // That is a stronger refusal than the lowering error it replaces, and
+        // it holds in **both** strictness modes, which the previous shape could
+        // not — total mode holed a wrong-arity type to the gradual top, and a
+        // hole records an absence the author did not leave.
+        assert!(
+            matches!(
+                strict_signature_ascription("Path(Integer, x)"),
+                Err(LowerError::Syntax { .. })
+            ),
+            "a two-argument `Path` is refused by the parser: {:?}",
+            strict_signature_ascription("Path(Integer, x)")
+        );
+    }
+
+    #[test]
+    fn a_compound_identity_endpoint_is_in_the_fragment()
+    {
+        // An endpoint is a **term occurring in a type**, and the fragment now
+        // admits a parenthesized endpoint and an applied one. The parenthesized
+        // case is the cheapest witness that the endpoint position is read at
+        // the expression sort rather than reinterpreted from the type sort.
+        let Ty::Value(ValueType::Path { lhs, rhs, .. }) =
+            total_signature_ascription("Path(Integer, (x), y)")
+        else {
+            panic!(
+                "a parenthesized endpoint lowers to an identity type: {:?}",
+                total_signature_ascription("Path(Integer, (x), y)")
+            );
+        };
+        assert_eq!(Value::var("x"), *lhs, "the parentheses are transparent");
+        assert_eq!(Value::var("y"), *rhs);
+    }
+
     #[test]
     fn grade_annotations_parse_or_fail_by_shape()
     {
