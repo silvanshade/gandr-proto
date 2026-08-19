@@ -54,6 +54,10 @@ mod tests
                 | ItemOutcome::Holey => println!("[{index}] holey"),
             }
         }
+        println!("--- goals: {} ---", submission.report.goals.len());
+        for goal in &submission.report.goals {
+            println!("    item {} note {:?}", goal.item, goal.note);
+        }
         definitions
     }
 

@@ -16,12 +16,12 @@
 // and this module is the witness for the silent bind.
 
 module SetoidCatLaws : #{
-  type Ob = Type,
-  id: (a: Type) -> F (a -> F a),
-  comp: (a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c)) -> F (a -> F c),
-  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f)),
-  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f)),
-  assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((U(a -> F d)), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
+  type Ob = Type;
+  id: (a: Type) -> F (a -> F a);
+  comp: (a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c)) -> F (a -> F c);
+  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f));
+  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f));
+  assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((U(a -> F d)), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))));
 } {
   def id(a: Type, x: a) -> F a {
     ret x
@@ -49,13 +49,13 @@ def marker = 1;
 marker
 
 module SetoidCat : #{
-  type Ob : Type,
-  type Hom : Ob -> Ob -> Type,
-  id: (a: Ob) -> F Hom(a, a),
-  comp: (a: Ob, b: Ob, c: Ob, f: Hom(a, b), g: Hom(b, c)) -> F Hom(a, c),
-  unitL: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f)),
-  unitR: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f)),
-  assoc: (a: Ob, b: Ob, c: Ob, d: Ob, f: Hom(a, b), g: Hom(b, c), h: Hom(c, d)) -> F(Path(Hom(a, d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
+  type Ob : Type;
+  type Hom : Ob -> Ob -> Type;
+  id: (a: Ob) -> F Hom(a, a);
+  comp: (a: Ob, b: Ob, c: Ob, f: Hom(a, b), g: Hom(b, c)) -> F Hom(a, c);
+  unitL: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f));
+  unitR: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f));
+  assoc: (a: Ob, b: Ob, c: Ob, d: Ob, f: Hom(a, b), g: Hom(b, c), h: Hom(c, d)) -> F(Path(Hom(a, d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))));
 } {
   type Ob = Type;
 
@@ -93,9 +93,16 @@ module SetoidCat : #{
 // The no-unknown half of the claim is carried by the crate test
 // `the_left_unit_law_is_checked` until `expect-type-without-unknown` lands on
 // main; the corpus claim is deliberately weaker than the full one until then.
+//
+// The two module declarations are NOT expected to bind, and that is a
+// measurement rather than a concession. They previously bound an EMPTY record
+// -- silently, with every member lost -- and the expectations asserting they
+// bound were true of nothing. With the signature members terminated they now
+// decline BY NAME, `UnsupportedForm { kind: "module_declaration" }`, so the
+// file is blocked at a live gate instead of hiding behind a spelling defect.
+// When the declaration form lands, those expectations come back and say
+// something.
 //@ expect: goal
 //@ expect-def: unitL
-//@ expect-def: SetoidCatLaws
 //@ expect-def: marker
-//@ expect-def: SetoidCat
 //@ expect-last-value: 1

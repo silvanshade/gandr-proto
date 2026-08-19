@@ -1,15 +1,15 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/higher-cells/cat-shape-setoids.gandr
-; source-b3sum: 661bb481a8226458f13b574510b9f3f80fd6d24bab4ea61e569ca76d6a6f0515
+; source-b3sum: 5928cdb08757a9c2d24c45034ce09c59c90fe4e3557eedfa47bb97a2750a14da
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 10
-Ret(Record([]))
+Ret(Hole(0))
 Ret(Thunk(Omega, Abs("a", None, Abs("x", None, Ret(Var("x"))))))
 Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y")))))))))))
 Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("f", None, Ret(Here(Var("f"))))))))
 Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("f", None, Ret(Here(Var("f"))))))))
 Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("d", None, Abs("f", None, Abs("g", None, Abs("h", None, Bind(App(App(App(App(App(Force(Var("comp")), Var("a")), Var("b")), Var("c")), Var("f")), Var("g")), "%tmp0", Bind(App(App(App(App(App(Force(Var("comp")), Var("a")), Var("c")), Var("d")), Var("%tmp0")), Var("h")), "%tmp1", Ret(Here(Var("%tmp1"))))))))))))))
-Ret(Hole(0))
+Ret(Hole(1))
 Ret(Int(1))
 Ret(Var("marker"))
-Ret(Record([]))
+Ret(Hole(2))
