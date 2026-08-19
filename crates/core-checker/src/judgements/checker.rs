@@ -366,27 +366,29 @@ impl Rec
     {
         match value {
             | Value::Var(name) => self.rule_var(name, dir),
-            | Value::Unit => finish_value(ValueType::Unit, dir),
+            | Value::Unit => finish_value(&self.ctx, ValueType::Unit, dir),
             // Rule Int⇑/Int⇓ (A2.1 literals extension; ADR-39 D4): infer the
             // rigid `Integer` atom; check by subsumption *or*, for an integer
             // numeric atom it is representable in, by the Rust `{integer}`
             // literal rule (`finish_int_literal`).
-            | Value::Int(literal) => finish_int_literal(IntegerLiteral::from(literal), dir),
+            | Value::Int(literal) => {
+                finish_int_literal(&self.ctx, IntegerLiteral::from(literal), dir)
+            },
             // Rule Str⇑/Str⇓ (value-model ladder, ADR-38): a literal axiom,
             // exactly as Int — infer the rigid `String` atom, check by
             // subsumption.
-            | Value::Str(_) => finish_value(ValueType::string(), dir),
+            | Value::Str(_) => finish_value(&self.ctx, ValueType::string(), dir),
             // Rule Num⇑/Num⇓ (value-model ladder, ADR-39): a *suffixed* numeric
             // literal is monomorphic — infer the rigid atom of its `NumLit` tag
             // (`u32`/…/`f64`) and check by subsumption, with no widening to a
             // wider numeric atom (ADR-39 D5).
-            | Value::Num(literal) => finish_value(literal.value_type(), dir),
+            | Value::Num(literal) => finish_value(&self.ctx, literal.value_type(), dir),
             // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §"Holes"):
             // an axiom — `Γ ⊢ ?hole ⇑ Unknown`, and in checking mode
             // subsumption (`Unknown` consistent with everything) accepts any
             // expected type, returning it — the recorded *goal*. The identifier
             // is ignored by typing.
-            | Value::Hole(_) => finish_value(ValueType::Unknown, dir),
+            | Value::Hole(_) => finish_value(&self.ctx, ValueType::Unknown, dir),
             | Value::Pair(fst, snd) => self.rule_pair(fst, snd, dir),
             | Value::Inj(side, payload) => self.rule_inj(side, payload, dir),
             | Value::List(elements) => self.rule_list(elements, dir),
@@ -454,13 +456,15 @@ impl Rec
             // Rule Fix⇓: the recursion former, check-primary.
             | Comp::Fix(x, body) => self.rule_fix(x, body, dir),
             // Rule Hole⇑/Hole⇓ (A2.2 holes extension): as the value hole.
-            | Comp::Hole(_) => finish_comp(CompType::Unknown, dir),
+            | Comp::Hole(_) => finish_comp(&self.ctx, CompType::Unknown, dir),
             // Rule Native (ADR-42): a Rust-backed builtin is an axiom typed by
             // its declared type with the consumed arguments' arrows peeled
             // (`residual_type`) — a source native is argument-free, so this is
             // the primitive's declared type; the partial forms arise only
             // mid-evaluation (preservation). No premise, like the hole.
-            | Comp::Native { prim, ref args } => finish_comp(prim.residual_type(args.len()), dir),
+            | Comp::Native { prim, ref args } => {
+                finish_comp(&self.ctx, prim.residual_type(args.len()), dir)
+            },
             | Comp::Walk {
                 scrut,
                 motive,
@@ -486,7 +490,7 @@ impl Rec
         match self.ctx.lookup(NameRef::from(name.as_str())) {
             | Some(found) => {
                 let ty = found.clone();
-                finish_value(ty, dir)
+                finish_value(&self.ctx, ty, dir)
             },
             | None => Err(TypeError::UnboundVariable { name }),
         }
@@ -537,7 +541,11 @@ impl Rec
         let (fst_dir, snd_dir) = dir.pair_components();
         let fst_ty = self.value(unrc(fst), fst_dir)?;
         let snd_ty = self.value(unrc(snd), snd_dir)?;
-        finish_value(ValueType::Prod(Rc::new(fst_ty), Rc::new(snd_ty)), dir)
+        finish_value(
+            &self.ctx,
+            ValueType::Prod(Rc::new(fst_ty), Rc::new(snd_ty)),
+            dir,
+        )
     }
 
     /// Rules Inj1⇓/Inj2⇓: injections only check, against a sum — or against
@@ -778,7 +786,7 @@ impl Rec
             let field_ty = self.value(unrc(value), field_dir)?;
             constructed.insert(label, Rc::new(field_ty));
         }
-        finish_value(ValueType::Record(constructed), dir)
+        finish_value(&self.ctx, ValueType::Record(constructed), dir)
     }
 
     /// Rules Thunk⇓/Thunk⇑: check the body against the expected `U` payload
@@ -803,6 +811,7 @@ impl Rec
             | Dir::Check(ValueType::Unknown) => {
                 let body_ty = self.comp(unrc(body), Dir::Check(CompType::Unknown))?;
                 finish_value(
+                    &self.ctx,
                     ValueType::Thunk(grade, Rc::new(body_ty)),
                     Dir::Check(ValueType::Unknown),
                 )
@@ -816,13 +825,14 @@ impl Rec
                 }
                 let body_ty = self.comp(unrc(body), Dir::Check(expected_body.as_ref().clone()))?;
                 finish_value(
+                    &self.ctx,
                     ValueType::Thunk(expected_grade, Rc::new(body_ty)),
                     Dir::Check(ValueType::Thunk(expected_grade, expected_body)),
                 )
             },
             | other => {
                 let body_ty = self.comp(unrc(body), Dir::Infer)?;
-                finish_value(ValueType::Thunk(grade, Rc::new(body_ty)), other)
+                finish_value(&self.ctx, ValueType::Thunk(grade, Rc::new(body_ty)), other)
             },
         }
     }
@@ -904,7 +914,7 @@ impl Rec
     ) -> Result<ValueType, TypeError>
     {
         let checked = self.value(unrc(inner), Dir::Check(unrc(ty)))?;
-        finish_value(checked, dir)
+        finish_value(&self.ctx, checked, dir)
     }
 
     /// Rules Abs⇓/Abs⇑: unannotated binders check against an arrow; annotated
@@ -935,6 +945,7 @@ impl Rec
                 let res_ty = self.comp(unrc(body), Dir::Check(expected_res))?;
                 self.ctx.unbind();
                 finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         // The checked codomain speaks of the lambda's binder,
                         // so the type this rule returns binds that name.
@@ -953,6 +964,7 @@ impl Rec
                 let res_ty = self.comp(unrc(body), Dir::Check(CompType::Unknown))?;
                 self.ctx.unbind();
                 finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         binder: None,
                         arg: Rc::new(ValueType::Unknown),
@@ -966,6 +978,7 @@ impl Rec
                 let res_ty = self.comp(unrc(body), Dir::Infer)?;
                 self.ctx.unbind();
                 finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         binder: inferred_binder(&name, &res_ty),
                         arg: annot_ty,
@@ -1011,7 +1024,7 @@ impl Rec
                 // carries no binder and the codomain passes through unchanged,
                 // which is the pre-`Π` behaviour exactly.
                 let applied = instantiate_codomain(binder.as_deref(), res.as_ref(), arg.as_ref());
-                finish_comp(applied, dir)
+                finish_comp(&self.ctx, applied, dir)
             },
             // The matched arrow (A2.2 holes extension): an `Unknown` head
             // applies — the argument checks against `Unknown` and the result
@@ -1019,7 +1032,7 @@ impl Rec
             // cascading (§"Holes").
             | CompType::Unknown => {
                 self.value(unrc(arg), Dir::Check(ValueType::Unknown))?;
-                finish_comp(CompType::Unknown, dir)
+                finish_comp(&self.ctx, CompType::Unknown, dir)
             },
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_ARROW,
@@ -1044,7 +1057,7 @@ impl Rec
         let payload_dir = dir.ret_payload();
         let payload_ty = self.value(unrc(payload), payload_dir)?;
         // `ret v` performs no effects: the pure returner `F^⟨⟩ A` (ADR-33 D2).
-        finish_comp(CompType::returner(payload_ty), dir)
+        finish_comp(&self.ctx, CompType::returner(payload_ty), dir)
     }
 
     /// Rule Bind⇕: infer the bound computation, type the continuation in the
@@ -1091,7 +1104,7 @@ impl Rec
         let cont_ty = self.comp(unrc(cont), dir.clone())?;
         self.ctx.unbind();
         let combined = combine_bind_row(&bound_row, cont_ty)?;
-        finish_comp(combined, dir)
+        finish_comp(&self.ctx, combined, dir)
     }
 
     /// Rule Force⇑: infer the thunk, require `1 ⊑ r`, expose the body (§"Core
@@ -1116,13 +1129,13 @@ impl Rec
                         upper: grade,
                     });
                 }
-                finish_comp(unrc(body), dir)
+                finish_comp(&self.ctx, unrc(body), dir)
             },
             // The matched thunk (A2.2 holes extension): forcing an `Unknown`
             // value exposes `Unknown`; the `1 ⊑ r` requirement is **not**
             // checked — the matched grade is unknown and Stage 1 emits no
             // constraints.
-            | ValueType::Unknown => finish_comp(CompType::Unknown, dir),
+            | ValueType::Unknown => finish_comp(&self.ctx, CompType::Unknown, dir),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_THUNK,
                 actual: Ty::Value(other),
@@ -1209,7 +1222,7 @@ impl Rec
             Rc::new(ValueType::Thunk(r, Rc::new(body.clone()))),
             Rc::new(ValueType::Thunk(s, Rc::new(body))),
         ));
-        finish_comp(natural, dir)
+        finish_comp(&self.ctx, natural, dir)
     }
 
     /// Rule Drop (`spec:implementation/type-system.md` §"Grades"): discard a
@@ -1234,7 +1247,7 @@ impl Rec
         let thunk_ty = self.value(unrc(thunked), Dir::Infer)?;
         match thunk_ty {
             | ValueType::Thunk(..) | ValueType::Unknown => {
-                finish_comp(CompType::returner(ValueType::Unit), dir)
+                finish_comp(&self.ctx, CompType::returner(ValueType::Unit), dir)
             },
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_THUNK,
@@ -1527,7 +1540,7 @@ impl Rec
         self.comp(unrc(body), body_expected)?;
         self.ctx.unbind();
         self.ctx.unbind();
-        finish_comp(result, dir)
+        finish_comp(&self.ctx, result, dir)
     }
 
     /// Rule Unpack⇓: eliminate a package, minting its abstract components.
@@ -1682,10 +1695,10 @@ impl Rec
     {
         let target_ty = self.comp(unrc(target), Dir::Infer)?;
         match target_ty {
-            | CompType::With(lhs, rhs) => finish_comp(pick(side, &lhs, &rhs), dir),
+            | CompType::With(lhs, rhs) => finish_comp(&self.ctx, pick(side, &lhs, &rhs), dir),
             // The matched with (A2.2 holes extension): projecting from an
             // `Unknown` target yields `Unknown`.
-            | CompType::Unknown => finish_comp(CompType::Unknown, dir),
+            | CompType::Unknown => finish_comp(&self.ctx, CompType::Unknown, dir),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_WITH,
                 actual: Ty::Comp(other),
@@ -1716,7 +1729,11 @@ impl Rec
         let record_ty = self.value(record.as_ref().clone(), Dir::Infer)?;
         match record_ty {
             | ValueType::Record(fields) => match fields.get(&label) {
-                | Some(field_ty) => finish_comp(CompType::returner(field_ty.as_ref().clone()), dir),
+                | Some(field_ty) => finish_comp(
+                    &self.ctx,
+                    CompType::returner(field_ty.as_ref().clone()),
+                    dir,
+                ),
                 | None => Err(TypeError::StuckExpr {
                     expr: Term::Comp(Comp::RecordProj { record, label }),
                     hint: text::RECORD_NO_FIELD,
@@ -1724,7 +1741,7 @@ impl Rec
             },
             // The matched record (A2.2 holes extension): projecting from an
             // `Unknown` record yields `Unknown`, localizing the hole.
-            | ValueType::Unknown => finish_comp(CompType::Unknown, dir),
+            | ValueType::Unknown => finish_comp(&self.ctx, CompType::Unknown, dir),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_RECORD,
                 actual: Ty::Value(other),
@@ -1762,7 +1779,11 @@ impl Rec
         };
         self.value(unrc(arg), Dir::Check(op_def.payload().clone()))?;
         let row = EffectRow::singleton(*sig);
-        finish_comp(CompType::returner_eff(op_def.reply().clone(), row), dir)
+        finish_comp(
+            &self.ctx,
+            CompType::returner_eff(op_def.reply().clone(), row),
+            dir,
+        )
     }
 
     /// Rule Handle⇓ (`effects-control-shell.md` §1.1; A3.2 `+effects`):
@@ -1866,7 +1887,7 @@ impl Rec
         // inlined Sub rule then decides `ε_t ∖ E ⊆ ε` against the answer (the
         // matched-hole answer absorbs any residual).
         let natural = gandr_core_term::effect::handle_natural_type(&answer, residual);
-        finish_comp(natural, Dir::Check(answer))
+        finish_comp(&self.ctx, natural, Dir::Check(answer))
     }
 
     /// Rule Reify (`effects-control-shell.md` §2.1; A3.3 `+control`):
@@ -1905,7 +1926,7 @@ impl Rec
             },
         };
         let delivered = self.stack_infer(unrc(stack), consumed.clone())?;
-        finish_value(ValueType::stk(consumed, delivered), dir)
+        finish_value(&self.ctx, ValueType::stk(consumed, delivered), dir)
     }
 
     /// The stack-typing judgment `K : B ⇒ C`, run **forward** from the consumed
@@ -1980,7 +2001,7 @@ impl Rec
         let stack_ty = self.value(unrc(stack), Dir::Infer)?;
         let (consumed, delivered) = stk_components(stack_ty)?;
         self.comp(unrc(comp), Dir::Check(consumed))?;
-        finish_comp(delivered, dir)
+        finish_comp(&self.ctx, delivered, dir)
     }
 
     /// Rule Reset (`effects-control-shell.md` §2.2; A3.3 `+control`):
@@ -2158,7 +2179,7 @@ impl Rec
         let witness_value = unrc(witness);
         let witness_ty = self.value(witness_value.clone(), Dir::Infer)?;
         let natural = ValueType::path(witness_ty, witness_value.clone(), witness_value);
-        finish_value(natural, dir)
+        finish_value(&self.ctx, natural, dir)
     }
 
     /// Rule `Walk`⇑/`Walk`⇓ (ADR-76; the full Martin-Löf dinatural eliminator):
@@ -2209,7 +2230,7 @@ impl Rec
         self.ctx.bind(base.x.clone(), carrier);
         self.comp(unrc(base.body), Dir::Check(base_expected))?;
         self.ctx.unbind();
-        finish_comp(result, dir)
+        finish_comp(&self.ctx, result, dir)
     }
 }
 

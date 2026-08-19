@@ -59,6 +59,7 @@ use gandr_core_term::boundary::IntegerLiteral;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::PackageArity;
 use gandr_core_term::boundary::SubtypeDecision;
+use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::intern::TypeId;
 use gandr_core_term::intern::TypeInterner;
@@ -96,6 +97,7 @@ use crate::judgements::control::Dir;
 /// `Integer` subsumption holds.
 #[inline]
 pub fn finish_int_literal(
+    ctx: &Ctx,
     n: IntegerLiteral,
     dir: Dir<ValueType>,
 ) -> Result<ValueType, TypeError>
@@ -107,7 +109,7 @@ pub fn finish_int_literal(
                 Ok(expected)
             }
             else {
-                finish_value(ValueType::integer(), Dir::Check(expected))
+                finish_value(ctx, ValueType::integer(), Dir::Check(expected))
             }
         },
     }
@@ -160,6 +162,7 @@ pub(crate) fn int_literal_fits(
 /// Returns [`TypeError::TypeMismatch`] when subsumption fails.
 #[inline]
 pub fn finish_value(
+    ctx: &Ctx,
     constructed: ValueType,
     dir: Dir<ValueType>,
 ) -> Result<ValueType, TypeError>
@@ -167,7 +170,7 @@ pub fn finish_value(
     match dir {
         | Dir::Infer => Ok(constructed),
         | Dir::Check(expected) => {
-            if bool::from(value_subtype(&constructed, &expected)) {
+            if bool::from(value_subtype(ctx, &constructed, &expected)) {
                 Ok(expected)
             }
             else {
@@ -202,11 +205,12 @@ pub fn finish_value(
 /// - boundedness: compared types are finite Rust values.
 /// - input recursion: none.
 pub fn value_subtype(
+    ctx: &Ctx,
     sub: &ValueType,
     sup: &ValueType,
 ) -> SubtypeDecision
 {
-    subtype_goals(vec![SubtypeGoal::Value(
+    subtype_goals(ctx, vec![SubtypeGoal::Value(
         Rc::new(sub.clone()),
         Rc::new(sup.clone()),
     )])
@@ -242,6 +246,7 @@ enum SubtypeGoal
 /// Returns [`TypeError::TypeMismatch`] when subsumption fails.
 #[inline]
 pub fn finish_comp(
+    ctx: &Ctx,
     constructed: CompType,
     dir: Dir<CompType>,
 ) -> Result<CompType, TypeError>
@@ -249,7 +254,7 @@ pub fn finish_comp(
     match dir {
         | Dir::Infer => Ok(constructed),
         | Dir::Check(expected) => {
-            if bool::from(comp_subtype(&constructed, &expected)) {
+            if bool::from(comp_subtype(ctx, &constructed, &expected)) {
                 Ok(expected)
             }
             else {
@@ -280,11 +285,12 @@ pub fn finish_comp(
 /// - boundedness: compared types are finite Rust values.
 /// - input recursion: none.
 pub fn comp_subtype(
+    ctx: &Ctx,
     sub: &CompType,
     sup: &CompType,
 ) -> SubtypeDecision
 {
-    subtype_goals(vec![SubtypeGoal::Comp(
+    subtype_goals(ctx, vec![SubtypeGoal::Comp(
         Rc::new(sub.clone()),
         Rc::new(sup.clone()),
     )])
@@ -318,8 +324,19 @@ pub fn comp_subtype(
 /// - measure: the summed type-tree size of the queued goals.
 /// - boundedness: compared types are finite Rust values.
 /// - input recursion: none.
-fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
+fn subtype_goals(
+    ctx: &Ctx,
+    mut goals: Vec<SubtypeGoal>,
+) -> SubtypeDecision
 {
+    // The typing context is carried here so the normalizer this function mints
+    // can be built from the definitional environment the context holds, rather
+    // than empty. **Every mint in this function takes the same environment or
+    // none does**: two normalizers minted from one crate with different
+    // environments would be a site-dependent definitional equality, which is
+    // the same defect a strategy deciding a judgement would be, arriving as a
+    // mint instead of a policy.
+    let _ = ctx;
     // The normalizer is minted only if an invariant position is actually met,
     // and it is then reused for every one in this run.
     //
@@ -698,6 +715,7 @@ where
 #[inline]
 #[must_use]
 pub fn interned_subtype(
+    ctx: &Ctx,
     interner: &TypeInterner,
     sub: TypeId,
     sup: TypeId,
@@ -709,8 +727,8 @@ pub fn interned_subtype(
         return true.into();
     }
     match (interner.resolve(sub), interner.resolve(sup)) {
-        | (Some(&Ty::Value(ref lo)), Some(&Ty::Value(ref hi))) => value_subtype(lo, hi),
-        | (Some(&Ty::Comp(ref lo)), Some(&Ty::Comp(ref hi))) => comp_subtype(lo, hi),
+        | (Some(&Ty::Value(ref lo)), Some(&Ty::Value(ref hi))) => value_subtype(ctx, lo, hi),
+        | (Some(&Ty::Comp(ref lo)), Some(&Ty::Comp(ref hi))) => comp_subtype(ctx, lo, hi),
         // Cross-sort (a value type and a computation type never relate) or an id
         // this interner never minted.
         | _ => false.into(),
@@ -722,6 +740,7 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_term::ctx::Ctx;
     use gandr_core_term::grade::Grade;
     use gandr_core_term::intern::TypeInterner;
     use gandr_core_term::types::CompType;
@@ -738,7 +757,11 @@ mod tests
     fn value_subtype_reflexive_entry_short_circuits()
     {
         let value_type = ValueType::atom("Foo");
-        assert!(bool::from(value_subtype(&value_type, &value_type)));
+        assert!(bool::from(value_subtype(
+            &Ctx::new(),
+            &value_type,
+            &value_type
+        )));
     }
 
     /// **The conversion migration, observed through the relation that consumes
@@ -777,8 +800,8 @@ mod tests
         };
         let reduced = path(&contractum, &contractum);
         let unreduced = path(&redex, &redex);
-        assert!(bool::from(value_subtype(&unreduced, &reduced)));
-        assert!(bool::from(value_subtype(&reduced, &unreduced)));
+        assert!(bool::from(value_subtype(&Ctx::new(), &unreduced, &reduced)));
+        assert!(bool::from(value_subtype(&Ctx::new(), &reduced, &unreduced)));
         // Endpoints that are genuinely apart still do not relate.
         let apart = path(
             &contractum,
@@ -789,7 +812,7 @@ mod tests
                 )),
             )),
         );
-        assert!(!bool::from(value_subtype(&reduced, &apart)));
+        assert!(!bool::from(value_subtype(&Ctx::new(), &reduced, &apart)));
     }
 
     /// A dependent pair is invariant, and the normalizer decides it: two sigmas
@@ -803,13 +826,17 @@ mod tests
             binder: alloc::string::String::from(binder),
             snd: Rc::new(ValueType::Unit),
         };
-        assert!(bool::from(value_subtype(&sigma("x"), &sigma("y"))));
+        assert!(bool::from(value_subtype(
+            &Ctx::new(),
+            &sigma("x"),
+            &sigma("y")
+        )));
         let other = ValueType::Sigma {
             fst: Rc::new(ValueType::integer()),
             binder: alloc::string::String::from("x"),
             snd: Rc::new(ValueType::integer()),
         };
-        assert!(!bool::from(value_subtype(&sigma("x"), &other)));
+        assert!(!bool::from(value_subtype(&Ctx::new(), &sigma("x"), &other)));
     }
 
     /// **The abstraction-leak refutation at the checked core.** A sealed atom
@@ -824,11 +851,11 @@ mod tests
         let sealed = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
         for representation in [ValueType::atom("Integer"), ValueType::Unit] {
             assert!(
-                !bool::from(value_subtype(&sealed, &representation)),
+                !bool::from(value_subtype(&Ctx::new(), &sealed, &representation)),
                 "a sealed atom is not a subtype of a candidate representation"
             );
             assert!(
-                !bool::from(value_subtype(&representation, &sealed)),
+                !bool::from(value_subtype(&Ctx::new(), &representation, &sealed)),
                 "nor is a candidate representation a subtype of the sealed atom"
             );
         }
@@ -843,7 +870,7 @@ mod tests
         let counter = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
         let gauge = ValueType::Sealed(SealId::new(1_u64, "Gauge", "t"));
         assert!(
-            !bool::from(value_subtype(&counter, &gauge)),
+            !bool::from(value_subtype(&Ctx::new(), &counter, &gauge)),
             "two sealings do not interchange, however alike their implementations"
         );
         let same = ValueType::Sealed(SealId::new(0_u64, "Counter", "t"));
@@ -852,7 +879,7 @@ mod tests
             "the two references are distinct allocations"
         );
         assert!(
-            bool::from(value_subtype(&counter, &same)),
+            bool::from(value_subtype(&Ctx::new(), &counter, &same)),
             "one atom relates to itself through two references"
         );
     }
@@ -867,7 +894,11 @@ mod tests
         let clone = Rc::clone(&shared);
         // Shared allocation ⇒ the two inner references have equal addresses.
         assert!(core::ptr::eq(shared.as_ref(), clone.as_ref()));
-        assert!(bool::from(value_subtype(shared.as_ref(), clone.as_ref())));
+        assert!(bool::from(value_subtype(
+            &Ctx::new(),
+            shared.as_ref(),
+            clone.as_ref()
+        )));
     }
 
     /// A small nested value type, rebuilt from fresh allocations on each call
@@ -894,7 +925,7 @@ mod tests
         // The addresses differ, so `value_subtype`'s `ptr::eq` fast path cannot
         // pre-empt: the relation holds by structural reflexivity.
         assert!(
-            bool::from(value_subtype(&lhs, &rhs)),
+            bool::from(value_subtype(&Ctx::new(), &lhs, &rhs)),
             "reflexivity holds structurally"
         );
 
@@ -903,7 +934,7 @@ mod tests
         let rhs_id = interner.intern(&Ty::Value(rhs));
         assert_eq!(lhs_id, rhs_id, "the rebuild deduped to the same id");
         assert!(
-            bool::from(interned_subtype(&interner, lhs_id, rhs_id)),
+            bool::from(interned_subtype(&Ctx::new(), &interner, lhs_id, rhs_id)),
             "same id gives the O(1) reflexive hit"
         );
     }
@@ -924,21 +955,21 @@ mod tests
         assert_ne!(omega_id, one_id, "different grades give different ids");
 
         assert_eq!(
-            interned_subtype(&interner, omega_id, one_id),
-            value_subtype(&omega, &one),
+            interned_subtype(&Ctx::new(), &interner, omega_id, one_id),
+            value_subtype(&Ctx::new(), &omega, &one),
             "the interned verdict matches structural subtyping"
         );
         assert!(
-            bool::from(interned_subtype(&interner, omega_id, one_id)),
+            bool::from(interned_subtype(&Ctx::new(), &interner, omega_id, one_id)),
             "U_ω B <: U_1 B, since 1 ⊑ ω"
         );
         assert_eq!(
-            interned_subtype(&interner, one_id, omega_id),
-            value_subtype(&one, &omega),
+            interned_subtype(&Ctx::new(), &interner, one_id, omega_id),
+            value_subtype(&Ctx::new(), &one, &omega),
             "the interned negative verdict matches structural subtyping"
         );
         assert!(
-            !bool::from(interned_subtype(&interner, one_id, omega_id)),
+            !bool::from(interned_subtype(&Ctx::new(), &interner, one_id, omega_id)),
             "U_1 B is not below U_ω B, so the relation stays directional"
         );
     }
@@ -954,11 +985,11 @@ mod tests
         let value_id = interner.intern(&Ty::Value(ValueType::integer()));
         let comp_id = interner.intern(&Ty::Comp(CompType::returner(ValueType::integer())));
         assert!(
-            !bool::from(interned_subtype(&interner, value_id, comp_id)),
+            !bool::from(interned_subtype(&Ctx::new(), &interner, value_id, comp_id)),
             "a value type is not a subtype of a computation type"
         );
         assert!(
-            !bool::from(interned_subtype(&interner, comp_id, value_id)),
+            !bool::from(interned_subtype(&Ctx::new(), &interner, comp_id, value_id)),
             "nor the converse"
         );
 
@@ -967,7 +998,7 @@ mod tests
         let _second = foreign.intern(&Ty::Value(ValueType::atom("A")));
         let third = foreign.intern(&Ty::Value(ValueType::atom("B")));
         assert!(
-            !bool::from(interned_subtype(&interner, value_id, third)),
+            !bool::from(interned_subtype(&Ctx::new(), &interner, value_id, third)),
             "an id minted by another interner never relates"
         );
     }

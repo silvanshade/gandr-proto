@@ -1081,32 +1081,33 @@ fn step_value(
             match ctx.lookup(gandr_core_term::boundary::NameRef::from(name.as_str())) {
                 | Some(found) => {
                     let ty = found.clone();
-                    finish_value(ty, dir).map(return_value)
+                    finish_value(ctx, ty, dir).map(return_value)
                 },
                 | None => Err(TypeError::UnboundVariable { name }),
             }
         },
-        | Value::Unit => finish_value(ValueType::Unit, dir).map(return_value),
+        | Value::Unit => finish_value(ctx, ValueType::Unit, dir).map(return_value),
         // Rule Int⇑/Int⇓ (A2.1 literals extension; ADR-39 D4): a literal axiom,
         // as Unit — no frame is pushed, matching the recursive checker step.
         // `finish_int_literal` carries the Rust `{integer}` checking-mode
         // widening, so machine and checker stay lock-step.
         | Value::Int(literal) => finish_int_literal(
+            ctx,
             gandr_core_term::boundary::IntegerLiteral::from(literal),
             dir,
         )
         .map(return_value),
         // Rule Str⇑/Str⇓ (value-model ladder, ADR-38): a literal axiom, as Int
         // — no frame is pushed, matching the recursive checker step for step.
-        | Value::Str(_) => finish_value(ValueType::string(), dir).map(return_value),
+        | Value::Str(_) => finish_value(ctx, ValueType::string(), dir).map(return_value),
         // Rule Num⇑/Num⇓ (value-model ladder, ADR-39): a suffixed numeric
         // literal, monomorphic in its `NumLit` atom — no frame is pushed,
         // matching the recursive checker step.
-        | Value::Num(literal) => finish_value(literal.value_type(), dir).map(return_value),
+        | Value::Num(literal) => finish_value(ctx, literal.value_type(), dir).map(return_value),
         // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §"Holes"): an
         // axiom, as Unit/Int — infer `Unknown`, check against anything via
         // consistency; no frame is pushed.
-        | Value::Hole(_) => finish_value(ValueType::Unknown, dir).map(return_value),
+        | Value::Hole(_) => finish_value(ctx, ValueType::Unknown, dir).map(return_value),
         | Value::Pair(fst, snd) => {
             // Rule Sigma⇓ (ADR-81 feature 2), mirroring the recursive checker:
             // a pair checked against `Σ(x:A).B` descends its first component at
@@ -1224,7 +1225,9 @@ fn step_value(
                         dir: field_dir,
                     })
                 },
-                | None => finish_value(ValueType::Record(BTreeMap::new()), dir).map(return_value),
+                | None => {
+                    finish_value(ctx, ValueType::Record(BTreeMap::new()), dir).map(return_value)
+                },
             }
         },
         // Rule Run: the pure-computation embedding, inference-primary. The
@@ -1890,12 +1893,12 @@ fn step_comp(
         },
         // Rule Hole⇑/Hole⇓ (A2.2 holes extension): an axiom, as the value
         // hole — no frame is pushed.
-        | Comp::Hole(_) => finish_comp(CompType::Unknown, dir).map(return_comp),
+        | Comp::Hole(_) => finish_comp(ctx, CompType::Unknown, dir).map(return_comp),
         // Rule Native (ADR-42): an axiom typed by the primitive's residual type
         // (the declared type with the consumed arguments' arrows peeled) — no
         // frame is pushed, lock-step with the recursive checker's arm.
         | Comp::Native { prim, args } => {
-            finish_comp(prim.residual_type(args.len()), dir).map(return_comp)
+            finish_comp(ctx, prim.residual_type(args.len()), dir).map(return_comp)
         },
         // Rule Walk (ADR-76): infer the scrutinee, then the `Frame::WalkScrut` pop
         // forms the diagonal base check and the result. The image of
@@ -2062,8 +2065,10 @@ fn step_return(
             // is the non-dependent Prod finish.
             match dir {
                 | Dir::Check(sigma @ ValueType::Sigma { .. }) => Ok(return_value(sigma)),
-                | other => finish_value(ValueType::Prod(Rc::new(first), Rc::new(snd_ty)), other)
-                    .map(return_value),
+                | other => {
+                    finish_value(ctx, ValueType::Prod(Rc::new(first), Rc::new(snd_ty)), other)
+                        .map(return_value)
+                },
             }
         },
         | Frame::Inj { sum } => {
@@ -2163,12 +2168,12 @@ fn step_return(
                         dir: field_dir,
                     })
                 },
-                | None => finish_value(ValueType::Record(typed), dir).map(return_value),
+                | None => finish_value(ctx, ValueType::Record(typed), dir).map(return_value),
             }
         },
         | Frame::Thunk { grade, dir } => {
             let body_ty = expect_comp(ty)?;
-            finish_value(ValueType::Thunk(grade, Rc::new(body_ty)), dir).map(return_value)
+            finish_value(ctx, ValueType::Thunk(grade, Rc::new(body_ty)), dir).map(return_value)
         },
         | Frame::Run { body, dir } => {
             let body_ty = expect_comp(ty)?;
@@ -2194,7 +2199,7 @@ fn step_return(
         },
         | Frame::Annot { dir } => {
             let checked = expect_value(ty)?;
-            finish_value(checked, dir).map(return_value)
+            finish_value(ctx, checked, dir).map(return_value)
         },
         | Frame::Abs {
             var,
@@ -2216,6 +2221,7 @@ fn step_return(
                 | Dir::Infer => inferred_binder(&var, &res_ty),
             };
             finish_comp(
+                ctx,
                 CompType::Arrow {
                     binder,
                     arg: Rc::new(arg),
@@ -2271,12 +2277,12 @@ fn step_return(
             // Dependent application: the codomain is closed at the argument the
             // head was applied to, matching the recursive checker's `rule_app`.
             let applied = instantiate_codomain(binder.as_deref(), &result, &arg);
-            finish_comp(applied, dir).map(return_comp)
+            finish_comp(ctx, applied, dir).map(return_comp)
         },
         | Frame::Ret { dir } => {
             let payload_ty = expect_value(ty)?;
             // `ret v` performs no effects: the pure returner `F^⟨⟩ A` (ADR-33 D2).
-            finish_comp(CompType::returner(payload_ty), dir).map(return_comp)
+            finish_comp(ctx, CompType::returner(payload_ty), dir).map(return_comp)
         },
         | Frame::Force { dir } => match expect_value(ty)? {
             | ValueType::Thunk(grade, body) => {
@@ -2286,11 +2292,11 @@ fn step_return(
                         upper: grade,
                     });
                 }
-                finish_comp(Rc::unwrap_or_clone(body), dir).map(return_comp)
+                finish_comp(ctx, Rc::unwrap_or_clone(body), dir).map(return_comp)
             },
             // The matched thunk (A2.2 holes extension): forcing `Unknown`
             // exposes `Unknown`; no `1 ⊑ r` constraint is emitted.
-            | ValueType::Unknown => finish_comp(CompType::Unknown, dir).map(return_comp),
+            | ValueType::Unknown => finish_comp(ctx, CompType::Unknown, dir).map(return_comp),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_THUNK,
                 actual: Ty::Value(other),
@@ -2304,14 +2310,15 @@ fn step_return(
         | Frame::RecordProj { record, label, dir } => match expect_value(ty)? {
             | ValueType::Record(fields) => match fields.get(&label) {
                 | Some(field_ty) => {
-                    finish_comp(CompType::returner(field_ty.as_ref().clone()), dir).map(return_comp)
+                    finish_comp(ctx, CompType::returner(field_ty.as_ref().clone()), dir)
+                        .map(return_comp)
                 },
                 | None => Err(TypeError::StuckExpr {
                     expr: Term::Comp(Comp::RecordProj { record, label }),
                     hint: text::RECORD_NO_FIELD,
                 }),
             },
-            | ValueType::Unknown => finish_comp(CompType::Unknown, dir).map(return_comp),
+            | ValueType::Unknown => finish_comp(ctx, CompType::Unknown, dir).map(return_comp),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_RECORD,
                 actual: Ty::Value(other),
@@ -2335,7 +2342,7 @@ fn step_return(
                     Rc::new(ValueType::Thunk(r, Rc::new(body.clone()))),
                     Rc::new(ValueType::Thunk(s, Rc::new(body))),
                 ));
-                finish_comp(natural, dir).map(return_comp)
+                finish_comp(ctx, natural, dir).map(return_comp)
             },
             // The matched thunk (A2.2 holes extension): `dup ?hole` splits at
             // `Unknown` bodies; no grade constraint is emitted.
@@ -2344,7 +2351,7 @@ fn step_return(
                     Rc::new(ValueType::Thunk(r, Rc::new(CompType::Unknown))),
                     Rc::new(ValueType::Thunk(s, Rc::new(CompType::Unknown))),
                 ));
-                finish_comp(natural, dir).map(return_comp)
+                finish_comp(ctx, natural, dir).map(return_comp)
             },
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_THUNK,
@@ -2356,7 +2363,7 @@ fn step_return(
             // the default carrier) — and the matched `Unknown` scrutinee
             // alike: `F 1` depends on neither grade nor body.
             | ValueType::Thunk(..) | ValueType::Unknown => {
-                finish_comp(CompType::returner(ValueType::Unit), dir).map(return_comp)
+                finish_comp(ctx, CompType::returner(ValueType::Unit), dir).map(return_comp)
             },
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_THUNK,
@@ -2400,7 +2407,7 @@ fn step_return(
             // the pre-pop `Γ`.
             let cont_ty = expect_comp(ty)?;
             let combined = combine_bind_row(&bound_row, cont_ty)?;
-            let finished = finish_comp(combined, dir)?;
+            let finished = finish_comp(ctx, combined, dir)?;
             ctx.unbind();
             Ok(return_comp(finished))
         },
@@ -2656,7 +2663,7 @@ fn step_return(
             expect_comp(ty)?;
             ctx.unbind();
             ctx.unbind();
-            finish_comp(result, dir).map(return_comp)
+            finish_comp(ctx, result, dir).map(return_comp)
         },
         // A list-case's `cons` arm restores `Γ` (two binders) and propagates the
         // body type unchanged (ADR-40 D4).
@@ -2681,10 +2688,12 @@ fn step_return(
             Ok(return_comp(CompType::With(Rc::new(first), Rc::new(snd_ty))))
         },
         | Frame::Prj { side, dir } => match expect_comp(ty)? {
-            | CompType::With(lhs, rhs) => finish_comp(pick(side, &lhs, &rhs), dir).map(return_comp),
+            | CompType::With(lhs, rhs) => {
+                finish_comp(ctx, pick(side, &lhs, &rhs), dir).map(return_comp)
+            },
             // The matched with (A2.2 holes extension): projecting from an
             // `Unknown` target yields `Unknown`.
-            | CompType::Unknown => finish_comp(CompType::Unknown, dir).map(return_comp),
+            | CompType::Unknown => finish_comp(ctx, CompType::Unknown, dir).map(return_comp),
             | other => Err(TypeError::ShapeMismatch {
                 expected: text::SHAPE_WITH,
                 actual: Ty::Comp(other),
@@ -2694,7 +2703,7 @@ fn step_return(
         // singleton-row returner `F^⟨E⟩ B_op`.
         | Frame::Perform { reply, row, dir } => {
             expect_value(ty)?;
-            finish_comp(CompType::returner_eff(reply, row), dir).map(return_comp)
+            finish_comp(ctx, CompType::returner_eff(reply, row), dir).map(return_comp)
         },
         // Rule Handle⇓ (A3.2 `+effects`): the handled computation inferred.
         // The fallible returner-shape check runs before any `Γ` mutation; then
@@ -2773,7 +2782,7 @@ fn step_return(
         // delivered answer `C` against the resume's direction.
         | Frame::ResumeArg { result, dir } => {
             expect_comp(ty)?;
-            finish_comp(result, dir).map(return_comp)
+            finish_comp(ctx, result, dir).map(return_comp)
         },
         // Rule Reset⇓ (A3.3 `+control`): the body checked against the answer `C`.
         // The fallible sort check runs before the ambient restore, then `reset`
@@ -2838,7 +2847,7 @@ fn step_return(
         | Frame::Here { witness, dir } => {
             let carrier = expect_value(ty)?;
             let natural = ValueType::path(carrier, witness.clone(), witness);
-            finish_value(natural, dir).map(return_value)
+            finish_value(ctx, natural, dir).map(return_value)
         },
         // Rule Walk pop 1 (ADR-76): the scrutinee inferred its `Path A a b` shape.
         // Compute the diagonal base's expected type and the (base-independent)
@@ -2882,7 +2891,7 @@ fn step_return(
         | Frame::WalkBase { result, dir } => {
             expect_comp(ty)?;
             ctx.unbind();
-            finish_comp(result, dir).map(return_comp)
+            finish_comp(ctx, result, dir).map(return_comp)
         },
     }
 }
@@ -2951,7 +2960,7 @@ fn handle_advance(
 {
     if remaining.is_empty() {
         let natural = handle_natural_type(&answer, residual);
-        return finish_comp(natural, Dir::Check(answer)).map(return_comp);
+        return finish_comp(ctx, natural, Dir::Check(answer)).map(return_comp);
     }
     let (op_def, clause) = remaining.remove(0);
     let resume_ty = resume_stack_type(&answer, op_def.reply().clone());
@@ -3009,7 +3018,7 @@ fn walk_stack(
                     },
                     | _ => ValueType::stk(CompType::Unknown, current_input),
                 };
-                return finish_value(constructed, dir).map(return_value);
+                return finish_value(ctx, constructed, dir).map(return_value);
             },
             | Stack::Prj(side, rest) => {
                 // A projection has no sub-term: continue the walk in this step.

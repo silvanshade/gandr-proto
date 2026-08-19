@@ -2161,24 +2161,24 @@ impl Marker
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Unit => {
-                let ty = finish_value(ValueType::Unit, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, ValueType::Unit, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Int(literal) => {
-                let ty = finish_int_literal_marked(literal, dir, &mut pending.marks);
+                let ty = finish_int_literal_marked(&self.ctx, literal, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Str(_) => {
-                let ty = finish_value(ValueType::string(), dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, ValueType::string(), dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Num(literal) => {
-                let ty = finish_value(literal.value_type(), dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, literal.value_type(), dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Hole(hole) => {
                 pending.marks.push(Mark::EmptyHole(hole));
-                let ty = finish_value(ValueType::Unknown, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, ValueType::Unknown, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Value::Pair(fst, snd) => {
@@ -3140,11 +3140,16 @@ impl Marker
             },
             | Comp::Hole(hole) => {
                 pending.marks.push(Mark::EmptyHole(hole));
-                let ty = finish_comp(CompType::Unknown, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, CompType::Unknown, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | Comp::Native { prim, args } => {
-                let ty = finish_comp(prim.residual_type(args.len()), dir, &mut pending.marks);
+                let ty = finish_comp(
+                    &self.ctx,
+                    prim.residual_type(args.len()),
+                    dir,
+                    &mut pending.marks,
+                );
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | Comp::Walk {
@@ -3187,7 +3192,12 @@ impl Marker
         } = item;
         match stack {
             | Stack::Empty => {
-                let ty = finish_value(ValueType::stk(root_input, input), dir, &mut pending.marks);
+                let ty = finish_value(
+                    &self.ctx,
+                    ValueType::stk(root_input, input),
+                    dir,
+                    &mut pending.marks,
+                );
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Stack::Arg(value, rest) => {
@@ -3354,7 +3364,7 @@ impl Marker
             );
         }
         else {
-            let ty = finish_value(ValueType::Record(typed), dir, &mut pending.marks);
+            let ty = finish_value(&self.ctx, ValueType::Record(typed), dir, &mut pending.marks);
             run.result = Some(MarkResult::Value(pending.finish(self, ty)));
         }
     }
@@ -3438,7 +3448,7 @@ impl Marker
             );
         }
         else {
-            let ty = finish_comp(natural, Dir::Check(answer), &mut pending.marks);
+            let ty = finish_comp(&self.ctx, natural, Dir::Check(answer), &mut pending.marks);
             run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
         }
     }
@@ -3511,6 +3521,7 @@ impl Marker
                 let snd_ty = expect_value(done);
                 let _popped = self.path.pop();
                 let ty = finish_value(
+                    &self.ctx,
                     ValueType::Prod(Rc::new(fst_ty), Rc::new(snd_ty)),
                     dir,
                     &mut pending.marks,
@@ -3524,7 +3535,7 @@ impl Marker
             } => {
                 let _child = expect_value(done);
                 let _popped = self.path.pop();
-                let ty = finish_value(constructed, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, constructed, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | MarkFrame::ValueElements {
@@ -3585,6 +3596,7 @@ impl Marker
                 let body_ty = expect_comp(done);
                 let _popped = self.path.pop();
                 let ty = finish_value(
+                    &self.ctx,
                     ValueType::Thunk(grade, Rc::new(body_ty)),
                     dir,
                     &mut pending.marks,
@@ -3600,6 +3612,7 @@ impl Marker
                 let _popped = self.path.pop();
                 let expected = ValueType::Thunk(expected_grade, expected_body);
                 let ty = finish_value(
+                    &self.ctx,
                     ValueType::Thunk(expected_grade, Rc::new(body_ty)),
                     Dir::Check(expected),
                     &mut pending.marks,
@@ -3609,7 +3622,7 @@ impl Marker
             | MarkFrame::ValueAnnotAfterInner { mut pending, dir } => {
                 let checked = expect_value(done);
                 let _popped = self.path.pop();
-                let ty = finish_value(checked, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, checked, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | MarkFrame::ValueHereAfterWitness {
@@ -3621,7 +3634,7 @@ impl Marker
                 let _popped = self.path.pop();
                 let witness_value = unrc(witness);
                 let natural = ValueType::path(witness_ty, witness_value.clone(), witness_value);
-                let ty = finish_value(natural, dir, &mut pending.marks);
+                let ty = finish_value(&self.ctx, natural, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | MarkFrame::CompAbsCheckArrowAfterBody {
@@ -3635,6 +3648,7 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         binder: binder.as_ref().map(|_| name),
                         arg: Rc::clone(&arg),
@@ -3650,6 +3664,7 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         binder: None,
                         arg: Rc::new(ValueType::Unknown),
@@ -3670,6 +3685,7 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
+                    &self.ctx,
                     CompType::Arrow {
                         binder: inferred_binder(&name, &res_ty),
                         arg: annot_ty,
@@ -3719,13 +3735,18 @@ impl Marker
                 let _arg_ty = expect_value(done);
                 let _popped = self.path.pop();
                 let applied = instantiate_codomain(binder.as_deref(), &res, arg.as_ref());
-                let ty = finish_comp(applied, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, applied, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompRetAfterPayload { mut pending, dir } => {
                 let payload_ty = expect_value(done);
                 let _popped = self.path.pop();
-                let ty = finish_comp(CompType::returner(payload_ty), dir, &mut pending.marks);
+                let ty = finish_comp(
+                    &self.ctx,
+                    CompType::returner(payload_ty),
+                    dir,
+                    &mut pending.marks,
+                );
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompBindAfterBound {
@@ -3773,7 +3794,7 @@ impl Marker
                     CompType::Unknown,
                     &mut pending.marks,
                 );
-                let ty = finish_comp(sequenced, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, sequenced, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompForceAfterThunk { mut pending, dir } => {
@@ -3784,15 +3805,17 @@ impl Marker
                         if !bool::from(Grade::ONE.leq(grade)) {
                             pending.marks.push(Mark::Thunkability { available: grade });
                         }
-                        finish_comp(unrc(body), dir, &mut pending.marks)
+                        finish_comp(&self.ctx, unrc(body), dir, &mut pending.marks)
                     },
-                    | ValueType::Unknown => finish_comp(CompType::Unknown, dir, &mut pending.marks),
+                    | ValueType::Unknown => {
+                        finish_comp(&self.ctx, CompType::Unknown, dir, &mut pending.marks)
+                    },
                     | other => {
                         pending.marks.push(Mark::ShapeMismatch {
                             expected: text::SHAPE_THUNK,
                             actual: Ty::Value(other),
                         });
-                        finish_comp(CompType::Unknown, dir, &mut pending.marks)
+                        finish_comp(&self.ctx, CompType::Unknown, dir, &mut pending.marks)
                     },
                 };
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
@@ -4063,7 +4086,7 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 self.ctx.unbind();
-                let ty = finish_comp(split_result, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, split_result, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompUnpackAfterScrut {
@@ -4098,7 +4121,7 @@ impl Marker
                 let _body_ty = expect_comp(done);
                 let _popped = self.path.pop();
                 self.ctx.unbind();
-                let ty = finish_comp(result, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, result, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompWithAfterFst {
@@ -4148,7 +4171,7 @@ impl Marker
                     CompType::Unknown,
                     &mut pending.marks,
                 );
-                let ty = finish_comp(projected, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, projected, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompRecordProjAfterRecord {
@@ -4177,7 +4200,7 @@ impl Marker
                         CompType::Unknown
                     },
                 };
-                let ty = finish_comp(projected, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, projected, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompDupAfterThunk {
@@ -4212,7 +4235,7 @@ impl Marker
                     Rc::new(ValueType::Thunk(r, Rc::new(body.clone()))),
                     Rc::new(ValueType::Thunk(s, Rc::new(body))),
                 ));
-                let ty = finish_comp(natural, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, natural, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompDropAfterThunk { mut pending, dir } => {
@@ -4225,7 +4248,12 @@ impl Marker
                         actual: Ty::Value(other),
                     }),
                 }
-                let ty = finish_comp(CompType::returner(ValueType::Unit), dir, &mut pending.marks);
+                let ty = finish_comp(
+                    &self.ctx,
+                    CompType::returner(ValueType::Unit),
+                    dir,
+                    &mut pending.marks,
+                );
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompPerformAfterArg {
@@ -4235,7 +4263,7 @@ impl Marker
             } => {
                 let _arg_ty = expect_value(done);
                 let _popped = self.path.pop();
-                let ty = finish_comp(constructed, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, constructed, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompHandleAfterScrutinee {
@@ -4352,7 +4380,7 @@ impl Marker
             } => {
                 let _comp_ty = expect_comp(done);
                 let _popped = self.path.pop();
-                let ty = finish_comp(delivered, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, delivered, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompResetAfterBody { pending, saved } => {
@@ -4427,7 +4455,7 @@ impl Marker
                 let _base_ty = expect_comp(done);
                 let _popped = self.path.pop();
                 self.ctx.unbind();
-                let ty = finish_comp(result_ty, dir, &mut pending.marks);
+                let ty = finish_comp(&self.ctx, result_ty, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::StackArgAfterValue {
@@ -5863,10 +5891,10 @@ impl Marker
             .ctx
             .lookup(gandr_core_term::boundary::NameRef::from(name.as_str()))
         {
-            | Some(found) => finish_value(found.clone(), dir, marks),
+            | Some(found) => finish_value(&self.ctx, found.clone(), dir, marks),
             | None => {
                 marks.push(Mark::FreeVariable { name });
-                finish_value(ValueType::Unknown, dir, marks)
+                finish_value(&self.ctx, ValueType::Unknown, dir, marks)
             },
         }
     }
@@ -6009,6 +6037,7 @@ fn analyzed_comp(dir: &Dir<CompType>) -> Option<Ty>
 /// expected type). The accept/reject decision matches the checker and machine.
 #[inline]
 fn finish_int_literal_marked<L>(
+    ctx: &Ctx,
     n: L,
     dir: Dir<ValueType>,
     marks: &mut Vec<Mark>,
@@ -6027,7 +6056,7 @@ where
                 expected
             }
             else {
-                finish_value(ValueType::integer(), Dir::Check(expected), marks)
+                finish_value(ctx, ValueType::integer(), Dir::Check(expected), marks)
             }
         },
     }
@@ -6038,6 +6067,7 @@ where
 /// recording a classified mismatch mark when consistent subtyping fails.
 #[inline]
 fn finish_value(
+    ctx: &Ctx,
     constructed: ValueType,
     dir: Dir<ValueType>,
     marks: &mut Vec<Mark>,
@@ -6046,8 +6076,8 @@ fn finish_value(
     match dir {
         | Dir::Infer => constructed,
         | Dir::Check(expected) => {
-            if !bool::from(value_subtype(&constructed, &expected)) {
-                marks.push(classify_value_mismatch(constructed, expected.clone()));
+            if !bool::from(value_subtype(ctx, &constructed, &expected)) {
+                marks.push(classify_value_mismatch(ctx, constructed, expected.clone()));
             }
             expected
         },
@@ -6057,6 +6087,7 @@ fn finish_value(
 /// Completes a computation rule under a direction (the marking Sub rule).
 #[inline]
 fn finish_comp(
+    ctx: &Ctx,
     constructed: CompType,
     dir: Dir<CompType>,
     marks: &mut Vec<Mark>,
@@ -6065,8 +6096,8 @@ fn finish_comp(
     match dir {
         | Dir::Infer => constructed,
         | Dir::Check(expected) => {
-            if !bool::from(comp_subtype(&constructed, &expected)) {
-                marks.push(classify_comp_mismatch(constructed, expected.clone()));
+            if !bool::from(comp_subtype(ctx, &constructed, &expected)) {
+                marks.push(classify_comp_mismatch(ctx, constructed, expected.clone()));
             }
             expected
         },
@@ -6078,6 +6109,7 @@ fn finish_comp(
 /// anything else is a generic [`Mark::TypeMismatch`] boundary.
 #[inline]
 fn classify_value_mismatch(
+    ctx: &Ctx,
     actual: ValueType,
     expected: ValueType,
 ) -> Mark
@@ -6090,7 +6122,7 @@ fn classify_value_mismatch(
         | (
             &ValueType::Thunk(actual_grade, ref actual_body),
             &ValueType::Thunk(expected_grade, ref expected_body),
-        ) if bool::from(comp_subtype(actual_body, expected_body))
+        ) if bool::from(comp_subtype(ctx, actual_body, expected_body))
             && !bool::from(expected_grade.leq(actual_grade)) =>
         {
             Some((expected_grade, actual_grade))
@@ -6111,6 +6143,7 @@ fn classify_value_mismatch(
 /// else is a generic [`Mark::TypeMismatch`] boundary.
 #[inline]
 fn classify_comp_mismatch(
+    ctx: &Ctx,
     actual: CompType,
     expected: CompType,
 ) -> Mark
@@ -6122,7 +6155,7 @@ fn classify_comp_mismatch(
         | (
             &CompType::F(ref actual_of, ref actual_row),
             &CompType::F(ref expected_of, ref expected_row),
-        ) if bool::from(value_subtype(actual_of, expected_of))
+        ) if bool::from(value_subtype(ctx, actual_of, expected_of))
             && !bool::from(actual_row.is_subset(expected_row)) =>
         {
             true

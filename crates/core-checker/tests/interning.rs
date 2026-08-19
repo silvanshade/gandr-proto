@@ -14,6 +14,7 @@ use gandr_core_checker::discipline::subtype::interned_subtype;
 use gandr_core_checker::discipline::subtype::value_subtype;
 use gandr_core_checker_tools::strategies::arb_comp_type;
 use gandr_core_checker_tools::strategies::arb_value_type;
+use gandr_core_term::ctx::Ctx;
 use gandr_core_term::intern::TypeInterner;
 use gandr_core_term::types::Ty;
 use proptest::prelude::*;
@@ -33,7 +34,7 @@ proptest! {
         let mut interner = TypeInterner::new();
         let lo_id = interner.intern(&Ty::Value(lo.clone()));
         let hi_id = interner.intern(&Ty::Value(hi.clone()));
-        prop_assert_eq!(interned_subtype(&interner, lo_id, hi_id), value_subtype(&lo, &hi));
+        prop_assert_eq!(interned_subtype(&Ctx::new(), &interner, lo_id, hi_id), value_subtype(&Ctx::new(), &lo, &hi));
     }
 
     /// The computation-sort analogue of
@@ -46,6 +47,6 @@ proptest! {
         let mut interner = TypeInterner::new();
         let lo_id = interner.intern(&Ty::Comp(lo.clone()));
         let hi_id = interner.intern(&Ty::Comp(hi.clone()));
-        prop_assert_eq!(interned_subtype(&interner, lo_id, hi_id), comp_subtype(&lo, &hi));
+        prop_assert_eq!(interned_subtype(&Ctx::new(), &interner, lo_id, hi_id), comp_subtype(&Ctx::new(), &lo, &hi));
     }
 }

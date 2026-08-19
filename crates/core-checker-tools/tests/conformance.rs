@@ -490,14 +490,17 @@ mod levitation
     fn universe_subtyping_is_reflexive_only()
     {
         assert!(bool::from(value_subtype(
+            &Ctx::new(),
             &ValueType::Universe,
             &ValueType::Universe
         )));
         assert!(!bool::from(value_subtype(
+            &Ctx::new(),
             &ValueType::Universe,
             &ValueType::Unit
         )));
         assert!(!bool::from(value_subtype(
+            &Ctx::new(),
             &ValueType::Unit,
             &ValueType::Universe
         )));
@@ -517,11 +520,11 @@ mod levitation
             ValueType::path(ValueType::integer(), Value::var("y"), Value::var("y")),
         );
         assert!(
-            bool::from(value_subtype(&sigma_x, &sigma_y)),
+            bool::from(value_subtype(&Ctx::new(), &sigma_x, &sigma_y)),
             "α-equivalent Σ types relate"
         );
         assert!(
-            bool::from(value_subtype(&sigma_y, &sigma_x)),
+            bool::from(value_subtype(&Ctx::new(), &sigma_y, &sigma_x)),
             "…and symmetrically"
         );
         // A Σ whose head differs does not relate (invariant head).
@@ -531,7 +534,7 @@ mod levitation
             ValueType::path(ValueType::string(), Value::var("x"), Value::var("x")),
         );
         assert!(
-            !bool::from(value_subtype(&sigma_x, &sigma_str)),
+            !bool::from(value_subtype(&Ctx::new(), &sigma_x, &sigma_str)),
             "invariant in the head"
         );
     }
@@ -1002,11 +1005,11 @@ mod packages
         };
         let thunk = payload.as_ref().clone();
         assert!(
-            !bool::from(value_subtype(&package, &thunk)),
+            !bool::from(value_subtype(&Ctx::new(), &package, &thunk)),
             "a package is not a subtype of the thunk it carries"
         );
         assert!(
-            !bool::from(value_subtype(&thunk, &package)),
+            !bool::from(value_subtype(&Ctx::new(), &thunk, &package)),
             "nor is that thunk a subtype of the package"
         );
     }
@@ -1039,20 +1042,20 @@ mod packages
             ),
         );
         assert!(
-            bool::from(value_subtype(&spelled_t, &spelled_u)),
+            bool::from(value_subtype(&Ctx::new(), &spelled_t, &spelled_u)),
             "two spellings of one signature relate"
         );
         assert!(
-            bool::from(value_subtype(&spelled_u, &spelled_t)),
+            bool::from(value_subtype(&Ctx::new(), &spelled_u, &spelled_t)),
             "and they relate in both directions, the payload being invariant"
         );
         let once = counter(Grade::ONE);
         assert!(
-            bool::from(value_subtype(&spelled_t, &once)),
+            bool::from(value_subtype(&Ctx::new(), &spelled_t, &once)),
             "a package openable ω times is usable where one opening is expected"
         );
         assert!(
-            !bool::from(value_subtype(&once, &spelled_t)),
+            !bool::from(value_subtype(&Ctx::new(), &once, &spelled_t)),
             "the reverse fails: the grade leg is contravariant"
         );
         let two_components = ValueType::package(
@@ -1061,7 +1064,7 @@ mod packages
             returner_thunk(Grade::OMEGA, ValueType::atom("t")),
         );
         assert!(
-            !bool::from(value_subtype(&spelled_t, &two_components)),
+            !bool::from(value_subtype(&Ctx::new(), &spelled_t, &two_components)),
             "packages of different arity relate to nothing"
         );
     }
@@ -1097,15 +1100,15 @@ mod packages
             ),
         );
         assert!(
-            !bool::from(value_subtype(&malformed, &well_formed)),
+            !bool::from(value_subtype(&Ctx::new(), &malformed, &well_formed)),
             "a payload graded other than its package is not silently normalized"
         );
         assert!(
-            !bool::from(value_subtype(&well_formed, &malformed)),
+            !bool::from(value_subtype(&Ctx::new(), &well_formed, &malformed)),
             "nor in the other direction"
         );
         assert!(
-            bool::from(value_subtype(&malformed, &malformed)),
+            bool::from(value_subtype(&Ctx::new(), &malformed, &malformed)),
             "it still relates to itself, so the refusal is about the disagreement"
         );
         // And the typing rules refuse it ahead of subtyping, which is where the
@@ -1158,7 +1161,7 @@ mod packages
             ),
         );
         assert!(
-            bool::from(value_subtype(&hostile, &hostile)),
+            bool::from(value_subtype(&Ctx::new(), &hostile, &hostile)),
             "a payload naming a canonical binder still relates to itself"
         );
         let benign = ValueType::package(
@@ -1170,7 +1173,7 @@ mod packages
             ),
         );
         assert!(
-            !bool::from(value_subtype(&hostile, &benign)),
+            !bool::from(value_subtype(&Ctx::new(), &hostile, &benign)),
             "and it does not relate to a payload that differs there"
         );
     }
@@ -2340,15 +2343,15 @@ mod subtype_rows
         let unknown_rec = ValueType::record([("a".to_owned(), ValueType::Unknown)]);
         let str_rec = ValueType::record([("a".to_owned(), ValueType::string())]);
         assert!(
-            bool::from(value_subtype(&int_rec, &unknown_rec)),
+            bool::from(value_subtype(&Ctx::new(), &int_rec, &unknown_rec)),
             "an Integer-field record is a consistent subtype of an Unknown-field record"
         );
         assert!(
-            bool::from(value_subtype(&unknown_rec, &str_rec)),
+            bool::from(value_subtype(&Ctx::new(), &unknown_rec, &str_rec)),
             "an Unknown-field record is a consistent subtype of a String-field record"
         );
         assert!(
-            !bool::from(value_subtype(&int_rec, &str_rec)),
+            !bool::from(value_subtype(&Ctx::new(), &int_rec, &str_rec)),
             "an Integer-field record is NOT a subtype of a String-field record \
              (per-field consistency does not compose)"
         );
@@ -2930,23 +2933,37 @@ mod holes
     #[test]
     fn consistency_is_not_transitive()
     {
-        assert!(bool::from(value_subtype(&unk_v(), &int())), "? ≲ Int");
-        assert!(bool::from(value_subtype(&int(), &unk_v())), "Int ≲ ?");
         assert!(
-            bool::from(comp_subtype(&unk_c(), &CompType::returner(int()))),
+            bool::from(value_subtype(&Ctx::new(), &unk_v(), &int())),
+            "? ≲ Int"
+        );
+        assert!(
+            bool::from(value_subtype(&Ctx::new(), &int(), &unk_v())),
+            "Int ≲ ?"
+        );
+        assert!(
+            bool::from(comp_subtype(
+                &Ctx::new(),
+                &unk_c(),
+                &CompType::returner(int())
+            )),
             "? ≲ F Int"
         );
         assert!(
-            bool::from(comp_subtype(&CompType::returner(int()), &unk_c())),
+            bool::from(comp_subtype(
+                &Ctx::new(),
+                &CompType::returner(int()),
+                &unk_c()
+            )),
             "F Int ≲ ?"
         );
 
         assert!(
-            bool::from(value_subtype(&int(), &unk_v()))
-                && bool::from(value_subtype(&unk_v(), &txt()))
+            bool::from(value_subtype(&Ctx::new(), &int(), &unk_v()))
+                && bool::from(value_subtype(&Ctx::new(), &unk_v(), &txt()))
         );
         assert!(
-            !bool::from(value_subtype(&int(), &txt())),
+            !bool::from(value_subtype(&Ctx::new(), &int(), &txt())),
             "Int ≲ ? ≲ Str must NOT compose: consistency is not transitive"
         );
     }
@@ -4492,7 +4509,7 @@ where
     for entry in &visible(&scope) {
         let matches = match mode {
             | TypedValueMode::Infer | TypedValueMode::Rigid => entry.1 == ty,
-            | TypedValueMode::Check => bool::from(value_subtype(&entry.1, &ty)),
+            | TypedValueMode::Check => bool::from(value_subtype(&Ctx::new(), &entry.1, &ty)),
         };
         if matches {
             choices.push(ValueAction::Var(entry.0.clone()));
@@ -5756,7 +5773,7 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                     ) => {
                         // Consumed `B` contravariant → STRICT; delivered `C`
                         // covariant.
-                        if !bool::from(comp_subtype(hi_b, lo_b)) {
+                        if !bool::from(comp_subtype(&Ctx::new(), hi_b, lo_b)) {
                             return false.into();
                         }
                         pending.push(CoherenceGoal::Comp(lo_c, hi_c));
@@ -5805,7 +5822,7 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                     ) => {
                         // Argument contravariant → STRICT; result covariant →
                         // relaxed.
-                        if !bool::from(value_subtype(hi_arg, lo_arg)) {
+                        if !bool::from(value_subtype(&Ctx::new(), hi_arg, lo_arg)) {
                             return false.into();
                         }
                         pending.push(CoherenceGoal::Comp(lo_res, hi_res));
@@ -6762,7 +6779,7 @@ proptest! {
     #[test]
     fn value_subtype_is_reflexive(ty in arb_value_type(3_u32))
     {
-        prop_assert!(bool::from(value_subtype(&ty, &deep_rebuild_value(&ty))));
+        prop_assert!(bool::from(value_subtype(&Ctx::new(), &ty, &deep_rebuild_value(&ty))));
     }
 
     /// (a4) Reflexivity is admissible: every computation type is its own
@@ -6772,7 +6789,7 @@ proptest! {
     #[test]
     fn comp_subtype_is_reflexive(ty in arb_comp_type(3_u32))
     {
-        prop_assert!(bool::from(comp_subtype(&ty, &deep_rebuild_comp(&ty))));
+        prop_assert!(bool::from(comp_subtype(&Ctx::new(), &ty, &deep_rebuild_comp(&ty))));
     }
 
     /// (a4) Reflexivity of the **coherence** twin ([`coherence_value_subtype`],
@@ -6821,8 +6838,8 @@ proptest! {
     {
         let all_static =
             bool::from(value_type_is_static(&a)) && bool::from(value_type_is_static(&b)) && bool::from(value_type_is_static(&c));
-        if all_static && bool::from(value_subtype(&a, &b)) && bool::from(value_subtype(&b, &c)) {
-            prop_assert!(bool::from(value_subtype(&a, &c)));
+        if all_static && bool::from(value_subtype(&Ctx::new(), &a, &b)) && bool::from(value_subtype(&Ctx::new(), &b, &c)) {
+            prop_assert!(bool::from(value_subtype(&Ctx::new(), &a, &c)));
         }
     }
 
@@ -6837,8 +6854,8 @@ proptest! {
     {
         let all_static =
             bool::from(comp_type_is_static(&a)) && bool::from(comp_type_is_static(&b)) && bool::from(comp_type_is_static(&c));
-        if all_static && bool::from(comp_subtype(&a, &b)) && bool::from(comp_subtype(&b, &c)) {
-            prop_assert!(bool::from(comp_subtype(&a, &c)));
+        if all_static && bool::from(comp_subtype(&Ctx::new(), &a, &b)) && bool::from(comp_subtype(&Ctx::new(), &b, &c)) {
+            prop_assert!(bool::from(comp_subtype(&Ctx::new(), &a, &c)));
         }
     }
 
