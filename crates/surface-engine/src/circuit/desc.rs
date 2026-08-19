@@ -219,13 +219,24 @@ pub fn sign_desc(
 /// stopped is named.
 ///
 /// **The signal is a member lead the reader did not read as one**, and it
-/// arrives two ways because the melder loses the boundary two ways. `sort`,
-/// `oper`, `rule` and `data` are contextual rather than reserved, so a lead
-/// following an unterminated member is molded as whatever its position
-/// suggests: sometimes it is **mislabelled** — the second `sort` of a
-/// newline-separated pair reads as a type variable — and sometimes the whole
-/// remainder is **absorbed** into one unclassified run. Either way the split,
-/// which looks for the lead's own label, cannot see the boundary.
+/// arrives two ways that mean DIFFERENT THINGS — which is why they carry
+/// different messages rather than one.
+///
+/// A lead **mislabelled** as something else — the second `sort` of a
+/// newline-separated pair reads as a type variable — can only happen when the
+/// member before it did not close, so **separation is established** and the
+/// message says so.
+///
+/// A lead surviving inside an **absorbed** unclassified run says only that
+/// reading stopped inside a member. It happens when a member is unterminated
+/// AND when a member's form is one the reader cannot read — an indexed sort or
+/// a rule face, both of which reproduce with every member terminated. **So the
+/// cause is not established and the message does not assert one**, because a
+/// decline naming separation for a block whose members are all terminated
+/// sends its reader to add semicolons that are already there. A verdict that is
+/// right with a reason that is wrong is worse than a verdict with no reason:
+/// silence sends nobody anywhere, and a misaddressed message sends the reader
+/// to make a change that is already made.
 ///
 /// **It is deliberately not "an unclassified node appears".** A complete read
 /// leaves the closer unlabelled, and a member the reader could not classify
@@ -246,33 +257,47 @@ fn unread_region(
     region: &[NodeId],
 ) -> Option<ElabDiagnostic>
 {
-    let unread = region.iter().copied().find(|&id| {
+    for &id in region {
         let text = shape.reader.text(id).0;
-        match shape.reader.label(id) {
-            // A lead molded as something else — the second `sort` of a
-            // newline-separated pair reads as a type variable — is a boundary
-            // the split cannot see, because the split looks for the lead's own
-            // label.
-            | Some(label) => MEMBER_LEADS
+        // A lead molded as something else can only happen when the member
+        // before it did not close, so separation is ESTABLISHED here rather
+        // than guessed.
+        if let Some(label) = shape.reader.label(id) {
+            if MEMBER_LEADS
                 .iter()
-                .any(|lead| lead.0 == text.trim() && *lead != label),
-            // An unclassified run holding a lead as a word of its own is the
-            // same boundary, absorbed rather than mislabelled. Reading it as a
-            // word rather than as a substring is what keeps an operation named
-            // `sorted` out of it.
-            | None => text
-                .split_whitespace()
-                .any(|word| MEMBER_LEADS.iter().any(|lead| lead.0 == word)),
+                .any(|lead| lead.0 == text.trim() && *lead != label)
+            {
+                return Some(ElabDiagnostic::new(
+                    String::from(
+                        "this `sign` block's members were not separated where the reader could \
+                         see it, so every member from this one on was dropped rather than \
+                         presented: a member is terminated by `;`, and an unterminated member \
+                         absorbs the ones that follow it",
+                    ),
+                    shape.reader.span(id),
+                ));
+            }
+            continue;
         }
-    })?;
-    Some(ElabDiagnostic::new(
-        String::from(
-            "this `sign` block's members were not separated where the reader could see it, so \
-             every member from this one on was dropped rather than presented: a member is \
-             terminated by `;`, and an unterminated member absorbs the ones that follow it",
-        ),
-        shape.reader.span(unread),
-    ))
+        // An unclassified run holding a lead as a word says only that reading
+        // stopped inside a member. It does NOT say why, and the two reasons
+        // want different repairs — so neither is asserted.
+        if text
+            .split_whitespace()
+            .any(|word| MEMBER_LEADS.iter().any(|lead| lead.0 == word))
+        {
+            return Some(ElabDiagnostic::new(
+                String::from(
+                    "reading stopped inside a member here, so every member from this point on \
+                     was dropped rather than presented. Either the member before this point is \
+                     not terminated by `;`, or this member's own form is one this reader cannot \
+                     read — check the member at this span before adding a terminator",
+                ),
+                shape.reader.span(id),
+            ));
+        }
+    }
+    None
 }
 
 /// Read one top-level circuit declaration into a **singleton** description.

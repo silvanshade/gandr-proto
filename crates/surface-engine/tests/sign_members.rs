@@ -30,6 +30,34 @@ mod tests
 
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
 
+    /// **A terminated block whose member form the reader cannot read gets its
+    /// own message.** Every member here ends in `;`, so telling the reader the
+    /// members are unseparated would send them to add terminators that are
+    /// already present.
+    ///
+    /// **A verdict that is right with a reason that is wrong is worse than a
+    /// verdict with no reason**: silence sends nobody anywhere, and a
+    /// misaddressed message sends the reader to make a change already made.
+    #[test]
+    fn a_terminated_block_is_not_told_it_lacks_terminators()
+    {
+        let source = "sign S {\n  sort Ob : Type;\n  sort Hom(dom: Ob, cod: Ob) : Type;\n  oper \
+                      id : (a : Ob) --> Ob;\n}\n";
+        let reported = messages(&elaborate_data_descs(source).diagnostics);
+        assert!(
+            reported
+                .iter()
+                .any(|message| message.contains("reading stopped inside a member")),
+            "the message names what was observed, got {reported:?}"
+        );
+        assert!(
+            !reported
+                .iter()
+                .any(|message| message.contains("were not separated")),
+            "and does not assert separation for a block that is separated, got {reported:?}"
+        );
+    }
+
     /// **The silent case, and the one this check exists for.** The flagship's
     /// own shape: members separated by newlines rather than terminated.
     ///
@@ -40,8 +68,10 @@ mod tests
     #[test]
     fn unseparated_members_are_declined_rather_than_dropped()
     {
-        let source = "sign CatShape {\n  sort Ob : Type\n  sort Hom(dom: Ob, cod: Ob) : Type\n\n  \
-                      oper id : (a : Ob) --> Hom(a, a)\n\n  rule unitL : comp(id(a), f) ==> f\n}\n";
+        // Separation is the ONLY defect here: two plain sorts, neither
+        // terminated. A fixture carrying a second cause would be told the
+        // observational message instead, which is the point of the sibling test.
+        let source = "sign S {\n  sort Ob : Type\n  sort Ar : Type\n}\n";
         let elab = elaborate_data_descs(source);
         assert!(
             elab.descs.is_empty(),
@@ -51,7 +81,7 @@ mod tests
         assert!(
             elab.diagnostics
                 .iter()
-                .any(|diagnostic| diagnostic.message.contains("terminated by `;`")),
+                .any(|diagnostic| diagnostic.message.contains("were not separated")),
             "and the decline says where reading stopped and why, got {:?}",
             messages(&elab.diagnostics)
         );
@@ -72,8 +102,9 @@ mod tests
         assert!(
             !messages(&elab.diagnostics)
                 .iter()
-                .any(|message| message.contains("terminated by `;`")),
-            "with no separation decline, got {:?}",
+                .any(|message| message.contains("were not separated")
+                    || message.contains("reading stopped inside a member")),
+            "with no decline at all, got {:?}",
             messages(&elab.diagnostics)
         );
     }
@@ -90,7 +121,8 @@ mod tests
         assert!(
             !messages(&elab.diagnostics)
                 .iter()
-                .any(|message| message.contains("terminated by `;`")),
+                .any(|message| message.contains("were not separated")
+                    || message.contains("reading stopped inside a member")),
             "and nothing is declined, got {:?}",
             messages(&elab.diagnostics)
         );
@@ -113,7 +145,7 @@ mod tests
         assert!(
             !reported
                 .iter()
-                .any(|message| message.contains("terminated by `;`")),
+                .any(|message| message.contains("were not separated")),
             "and not the block's separation, got {reported:?}"
         );
     }
