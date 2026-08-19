@@ -312,7 +312,8 @@ mod tests
 
     /// Bytes offered on the driver's standard input.
     #[repr(transparent)]
-    struct StdinBytes<'a>(&'a [u8]);
+    #[derive(Clone, Copy)]
+    struct StdinBytes<'bytes>(&'bytes [u8]);
 
     /// Run the built driver with `input` on standard input and no operands.
     fn drive_stdin(input: StdinBytes<'_>) -> Output
