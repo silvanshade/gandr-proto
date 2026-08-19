@@ -8,6 +8,7 @@
 #[cfg(test)]
 mod tests
 {
+    use std::io::Write as _;
     use std::path::Path;
     use std::path::PathBuf;
     use std::process::Command;
@@ -222,18 +223,34 @@ mod tests
     }
 
     #[test]
-    fn no_argument_prints_usage_and_refuses()
+    fn no_argument_runs_the_batch_loop()
     {
         let output = drive::<[&str; 0]>([]);
         assert_eq!(
             status_of(&output),
-            ProcessStatus(Some(2_i32)),
-            "a missing operand is a refusal"
+            ProcessStatus(Some(0_i32)),
+            "bare gandr on an empty pipe completes the batch loop"
         );
-        let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("usage: gandr <file>"),
-            "a refusal must print the usage text; got {stderr}"
+            output.stdout.is_empty(),
+            "no source means no transcript; got {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    #[test]
+    fn piped_value_prints_a_repl_transcript()
+    {
+        let output = drive_stdin(b"42\n");
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(0_i32)),
+            "a value batch completes"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains('4'),
+            "the transcript names the value; got {stdout}"
         );
     }
 
@@ -248,7 +265,7 @@ mod tests
         );
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
-            stdout.contains("usage: gandr <file>"),
+            stdout.contains("usage: gandr [file]"),
             "help was asked for, so it belongs on standard output; got {stdout}"
         );
         assert!(
@@ -278,23 +295,35 @@ mod tests
     }
 
     #[test]
-    fn a_deferred_subcommand_name_is_read_as_a_path()
+    fn tui_smoke_prints_the_launch_note()
     {
-        // `tui` carries no leading dash, so the flag guard does not see it and
-        // it is taken as a filename. Honest only while no subcommand exists;
-        // the first one to land must replace this with a real command table,
-        // and this case is what will fail when it does.
-        let output = drive(["tui"]);
+        let output = drive(["tui", "--smoke"]);
         assert_eq!(
             status_of(&output),
-            ProcessStatus(Some(2_i32)),
-            "a deferred face name is refused, though as a missing file"
+            ProcessStatus(Some(0_i32)),
+            "the smoke face must leave successfully"
         );
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
-            stderr.contains("cannot read `tui`"),
-            "the refusal names it as a path, not as a subcommand; got {stderr}"
+            stdout.contains("gandr tui: ready"),
+            "the launch note is the smoke observable; got {stdout}"
         );
+    }
+
+    /// Run the built driver with `input` on standard input and no operands.
+    fn drive_stdin(input: &[u8]) -> Output
+    {
+        let mut child = driver::<[&str; 0]>([])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("the built driver must be spawnable");
+        let stdin = child.stdin.as_mut().expect("piped stdin is present");
+        stdin
+            .write_all(input)
+            .expect("the driver must accept the batch");
+        child.wait_with_output().expect("the driver must finish")
     }
 
     #[test]

@@ -27,7 +27,9 @@ members = [
   "crates/surface-lsp",
   "crates/surface-parser",
   "crates/surface-render-remote",
+  "crates/surface-repl",
   "crates/surface-syntax",
+  "crates/surface-tui",
   "crates/theory-cell-complexes",
   "crates/theory-cell-complexes-tools",
   "crates/theory-circuit-algebras",
@@ -113,6 +115,9 @@ version = "0.8.2"
 default-features = false
 features = ["cargo_bench_support"]
 
+# Terminal backend and input events for the TUI face.
+# consumers:
+# - gandr-surface-tui
 [workspace.dependencies.crossterm]
 version = "0.29.0"
 default-features = false
@@ -130,10 +135,9 @@ version = "6.0.2"
 [workspace.dependencies.dylint_testing]
 version = "6.0.2"
 
-# Multiline editor widget (`gandr-tui`): the one maintained ratatui editor with
-# an external span-injection API (`set_highlights`), which our highlighting
-# requires. Default features are dropped to keep syntect (its built-in
-# highlighter) and the clipboard stack out of the tree.
+# Multiline editor widget: the maintained ratatui editor with an external
+# span-injection API (`set_highlights`). Default features stay off so syntect
+# and the clipboard stack stay out of the tree.
 [workspace.dependencies.edtui]
 version = "0.11.3"
 default-features = false
@@ -310,6 +314,8 @@ path = "crates/surface-corpus"
 # - gandr-core-sequent (dev)
 # - gandr-surface-corpus
 # - gandr-surface-lsp
+# - gandr-surface-repl
+# - gandr-surface-tui
 [workspace.dependencies.gandr-surface-engine]
 path = "crates/surface-engine"
 
@@ -318,6 +324,7 @@ path = "crates/surface-engine"
 # - gandr-surface-engine
 # - gandr-surface-lsp
 # - gandr-surface-parser
+# - gandr-surface-repl
 [workspace.dependencies.gandr-surface-grammar]
 path = "crates/surface-grammar"
 
@@ -332,6 +339,7 @@ path = "crates/surface-lsp"
 # - gandr-surface-engine
 # - gandr-surface-grammar (dev)
 # - gandr-surface-lsp
+# - gandr-surface-repl
 [workspace.dependencies.gandr-surface-parser]
 path = "crates/surface-parser"
 
@@ -340,8 +348,17 @@ path = "crates/surface-parser"
 # - gandr-surface-engine
 # - gandr-surface-grammar
 # - gandr-surface-lsp
+# - gandr-surface-repl
+# - gandr-surface-tui
 [workspace.dependencies.gandr-surface-render-remote]
 path = "crates/surface-render-remote"
+
+# Read-evaluate loop over the headless session engine.
+# consumers:
+# - gandr
+# - gandr-surface-tui
+[workspace.dependencies.gandr-surface-repl]
+path = "crates/surface-repl"
 
 # Flat arena concrete syntax tree and incremental syntax diffing.
 # consumers:
@@ -349,8 +366,16 @@ path = "crates/surface-render-remote"
 # - gandr-surface-grammar
 # - gandr-surface-lsp
 # - gandr-surface-parser
+# - gandr-surface-repl
+# - gandr-surface-tui
 [workspace.dependencies.gandr-surface-syntax]
 path = "crates/surface-syntax"
+
+# Terminal programming environment over the headless session engine.
+# consumers:
+# - gandr
+[workspace.dependencies.gandr-surface-tui]
+path = "crates/surface-tui"
 
 # The cell-shape substrate: pattern language, substitution, reduction order,
 # the cell-alphabet trait with its sequent inhabitant, and the cell store.
@@ -555,16 +580,26 @@ version = "1.11.0"
 default-features = true
 
 # TUI framework.
+# consumers:
+# - gandr-surface-tui
 [workspace.dependencies.ratatui]
 version = "0.30.2"
 default-features = false
 features = ["crossterm"]
 
+# Line editor for the read-evaluate loop.
+# consumers:
+# - gandr-surface-repl
+[workspace.dependencies.reedline]
+version = "0.49"
+default-features = false
+
 # Regex parsing for gandr regex builtins (`regex.extract`, `string.escape`).
-# Keep defaults off; `std` avoids no-std spin locks, while `unicode-perl` keeps
+# Keep defaults off; `std` avoids no_std spin locks, while `unicode-perl` keeps
 # `\d`/`\w`/`\s` support available without the full Unicode feature bundle.
 # consumers:
 # - gandr-core-term
+
 [workspace.dependencies.regex]
 version = "1.12.4"
 default-features = false
@@ -626,6 +661,8 @@ features = ["full", "parsing", "visit"]
 # - gandr-storage-prolly-trees
 # - gandr-surface-engine
 # - gandr-surface-lsp
+# - gandr-surface-repl
+# - gandr-surface-tui
 # - gandr-theory-orders
 [workspace.dependencies.thiserror]
 version = "2.0.18"

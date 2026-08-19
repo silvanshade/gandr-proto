@@ -12,6 +12,15 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
   Diagnostics, hover, and completion project the same whole-file report.
   `gandr lsp --capabilities` prints the advertised initialize result and is the observable smoke path.
 
+- **surface-repl / surface-tui / surface-driver**: the read-evaluate loop and the terminal face land over the headless session engine.
+  Bare `gandr` is the loop: on a pipe it runs a batch transcript, on a terminal it uses a line editor.
+  Submit gates on parse completeness only; holes are typeable and are not incompleteness.
+  `gandr tui` is the terminal face; `gandr tui --smoke` draws one test-backend frame and prints `gandr tui: ready`.
+  Neither crate parses, lowers, types, or marks.
+  Highlight spans stay empty: the highlighter consumes `HlSpan` from the language-server face and does not invent a second role set.
+  Cross-line definitions ride the session engine's checkpoint set, not a re-lowered prelude.
+  `gandr <file>` is unchanged.
+
 ## 2026-08-16
 
 - **surface-engine / surface-render-remote**: the parse's recovery obligations become a live report surface, replacing the reserved slot that always serialized as `[]`.

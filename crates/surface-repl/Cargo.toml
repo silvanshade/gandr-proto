@@ -1,0 +1,32 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-repl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Read-evaluate loop over the headless session engine: parse-completeness gating, hole-tolerant submit, and transcript encoding"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "loop"
+path = "tests/loop.rs"
+
+[dependencies]
+gandr-surface-engine.workspace = true
+gandr-surface-grammar.workspace = true
+gandr-surface-parser.workspace = true
+gandr-surface-render-remote.workspace = true
+gandr-surface-syntax.workspace = true
+reedline.workspace = true
+thiserror.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

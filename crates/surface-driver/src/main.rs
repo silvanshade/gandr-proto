@@ -1,22 +1,19 @@
-//! The gandr toolchain driver — the script-runner and language-server faces.
+//! The gandr toolchain driver.
 //!
+//! Bare `gandr` is the read-evaluate loop. `gandr tui` is the terminal
+//! programming environment. `gandr lsp` is the language-server face, and
+//! `gandr lsp --capabilities` prints the advertised initialize result.
 //! `gandr <file>` runs one gandr source file: the driver hands the path to
 //! [`gandr_runtime_ffi::run_source_file`], which lowers, links, prelude-checks,
 //! and runs the program under the combined native/shell host. The caller
 //! receives a rendered returned value on standard output, while the run's
 //! [`gandr_runtime_ffi::FfiShellOutcome`] determines the process exit status.
 //!
-//! `gandr lsp` is the language-server face, implemented by
-//! [`gandr_surface_lsp`]. `gandr lsp --capabilities` prints the advertised
-//! initialize result and is the observable smoke path.
-//!
-//! The REPL, `tui`, `mcp`, `fmt`, and `build` faces are **deferred**: the REPL
-//! waits on a line-editor decision wired to the landed grammar, parser, and
-//! syntax crates, and the rest have no implementing crate in the tree.
-//! `Cargo.toml` records which. They arrive with their dependency edges, not
-//! by uncommenting.
+//! The `mcp`, `fmt`, and `build` faces remain deferred and arrive with their
+//! own crates, not by uncommenting a line.
 
 use std::ffi::OsString;
+use std::io::IsTerminal as _;
 use std::io::Write as _;
 use std::process::ExitCode;
 
@@ -27,6 +24,11 @@ use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source_file;
 use gandr_surface_lsp::advertised_capabilities_text;
 use gandr_surface_lsp::run_stdio;
+use gandr_surface_repl::BatchStatus;
+use gandr_surface_repl::run_batch;
+use gandr_surface_repl::run_interactive;
+use gandr_surface_tui::run as run_tui;
+use gandr_surface_tui::run_smoke;
 
 /// Route a completed returned value to the process caller.
 ///
@@ -61,7 +63,7 @@ const EXIT_REFUSED: ExitStatus = ExitStatus(2_i64);
 const EXIT_STATUS_MODULUS: i64 = 256_i64;
 
 /// What the driver accepts on the command line.
-const USAGE: &str = "usage: gandr <file>\n       gandr lsp [--capabilities]\n\nRuns one gandr source file, or the language-server face. The REPL and the tui/mcp/fmt/build faces are deferred.\n";
+const USAGE: &str = "usage: gandr [file]\n       gandr tui [--smoke]\n       gandr lsp [--capabilities]\n\nBare gandr is the read-evaluate loop. gandr tui is the terminal face. gandr lsp is the language-server face. gandr <file> runs one source file.\n";
 
 /// A process exit status the driver is prepared to leave with.
 #[repr(transparent)]
@@ -133,12 +135,26 @@ enum Request
 {
     /// Run the source file at this path.
     Run(OsString),
+    /// Start the read-evaluate loop.
+    Repl,
+    /// Start the terminal face.
+    Tui(TuiMode),
     /// Print the usage text and leave successfully.
     Usage,
     /// Serve the language-server protocol on stdio.
     Lsp,
     /// Print the advertised language-server capabilities and leave.
     LspCapabilities,
+}
+
+/// How the terminal face should start.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TuiMode
+{
+    /// Draw one test frame and print the launch note.
+    Smoke,
+    /// Take over the process terminal.
+    Interactive,
 }
 
 /// Program entry point.
@@ -160,35 +176,26 @@ fn main() -> ExitCode
 
 /// Parse `arguments`, serve the request, and report the status to leave with.
 ///
-/// An explicit help request is not an error, so [`USAGE`] goes to standard
-/// output when it was asked for and to standard error when it is a complaint.
-/// A completed script routes its returned value to standard output exactly once
-/// before [`classify`] reports the process status.
-///
 /// # Contract
 /// - requires: `arguments` begins with the executable name.
 /// - ensures: a usage request prints [`USAGE`] to standard output and reports
 ///   [`EXIT_COMPLETED`]; a run request reports the status [`classify`] derives
-///   from the run; `lsp --capabilities` prints the advertised initialize
-///   result; `lsp` serves the protocol on stdio.
+///   from the run; a repl or tui request reports the face's own status;
+///   `lsp --capabilities` prints the advertised initialize result and `lsp`
+///   serves the protocol on stdio.
 /// - provides: the driver's complete argument-to-status behaviour, separated
 ///   from the process boundary so a test can drive it.
 /// - fails: a malformed command line prints [`USAGE`] to standard error and
-///   reports [`EXIT_REFUSED`]; a source that never reached the machine —
-///   unreadable, or refused by the checker — prints its typed error and reports
-///   [`EXIT_REFUSED`].
-/// - panics: none — a diagnostic that cannot be written is dropped rather than
-///   escalated, since the status still carries the outcome.
+///   reports [`EXIT_REFUSED`].
+/// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — the four statuses are separated by four inputs: no
-///   argument, a script returning a value, a script performing `proc.exit`, and
-///   an absent path; the checker refusal is pinned beside the absent path
-///   because it shares the refusal status without sharing its cause.
-/// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
+/// - hypothesis: L3 — no argument starts the loop, `tui --smoke` writes the
+///   launch note, and a script still classifies as before.
+/// - witness: `cli::tests::no_argument_runs_the_batch_loop`
+/// - witness: `cli::tests::tui_smoke_prints_the_launch_note`
 /// - witness: `cli::tests::a_script_that_returns_a_value_leaves_successfully`
 /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
-/// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
 /// - witness: `cli::tests::lsp_capabilities_prints_the_token_legend`
 fn serve<Arguments>(arguments: Arguments) -> ExitStatus
@@ -200,6 +207,8 @@ where
             announce(USAGE);
             EXIT_COMPLETED
         },
+        | Some(Request::Repl) => serve_repl(),
+        | Some(Request::Tui(mode)) => serve_tui(mode),
         | Some(Request::LspCapabilities) => {
             let text = advertised_capabilities_text();
             announce(&text);
@@ -229,65 +238,100 @@ where
     }
 }
 
+/// Start the read-evaluate loop.
+fn serve_repl() -> ExitStatus
+{
+    let status = if std::io::stdin().is_terminal() {
+        run_interactive(&mut std::io::stdout())
+    }
+    else {
+        let stdin = std::io::stdin();
+        run_batch(stdin.lock(), &mut std::io::stdout())
+    };
+    batch_status(status)
+}
+
+/// Start the terminal face.
+fn serve_tui(mode: TuiMode) -> ExitStatus
+{
+    let result = match mode {
+        | TuiMode::Smoke => run_smoke(&mut std::io::stdout()),
+        | TuiMode::Interactive => run_tui(),
+    };
+    match result {
+        | Ok(()) => EXIT_COMPLETED,
+        | Err(error) => {
+            report(&format!("gandr: {error}\n"));
+            EXIT_FAILED
+        },
+    }
+}
+
+/// Map a loop status onto the driver's exit vocabulary.
+fn batch_status(status: BatchStatus) -> ExitStatus
+{
+    match i32::from(status) {
+        | 0 => EXIT_COMPLETED,
+        | _ => EXIT_FAILED,
+    }
+}
+
 /// Recognize the driver's accepted command line.
 ///
 /// # Contract
 /// - requires: `arguments` begins with the executable name, which is skipped.
-/// - ensures: `Some(Request::Usage)` for exactly `--help` or `-h`;
-///   `Some(Request::Lsp)` for exactly `lsp`; `Some(Request::LspCapabilities)`
-///   for exactly `lsp --capabilities`; `Some(Request::Run(path))` for exactly
-///   one operand that is not one of those and does not begin with `-`.
-/// - provides: the closed accepted-command-line surface of the script-runner
-///   and language-server faces.
-/// - fails: returns `None` for no operand, for more than the accepted arity,
-///   and for a UTF-8 argument that begins with `-` and is neither help spelling
-///   nor the `lsp` capabilities flag in its slot.
+/// - ensures: no operand is the read-evaluate loop; `tui` and `tui --smoke`
+///   are the terminal face; `lsp` and `lsp --capabilities` are the
+///   language-server face; `--help` / `-h` is usage; one non-flag operand is a
+///   script path.
+/// - provides: the command table.
+/// - fails: returns `None` for an unknown flag, a second script operand, and
+///   for `tui` or `lsp` with an unknown flag.
 /// - panics: none.
-/// - intension: `lsp` is recognized before the one-operand rule, so `lsp
-///   --capabilities` is a command rather than a second path. A deferred face
-///   named WITHOUT a leading dash — `gandr tui` — is still read as a path and
-///   fails as a missing file.
+/// - intension: a subcommand name is matched before the one-operand rule, so
+///   `tui` and `lsp` are commands rather than script paths. A bare `-` and a
+///   non-UTF-8 argument beginning with `-` are both taken as paths: there is
+///   no standard-input face for `-` to mean, and a path is not required to be
+///   UTF-8.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — the accepted forms and the refusal returns are
-///   separated by the argument lists the CLI suite passes to the real binary.
-/// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
+/// - hypothesis: L3 — the accepted forms and the refusal returns are separated
+///   by the argument lists the CLI suite passes to the real binary.
+/// - witness: `cli::tests::no_argument_runs_the_batch_loop`
+/// - witness: `cli::tests::tui_smoke_prints_the_launch_note`
 /// - witness: `cli::tests::a_second_operand_is_refused`
-/// - witness: `cli::tests::an_unknown_flag_is_refused`
 /// - witness: `cli::tests::help_prints_usage_and_leaves_successfully`
 /// - witness: `cli::tests::a_bare_dash_is_a_path_not_standard_input`
-/// - witness: `cli::tests::a_deferred_subcommand_name_is_read_as_a_path`
 /// - witness: `cli::tests::lsp_capabilities_prints_the_token_legend`
 fn parse_request<Arguments>(arguments: Arguments) -> Option<Request>
 where
     Arguments: IntoIterator<Item = OsString>,
 {
-    let mut operands = arguments.into_iter().skip(1);
-    let first = operands.next()?;
-    let second = operands.next();
-    if operands.next().is_some() {
-        return None;
+    let operands: Vec<OsString> = arguments.into_iter().skip(1).collect();
+    match operands.as_slice() {
+        | &[] => Some(Request::Repl),
+        | &[ref help] if help == "--help" || help == "-h" => Some(Request::Usage),
+        | &[ref tui] if tui == "tui" => Some(Request::Tui(TuiMode::Interactive)),
+        | &[ref tui, ref smoke] if tui == "tui" && smoke == "--smoke" => {
+            Some(Request::Tui(TuiMode::Smoke))
+        },
+        | &[ref lsp] if lsp == "lsp" => Some(Request::Lsp),
+        | &[ref lsp, ref flag] if lsp == "lsp" && flag == "--capabilities" => {
+            Some(Request::LspCapabilities)
+        },
+        | &[ref first] => {
+            let looks_like_a_flag = first
+                .to_str()
+                .is_some_and(|text| text.starts_with('-') && text != "-");
+            if looks_like_a_flag {
+                None
+            }
+            else {
+                Some(Request::Run(first.clone()))
+            }
+        },
+        | _ => None,
     }
-    if first == *"lsp" {
-        return match second {
-            | None => Some(Request::Lsp),
-            | Some(flag) if flag == *"--capabilities" => Some(Request::LspCapabilities),
-            | Some(_) => None,
-        };
-    }
-    if second.is_some() {
-        return None;
-    }
-    if first == *"--help" || first == *"-h" {
-        return Some(Request::Usage);
-    }
-    let looks_like_a_flag = first
-        .to_str()
-        .is_some_and(|text| text.starts_with('-') && text != "-");
-    if looks_like_a_flag {
-        return None;
-    }
-    Some(Request::Run(first))
 }
 
 /// Derive the process status from the run's outcome.

@@ -6,7 +6,7 @@ name = "gandr"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The gandr toolchain driver: the script runner and the language-server face, with the REPL and the tui/mcp/fmt/build subcommand namespace deferred"
+description = "The gandr toolchain driver: script runner, read-evaluate loop, terminal face, and language-server face"
 license.workspace = true
 publish.workspace = true
 autotests = false
@@ -20,9 +20,6 @@ path = "tests/cli.rs"
 # carries an `Eval`, so classifying a run into a process status means naming
 # the substrate's terminal, blame, and stuck cases.
 gandr-core-term.workspace = true
-# The host seam that runs a script: `ShellOutcome` classifies the run the
-# engine's source entry hands back, so the driver reads the outcome the same
-# way every other host consumer does.
 # The combined source entry: ordinary shell operations and declared native FFI
 # operations share one prepared lowering seam and one host driver.
 gandr-runtime-ffi.workspace = true
@@ -31,32 +28,19 @@ gandr-runtime-ffi.workspace = true
 gandr-surface-engine.workspace = true
 # The language-server face: `gandr lsp` and `gandr lsp --capabilities`.
 gandr-surface-lsp.workspace = true
+# The read-evaluate loop: bare `gandr` is the line-editor face.
+gandr-surface-repl.workspace = true
+# The terminal programming environment: `gandr tui`.
+gandr-surface-tui.workspace = true
 
 [dev-dependencies]
 gandr-runtime-ffi = { workspace = true, features = [
   "native-fixture",
 ] }
 
-# The faces below are DEFERRED, not parked-and-ready. Their names are
-# recorded here so the dependency surface reads in current terms rather than
-# in the predecessor's:
-#
-# * the shell-REPL default face waits on a line-editor decision (the port
-#   study's reedline, which is not a dependency of this tree) wired to three
-#   crates that have already landed: `gandr-surface-grammar` (the checked
-#   grammar its highlighter molds against), `gandr-surface-parser` (the
-#   melder's obligation queries drive its validator, hinter, and completer),
-#   and `gandr-surface-syntax` (the checked borrowed source slice the
-#   parser's public boundary takes);
-# * `gandr tui` needs the terminal programming environment, which has no
-#   crate in this tree at all — it is deferred with the editor faces;
-# * `gandr mcp` / `gandr fmt` / `gandr build` are subcommand slots with no
-#   implementing crate in the tree.
-#
-# Adding a face means adding its real dependency edge in the same change, not
-# uncommenting a line: the predecessor manifest spelled paths (`../gandr-core`)
-# that no longer resolve under the category schema, and every one of those
-# entries has since split or been renamed.
+# Remaining deferred faces: `gandr mcp` / `gandr fmt` / `gandr build` are
+# subcommand slots with no implementing crate in the tree. They arrive with
+# their real dependency edge, not by uncommenting a line.
 
 [features]
 default = []
