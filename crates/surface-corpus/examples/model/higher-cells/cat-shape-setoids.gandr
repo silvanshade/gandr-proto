@@ -8,7 +8,7 @@
 // Two modules, on purpose. SetoidCatLaws is written with landed type
 // components so the item closes and the engine reaches the here-based law
 // fields. The goal that must check is
-// Path((a -> F b), comp(a, b, b, id(a), f), f).
+// Path((a -> F b), comp(a, a, b, id(a), f), f).
 //
 // SetoidCat is the honest Model(CatShape) signature, including
 // type Hom : Ob -> Ob -> Type. That form currently swallows the rest of
@@ -19,8 +19,8 @@ module SetoidCatLaws : #{
   type Ob = Type;
   id: (a: Type) -> F (a -> F a);
   comp: (a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c)) -> F (a -> F c);
-  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f));
-  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f));
+  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, id(a), f), f));
+  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, f, id(b)), f));
   assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((U(a -> F d)), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))));
 } {
   def id(a: Type, x: a) -> F a {
@@ -32,11 +32,11 @@ module SetoidCatLaws : #{
     g(y)
   }
 
-  def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) {
+  def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, a, b, thunk { id(a) }, f) }, f)) {
     ret here(f)
   }
 
-  def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, a, b, f, thunk { id(b) }) }, f)) {
+  def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, f, thunk { id(b) }) }, f)) {
     ret here(f)
   }
 
@@ -53,8 +53,8 @@ module SetoidCat : #{
   type Hom : Ob -> Ob -> Type;
   id: (a: Ob) -> F Hom(a, a);
   comp: (a: Ob, b: Ob, c: Ob, f: Hom(a, b), g: Hom(b, c)) -> F Hom(a, c);
-  unitL: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f));
-  unitR: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f));
+  unitL: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, id(a), f), f));
+  unitR: (a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, f, id(b)), f));
   assoc: (a: Ob, b: Ob, c: Ob, d: Ob, f: Hom(a, b), g: Hom(b, c), h: Hom(c, d)) -> F(Path(Hom(a, d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))));
 } {
   type Ob = Type;
@@ -68,11 +68,11 @@ module SetoidCat : #{
     g(y)
   }
 
-  def unitL(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, id(a), f), f)) {
+  def unitL(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, id(a), f), f)) {
     ret here(f)
   }
 
-  def unitR(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, a, b, f, id(b)), f)) {
+  def unitR(a: Ob, b: Ob, f: Hom(a, b)) -> F(Path(Hom(a, b), comp(a, b, b, f, id(b)), f)) {
     ret here(f)
   }
 
@@ -93,6 +93,19 @@ module SetoidCat : #{
 // The no-unknown half of the claim is carried by the crate test
 // `the_left_unit_law_is_checked` until `expect-type-without-unknown` lands on
 // main; the corpus claim is deliberately weaker than the full one until then.
+//
+// The index arguments to `comp` are verified BY HAND against its declaration
+// `comp(a, b, c, f: U(a -> F b), g: U(b -> F c), x: a)`, and they have to be:
+// a Path's endpoints are converted but NOT typed. The endpoint lowers to a
+// suspended spine whose argument types the checker never checks, and the
+// indices are erased at reduction -- comp's body is `run y <- f(x); g(y)`,
+// which does not depend on a, b, c -- so the conversion succeeds for ANY index
+// assignment. Deliberately absurd indices type here. So `unitL` checking is
+// evidence about the CONVERSION, never that its statement is well-formed.
+//
+// The left unit law is comp(a, a, b, id(a), f): id(a) : a -> F a fixes the
+// middle index at a. The right is comp(a, b, b, f, id(b)). They are not
+// interchangeable and the engine will not tell you which one you wrote.
 //
 // The two module declarations are NOT expected to bind, and that is a
 // measurement rather than a concession. They previously bound an EMPTY record
