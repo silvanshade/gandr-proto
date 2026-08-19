@@ -32,6 +32,7 @@
 
 use alloc::borrow::ToOwned as _;
 use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -39,11 +40,14 @@ use gandr_core_term::boundary::DefinitionCount;
 use gandr_core_term::boundary::DefinitionHeightLevel;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::ScopeDepth;
+use gandr_core_term::identity::subst_valuetype;
 use gandr_core_term::syntax::CompNode;
 use gandr_core_term::syntax::CompNodeId;
 use gandr_core_term::syntax::FlatArena;
+use gandr_core_term::syntax::Value;
 use gandr_core_term::syntax::ValueNode;
 use gandr_core_term::syntax::ValueNodeId;
+use gandr_core_term::types::ValueType;
 
 /// Whether the engine may unfold a definition speculatively.
 ///
@@ -124,11 +128,17 @@ impl Definition
 ///   cannot drift apart.
 /// - panics: none.
 #[derive(Clone, Debug, Default)]
-#[repr(transparent)]
 pub struct Definitions
 {
     /// The scope stack, outermost first. The root scope is always present.
     scopes: Vec<BTreeMap<String, Definition>>,
+    /// The **type-family** scope stack, in lockstep with `scopes`.
+    ///
+    /// A separate stack rather than a separate table, so opening and closing a
+    /// scope moves both together and a manifest type component's unfolding rule
+    /// has exactly the lifetime a manifest value component's does. Two maps in
+    /// one structure cannot go out of step; two structures could.
+    type_scopes: Vec<BTreeMap<String, TypeDefinition>>,
 }
 
 impl Definitions
@@ -140,6 +150,7 @@ impl Definitions
     {
         Self {
             scopes: alloc::vec![BTreeMap::new()],
+            type_scopes: alloc::vec![BTreeMap::new()],
         }
     }
 
@@ -182,6 +193,7 @@ impl Definitions
     pub fn open_scope(&mut self)
     {
         self.scopes.push(BTreeMap::new());
+        self.type_scopes.push(BTreeMap::new());
     }
 
     /// Closes the innermost scope, discarding its definitions.
@@ -194,7 +206,10 @@ impl Definitions
     pub fn close_scope(&mut self)
     {
         if self.scopes.len() > 1 {
-            self.scopes.pop();
+            let _closed = self.scopes.pop();
+        }
+        if self.type_scopes.len() > 1 {
+            let _closed = self.type_scopes.pop();
         }
     }
 
@@ -284,6 +299,146 @@ impl Definitions
             .find_map(|scope| scope.get(name.as_ref()))
     }
 
+    /// Defines `name` as the type family `params . body` in the innermost
+    /// scope, reducible, at a mechanically computed height.
+    ///
+    /// This is the unfolding rule a **manifest** type component contributes.
+    /// A component with no definition contributes no entry at all, which is
+    /// what makes an abstract family and a sealed atom the same case: there is
+    /// nothing to look up, so nothing can unfold it.
+    ///
+    /// # Contract
+    /// - ensures: `name` resolves to this family in this and every nested scope
+    ///   until it is shadowed or its scope closes; the recorded height is one
+    ///   greater than the tallest family the body mentions.
+    /// - panics: none.
+    #[inline]
+    pub fn define_type<'source, N>(
+        &mut self,
+        name: N,
+        params: Vec<String>,
+        body: Rc<ValueType>,
+    ) where
+        N: Into<NameRef<'source>>,
+    {
+        self.define_type_with(name, params, body, Transparency::Reducible);
+    }
+
+    /// Defines a type family with an explicit transparency.
+    ///
+    /// # Contract
+    /// - ensures: as [`Self::define_type`], with `transparency` recorded
+    ///   verbatim.
+    /// - panics: none.
+    #[inline]
+    pub fn define_type_with<'source, N>(
+        &mut self,
+        name: N,
+        params: Vec<String>,
+        body: Rc<ValueType>,
+        transparency: Transparency,
+    ) where
+        N: Into<NameRef<'source>>,
+    {
+        let name = name.into();
+        let height = self.type_height_of(&body);
+        let definition = TypeDefinition {
+            params,
+            body,
+            height,
+            transparency,
+        };
+        if self.type_scopes.is_empty() {
+            self.type_scopes.push(BTreeMap::new());
+        }
+        if let Some(scope) = self.type_scopes.last_mut() {
+            let _shadowed = scope.insert(name.as_ref().to_owned(), definition);
+        }
+    }
+
+    /// Resolves a type family in the innermost scope that binds it.
+    ///
+    /// # Contract
+    /// - ensures: returns the innermost binding, and `None` when no scope binds
+    ///   `name` — which is how an abstract family, a sealed atom and a rigid
+    ///   base type all arrive at the same answer: no unfolding rule exists.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn lookup_type(
+        &self,
+        name: NameRef<'_>,
+    ) -> Option<&TypeDefinition>
+    {
+        self.type_scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name.as_ref()))
+    }
+
+    /// The height a type body would be defined at: one above the tallest family
+    /// it mentions.
+    ///
+    /// Mechanical from the definition graph, exactly as the value-side height
+    /// is, so an environment built in any order records the same heights.
+    ///
+    /// # Termination
+    /// - reason: the scan drains an explicit worklist over one finite type.
+    /// - measure: pending types on the worklist.
+    /// - boundedness: types are finite and already-defined names are read from
+    ///   the table rather than re-entered.
+    /// - input recursion: none.
+    fn type_height_of(
+        &self,
+        body: &ValueType,
+    ) -> DefinitionHeightLevel
+    {
+        let mut tallest = 0_u32;
+        let mut work = alloc::vec![body];
+        while let Some(node) = work.pop() {
+            match *node {
+                | ValueType::Family { ref head, .. } => {
+                    if let Some(definition) = self.lookup_type(NameRef::from(head.as_str())) {
+                        tallest = tallest.max(u32::from(definition.height));
+                    }
+                },
+                | ValueType::Atom(ref name) => {
+                    if let Some(definition) = self.lookup_type(NameRef::from(name.as_str())) {
+                        tallest = tallest.max(u32::from(definition.height));
+                    }
+                },
+                | ValueType::Prod(ref fst, ref snd)
+                | ValueType::Sum(ref fst, ref snd)
+                | ValueType::Sigma {
+                    ref fst, ref snd, ..
+                } => {
+                    work.push(fst);
+                    work.push(snd);
+                },
+                | ValueType::List(ref element) => work.push(element),
+                | ValueType::Record(ref fields) => work.extend(fields.values().map(Rc::as_ref)),
+                | ValueType::Path { ref ty, .. } => work.push(ty),
+                | ValueType::Data { ref args, .. } => {
+                    work.extend(args.iter().map(Rc::as_ref));
+                },
+                | ValueType::Package { ref payload, .. } => work.push(payload),
+                // The remaining formers reach a type only through a computation
+                // type, which no family body the elaborator builds descends
+                // into today. Over-approximating downward here can only make a
+                // height too small, which costs an extra unfolding choice
+                // rather than a wrong answer — the same trade the value-side
+                // scan states in the other direction.
+                | ValueType::Unit
+                | ValueType::Universe
+                | ValueType::Unknown
+                | ValueType::Sealed(_)
+                | ValueType::Thunk(..)
+                | ValueType::Stk(..) => {},
+            }
+        }
+        DefinitionHeightLevel::from(tallest.saturating_add(1))
+    }
+
     /// The height a body would be defined at: one above the tallest definition
     /// it mentions.
     ///
@@ -311,6 +466,97 @@ impl Definitions
             }
         }
         DefinitionHeightLevel::from(tallest.saturating_add(1))
+    }
+}
+
+/// One **type-family definition**: the parameters it abstracts, the type it
+/// unfolds to, its definitional height, and its transparency.
+///
+/// # Why the body is owned where a value definition's is a handle
+///
+/// A value definition names its body in the syntax store because the evaluator
+/// turns it into semantic values on the hot path, and holding a handle is what
+/// keeps that sharing. A type body is never evaluated — this domain has no
+/// semantic type former — so it is compared as ordinary syntax by
+/// [`crate::conv::type_converts`], and the substitution that instantiates it is
+/// a syntax-to-syntax rewrite. Naming it in the arena would buy nothing and
+/// cost a read-back at every unfolding.
+#[derive(Clone, Debug)]
+pub struct TypeDefinition
+{
+    /// The parameter names, in application order. Empty for a plain type
+    /// synonym.
+    params: Vec<String>,
+    /// The type this family unfolds to, in whose scope every parameter is
+    /// bound.
+    body: Rc<ValueType>,
+    /// The definitional height: one above the tallest family its body mentions,
+    /// so "unfold the taller side" is a total order on a finite environment.
+    height: DefinitionHeightLevel,
+    /// Whether the engine may unfold this family speculatively.
+    transparency: Transparency,
+}
+
+impl TypeDefinition
+{
+    /// The parameter names, in application order.
+    #[inline]
+    #[must_use]
+    pub fn params(&self) -> &[String]
+    {
+        &self.params
+    }
+
+    /// The type this family unfolds to.
+    #[inline]
+    #[must_use]
+    pub fn body(&self) -> &Rc<ValueType>
+    {
+        &self.body
+    }
+
+    /// The definitional height.
+    #[inline]
+    #[must_use]
+    pub fn height(&self) -> DefinitionHeightLevel
+    {
+        self.height
+    }
+
+    /// Whether the engine may unfold this family speculatively.
+    #[inline]
+    #[must_use]
+    pub fn transparency(&self) -> Transparency
+    {
+        self.transparency
+    }
+
+    /// Instantiates this family at `args`, or reports the arity it wanted.
+    ///
+    /// # Contract
+    /// - ensures: returns the body with each parameter replaced by the argument
+    ///   in its position, when `args` has exactly one entry per parameter.
+    /// - fails: `Err(expected_arity)` when it does not — an arity mismatch is a
+    ///   fact about the source, never a reason to unfold to something else.
+    /// - panics: none.
+    ///
+    /// # Errors
+    ///
+    /// Returns the expected parameter count when `args` does not match it.
+    #[inline]
+    pub fn instantiate(
+        &self,
+        args: &[Rc<Value>],
+    ) -> Result<ValueType, usize>
+    {
+        if args.len() != self.params.len() {
+            return Err(self.params.len());
+        }
+        let mut body = self.body.as_ref().clone();
+        for (param, arg) in self.params.iter().zip(args.iter()) {
+            body = subst_valuetype(&body, NameRef::from(param.as_str()), arg.as_ref());
+        }
+        Ok(body)
     }
 }
 

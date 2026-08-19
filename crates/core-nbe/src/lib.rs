@@ -2470,6 +2470,139 @@ mod tests
         assert!(!bool::from(nbe.type_converts(&left, &apart)));
     }
 
+    /// A **defined** family unfolds at conversion: `Hom` defined as its body
+    /// is the same type as that body instantiated at the arguments. This is
+    /// what the flagship instance needs, and what the abstract case cannot do.
+    #[test]
+    fn a_defined_family_unfolds_against_its_body()
+    {
+        let mut nbe = Normalizer::new();
+        // `type Pair(a, b) = Path(1, a, b)` — a family whose body mentions both
+        // parameters in index position, so a wrong substitution is visible.
+        nbe.definitions_mut().define_type(
+            NameRef::from("Pair"),
+            alloc::vec![String::from("a"), String::from("b")],
+            Rc::new(ValueType::Path {
+                ty: Rc::new(ValueType::Unit),
+                lhs: Rc::new(Value::var(NameRef::from("a"))),
+                rhs: Rc::new(Value::var(NameRef::from("b"))),
+            }),
+        );
+        let one = thunk(Comp::ret(Value::Int(1)));
+        let two = thunk(Comp::ret(Value::Int(2)));
+        let applied = ValueType::family("Pair", alloc::vec![Rc::clone(&one), Rc::clone(&two)]);
+        let expanded = ValueType::Path {
+            ty: Rc::new(ValueType::Unit),
+            lhs: Rc::clone(&one),
+            rhs: Rc::clone(&two),
+        };
+        assert!(
+            bool::from(nbe.type_converts(&applied, &expanded)),
+            "a defined family did not unfold against its own body"
+        );
+        assert!(
+            bool::from(nbe.type_converts(&expanded, &applied)),
+            "unfolding is not symmetric"
+        );
+
+        // The separating case: the arguments must land in their own positions.
+        // Swapping them gives a type the body distinguishes, so a substitution
+        // that ignored positions would pass the test above and fail here.
+        let swapped = ValueType::Path {
+            ty: Rc::new(ValueType::Unit),
+            lhs: two,
+            rhs: one,
+        };
+        assert!(
+            !bool::from(nbe.type_converts(&applied, &swapped)),
+            "the family instantiated its parameters in the wrong positions"
+        );
+    }
+
+    /// An **abstract** family — one with no definition anywhere in scope — does
+    /// not unfold, and that is what makes it abstract. The paired programs
+    /// differ in exactly one thing: whether the head carries a definition.
+    #[test]
+    fn an_abstract_family_does_not_unfold()
+    {
+        let one = thunk(Comp::ret(Value::Int(1)));
+        let applied = ValueType::family("Hom", alloc::vec![Rc::clone(&one), Rc::clone(&one)]);
+        let body = ValueType::Path {
+            ty: Rc::new(ValueType::Unit),
+            lhs: Rc::clone(&one),
+            rhs: Rc::clone(&one),
+        };
+
+        let mut opaque = Normalizer::new();
+        assert!(
+            !bool::from(opaque.type_converts(&applied, &body)),
+            "a family with no definition must not unfold to anything"
+        );
+
+        let mut transparent = Normalizer::new();
+        transparent.definitions_mut().define_type(
+            NameRef::from("Hom"),
+            alloc::vec![String::from("x"), String::from("y")],
+            Rc::new(ValueType::Path {
+                ty: Rc::new(ValueType::Unit),
+                lhs: Rc::new(Value::var(NameRef::from("x"))),
+                rhs: Rc::new(Value::var(NameRef::from("y"))),
+            }),
+        );
+        assert!(
+            bool::from(transparent.type_converts(&applied, &body)),
+            "the same spine with a definition in scope must unfold"
+        );
+    }
+
+    /// A definition whose arity disagrees with the spine does not unfold to
+    /// something else. An arity mismatch is a fact about the source, and
+    /// unfolding past it would decide a comparison the source never posed.
+    #[test]
+    fn an_arity_mismatch_does_not_unfold()
+    {
+        let mut nbe = Normalizer::new();
+        nbe.definitions_mut().define_type(
+            NameRef::from("Hom"),
+            alloc::vec![String::from("x"), String::from("y")],
+            Rc::new(ValueType::Unit),
+        );
+        let one = thunk(Comp::ret(Value::Int(1)));
+        let under_applied = ValueType::family("Hom", alloc::vec![one]);
+        assert!(
+            !bool::from(nbe.type_converts(&under_applied, &ValueType::Unit)),
+            "a spine of the wrong arity must not unfold to the definition's body"
+        );
+    }
+
+    /// The scope discipline: a family defined inside a scope stops unfolding
+    /// when that scope closes, which is what makes a sealed-then-viewed module
+    /// expressible at all.
+    #[test]
+    fn a_family_definition_expires_with_its_scope()
+    {
+        let mut nbe = Normalizer::new();
+        let applied = ValueType::family("Hom", alloc::vec![
+            Rc::new(Value::Unit),
+            Rc::new(Value::Unit)
+        ]);
+        nbe.definitions_mut().open_scope();
+        nbe.definitions_mut().define_type(
+            NameRef::from("Hom"),
+            alloc::vec![String::from("x"), String::from("y")],
+            Rc::new(ValueType::Unit),
+        );
+        assert!(
+            bool::from(nbe.type_converts(&applied, &ValueType::Unit)),
+            "the family unfolds while its scope is open"
+        );
+        nbe.definitions_mut().close_scope();
+        assert!(
+            !bool::from(nbe.type_converts(&applied, &ValueType::Unit)),
+            "the family must stop unfolding when its scope closes"
+        );
+    }
+
     /// `Hom(a, b)` over the two given index values.
     fn hom(
         lhs: Rc<Value>,

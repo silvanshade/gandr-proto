@@ -55,6 +55,7 @@ use alloc::vec::Vec;
 
 use gandr_core_term::boundary::BacktrackStatus;
 use gandr_core_term::boundary::ClosureArity;
+use gandr_core_term::boundary::DefinitionHeightLevel;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::ProgressStatus;
 use gandr_core_term::boundary::UnfoldPermission;
@@ -67,6 +68,7 @@ use gandr_core_term::types::CompType;
 use gandr_core_term::types::ValueType;
 
 use crate::Normalizer;
+use crate::defs::Transparency;
 use crate::eval::ForceMode;
 use crate::eval::apply;
 use crate::eval::enter_nullary;
@@ -1439,6 +1441,107 @@ fn drain_type_goals(
     ValueEquality::from(true)
 }
 
+/// What a family-unfolding decision is allowed to look at.
+///
+/// **The whole policy context, deliberately.** `gandr-cck3` asks that the
+/// unroll-choice points stay expressible as policy rather than baked into
+/// control flow, and the way to keep that honest is to keep what a policy can
+/// see small enough to state on one screen. Nothing here is a term: a policy
+/// sees shape and bookkeeping, never the types being compared, so it cannot
+/// grow into a second conversion relation.
+#[derive(Clone, Copy, Debug)]
+pub struct FamilyUnfoldContext
+{
+    /// Whether both sides are family spines sharing a head.
+    pub same_head: bool,
+    /// The left side's unfolding facts, when it is a family with a definition.
+    pub left: Option<FamilyFacts>,
+    /// The right side's unfolding facts, when it is a family with a definition.
+    pub right: Option<FamilyFacts>,
+}
+
+/// One side's unfolding bookkeeping: how tall its definition is, and whether it
+/// may be unfolded speculatively.
+#[derive(Clone, Copy, Debug)]
+pub struct FamilyFacts
+{
+    /// The definitional height — "unfold the taller side" is a total order.
+    pub height: DefinitionHeightLevel,
+    /// Whether the engine may unfold this family without being forced to.
+    pub transparency: Transparency,
+}
+
+/// One step a policy may prefer, in the order it prefers them.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FamilyUnfoldStep
+{
+    /// Compare the two spines congruently, without unfolding either.
+    Congruence,
+    /// Unfold the left side's family and compare again.
+    UnfoldLeft,
+    /// Unfold the right side's family and compare again.
+    UnfoldRight,
+}
+
+/// The **relation-invariance fence**, stated where it binds.
+///
+/// A policy returns a *preference order* over [`FamilyUnfoldStep`], and the
+/// engine tries every applicable step whatever the order says before it
+/// concludes that two types are not equal. So a policy governs **which side
+/// unfolds and how much work is spent getting there — never which pairs are
+/// related.** Swapping this function for any other total function of
+/// [`FamilyUnfoldContext`] changes cost and nothing else.
+///
+/// That is what makes the seam safe to have. A policy that could *stop* the
+/// search would be able to turn an acceptance into a refusal, and two policies
+/// would then decide two different definitional equalities.
+///
+/// # The default is the ratified pipeline's own rule
+///
+/// Congruence first, because a spine comparison that succeeds is the cheapest
+/// possible answer and needs no unfolding at all. Then the taller definition,
+/// because height is what makes "unfold the taller side" a terminating total
+/// order rather than a guess. Reducible before irreducible, because the
+/// irreducible marking is exactly the request not to be unfolded
+/// speculatively.
+///
+/// # Contract
+/// - ensures: returns each applicable step at most once, most-preferred first.
+/// - panics: none.
+#[must_use]
+pub fn default_family_unfold_order(context: &FamilyUnfoldContext) -> Vec<FamilyUnfoldStep>
+{
+    let mut order = Vec::with_capacity(3);
+    if context.same_head {
+        order.push(FamilyUnfoldStep::Congruence);
+    }
+    let speculative = |facts: Option<FamilyFacts>| {
+        facts.is_some_and(|facts| matches!(facts.transparency, Transparency::Reducible))
+    };
+    let height = |facts: Option<FamilyFacts>| facts.map_or(0, |facts| u32::from(facts.height));
+    // The taller side first, and a reducible side ahead of an irreducible one
+    // at equal height.
+    let left_first = match height(context.left).cmp(&height(context.right)) {
+        | core::cmp::Ordering::Greater => true,
+        | core::cmp::Ordering::Less => false,
+        | core::cmp::Ordering::Equal => speculative(context.left) || !speculative(context.right),
+    };
+    let (first, second) = if left_first {
+        (FamilyUnfoldStep::UnfoldLeft, FamilyUnfoldStep::UnfoldRight)
+    }
+    else {
+        (FamilyUnfoldStep::UnfoldRight, FamilyUnfoldStep::UnfoldLeft)
+    };
+    if context.left.is_some() || context.right.is_some() {
+        order.push(first);
+        order.push(second);
+    }
+    if !context.same_head {
+        order.push(FamilyUnfoldStep::Congruence);
+    }
+    order
+}
+
 /// Compares one value-type pair.
 fn value_type_goal(
     nbe: &mut Normalizer,
@@ -1520,33 +1623,14 @@ fn value_type_goal(
             ));
             ValueEquality::from(true)
         },
-        // A neutral type spine: heads first, then arguments pointwise. The
-        // arguments are values, so this is where a type comparison descends
-        // into terms — the same descent a `Path` endpoint makes, through the
-        // same relation, rather than a second kind of descent.
-        //
-        // Arity is compared before the arguments because two spines with
-        // different arities are different types whatever their common prefix
-        // says.
-        | (
-            &ValueType::Family {
-                head: ref left_head,
-                args: ref left_args,
-            },
-            &ValueType::Family {
-                head: ref right_head,
-                args: ref right_args,
-            },
-        ) => {
-            if left_head != right_head || left_args.len() != right_args.len() {
-                return ValueEquality::from(false);
-            }
-            for (left_arg, right_arg) in left_args.iter().zip(right_args.iter()) {
-                if !bool::from(converts(nbe, left_arg, right_arg)) {
-                    return ValueEquality::from(false);
-                }
-            }
-            ValueEquality::from(true)
+        // A family spine on either side, which is where the family-unfolding
+        // node lives. The comparison is congruence when both heads are the same
+        // rigid family, and delta-unfolding when either head carries a
+        // definition — with the ORDER of those attempts chosen by policy and
+        // the SET of them fixed, so no policy can change the relation
+        // (`default_family_unfold_order`).
+        | (&ValueType::Family { .. }, _) | (_, &ValueType::Family { .. }) => {
+            family_goal(nbe, lhs, rhs)
         },
         | (
             &ValueType::Path {
@@ -1620,6 +1704,127 @@ fn value_type_goal(
         },
         | _ => ValueEquality::from(false),
     }
+}
+
+/// Decides a pair where at least one side is a family spine.
+///
+/// **The exhaustive-search discipline.** Every applicable step is tried before
+/// the pair is refused; the policy decides only what order they are tried in.
+/// A step that would loop is impossible because unfolding strictly lowers the
+/// definitional height of the side it fires on, and a finite environment has
+/// finitely many heights.
+///
+/// # Termination
+/// - reason: each unfolding step replaces a family by its body, whose height is
+///   strictly below the family's, and heights are finite naturals.
+/// - measure: the multiset of the two sides' definitional heights.
+/// - boundedness: the definitional environment is finite.
+/// - input recursion: the recursive call is on a strictly smaller measure.
+fn family_goal(
+    nbe: &mut Normalizer,
+    lhs: &Rc<ValueType>,
+    rhs: &Rc<ValueType>,
+) -> ValueEquality
+{
+    let facts = |ty: &ValueType| match *ty {
+        | ValueType::Family { ref head, .. } => nbe
+            .definitions()
+            .lookup_type(NameRef::from(head.as_str()))
+            .map(|definition| FamilyFacts {
+                height: definition.height(),
+                transparency: definition.transparency(),
+            }),
+        | _ => None,
+    };
+    let same_head = match (&**lhs, &**rhs) {
+        | (
+            &ValueType::Family { head: ref left, .. },
+            &ValueType::Family {
+                head: ref right, ..
+            },
+        ) => left == right,
+        | _ => false,
+    };
+    let context = FamilyUnfoldContext {
+        same_head,
+        left: facts(lhs),
+        right: facts(rhs),
+    };
+    for step in default_family_unfold_order(&context) {
+        let decided = match step {
+            | FamilyUnfoldStep::Congruence => family_congruence(nbe, lhs, rhs),
+            | FamilyUnfoldStep::UnfoldLeft => match unfold_family(nbe, lhs) {
+                | Some(unfolded) => type_converts_run(nbe, &unfolded, rhs),
+                | None => ValueEquality::from(false),
+            },
+            | FamilyUnfoldStep::UnfoldRight => match unfold_family(nbe, rhs) {
+                | Some(unfolded) => type_converts_run(nbe, lhs, &unfolded),
+                | None => ValueEquality::from(false),
+            },
+        };
+        if bool::from(decided) {
+            return decided;
+        }
+    }
+    ValueEquality::from(false)
+}
+
+/// Compares two family spines without unfolding either: heads, then arity, then
+/// arguments pointwise through the ordinary value relation.
+///
+/// This is where a type comparison **descends into terms** — the same descent a
+/// `Path` endpoint makes, through the same relation, rather than a second kind
+/// of descent. Arity is compared before the arguments because two spines of
+/// different arity are different types whatever their common prefix says.
+fn family_congruence(
+    nbe: &mut Normalizer,
+    lhs: &ValueType,
+    rhs: &ValueType,
+) -> ValueEquality
+{
+    let (
+        &ValueType::Family {
+            head: ref left_head,
+            args: ref left_args,
+        },
+        &ValueType::Family {
+            head: ref right_head,
+            args: ref right_args,
+        },
+    ) = (lhs, rhs)
+    else {
+        return ValueEquality::from(false);
+    };
+    if left_head != right_head || left_args.len() != right_args.len() {
+        return ValueEquality::from(false);
+    }
+    for (left_arg, right_arg) in left_args.iter().zip(right_args.iter()) {
+        if !bool::from(converts(nbe, left_arg, right_arg)) {
+            return ValueEquality::from(false);
+        }
+    }
+    ValueEquality::from(true)
+}
+
+/// Unfolds a family spine at its definition, or reports that it does not
+/// unfold.
+///
+/// `None` covers three cases that are one case: the type is not a family, the
+/// head has no definition anywhere in scope, or the spine's arity disagrees
+/// with the definition's. The third is deliberately not an unfolding to
+/// something else — an arity mismatch is a fact about the source.
+fn unfold_family(
+    nbe: &Normalizer,
+    ty: &ValueType,
+) -> Option<ValueType>
+{
+    let ValueType::Family { ref head, ref args } = *ty
+    else {
+        return None;
+    };
+    nbe.definitions()
+        .lookup_type(NameRef::from(head.as_str()))
+        .and_then(|definition| definition.instantiate(args).ok())
 }
 
 /// Brings two function types' codomains into one binder scope, so the ordinary
