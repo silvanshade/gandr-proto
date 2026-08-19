@@ -53,6 +53,7 @@ use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::SemanticHash;
 use gandr_core_term::boundary::TermRetention;
 use gandr_core_term::boundary::UnfoldPermission;
+use gandr_core_term::grade::Grade;
 use gandr_core_term::syntax::CompNode;
 use gandr_core_term::syntax::CompNodeId;
 use gandr_core_term::syntax::Side;
@@ -186,6 +187,8 @@ mod kind
     pub const NEUTRAL: u64 = 17;
     /// The tag of a packed module.
     pub const PACK: u64 = 18;
+    /// The tag of a stuck pure-computation embedding.
+    pub const RUN: u64 = 19;
 }
 
 /// Reads one syntax value node out of the store.
@@ -325,6 +328,9 @@ fn value_guard(
         | SemValueNode::Reified(_) => {
             Guard::leaf(seed(SemanticHash::from(kind::REIFIED))).with_unfolding()
         },
+        | SemValueNode::Run(body) => Guard::leaf(seed(SemanticHash::from(kind::RUN)))
+            .fold(arena.comp(body)?.guard())
+            .with_unfolding(),
         | SemValueNode::Rigid(ref head, face) => {
             let hash = match *head {
                 | Rigid::Level(level) => mix_word(
@@ -656,6 +662,22 @@ fn visit_value(
         },
         | ValueNode::Stk(stack) => {
             suspend(nbe, SemValueNode::Reified(stack), env, term, done)?;
+        },
+        | ValueNode::Run(body) => {
+            // **The embedding computes.** Run the computation to weak-head
+            // form: one that reaches `return v` IS the value `v`, so no node
+            // is minted and the type it sits in normalizes exactly as far as
+            // its arguments allow. One that does not — stuck on a variable, or
+            // out of budget — stays a neutral value, which is what makes an
+            // open law-field type readable back as itself.
+            let whnf = eval_comp(nbe, env, body, ForceMode::Unfold)?;
+            match *nbe.arena().comp(whnf)?.node() {
+                | SemCompNode::Return(produced) => done.push(Evaluated {
+                    id: produced,
+                    retained: TermRetention::from(false),
+                }),
+                | _ => suspend(nbe, SemValueNode::Run(whnf), env, term, done)?,
+            }
         },
         | ValueNode::Annot(inner, _) => work.push(ValueTask::Visit(inner)),
         | ValueNode::Pair(fst, snd) => {
@@ -989,9 +1011,15 @@ fn run_machine(
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
 {
+    // The fixpoint unfolding budget for this weak-head evaluation. It is the
+    // normalizer's own conversion fuel, spent per run exactly as its contract
+    // says — the budget one force may spend — and exhausting it stops
+    // unfolding and answers on the neutral face, which loses completeness on
+    // that fixpoint and never soundness.
+    let mut fuel = u32::from(nbe.fuel());
     loop {
         phase = match phase {
-            | Phase::Descend(env, node) => descend(nbe, env, node, mode, &mut stack)?,
+            | Phase::Descend(env, node) => descend(nbe, env, node, mode, &mut stack, &mut fuel)?,
             | Phase::Unwind(id) => match unwind(nbe, id, &mut stack)? {
                 | Some(next) => next,
                 | None => return Ok(id),
@@ -1140,6 +1168,40 @@ pub fn rerun_spine(
     run_machine(nbe, Phase::Unwind(base), stack, mode)
 }
 
+/// Whether any application waiting on the frame stack carries a **canonical**
+/// argument — the progress gate the fixpoint former unfolds behind.
+///
+/// Canonical here means "not a value neutral": a constructor, a literal, a
+/// pair, a record, a thunk, a reflexivity witness, a package, or a reified
+/// stack. The complement is the only case that matters — an argument stuck on a
+/// free variable cannot make a scrutinee canonical, so entering a recursive
+/// body on it would unfold toward a case that stays stuck.
+///
+/// Every waiting application is inspected rather than only the innermost,
+/// because which argument a recursion descends on is the definition's business
+/// and not the caller's: a function recursing on its second parameter is as
+/// ordinary as one recursing on its first.
+///
+/// # Errors
+///
+/// Returns [`SemError`] when an argument id does not resolve.
+fn has_canonical_argument(
+    nbe: &Normalizer,
+    stack: &[Frame],
+) -> Result<bool, SemError>
+{
+    for frame in stack {
+        let Frame::Elim(Elim::Apply(arg)) = *frame
+        else {
+            continue;
+        };
+        if !matches!(*nbe.arena().value(arg)?.node(), SemValueNode::Rigid(..)) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 /// One descend step: consume a syntax node, pushing the eliminators it passes.
 ///
 /// # Errors
@@ -1151,6 +1213,7 @@ fn descend(
     node: CompNodeId,
     mode: ForceMode,
     stack: &mut Vec<Frame>,
+    fuel: &mut u32,
 ) -> Result<Phase, SemError>
 {
     match syntax_comp(nbe, node)? {
@@ -1510,6 +1573,45 @@ fn descend(
             let body = closure(nbe, env, alloc::vec![binder], body)?;
             let head = NeutralHead::Shift(body);
             Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
+        },
+        | CompNode::Fix(binder, body) => {
+            // **Progress-gated unfolding.** A fixpoint standing under an
+            // application whose argument is already canonical unfolds: that
+            // application is the case the operational rule exists to serve, and
+            // refusing it would leave a closed recursive computation stuck
+            // where its own reduction rule says it steps.
+            //
+            // A fixpoint that is under-applied, or applied only to neutral
+            // arguments, does **not** unfold. Nothing is bought by entering a
+            // body whose scrutinee cannot become canonical, and everything is
+            // risked: unfolding is the fixpoint's operational rule and it does
+            // not terminate in general.
+            //
+            // The budget is the fence, not the gate. A recursion that descends
+            // reaches its base case inside the budget; one that does not stops
+            // at the bound and answers on the neutral face. **That direction is
+            // the safe one**: a refusal to unfold reports two terms unequal
+            // that a longer budget might have equated, so exhaustion costs
+            // completeness and never soundness.
+            if *fuel > 0 && has_canonical_argument(nbe, stack)? {
+                *fuel = fuel.saturating_sub(1);
+                // The self-reference is a thunk of **this very fixpoint**,
+                // closed over the environment the fixpoint was reached in — so
+                // forcing it re-enters this same node in that same environment.
+                // Knot-tying is by re-entry rather than by a heap cycle: the
+                // thunk captures the outer environment, and the binding is made
+                // in a *new* environment extending it, so nothing points at
+                // itself and the arena's ownership discipline is untouched.
+                let knot = closure(nbe, env, Vec::new(), node)?;
+                let self_reference = value(nbe, SemValueNode::Thunk(Grade::OMEGA, knot))?;
+                let env = nbe.arena_mut().bind(env, binder, self_reference)?;
+                Ok(Phase::Descend(env, body))
+            }
+            else {
+                let body = closure(nbe, env, alloc::vec![binder], body)?;
+                let head = NeutralHead::Fix(body);
+                Ok(Phase::Unwind(neutral(nbe, head, CompUnfold::Rigid)?))
+            }
         },
         | CompNode::Hole(hole) => {
             let head = NeutralHead::Hole(hole);

@@ -227,6 +227,9 @@ enum ValueFinish
     Pack(Vec<gandr_core_term::syntax::ValueTypeNodeId>),
     /// Rebuild a thunk from the computation on the computation stack.
     Thunk(Grade),
+    /// Rebuild a stuck pure-computation embedding from the computation on the
+    /// computation stack.
+    Run,
 }
 
 /// What a computation-side finish frame reassembles.
@@ -271,6 +274,9 @@ enum CompFinish
     Reset,
     /// Rebuild a capture over its binder.
     Shift(String),
+    /// Reassembles a fixpoint from its read-back body, under the
+    /// self-reference binder the closure was opened with.
+    Fix(String),
     /// Rebuild a computation hole.
     Hole(gandr_core_term::syntax::HoleId),
     /// Re-apply one frustrated application to the computation beneath it.
@@ -490,6 +496,10 @@ fn quote_value_task(
             let (_, whnf) = open(nbe, cell, mode)?;
             work.push(Task::FinishValue(ValueFinish::Thunk(grade)));
             work.push(Task::Comp(whnf));
+        },
+        | SemValueNode::Run(body) => {
+            work.push(Task::FinishValue(ValueFinish::Run));
+            work.push(Task::Comp(body));
         },
     }
     Ok(())
@@ -722,6 +732,12 @@ fn queue_head(
             work.push(Task::FinishComp(finish));
             work.push(Task::Comp(body));
         },
+        | NeutralHead::Fix(body) => {
+            let (names, body) = open(nbe, body, mode)?;
+            let finish = CompFinish::Fix(names.first().cloned().unwrap_or_default());
+            work.push(Task::FinishComp(finish));
+            work.push(Task::Comp(body));
+        },
         | NeutralHead::Hole(hole) => {
             // A computation hole has no children, so it reassembles with
             // nothing queued beneath it.
@@ -780,6 +796,7 @@ fn finish_value(
             ValueNode::Record(labels.into_iter().zip(fields).collect::<BTreeMap<_, _>>())
         },
         | ValueFinish::Thunk(grade) => ValueNode::Thunk(grade, pop_comp(nbe, comps)?),
+        | ValueFinish::Run => ValueNode::Run(pop_comp(nbe, comps)?),
     };
     let id = emit_value(nbe, node)?;
     values.push(id);
@@ -948,6 +965,7 @@ fn finish_comp(
         },
         | CompFinish::Reset => CompNode::Reset(pop_comp(nbe, comps)?),
         | CompFinish::Shift(binder) => CompNode::Shift(binder, pop_comp(nbe, comps)?),
+        | CompFinish::Fix(binder) => CompNode::Fix(binder, pop_comp(nbe, comps)?),
         | CompFinish::Hole(hole) => CompNode::Hole(hole),
         | CompFinish::Apply => {
             let head = pop_comp(nbe, comps)?;

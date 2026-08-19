@@ -934,7 +934,9 @@ fn collect_embedded_types<'term>(
                 | Value::Record(ref fields) => {
                     work.extend(fields.values().map(|field| TermRef::Value(field)));
                 },
-                | Value::Thunk(_, ref body) => work.push(TermRef::Comp(body)),
+                | Value::Thunk(_, ref body) | Value::Run(ref body) => {
+                    work.push(TermRef::Comp(body));
+                },
                 | Value::Annot(ref inner, ref ty) => {
                     out.push(TypeRef::Value(ty));
                     work.push(TermRef::Value(inner));
@@ -1026,7 +1028,9 @@ fn collect_embedded_types<'term>(
                     work.push(TermRef::Value(stack));
                     work.push(TermRef::Comp(fed));
                 },
-                | Comp::Shift(_, ref body) => work.push(TermRef::Comp(body)),
+                | Comp::Shift(_, ref body) | Comp::Fix(_, ref body) => {
+                    work.push(TermRef::Comp(body));
+                },
                 | Comp::Native { ref args, .. } => {
                     work.extend(args.iter().map(|arg| TermRef::Value(arg)));
                 },

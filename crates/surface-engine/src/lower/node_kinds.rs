@@ -220,6 +220,9 @@ pub const PRODUCT_TYPE: SyntaxKind = SyntaxKind("product_type");
 pub const SUM_TYPE: SyntaxKind = SyntaxKind("sum_type");
 pub const LAZY_PRODUCT_TYPE: SyntaxKind = SyntaxKind("lazy_product_type");
 pub const PARENTHESIZED_TYPE: SyntaxKind = SyntaxKind("parenthesized_type");
+/// The identity type `Path(C, e1, e2)`: a production of its own, so its two
+/// endpoints parse at the EXPRESSION sort rather than the type sort.
+pub const PATH_TYPE: SyntaxKind = SyntaxKind("path_type");
 pub const OMEGA: SyntaxKind = SyntaxKind("ω");
 pub const EXTRAS: [&str; 3] = ["line_comment", "block_comment", "shebang"];
 

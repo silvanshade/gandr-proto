@@ -266,7 +266,9 @@ impl<'term, 'query> Scan<'term, 'query>
                     self.work.push(Node::Value(field.as_ref()));
                 }
             },
-            | Value::Thunk(_, ref body) => self.work.push(Node::Comp(body.as_ref())),
+            | Value::Thunk(_, ref body) | Value::Run(ref body) => {
+                self.work.push(Node::Comp(body.as_ref()));
+            },
             | Value::Stk(ref stack) => {
                 self.found.opaque = OpaqueOccurrence::from(true);
                 self.work.push(Node::Stack(stack.as_ref()));
@@ -287,6 +289,7 @@ impl<'term, 'query> Scan<'term, 'query>
             | Comp::Abs(_, _, ref body)
             | Comp::Reset(ref body)
             | Comp::Shift(_, ref body)
+            | Comp::Fix(_, ref body)
             | Comp::Prj(_, ref body) => self.work.push(Node::Comp(body.as_ref())),
             | Comp::App(ref head, ref arg) => {
                 self.work.push(Node::Comp(head.as_ref()));

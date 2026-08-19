@@ -166,6 +166,34 @@ fn add_type_rules(
             tile(TileLabel("identifier")),
         ]),
     ));
+    // The identity type `Path(C, e1, e2)` is a production of its own, and the
+    // reason is a **sort** rather than a preference.
+    //
+    // A generic `type_application` parses every argument at the type sort, so
+    // reusing it for `Path` leaves the two endpoints parsed as types and
+    // reinterpreted as values downstream. Only the spellings a type and a value
+    // have in common survive that reinterpretation — an integer literal and a
+    // bare name — which is why an endpoint like `comp(id(a), f)` cannot be
+    // written however far the lowering is widened. **Its problem is upstream of
+    // the lowering.**
+    //
+    // So the carrier stays type-sorted and the two endpoints are
+    // **expression-sorted**, which is what they are: terms occurring in a type.
+    rules.push(rule(
+        RuleName("path_type"),
+        ty,
+        type_application,
+        Regex::seq([
+            tile(TileLabel("Path")),
+            tile(TileLabel("(")),
+            Regex::sort(ty),
+            tile(TileLabel(",")),
+            Regex::sort(Sort::Expression),
+            tile(TileLabel(",")),
+            Regex::sort(Sort::Expression),
+            tile(TileLabel(")")),
+        ]),
+    ));
     rules.push(rule(
         RuleName("type_application"),
         ty,

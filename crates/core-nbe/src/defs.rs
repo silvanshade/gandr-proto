@@ -382,6 +382,11 @@ fn mentioned_names(
                     // same reason. Heights order *definitions*, and a
                     // definition binds a value name.
                     | ValueNode::Pack { payload, .. } => work.push(Task::Value(payload)),
+                    // A pure-computation embedding mentions every name its
+                    // computation mentions, and heights must see them: the
+                    // embedding is the one value form whose child is a
+                    // computation an unfolding rule reaches.
+                    | ValueNode::Run(body) => work.push(Task::Comp(body)),
                     | ValueNode::Annot(inner, _) => work.push(Task::Value(inner)),
                 }
             },
@@ -394,7 +399,8 @@ fn mentioned_names(
                     | CompNode::Abs(_, _, body)
                     | CompNode::Prj(_, body)
                     | CompNode::Reset(body)
-                    | CompNode::Shift(_, body) => work.push(Task::Comp(body)),
+                    | CompNode::Shift(_, body)
+                    | CompNode::Fix(_, body) => work.push(Task::Comp(body)),
                     | CompNode::App(head, arg) => {
                         work.push(Task::Comp(head));
                         work.push(Task::Value(arg));

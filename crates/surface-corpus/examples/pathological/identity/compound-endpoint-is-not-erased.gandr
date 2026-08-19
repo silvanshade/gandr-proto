@@ -1,0 +1,28 @@
+// Failure golden: a `Path` endpoint written as an APPLICATION is the endpoint
+// the checker sees, and a body that does not inhabit that identity type is
+// REFUSED.
+//
+// The witness matters because of what it replaces. An application endpoint was
+// previously out of the type-position fragment, and an out-of-fragment type
+// degraded to the gradual unknown -- which is consistent with everything, so
+// this program type-checked CLEAN against a type its own source refutes. There
+// was no diagnostic, no goal, and nothing to notice. The type here states that
+// `dbl(x)` and `x` are identified; `ret 5` inhabits neither that nor anything
+// like it, and the diagnostic now names the endpoints it was checked against.
+//
+// The two neighbouring pins are `undefined-endpoint-head.gandr`, where the
+// endpoint names a function that does not exist, and this file's positive
+// counterpart in the model tree, where variable endpoints check as they always
+// did.
+//
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+
+def dbl(x: Integer) -> F Integer {
+  ret (x + x)
+}
+
+def refuted(x: Integer) -> F Path(Integer, dbl(x), x) {
+  ret 5
+}
+
+//@ expect-diagnostic: type mismatch

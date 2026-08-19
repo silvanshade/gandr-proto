@@ -7760,7 +7760,7 @@ fn sole_inner_expression(node: SynNode<'_>) -> LowerResult<SynNode<'_>>
 /// `SynNode` adapter already grout-unwraps and space-skips, and classifies
 /// comments/shebangs to no dispatched kind, so the `EXTRAS` filter is a
 /// defensive no-op the melder view never triggers.
-fn named_non_extra_children(node: SynNode<'_>) -> Vec<SynNode<'_>>
+pub(super) fn named_non_extra_children(node: SynNode<'_>) -> Vec<SynNode<'_>>
 {
     node.named_children()
         .into_iter()

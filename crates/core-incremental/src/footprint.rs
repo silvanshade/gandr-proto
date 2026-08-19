@@ -264,7 +264,7 @@ fn scan_comp<'term>(
         | Comp::Reset(ref body) => {
             stack.push(Work::Cmp(as_cmp(body), Rc::clone(scope)));
         },
-        | Comp::Shift(ref binder, ref body) => {
+        | Comp::Shift(ref binder, ref body) | Comp::Fix(ref binder, ref body) => {
             stack.push(Work::Cmp(as_cmp(body), extend(scope, binder)));
         },
         | Comp::Hole(_) => footprint.has_hole = true,
@@ -323,7 +323,7 @@ fn scan_value<'term>(
                 stack.push(Work::Val(as_val(field), Rc::clone(scope)));
             }
         },
-        | Value::Thunk(_, ref body) => {
+        | Value::Thunk(_, ref body) | Value::Run(ref body) => {
             stack.push(Work::Cmp(as_cmp(body), Rc::clone(scope)));
         },
         | Value::Annot(ref inner, _) => {

@@ -249,6 +249,19 @@ pub enum Frame
         /// The direction the thunk itself was typed in.
         dir: Dir<ValueType>,
     },
+    /// A pure-computation embedding's body is pending; the embedding delivers
+    /// the returner's payload once the empty-row premise holds (rule Run).
+    ///
+    /// The body rides the frame so a decline names **the term the author
+    /// wrote** rather than a placeholder; it is an `Rc` clone, so carrying it
+    /// costs a refcount rather than the term.
+    Run
+    {
+        /// The embedded computation, retained for the decline's diagnostic.
+        body: Rc<Comp>,
+        /// The direction the embedding itself was typed in.
+        dir: Dir<ValueType>,
+    },
     /// A forced value is pending; yields `B` from `U_r B` after `1 ⊑ r`.
     Force
     {
@@ -556,6 +569,14 @@ pub enum Frame
         /// The captured type `B` the `shift` delivers (the body is checked
         /// against the *answer* `C`, not `B`).
         captured: CompType,
+    },
+    /// A fixpoint's body is pending; the recursion's own computation type is
+    /// stored, because the former delivers what it was checked against (rule
+    /// Fix⇓).
+    FixBody
+    {
+        /// The recursion's own computation type `B`.
+        recursive: CompType,
     },
     /// A reified stack's argument-frame value `v` is pending; the rest of the
     /// stack and the type to continue the walk from are stored (rule Reify, the
@@ -1187,6 +1208,20 @@ fn step_value(
                 | None => finish_value(ValueType::Record(BTreeMap::new()), dir).map(return_value),
             }
         },
+        // Rule Run: the pure-computation embedding, inference-primary. The
+        // computation is inferred and the `Frame::Run` pop reads the returner's
+        // payload off it, declining an effectful row or a non-returner by name.
+        // Lock-step with the recursive checker's arm.
+        | Value::Run(body) => {
+            stack.push(Frame::Run {
+                body: Rc::clone(&body),
+                dir,
+            });
+            Ok(Control::DescendComp {
+                comp: Rc::unwrap_or_clone(body),
+                dir: Dir::Infer,
+            })
+        },
         | Value::Thunk(grade, body) => match dir {
             // The matched thunk (A2.2 holes extension): the body checks
             // against `Unknown`; no grade constraint is emitted (the matched
@@ -1807,6 +1842,28 @@ fn step_comp(
                 hint: text::SHIFT_NEEDS_CHECK,
             }),
         },
+        // Rule Fix⇓: the recursion former, check-primary. The expectation
+        // states the self-reference's type `U_ω B`, the body is checked against
+        // `B`, and the `Frame::FixBody` pop delivers `B` unchanged. Inference is
+        // stuck: nothing in the term synthesizes the type the body is being
+        // checked against, and the ascription coercion is the inference route.
+        // Lock-step with the recursive checker's arm.
+        | Comp::Fix(x, body) => match dir {
+            | Dir::Check(recursive) => {
+                ctx.bind(x, ValueType::thunk(Grade::OMEGA, recursive.clone()));
+                stack.push(Frame::FixBody {
+                    recursive: recursive.clone(),
+                });
+                Ok(Control::DescendComp {
+                    comp: Rc::unwrap_or_clone(body),
+                    dir: Dir::Check(recursive),
+                })
+            },
+            | Dir::Infer => Err(TypeError::StuckExpr {
+                expr: Term::Comp(Comp::Fix(x, body)),
+                hint: text::FIX_NEEDS_CHECK,
+            }),
+        },
         // Rule Hole⇑/Hole⇓ (A2.2 holes extension): an axiom, as the value
         // hole — no frame is pushed.
         | Comp::Hole(_) => finish_comp(CompType::Unknown, dir).map(return_comp),
@@ -2088,6 +2145,28 @@ fn step_return(
         | Frame::Thunk { grade, dir } => {
             let body_ty = expect_comp(ty)?;
             finish_value(ValueType::Thunk(grade, Rc::new(body_ty)), dir).map(return_value)
+        },
+        | Frame::Run { body, dir } => {
+            let body_ty = expect_comp(ty)?;
+            let produced = match body_ty {
+                | CompType::F(produced, ref row) => {
+                    if !bool::from(row.is_empty()) {
+                        return Err(TypeError::StuckExpr {
+                            expr: Term::Value(Value::Run(body)),
+                            hint: text::RUN_NEEDS_PURITY,
+                        });
+                    }
+                    produced.as_ref().clone()
+                },
+                | CompType::Unknown => ValueType::Unknown,
+                | _other => {
+                    return Err(TypeError::StuckExpr {
+                        expr: Term::Value(Value::Run(body)),
+                        hint: text::RUN_NEEDS_RETURNER,
+                    });
+                },
+            };
+            finish_value(produced, dir).map(return_value)
         },
         | Frame::Annot { dir } => {
             let checked = expect_value(ty)?;
@@ -2652,6 +2731,15 @@ fn step_return(
             expect_comp(ty)?;
             ctx.unbind();
             Ok(return_comp(captured))
+        },
+        // Rule Fix⇓: the body checked against the recursion's own type; restore
+        // the self-reference binder and deliver that type unchanged. The
+        // fallible sort check runs before the context restore, as `ShiftBody`
+        // does.
+        | Frame::FixBody { recursive } => {
+            expect_comp(ty)?;
+            ctx.unbind();
+            Ok(return_comp(recursive))
         },
         // Rule Reify (the stack-judgment walk; A3.3 `+control`): an argument
         // frame's value checked against the consumed function's argument type;

@@ -1376,6 +1376,184 @@ mod tests
         ));
     }
 
+    // ── the pure-computation embedding ──────────────────────────────────────
+
+    #[test]
+    fn an_embedding_of_a_reducible_computation_is_its_result()
+    {
+        let mut nbe = Normalizer::new();
+        // `run ((λx. ret x) 7)` is the value `7`, not a second spelling of it:
+        // the embedding computes, so nothing is minted and the endpoint a type
+        // carries is the ordinary literal.
+        let embedded = Value::run(Comp::app(
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+            Value::Int(7),
+        ));
+        let node = lower(&mut nbe, &embedded);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
+        assert!(matches!(
+            *nbe.arena().value(evaluated).unwrap().node(),
+            SemValueNode::Int(7)
+        ));
+    }
+
+    #[test]
+    fn an_embedding_and_the_value_it_computes_are_convertible()
+    {
+        let mut nbe = Normalizer::new();
+        // The separating property the law fields need: the endpoint written as
+        // an application and the endpoint written as its result are ONE value.
+        let applied = thunk(Comp::ret(Value::run(Comp::app(
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+            Value::Int(7),
+        ))));
+        let direct = thunk(Comp::ret(Value::Int(7)));
+        assert!(bool::from(nbe.converts(&applied, &direct)));
+    }
+
+    #[test]
+    fn two_embeddings_over_different_computations_are_separated()
+    {
+        let mut nbe = Normalizer::new();
+        // The paired negative, and the one a congruence that never fires would
+        // pass anyway: two embeddings stuck on DIFFERENT free heads must be
+        // told apart, and a stuck embedding must not be equated with an
+        // unrelated literal.
+        let stuck = |head: &str| {
+            thunk(Comp::ret(Value::run(Comp::app(
+                Comp::force(Value::var(NameRef::from(head))),
+                Value::Int(1),
+            ))))
+        };
+        assert!(!bool::from(nbe.converts(&stuck("f"), &stuck("g"))));
+        assert!(bool::from(nbe.converts(&stuck("f"), &stuck("f"))));
+        assert!(!bool::from(
+            nbe.converts(&stuck("f"), &thunk(Comp::ret(Value::Int(1))))
+        ));
+    }
+
+    #[test]
+    fn a_stuck_embedding_reads_back_as_itself()
+    {
+        let mut nbe = Normalizer::new();
+        // What an open law-field type needs: the endpoint normalizes as far as
+        // its arguments allow and no further, and quoting it returns the
+        // embedding rather than dropping it.
+        let stuck = Value::run(Comp::app(
+            Comp::force(Value::var(NameRef::from("comp"))),
+            Value::var(NameRef::from("f")),
+        ));
+        let node = lower(&mut nbe, &stuck);
+        let evaluated = eval_value(&mut nbe, sem::SemArena::EMPTY_ENV, node).unwrap();
+        assert!(matches!(
+            *nbe.arena().value(evaluated).unwrap().node(),
+            SemValueNode::Run(_)
+        ));
+        let quoted = quote_value(&mut nbe, evaluated, QuoteMode::Canonical).unwrap();
+        assert!(matches!(
+            *nbe.syntax().values.get(quoted).unwrap(),
+            gandr_core_term::syntax::ValueNode::Run(_)
+        ));
+    }
+
+    // ── the recursion former ────────────────────────────────────────────────
+
+    /// `fix self. λ x. case x { inj1 _ ⇒ ret 1 | inj2 y ⇒ (force self)(inj1 y)
+    /// }`
+    ///
+    /// One unfold per constructor layer, and a base case at the left
+    /// injection — the smallest recursion that has to reduce for a closed
+    /// law field to typecheck.
+    fn counting_fixpoint() -> Comp
+    {
+        Comp::fix(
+            "self",
+            Comp::lam(
+                "x",
+                Comp::case(
+                    Value::var(NameRef::from("x")),
+                    "_base",
+                    Comp::ret(Value::Int(1)),
+                    "y",
+                    Comp::app(
+                        Comp::force(Value::var(NameRef::from("self"))),
+                        Value::Inj(Side::Fst, Rc::new(Value::var(NameRef::from("y")))),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    #[test]
+    fn a_fixpoint_applied_to_a_constructor_reduces()
+    {
+        let mut nbe = Normalizer::new();
+        // Two layers, so the answer is reached only by unfolding the fixpoint
+        // twice: a single unfold would leave the inner application stuck.
+        let argument = Value::Inj(
+            Side::Snd,
+            Rc::new(Value::Inj(Side::Snd, Rc::new(Value::Unit))),
+        );
+        let applied = thunk(Comp::app(counting_fixpoint(), argument));
+        assert!(
+            bool::from(nbe.converts(&applied, &thunk(Comp::ret(Value::Int(1))))),
+            "a saturated fixpoint whose argument is constructor-headed must reduce"
+        );
+    }
+
+    #[test]
+    fn a_fixpoint_applied_to_a_neutral_does_not_unfold()
+    {
+        let mut nbe = Normalizer::new();
+        let applied = thunk(Comp::app(
+            counting_fixpoint(),
+            Value::var(NameRef::from("opaque")),
+        ));
+        // It is equal to itself — the neutral is quoted back and compared by
+        // congruence rather than unfolded toward a case that cannot fire.
+        assert!(bool::from(nbe.converts(&applied, &applied)));
+    }
+
+    #[test]
+    fn two_fixpoints_with_different_bodies_are_not_convertible()
+    {
+        let mut nbe = Normalizer::new();
+        // Congruence under the self-reference binder is the whole relation on
+        // an unreduced fixpoint, so two distinct bodies separate. This is the
+        // conservative direction and it is deliberate: a definitional equality
+        // that chased extensionality here would be deciding a question
+        // propositional `Path` is what carries.
+        let left = thunk(Comp::fix("self", Comp::ret(Value::Int(1))));
+        let right = thunk(Comp::fix("self", Comp::ret(Value::Int(2))));
+        assert!(!bool::from(nbe.converts(&left, &right)));
+        // Alpha-equivalence in the self-reference still holds.
+        let renamed = thunk(Comp::fix("knot", Comp::ret(Value::Int(1))));
+        assert!(bool::from(nbe.converts(&left, &renamed)));
+    }
+
+    #[test]
+    fn a_divergent_fixpoint_stops_at_the_fuel_bound()
+    {
+        let mut nbe = Normalizer::new();
+        nbe.set_fuel(ConversionFuel::from(32));
+        // Every recursive call grows its argument, so the progress gate is
+        // satisfied forever and only the budget ends the run. The point of the
+        // test is that it RETURNS: exhaustion answers on the neutral face,
+        // which costs completeness and never soundness.
+        let runaway = Comp::fix(
+            "self",
+            Comp::lam(
+                "x",
+                Comp::app(
+                    Comp::force(Value::var(NameRef::from("self"))),
+                    Value::Inj(Side::Snd, Rc::new(Value::var(NameRef::from("x")))),
+                ),
+            ),
+        );
+        let applied = thunk(Comp::app(runaway, Value::Unit));
+        assert!(bool::from(nbe.converts(&applied, &applied)));
+    }
+
     // ── the reduction rules ─────────────────────────────────────────────────
 
     #[test]

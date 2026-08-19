@@ -1209,6 +1209,10 @@ fn subst_comp(
             let body = subst_under(SubstitutionName(binder.as_str()), body, name, repl);
             Comp::Shift(binder.clone(), Rc::new(body))
         },
+        | Comp::Fix(ref binder, ref body) => {
+            let body = subst_under(SubstitutionName(binder.as_str()), body, name, repl);
+            Comp::Fix(binder.clone(), Rc::new(body))
+        },
         | Comp::Hole(hole) => Comp::Hole(hole),
         | Comp::Native { prim, ref args } => Comp::Native {
             prim,

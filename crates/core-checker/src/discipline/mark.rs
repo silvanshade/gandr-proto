@@ -795,6 +795,14 @@ enum MarkFrame
         /// Original direction.
         dir: Dir<ValueType>,
     },
+    /// Finish a pure-computation embedding after its computation body.
+    ValueRunAfterBody
+    {
+        /// Pending parent facts.
+        pending: PendingValue,
+        /// Original direction.
+        dir: Dir<ValueType>,
+    },
     /// Finish a thunk checked against an expected thunk type.
     ValueThunkExpectedAfterBody
     {
@@ -1215,6 +1223,14 @@ enum MarkFrame
         /// Captured type delivered by the shift.
         captured: CompType,
     },
+    /// Finish a fixpoint after its body.
+    CompFixAfterBody
+    {
+        /// Pending parent facts.
+        pending: PendingComp,
+        /// The recursion's own computation type, delivered unchanged.
+        recursive: CompType,
+    },
     /// Continue a walk after its scrutinee.
     CompWalkAfterScrut
     {
@@ -1403,6 +1419,12 @@ enum InternFrame
         cache_key: Option<*const Value>,
         /// Thunk grade.
         grade: Grade,
+    },
+    /// Finish a pure-computation embedding after its computation body.
+    ValueRunAfterBody
+    {
+        /// Optional Rc cache key for the parent.
+        cache_key: Option<*const Value>,
     },
     /// Continue a value annotation after its inner value.
     ValueAnnotAfterInner
@@ -1823,6 +1845,8 @@ enum CompUnaryCompIntern
     Reset,
     /// Shift.
     Shift(String),
+    /// Fixpoint.
+    Fix(String),
 }
 
 /// Unary computation constructors over value children used by the interner.
@@ -2268,6 +2292,18 @@ impl Marker
                     0,
                     dir,
                     BTreeMap::new(),
+                    run,
+                );
+            },
+            | Value::Run(body) => {
+                // Inference-primary, exactly as the checker's own rule: the
+                // computation is inferred and the returner it produces is what
+                // the embedding delivers.
+                self.schedule_child_comp(
+                    0,
+                    body,
+                    Dir::Infer,
+                    MarkFrame::ValueRunAfterBody { pending, dir },
                     run,
                 );
             },
@@ -3036,6 +3072,41 @@ impl Marker
                     run,
                 );
             },
+            | Comp::Fix(x, body) => {
+                // Check-primary, exactly as the checker's own rule: the
+                // expectation is what states the self-reference's type, and an
+                // inferring fixpoint is stuck. The stuck path still descends
+                // the body, binding the self-reference at the unknown thunk, so
+                // marking stays total on a term the checker refuses.
+                let Dir::Check(recursive) = dir
+                else {
+                    pending.marks.push(Mark::Stuck {
+                        hint: text::FIX_NEEDS_CHECK,
+                    });
+                    self.ctx
+                        .bind(x, ValueType::thunk(Grade::OMEGA, CompType::Unknown));
+                    self.schedule_child_comp(
+                        0,
+                        body,
+                        Dir::Check(CompType::Unknown),
+                        MarkFrame::CompFixAfterBody {
+                            pending,
+                            recursive: CompType::Unknown,
+                        },
+                        run,
+                    );
+                    return;
+                };
+                self.ctx
+                    .bind(x, ValueType::thunk(Grade::OMEGA, recursive.clone()));
+                self.schedule_child_comp(
+                    0,
+                    body,
+                    Dir::Check(recursive.clone()),
+                    MarkFrame::CompFixAfterBody { pending, recursive },
+                    run,
+                );
+            },
             | Comp::Hole(hole) => {
                 pending.marks.push(Mark::EmptyHole(hole));
                 let ty = finish_comp(CompType::Unknown, dir, &mut pending.marks);
@@ -3445,6 +3516,32 @@ impl Marker
                 let _popped = self.path.pop();
                 typed.insert(label, Rc::new(field_ty));
                 self.schedule_value_record(pending, fields, next_index, dir, typed, run);
+            },
+            | MarkFrame::ValueRunAfterBody { mut pending, dir } => {
+                let body_ty = expect_comp(done);
+                let _popped = self.path.pop();
+                let produced = match body_ty {
+                    | CompType::F(produced, ref row) => {
+                        if bool::from(row.is_empty()) {
+                            produced.as_ref().clone()
+                        }
+                        else {
+                            pending.marks.push(Mark::Stuck {
+                                hint: text::RUN_NEEDS_PURITY,
+                            });
+                            ValueType::Unknown
+                        }
+                    },
+                    | CompType::Unknown => ValueType::Unknown,
+                    | _other => {
+                        pending.marks.push(Mark::Stuck {
+                            hint: text::RUN_NEEDS_RETURNER,
+                        });
+                        ValueType::Unknown
+                    },
+                };
+                let ty = finish_value(produced, dir, &mut pending.marks);
+                run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | MarkFrame::ValueThunkAfterBody {
                 mut pending,
@@ -4211,6 +4308,12 @@ impl Marker
                 self.ctx.unbind();
                 run.result = Some(MarkResult::Comp(pending.finish(self, captured)));
             },
+            | MarkFrame::CompFixAfterBody { pending, recursive } => {
+                let _body_ty = expect_comp(done);
+                let _popped = self.path.pop();
+                self.ctx.unbind();
+                run.result = Some(MarkResult::Comp(pending.finish(self, recursive)));
+            },
             | MarkFrame::CompWalkAfterScrut {
                 mut pending,
                 motive,
@@ -4425,6 +4528,11 @@ impl Marker
             | Value::Thunk(grade, body) => self.schedule_intern_comp_rc(
                 body,
                 InternFrame::ValueThunkAfterBody { cache_key, grade },
+                run,
+            ),
+            | Value::Run(body) => self.schedule_intern_comp_rc(
+                body,
+                InternFrame::ValueRunAfterBody { cache_key },
                 run,
             ),
             | Value::Annot(inner, ty) => self.schedule_intern_value_rc(
@@ -4665,6 +4773,14 @@ impl Marker
                 InternFrame::CompUnaryCompAfterChild {
                     cache_key,
                     kind: CompUnaryCompIntern::Shift(k),
+                },
+                run,
+            ),
+            | Comp::Fix(x, body) => self.schedule_intern_comp_rc(
+                body,
+                InternFrame::CompUnaryCompAfterChild {
+                    cache_key,
+                    kind: CompUnaryCompIntern::Fix(x),
                 },
                 run,
             ),
@@ -5007,6 +5123,12 @@ impl Marker
                     | None => run.result = Some(InternResult::Value(None)),
                 }
             },
+            | InternFrame::ValueRunAfterBody { cache_key } => match expect_intern_comp(done) {
+                | Some(body) => {
+                    run.result = Some(self.finish_intern_value(ValueNode::Run(body), cache_key));
+                },
+                | None => run.result = Some(InternResult::Value(None)),
+            },
             | InternFrame::ValueAnnotAfterInner { cache_key, ty } => {
                 match expect_intern_value(done) {
                     | Some(inner) => match self.intern_value_type(&ty) {
@@ -5059,6 +5181,7 @@ impl Marker
                             | CompUnaryCompIntern::Prj(side) => CompNode::Prj(side, child),
                             | CompUnaryCompIntern::Reset => CompNode::Reset(child),
                             | CompUnaryCompIntern::Shift(k) => CompNode::Shift(k, child),
+                            | CompUnaryCompIntern::Fix(x) => CompNode::Fix(x, child),
                         };
                         run.result = Some(self.finish_intern_comp(node, cache_key));
                     },

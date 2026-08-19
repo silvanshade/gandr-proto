@@ -227,6 +227,28 @@ pub enum BridgeRejection
         "a machine-numeric literal has no S1 image (S1's base atoms are Integer/String/Numeric)"
     )]
     MachineNumericLiteral,
+    /// The pure-computation embedding `run t`.
+    ///
+    /// The certified stage's value vocabulary has no form naming the value a
+    /// computation returns, and the same standing shape applies: the elaborator
+    /// layer supplies the former and the kernel refuses it by name.
+    #[error(
+        "a pure-computation embedding has no S1 image (the certified value vocabulary names \
+             no computation result)"
+    )]
+    PureEmbedding,
+    /// The recursion former `fix x. t`.
+    ///
+    /// The certified stage's computation vocabulary binds no self-reference,
+    /// and that is the same standing shape as the identity and package
+    /// families above rather than an omission: the elaborator layer supplies
+    /// the former and the kernel refuses it **by name**, which is what keeps it
+    /// an elaborator feature rather than a kernel extension.
+    #[error(
+        "a fixpoint has no S1 image (the certified computation vocabulary binds no \
+             self-reference)"
+    )]
+    FixpointFormer,
     /// A base-type atom outside the S1 stock `{ Integer, String, Numeric }`
     /// (a type variable or a machine-numeric atom).
     #[error("the base atom `{0}` is outside the S1 stock {{ Integer, String, Numeric }}")]
@@ -300,6 +322,8 @@ impl BridgeRejection
                 BridgeExclusionClass("identity")
             },
             | Self::UniverseType => BridgeExclusionClass("universe"),
+            | Self::FixpointFormer => BridgeExclusionClass("recursion"),
+            | Self::PureEmbedding => BridgeExclusionClass("pure-embedding"),
             | Self::UnboundSeal(_) => BridgeExclusionClass("unbound-seal"),
             | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => {
                 BridgeExclusionClass("machine-numeric")
@@ -976,6 +1000,7 @@ fn lower_term<'core>(
                     goal = TermGoal::Value(inner.as_ref());
                     continue 'expand;
                 },
+                | Value::Run(_) => return Err(BridgeRejection::PureEmbedding),
                 | Value::Num(_) => return Err(BridgeRejection::MachineNumericLiteral),
                 | Value::List(_) => return Err(BridgeRejection::ListValue),
                 | Value::Record(_) => return Err(BridgeRejection::RecordValue),
@@ -1046,6 +1071,7 @@ fn lower_term<'core>(
                 | Comp::Hole(_) => return Err(BridgeRejection::ComputationHole),
                 | Comp::Native { .. } => return Err(BridgeRejection::Native),
                 | Comp::Walk { .. } => return Err(BridgeRejection::WalkEliminator),
+                | Comp::Fix(..) => return Err(BridgeRejection::FixpointFormer),
             },
         };
         loop {

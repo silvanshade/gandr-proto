@@ -411,6 +411,14 @@ impl Focuser
         while let Some(task) = work.pop() {
             match task {
                 | FocusTask::Value(value) => match *value {
+                    // Unreachable from `focus`, which declines the whole
+                    // program the moment the scan finds an embedding; the arm
+                    // exists because the translation is total on every term
+                    // handed to it.
+                    | Value::Run(_) => {
+                        let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
+                        results.push(FocusResult::Producer(producer));
+                    },
                     | Value::Var(ref name) => {
                         let producer = self.new_producer(ProducerNode::Var(name.clone()))?;
                         results.push(FocusResult::Producer(producer));
@@ -726,6 +734,17 @@ impl Focuser
                             comp: body.as_ref(),
                             cont: top,
                         });
+                    },
+                    // Unreachable from `focus`, which declines the whole
+                    // program the moment the scan finds a fixpoint; the arm
+                    // exists because the translation is **total** on every term
+                    // handed to it, and a per-node decline is the honest answer
+                    // for a caller that reaches the dispatch directly.
+                    | Comp::Fix(..) => {
+                        let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
+                        let command =
+                            self.cut(Polarity::Positive, producer, cont, FocusOrigin::Unsupported)?;
+                        results.push(FocusResult::Command(command));
                     },
                     | Comp::Hole(hole) => {
                         let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(hole)))?;
@@ -1833,8 +1852,9 @@ pub fn focus_term(term: &Term) -> Result<Focused, FocusError>
 /// Focuses a checked-core value against `★` (`⟨𝓥⟦v⟧ | ★⟩`).
 ///
 /// A value mentioning a known-but-not-yet-realized former declines whole, as
-/// [`focus_comp`]; currently no such former exists (the ADR-76/80 formers are
-/// realized), so the scan is the forward-compat guard, not an active decline.
+/// [`focus_comp`]. The ADR-76/80 formers are realized; the recursion former and
+/// the pure-computation embedding are not, so a value reaching either declines
+/// rather than focusing to a term that would run differently.
 ///
 /// # Contract
 /// - ensures: total on well-formed core values; the root is a positive cut of
@@ -2020,9 +2040,9 @@ fn unsupported_program() -> Result<Focused, FocusError>
 
 /// Drains the unsupported-former scan worklist: `true` iff any reachable node
 /// is a known-but-not-yet-realized former. The ADR-76 identity formers and
-/// ADR-80 declared data are realized, so it traverses THROUGH them and (with no
-/// former currently unrealized) always returns `false`; a future former added
-/// to the decline set would trip it.
+/// ADR-80 declared data are realized, so it traverses THROUGH them; the
+/// recursion former is not, so a reachable fixpoint trips the whole-program
+/// decline.
 fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStatus
 {
     use ScanNode as Node;
@@ -2114,10 +2134,20 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
                         work.push(Node::Value(arg));
                     }
                 },
+                // **The recursion former is known and not yet realized**, which
+                // is exactly what the whole-program decline is reserved for.
+                // The focusing translation has no image for a self-reference,
+                // and the sequent IL has no recursive producer to carry one, so
+                // a program mentioning a fixpoint declines as a whole rather
+                // than focusing to something that would run as a different
+                // term. Realizing it — a recursive producer whose forcing
+                // re-enters its own node — is the machine half of the recursion
+                // rung; typing and conversion do not wait on it, because the
+                // normalizer reduces fixpoints on its own path.
+                | Comp::Fix(..) => return UnsupportedFormerStatus::from(true),
                 // A hole is a leaf; a future former this predicate does not
                 // know is NOT an unsupported former (the focusing fallback arms
-                // own it — the whole-program decline is reserved for a former
-                // known-but-not-yet-realized, of which there are currently none).
+                // own it).
                 | _ => {},
             },
             | Node::Value(value_node) => match *value_node {
@@ -2146,6 +2176,15 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
                 },
                 | Value::Thunk(_, ref body) => work.push(Node::Comp(body)),
                 | Value::Stk(ref stack) => work.push(Node::Stack(stack)),
+                // **The pure-computation embedding is known and not yet
+                // realized here.** It names the value a computation returns,
+                // and the focusing translation has no producer for that: the
+                // sequent image would have to run the computation and bind its
+                // return, which is a command rather than a producer. It is the
+                // recursion former's situation exactly, and it declines the
+                // same way — the whole program, rather than focusing to a term
+                // that would run differently.
+                | Value::Run(_) => return UnsupportedFormerStatus::from(true),
                 // Leaves (variables, literals, unit, holes), and any future
                 // value former this predicate does not know — not identity.
                 | _ => {},

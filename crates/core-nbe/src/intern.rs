@@ -582,6 +582,13 @@ fn visit_value<'term>(
             hashed(tokens, &grade);
             work.push(KeyTask::Comp(body));
         },
+        | ValueNode::Run(body) => {
+            // The one value form whose only child is a computation and which
+            // carries no attribute of its own: the key is the tag and the
+            // computation's own key.
+            tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(15)));
+            work.push(KeyTask::Comp(body));
+        },
         | ValueNode::Annot(inner, ty) => {
             tokens.push(CanonicalToken::from(tag::VALUE.saturating_add(9)));
             work.push(KeyTask::ValueType(ty));
@@ -732,6 +739,13 @@ fn visit_comp<'term>(
             under(work, BinderName::from(binder.as_str()), body);
             work.push(KeyTask::ValueType(signature));
             work.push(KeyTask::Value(scrut));
+        },
+        | CompNode::Fix(ref binder, body) => {
+            // One binder over one computation child, exactly as `Shift`: the
+            // self-reference binds a **value** (the thunk of the knot), so the
+            // key opens the same single-name scope.
+            tokens.push(CanonicalToken::from(tag::COMP.saturating_add(23)));
+            under(work, BinderName::from(binder.as_str()), body);
         },
         | CompNode::RecordProj { record, ref label } => {
             tokens.push(CanonicalToken::from(tag::COMP.saturating_add(9)));

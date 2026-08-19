@@ -1169,6 +1169,7 @@ mod tests
     use super::WIRE_SCHEMA_VERSION;
     #[cfg(feature = "codecs")]
     use crate::present::AttrCard;
+    #[cfg(feature = "codecs")]
     use crate::present::AttrNode;
     #[cfg(feature = "codecs")]
     use crate::present::AttrTier;

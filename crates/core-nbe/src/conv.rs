@@ -356,6 +356,14 @@ fn value_goal(
                 || canonical_stack_key(store, left) == canonical_stack_key(store, right);
             return Ok(ValueEquality::from(decided));
         },
+        | (&SemValueNode::Run(left), &SemValueNode::Run(right)) => {
+            // Congruence on the embedded computation, which is the ordinary
+            // computation-conversion path one level down. Neither side is a
+            // returner — a returner is consumed at evaluation — so this is
+            // exactly the stuck-against-stuck case.
+            goals.push(Frame::Comp(left, right, state));
+            return Ok(ValueEquality::from(true));
+        },
         | (&SemValueNode::Pair(left_fst, left_snd), &SemValueNode::Pair(right_fst, right_snd)) => {
             goals.push(Frame::Value(left_snd, right_snd, state));
             goals.push(Frame::Value(left_fst, right_fst, state));
@@ -1041,6 +1049,12 @@ fn head_goal(
             Ok(ValueEquality::from(true))
         },
         | (&NeutralHead::Shift(left), &NeutralHead::Shift(right)) => {
+            closures_goal(nbe, left, right, ClosureArity::from(1_usize), state, goals)?;
+            Ok(ValueEquality::from(true))
+        },
+        | (&NeutralHead::Fix(left), &NeutralHead::Fix(right)) => {
+            // Congruence under the self-reference binder, and nothing more:
+            // the fixpoint is never unfolded here.
             closures_goal(nbe, left, right, ClosureArity::from(1_usize), state, goals)?;
             Ok(ValueEquality::from(true))
         },

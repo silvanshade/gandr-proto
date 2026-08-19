@@ -1979,6 +1979,8 @@ enum PlugFinish
     ValueRecord(Vec<String>),
     /// Pop one computation, push the thunk.
     ValueThunk(Grade),
+    /// Pop one computation, push the pure-computation embedding.
+    ValueRun,
     /// Pop one value type and one value, push the annotation.
     ValueAnnot,
     /// Pop one stack, push the reified-stack value.
@@ -2085,6 +2087,12 @@ enum PlugFinish
     CompShift
     {
         /// The continuation binder.
+        name: String,
+    },
+    /// Pop one computation, push the fixpoint.
+    CompFix
+    {
+        /// The self-reference binder.
         name: String,
     },
     /// Pop `argc` values, push the native.
@@ -2565,6 +2573,10 @@ impl<'template> PlugEngine<'template>
                     .push(PlugTask::Finish(PlugFinish::ValueThunk(*grade)));
                 self.tasks.push(PlugTask::Comp(body));
             },
+            | Value::Run(body) => {
+                self.tasks.push(PlugTask::Finish(PlugFinish::ValueRun));
+                self.tasks.push(PlugTask::Comp(body));
+            },
             | Value::Annot(inner, ty) => {
                 self.tasks.push(PlugTask::Finish(PlugFinish::ValueAnnot));
                 self.tasks.push(PlugTask::ValueType(ty));
@@ -2766,6 +2778,11 @@ impl<'template> PlugEngine<'template>
                 self.tasks.push(PlugTask::Finish(PlugFinish::CompShift {
                     name: name.clone(),
                 }));
+                self.tasks.push(PlugTask::Comp(computation));
+            },
+            | Comp::Fix(name, computation) => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::CompFix { name: name.clone() }));
                 self.tasks.push(PlugTask::Comp(computation));
             },
             | Comp::Hole(id) => self.comps.push(Comp::Hole(*id)),
@@ -3079,6 +3096,10 @@ impl<'template> PlugEngine<'template>
                 let body = self.pop_comp()?;
                 self.values.push(Value::Thunk(grade, Rc::new(body)));
             },
+            | PlugFinish::ValueRun => {
+                let body = self.pop_comp()?;
+                self.values.push(Value::Run(Rc::new(body)));
+            },
             | PlugFinish::ValueAnnot => {
                 let ty = self.pop_value_type()?;
                 let inner = self.pop_value()?;
@@ -3262,6 +3283,10 @@ impl<'template> PlugEngine<'template>
             | PlugFinish::CompShift { name } => {
                 let computation = self.pop_comp()?;
                 self.comps.push(Comp::Shift(name, Rc::new(computation)));
+            },
+            | PlugFinish::CompFix { name } => {
+                let computation = self.pop_comp()?;
+                self.comps.push(Comp::Fix(name, Rc::new(computation)));
             },
             | PlugFinish::CompNative { prim, argc } => {
                 let args = self.pop_values(argc)?;
@@ -4258,7 +4283,7 @@ fn walk_value<'template>(
                 tasks.push(WalkTask::Value(field));
             }
         },
-        | Value::Thunk(_, body) => tasks.push(WalkTask::Comp(body)),
+        | Value::Thunk(_, body) | Value::Run(body) => tasks.push(WalkTask::Comp(body)),
         | Value::Annot(inner, ty) => {
             tasks.push(WalkTask::ValueType(ty));
             tasks.push(WalkTask::Value(inner));
@@ -4395,7 +4420,7 @@ fn walk_comp<'template>(
             tasks.push(WalkTask::Value(value));
         },
         | Comp::Reset(computation) => tasks.push(WalkTask::Comp(computation)),
-        | Comp::Shift(name, computation) => {
+        | Comp::Shift(name, computation) | Comp::Fix(name, computation) => {
             check_binder(name)?;
             tasks.push(WalkTask::Comp(computation));
         },

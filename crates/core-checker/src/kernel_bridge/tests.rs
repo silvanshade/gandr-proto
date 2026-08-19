@@ -385,6 +385,43 @@ fn identity_class_rejects_exactly()
     );
 }
 
+/// The recursion former is refused **by name**, and the pin exists because a
+/// decline with no witness silently becomes a drop.
+///
+/// The certified stage binds no self-reference, and the elaborator layer is
+/// where the former lives. No corpus example can reach this yet — the surface
+/// has no spelling for a fixpoint — so the promotion blocker is the surface
+/// syntax rather than anything about the bridge.
+#[test]
+fn recursion_class_rejects_exactly()
+{
+    let mut arena = TermArena::new();
+    let fixpoint = Comp::fix(
+        "self",
+        Comp::force(Value::var(gandr_core_term::boundary::NameRef::from("self"))),
+    );
+    assert_eq!(
+        Err(BridgeRejection::FixpointFormer),
+        lower_comp(&closed(), &mut arena, &fixpoint),
+        "a fixpoint rejects with the exact FixpointFormer variant"
+    );
+}
+
+/// The pure-computation embedding is refused **by name**, on the same footing
+/// and with the same promotion blocker: the certified value vocabulary names no
+/// computation result.
+#[test]
+fn pure_embedding_class_rejects_exactly()
+{
+    let mut arena = TermArena::new();
+    let embedded = Value::run(Comp::ret(Value::Unit));
+    assert_eq!(
+        Err(BridgeRejection::PureEmbedding),
+        lower_value(&closed(), &mut arena, &embedded),
+        "a pure-computation embedding rejects with the exact PureEmbedding variant"
+    );
+}
+
 #[test]
 fn universe_class_rejects_exactly()
 {

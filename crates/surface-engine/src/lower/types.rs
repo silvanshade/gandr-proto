@@ -26,6 +26,7 @@ use alloc::rc::Rc;
 
 use gandr_core_term::boundary::GradeBound;
 use gandr_core_term::grade::Grade;
+use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::DataId;
@@ -39,6 +40,7 @@ use crate::boundary::UnknownAtomFlag;
 use crate::lower::LowerError;
 use crate::lower::LowerResult;
 use crate::lower::Strictness;
+use crate::lower::named_non_extra_children;
 use crate::lower::node_kinds;
 use crate::lower::node_text;
 use crate::lower::required_field;
@@ -449,6 +451,50 @@ fn lower_type_tree(
                                 )
                             }))
                         }));
+                    },
+                    // The identity type in a type position, whose two
+                    // endpoints are **terms**.
+                    //
+                    // The molder reads it at the expression sort — a call whose
+                    // head is the reserved `Path` name — and that is the
+                    // reading this arm wants, because an endpoint like
+                    // `comp(id(a), f)` is an application and an application is
+                    // an expression. The type sort cannot hold one at all: a
+                    // type application's head must be a `type_identifier`, so a
+                    // lowercase operation applied to arguments has no
+                    // type-sorted parse, which is why widening the lowering
+                    // alone never reached this.
+                    //
+                    // The carrier is scheduled as an ordinary type child; the
+                    // endpoints lower through the endpoint fragment.
+                    | node_kinds::PATH_TYPE | node_kinds::CALL_EXPRESSION
+                        if path_type_head(source, node) =>
+                    {
+                        let children = path_type_arguments(node);
+                        let [carrier, lhs_node, rhs_node] = *children.as_slice()
+                        else {
+                            results.push(Err(LowerError::MalformedNode {
+                                kind: node.kind(),
+                                byte_range: node.byte_range(),
+                            }));
+                            continue;
+                        };
+                        let lhs = match lower_endpoint_value(source, lhs_node) {
+                            | Ok(lhs) => lhs,
+                            | Err(error) => {
+                                results.push(Err(error));
+                                continue;
+                            },
+                        };
+                        let rhs = match lower_endpoint_value(source, rhs_node) {
+                            | Ok(rhs) => rhs,
+                            | Err(error) => {
+                                results.push(Err(error));
+                                continue;
+                            },
+                        };
+                        pending.push(TypeTask::Build(TypeFrame::Path { carrier, lhs, rhs }));
+                        pending.push(TypeTask::Node(carrier));
                     },
                     | node_kinds::F_TYPE => {
                         let Ok(argument) = required_field(node, node_kinds::FIELD_ARGUMENT)
@@ -1019,6 +1065,14 @@ fn pop_type_results(
 ///
 /// [`LowerError::InvalidIntegerLiteral`] for a non-`i64` numeral;
 /// [`LowerError::Unsupported`] for any non-number, non-variable endpoint.
+#[cfg_attr(
+    dylint_lib = "recursive_function_needs_termination",
+    allow(
+        unknown_lints,
+        recursive_function_needs_termination,
+        reason = "descends a finite parsed argument list; each call is strictly inside the caller's node, so the measure is the remaining subtree"
+    )
+)]
 fn lower_endpoint_value(
     source: PipelineSource<'_>,
     node: SynNode<'_>,
@@ -1035,14 +1089,124 @@ fn lower_endpoint_value(
                 }),
             }
         },
-        | node_kinds::TYPE_VARIABLE | node_kinds::TYPE_IDENTIFIER => {
+        // A bare name. Both spellings arrive here: an endpoint parsed at the
+        // expression sort is an `identifier`, and one reached through the older
+        // type-sorted route is a `type_identifier` or `type_variable`.
+        | node_kinds::IDENTIFIER | node_kinds::TYPE_VARIABLE | node_kinds::TYPE_IDENTIFIER => {
             node_text(source, node).map(|text| Value::var(text.0))
         },
+        | node_kinds::PARENTHESIZED_EXPRESSION => {
+            let children = named_non_extra_children(node);
+            match *children.as_slice() {
+                | [inner] => lower_endpoint_value(source, inner),
+                | _ => Err(LowerError::MalformedNode {
+                    kind: node.kind(),
+                    byte_range: node.byte_range(),
+                }),
+            }
+        },
+        // **An applied operation.** `comp(id(a), f)` is a computation in
+        // call-by-push-value, so naming the value it produces is what puts it in
+        // a type at all — that is the pure-computation embedding, and it is why
+        // widening this function alone was never going to be enough.
+        //
+        // The spine is the ordinary one: the head is forced and each argument is
+        // applied, exactly as the expression lowerer builds a call, and the
+        // whole application is embedded. The embedding's own typing rule is
+        // what enforces purity; nothing is assumed here.
+        | node_kinds::CALL_EXPRESSION => {
+            let function = required_field(node, node_kinds::FIELD_FUNCTION)?;
+            let arguments_node = required_field(node, node_kinds::FIELD_ARGUMENTS)?;
+            let head = lower_endpoint_value(source, function)?;
+            embed_application(source, head, named_non_extra_children(arguments_node))
+        },
+        // The same application, reached through the **type**-sorted grammar.
+        //
+        // An endpoint sits inside a type, so the parser reads it at the type
+        // sort and an applied operation arrives as a type application rather
+        // than a call. The node kinds differ and the content does not: the head
+        // and the argument subtrees are both here, so the endpoint lowers to
+        // the same embedding it would from the expression sort. That is what
+        // makes this a **reading** of the parse rather than a reinterpretation
+        // of a value as a type — the sort of the node is a fact about which
+        // production matched, and the sort of the TERM is fixed by this
+        // function.
+        | node_kinds::TYPE_APPLICATION => {
+            let constructor = required_field(node, node_kinds::FIELD_CONSTRUCTOR)?;
+            let head = node_text(source, constructor).map(|text| Value::var(text.0))?;
+            let arguments = node.children_by_field_name(node_kinds::FIELD_ARGUMENT);
+            embed_application(source, head, arguments)
+        },
+        // **Declined by name rather than degraded.** An endpoint the engine
+        // cannot represent is not an absence in the author's program — they
+        // wrote something, and it is the engine that cannot read it — so
+        // recording it as a hole would record the wrong fact and let the
+        // checker validate a type the source does not state.
         | kind => Err(LowerError::Unsupported {
             kind,
             byte_range: node.byte_range(),
         }),
     }
+}
+
+/// Whether `node` is the identity type former, under either of the two molds
+/// the parser can give it.
+///
+/// The dedicated production carries its own kind. The expression-sorted reading
+/// arrives as a call whose head is the reserved name, and that reading is
+/// admitted here rather than refused, because the endpoints it produces are
+/// already at the sort an endpoint needs.
+fn path_type_head(
+    source: PipelineSource<'_>,
+    node: SynNode<'_>,
+) -> bool
+{
+    if node.kind() == node_kinds::PATH_TYPE {
+        return true;
+    }
+    required_field(node, node_kinds::FIELD_FUNCTION)
+        .and_then(|function| node_text(source, function))
+        .is_ok_and(|text| text.0 == node_kinds::NAME_PATH_TYPE)
+}
+
+/// The carrier and the two endpoint nodes of an identity type, under either
+/// mold: the dedicated production lists them as its named children, and the
+/// expression-sorted reading lists them under the call's argument node.
+fn path_type_arguments(node: SynNode<'_>) -> Vec<SynNode<'_>>
+{
+    if node.kind() == node_kinds::PATH_TYPE {
+        return named_non_extra_children(node);
+    }
+    required_field(node, node_kinds::FIELD_ARGUMENTS)
+        .map(named_non_extra_children)
+        .unwrap_or_default()
+}
+
+/// Builds the pure-computation embedding of `head` applied to `arguments`.
+///
+/// The spine is the ordinary call-by-push-value one — the head is forced and
+/// each argument applied in order, exactly as the expression lowerer builds a
+/// call — and the saturated application is embedded, because an application is
+/// a computation and only a value may occur in a type.
+///
+/// A zero-argument head is **not** embedded: a bare name is already a value,
+/// and wrapping it would make `x` and `run (force x)` two spellings of one
+/// endpoint for no gain.
+fn embed_application(
+    source: PipelineSource<'_>,
+    head: Value,
+    arguments: Vec<SynNode<'_>>,
+) -> LowerResult<Value>
+{
+    if arguments.is_empty() {
+        return Ok(head);
+    }
+    let mut applied = Comp::Force(Rc::new(head));
+    for argument in arguments {
+        let lowered = lower_endpoint_value(source, argument)?;
+        applied = Comp::App(Rc::new(applied), Rc::new(lowered));
+    }
+    Ok(Value::Run(Rc::new(applied)))
 }
 
 /// The `member` field nodes of a product/sum/lazy-product type (the grammar

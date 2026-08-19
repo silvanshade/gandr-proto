@@ -271,6 +271,59 @@ mod tests
         }
     }
 
+    /// A program mentioning a **known-but-not-yet-realized** former declines as
+    /// a whole rather than focusing to a term that would run differently.
+    ///
+    /// Two formers are in that set: the recursion former, whose self-reference
+    /// the sequent IL has no producer for, and the pure-computation embedding,
+    /// whose image would have to run a computation and bind its return, which
+    /// is a command rather than a producer. **The pin exists because a decline
+    /// with no witness silently becomes a drop**, and there is no corpus route
+    /// to either former yet — the surface has no spelling for them, which is
+    /// the promotion blocker for both.
+    ///
+    /// The decline is **whole-program** rather than local, and the nesting
+    /// cases are what say so: a fixpoint buried under a binder and an embedding
+    /// buried under a thunk each decline the program they sit in.
+    #[test]
+    fn an_unrealized_former_declines_the_whole_program()
+    {
+        let cases: Vec<(&str, Comp)> = vec![
+            (
+                "a bare fixpoint",
+                Comp::fix("self", Comp::force(Value::var("self"))),
+            ),
+            (
+                "a fixpoint under a binder",
+                Comp::lam(
+                    "x",
+                    Comp::fix("self", Comp::ret(Value::var(NameRef::from("x")))),
+                ),
+            ),
+            (
+                "a bare embedding",
+                Comp::ret(Value::run(Comp::ret(Value::Unit))),
+            ),
+            (
+                "an embedding under a thunk",
+                Comp::ret(Value::Thunk(
+                    Grade::ONE,
+                    alloc::rc::Rc::new(Comp::ret(Value::run(Comp::ret(Value::Unit)))),
+                )),
+            ),
+        ];
+        for (label, term) in cases {
+            let focused = focus_comp(&term).expect("focusing stays total on an unrealized former");
+            let histogram = inspect::origin_histogram(&focused);
+            assert!(
+                histogram.contains_key(&FocusOrigin::Unsupported),
+                "{label} declines the whole program under the Unsupported origin; focused as \
+                 {dump}",
+                dump = inspect::dump(&focused)
+            );
+        }
+    }
+
     /// Every remaining former — the effect / control / native / reified-stack
     /// surface the random generator does not build — focuses total and
     /// well-formed, carries the expected provenance, and renders the

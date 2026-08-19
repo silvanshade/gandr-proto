@@ -89,6 +89,20 @@ pub mod text
     /// Hint for a capture `shift k. t` in inference mode (rule Shift is
     /// check-only against the captured type `B`; A3.3 `+control`).
     pub const SHIFT_NEEDS_CHECK: &str = "shift only checks; supply an expected type B";
+    /// The hint a pure-computation embedding over an effectful computation
+    /// carries.
+    ///
+    /// The purity premise is what makes the embedding sound rather than a
+    /// caveat on it, so the decline is by name and there is no pure-enough
+    /// reading that would widen it.
+    pub const RUN_NEEDS_PURITY: &str = "run embeds a PURE computation; this one performs effects, and the value an effectful \
+         computation returns is not stable under substitution";
+    /// The hint a pure-computation embedding over a non-returner carries.
+    pub const RUN_NEEDS_RETURNER: &str = "run embeds a computation that RETURNS a value; this one is a function or a lazy pair, \
+         which returns nothing to name";
+    /// The hint a fixpoint in inference position carries.
+    pub const FIX_NEEDS_CHECK: &str = "fix only checks; ascribe the recursion's own computation type, which is what a recursive \
+         definition's declared signature supplies";
     /// Hint for a capture `shift k. t` with no enclosing `reset` (the ambient
     /// answer type is undetermined; A3.3 `+control`).
     pub const SHIFT_NEEDS_RESET: &str =

@@ -1,0 +1,18 @@
+// Failure golden: a `Path` endpoint applying a name that is not in scope is
+// REFUSED rather than quietly accepted.
+//
+// This is the sharpest form of the silent-acceptance defect the compound
+// endpoint work closed. `nosuch` is defined nowhere in the program. When an
+// application endpoint fell outside the type-position fragment the whole type
+// degraded to the gradual unknown, so the definition below was admitted with
+// no diagnostic at all -- a program mentioning a function that does not exist,
+// accepted. The endpoint now reaches the core as the term it was written as,
+// so the name is looked up and the identity is checked.
+//
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+
+def refuted(x: Integer) -> F Path(Integer, nosuch(x), x) {
+  ret here(x)
+}
+
+//@ expect-diagnostic: type mismatch

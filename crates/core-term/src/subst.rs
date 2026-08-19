@@ -526,6 +526,17 @@ impl<'src> Subst<'src>
                     self.work.push(Task::DescendComp(body.as_ref()));
                 }
             },
+            // The fixpoint binds its self-reference over the body, so it
+            // shadows exactly as a `Shift` binds its continuation variable.
+            | Comp::Fix(ref x, ref body) => {
+                if self.shadowed == Some(NameRef::from(x.as_str())) {
+                    self.comps.push(comp.clone());
+                }
+                else {
+                    self.work.push(Task::CombineComp(comp));
+                    self.work.push(Task::DescendComp(body.as_ref()));
+                }
+            },
             // The computation-sorted half of the hole rule, with the same
             // survivor report as its value-sorted twin.
             | Comp::Hole(hole) => {
@@ -757,6 +768,7 @@ impl<'src> Subst<'src>
             },
             | Comp::Reset(_) => Comp::Reset(Rc::new(self.take_comp())),
             | Comp::Shift(ref k, _) => Comp::Shift(k.clone(), Rc::new(self.take_comp())),
+            | Comp::Fix(ref x, _) => Comp::Fix(x.clone(), Rc::new(self.take_comp())),
             // A leaf / whole-node-shadow is rebuilt in `descend_comp` and never
             // reaches a combine; the arm is required only for exhaustiveness.
             | Comp::Hole(_) => comp.clone(),
@@ -875,7 +887,7 @@ impl<'src> Subst<'src>
                     self.work.push(Task::DescendValue(field.as_ref()));
                 }
             },
-            | Value::Thunk(_, ref body) => {
+            | Value::Thunk(_, ref body) | Value::Run(ref body) => {
                 self.work.push(Task::CombineValue(value));
                 self.work.push(Task::DescendComp(body.as_ref()));
             },
@@ -949,6 +961,7 @@ impl<'src> Subst<'src>
                 Value::Record(built)
             },
             | Value::Thunk(grade, _) => Value::Thunk(grade, Rc::new(self.take_comp())),
+            | Value::Run(_) => Value::Run(Rc::new(self.take_comp())),
             | Value::Annot(_, ref ty) => Value::Annot(Rc::new(self.take_value()), Rc::clone(ty)),
             | Value::Stk(_) => Value::Stk(Rc::new(self.take_stack())),
             | Value::Here(_) => Value::Here(Rc::new(self.take_value())),

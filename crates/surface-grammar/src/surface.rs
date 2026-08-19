@@ -232,6 +232,7 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     "operator_declaration",
     "pack_expression",
     "package_type",
+    "path_type",
     "unpack_statement",
     "rec_block",
     "sign_declaration",

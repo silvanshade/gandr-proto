@@ -399,6 +399,10 @@ pub enum ValueNode
         /// The packed payload value id.
         payload: ValueNodeId,
     },
+    /// The pure-computation embedding `run t`, the flat mirror of
+    /// [`crate::syntax::Value::Run`]: the embedded computation is a
+    /// computation-arena id.
+    Run(CompNodeId),
 }
 
 /// A handler operation clause in the flat computation carrier.
@@ -557,6 +561,10 @@ pub enum CompNode
         /// The body computation id.
         body: CompNodeId,
     },
+    /// The recursion former `fix x. t`, the flat mirror of
+    /// [`crate::syntax::Comp::Fix`]: the self-reference binder is an owned
+    /// attribute and the body is a computation-arena id.
+    Fix(String, CompNodeId),
 }
 
 /// A reified-stack node in the flat ADR-50 carrier.
@@ -916,6 +924,55 @@ pub enum Value
         /// internalizes, at the witnesses' types.
         payload: Rc<Self>,
     },
+    /// The **pure-computation embedding** `run t` — the value a pure
+    /// computation returns, and the one form that lets a term written as an
+    /// application occur in a type.
+    ///
+    /// # Why it exists
+    ///
+    /// Call-by-push-value separates the sorts: `f(x)` is a *computation* of
+    /// type `F A`, never a value. Types, meanwhile, are indexed by **values** —
+    /// [`crate::types::ValueType::Path`] carries two of them. So a law like
+    /// `Path(Hom, comp(id(a), f), f)` cannot be written at all without a way
+    /// to name the value an application produces, and no relaxation of the
+    /// surface reaches it, because the obstacle is the sort rather than the
+    /// syntax.
+    ///
+    /// # The purity premise is the whole content
+    ///
+    /// The embedding is admitted **exactly** when the computation's effect row
+    /// is empty. That is not a caveat attached to the rule; it is what makes
+    /// the rule sound. A pure computation is deterministic up to the step
+    /// budget, so the value it denotes is stable under substitution and under
+    /// the context it appears in — which is precisely what a type occurring in
+    /// many places needs. An effectful computation denotes no such thing, and
+    /// its embedding is **refused by name** rather than admitted under a
+    /// pure-enough reading. There is no pure-enough reading.
+    ///
+    /// # What it is not
+    ///
+    /// It is not a thunk. [`Self::Thunk`] *suspends* a computation and keeps it
+    /// a computation, eliminated by [`Comp::Force`]; this *names the value that
+    /// computation returns*, and is eliminated by nothing, because it is
+    /// already a value. Where the two meet is telling: `run (force (thunk t))`
+    /// and `run t` denote the same value, and `thunk (run t)` does not
+    /// typecheck at all.
+    ///
+    /// # How it computes
+    ///
+    /// Evaluation runs the computation under the **shared** step budget, the
+    /// same budget and the same policy context every other unfolding surface
+    /// reads. A computation stuck on a variable leaves the embedding a
+    /// **neutral value**, quoted back as itself and compared by congruence,
+    /// which is how an open law-field type normalizes as far as its arguments
+    /// allow and no further. Budget exhaustion in type position is a refusal
+    /// carrying its evidence, never an unsound acceptance: it costs
+    /// availability and nothing else.
+    Run(
+        /// The embedded computation, which must infer a returner at the empty
+        /// effect row.
+        Rc<Comp>,
+    ),
 }
 
 impl Value
@@ -929,6 +986,14 @@ impl Value
     {
         let name = name.into();
         Self::Var(name.as_ref().to_owned())
+    }
+
+    /// Builds the pure-computation embedding `run body`.
+    #[inline]
+    #[must_use]
+    pub fn run(body: Comp) -> Self
+    {
+        Self::Run(Rc::new(body))
     }
 
     /// Builds an integer literal.
@@ -1870,6 +1935,46 @@ pub enum Comp
         /// The body `t`, checked against the expectation.
         body: Rc<Self>,
     },
+    /// The **recursion former** `fix x. t` — one computation former binding one
+    /// self-reference, and the sole source of general recursion in the core.
+    ///
+    /// The pure call-by-push-value fragment is strongly normalizing, so
+    /// recursion is an addition rather than a derivation. The self-reference
+    /// `x` is bound as a **graded thunk** `U_ω B` over a body at the fixpoint's
+    /// own computation type `B`, so every self-use is a
+    /// [`Self::Force`] and therefore a machine step. That step is the guard:
+    /// each self-use is separated from the definition by a genuine transition,
+    /// so there is no infinite regress at a single point.
+    ///
+    /// The grade is `ω` because a recursive call forces the knot an unbounded
+    /// number of times. A grade-`1` self-reference would type only tail and
+    /// linear recursion; the rule generalizes to any grade above one without
+    /// changing shape, so that refinement is growth rather than a second form.
+    ///
+    /// **Check-primary** (rule Fix⇓), like the other type-directed introducers:
+    /// the self-binding needs `B` in order to state the self-reference's type,
+    /// so `B` must arrive from the context rather than be synthesized from the
+    /// body. Inference is available only through the ascription coercion, which
+    /// is what a recursive definition's declared signature supplies in
+    /// practice.
+    ///
+    /// Its operational rule is unfolding to a fresh thunk of the whole
+    /// fixpoint, `fix x. t ⤳ t[thunk_ω (fix x. t) / x]`; the machine realizes
+    /// the same rule by **re-entry** — binding the self-reference to a
+    /// first-order recursive closure over the fixpoint's own node — so
+    /// knot-tying never builds a heap cycle and recursion depth is bounded by
+    /// the shared step budget rather than by the host stack.
+    ///
+    /// **Guardedness here is well-formedness, not termination.**
+    /// `fix x. force x` is well-formed and diverges, halting at the budget with
+    /// [`crate::outcome::StuckReason::StepLimit`]; termination evidence is a
+    /// later rung and is replayed rather than decided by a syntactic pass.
+    Fix(
+        /// The self-reference binder `x`, bound at `U_ω B` over the body.
+        String,
+        /// The body `t`, checked against the fixpoint's own type `B`.
+        Rc<Self>,
+    ),
 }
 
 impl Comp
@@ -2201,6 +2306,20 @@ impl Comp
     {
         let k = k.into();
         Self::Shift(k.as_ref().to_owned(), Rc::new(body))
+    }
+
+    /// Builds a fixpoint `fix x. body`.
+    #[inline]
+    #[must_use]
+    pub fn fix<'source, X>(
+        x: X,
+        body: Self,
+    ) -> Self
+    where
+        X: Into<BinderName<'source>>,
+    {
+        let x = x.into();
+        Self::Fix(x.as_ref().to_owned(), Rc::new(body))
     }
 
     /// Builds a typed hole in computation position.
@@ -2539,6 +2658,9 @@ enum LegacyAllocFinish<'legacy>
     /// Reassembles a record [`ValueNode::Record`] from the converted field
     /// ids, zipped back onto `fields` in label order.
     ValueRecord(&'legacy BTreeMap<String, Rc<Value>>),
+    /// Reassembles a pure-computation embedding [`ValueNode::Run`] from the
+    /// converted body computation id.
+    ValueRun,
     /// Reassembles a thunk [`ValueNode::Thunk`] from the grade and the
     /// converted body computation id.
     ValueThunk(Grade),
@@ -2667,6 +2789,9 @@ enum LegacyAllocFinish<'legacy>
     /// Reassembles a shift [`CompNode::Shift`] from the continuation binder
     /// and the converted body computation id.
     CompShift(&'legacy str),
+    /// Reassembles a fixpoint [`CompNode::Fix`] from the self-reference binder
+    /// and the converted body computation id.
+    CompFix(&'legacy str),
     /// Reassembles a saturated primitive application [`CompNode::Native`]
     /// from the converted argument value ids.
     CompNative
@@ -2836,6 +2961,9 @@ enum FlatReadFinish<'arena>
     /// Reassembles a thunk [`Value::Thunk`] from the grade and the read-back
     /// body computation.
     ValueThunk(Grade),
+    /// Reassembles a pure-computation embedding [`Value::Run`] from the
+    /// read-back body computation.
+    ValueRun,
     /// Reassembles an annotation [`Value::Annot`] from the read-back value
     /// and value type.
     ValueAnnot,
@@ -2958,6 +3086,9 @@ enum FlatReadFinish<'arena>
     /// Reassembles a shift [`Comp::Shift`] from the continuation binder and
     /// the read-back body computation.
     CompShift(&'arena str),
+    /// Reassembles a fixpoint [`Comp::Fix`] from the self-reference binder and
+    /// the read-back body computation.
+    CompFix(&'arena str),
     /// Reassembles a saturated primitive application [`Comp::Native`] from
     /// the read-back argument values.
     CompNative
@@ -3664,6 +3795,10 @@ impl FlatArena
                 )));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::Comp(body.as_ref())));
             },
+            | Value::Run(ref body) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValueRun));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Comp(body.as_ref())));
+            },
             | Value::Annot(ref inner, ref ty) => {
                 work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValueAnnot));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(ty.as_ref())));
@@ -3880,6 +4015,10 @@ impl FlatArena
             },
             | Comp::Shift(ref k, ref body) => {
                 work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompShift(k)));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Comp(body.as_ref())));
+            },
+            | Comp::Fix(ref x, ref body) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompFix(x)));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::Comp(body.as_ref())));
             },
             | Comp::Hole(id) => {
@@ -4202,6 +4341,14 @@ impl FlatArena
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::Value(id));
             },
+            | LegacyAllocFinish::ValueRun => {
+                let body = pop_alloc_comp(results)?;
+                let id = self
+                    .values
+                    .alloc(ValueNode::Run(body))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::Value(id));
+            },
             | LegacyAllocFinish::ValueAnnot => {
                 let ty = pop_alloc_value_type(results)?;
                 let inner = pop_alloc_value(results)?;
@@ -4461,6 +4608,14 @@ impl FlatArena
                 let id = self
                     .comps
                     .alloc(CompNode::Shift(k.to_owned(), body))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::Comp(id));
+            },
+            | LegacyAllocFinish::CompFix(x) => {
+                let body = pop_alloc_comp(results)?;
+                let id = self
+                    .comps
+                    .alloc(CompNode::Fix(x.to_owned(), body))
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::Comp(id));
             },
@@ -4811,6 +4966,10 @@ impl FlatArena
                 work.push(FlatReadFrame::Finish(FlatReadFinish::ValueThunk(grade)));
                 work.push(FlatReadFrame::Visit(FlatRoot::Comp(body)));
             },
+            | ValueNode::Run(body) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::ValueRun));
+                work.push(FlatReadFrame::Visit(FlatRoot::Comp(body)));
+            },
             | ValueNode::Annot(inner, ty) => {
                 work.push(FlatReadFrame::Finish(FlatReadFinish::ValueAnnot));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(ty)));
@@ -5012,6 +5171,10 @@ impl FlatArena
             },
             | CompNode::Shift(ref k, body) => {
                 work.push(FlatReadFrame::Finish(FlatReadFinish::CompShift(k)));
+                work.push(FlatReadFrame::Visit(FlatRoot::Comp(body)));
+            },
+            | CompNode::Fix(ref x, body) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::CompFix(x)));
                 work.push(FlatReadFrame::Visit(FlatRoot::Comp(body)));
             },
             | CompNode::Hole(hole_id) => {
@@ -5272,6 +5435,10 @@ impl FlatArena
                 let body = pop_read_comp(results)?;
                 results.push(StructuralRoot::Value(Value::Thunk(grade, Rc::new(body))));
             },
+            | FlatReadFinish::ValueRun => {
+                let body = pop_read_comp(results)?;
+                results.push(StructuralRoot::Value(Value::Run(Rc::new(body))));
+            },
             | FlatReadFinish::ValueAnnot => {
                 let ty = pop_read_value_type(results)?;
                 let inner = pop_read_value(results)?;
@@ -5462,6 +5629,10 @@ impl FlatArena
                     k.to_owned(),
                     Rc::new(body),
                 )));
+            },
+            | FlatReadFinish::CompFix(x) => {
+                let body = pop_read_comp(results)?;
+                results.push(StructuralRoot::Comp(Comp::Fix(x.to_owned(), Rc::new(body))));
             },
             | FlatReadFinish::CompNative { prim, args } => {
                 let values = pop_read_values(results, args.len().into())?;

@@ -80,7 +80,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x147b_04fc_9dfb_35ef);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x2f5e_9ca4_4823_0d6e);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -168,7 +168,7 @@ mod contracts
     /// arithmetic `val`, `run`, and `unpack` already pay for their keywords.
     /// Neither widens a label from single- to multi-mold: `->` and `:` are
     /// multi-mold already.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2175);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2180);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -187,13 +187,13 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 173),
-        (")", 176),
+        ("(", 174),
+        (")", 177),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 86),
+        (",", 88),
         ("-", 2),
         ("-->", 20),
         ("->", 15),
@@ -227,6 +227,7 @@ mod contracts
         ("F", 1),
         ("Integer", 1),
         ("Never", 1),
+        ("Path", 1),
         ("String", 1),
         ("Symbol", 1),
         ("U", 1),

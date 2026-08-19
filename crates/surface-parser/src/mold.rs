@@ -391,7 +391,7 @@ pub fn candidate_labels<'text>(
 /// word can still name the declaration (`sign Unknown`).
 const UPPER_KEYWORDS: &[&str] = &[
     "Any", "Unknown", "Never", "Boolean", "Integer", "Char", "String", "Symbol", "Unit", "Void",
-    "F", "U",
+    "F", "U", "Path",
 ];
 
 /// The obligation-minimizing mold selector over a checked PBG.

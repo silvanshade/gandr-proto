@@ -107,6 +107,8 @@ tags! {
     COMP_HOLE = 64,
     COMP_NATIVE = 65,
     COMP_WALK = 66,
+    COMP_FIX = 67,
+    VALUE_RUN = 68,
 }
 
 /// Encodes a lowered program using the canonical persistence grammar.
@@ -393,7 +395,9 @@ impl<'value> Encoder<'value>
                     self.work.push(Work::Value(field));
                 }
             },
-            | Value::Thunk(_, ref body) => self.work.push(Work::Comp(body)),
+            | Value::Thunk(_, ref body) | Value::Run(ref body) => {
+                self.work.push(Work::Comp(body));
+            },
             | Value::Annot(ref inner, ref ty) => {
                 self.work.push(Work::ValueType(ty));
                 self.work.push(Work::Value(inner));
@@ -580,7 +584,9 @@ impl<'value> Encoder<'value>
                 self.work.push(Work::Comp(comp));
                 self.work.push(Work::Value(stack));
             },
-            | Comp::Shift(_, ref body) => self.work.push(Work::Comp(body)),
+            | Comp::Shift(_, ref body) | Comp::Fix(_, ref body) => {
+                self.work.push(Work::Comp(body));
+            },
             | Comp::Native { ref args, .. } => {
                 for arg in args.iter().rev() {
                     self.work.push(Work::Value(arg));
@@ -797,6 +803,7 @@ impl<'value> Encoder<'value>
                 self.byte(VALUE_THUNK);
                 self.grade(grade);
             },
+            | Value::Run(_) => self.byte(VALUE_RUN),
             | Value::Annot(..) => self.byte(VALUE_ANNOT),
             | Value::Hole(hole) => {
                 self.byte(VALUE_HOLE);
@@ -932,6 +939,10 @@ impl<'value> Encoder<'value>
             | Comp::Reset(_) => self.byte(COMP_RESET),
             | Comp::Shift(ref binder, _) => {
                 self.byte(COMP_SHIFT);
+                self.string(binder)?;
+            },
+            | Comp::Fix(ref binder, _) => {
+                self.byte(COMP_FIX);
                 self.string(binder)?;
             },
             | Comp::Hole(hole) => {
@@ -1412,6 +1423,10 @@ fn decode_token(
             let body = pop_comp(nodes)?;
             nodes.push(Node::Value(Value::Thunk(grade, Rc::new(body))));
         },
+        | VALUE_RUN => {
+            let body = pop_comp(nodes)?;
+            nodes.push(Node::Value(Value::Run(Rc::new(body))));
+        },
         | VALUE_ANNOT => {
             let ty = pop_value_type(nodes)?;
             let value = pop_value(nodes)?;
@@ -1608,6 +1623,11 @@ fn decode_token(
             let binder = reader.string()?;
             let body = pop_comp(nodes)?;
             nodes.push(Node::Comp(Comp::Shift(binder, Rc::new(body))));
+        },
+        | COMP_FIX => {
+            let binder = reader.string()?;
+            let body = pop_comp(nodes)?;
+            nodes.push(Node::Comp(Comp::Fix(binder, Rc::new(body))));
         },
         | COMP_HOLE => nodes.push(Node::Comp(Comp::Hole(reader.u32()?))),
         | COMP_NATIVE => {

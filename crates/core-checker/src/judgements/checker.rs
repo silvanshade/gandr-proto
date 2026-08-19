@@ -391,6 +391,8 @@ impl Rec
             | Value::List(elements) => self.rule_list(elements, dir),
             | Value::Record(fields) => self.rule_record(fields, dir),
             | Value::Thunk(grade, body) => self.rule_thunk(grade, body, dir),
+            // Rule Run: the pure-computation embedding, inference-primary.
+            | Value::Run(body) => self.rule_run(body, dir),
             | Value::Annot(inner, ty) => self.rule_annot(inner, ty, dir),
             | Value::Stk(stack) => self.rule_stk(stack, dir),
             | Value::Here(witness) => self.rule_here(witness, dir),
@@ -448,6 +450,8 @@ impl Rec
             | Comp::Resume(stack, comp) => self.rule_resume(stack, comp, dir),
             | Comp::Reset(body) => self.rule_reset(body, dir),
             | Comp::Shift(k, body) => self.rule_shift(k, body, dir),
+            // Rule Fix⇓: the recursion former, check-primary.
+            | Comp::Fix(x, body) => self.rule_fix(x, body, dir),
             // Rule Hole⇑/Hole⇓ (A2.2 holes extension): as the value hole.
             | Comp::Hole(_) => finish_comp(CompType::Unknown, dir),
             // Rule Native (ADR-42): a Rust-backed builtin is an axiom typed by
@@ -820,6 +824,68 @@ impl Rec
                 finish_value(ValueType::Thunk(grade, Rc::new(body_ty)), other)
             },
         }
+    }
+
+    /// Rule Run: the pure-computation embedding `run t` — **inference**, with
+    /// purity as a premise rather than a side condition.
+    ///
+    /// ```text
+    ///   Γ ⊢ t ⇒ F^⟨⟩ A
+    /// ─────────────────  (Run, inferring)
+    ///   Γ ⊢ run t ⇒ A
+    /// ```
+    ///
+    /// The computation is **inferred**, because what the embedding delivers is
+    /// read off the returner it produces; checking mode finishes through the
+    /// inlined Sub rule like every other inference form.
+    ///
+    /// **The empty row is the rule, not a guard on it.** A pure computation is
+    /// deterministic up to the step budget, so the value it denotes is the same
+    /// value in every context the type occurs in — which is exactly what a
+    /// value appearing in a type has to be. An effectful computation denotes no
+    /// such thing, and the decline is by name
+    /// ([`crate::error::text::RUN_NEEDS_PURITY`]); widening it to a
+    /// pure-enough reading would admit a type whose meaning depends on where it
+    /// is read, and no such reading exists.
+    ///
+    /// A computation that is not a returner at all — a function, a lazy pair —
+    /// returns nothing to name, and declines separately
+    /// ([`crate::error::text::RUN_NEEDS_RETURNER`]). The matched `Unknown`
+    /// (A2.2 holes) delivers `Unknown`, the standing discipline.
+    /// # Termination
+    /// - reason: mirrors finite typing-rule derivations.
+    /// - measure: remaining checked syntax, type, or stack premises.
+    /// - boundedness: inputs are finite Rust values allocated before checking.
+    /// - input recursion: structurally finite checked-term descent.
+    fn rule_run(
+        &mut self,
+        body: Rc<Comp>,
+        dir: Dir<ValueType>,
+    ) -> Result<ValueType, TypeError>
+    {
+        let body_value = unrc(body);
+        let body_ty = self.comp(body_value.clone(), Dir::Infer)?;
+        let produced = match body_ty {
+            | CompType::F(produced, ref row) => {
+                if !bool::from(row.is_empty()) {
+                    return Err(TypeError::StuckExpr {
+                        expr: Term::Value(Value::Run(Rc::new(body_value))),
+                        hint: text::RUN_NEEDS_PURITY,
+                    });
+                }
+                produced.as_ref().clone()
+            },
+            // The matched embedding (A2.2 holes): an unknown computation type
+            // delivers the unknown value type, the `Walk` discipline.
+            | CompType::Unknown => ValueType::Unknown,
+            | _other => {
+                return Err(TypeError::StuckExpr {
+                    expr: Term::Value(Value::Run(Rc::new(body_value))),
+                    hint: text::RUN_NEEDS_RETURNER,
+                });
+            },
+        };
+        finish_value(produced, dir)
     }
 
     /// Rule Annot: check the value against the ascription, then finish (§"Core
@@ -1976,6 +2042,54 @@ impl Rec
         self.comp(unrc(body), Dir::Check(answer))?;
         self.ctx.unbind();
         Ok(captured)
+    }
+
+    /// Rule Fix⇓: the recursion former `fix x. t`, **check-primary**.
+    ///
+    /// The self-binding needs the fixpoint's own computation type in order to
+    /// state the self-reference's type, so that type must arrive from the
+    /// context rather than be synthesized from the body: with the expectation
+    /// `B` in hand the rule binds `x : U_ω B`, checks `t ⇓ B`, and delivers
+    /// `B`.
+    ///
+    /// **Inference is stuck**, and that is the rule rather than a gap. There is
+    /// nothing in `fix x. t` to synthesize `B` from — the body is checked
+    /// against it, and the body's own type is what is being defined. The
+    /// ascription coercion is the inference route, and a recursive definition's
+    /// declared signature is what supplies it in practice.
+    ///
+    /// **The grade is `ω`** because a recursive call forces the knot an
+    /// unbounded number of times. The rule generalizes to any grade above one
+    /// without changing shape, so a grade-`1` tail-recursion refinement is
+    /// growth on this rule rather than a second form.
+    ///
+    /// The former adds no subtyping seam: it introduces no atom relation, no
+    /// row relaxation, and no grade relaxation, so it carries no coherence
+    /// obligation of its own.
+    /// # Termination
+    /// - reason: mirrors finite typing-rule derivations.
+    /// - measure: remaining checked syntax, type, or stack premises.
+    /// - boundedness: inputs are finite Rust values allocated before checking.
+    /// - input recursion: structurally finite checked-term descent.
+    fn rule_fix(
+        &mut self,
+        x: String,
+        body: Rc<Comp>,
+        dir: Dir<CompType>,
+    ) -> Result<CompType, TypeError>
+    {
+        let Dir::Check(expected) = dir
+        else {
+            return Err(TypeError::StuckExpr {
+                expr: Term::Comp(Comp::Fix(x, body)),
+                hint: text::FIX_NEEDS_CHECK,
+            });
+        };
+        self.ctx
+            .bind(x, ValueType::thunk(Grade::OMEGA, expected.clone()));
+        let result = self.comp(unrc(body), Dir::Check(expected));
+        self.ctx.unbind();
+        result
     }
 
     /// Rules Here⇑/Here⇓ (ADR-76; rule `Here`): `here(v) : Path A v v`.

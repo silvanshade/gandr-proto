@@ -617,6 +617,23 @@ pub enum SemValueNode
     /// A reified stack: opaque to conversion by construction, named by its
     /// syntax node and compared as syntax.
     Reified(StackNodeId),
+    /// A **pure-computation embedding that did not reach a returner** — the
+    /// neutral form of `run t`.
+    ///
+    /// The embedding computes: evaluation runs the computation, and a
+    /// computation that reaches `return v` *is* the value `v`, so no node is
+    /// minted. This variant is what remains when it does not — the computation
+    /// is stuck on a variable, or the budget ran out — and it is how an open
+    /// law-field type normalizes as far as its arguments allow and no further.
+    ///
+    /// **Invariant: the computation is not a returner.** A returner would have
+    /// been consumed, so a `Run` node whose child is one would be a second
+    /// spelling of a value that already has one, and conversion would owe a
+    /// case it should never see.
+    ///
+    /// Compared by congruence on the computation, which is the ordinary
+    /// computation-conversion path one level down.
+    Run(SemCompId),
     /// A neutral value: a rigid head with no eliminator that could fire.
     ///
     /// Value neutrals carry no spine, and that is a fact about the calculus
@@ -883,6 +900,22 @@ pub enum NeutralHead
     Reset(ClosureId),
     /// A capture — quarantined.
     Shift(ClosureId),
+    /// A **fixpoint — quarantined.**
+    ///
+    /// Conversion never unfolds a recursion. Unfolding is the fixpoint's own
+    /// operational rule and it does not terminate in general, so a normalizer
+    /// that fired it would not be total on the terms it is handed. The head
+    /// therefore stays rigid whatever its body does, and congruence under the
+    /// self-reference binder is the only equality this engine offers on it:
+    /// two fixpoints are equal exactly when their bodies are, alpha-equivalent
+    /// in the self-reference.
+    ///
+    /// **This is conservative and never unsound.** Two recursions that compute
+    /// the same function through different bodies are reported unequal, which
+    /// costs availability; no pair is ever reported equal that is not. Running
+    /// a fixpoint to a value is the machine's job, under the shared step
+    /// budget, not conversion's.
+    Fix(ClosureId),
     /// A computation hole.
     Hole(HoleId),
     /// A canonical computation that met an eliminator its polarity cannot
