@@ -7675,11 +7675,16 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::ShadowedBuiltin { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::MODULE_DECLARATION,
         },
-        | LowerError::KindedTypeComponent { .. } => HoleNote::UnsupportedForm {
-            kind: node_kinds::TYPE_COMPONENT,
-        },
-        | LowerError::BareTypeComponent { .. } => HoleNote::UnsupportedForm {
-            kind: node_kinds::TYPE_COMPONENT,
+        // Both unelaborated type-component forms carry the same note, and that
+        // is right rather than a coincidence to be split: the note names the
+        // *form the engine could not represent*, and for a reader that form is
+        // the type component in both cases. What separates them — abstract
+        // versus kinded — is the error itself, which is what the diagnostic
+        // renders.
+        | LowerError::KindedTypeComponent { .. } | LowerError::BareTypeComponent { .. } => {
+            HoleNote::UnsupportedForm {
+                kind: node_kinds::TYPE_COMPONENT,
+            }
         },
         // The decline happens at the projection, not at the module, so total
         // mode stands its hole where the selection was and leaves the module
