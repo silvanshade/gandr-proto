@@ -825,16 +825,20 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // head test alone, and the first-arm hole that settles nothing for any
     // scrutinee. The same change retired the surface tree's
     // `pattern-holes.gandr` reservation, which is what promoting one means.
+    // The compound-endpoint repair adds two pathological goldens: the identity
+    // type whose endpoints are applications, which used to degrade its whole
+    // declared type to the gradual unknown, and the one whose endpoint applies
+    // a name defined nowhere, which used to be accepted outright.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        128, base_count,
-        "the model + pathological trees are 128 files (56 model + 72 pathological, including the two description-member fixtures)"
+        130, base_count,
+        "the model + pathological trees are 130 files (56 model + 74 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        128, base_clean,
-        "all 128 model + pathological files mold clean"
+        130, base_clean,
+        "all 130 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");
