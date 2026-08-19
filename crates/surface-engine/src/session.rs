@@ -83,6 +83,7 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
+use std::rc::Rc;
 
 use gandr_core_incremental::checkpoint::Checkpoints;
 use gandr_core_incremental::checkpoint::ItemTyping;
@@ -98,9 +99,12 @@ use gandr_core_incremental::region::Program;
 use gandr_core_incremental::stream::SynthesisStream;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 use gandr_core_term::boundary::ConstructorTag;
+use gandr_core_term::boundary::NameRef;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::outcome::Eval;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Term;
 use gandr_core_term::syntax::Value;
@@ -876,6 +880,30 @@ impl Session
                 self.prelude.as_bindings(),
             ) {
                 self.defs.push((name.0.to_owned(), (*value).clone()));
+                // The same definition, contributed to the typing context's
+                // chain so **conversion** can compute across it — which is what
+                // makes a law field whose endpoint applies this definition
+                // provable rather than merely statable.
+                //
+                // The chain is scoped by declaration position, never filtered
+                // per problem: consultation is lazy, so an unmentioned
+                // definition costs a map entry and nothing else, while a
+                // mention filter would be wrong twice over — endpoint mentions
+                // are *transitive*, and two sites filtering differently would
+                // be a definitional equality that varied by who asked.
+                //
+                // **A body carrying an unsolved hole is excluded**, and that is
+                // a soundness line rather than a tidiness one. A hole is
+                // consistent with everything, so unfolding into one lets a law
+                // be proved *through* the hole — a stated law wearing proved
+                // clothing, arrived at definitionally. The law that cannot be
+                // proved without a hole is refused with its endpoint stuck,
+                // never accepted through it.
+                let (_, residual) = subst_holes_value(value.as_ref(), &HoleSubstitution::default());
+                if !bool::from(residual) {
+                    self.ctx
+                        .define(NameRef::from(name.0), Rc::new((*value).clone()));
+                }
             }
             self.ctx.bind(name.0.to_owned(), value_type.clone());
         }
@@ -931,6 +959,50 @@ mod tests
     use gandr_core_incremental::stream::SynthesisEvent;
 
     use super::*;
+
+    /// **An admitted definition reaches the typing context's conversion
+    /// chain**, which is what lets a law field whose endpoint applies that
+    /// definition be *proved* rather than merely stated.
+    ///
+    /// Both shapes matter and they take different paths to get here: a
+    /// value-typed definition, and a function definition, which is the shape a
+    /// law's endpoint actually applies. A test carrying only the first would
+    /// pass while the case the flagship needs did not work — as the first
+    /// draft of this test discovered, with a fixture whose lambda never became
+    /// a value definition at all.
+    #[test]
+    fn a_definition_reaches_the_typing_context_chain()
+    {
+        let mut session = Session::new();
+        let _value = session
+            .submit("def plain = 40")
+            .expect("fixture lowering must succeed");
+        let _function = session
+            .submit("def idf(x: Integer) -> F Integer { x }")
+            .expect("fixture lowering must succeed");
+
+        let names: Vec<String> = session
+            .ctx
+            .definition_chain()
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
+        assert!(
+            names.iter().any(|name| name == "plain"),
+            "a value definition must reach the conversion chain: {names:?}"
+        );
+        assert!(
+            names.iter().any(|name| name == "idf"),
+            "a function definition must reach the conversion chain, or a law \
+             whose endpoint applies it can never be proved: {names:?}"
+        );
+        assert_eq!(
+            names,
+            alloc::vec!["plain".to_owned(), "idf".to_owned()],
+            "the chain is in admission order, which is what makes a definition's \
+             height a well-founded fold over what precedes it"
+        );
+    }
 
     /// An infrastructure failure cannot clear or replace the last successful
     /// stream retained by the transaction boundary.
