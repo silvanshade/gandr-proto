@@ -538,8 +538,9 @@ enum CompFinish
 {
     /// Rebuild a returner from its rebuilt payload and its effect row.
     F(EffectRow),
-    /// Rebuild an arrow from its rebuilt argument and result.
-    Arrow,
+    /// Rebuild a function type from its binder, its rebuilt argument, and its
+    /// rebuilt result.
+    Arrow(Option<String>),
     /// Rebuild a `with` type from its rebuilt components.
     With,
 }
@@ -667,8 +668,17 @@ fn discharge(
                         tasks.push(Task::FinishComp(CompFinish::F(row.clone())));
                         tasks.push(Task::Value(of, subst));
                     },
-                    | CompType::Arrow(ref arg, ref res) => {
-                        tasks.push(Task::FinishComp(CompFinish::Arrow));
+                    // A `Π` binder is a **value** variable and this walk
+                    // substitutes **types** for type names, so the two binder
+                    // spaces do not meet and the codomain is always traversed
+                    // — the same reasoning that lets a package's own labels
+                    // pass a value substitution untouched.
+                    | CompType::Arrow {
+                        ref binder,
+                        ref arg,
+                        ref res,
+                    } => {
+                        tasks.push(Task::FinishComp(CompFinish::Arrow(binder.clone())));
                         tasks.push(Task::Comp(res, Rc::clone(&subst)));
                         tasks.push(Task::Value(arg, subst));
                     },
@@ -757,10 +767,14 @@ fn discharge(
                     let of = pop_value(&mut values);
                     comps.push(CompType::F(Rc::new(of), row));
                 },
-                | CompFinish::Arrow => {
+                | CompFinish::Arrow(binder) => {
                     let res = pop_comp(&mut comps);
                     let arg = pop_value(&mut values);
-                    comps.push(CompType::Arrow(Rc::new(arg), Rc::new(res)));
+                    comps.push(CompType::Arrow {
+                        binder,
+                        arg: Rc::new(arg),
+                        res: Rc::new(res),
+                    });
                 },
                 | CompFinish::With => {
                     let snd = pop_comp(&mut comps);
@@ -1160,7 +1174,9 @@ fn collect_atom_names(
             | TypeRef::Comp(node) => match *node {
                 | CompType::Unknown => {},
                 | CompType::F(ref of, _) => work.push(TypeRef::Value(of)),
-                | CompType::Arrow(ref arg, ref res) => {
+                | CompType::Arrow {
+                    ref arg, ref res, ..
+                } => {
                     work.push(TypeRef::Value(arg));
                     work.push(TypeRef::Comp(res));
                 },
@@ -1182,7 +1198,9 @@ fn collect_comp_atom_names(
     match *ty {
         | CompType::Unknown => {},
         | CompType::F(ref of, _) => collect_atom_names(of, out),
-        | CompType::Arrow(ref arg, ref res) => {
+        | CompType::Arrow {
+            ref arg, ref res, ..
+        } => {
             collect_atom_names(arg, out);
             collect_comp_atom_names_iter(res, out);
         },

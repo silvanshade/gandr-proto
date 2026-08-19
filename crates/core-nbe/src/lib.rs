@@ -543,6 +543,21 @@ impl Normalizer
         conv::type_converts(self, lhs, rhs)
     }
 
+    /// Decides definitional equality of two computation types.
+    ///
+    /// The negative-sort sibling of [`Self::type_converts`]; a dependent
+    /// function type arrives here as a whole, so its binder alignment is
+    /// decided in one place.
+    #[inline]
+    pub fn comp_type_converts(
+        &mut self,
+        lhs: &gandr_core_term::types::CompType,
+        rhs: &gandr_core_term::types::CompType,
+    ) -> ValueEquality
+    {
+        conv::comp_type_converts(self, lhs, rhs)
+    }
+
     /// Lowers a caller's term into the syntax store and interns it into the
     /// **input** face, returning the node the engine will work from.
     ///
@@ -2453,6 +2468,81 @@ mod tests
         );
         let apart = path(Rc::clone(&contractum), thunk(Comp::ret(Value::Int(4))));
         assert!(!bool::from(nbe.type_converts(&left, &apart)));
+    }
+
+    /// A dependent function type built over a `Path` whose endpoints are the
+    /// bound variable — the shape `Model(CatShape)`'s `id` field takes.
+    fn dependent_pi(binder: &str) -> CompType
+    {
+        let occurrence = Rc::new(Value::var(NameRef::from(binder)));
+        CompType::pi(
+            binder,
+            ValueType::integer(),
+            CompType::F(
+                Rc::new(ValueType::Path {
+                    ty: Rc::new(ValueType::integer()),
+                    lhs: Rc::clone(&occurrence),
+                    rhs: occurrence,
+                }),
+                gandr_core_term::effect::EffectRow::EMPTY,
+            ),
+        )
+    }
+
+    /// Binder names come from source and are not observable, so two spellings
+    /// of one dependent function type convert.
+    #[test]
+    fn pi_converts_up_to_binder_name()
+    {
+        let mut nbe = Normalizer::new();
+        assert!(
+            bool::from(nbe.comp_type_converts(&dependent_pi("a"), &dependent_pi("b"))),
+            "two spellings of one dependent function type did not convert"
+        );
+    }
+
+    /// A `Π` whose binder does not occur classifies exactly what the plain
+    /// arrow does, so the two convert in both directions.
+    #[test]
+    fn vacuous_pi_converts_with_the_plain_arrow()
+    {
+        let mut nbe = Normalizer::new();
+        let body = CompType::returner(ValueType::Unit);
+        let vacuous = CompType::pi("unused", ValueType::integer(), body.clone());
+        let plain = CompType::arrow(ValueType::integer(), body);
+        assert!(
+            bool::from(nbe.comp_type_converts(&vacuous, &plain)),
+            "a vacuous Pi did not convert with the plain arrow"
+        );
+        assert!(
+            bool::from(nbe.comp_type_converts(&plain, &vacuous)),
+            "the relation is not symmetric at a vacuous Pi"
+        );
+    }
+
+    /// The separating case: a binder that **is** used cannot be dropped. The
+    /// codomains here are syntactically identical, so only the occurrence
+    /// question tells the two types apart — which is what makes this the
+    /// witness that the check is doing real work rather than passing by
+    /// coincidence.
+    #[test]
+    fn dependent_pi_does_not_convert_with_the_plain_arrow()
+    {
+        let mut nbe = Normalizer::new();
+        let dependent = dependent_pi("a");
+        let CompType::Arrow { ref res, .. } = dependent
+        else {
+            unreachable!("the constructor built a function type")
+        };
+        let plain = CompType::arrow(ValueType::integer(), res.as_ref().clone());
+        assert!(
+            !bool::from(nbe.comp_type_converts(&dependent, &plain)),
+            "a Pi binding a variable its codomain uses must not convert with the plain arrow"
+        );
+        assert!(
+            !bool::from(nbe.comp_type_converts(&plain, &dependent)),
+            "the refusal is not symmetric at a used binder"
+        );
     }
 
     #[test]

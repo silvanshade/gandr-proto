@@ -74,6 +74,8 @@ enum RenderTask<'ty>
     Infix(&'static str),
     /// Prefix one rendered operand.
     Prefix(&'static str),
+    /// Assemble a dependent function type around its binder.
+    Pi(String),
     /// Assemble a computation returner and its effect marker.
     Returner(bool),
     /// Assemble a declared-data application.
@@ -137,8 +139,25 @@ fn render_type(root: RenderNode<'_>) -> String
                     pending.push(RenderTask::Returner(bool::from(row.is_empty())));
                     pending.push(RenderTask::Node(RenderNode::Value(payload)));
                 },
-                | CompType::Arrow(ref arg, ref res) => {
+                // A non-dependent arrow renders exactly as it always did. A
+                // dependent one renders its binder, because a reader shown
+                // `A → B` for `Π(x : A). B` cannot see where the codomain's
+                // occurrences of `x` come from.
+                | CompType::Arrow {
+                    binder: None,
+                    ref arg,
+                    ref res,
+                } => {
                     pending.push(RenderTask::Infix("→"));
+                    pending.push(RenderTask::Node(RenderNode::Comp(res)));
+                    pending.push(RenderTask::Node(RenderNode::Value(arg)));
+                },
+                | CompType::Arrow {
+                    binder: Some(ref binder),
+                    ref arg,
+                    ref res,
+                } => {
+                    pending.push(RenderTask::Pi(binder.clone()));
                     pending.push(RenderTask::Node(RenderNode::Comp(res)));
                     pending.push(RenderTask::Node(RenderNode::Value(arg)));
                 },
@@ -158,6 +177,11 @@ fn render_type(root: RenderNode<'_>) -> String
                 else {
                     rendered.push(format!("({lhs} {symbol} {rhs})"));
                 }
+            },
+            | RenderTask::Pi(binder) => {
+                let res = rendered.pop().unwrap_or_else(|| "?".to_owned());
+                let arg = rendered.pop().unwrap_or_else(|| "?".to_owned());
+                rendered.push(format!("Π({binder} : {arg}). {res}"));
             },
             | RenderTask::Prefix(prefix) => {
                 let body = rendered.pop().unwrap_or_else(|| "?".to_owned());

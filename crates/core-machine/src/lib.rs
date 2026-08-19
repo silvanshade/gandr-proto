@@ -66,7 +66,10 @@ use gandr_core_checker::discipline::subtype::finish_int_literal;
 use gandr_core_checker::discipline::subtype::finish_value;
 use gandr_core_checker::discipline::subtype::pick;
 use gandr_core_checker::judgements::checker::base_diagonal_type;
+use gandr_core_checker::judgements::checker::inferred_binder;
+use gandr_core_checker::judgements::checker::instantiate_codomain;
 use gandr_core_checker::judgements::checker::motive_result_type;
+use gandr_core_checker::judgements::checker::relocate_codomain;
 use gandr_core_checker::judgements::checker::split_expectations;
 use gandr_core_checker::judgements::checker::split_unknown_expectations;
 use gandr_core_checker::judgements::control::Control;
@@ -110,6 +113,12 @@ pub enum Frame
         /// the spec's `KAbs(var, vty)`; [`Frame::Bind`], [`Frame::Split`], and
         /// [`Frame::CaseScrut`] likewise keep their binders).
         var: String,
+        /// Whether the yielded function type quantifies, and over which name.
+        ///
+        /// On the checking side this is the expected type's binder relocated to
+        /// `var`; on the inference side it is decided from the body's own type
+        /// when the frame pops, so it is `None` here and filled there.
+        binder: Option<String>,
         /// The bound argument type `A`.
         arg: ValueType,
         /// The direction the abstraction itself was typed in.
@@ -126,7 +135,11 @@ pub enum Frame
     /// An application's argument check is pending; yields the result type.
     AppArg
     {
-        /// The arrow's result type `B`.
+        /// The head's binder, for a dependent codomain.
+        binder: Option<String>,
+        /// The applied argument, which a dependent codomain is closed at.
+        arg: Value,
+        /// The function type's result `B`, **before** instantiation.
         result: CompType,
         /// The direction the application itself was typed in.
         dir: Dir<CompType>,
@@ -585,8 +598,14 @@ pub enum Frame
     {
         /// The rest of the stack, walked from `result_input` on return.
         rest: Stack,
+        /// The consumed function type's binder, for a dependent codomain.
+        binder: Option<String>,
+        /// The argument the frame supplies, which a dependent codomain is
+        /// closed at.
+        arg: Value,
         /// The consumed function's result type — the input the walk continues
-        /// from once the argument value has checked.
+        /// from once the argument value has checked, **before**
+        /// instantiation.
         result_input: CompType,
         /// The direction the `stk K` itself was typed in (the original
         /// `Check(Stk(B, C))` / `Check(Unknown)`), carried so the walk's final
@@ -1419,13 +1438,14 @@ fn step_comp(
 {
     match comp {
         | Comp::Abs(name, annot, body) => match (annot, dir) {
-            | (None, Dir::Check(CompType::Arrow(arg, res))) => {
+            | (None, Dir::Check(CompType::Arrow { binder, arg, res })) => {
                 ctx.bind(name.clone(), arg.as_ref().clone());
-                let body_dir = Dir::Check(res.as_ref().clone());
+                let body_dir = Dir::Check(relocate_codomain(binder.as_deref(), &name, &res));
                 stack.push(Frame::Abs {
+                    binder: binder.as_ref().map(|_| name.clone()),
                     var: name,
                     arg: arg.as_ref().clone(),
-                    dir: Dir::Check(CompType::Arrow(arg, res)),
+                    dir: Dir::Check(CompType::Arrow { binder, arg, res }),
                 });
                 Ok(Control::DescendComp {
                     comp: Rc::unwrap_or_clone(body),
@@ -1435,6 +1455,9 @@ fn step_comp(
             | (Some(annot_ty), any_dir) => {
                 ctx.bind(name.clone(), annot_ty.as_ref().clone());
                 stack.push(Frame::Abs {
+                    // Inference decides the binder from the body's own type,
+                    // which is not known until this frame pops.
+                    binder: None,
                     var: name,
                     arg: annot_ty.as_ref().clone(),
                     dir: any_dir,
@@ -1450,6 +1473,7 @@ fn step_comp(
             | (None, Dir::Check(CompType::Unknown)) => {
                 ctx.bind(name.clone(), ValueType::Unknown);
                 stack.push(Frame::Abs {
+                    binder: None,
                     var: name,
                     arg: ValueType::Unknown,
                     dir: Dir::Check(CompType::Unknown),
@@ -2172,17 +2196,44 @@ fn step_return(
             let checked = expect_value(ty)?;
             finish_value(checked, dir).map(return_value)
         },
-        | Frame::Abs { var: _, arg, dir } => {
+        | Frame::Abs {
+            var,
+            binder,
+            arg,
+            dir,
+        } => {
             // Frame-pop ordering convention (machine module doc): fallible sort
             // checks run *before* the `Γ` restore, so `Γ` is never mutated on
             // the error path. Matches [`Frame::CaseArm1`].
             let res_ty = expect_comp(ty)?;
             ctx.unbind();
-            finish_comp(CompType::Arrow(Rc::new(arg), Rc::new(res_ty)), dir).map(return_comp)
+            // A checked abstraction carries the binder its expectation gave it;
+            // an inferred one derives it from the body's type here, which is
+            // the first point that type exists. Both agree with the recursive
+            // checker's `rule_abs` step for step.
+            let binder = match dir {
+                | Dir::Check(_) => binder,
+                | Dir::Infer => inferred_binder(&var, &res_ty),
+            };
+            finish_comp(
+                CompType::Arrow {
+                    binder,
+                    arg: Rc::new(arg),
+                    res: Rc::new(res_ty),
+                },
+                dir,
+            )
+            .map(return_comp)
         },
         | Frame::AppFn { arg, dir } => match expect_comp(ty)? {
-            | CompType::Arrow(param, res) => {
+            | CompType::Arrow {
+                binder,
+                arg: param,
+                res,
+            } => {
                 stack.push(Frame::AppArg {
+                    binder,
+                    arg: arg.clone(),
                     result: Rc::unwrap_or_clone(res),
                     dir,
                 });
@@ -2195,6 +2246,8 @@ fn step_return(
             // applies — argument against `Unknown`, result `Unknown`.
             | CompType::Unknown => {
                 stack.push(Frame::AppArg {
+                    binder: None,
+                    arg: arg.clone(),
                     result: CompType::Unknown,
                     dir,
                 });
@@ -2208,9 +2261,17 @@ fn step_return(
                 actual: Ty::Comp(other),
             }),
         },
-        | Frame::AppArg { result, dir } => {
+        | Frame::AppArg {
+            binder,
+            arg,
+            result,
+            dir,
+        } => {
             expect_value(ty)?;
-            finish_comp(result, dir).map(return_comp)
+            // Dependent application: the codomain is closed at the argument the
+            // head was applied to, matching the recursive checker's `rule_app`.
+            let applied = instantiate_codomain(binder.as_deref(), &result, &arg);
+            finish_comp(applied, dir).map(return_comp)
         },
         | Frame::Ret { dir } => {
             let payload_ty = expect_value(ty)?;
@@ -2746,11 +2807,16 @@ fn step_return(
         // continue the walk from the function's result type.
         | Frame::StkArg {
             rest,
+            binder,
+            arg,
             result_input,
             dir,
         } => {
             expect_value(ty)?;
-            walk_stack(rest, result_input, dir, stack, ctx)
+            // The frame supplied the argument, so a dependent codomain closes
+            // here before the walk continues from it.
+            let applied = instantiate_codomain(binder.as_deref(), &result_input, &arg);
+            walk_stack(rest, applied, dir, stack, ctx)
         },
         // Rule Reify (the stack-judgment walk; A3.3 `+control`): a bind frame's
         // continuation inferred; fold the consumed row in (via
@@ -2951,14 +3017,17 @@ fn walk_stack(
                 current = Rc::unwrap_or_clone(rest);
             },
             | Stack::Arg(value, rest) => {
-                let (arg_ty, result_input) = arrow_components(current_input)?;
+                let (binder, arg_ty, result_input) = arrow_components(current_input)?;
+                let value = Rc::unwrap_or_clone(value);
                 frames.push(Frame::StkArg {
                     rest: Rc::unwrap_or_clone(rest),
+                    binder,
+                    arg: value.clone(),
                     result_input,
                     dir,
                 });
                 return Ok(Control::DescendValue {
-                    value: Rc::unwrap_or_clone(value),
+                    value,
                     dir: Dir::Check(arg_ty),
                 });
             },

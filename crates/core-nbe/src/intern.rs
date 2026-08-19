@@ -1008,9 +1008,35 @@ fn visit_comp_type<'term>(
             hashed(tokens, row);
             work.push(KeyTask::ValueType(of));
         },
-        | CompTypeNode::Arrow(arg, res) => {
+        | CompTypeNode::Arrow {
+            ref binder,
+            arg,
+            res,
+        } => {
+            // One tag for both spellings, because `Π(x : A). B` with an unused
+            // `x` and `A → B` are one type (`gandr_core_nbe::conv`'s binder
+            // alignment decides that). A written binder opens the canonical
+            // value scope over the codomain, exactly as a package's labels open
+            // the type scope over its payload, so the binder's *name* never
+            // reaches the stream and two spellings of one function type share a
+            // key.
+            //
+            // **Incompleteness, stated rather than discovered.** A written but
+            // unused binder still shifts the index of anything bound further
+            // out, so `Π(x : A). B` and `A → B` can take different keys when
+            // `B` mentions an enclosing binder. That costs a missed fast path
+            // and never a wrong answer: the key stays a positive-only early-out
+            // and full conversion decides the pair. Nothing here can merge two
+            // distinct types, which is the property the key owes.
             tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(1)));
-            work.push(KeyTask::CompType(res));
+            match binder.as_deref() {
+                | Some(bound) => {
+                    work.push(KeyTask::Pop(1));
+                    work.push(KeyTask::CompType(res));
+                    work.push(KeyTask::PushOne(bound));
+                },
+                | None => work.push(KeyTask::CompType(res)),
+            }
             work.push(KeyTask::ValueType(arg));
         },
         | CompTypeNode::With(fst, snd) => {

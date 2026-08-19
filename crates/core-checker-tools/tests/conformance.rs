@@ -284,7 +284,9 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
             },
             | StaticGoal::Comp(ty) => match *ty {
                 | CompType::F(ref of, _) => pending.push(StaticGoal::Value(of)),
-                | CompType::Arrow(ref arg, ref res) => {
+                | CompType::Arrow {
+                    ref arg, ref res, ..
+                } => {
                     pending.push(StaticGoal::Value(arg));
                     pending.push(StaticGoal::Comp(res));
                 },
@@ -4726,7 +4728,9 @@ where
     match (mode, &ty) {
         | (
             TypedCompMode::Check | TypedCompMode::RigidCheck,
-            &CompType::Arrow(ref arg, ref res),
+            &CompType::Arrow {
+                ref arg, ref res, ..
+            },
         ) => {
             choices.push(CompAction::LamCheck(
                 arg.as_ref().clone(),
@@ -4741,7 +4745,9 @@ where
         },
         | (
             TypedCompMode::Infer | TypedCompMode::RigidInfer,
-            &CompType::Arrow(ref arg, ref res),
+            &CompType::Arrow {
+                ref arg, ref res, ..
+            },
         ) => {
             choices.push(CompAction::LamAnnInfer(
                 arg.as_ref().clone(),
@@ -5782,8 +5788,16 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                         pending.push(CoherenceGoal::Value(lo_of, hi_of));
                     },
                     | (
-                        &CompType::Arrow(ref lo_arg, ref lo_res),
-                        &CompType::Arrow(ref hi_arg, ref hi_res),
+                        &CompType::Arrow {
+                            arg: ref lo_arg,
+                            res: ref lo_res,
+                            ..
+                        },
+                        &CompType::Arrow {
+                            arg: ref hi_arg,
+                            res: ref hi_res,
+                            ..
+                        },
                     ) => {
                         // Argument contravariant → STRICT; result covariant →
                         // relaxed.
@@ -5857,7 +5871,7 @@ enum RebuildFrame
     ValueSigma(String),
     ValuePackage(Grade, Vec<String>),
     CompF(EffectRow),
-    CompArrow,
+    CompArrow(Option<String>),
     CompWith,
 }
 
@@ -5991,8 +6005,12 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     steps.push(RebuildStep::Frame(RebuildFrame::CompF(row.clone())));
                     steps.push(RebuildStep::Value(of));
                 },
-                | CompType::Arrow(ref arg, ref res) => {
-                    steps.push(RebuildStep::Frame(RebuildFrame::CompArrow));
+                | CompType::Arrow {
+                    ref binder,
+                    ref arg,
+                    ref res,
+                } => {
+                    steps.push(RebuildStep::Frame(RebuildFrame::CompArrow(binder.clone())));
                     steps.push(RebuildStep::Comp(res));
                     steps.push(RebuildStep::Value(arg));
                 },
@@ -6090,13 +6108,14 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     let of = pop_rebuilt_value(&mut outputs);
                     outputs.push(RebuildOutput::Comp(CompType::F(Rc::new(of), row)));
                 },
-                | RebuildFrame::CompArrow => {
+                | RebuildFrame::CompArrow(binder) => {
                     let res = pop_rebuilt_comp(&mut outputs);
                     let arg = pop_rebuilt_value(&mut outputs);
-                    outputs.push(RebuildOutput::Comp(CompType::Arrow(
-                        Rc::new(arg),
-                        Rc::new(res),
-                    )));
+                    outputs.push(RebuildOutput::Comp(CompType::Arrow {
+                        binder,
+                        arg: Rc::new(arg),
+                        res: Rc::new(res),
+                    }));
                 },
                 | RebuildFrame::CompWith => {
                     let snd = pop_rebuilt_comp(&mut outputs);

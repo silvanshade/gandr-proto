@@ -222,6 +222,19 @@ pub enum BridgeRejection
         "the un-levelled code universe has no S1 image (S1's levelled universe is kernel-native)"
     )]
     UniverseType,
+    /// A **dependent** function type `Π(x : A). B`.
+    ///
+    /// The kernel's own arrow is non-dependent by construction: no S1 type
+    /// former is indexed by a value term, which is what lets kernel conversion
+    /// compare types without ever descending into one. A `Π` whose binder its
+    /// codomain uses would break exactly that property, so it is refused here
+    /// rather than lowered to an arrow that silently drops the dependency.
+    ///
+    /// A `Π` whose binder is **unused** is not refused: it classifies what the
+    /// plain arrow classifies, and the lowering forgets a binder that carries
+    /// no information.
+    #[error("a dependent function type has no S1 image (S1 has no value-indexed type former)")]
+    DependentFunctionType,
     /// A typed machine-numeric literal (`u32`/`u64`/`i32`/`i64`/`f32`/`f64`).
     #[error(
         "a machine-numeric literal has no S1 image (S1's base atoms are Integer/String/Numeric)"
@@ -324,6 +337,7 @@ impl BridgeRejection
             | Self::UniverseType => BridgeExclusionClass("universe"),
             | Self::FixpointFormer => BridgeExclusionClass("recursion"),
             | Self::PureEmbedding => BridgeExclusionClass("pure-embedding"),
+            | Self::DependentFunctionType => BridgeExclusionClass("dependent-arrow"),
             | Self::UnboundSeal(_) => BridgeExclusionClass("unbound-seal"),
             | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => {
                 BridgeExclusionClass("machine-numeric")
@@ -652,7 +666,23 @@ fn lower_type<'core>(
                     goal = TypeGoal::Value(result.as_ref());
                     continue 'expand;
                 },
-                | CompType::Arrow(ref domain, ref codomain) => {
+                | CompType::Arrow {
+                    ref binder,
+                    arg: ref domain,
+                    res: ref codomain,
+                } => {
+                    // A used binder is a dependency S1 cannot represent; an
+                    // unused one is a spelling S1 does not need. The occurrence
+                    // question is what separates the two, and it is asked here
+                    // rather than assumed either way.
+                    if binder.as_deref().is_some_and(|bound| {
+                        gandr_core_term::identity::occurs_free_comptype(
+                            codomain.as_ref(),
+                            gandr_core_term::boundary::NameRef::from(bound),
+                        )
+                    }) {
+                        return Err(BridgeRejection::DependentFunctionType);
+                    }
                     frames.push(TypeFrame::ArrowCodomain(codomain.as_ref()));
                     goal = TypeGoal::Value(domain.as_ref());
                     continue 'expand;

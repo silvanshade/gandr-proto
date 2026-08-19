@@ -347,7 +347,20 @@ pub enum ValueTypeNode
 pub enum CompTypeNode
 {
     F(ValueTypeNodeId, EffectRow),
-    Arrow(ValueTypeNodeId, CompTypeNodeId),
+    /// The function type — `Π(binder : arg). res` when `binder` is `Some`, and
+    /// the non-dependent `arg → res` when it is `None` — the flat mirror of
+    /// [`crate::types::CompType::Arrow`]. The `binder` is an owned attribute (a
+    /// value-variable name); the domain and codomain are type-arena ids.
+    Arrow
+    {
+        /// The bound value-variable name `x`, in scope in `res`, or `None` for
+        /// the non-dependent arrow.
+        binder: Option<String>,
+        /// The argument value-type id `A`.
+        arg: ValueTypeNodeId,
+        /// The result computation-type id `B`, which may mention `binder`.
+        res: CompTypeNodeId,
+    },
     With(CompTypeNodeId, CompTypeNodeId),
     Unknown,
 }
@@ -2640,9 +2653,10 @@ enum LegacyAllocFinish<'legacy>
     /// Reassembles a returner [`CompTypeNode::F`] from the converted value
     /// type id and the borrowed effect row.
     CompTypeF(&'legacy EffectRow),
-    /// Reassembles an arrow [`CompTypeNode::Arrow`] from the converted
-    /// argument value-type id and result computation-type id.
-    CompTypeArrow,
+    /// Reassembles an arrow [`CompTypeNode::Arrow`] from the borrowed binder,
+    /// the converted argument value-type id, and the result
+    /// computation-type id.
+    CompTypeArrow(Option<&'legacy str>),
     /// Reassembles a with [`CompTypeNode::With`] from the two converted
     /// component computation-type ids.
     CompTypeWith,
@@ -2940,9 +2954,9 @@ enum FlatReadFinish<'arena>
     /// Reassembles a returner [`CompType::F`] from the read-back value type
     /// and the borrowed effect row.
     CompTypeF(&'arena EffectRow),
-    /// Reassembles an arrow [`CompType::Arrow`] from the read-back argument
-    /// value type and result computation type.
-    CompTypeArrow,
+    /// Reassembles an arrow [`CompType::Arrow`] from the borrowed binder, the
+    /// read-back argument value type, and the result computation type.
+    CompTypeArrow(Option<&'arena str>),
     /// Reassembles a with [`CompType::With`] from the two read-back component
     /// computation types.
     CompTypeWith,
@@ -3687,8 +3701,14 @@ impl FlatArena
                 work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompTypeF(row)));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(of.as_ref())));
             },
-            | CompType::Arrow(ref arg, ref res) => {
-                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompTypeArrow));
+            | CompType::Arrow {
+                ref binder,
+                ref arg,
+                ref res,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompTypeArrow(
+                    binder.as_deref(),
+                )));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::CompType(res.as_ref())));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(arg.as_ref())));
             },
@@ -4278,12 +4298,16 @@ impl FlatArena
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::CompType(id));
             },
-            | LegacyAllocFinish::CompTypeArrow => {
+            | LegacyAllocFinish::CompTypeArrow(binder) => {
                 let res = pop_alloc_comp_type(results)?;
                 let arg = pop_alloc_value_type(results)?;
                 let id = self
                     .comp_types
-                    .alloc(CompTypeNode::Arrow(arg, res))
+                    .alloc(CompTypeNode::Arrow {
+                        binder: binder.map(alloc::string::ToString::to_string),
+                        arg,
+                        res,
+                    })
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::CompType(id));
             },
@@ -4884,8 +4908,14 @@ impl FlatArena
                 work.push(FlatReadFrame::Finish(FlatReadFinish::CompTypeF(row)));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(of)));
             },
-            | CompTypeNode::Arrow(arg, res) => {
-                work.push(FlatReadFrame::Finish(FlatReadFinish::CompTypeArrow));
+            | CompTypeNode::Arrow {
+                ref binder,
+                arg,
+                res,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::CompTypeArrow(
+                    binder.as_deref(),
+                )));
                 work.push(FlatReadFrame::Visit(FlatRoot::CompType(res)));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(arg)));
             },
@@ -5389,13 +5419,14 @@ impl FlatArena
                     row.clone(),
                 )));
             },
-            | FlatReadFinish::CompTypeArrow => {
+            | FlatReadFinish::CompTypeArrow(binder) => {
                 let res = pop_read_comp_type(results)?;
                 let arg = pop_read_value_type(results)?;
-                results.push(StructuralRoot::CompType(CompType::Arrow(
-                    Rc::new(arg),
-                    Rc::new(res),
-                )));
+                results.push(StructuralRoot::CompType(CompType::Arrow {
+                    binder: binder.map(alloc::string::ToString::to_string),
+                    arg: Rc::new(arg),
+                    res: Rc::new(res),
+                }));
             },
             | FlatReadFinish::CompTypeWith => {
                 let snd = pop_read_comp_type(results)?;

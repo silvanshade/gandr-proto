@@ -35,6 +35,7 @@ use gandr_core_term::effect::combine_bind_row;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::error::text;
 use gandr_core_term::grade::Grade;
+use gandr_core_term::identity::occurs_free_comptype;
 use gandr_core_term::identity::subst_comptype;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::FlatArena;
@@ -923,13 +924,25 @@ impl Rec
     ) -> Result<CompType, TypeError>
     {
         match (annot, dir) {
-            | (None, Dir::Check(CompType::Arrow(arg, res))) => {
-                self.ctx.bind(name, arg.as_ref().clone());
-                let res_ty = self.comp(unrc(body), Dir::Check(res.as_ref().clone()))?;
+            | (None, Dir::Check(CompType::Arrow { binder, arg, res })) => {
+                self.ctx.bind(name.clone(), arg.as_ref().clone());
+                // The expected codomain is written in terms of the *type's*
+                // binder; the body is written in terms of the *lambda's*. They
+                // are the same variable under two names, so the codomain is
+                // relocated into the body's scope before the body is checked
+                // against it.
+                let expected_res = relocate_codomain(binder.as_deref(), &name, &res);
+                let res_ty = self.comp(unrc(body), Dir::Check(expected_res))?;
                 self.ctx.unbind();
                 finish_comp(
-                    CompType::Arrow(Rc::clone(&arg), Rc::new(res_ty)),
-                    Dir::Check(CompType::Arrow(arg, res)),
+                    CompType::Arrow {
+                        // The checked codomain speaks of the lambda's binder,
+                        // so the type this rule returns binds that name.
+                        binder: binder.as_ref().map(|_| name),
+                        arg: Rc::clone(&arg),
+                        res: Rc::new(res_ty),
+                    },
+                    Dir::Check(CompType::Arrow { binder, arg, res }),
                 )
             },
             // The matched arrow `Unknown ▶→ Unknown → Unknown` (A2.2 holes
@@ -940,15 +953,26 @@ impl Rec
                 let res_ty = self.comp(unrc(body), Dir::Check(CompType::Unknown))?;
                 self.ctx.unbind();
                 finish_comp(
-                    CompType::Arrow(Rc::new(ValueType::Unknown), Rc::new(res_ty)),
+                    CompType::Arrow {
+                        binder: None,
+                        arg: Rc::new(ValueType::Unknown),
+                        res: Rc::new(res_ty),
+                    },
                     Dir::Check(CompType::Unknown),
                 )
             },
             | (Some(annot_ty), any_dir) => {
-                self.ctx.bind(name, annot_ty.as_ref().clone());
+                self.ctx.bind(name.clone(), annot_ty.as_ref().clone());
                 let res_ty = self.comp(unrc(body), Dir::Infer)?;
                 self.ctx.unbind();
-                finish_comp(CompType::Arrow(annot_ty, Rc::new(res_ty)), any_dir)
+                finish_comp(
+                    CompType::Arrow {
+                        binder: inferred_binder(&name, &res_ty),
+                        arg: annot_ty,
+                        res: Rc::new(res_ty),
+                    },
+                    any_dir,
+                )
             },
             | (None, Dir::Infer) => Err(TypeError::StuckExpr {
                 expr: diagnostic_abs_term(name, body),
@@ -976,9 +1000,18 @@ impl Rec
     {
         let head_ty = self.comp(unrc(head), Dir::Infer)?;
         match head_ty {
-            | CompType::Arrow(param, res) => {
-                self.value(unrc(arg), Dir::Check(param.as_ref().clone()))?;
-                finish_comp(unrc(res), dir)
+            | CompType::Arrow {
+                binder,
+                arg: param,
+                res,
+            } => {
+                self.value(unrc(arg.clone()), Dir::Check(param.as_ref().clone()))?;
+                // Dependent application: the codomain is instantiated at the
+                // argument the head was applied to. A non-dependent arrow
+                // carries no binder and the codomain passes through unchanged,
+                // which is the pre-`Π` behaviour exactly.
+                let applied = instantiate_codomain(binder.as_deref(), res.as_ref(), arg.as_ref());
+                finish_comp(applied, dir)
             },
             // The matched arrow (A2.2 holes extension): an `Unknown` head
             // applies — the argument checks against `Unknown` and the result
@@ -1901,8 +1934,13 @@ impl Rec
         match stack {
             | Stack::Empty => Ok(input),
             | Stack::Arg(value, rest) => {
-                let (arg_ty, result_ty) = arrow_components(input)?;
-                self.value(unrc(value), Dir::Check(arg_ty))?;
+                let (binder, arg_ty, result_ty) = arrow_components(input)?;
+                let value = unrc(value);
+                self.value(value.clone(), Dir::Check(arg_ty))?;
+                // The frame supplies the argument, so a dependent codomain is
+                // closed here — the same instantiation the App rule performs,
+                // reached through the stack instead of through the term.
+                let result_ty = instantiate_codomain(binder.as_deref(), &result_ty, &value);
                 self.stack_infer(unrc(rest), result_ty)
             },
             | Stack::Bind(name, cont, rest) => {
@@ -2187,6 +2225,89 @@ impl Rec
 /// - panics: none.
 #[inline]
 #[must_use]
+/// Relocates a `Π` codomain from the type's binder into the lambda's.
+///
+/// The checking rule for an unannotated lambda meets a codomain written in
+/// terms of the *type's* binder and a body written in terms of the *lambda's*.
+/// They denote one variable, so one of the two names has to move before the
+/// body can be checked against the codomain, and moving the type is what keeps
+/// the source term untouched.
+///
+/// A non-dependent arrow carries no binder and needs no relocation; identical
+/// names need none either, which is the common case when the elaborator names
+/// the type's binder after the source's.
+///
+/// # Contract
+/// - ensures: returns a codomain in which the type's binder is spelled `name`.
+/// - panics: none.
+pub fn relocate_codomain(
+    binder: Option<&str>,
+    name: &str,
+    res: &Rc<CompType>,
+) -> CompType
+{
+    match binder {
+        | Some(bound) if bound != name => subst_comptype(
+            res.as_ref(),
+            NameRef::from(bound),
+            &Value::Var(alloc::string::String::from(name)),
+        ),
+        | Some(_) | None => res.as_ref().clone(),
+    }
+}
+
+/// The binder an **inferred** function type carries: the bound name when the
+/// inferred codomain actually mentions it, and none when it does not.
+///
+/// # Why inference may derive a binder where checking may not
+///
+/// The written binder [`CompType::Arrow`] documents is about *checking*: a
+/// codomain the elaborator wrote may later be instantiated, so deriving its
+/// binder from an occurrence would be deriving it from an incomplete type.
+/// Inference is the opposite situation. The codomain here is the type the body
+/// was just *checked to have* — it is complete, nothing further substitutes
+/// into it, and the occurrence question therefore has a stable answer.
+///
+/// Deriving it is what keeps an ordinary non-dependent lambda inferring the
+/// ordinary non-dependent arrow it always did, rather than a vacuous `Π` that
+/// every downstream expectation would then have to see through.
+///
+/// # Contract
+/// - ensures: returns `Some(name)` iff `name` occurs free in `res`.
+/// - panics: none.
+/// Instantiates a function type's codomain at the argument it was applied to.
+///
+/// The one operation that makes a dependent function type *dependent*, and the
+/// single place it happens — the term-level application rule and the
+/// argument-frame stack rule both arrive here, so the two cannot drift.
+///
+/// A non-dependent arrow carries no binder and its codomain passes through
+/// unchanged, which is the pre-`Π` behaviour byte for byte.
+///
+/// # Contract
+/// - ensures: returns `res` with the binder replaced by `arg`, or `res`
+///   unchanged when there is no binder.
+/// - panics: none.
+pub fn instantiate_codomain(
+    binder: Option<&str>,
+    res: &CompType,
+    arg: &Value,
+) -> CompType
+{
+    match binder {
+        | Some(bound) => subst_comptype(res, NameRef::from(bound), arg),
+        | None => res.clone(),
+    }
+}
+
+pub fn inferred_binder(
+    name: &str,
+    res: &CompType,
+) -> Option<alloc::string::String>
+{
+    occurs_free_comptype(res, NameRef::from(name)).then(|| alloc::string::String::from(name))
+}
+
 pub fn base_diagonal_type<'source, N>(
     motive: &WalkMotive,
     base_binder: N,

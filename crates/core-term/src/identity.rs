@@ -10,7 +10,8 @@
 //!   [`subst_comptype`]) is this module's: the identity eliminator's typing
 //!   rule (`gandr_core_checker::judgements::checker` / `gandr_core_machine`)
 //!   drives it to form the base's expected type `C[x/y][here(x)/q]` and the
-//!   result type `C[a/x][b/y][p/q]`.
+//!   result type `C[a/x][b/y][p/q]`. The dependent-application rule drives the
+//!   same entry to instantiate a `Π` codomain at its argument.
 //! * **Definitional equality on the endpoints** is not. The `≡ᵥ` the identity
 //!   subtyping arm decides its endpoints with is now
 //!   `gandr_core_nbe::conv::converts`, the normalizer's own relation. The
@@ -19,10 +20,28 @@
 //!   and keeping both would have meant two definitional equalities in one
 //!   checker.
 //!
-//! Types carry **no binders** (`Path A x y` does not bind `x`/`y` — they are
-//! value *occurrences*), so type substitution is capture-free structural
-//! recursion that delegates the one binder-bearing case — a value under a thunk
-//! — to the proven capture-avoiding engine [`crate::subst::subst_value`].
+//! # What binds inside a type
+//!
+//! Most formers bind nothing: `Path A x y` does not bind `x`/`y` — they are
+//! value *occurrences* — and every structural former simply rebuilds its
+//! children. Two formers do bind a **value** variable, and this engine's
+//! shadowing discipline is what handles them:
+//!
+//! * [`ValueType::Sigma`] binds its head variable in its tail.
+//! * [`CompType::Arrow`] binds its argument variable in its codomain when it
+//!   carries a `Π` binder; the non-dependent arrow carries none and always
+//!   descends.
+//!
+//! In both cases a binder of the substituted name **shadows** it, so the body
+//! is reused untouched rather than substituted into. [`ValueType::Package`]
+//! binds **type** names, which this engine never substitutes for, so its
+//! payload is always traversed.
+//!
+//! The remaining value occurrences are reached inside `Path` endpoints and
+//! under a thunk, both of which delegate to the shadowing-aware engine
+//! [`crate::subst::subst_value`]. Every binder-bearing case therefore shares
+//! one discipline rather than growing a second.
+//!
 //! The substitution engine runs as an explicit heap worklist (the ADR-47
 //! iterative discipline), so even an adversarially deep type substitutes
 //! without overflowing the host call stack.
@@ -42,20 +61,24 @@ use crate::types::ValueType;
 /// **value type**, the type-level half of the identity eliminator's motive
 /// instantiation (ADR-76).
 ///
-/// Types carry no binders, so this is capture-free structural recursion; the
-/// only place a value occurs inside a type is an [`ValueType::Path`] endpoint
-/// (and its carrier), where the substitution delegates to the capture-avoiding
-/// value engine [`crate::subst::subst_value`]. Every non-`Path` former
-/// simply rebuilds its children.
+/// Structural recursion under the module's shadowing discipline: a value
+/// occurs inside a type at an [`ValueType::Path`] endpoint (and its carrier),
+/// where the substitution delegates to [`crate::subst::subst_value`], and a
+/// binder of the substituted name at a [`ValueType::Sigma`] tail or a `Π`
+/// codomain blocks the descent. Every other former simply rebuilds its
+/// children.
 ///
 /// # Contract
-/// - ensures: returns `ty` with every free `name` in an `Path` endpoint (at any
-///   depth) replaced by `repl`; identical to `ty` when `name` does not occur.
+/// - ensures: returns `ty` with every free `name` in a `Path` endpoint (at any
+///   depth) replaced by `repl`, leaving occurrences under a `Σ` tail or `Π`
+///   codomain that rebinds `name` untouched; identical to `ty` when `name` does
+///   not occur free.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 — each value-type former is rebuilt without changing
-///   binder-free structure, while only `Path` endpoints substitute.
+/// - hypothesis: L3 — each value-type former is rebuilt without changing its
+///   structure, only `Path` endpoints substitute, and a binder of the
+///   substituted name blocks the descent into its body.
 /// - witness: the identity conformance tests for endpoint substitution
 /// - witness: `tests::stack_types_rebuild_both_computation_children`
 #[inline]
@@ -82,13 +105,16 @@ where
 /// [`Comp::Walk`](crate::syntax::Comp::Walk) motive is instantiated
 /// through (ADR-76).
 ///
-/// The computation-type analogue of [`subst_valuetype`]: capture-free
-/// structural recursion, with value occurrences reached only through the
-/// value-type children (`F`'s payload, `Arrow`'s argument).
+/// The computation-type analogue of [`subst_valuetype`]: structural recursion
+/// under the same shadowing discipline, with value occurrences reached through
+/// the value-type children (`F`'s payload, a function type's argument) and a
+/// `Π` binder of the substituted name blocking the descent into its codomain.
 ///
 /// # Contract
 /// - ensures: returns `ty` with every free `name` in a nested `Path` endpoint
-///   replaced by `repl`; identical to `ty` when `name` does not occur.
+///   replaced by `repl`, leaving occurrences under a `Σ` tail or `Π` codomain
+///   that rebinds `name` untouched; identical to `ty` when `name` does not
+///   occur free.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -108,6 +134,60 @@ where
     let (_, mut comps) = subst_type(&TypeRoot::Comp(ty), name.into(), repl);
     pop_comp_type(&mut comps)
 }
+
+/// Whether the value variable `name` occurs **free** in a computation type.
+///
+/// The occurrence question conversion asks when it meets a `Π` on one side and
+/// a plain arrow on the other: the two classify the same functions exactly when
+/// the `Π` binder is unused, and that is the only place in the tree where the
+/// question is posed. It is deliberately **not** asked at construction — the
+/// [`CompType::Arrow`] docs say why a written binder beats a derived one.
+///
+/// Free means free: a `Σ` tail or `Π` codomain that rebinds `name` hides every
+/// occurrence beneath it, exactly as the substitution engine's shadowing
+/// discipline does, so the two agree by construction.
+///
+/// # Contract
+/// - ensures: returns `true` iff `name` occurs in a value position of `ty` that
+///   no enclosing binder of `name` shadows.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the walk reaches exactly the value positions
+///   [`subst_comptype`] would rewrite, and stops at exactly the binders it
+///   would decline to descend under.
+/// - witness: `tests::pi_binder_occurrence_is_shadowed_by_an_inner_binder`
+/// - witness: `tests::pi_binder_occurrence_is_seen_through_a_path_endpoint`
+#[inline]
+#[must_use]
+/// # Termination
+/// - reason: the walk drains an explicit worklist over finite type trees.
+/// - measure: pending type tasks.
+/// - boundedness: source types are finite Rust values.
+/// - input recursion: none.
+pub fn occurs_free_comptype<'source, N>(
+    ty: &CompType,
+    name: N,
+) -> bool
+where
+    N: Into<NameRef<'source>> + Copy,
+{
+    // Substituting a *distinct* fresh variable for `name` changes the type
+    // exactly when `name` occurred free in it. Reusing the substitution engine
+    // rather than writing a second traversal is what keeps the two answers from
+    // drifting apart: the shadowing discipline is stated once.
+    let probe = Value::Var(alloc::string::String::from(OCCURRENCE_PROBE));
+    subst_comptype(ty, name, &probe) != *ty
+}
+
+/// The variable name [`occurs_free_comptype`] substitutes in to detect an
+/// occurrence.
+///
+/// It must be a name no source can write, or the probe would compare equal to a
+/// genuine occurrence of itself and report `false` for a variable that does
+/// occur. The surface grammar admits no space in an identifier, so this name is
+/// unwritable rather than merely unlikely.
+const OCCURRENCE_PROBE: &str = "occurrence probe";
 
 /// The root sort of a [`subst_type`] run — the entry-point tag selecting which
 /// result stack the single rebuilt root type lands on.
@@ -134,7 +214,7 @@ enum TypeTask<'type_>
     /// Reassemble a value type from its rebuilt children.
     FinishValue(ValueFinish<'type_>),
     /// Reassemble a computation type from its rebuilt children.
-    FinishComp(CompFinish),
+    FinishComp(CompFinish<'type_>),
 }
 
 /// A pending value-type reassembly — everything a [`TypeTask::FinishValue`]
@@ -187,12 +267,26 @@ enum ValueFinish<'type_>
 /// A pending computation-type reassembly — everything a
 /// [`TypeTask::FinishComp`] frame needs to rebuild one [`CompType`] node once
 /// its substituted children sit on the result stacks.
-enum CompFinish
+enum CompFinish<'type_>
 {
     /// Rebuild a returner from its rebuilt payload and effect row.
     F(EffectRow),
-    /// Rebuild an arrow from its rebuilt argument and result.
-    Arrow,
+    /// Rebuild a function type from its rebuilt argument and result,
+    /// substituting into the result only when the binder does not shadow the
+    /// substituted name.
+    ///
+    /// The non-dependent arrow carries `binder: None` and always substitutes,
+    /// which is the pre-`Π` behaviour unchanged.
+    Arrow
+    {
+        /// The bound variable, kept verbatim in the rebuild.
+        binder: Option<String>,
+        /// The original result, reused untouched when `binder` shadows the
+        /// substituted name.
+        original_res: &'type_ Rc<CompType>,
+        /// Whether the result substitutes.
+        substitute_res: bool,
+    },
     /// Rebuild a `with` type from its rebuilt components.
     With,
 }
@@ -321,9 +415,24 @@ fn subst_type(
                     tasks.push(TypeTask::FinishComp(CompFinish::F(row.clone())));
                     tasks.push(TypeTask::Value(of));
                 },
-                | CompType::Arrow(ref arg, ref res) => {
-                    tasks.push(TypeTask::FinishComp(CompFinish::Arrow));
-                    tasks.push(TypeTask::Comp(res));
+                | CompType::Arrow {
+                    ref binder,
+                    ref arg,
+                    ref res,
+                } => {
+                    // A `Π` binder of the substituted name shadows it in the
+                    // codomain, exactly as `Σ`'s does in its tail; a `None`
+                    // binder shadows nothing and always descends.
+                    let substitute_res =
+                        binder.as_deref().is_none_or(|bound| bound != name.as_ref());
+                    tasks.push(TypeTask::FinishComp(CompFinish::Arrow {
+                        binder: binder.clone(),
+                        original_res: res,
+                        substitute_res,
+                    }));
+                    if substitute_res {
+                        tasks.push(TypeTask::Comp(res));
+                    }
                     tasks.push(TypeTask::Value(arg));
                 },
                 | CompType::With(ref fst, ref snd) => {
@@ -419,10 +528,23 @@ fn subst_type(
                     let of = pop_value_type(&mut values);
                     comps.push(CompType::F(Rc::new(of), row));
                 },
-                | CompFinish::Arrow => {
-                    let res = pop_comp_type(&mut comps);
+                | CompFinish::Arrow {
+                    binder,
+                    original_res,
+                    substitute_res,
+                } => {
+                    let res = if substitute_res {
+                        Rc::new(pop_comp_type(&mut comps))
+                    }
+                    else {
+                        Rc::clone(original_res)
+                    };
                     let arg = pop_value_type(&mut values);
-                    comps.push(CompType::Arrow(Rc::new(arg), Rc::new(res)));
+                    comps.push(CompType::Arrow {
+                        binder,
+                        arg: Rc::new(arg),
+                        res,
+                    });
                 },
                 | CompFinish::With => {
                     let snd = pop_comp_type(&mut comps);
@@ -462,6 +584,56 @@ fn pop_comp_type(comps: &mut Vec<CompType>) -> CompType
 mod tests
 {
     use super::*;
+
+    /// A `Π` binder shadowing the queried name hides every occurrence beneath
+    /// it, so the occurrence walk and the substitution engine agree.
+    #[test]
+    fn pi_binder_occurrence_is_shadowed_by_an_inner_binder()
+    {
+        let endpoint = Value::Var(String::from("x"));
+        let inner = CompType::F(
+            Rc::new(ValueType::Path {
+                ty: Rc::new(ValueType::Unit),
+                lhs: Rc::new(endpoint.clone()),
+                rhs: Rc::new(endpoint),
+            }),
+            EffectRow::EMPTY,
+        );
+        // `Π(x : 1). F (Path 1 x x)` binds the very name being queried.
+        let shadowed = CompType::pi("x", ValueType::Unit, inner);
+
+        assert!(
+            !occurs_free_comptype(&shadowed, NameRef::from("x")),
+            "a Pi binder of the queried name shadows every occurrence in its codomain"
+        );
+    }
+
+    /// The walk reaches a value position inside a type — the `Path` endpoint
+    /// case the substitution engine also reaches.
+    #[test]
+    fn pi_binder_occurrence_is_seen_through_a_path_endpoint()
+    {
+        let endpoint = Value::Var(String::from("a"));
+        let codomain = CompType::F(
+            Rc::new(ValueType::Path {
+                ty: Rc::new(ValueType::Unit),
+                lhs: Rc::new(endpoint.clone()),
+                rhs: Rc::new(endpoint),
+            }),
+            EffectRow::EMPTY,
+        );
+        // `Π(b : 1). F (Path 1 a a)` leaves `a` free under a binder for `b`.
+        let dependent = CompType::pi("b", ValueType::Unit, codomain);
+
+        assert!(
+            occurs_free_comptype(&dependent, NameRef::from("a")),
+            "a free endpoint occurrence is visible through an unrelated binder"
+        );
+        assert!(
+            !occurs_free_comptype(&dependent, NameRef::from("b")),
+            "the bound variable itself does not occur in this codomain"
+        );
+    }
 
     #[test]
     fn stack_types_rebuild_both_computation_children()

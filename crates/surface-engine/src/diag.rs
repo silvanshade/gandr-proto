@@ -1236,7 +1236,9 @@ fn type_mentions_data(root: TypeNode<'_>) -> DataMention
                 | CompType::F(ref of, _) => {
                     pending.push(TypeNode::Value(of));
                 },
-                | CompType::Arrow(ref arg, ref res) => {
+                | CompType::Arrow {
+                    ref arg, ref res, ..
+                } => {
                     pending.push(TypeNode::Comp(res));
                     pending.push(TypeNode::Value(arg));
                 },

@@ -516,7 +516,14 @@ impl NativePrim
         let mut ty = self.declared_type();
         for _ in 0 .. applied {
             ty = match ty {
-                | CompType::Arrow(_, res) => (*res).clone(),
+                // A primitive's declared type is non-dependent by
+                // construction, so peeling a plain arrow is the whole job.
+                // A dependent arrow would need the applied *argument* to
+                // instantiate its codomain, and this walk is given only the
+                // arity — so it stops rather than dropping the dependency.
+                | CompType::Arrow {
+                    binder: None, res, ..
+                } => (*res).clone(),
                 | other => return other,
             };
         }

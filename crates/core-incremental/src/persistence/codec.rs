@@ -109,6 +109,14 @@ tags! {
     COMP_WALK = 66,
     COMP_FIX = 67,
     VALUE_RUN = 68,
+    // CT_PI is the dependent function type, and it is deliberately appended
+    // here rather than folded into CT_ARROW: a non-dependent arrow keeps the
+    // exact bytes it encoded to before `Π` existed, so every checkpoint an
+    // earlier build wrote still decodes and still round-trips canonically.
+    // The number follows whatever the chain already assigned — a tag is a wire
+    // identity, so renumbering an existing one would invalidate every artifact
+    // that carries it.
+    CT_PI = 69,
 }
 
 /// Encodes a lowered program using the canonical persistence grammar.
@@ -246,7 +254,7 @@ impl<'value> Encoder<'value>
                 | Work::EmitTy(value) => self.emit_ty(value),
                 | Work::EmitValue(value) => self.emit_value(value)?,
                 | Work::EmitValueType(value) => self.emit_value_type(value)?,
-                | Work::EmitCompType(value) => self.emit_comp_type(value),
+                | Work::EmitCompType(value) => self.emit_comp_type(value)?,
                 | Work::EmitComp(value) => self.emit_comp(value)?,
             }
         }
@@ -489,8 +497,10 @@ impl<'value> Encoder<'value>
         self.work.push(Work::EmitCompType(value));
         match *value {
             | CompType::F(ref of, _) => self.work.push(Work::ValueType(of)),
-            | CompType::Arrow(ref arg, ref result) => {
-                self.work.push(Work::CompType(result));
+            | CompType::Arrow {
+                ref arg, ref res, ..
+            } => {
+                self.work.push(Work::CompType(res));
                 self.work.push(Work::ValueType(arg));
             },
             | CompType::With(ref fst, ref snd) => {
@@ -858,18 +868,31 @@ impl<'value> Encoder<'value>
         Ok(())
     }
 
-    /// Emits a computation-type variant tag.
+    /// Emits a computation-type variant tag, and a dependent function type's
+    /// binder beside it.
+    ///
+    /// Fallible only because a binder is a string, and a string is the one
+    /// payload this encoder can refuse (an over-long one). The tag itself never
+    /// fails.
     fn emit_comp_type(
         &mut self,
         value: &CompType,
-    )
+    ) -> Result<(), CheckpointStoreError>
     {
-        self.byte(match *value {
-            | CompType::F(..) => CT_F,
-            | CompType::Arrow(..) => CT_ARROW,
-            | CompType::With(..) => CT_WITH,
-            | CompType::Unknown => CT_UNKNOWN,
-        });
+        match *value {
+            | CompType::F(..) => self.byte(CT_F),
+            | CompType::Arrow { binder: None, .. } => self.byte(CT_ARROW),
+            | CompType::Arrow {
+                binder: Some(ref binder),
+                ..
+            } => {
+                self.byte(CT_PI);
+                self.string(binder)?;
+            },
+            | CompType::With(..) => self.byte(CT_WITH),
+            | CompType::Unknown => self.byte(CT_UNKNOWN),
+        }
+        Ok(())
     }
 
     /// Emits the stable variant and scalar fields of a computation.
@@ -1485,6 +1508,12 @@ fn decode_token(
             let result = pop_comp_type(nodes)?;
             let arg = pop_value_type(nodes)?;
             nodes.push(Node::CompType(CompType::arrow(arg, result)));
+        },
+        | CT_PI => {
+            let binder = reader.string()?;
+            let result = pop_comp_type(nodes)?;
+            let arg = pop_value_type(nodes)?;
+            nodes.push(Node::CompType(CompType::pi(binder, arg, result)));
         },
         | CT_WITH => {
             let snd = pop_comp_type(nodes)?;

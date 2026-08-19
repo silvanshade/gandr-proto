@@ -2176,8 +2176,9 @@ enum PlugFinish
     },
     /// Pop one value type and one row, push the returner type.
     CompTypeF,
-    /// Pop one computation type and one value type, push the arrow.
-    CompTypeArrow,
+    /// Pop one computation type and one value type, push the function type
+    /// with the binder it was taken apart with.
+    CompTypeArrow(Option<String>),
     /// Pop two computation types, push the lazy product.
     CompTypeWith,
     /// Pop two value types, push one operation.
@@ -2977,8 +2978,13 @@ impl<'template> PlugEngine<'template>
                 self.tasks.push(PlugTask::Row(row));
                 self.tasks.push(PlugTask::ValueType(payload));
             },
-            | CompType::Arrow(argument, result) => {
-                self.tasks.push(PlugTask::Finish(PlugFinish::CompTypeArrow));
+            | CompType::Arrow {
+                binder,
+                arg: argument,
+                res: result,
+            } => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::CompTypeArrow(binder.clone())));
                 self.tasks.push(PlugTask::CompType(result));
                 self.tasks.push(PlugTask::ValueType(argument));
             },
@@ -3421,11 +3427,14 @@ impl<'template> PlugEngine<'template>
                 let payload = self.pop_value_type()?;
                 self.comp_types.push(CompType::F(Rc::new(payload), row));
             },
-            | PlugFinish::CompTypeArrow => {
+            | PlugFinish::CompTypeArrow(binder) => {
                 let result = self.pop_comp_type()?;
                 let argument = self.pop_value_type()?;
-                self.comp_types
-                    .push(CompType::Arrow(Rc::new(argument), Rc::new(result)));
+                self.comp_types.push(CompType::Arrow {
+                    binder,
+                    arg: Rc::new(argument),
+                    res: Rc::new(result),
+                });
             },
             | PlugFinish::CompTypeWith => {
                 let second = self.pop_comp_type()?;
@@ -4573,7 +4582,11 @@ fn walk_comp_type<'template>(
             tasks.push(WalkTask::Row(row));
             tasks.push(WalkTask::ValueType(payload));
         },
-        | CompType::Arrow(argument, result) => {
+        | CompType::Arrow {
+            arg: argument,
+            res: result,
+            ..
+        } => {
             tasks.push(WalkTask::CompType(result));
             tasks.push(WalkTask::ValueType(argument));
         },
@@ -4943,27 +4956,29 @@ mod tests
         let right = arena.value_opaque(var("b")).expect("mint value opaque");
         let root = arena
             .comp_type_graft(Graft {
-                template: CompType::Arrow(
-                    Rc::new(ValueType::Path {
+                template: CompType::Arrow {
+                    binder: None,
+                    arg: Rc::new(ValueType::Path {
                         ty: Rc::new(ValueType::Atom(String::from("A"))),
                         lhs: Rc::new(Value::Var(seam(0))),
                         rhs: Rc::new(Value::Var(seam(1))),
                     }),
-                    Rc::new(CompType::returner(ValueType::Atom(String::from("B")))),
-                ),
+                    res: Rc::new(CompType::returner(ValueType::Atom(String::from("B")))),
+                },
                 children: vec![AnyShareId::from(left), AnyShareId::from(right)],
             })
             .expect("mint comp type graft");
         assert_eq!(
             erase_comp_type(&arena, root),
-            Ok(CompType::Arrow(
-                Rc::new(ValueType::Path {
+            Ok(CompType::Arrow {
+                binder: None,
+                arg: Rc::new(ValueType::Path {
                     ty: Rc::new(ValueType::Atom(String::from("A"))),
                     lhs: Rc::new(var("a")),
                     rhs: Rc::new(var("b")),
                 }),
-                Rc::new(CompType::returner(ValueType::Atom(String::from("B")))),
-            )),
+                res: Rc::new(CompType::returner(ValueType::Atom(String::from("B")))),
+            }),
             "seams plug through the arrow's value-type argument"
         );
         assert_eq!(validate(&arena, AnyShareId::from(root)), Ok(()));

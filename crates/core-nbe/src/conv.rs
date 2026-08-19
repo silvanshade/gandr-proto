@@ -50,6 +50,7 @@
 //! [`Guard::settles_distinct`]: crate::sem::Guard::settles_distinct
 
 use alloc::rc::Rc;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_term::boundary::BacktrackStatus;
@@ -58,6 +59,8 @@ use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::ProgressStatus;
 use gandr_core_term::boundary::UnfoldPermission;
 use gandr_core_term::boundary::ValueEquality;
+use gandr_core_term::identity::occurs_free_comptype;
+use gandr_core_term::identity::subst_comptype;
 use gandr_core_term::identity::subst_valuetype;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
@@ -1333,6 +1336,47 @@ pub fn type_converts(
     decision
 }
 
+/// Decides definitional equality of two **computation types**.
+///
+/// The negative-sort sibling of [`type_converts`], sharing its worklist and so
+/// its relation. It exists because a dependent function type is compared as a
+/// whole rather than decomposed — the binder alignment a `Π` comparison needs
+/// lives in this module, and a caller that decomposed the pair itself would be
+/// a second place deciding when two function types are the same type.
+///
+/// # Contract
+/// - ensures: returns whether the two computation types are definitionally
+///   equal, under the same unknown-type and value-embedding discipline
+///   [`type_converts`] documents; a `Π` whose binder does not occur is equal to
+///   the corresponding plain arrow, and two `Π`s are compared up to the name of
+///   their binder.
+/// - provides: the invariant comparison the subtyping relation needs at a
+///   dependent function type, where variance would be unsound.
+/// - fails: never; an arena error is absorbed into a distinct verdict.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the decision surfaces are the former match and the three
+///   binder-alignment cases, each separated by one pair that differs in exactly
+///   it.
+/// - witness: `crate::tests::pi_converts_up_to_binder_name`
+/// - witness: `crate::tests::vacuous_pi_converts_with_the_plain_arrow`
+/// - witness: `crate::tests::dependent_pi_does_not_convert_with_the_plain_arrow`
+#[must_use]
+#[inline]
+pub fn comp_type_converts(
+    nbe: &mut Normalizer,
+    lhs: &CompType,
+    rhs: &CompType,
+) -> ValueEquality
+{
+    let opened = nbe.begin_run();
+    let mut goals = alloc::vec![TypeGoal::Comp(Rc::new(lhs.clone()), Rc::new(rhs.clone()))];
+    let decision = drain_type_goals(nbe, &mut goals);
+    nbe.finish_run(opened);
+    decision
+}
+
 /// One pending type-comparison goal.
 enum TypeGoal
 {
@@ -1360,15 +1404,33 @@ fn type_converts_run(
 ) -> ValueEquality
 {
     let mut goals = alloc::vec![TypeGoal::Value(Rc::new(lhs.clone()), Rc::new(rhs.clone()))];
+    drain_type_goals(nbe, &mut goals)
+}
+
+/// Drains a seeded type-comparison goal stack to a verdict.
+///
+/// The shared core of the two entries, so the positive and negative sorts
+/// decide **one** relation rather than two that have to be kept in step.
+///
+/// # Termination
+/// - reason: the walk drains an explicit goal stack over finite type trees.
+/// - measure: pending goals.
+/// - boundedness: every goal decomposes into strictly smaller type pairs.
+/// - input recursion: none.
+fn drain_type_goals(
+    nbe: &mut Normalizer,
+    goals: &mut Vec<TypeGoal>,
+) -> ValueEquality
+{
     while let Some(goal) = goals.pop() {
         match goal {
             | TypeGoal::Value(lhs, rhs) => {
-                if !bool::from(value_type_goal(nbe, &lhs, &rhs, &mut goals)) {
+                if !bool::from(value_type_goal(nbe, &lhs, &rhs, goals)) {
                     return ValueEquality::from(false);
                 }
             },
             | TypeGoal::Comp(lhs, rhs) => {
-                if !bool::from(comp_type_goal(&lhs, &rhs, &mut goals)) {
+                if !bool::from(comp_type_goal(&lhs, &rhs, goals)) {
                     return ValueEquality::from(false);
                 }
             },
@@ -1532,6 +1594,64 @@ fn value_type_goal(
     }
 }
 
+/// Brings two function types' codomains into one binder scope, so the ordinary
+/// congruence can compare them, or reports that no such scope exists.
+///
+/// This is the **α-equivalence and degeneracy** half of the `Π` congruence, and
+/// it is the single place in the tree that decides when a dependent function
+/// type and a plain arrow classify the same functions. Three cases:
+///
+/// * **Both binders written.** Renaming the right codomain's binder to the
+///   left's puts the two in one scope. Identical names need no renaming, which
+///   is the common case and costs nothing.
+/// * **Neither binder written.** Two plain arrows are already in one scope.
+/// * **One binder written.** `Π(x : A). B` and `A → B′` classify the same
+///   functions exactly when `x` does not occur free in `B`. The occurrence is
+///   *decided here* rather than asserted at construction, which is what lets
+///   the elaborator write binders freely without a canonicity obligation.
+///
+/// # Why the question is not "are the binder names equal"
+///
+/// Binder names are not observable: they come from source, and two signatures
+/// naming the same function type with different variable names must convert.
+/// Comparing the names would make conversion depend on spelling, which is
+/// exactly the bug α-equivalence exists to prevent.
+///
+/// # Contract
+/// - ensures: returns the right codomain relocated into the left's binder scope
+///   when the two function types can be related, and `None` when a written
+///   binder occurs free on one side and has no counterpart on the other.
+/// - panics: none.
+fn align_binders(
+    left_binder: &Option<String>,
+    right_binder: &Option<String>,
+    left_res: &Rc<CompType>,
+    right_res: &Rc<CompType>,
+) -> Option<Rc<CompType>>
+{
+    match (left_binder.as_deref(), right_binder.as_deref()) {
+        | (None, None) => Some(Rc::clone(right_res)),
+        | (Some(left), Some(right)) => {
+            if left == right {
+                return Some(Rc::clone(right_res));
+            }
+            Some(Rc::new(subst_comptype(
+                right_res,
+                NameRef::from(right),
+                &Value::Var(String::from(left)),
+            )))
+        },
+        // One side quantifies and the other does not: they agree exactly when
+        // the quantification is vacuous.
+        | (Some(left), None) => {
+            (!occurs_free_comptype(left_res, NameRef::from(left))).then(|| Rc::clone(right_res))
+        },
+        | (None, Some(right)) => {
+            (!occurs_free_comptype(right_res, NameRef::from(right))).then(|| Rc::clone(right_res))
+        },
+    }
+}
+
 /// Compares one computation-type pair.
 ///
 /// No arm reaches a value, so this one never consults the normalizer.
@@ -1556,10 +1676,22 @@ fn comp_type_goal(
             ValueEquality::from(true)
         },
         | (
-            &CompType::Arrow(ref left_arg, ref left_res),
-            &CompType::Arrow(ref right_arg, ref right_res),
+            &CompType::Arrow {
+                binder: ref left_binder,
+                arg: ref left_arg,
+                res: ref left_res,
+            },
+            &CompType::Arrow {
+                binder: ref right_binder,
+                arg: ref right_arg,
+                res: ref right_res,
+            },
         ) => {
-            goals.push(TypeGoal::Comp(Rc::clone(left_res), Rc::clone(right_res)));
+            let Some(right_res) = align_binders(left_binder, right_binder, left_res, right_res)
+            else {
+                return ValueEquality::from(false);
+            };
+            goals.push(TypeGoal::Comp(Rc::clone(left_res), right_res));
             goals.push(TypeGoal::Value(Rc::clone(left_arg), Rc::clone(right_arg)));
             ValueEquality::from(true)
         },

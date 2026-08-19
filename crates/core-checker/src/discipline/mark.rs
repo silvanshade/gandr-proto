@@ -125,7 +125,10 @@ use crate::discipline::subtype::int_literal_fits;
 use crate::discipline::subtype::pick;
 use crate::discipline::subtype::value_subtype;
 use crate::judgements::checker::base_diagonal_type;
+use crate::judgements::checker::inferred_binder;
+use crate::judgements::checker::instantiate_codomain;
 use crate::judgements::checker::motive_result_type;
+use crate::judgements::checker::relocate_codomain;
 use crate::judgements::checker::split_expectations;
 use crate::judgements::checker::split_unknown_expectations;
 use crate::judgements::control::Dir;
@@ -831,11 +834,15 @@ enum MarkFrame
         /// Original direction.
         dir: Dir<ValueType>,
     },
-    /// Finish an unannotated abstraction checked against an arrow.
+    /// Finish an unannotated abstraction checked against a function type.
     CompAbsCheckArrowAfterBody
     {
         /// Pending parent facts.
         pending: PendingComp,
+        /// The expected type's binder, or `None` for a non-dependent arrow.
+        binder: Option<String>,
+        /// The lambda's own binder, which the checked codomain speaks of.
+        name: String,
         /// Arrow domain.
         arg: Rc<ValueType>,
         /// Arrow codomain expectation.
@@ -850,6 +857,9 @@ enum MarkFrame
     /// Finish an annotated abstraction after its body.
     CompAbsAnnotatedAfterBody
     {
+        /// The lambda's binder, which an inferred dependent codomain may
+        /// mention.
+        name: String,
         /// Pending parent facts.
         pending: PendingComp,
         /// Annotation type.
@@ -878,7 +888,11 @@ enum MarkFrame
     {
         /// Pending parent facts.
         pending: PendingComp,
-        /// Arrow codomain.
+        /// The head's binder, for a dependent codomain.
+        binder: Option<String>,
+        /// The applied argument, which a dependent codomain is closed at.
+        arg: Rc<Value>,
+        /// Arrow codomain, **before** instantiation.
         res: CompType,
         /// Original direction.
         dir: Dir<CompType>,
@@ -1260,7 +1274,12 @@ enum MarkFrame
     {
         /// Rest of the stack.
         rest: Rc<Stack>,
-        /// Type after consuming the argument frame.
+        /// The consumed function type's binder, for a dependent codomain.
+        binder: Option<String>,
+        /// The argument the frame supplies, which a dependent codomain is
+        /// closed at.
+        arg: Rc<Value>,
+        /// Type after consuming the argument frame, **before** instantiation.
         result_ty: CompType,
         /// Type consumed by the original stack value.
         root_input: CompType,
@@ -2548,13 +2567,24 @@ impl Marker
         };
         match comp {
             | Comp::Abs(name, annot, body) => match (annot, dir) {
-                | (None, Dir::Check(CompType::Arrow(arg, res))) => {
-                    self.ctx.bind(name, arg.as_ref().clone());
+                | (None, Dir::Check(CompType::Arrow { binder, arg, res })) => {
+                    self.ctx.bind(name.clone(), arg.as_ref().clone());
+                    // The expectation is written in the type's binder and the
+                    // body in the lambda's; relocating the codomain is what
+                    // puts them in one scope (the recursive checker's
+                    // `relocate_codomain`, mirrored step for step).
+                    let expected_res = relocate_codomain(binder.as_deref(), &name, &res);
                     self.schedule_child_comp(
                         0,
                         body,
-                        Dir::Check(res.as_ref().clone()),
-                        MarkFrame::CompAbsCheckArrowAfterBody { pending, arg, res },
+                        Dir::Check(expected_res),
+                        MarkFrame::CompAbsCheckArrowAfterBody {
+                            pending,
+                            binder,
+                            name,
+                            arg,
+                            res,
+                        },
                         run,
                     );
                 },
@@ -2569,12 +2599,13 @@ impl Marker
                     );
                 },
                 | (Some(annot_ty), any_dir) => {
-                    self.ctx.bind(name, annot_ty.as_ref().clone());
+                    self.ctx.bind(name.clone(), annot_ty.as_ref().clone());
                     self.schedule_child_comp(
                         0,
                         body,
                         Dir::Infer,
                         MarkFrame::CompAbsAnnotatedAfterBody {
+                            name,
                             pending,
                             annot_ty,
                             dir: any_dir,
@@ -3160,13 +3191,16 @@ impl Marker
                 run.result = Some(MarkResult::Value(pending.finish(self, ty)));
             },
             | Stack::Arg(value, rest) => {
-                let (arg_ty, result_ty) = recover_pair(arrow_components(input), &mut pending.marks);
+                let (binder, arg_ty, result_ty) =
+                    recover_triple(arrow_components(input), &mut pending.marks);
                 self.schedule_child_value(
                     frame,
-                    value,
+                    Rc::clone(&value),
                     Dir::Check(arg_ty),
                     MarkFrame::StackArgAfterValue {
                         rest,
+                        binder,
+                        arg: value,
                         result_ty,
                         root_input,
                         next_frame: frame.saturating_add(1),
@@ -3592,6 +3626,8 @@ impl Marker
             },
             | MarkFrame::CompAbsCheckArrowAfterBody {
                 mut pending,
+                binder,
+                name,
                 arg,
                 res,
             } => {
@@ -3599,8 +3635,12 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
-                    CompType::Arrow(Rc::clone(&arg), Rc::new(res_ty)),
-                    Dir::Check(CompType::Arrow(arg, res)),
+                    CompType::Arrow {
+                        binder: binder.as_ref().map(|_| name),
+                        arg: Rc::clone(&arg),
+                        res: Rc::new(res_ty),
+                    },
+                    Dir::Check(CompType::Arrow { binder, arg, res }),
                     &mut pending.marks,
                 );
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
@@ -3610,13 +3650,18 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
-                    CompType::Arrow(Rc::new(ValueType::Unknown), Rc::new(res_ty)),
+                    CompType::Arrow {
+                        binder: None,
+                        arg: Rc::new(ValueType::Unknown),
+                        res: Rc::new(res_ty),
+                    },
                     Dir::Check(CompType::Unknown),
                     &mut pending.marks,
                 );
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompAbsAnnotatedAfterBody {
+                name,
                 mut pending,
                 annot_ty,
                 dir,
@@ -3625,7 +3670,11 @@ impl Marker
                 let _popped = self.path.pop();
                 self.ctx.unbind();
                 let ty = finish_comp(
-                    CompType::Arrow(annot_ty, Rc::new(res_ty)),
+                    CompType::Arrow {
+                        binder: inferred_binder(&name, &res_ty),
+                        arg: annot_ty,
+                        res: Rc::new(res_ty),
+                    },
                     dir,
                     &mut pending.marks,
                 );
@@ -3644,23 +3693,33 @@ impl Marker
             } => {
                 let head_ty = expect_comp(done);
                 let _popped = self.path.pop();
-                let (param, res) = recover_pair(arrow_components(head_ty), &mut pending.marks);
+                let (binder, param, res) =
+                    recover_triple(arrow_components(head_ty), &mut pending.marks);
                 self.schedule_child_value(
                     1,
-                    arg,
+                    Rc::clone(&arg),
                     Dir::Check(param),
-                    MarkFrame::CompAppAfterArg { pending, res, dir },
+                    MarkFrame::CompAppAfterArg {
+                        pending,
+                        binder,
+                        arg,
+                        res,
+                        dir,
+                    },
                     run,
                 );
             },
             | MarkFrame::CompAppAfterArg {
                 mut pending,
+                binder,
+                arg,
                 res,
                 dir,
             } => {
                 let _arg_ty = expect_value(done);
                 let _popped = self.path.pop();
-                let ty = finish_comp(res, dir, &mut pending.marks);
+                let applied = instantiate_codomain(binder.as_deref(), &res, arg.as_ref());
+                let ty = finish_comp(applied, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
             | MarkFrame::CompRetAfterPayload { mut pending, dir } => {
@@ -4373,6 +4432,8 @@ impl Marker
             },
             | MarkFrame::StackArgAfterValue {
                 rest,
+                binder,
+                arg,
                 result_ty,
                 root_input,
                 next_frame,
@@ -4381,9 +4442,10 @@ impl Marker
             } => {
                 let _value_ty = expect_value(done);
                 let _popped = self.path.pop();
+                let applied = instantiate_codomain(binder.as_deref(), &result_ty, arg.as_ref());
                 run.work = Some(MarkWork::StackValue(StackValueWork {
                     stack: unrc(rest),
-                    input: result_ty,
+                    input: applied,
                     root_input,
                     frame: next_frame,
                     pending,
@@ -6109,6 +6171,31 @@ where
         | Err(error) => {
             marks.push(mark_of_error(error));
             (L::unknown(), R::unknown())
+        },
+    }
+}
+
+/// Recovers from a fallible destructure helper that returns a function type's
+/// binder beside its two components, recovering with `(None, Unknown, Unknown)`
+/// on failure.
+///
+/// The binder recovers as `None` rather than through [`Recoverable`], because
+/// "no binder" is a real answer a function type can give and not an `Unknown`
+/// standing in for one that failed to arrive.
+#[inline]
+fn recover_triple<L, R>(
+    result: Result<(Option<String>, L, R), TypeError>,
+    marks: &mut Vec<Mark>,
+) -> (Option<String>, L, R)
+where
+    L: Recoverable,
+    R: Recoverable,
+{
+    match result {
+        | Ok(triple) => triple,
+        | Err(error) => {
+            marks.push(mark_of_error(error));
+            (None, L::unknown(), R::unknown())
         },
     }
 }

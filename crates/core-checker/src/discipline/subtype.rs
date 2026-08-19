@@ -52,6 +52,7 @@
 use alloc::rc::Rc;
 
 use gandr_core_nbe::Normalizer;
+use gandr_core_nbe::conv::comp_type_converts;
 use gandr_core_nbe::conv::converts;
 use gandr_core_nbe::conv::type_converts;
 use gandr_core_term::boundary::IntegerLiteral;
@@ -565,12 +566,41 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                         }
                         goals.push(SubtypeGoal::Value(Rc::clone(lo_of), Rc::clone(hi_of)));
                     },
+                    // The **non-dependent** function type keeps the variance it
+                    // always had: contravariant in the argument, covariant in
+                    // the result.
                     | (
-                        &CompType::Arrow(ref lo_arg, ref lo_res),
-                        &CompType::Arrow(ref hi_arg, ref hi_res),
+                        &CompType::Arrow {
+                            binder: None,
+                            arg: ref lo_arg,
+                            res: ref lo_res,
+                        },
+                        &CompType::Arrow {
+                            binder: None,
+                            arg: ref hi_arg,
+                            res: ref hi_res,
+                        },
                     ) => {
                         goals.push(SubtypeGoal::Comp(Rc::clone(lo_res), Rc::clone(hi_res)));
                         goals.push(SubtypeGoal::Value(Rc::clone(hi_arg), Rc::clone(lo_arg)));
+                    },
+                    // A **dependent** function type is compared invariantly, the
+                    // `Sigma` precedent exactly: variance under a dependent
+                    // binder is a refinement this rung does not make, so the two
+                    // sides convert or they do not relate.
+                    //
+                    // The whole pair goes to `type_converts` rather than being
+                    // decomposed here, because the binder alignment a dependent
+                    // comparison needs already lives there — in one function,
+                    // stated once. Decomposing here would be a second place
+                    // deciding when two function types are the same type, which
+                    // is the duplication the identity rung already paid for
+                    // once.
+                    | (&CompType::Arrow { .. }, &CompType::Arrow { .. }) => {
+                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        if !bool::from(comp_type_converts(nbe, sub.as_ref(), sup.as_ref())) {
+                            return false.into();
+                        }
                     },
                     | (
                         &CompType::With(ref lo_fst, ref lo_snd),

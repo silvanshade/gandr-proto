@@ -919,13 +919,45 @@ pub enum CompType
         /// The effect row `ε` the returner performs (empty for a pure `F A`).
         EffectRow,
     ),
-    /// The function type `A → B` (value argument, computation result).
-    Arrow(
+    /// The function type — non-dependent `A → B` when `binder` is `None`, and
+    /// the **dependent product** `Π(x : A). B` when `binder` is `Some(x)`
+    /// (value argument, computation result).
+    ///
+    /// One former, not two. A `Π` whose binder does not occur in its codomain
+    /// classifies exactly the functions `A → B` does, and giving that type two
+    /// spellings would put a canonicity question at every construction site.
+    /// Instead the binder is **written by the elaborator, never inferred**, and
+    /// [`gandr_core_nbe::conv::type_converts`] is the single place that relates
+    /// a `Π` with an unused binder to the corresponding plain arrow.
+    ///
+    /// # Why the binder is written rather than derived
+    ///
+    /// The obvious alternative — construct `Π` only when the variable occurs
+    /// free in the codomain, and a plain arrow otherwise — is sound in the
+    /// tree as it stands: metavariables are term-sorted
+    /// ([`gandr_core_unify::MetaSort`]) and their solutions are closed, so no
+    /// codomain can acquire a dependency on the binder after the type is
+    /// built. It is declined anyway. That argument rests on a property a later
+    /// rung could change without noticing it was load-bearing, and a binder the
+    /// elaborator wrote cannot rot the way a derived one can. It is the same
+    /// posture explicit universe lifts already take: written, never inferred.
+    ///
+    /// # Dependency is one-directional
+    ///
+    /// Only the codomain may mention the binder; the domain cannot, because it
+    /// is the type the binder is bound *at*. Substituting a value for the
+    /// binder is [`crate::identity::subst_comptype`], which renames the binder
+    /// when the replacement would otherwise capture it.
+    Arrow
+    {
+        /// The bound value-variable name `x`, in scope in `res`, or `None` for
+        /// the non-dependent arrow.
+        binder: Option<String>,
         /// The argument's value type `A`.
-        Rc<ValueType>,
-        /// The result's computation type `B`.
-        Rc<Self>,
-    ),
+        arg: Rc<ValueType>,
+        /// The result's computation type `B`, which may mention `binder`.
+        res: Rc<Self>,
+    },
     /// The lazy product ("with") `B & B′`.
     With(
         /// The first component.
@@ -960,7 +992,7 @@ impl CompType
         Self::F(Rc::new(of), row)
     }
 
-    /// Builds a function type `arg → res`.
+    /// Builds a non-dependent function type `arg → res`.
     #[inline]
     #[must_use]
     pub fn arrow(
@@ -968,7 +1000,30 @@ impl CompType
         res: Self,
     ) -> Self
     {
-        Self::Arrow(Rc::new(arg), Rc::new(res))
+        Self::Arrow {
+            binder: None,
+            arg: Rc::new(arg),
+            res: Rc::new(res),
+        }
+    }
+
+    /// Builds a dependent product `Π(binder : arg). res`.
+    ///
+    /// The binder is recorded as written; nothing here inspects `res` to decide
+    /// whether it is needed (the [`Arrow`](Self::Arrow) variant docs say why).
+    #[inline]
+    #[must_use]
+    pub fn pi(
+        binder: impl Into<String>,
+        arg: ValueType,
+        res: Self,
+    ) -> Self
+    {
+        Self::Arrow {
+            binder: Some(binder.into()),
+            arg: Rc::new(arg),
+            res: Rc::new(res),
+        }
     }
 
     /// Builds a lazy product `fst & snd`.
@@ -1007,9 +1062,26 @@ impl core::fmt::Debug for CompType
                 }
                 tuple.finish()
             },
-            | Self::Arrow(ref arg, ref res) => {
-                f.debug_tuple("Arrow").field(arg).field(res).finish()
-            },
+            // A non-dependent arrow renders as the two-field `Arrow(A, B)` the
+            // pre-`Π` code printed, so every existing expectation stays
+            // byte-identical; a dependent one renders its binder first, in the
+            // three-field form, so the two are never confusable in a
+            // diagnostic.
+            | Self::Arrow {
+                binder: None,
+                ref arg,
+                ref res,
+            } => f.debug_tuple("Arrow").field(arg).field(res).finish(),
+            | Self::Arrow {
+                binder: Some(ref binder),
+                ref arg,
+                ref res,
+            } => f
+                .debug_tuple("Arrow")
+                .field(binder)
+                .field(arg)
+                .field(res)
+                .finish(),
             | Self::With(ref fst, ref snd) => f.debug_tuple("With").field(fst).field(snd).finish(),
             | Self::Unknown => f.write_str("Unknown"),
         }

@@ -54,20 +54,23 @@ use gandr_core_term::types::ValueType;
 
 /// Destructures the consumed type of an argument frame `v :: K`.
 ///
-/// A function `A → B′` yields its argument type `A`, which the value `v` is
-/// checked against, and its result type `B′`, which the rest of the stack runs
-/// from.
+/// A function `A → B′` yields its binder, its argument type `A`, which the
+/// value `v` is checked against, and its result type `B′`, which the rest of
+/// the stack runs from once instantiated at the argument.
 ///
 /// The matched arrow `Unknown ▶→ Unknown → Unknown` (A2.2 holes extension): an
-/// `Unknown` consumed type yields `(Unknown, Unknown)`, so a hole flowing into
-/// a stack frame localizes rather than cascading — exactly as at
+/// `Unknown` consumed type yields `(None, Unknown, Unknown)`, so a hole flowing
+/// into a stack frame localizes rather than cascading — exactly as at
 /// [`gandr_core_term::syntax::Comp::App`].
 ///
 /// # Contract
-/// - ensures: `(A, B′)` for `consumed = A → B′`; `(Unknown, Unknown)` for
-///   `consumed = Unknown`.
+/// - ensures: `(x?, A, B′)` for `consumed = Π(x? : A). B′`; `(None, Unknown,
+///   Unknown)` for `consumed = Unknown`.
 /// - fails: `ShapeMismatch { expected: SHAPE_ARROW, actual: consumed }`
 ///   otherwise.
+/// - ensures: the returned binder is the function type's own, so a caller that
+///   holds the applied argument can instantiate the codomain at it; a
+///   non-dependent arrow and the matched `Unknown` return `None`.
 /// - panics: none.
 ///
 /// # Errors
@@ -75,14 +78,21 @@ use gandr_core_term::types::ValueType;
 /// Returns [`TypeError::ShapeMismatch`] when the consumed type is neither a
 /// function nor `Unknown`.
 #[inline]
-pub fn arrow_components(consumed: CompType) -> Result<(ValueType, CompType), TypeError>
+pub fn arrow_components(
+    consumed: CompType
+) -> Result<(Option<String>, ValueType, CompType), TypeError>
 {
     match consumed {
-        | CompType::Arrow(arg, res) => Ok((
+        // The binder travels with the components because the codomain is not
+        // yet a type: a dependent one is a type *family*, and only the caller
+        // — which is the site that holds the applied argument — can close it.
+        // Returning the codomain alone would silently drop the dependency.
+        | CompType::Arrow { binder, arg, res } => Ok((
+            binder,
             crate::judgements::control::unrc(arg),
             crate::judgements::control::unrc(res),
         )),
-        | CompType::Unknown => Ok((ValueType::Unknown, CompType::Unknown)),
+        | CompType::Unknown => Ok((None, ValueType::Unknown, CompType::Unknown)),
         | other => Err(TypeError::ShapeMismatch {
             expected: text::SHAPE_ARROW,
             actual: Ty::Comp(other),
