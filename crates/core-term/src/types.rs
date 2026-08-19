@@ -1247,7 +1247,14 @@ impl Ty
                     | ValueType::Atom(_)
                     | ValueType::Unit
                     | ValueType::Universe
-                    | ValueType::Sealed(_) => {},
+                    | ValueType::Sealed(_)
+                    // A family application carries children, unlike the leaves
+                    // above, but its arguments are **terms** -- on the same
+                    // footing as an identity type's endpoints. The scan stops
+                    // for that reason rather than for want of structure: this
+                    // answers a question about the type, and an unknown
+                    // reachable only through a term is a different question.
+                    | ValueType::Family { .. } => {},
                     // A product, a sum and a dependent pair are all two value
                     // children; the pair's binder names one of them and binds
                     // no type, so the scan sees the same shape in all three.
@@ -1272,12 +1279,6 @@ impl Ty
                     },
                     // The endpoints are terms; only the carrier is a type.
                     | ValueType::Path { ref ty, .. } => pending.push(UnknownScan::Value(ty)),
-                    // A family application's arguments are **terms**, on the
-                    // same footing as an identity type's endpoints, so the scan
-                    // stops here for the same reason: this answers a question
-                    // about the type structure, and an unknown reachable only
-                    // through a term is a different question.
-                    | ValueType::Family { .. } => {},
                     | ValueType::Data { ref args, .. } => {
                         for arg in args {
                             pending.push(UnknownScan::Value(arg));
