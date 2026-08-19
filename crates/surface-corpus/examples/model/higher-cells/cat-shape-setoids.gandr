@@ -19,9 +19,9 @@ module SetoidCatLaws : #{
   type Ob = Type,
   id: (a: Type) -> F (a -> F a),
   comp: (a: Type, b: Type, c: Type, f: (a -> F b), g: (b -> F c)) -> F (a -> F c),
-  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, b, b, id(a), f), f)),
-  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, a, b, f, id(b)), f)),
-  assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((a -> F d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
+  unitL: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f)),
+  unitR: (a: Type, b: Type, f: (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f)),
+  assoc: (a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((U(a -> F d)), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h))))
 } {
   def id(a: Type, x: a) -> F a {
     ret x
@@ -32,15 +32,15 @@ module SetoidCatLaws : #{
     g(y)
   }
 
-  def unitL(a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, b, b, id(a), f), f)) {
+  def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f)) {
     ret here(f)
   }
 
-  def unitR(a: Type, b: Type, f: (a -> F b)) -> F(Path((a -> F b), comp(a, a, b, f, id(b)), f)) {
+  def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f)) {
     ret here(f)
   }
 
-  def assoc(a: Type, b: Type, c: Type, d: Type, f: (a -> F b), g: (b -> F c), h: (c -> F d)) -> F(Path((a -> F d), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h)))) {
+  def assoc(a: Type, b: Type, c: Type, d: Type, f: U[ω] (a -> F b), g: U[ω] (b -> F c), h: U[ω] (c -> F d)) -> F(Path((U(a -> F d)), comp(a, c, d, comp(a, b, c, f, g), h), comp(a, b, d, f, comp(b, c, d, g, h)))) {
     ret here(comp(a, c, d, comp(a, b, c, f, g), h))
   }
 }
