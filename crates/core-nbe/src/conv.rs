@@ -58,6 +58,7 @@ use gandr_core_term::boundary::ClosureArity;
 use gandr_core_term::boundary::DefinitionHeightLevel;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::ProgressStatus;
+use gandr_core_term::boundary::TrivialContinuation;
 use gandr_core_term::boundary::UnfoldPermission;
 use gandr_core_term::boundary::ValueEquality;
 use gandr_core_term::grade::Grade;
@@ -755,6 +756,14 @@ fn neutral_goal(
         goals.push(Frame::Choice(lhs_comp, rhs_comp));
     }
     let inner = if speculating { ConvState::Rigid } else { state };
+    // **Canonicalize before pairing, and before the length check.** A `Seq`
+    // whose continuation is the identity eliminator is not part of the spine —
+    // it is eta for the returner, and a spine carrying one is the same neutral
+    // as the spine without it. Dropping it after the length check would be too
+    // late: two spines differing only by such an entry would be refused on
+    // their lengths before any entry was examined.
+    let lhs_spine = canonical_spine(nbe, &lhs_spine)?;
+    let rhs_spine = canonical_spine(nbe, &rhs_spine)?;
     if lhs_spine.len() != rhs_spine.len() {
         return Ok(ValueEquality::from(false));
     }
@@ -764,6 +773,86 @@ fn neutral_goal(
         }
     }
     head_goal(nbe, &lhs_head, &rhs_head, inner, goals)
+}
+
+/// Drops every spine entry that is the identity eliminator: a sequence whose
+/// continuation, **normalized at a fresh variable**, returns that variable.
+///
+/// # Why the normal form and not the stored body
+///
+/// Triviality is a property of the continuation's normal form. The
+/// construction-site check in [`crate::eval`] reads the stored body, which is
+/// the fast path and catches a continuation written as a literal return — but a
+/// continuation written as a call that *reduces* to one is equally the identity
+/// eliminator, and the stored body cannot show that. Asking at construction is
+/// asking before the answer has been computed.
+///
+/// # The mode is fixed here, and that is the soundness point
+///
+/// The probe runs at [`ForceMode::Unfold`] **regardless of the mode the
+/// surrounding comparison is running at**. That is deliberate and it is what
+/// keeps the relation mode-independent: whether a continuation is the identity
+/// eliminator is a fact about the term, so the canonical shape of a spine must
+/// not depend on how much unfolding the ambient policy happened to permit.
+///
+/// Letting the ambient mode decide would mean a pair related at one mode and
+/// refused at another — **policy deciding which pairs are related rather than
+/// how far it unfolds**, which is the one thing the strategy fence forbids.
+///
+/// The residual variation is the familiar one and it is on the safe side: a
+/// probe that exhausts its fuel reports *not* the identity eliminator, so the
+/// entry is **kept**. That can cost a refusal and can never produce an
+/// acceptance another budget would refute.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn canonical_spine(
+    nbe: &mut Normalizer,
+    spine: &[Elim],
+) -> Result<Vec<Elim>, SemError>
+{
+    let mut canonical = Vec::with_capacity(spine.len());
+    for entry in spine {
+        if let Elim::Sequence(cont) = *entry
+            && bool::from(normalized_continuation_is_identity(nbe, cont)?)
+        {
+            continue;
+        }
+        canonical.push(*entry);
+    }
+    Ok(canonical)
+}
+
+/// Whether a sequence continuation normalizes to a return of its own binder.
+///
+/// Enters the closure at one fresh rigid level and asks whether the result is
+/// exactly a return of that level — the same shape
+/// the construction-site check in [`crate::eval`] tests syntactically, asked
+/// of the normal form instead.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn normalized_continuation_is_identity(
+    nbe: &mut Normalizer,
+    cont: ClosureId,
+) -> Result<TrivialContinuation, SemError>
+{
+    let level = nbe.fresh_level();
+    let fresh = value(
+        nbe,
+        SemValueNode::Rigid(Rigid::Level(level), ValueUnfold::Rigid),
+    )?;
+    let body = crate::eval::enter_with(nbe, cont, &[fresh], ForceMode::Unfold)?;
+    let SemCompNode::Return(produced) = *nbe.arena().comp(body)?.node()
+    else {
+        return Ok(TrivialContinuation::from(false));
+    };
+    Ok(TrivialContinuation::from(matches!(
+        *nbe.arena().value(produced)?.node(),
+        SemValueNode::Rigid(Rigid::Level(returned), _) if returned == level
+    )))
 }
 
 /// Compares one spine entry pair.

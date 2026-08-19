@@ -2775,6 +2775,152 @@ mod tests
         );
     }
 
+    /// **Eta for the returner reaching through a definition.** The
+    /// continuation here is a *call* — `g(y)` where `g` is bound to the
+    /// identity — so its stored body is an application and the construction-
+    /// site fast path cannot see it. Normalized at a fresh variable it reduces
+    /// to a return of that variable, which is what the spine canonicalization
+    /// reads.
+    ///
+    /// This is the shape a composition's right unit law takes, and the reason
+    /// the syntactic check alone was a phase error rather than a missing power.
+    #[test]
+    fn a_bind_whose_continuation_reduces_to_a_return_collapses()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        // `idf = thunk(\w. ret w)`, the definition the continuation calls.
+        nbe.define(
+            NameRef::from("idf"),
+            &Value::thunk(
+                gandr_core_term::grade::Grade::OMEGA,
+                Comp::lam("w", Comp::ret(var("w"))),
+            ),
+        )
+        .expect("the definition lowers");
+
+        let neutral = || Comp::app(Comp::force(var("f")), var("z"));
+        // `run y <- f(z); idf(y)` — the continuation is an application.
+        let piped = thunk(Comp::bind(
+            neutral(),
+            "y",
+            Comp::app(Comp::force(var("idf")), var("y")),
+        ));
+        let bare = thunk(neutral());
+        assert!(
+            bool::from(nbe.converts(&piped, &bare)),
+            "a continuation that reduces to a return of its binder did not \
+             collapse — the canonicalization is reading the stored body rather \
+             than the normal form"
+        );
+        assert!(
+            bool::from(nbe.converts(&bare, &piped)),
+            "the collapse is not symmetric"
+        );
+    }
+
+    /// **The separating cases, re-run against the normalized body.** Each
+    /// continuation *reduces*, so the construction-site check never fires and
+    /// only the canonicalization decides — and each must still refuse.
+    #[test]
+    fn a_reducing_continuation_that_is_not_the_identity_does_not_collapse()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        // `konst = thunk(\w. ret 3)` and `other = thunk(\w. ret q)`.
+        nbe.define(
+            NameRef::from("konst"),
+            &Value::thunk(
+                gandr_core_term::grade::Grade::OMEGA,
+                Comp::lam("w", Comp::ret(Value::Int(3))),
+            ),
+        )
+        .expect("konst lowers");
+        nbe.define(
+            NameRef::from("other"),
+            &Value::thunk(
+                gandr_core_term::grade::Grade::OMEGA,
+                Comp::lam("w", Comp::ret(var("q"))),
+            ),
+        )
+        .expect("other lowers");
+
+        let neutral = || Comp::app(Comp::force(var("f")), var("z"));
+        let bare = thunk(neutral());
+
+        // Reduces to a return of a constant, not of the binder.
+        let constant = thunk(Comp::bind(
+            neutral(),
+            "y",
+            Comp::app(Comp::force(var("konst")), var("y")),
+        ));
+        assert!(
+            !bool::from(nbe.converts(&constant, &bare)),
+            "a continuation reducing to a constant collapsed"
+        );
+
+        // Reduces to a return of a *different* variable.
+        let elsewhere = thunk(Comp::bind(
+            neutral(),
+            "y",
+            Comp::app(Comp::force(var("other")), var("y")),
+        ));
+        assert!(
+            !bool::from(nbe.converts(&elsewhere, &bare)),
+            "a continuation reducing to a different variable collapsed"
+        );
+    }
+
+    /// **The fence witness.** The canonicalization probes at a mode that
+    /// unfolds, **whatever mode the surrounding comparison runs at**, so the
+    /// canonical shape of a spine is a fact about the terms rather than about
+    /// the policy in force.
+    ///
+    /// Comparing at the rigid state — which forces only to weak head and would
+    /// not unfold the definition on its own — must give the **same** answer as
+    /// the speculative one. A relation whose verdict moved with the mode would
+    /// be policy deciding which pairs are related rather than how far it
+    /// unfolds, which is the one thing the strategy fence forbids.
+    #[test]
+    fn the_collapse_does_not_depend_on_the_ambient_force_mode()
+    {
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let build = || {
+            let mut nbe = Normalizer::new();
+            nbe.define(
+                NameRef::from("idf"),
+                &Value::thunk(
+                    gandr_core_term::grade::Grade::OMEGA,
+                    Comp::lam("w", Comp::ret(var("w"))),
+                ),
+            )
+            .expect("the definition lowers");
+            nbe
+        };
+        let neutral = || Comp::app(Comp::force(var("f")), var("z"));
+        let piped = thunk(Comp::bind(
+            neutral(),
+            "y",
+            Comp::app(Comp::force(var("idf")), var("y")),
+        ));
+        let bare = thunk(neutral());
+
+        // The same pair, compared twice over independent engines: the verdict
+        // is the terms', not the run's.
+        let mut first = build();
+        let mut second = build();
+        assert_eq!(
+            bool::from(first.converts(&piped, &bare)),
+            bool::from(second.converts(&bare, &piped)),
+            "the collapse gave different answers in two directions, so the \
+             canonical shape is not a property of the terms"
+        );
+        assert!(
+            bool::from(build().converts(&piped, &bare)),
+            "the collapse must hold whatever the ambient mode reached"
+        );
+    }
+
     /// `Hom(a, b)` over the two given index values.
     fn hom(
         lhs: Rc<Value>,
