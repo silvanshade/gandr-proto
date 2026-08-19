@@ -1,7 +1,7 @@
 ; gandr kernel export exit-gate outcomes (B2.3 deliverable 1; GANDR_BLESS_KERNEL_EXPORT)
 ; generator: gandr-core-sequent kernel_export_gate (GANDR_BLESS_KERNEL_EXPORT=1)
-; items: 30 (24 S1-eligible corpus + 6 kernel-native C5 goldens)
-; corpus-fixtures-b3sum: 72af907b1f8c4df3033405dc9000c7ae1df8ffa1f2fa382062dc2657fbe66f7b
+; items: 29 (23 S1-eligible corpus + 6 kernel-native C5 goldens)
+; corpus-fixtures-b3sum: 76eb20dfbe06635589d784ef38db9a50cca01d5e1cbafa85ce52736086934b37
 ; columns: <source>\t<item-index>\t<size-bytes>\t<table-entries>\t<expanded-work>\t<artifact-work>\t<artifact-identity>
 model/01-first-computation.gandr	0	45	6	3	6	76f7a09424f12e3cc726b75dc3d20d61b8a03fccd8168510c9e85be369050198
 model/02-definitions.gandr	0	39	2	1	2	c26ce1bad8d4c84a3bbe053d5f6e817ba0bd764e028e0a46202dad9a9fd4f30e
@@ -10,7 +10,6 @@ model/10-strings.gandr	0	43	2	1	2	78ec6825087e19e4c300b0e8b471b49048f07a453ac3a6
 model/29-modules.gandr	0	28	2	1	2	640b51e6bbb7ac543f983bca3efb0cb6a9c3512ca32a072be000557d4927fd5a
 model/attributes/module-metadata.gandr	0	22	2	1	2	176990eefcc731c7f579fafa86ef17140dba066935251302ca4bc190392725f8
 model/attributes/query-via-report.gandr	0	30	2	1	2	d73b19b317940a9f6c057f804cb2a09b9f8d614ec13943fec345ca0610104146
-model/higher-cells/cat-shape-setoids.gandr	7	27	2	1	2	fb8a245fd7b03e219a09ea4586925043b744c23bbdd31948502215ce1a4cc5c6
 model/sequent/sequent-focusing.gandr	0	30	6	3	6	d91e4c4238a42b7ba6817735195e3b14158df1ada8186894a6e2a5a4ea798744
 pathological/attributes/duplicate-attribute.gandr	0	28	2	1	2	cb3f61c9b380bf7042b558395bb0b479751d8e4e756a3c412243a11ec223afbe
 pathological/attributes/effectful-payload.gandr	0	28	2	1	2	cb3f61c9b380bf7042b558395bb0b479751d8e4e756a3c412243a11ec223afbe

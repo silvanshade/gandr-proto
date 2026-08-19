@@ -56,7 +56,7 @@
 //! # Cardinality
 //!
 //! A [`Gate`] Drop-guard (the `differential.rs` mechanism) asserts, even on an
-//! early return, that the sweep processed exactly the pinned cardinality: 24
+//! early return, that the sweep processed exactly the pinned cardinality: 23
 //! S1-eligible corpus items (an independent re-derivation of the partition's
 //! eligible count) and 6 kernel-native goldens, and that every recorded outcome
 //! line was consumed.
@@ -101,7 +101,7 @@ mod tests
 
     /// The pinned count of S1-eligible corpus items (an independent
     /// re-derivation of the `kernel_corpus_partition` eligible count).
-    const ELIGIBLE_CARDINALITY: usize = 24;
+    const ELIGIBLE_CARDINALITY: usize = 23;
 
     /// The pinned count of reconstructed kernel-native C5 goldens.
     const GOLDEN_CARDINALITY: usize = 6;
