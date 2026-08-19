@@ -44,8 +44,8 @@ term: Value(
     ),
 )
 === origin ===
-[0] => 0..57 #3214368ceec9c0b6 [DefFunctionSugar]
-[0, 0] => 0..57 #3214368ceec9c0b6 [DefFunctionSugar]
+[0] => 0..57 #e4da21add6c8e17e [DefFunctionSugar]
+[0, 0] => 0..57 #e4da21add6c8e17e [DefFunctionSugar]
 [0, 0, 0] => 38..57 #4cd6960558d319d0 [SeqDiscard]
 [0, 0, 0, 0] => 38..46 #4cd6960558d319d0
 [0, 0, 0, 0, 0] => 38..43 #940694d11f9c6f1c [ForceSugar]

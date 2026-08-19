@@ -99,8 +99,8 @@ term: Value(
     ),
 )
 === origin ===
-[0] => 0..53 #8fad6bfc29e39608 [DefFunctionSugar]
-[0, 0] => 0..53 #8fad6bfc29e39608 [DefFunctionSugar]
+[0] => 0..53 #29ac27addc4064a0 [DefFunctionSugar]
+[0, 0] => 0..53 #29ac27addc4064a0 [DefFunctionSugar]
 [0, 0, 0] => 40..51 #3ec52f812f37bfec [BindHoist]
 [0, 0, 0, 0] => 45..50 #459a76071a9c2974 [OperatorElab]
 [0, 0, 0, 0, 0] => 45..50 #459a76071a9c2974 [OperatorElab]
@@ -110,8 +110,8 @@ term: Value(
 [0, 0, 0, 0, 1] => 49..50 #9c41d48539ce3034
 [0, 0, 0, 1] => 40..51 #3ec52f812f37bfec
 [0, 0, 0, 1, 0] => 44..51 #4666605f49e6de4d [BindHoist]
-[1] => 54..107 #8bf446438b3bd9e5 [DefFunctionSugar]
-[1, 0] => 54..107 #8bf446438b3bd9e5 [DefFunctionSugar]
+[1] => 54..107 #c6269dffd810dae1 [DefFunctionSugar]
+[1, 0] => 54..107 #c6269dffd810dae1 [DefFunctionSugar]
 [1, 0, 0] => 94..105 #16059d06989f9936 [BindHoist]
 [1, 0, 0, 0] => 99..104 #5b66a16e66ff0387 [OperatorElab]
 [1, 0, 0, 0, 0] => 99..104 #5b66a16e66ff0387 [OperatorElab]

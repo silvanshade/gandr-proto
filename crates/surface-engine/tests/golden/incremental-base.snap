@@ -63,8 +63,8 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #8fad6bfc29e39608 [DefFunctionSugar]
-[0, 0] => 0..53 #8fad6bfc29e39608 [DefFunctionSugar]
+[0] => 0..53 #29ac27addc4064a0 [DefFunctionSugar]
+[0, 0] => 0..53 #29ac27addc4064a0 [DefFunctionSugar]
 [0, 0, 0] => 40..51 #3ec52f812f37bfec [BindHoist]
 [0, 0, 0, 0] => 45..50 #459a76071a9c2974 [OperatorElab]
 [0, 0, 0, 0, 0] => 45..50 #459a76071a9c2974 [OperatorElab]
