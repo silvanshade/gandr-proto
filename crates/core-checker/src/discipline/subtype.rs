@@ -342,13 +342,13 @@ fn subtype_goals(
     // populate one changes behaviour.
     let mint = || {
         let mut nbe = Normalizer::new();
-        for (name, body) in ctx.definition_chain() {
+        for entry in ctx.definition_chain() {
             // A definition that fails to lower contributes no unfolding rule,
             // which is the same state as a sealed atom: conversion is finer
             // than it could have been, never wrong. Unfolding only merges
             // equivalence classes, so a missing rule can cost a refusal and can
             // never produce an acceptance the full environment would refute.
-            let _ = nbe.define(NameRef::from(name.as_str()), body.as_ref());
+            let _defined = nbe.define(NameRef::from(entry.0.as_str()), entry.1.as_ref());
         }
         nbe
     };

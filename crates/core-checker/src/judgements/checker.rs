@@ -1018,7 +1018,7 @@ impl Rec
                 arg: param,
                 res,
             } => {
-                self.value(unrc(arg.clone()), Dir::Check(param.as_ref().clone()))?;
+                self.value(unrc(Rc::clone(&arg)), Dir::Check(param.as_ref().clone()))?;
                 // Dependent application: the codomain is instantiated at the
                 // argument the head was applied to. A non-dependent arrow
                 // carries no binder and the codomain passes through unchanged,
@@ -2246,6 +2246,21 @@ impl Rec
 /// - panics: none.
 #[inline]
 #[must_use]
+pub fn base_diagonal_type<'source, N>(
+    motive: &WalkMotive,
+    base_binder: N,
+) -> CompType
+where
+    N: Into<NameRef<'source>>,
+{
+    let base_binder = base_binder.into();
+    let base_var = Value::var(base_binder);
+    let here_var = Value::here(base_var.clone());
+    let step = subst_comptype(&motive.body, NameRef::from(motive.x.as_str()), &base_var);
+    let step = subst_comptype(&step, NameRef::from(motive.y.as_str()), &base_var);
+    subst_comptype(&step, NameRef::from(motive.q.as_str()), &here_var)
+}
+
 /// Relocates a `Π` codomain from the type's binder into the lambda's.
 ///
 /// The checking rule for an unannotated lambda meets a codomain written in
@@ -2261,6 +2276,8 @@ impl Rec
 /// # Contract
 /// - ensures: returns a codomain in which the type's binder is spelled `name`.
 /// - panics: none.
+#[inline]
+#[must_use]
 pub fn relocate_codomain(
     binder: Option<&str>,
     name: &str,
@@ -2274,6 +2291,33 @@ pub fn relocate_codomain(
             &Value::Var(alloc::string::String::from(name)),
         ),
         | Some(_) | None => res.as_ref().clone(),
+    }
+}
+
+/// Instantiates a function type's codomain at the argument it was applied to.
+///
+/// The one operation that makes a dependent function type *dependent*, and the
+/// single place it happens — the term-level application rule and the
+/// argument-frame stack rule both arrive here, so the two cannot drift.
+///
+/// A non-dependent arrow carries no binder and its codomain passes through
+/// unchanged, which is the pre-`Π` behaviour byte for byte.
+///
+/// # Contract
+/// - ensures: returns `res` with the binder replaced by `arg`, or `res`
+///   unchanged when there is no binder.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn instantiate_codomain(
+    binder: Option<&str>,
+    res: &CompType,
+    arg: &Value,
+) -> CompType
+{
+    match binder {
+        | Some(bound) => subst_comptype(res, NameRef::from(bound), arg),
+        | None => res.clone(),
     }
 }
 
@@ -2296,52 +2340,14 @@ pub fn relocate_codomain(
 /// # Contract
 /// - ensures: returns `Some(name)` iff `name` occurs free in `res`.
 /// - panics: none.
-/// Instantiates a function type's codomain at the argument it was applied to.
-///
-/// The one operation that makes a dependent function type *dependent*, and the
-/// single place it happens — the term-level application rule and the
-/// argument-frame stack rule both arrive here, so the two cannot drift.
-///
-/// A non-dependent arrow carries no binder and its codomain passes through
-/// unchanged, which is the pre-`Π` behaviour byte for byte.
-///
-/// # Contract
-/// - ensures: returns `res` with the binder replaced by `arg`, or `res`
-///   unchanged when there is no binder.
-/// - panics: none.
-pub fn instantiate_codomain(
-    binder: Option<&str>,
-    res: &CompType,
-    arg: &Value,
-) -> CompType
-{
-    match binder {
-        | Some(bound) => subst_comptype(res, NameRef::from(bound), arg),
-        | None => res.clone(),
-    }
-}
-
+#[inline]
+#[must_use]
 pub fn inferred_binder(
     name: &str,
     res: &CompType,
 ) -> Option<alloc::string::String>
 {
     occurs_free_comptype(res, NameRef::from(name)).then(|| alloc::string::String::from(name))
-}
-
-pub fn base_diagonal_type<'source, N>(
-    motive: &WalkMotive,
-    base_binder: N,
-) -> CompType
-where
-    N: Into<NameRef<'source>>,
-{
-    let base_binder = base_binder.into();
-    let base_var = Value::var(base_binder);
-    let here_var = Value::here(base_var.clone());
-    let step = subst_comptype(&motive.body, NameRef::from(motive.x.as_str()), &base_var);
-    let step = subst_comptype(&step, NameRef::from(motive.y.as_str()), &base_var);
-    subst_comptype(&step, NameRef::from(motive.q.as_str()), &here_var)
 }
 
 /// Builds the identity eliminator's result type `C[a/x][b/y][p/q]` (ADR-76):
