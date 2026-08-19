@@ -1474,6 +1474,44 @@ mod tests
             );
         }
 
+        /// A **kinded** type component `type T : κ` declares a type family,
+        /// which the dependent-types rung elaborates. Until it does, the form
+        /// parses and is **declined by name**.
+        ///
+        /// Parsing it is the point. A member whose tail matches no alternative
+        /// lets the field consume what follows it and report nothing, so the
+        /// production exists precisely so the refusal can happen.
+        ///
+        /// **The separating case is the one that matters**, and it is why this
+        /// test carries two sources rather than one: `type Hom : Ob -> Ob ->
+        /// Type` and `type Hom = Ob -> Ob -> Type` differ by a single
+        /// character and put a type in the same field. Reading the first as the
+        /// second would bind `Hom` to a type its source does not state — an
+        /// engine limit recorded as author intent. So the manifest form must
+        /// still elaborate while the kinded one is refused, and a test that
+        /// only showed the refusal would not catch a classifier that refused
+        /// both.
+        #[test]
+        fn a_kinded_type_component_is_declined_by_name_and_a_manifest_one_is_not()
+        {
+            let kinded = "module M : #{ type Hom : Integer -> Integer } { }";
+            let error = lower_source(kinded.into())
+                .expect_err("a kinded type component is declined by name");
+            assert!(
+                matches!(error, LowerError::KindedTypeComponent { ref name, .. } if name == "Hom"),
+                "the decline names the component: {error:?}"
+            );
+            assert!(
+                error.to_string().contains("type family"),
+                "and says what the form is: {error}"
+            );
+
+            // The paired program, differing in one character.
+            let manifest = "module M : #{ type Hom = Integer } { }";
+            let _lowered = lower_source(manifest.into())
+                .expect("the manifest form still elaborates: the classifier separates them");
+        }
+
         /// A **bare** `type t` is the sealed component, and sealing is not this
         /// rung's. The decline names the component, and its siblings elaborate
         /// as though it were absent.

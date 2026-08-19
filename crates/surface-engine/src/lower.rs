@@ -429,6 +429,31 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// A signature's **kinded** type component `type T : κ` — a type *family*
+    /// declaration, whose elaboration is the dependent-types rung's.
+    ///
+    /// The form parses, and that is deliberate: a member whose tail matches no
+    /// alternative lets the field consume what follows it, which reports
+    /// nothing at all. Parsing it and refusing it by name is what makes the gap
+    /// visible.
+    ///
+    /// **It must not be read as the manifest form.** `type Hom : Ob → Ob →
+    /// Type` declares a family of arity two; `type Hom = Ob → Ob → Type` names
+    /// a single function type. Silently treating the first as the second would
+    /// bind `Hom` to a type its source does not state — an engine limit
+    /// recorded as author intent, which is the one thing degradation may never
+    /// do.
+    #[error(
+        "kinded type component `type {name} : …` is not yet elaborated at bytes {byte_range:?};          it declares a type family, which the dependent-types rung elaborates"
+    )]
+    KindedTypeComponent
+    {
+        /// The component's name.
+        name: String,
+        /// The component's byte range.
+        byte_range: SourceRange,
+    },
+
     /// An inline structural signature names a component the module body does
     /// not define.
     ///
@@ -6199,6 +6224,13 @@ impl Lowerer<'_>
         }
     }
 
+    /// The tile that separates a **kinded** type component from a manifest
+    /// one.
+    ///
+    /// Both forms carry a type in the same field, so the ascription colon is
+    /// the only thing that distinguishes `type T : κ` from `type T = τ`.
+    const KIND_ASCRIPTION: crate::boundary::TileSpelling = crate::boundary::TileSpelling(":");
+
     /// Lowers one inline structural signature `#{ … }` — value components and
     /// **manifest** type components, in source order.
     ///
@@ -6259,6 +6291,20 @@ impl Lowerer<'_>
                 });
             }
             if component.kind() == node_kinds::TYPE_COMPONENT {
+                // `type T : κ` and `type T = τ` both carry a type in the same
+                // field, so the separating tile is what tells them apart. Ask
+                // before reading the field, never after: reading first and
+                // classifying later is how a kind gets bound as a definition.
+                if bool::from(component.has_top_level_tile(Self::KIND_ASCRIPTION)) {
+                    let error = LowerError::KindedTypeComponent {
+                        name,
+                        byte_range: component.byte_range(),
+                    };
+                    if bool::from(self.total()) {
+                        continue;
+                    }
+                    return Err(error);
+                }
                 let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
                 else {
                     let error = LowerError::BareTypeComponent {
@@ -7544,6 +7590,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::EmptyBlock { ref byte_range }
         | LowerError::DanglingSignature { ref byte_range, .. }
         | LowerError::DuplicateModuleMember { ref byte_range, .. }
+        | LowerError::KindedTypeComponent { ref byte_range, .. }
         | LowerError::BareTypeComponent { ref byte_range, .. }
         | LowerError::MissingModuleComponent { ref byte_range, .. }
         | LowerError::UnknownModuleComponent { ref byte_range, .. }
@@ -7627,6 +7674,9 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::DuplicateModuleComponent { .. }
         | LowerError::ShadowedBuiltin { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::MODULE_DECLARATION,
+        },
+        | LowerError::KindedTypeComponent { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::TYPE_COMPONENT,
         },
         | LowerError::BareTypeComponent { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::TYPE_COMPONENT,

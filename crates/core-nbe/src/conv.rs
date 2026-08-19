@@ -1487,14 +1487,27 @@ pub enum FamilyUnfoldStep
 ///
 /// A policy returns a *preference order* over [`FamilyUnfoldStep`], and the
 /// engine tries every applicable step whatever the order says before it
-/// concludes that two types are not equal. So a policy governs **which side
-/// unfolds and how much work is spent getting there — never which pairs are
-/// related.** Swapping this function for any other total function of
-/// [`FamilyUnfoldContext`] changes cost and nothing else.
+/// concludes that two types are not equal. **Both halves are load-bearing and
+/// neither survives alone**: a policy that could *stop* the search would decide
+/// the relation, and an engine that did not exhaust would turn the order into a
+/// verdict. Either way two policies would decide two different definitional
+/// equalities.
 ///
-/// That is what makes the seam safe to have. A policy that could *stop* the
-/// search would be able to turn an acceptance into a refusal, and two policies
-/// would then decide two different definitional equalities.
+/// # What is invariant, stated exactly
+///
+/// **An acceptance is policy-invariant.** No policy can produce an acceptance
+/// another policy would refute, because an acceptance is witnessed by a
+/// derivation the order cannot manufacture. That is the property soundness
+/// needs, and it holds outright.
+///
+/// **A refusal by exhaustion is an availability fact, and it may vary by
+/// policy.** Relation-invariance is structural for the *unbounded* relation;
+/// under a finite step budget the order still influences which refusals are
+/// exhaustions rather than budget failures. So the honest claim is not that
+/// every policy decides the same relation — that is false under a budget — but
+/// that no policy can decide a *wrong acceptance*, with availability as the
+/// price. Availability, never soundness, is the standing shape of this
+/// engine's costs.
 ///
 /// # The default is the ratified pipeline's own rule
 ///

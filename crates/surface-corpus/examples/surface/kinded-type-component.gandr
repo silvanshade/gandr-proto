@@ -1,0 +1,30 @@
+// The kinded type component — the pathological pin for a form that parses and
+// is declined by name.
+//
+// GRADUATION: this block PARSES and its lowering DECLINES it. `type Hom : Ob ->
+// Ob -> Type` declares a type FAMILY of arity two, which the dependent-types
+// rung elaborates; until it does, the lowerer refuses it by name
+// (`LowerError::KindedTypeComponent`).
+//
+// WHY THE PIN EXISTS. The form previously had no grammar production at all, so
+// a signature member whose tail matched no alternative let the field consume
+// what followed it. A decline with no corpus witness silently regresses into a
+// drop later and nothing catches it, so the pin is the witness that the refusal
+// is still a refusal.
+//
+// WHAT SEPARATES THE TWO FORMS. `type T : κ` and `type T = τ` differ by one
+// character and put a type in the same field. Reading the first as the second
+// would bind `T` to a type its source does not state — an engine limit recorded
+// as author intent. The manifest component below must therefore still
+// elaborate while the kinded one is refused; a gate that refused both would
+// pass a test written only against the refusal.
+//
+// Parse-only here (the PBG zero-obligation sweep is this tree's only gate); the
+// decline and its separating pair are witnessed by `surface-engine`
+// `tests/acceptance.rs`.
+
+// The kinded component: a type family, declined by name.
+module Indexed : #{ type Hom : Integer -> Integer } { }
+
+// The manifest component, one character apart, which still elaborates.
+module Manifest : #{ type Hom = Integer } { }

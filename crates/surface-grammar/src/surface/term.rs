@@ -394,13 +394,24 @@ fn module_signature() -> Regex
 /// admitting them in one comma list costs no lookahead, and the manifest tail
 /// is one optional `=`.
 ///
-/// **Both type forms parse and they mean different things.** A manifest
-/// component names the type it equals, so it introduces no abstraction and its
-/// occurrences expand to that type. An abstract component is what opaque
-/// ascription mints an atom for, so its meaning is sealing's, and the
-/// elaborator declines it by name until sealing lands: parsing it and refusing
-/// it is what makes the gap visible, where not parsing it would read as a
-/// syntax error about the wrong thing.
+/// **All three type forms parse and they mean different things.** A manifest
+/// component `type T = τ` names the type it equals, so it introduces no
+/// abstraction and its occurrences expand to that type. A bare `type T` is what
+/// opaque ascription mints an atom for, so its meaning is sealing's. A
+/// **kinded** component `type T : κ` declares a type *family* — `type Hom : Ob
+/// → Ob → Type` is the indexed sort the higher-cells weak category needs, and
+/// its occurrences are applications `Hom(a, b)` rather than expansions.
+///
+/// Parsing a form the elaborator cannot yet hold, and refusing it there, is
+/// what makes the gap visible. Not parsing it is worse than useless: the
+/// recovery reads as a syntax error about the wrong thing, and — as the kinded
+/// form demonstrated before it was admitted here — a member whose tail does not
+/// match any alternative lets the field consume the rest of the source and
+/// still bind, which reports nothing at all.
+///
+/// The kind is an ordinary type, because that is what a kind looks like in this
+/// grammar: an arrow spine ending in `Type`. Reusing `Sort::Type` for it costs
+/// no new production and keeps one parser for one syntax.
 fn module_signature_field() -> Regex
 {
     alt([
@@ -408,7 +419,10 @@ fn module_signature_field() -> Regex
         seq([
             t(TileLabel("type")),
             t(TileLabel("type_identifier")),
-            opt(seq([t(TileLabel("=")), h(Sort::Type)])),
+            opt(alt([
+                seq([t(TileLabel("=")), h(Sort::Type)]),
+                seq([t(TileLabel(":")), h(Sort::Type)]),
+            ])),
         ]),
     ])
 }
