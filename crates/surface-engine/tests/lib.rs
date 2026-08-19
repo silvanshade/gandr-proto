@@ -47,6 +47,8 @@ mod live_match;
 #[cfg(test)]
 mod matrix;
 #[cfg(test)]
+mod modules;
+#[cfg(test)]
 mod namespace;
 #[cfg(test)]
 mod origin_identity;

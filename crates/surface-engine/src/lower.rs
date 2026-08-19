@@ -5991,6 +5991,7 @@ impl Lowerer<'_>
         path: NamePath,
     ) -> LowerResult<ModuleFrame<'tree>>
     {
+        Self::refuse_unread_module(node)?;
         let ascription = self.module_ascription(node, explicit)?;
         let stratum = self.modules.len();
         self.modules.push(ModuleStratum {
@@ -6008,6 +6009,63 @@ impl Lowerer<'_>
             members: node.children_by_field_name(node_kinds::FIELD_MEMBER),
             cursor: 0,
             pending: None,
+        })
+    }
+
+    /// Refuses a module declaration whose body the melder could not read.
+    ///
+    /// **A module whose subtree needed repair, with no member carrying that
+    /// repair, was not read** — the repair sits where the member walk cannot
+    /// see it, so `children_by_field_name` reports the members it recognized
+    /// rather than the members the author wrote. Lowering that as a module is
+    /// the capability-boundary violation in its worst form: an unreadable body
+    /// with a component the grammar has no production for surfaces no members
+    /// at all, so the declaration binds as the **empty record**, cleanly, with
+    /// no diagnostic and no goal — and every declaration the swallowed region
+    /// covers is simply gone from the program.
+    ///
+    /// The engine may report a construct it could not read as a decline; it may
+    /// not report it as a construct it read. So this refuses, and the goal the
+    /// refusal mints names the span that was not read.
+    ///
+    /// **The repair-carrying member case is deliberately left alone.** Where a
+    /// member itself carries the unread region — an unclassified member inside
+    /// an otherwise readable body — the member walk already reaches it and
+    /// declines it by name, at the member's own span, which is the more precise
+    /// report of the same fact.
+    ///
+    /// # Contract
+    /// - ensures: a declaration whose subtree holds no repair region is
+    ///   untouched, so a module the melder read completely lowers exactly as it
+    ///   did before this check existed.
+    /// - fails: [`LowerError::Unsupported`] naming the declaration and its span
+    ///   when the repair region is outside every recognized member; total mode
+    ///   turns that into the item's hole, so the outcome is holey and a goal
+    ///   carries the span.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the check has three outcomes separated by two
+    ///   independent facts, whether the subtree needed repair and whether a
+    ///   member carries it, so the witnesses are one readable module, one whose
+    ///   unread region is a member, and one whose unread region is not.
+    ///   Dropping the member conjunct would move the precise member-level
+    ///   report to the declaration; dropping the check would restore the silent
+    ///   empty record.
+    /// - witness: `modules::tests::an_unread_module_body_is_refused_not_emptied`
+    /// - witness: `modules::tests::an_unread_member_keeps_its_own_report`
+    fn refuse_unread_module(node: SynNode<'_>) -> LowerResult<()>
+    {
+        if !bool::from(node.has_error()) {
+            return Ok(());
+        }
+        let members = node.children_by_field_name(node_kinds::FIELD_MEMBER);
+        if members.iter().any(|member| bool::from(member.has_error())) {
+            return Ok(());
+        }
+        Err(LowerError::Unsupported {
+            kind: node_kinds::MODULE_DECLARATION,
+            byte_range: node.byte_range(),
         })
     }
 
