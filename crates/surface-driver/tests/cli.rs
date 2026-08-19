@@ -241,7 +241,7 @@ mod tests
     #[test]
     fn piped_value_prints_a_repl_transcript()
     {
-        let output = drive_stdin(b"42\n");
+        let output = drive_stdin(StdinBytes(b"42\n"));
         assert_eq!(
             status_of(&output),
             ProcessStatus(Some(0_i32)),
@@ -310,8 +310,12 @@ mod tests
         );
     }
 
+    /// Bytes offered on the driver's standard input.
+    #[repr(transparent)]
+    struct StdinBytes<'a>(&'a [u8]);
+
     /// Run the built driver with `input` on standard input and no operands.
-    fn drive_stdin(input: &[u8]) -> Output
+    fn drive_stdin(input: StdinBytes<'_>) -> Output
     {
         let mut child = driver::<[&str; 0]>([])
             .stdin(std::process::Stdio::piped())
@@ -321,7 +325,7 @@ mod tests
             .expect("the built driver must be spawnable");
         let stdin = child.stdin.as_mut().expect("piped stdin is present");
         stdin
-            .write_all(input)
+            .write_all(input.0)
             .expect("the driver must accept the batch");
         child.wait_with_output().expect("the driver must finish")
     }
