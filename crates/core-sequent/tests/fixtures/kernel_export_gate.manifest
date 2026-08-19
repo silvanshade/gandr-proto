@@ -10,6 +10,7 @@ model/10-strings.gandr	0	43	2	1	2	78ec6825087e19e4c300b0e8b471b49048f07a453ac3a6
 model/29-modules.gandr	0	28	2	1	2	640b51e6bbb7ac543f983bca3efb0cb6a9c3512ca32a072be000557d4927fd5a
 model/attributes/module-metadata.gandr	0	22	2	1	2	176990eefcc731c7f579fafa86ef17140dba066935251302ca4bc190392725f8
 model/attributes/query-via-report.gandr	0	30	2	1	2	d73b19b317940a9f6c057f804cb2a09b9f8d614ec13943fec345ca0610104146
+model/higher-cells/cat-shape-setoids.gandr	6	27	2	1	2	fb8a245fd7b03e219a09ea4586925043b744c23bbdd31948502215ce1a4cc5c6
 model/sequent/sequent-focusing.gandr	0	30	6	3	6	d91e4c4238a42b7ba6817735195e3b14158df1ada8186894a6e2a5a4ea798744
 pathological/attributes/duplicate-attribute.gandr	0	28	2	1	2	cb3f61c9b380bf7042b558395bb0b479751d8e4e756a3c412243a11ec223afbe
 pathological/attributes/effectful-payload.gandr	0	28	2	1	2	cb3f61c9b380bf7042b558395bb0b479751d8e4e756a3c412243a11ec223afbe

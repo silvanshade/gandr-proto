@@ -1,0 +1,11 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/higher-cells/cat-shape-bicartesian.gandr
+; source-b3sum: 9b738634308f988310f7949c1a7dfb08f200394a243855c5ff99bd4a0a7a4b44
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 6
+Ret(Thunk(Omega, Abs("a", None, DataCase(Var("a"), []))))
+Ret(Thunk(Omega, Abs("a", None, Ret(Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 0, payload: Unit }))))
+Ret(Thunk(Omega, Abs("x", None, DataCase(Var("x"), [("%tmp0", Split { scrut: Var("%tmp0"), fst_name: "l", snd_name: "r", motive: None, body: Ret(Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 0, payload: Pair(Int(0), Int(0)) }) })]))))
+Ret(Thunk(Omega, Abs("x", None, DataCase(Var("x"), [("a", Ret(Hole(0))), ("b", Ret(Hole(1)))]))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("h", None, DataCase(Var("h"), []))))))
+Ret(Thunk(Omega, App(Force(Var("empty_id")), Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 0, payload: Unit })))

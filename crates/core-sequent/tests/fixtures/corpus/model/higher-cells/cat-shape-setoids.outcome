@@ -1,0 +1,14 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/higher-cells/cat-shape-setoids.gandr
+; source-b3sum: ac889822717d791cfa1a9285653421fe98eb2e2497be68641c0887fd0ba81774
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 9
+Ret(Record([]))
+Ret(Thunk(Omega, Abs("a", None, Abs("x", None, Ret(Var("x"))))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y")))))))))))
+Ret(Hole(0))
+Ret(Hole(1))
+Ret(Hole(2))
+Ret(Int(1))
+Ret(Var("marker"))
+Ret(Record([]))

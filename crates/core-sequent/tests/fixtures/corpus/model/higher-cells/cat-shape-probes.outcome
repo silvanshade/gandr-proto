@@ -1,0 +1,10 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/higher-cells/cat-shape-probes.gandr
+; source-b3sum: c5ab8a8161c778a77e436adedc4cc5a2927f0a84d07d4b35f8c2a159516b9d9a
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 5
+Ret(Thunk(Omega, Abs("a", None, Abs("x", None, Ret(Here(Var("x")))))))
+Ret(Thunk(Omega, Abs("f", None, Ret(Here(Var("f"))))))
+Ret(Thunk(Omega, Abs("n", None, Bind(App(App(Force(Var("add")), Var("n")), Int(1)), "%tmp0", Ret(Here(Var("%tmp0")))))))
+Ret(Thunk(Omega, Abs("n", None, Abs("w", None, Ret(Var("w"))))))
+Ret(Thunk(Omega, Abs("w", None, Ret(Var("w")))))

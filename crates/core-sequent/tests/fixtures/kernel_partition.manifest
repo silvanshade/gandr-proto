@@ -13,7 +13,7 @@
 ; class not-typeable: 6
 ; class open-free-name: 90
 ; class package: 8
-; class structural-stock: 39
+; class structural-stock: 40
 ; columns: <source>\t<item-index>\t<class>
 model/01-first-computation.gandr	0	eligible
 model/02-definitions.gandr	0	eligible
@@ -79,7 +79,7 @@ model/26-env-guard-exit.gandr	0	effects-control
 model/27-paired-signatures.gandr	0	open-free-name
 model/27-paired-signatures.gandr	1	open-free-name
 model/27-paired-signatures.gandr	2	open-free-name
-model/28-regex-and-path-builtins.gandr	0	structural-stock
+model/28-regex-and-path-builtins.gandr	0	open-free-name
 model/28-regex-and-path-builtins.gandr	1	open-free-name
 model/28-regex-and-path-builtins.gandr	2	open-free-name
 model/28-regex-and-path-builtins.gandr	3	open-free-name
@@ -131,6 +131,27 @@ model/data/data-nested-type.gandr	0	structural-stock
 model/data/data-nested-type.gandr	1	open-free-name
 model/data/data-record.gandr	0	declared-data
 model/data/data-record.gandr	1	open-free-name
+model/higher-cells/cat-shape-bicartesian.gandr	0	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	1	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	2	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	3	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	4	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	5	open-free-name
+model/higher-cells/cat-shape-glob.gandr	0	hole-unknown
+model/higher-cells/cat-shape-probes.gandr	0	identity
+model/higher-cells/cat-shape-probes.gandr	1	identity
+model/higher-cells/cat-shape-probes.gandr	2	open-free-name
+model/higher-cells/cat-shape-probes.gandr	3	not-typeable
+model/higher-cells/cat-shape-probes.gandr	4	not-typeable
+model/higher-cells/cat-shape-setoids.gandr	0	structural-stock
+model/higher-cells/cat-shape-setoids.gandr	1	not-typeable
+model/higher-cells/cat-shape-setoids.gandr	2	not-typeable
+model/higher-cells/cat-shape-setoids.gandr	3	hole-unknown
+model/higher-cells/cat-shape-setoids.gandr	4	hole-unknown
+model/higher-cells/cat-shape-setoids.gandr	5	hole-unknown
+model/higher-cells/cat-shape-setoids.gandr	6	eligible
+model/higher-cells/cat-shape-setoids.gandr	7	open-free-name
+model/higher-cells/cat-shape-setoids.gandr	8	structural-stock
 model/identity/back.gandr	0	identity
 model/identity/back.gandr	1	identity
 model/identity/cong-thunk.gandr	0	open-free-name
