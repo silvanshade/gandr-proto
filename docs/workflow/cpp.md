@@ -26,7 +26,13 @@ Editor and CI both read the same two files; there is no second copy.
 - **Warnings are errors.** `-Wall -Wextra -Wconversion -Wsign-conversion -Werror` on every target.
 - **One keg.** The C++ compiler and the MLIR/LLVM libraries come from the **same install prefix**, verified at configure time; a prefix or version mismatch is a fatal configure error, not a warning.
   An RTTI-enabled keg linked by a mismatched host is an ODR hazard, which is why this is checked rather than trusted.
-- **MLIR is found, not fetched.** The toolchain is a discovered installation; the conditional `compile-host:wall` lane on `gate:merge` owns when its absence is a lawful skip ([the compiled-runtime wall rule](../../runtime/compile-host/README.md)).
+- **MLIR is pinned** (owner ruling, 2026-08-19): the host builds against one exact MLIR/LLVM revision recorded in the tree, and **no new host design leans on the discovered-toolchain posture** — the run-time C ABI lookup, the optional-absence wall skip, and the "whatever keg is installed" reading are all transitional.
+  The pin mechanism follows the Mojo compiler's (KGEN): an exact `llvm-project` revision with its sha256, fetched as a pinned **archive** and built as part of the project's own build, updated only through a dedicated update tool.
+  A submodule is rejected — the repository is massive and the archive fetch is far faster.
+  Local modifications ride a curated patch set maintained as a Stacked Git (`stg`) series, applied over the fetched archive.
+  `llvmorg-22.1.8` is the candidate pin.
+  Until the source-built pin lands, the local bootstrap satisfies the pin from the Homebrew keg exactly as the `ss-56o.1` spike's macOS toolchain file does — vanilla-clang discovery, the compiler/MLIR keg-match as a **fatal** configure check, the `CMAKE_CXX_STDLIB_MODULES_JSON` override for `import std` — with the discovered version checked against the pinned one rather than accepted as found.
+  The conditional `compile-host:wall` lane on `gate:merge` owns the lawful-skip rule for checkouts without the toolchain ([the compiled-runtime wall rule](../../runtime/compile-host/README.md)); the pin's execution retires the skip (`GANDR_COMPILE_HOST_STRICT=1` becomes the default posture).
 
 ## Modules first
 
