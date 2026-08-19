@@ -49,6 +49,7 @@
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 
+use crate::boundary::FreeOccurrence;
 use crate::boundary::NameRef;
 use crate::effect::EffectRow;
 use crate::grade::Grade;
@@ -168,7 +169,7 @@ where
 pub fn occurs_free_comptype<'source, N>(
     ty: &CompType,
     name: N,
-) -> bool
+) -> FreeOccurrence
 where
     N: Into<NameRef<'source>> + Copy,
 {
@@ -177,7 +178,7 @@ where
     // rather than writing a second traversal is what keeps the two answers from
     // drifting apart: the shadowing discipline is stated once.
     let probe = Value::Var(alloc::string::String::from(OCCURRENCE_PROBE));
-    subst_comptype(ty, name, &probe) != *ty
+    FreeOccurrence::from(subst_comptype(ty, name, &probe) != *ty)
 }
 
 /// The variable name [`occurs_free_comptype`] substitutes in to detect an
@@ -634,7 +635,7 @@ mod tests
         let shadowed = CompType::pi("x", ValueType::Unit, inner);
 
         assert!(
-            !occurs_free_comptype(&shadowed, NameRef::from("x")),
+            !bool::from(occurs_free_comptype(&shadowed, NameRef::from("x"))),
             "a Pi binder of the queried name shadows every occurrence in its codomain"
         );
     }
@@ -657,11 +658,11 @@ mod tests
         let dependent = CompType::pi("b", ValueType::Unit, codomain);
 
         assert!(
-            occurs_free_comptype(&dependent, NameRef::from("a")),
+            bool::from(occurs_free_comptype(&dependent, NameRef::from("a"))),
             "a free endpoint occurrence is visible through an unrelated binder"
         );
         assert!(
-            !occurs_free_comptype(&dependent, NameRef::from("b")),
+            !bool::from(occurs_free_comptype(&dependent, NameRef::from("b"))),
             "the bound variable itself does not occur in this codomain"
         );
     }

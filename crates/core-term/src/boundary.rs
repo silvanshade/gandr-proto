@@ -394,9 +394,19 @@ copy_wrapper!(
     "Definitional height of a definition body in the unfolding order."
 );
 copy_wrapper!(
+    FreeOccurrence,
+    bool,
+    "Whether a variable occurs free inside a type."
+);
+copy_wrapper!(
     GuardDecision,
     bool,
     "Whether a pair of semantic guard words settles a comparison outright."
+);
+copy_wrapper!(
+    FamilyArity,
+    usize,
+    "Number of parameters a type family abstracts."
 );
 copy_wrapper!(
     HoleOccurrence,

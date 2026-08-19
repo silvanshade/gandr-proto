@@ -2347,7 +2347,8 @@ pub fn inferred_binder(
     res: &CompType,
 ) -> Option<alloc::string::String>
 {
-    occurs_free_comptype(res, NameRef::from(name)).then(|| alloc::string::String::from(name))
+    bool::from(occurs_free_comptype(res, NameRef::from(name)))
+        .then(|| alloc::string::String::from(name))
 }
 
 /// Builds the identity eliminator's result type `C[a/x][b/y][p/q]` (ADR-76):

@@ -687,10 +687,10 @@ fn lower_type<'core>(
                     // question is what separates the two, and it is asked here
                     // rather than assumed either way.
                     if binder.as_deref().is_some_and(|bound| {
-                        gandr_core_term::identity::occurs_free_comptype(
+                        bool::from(gandr_core_term::identity::occurs_free_comptype(
                             codomain.as_ref(),
                             gandr_core_term::boundary::NameRef::from(bound),
-                        )
+                        ))
                     }) {
                         return Err(BridgeRejection::DependentFunctionType);
                     }

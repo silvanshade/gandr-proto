@@ -38,6 +38,7 @@ use alloc::vec::Vec;
 
 use crate::boundary::DefinitionCount;
 use crate::boundary::DefinitionHeightLevel;
+use crate::boundary::FamilyArity;
 use crate::boundary::NameRef;
 use crate::boundary::ScopeDepth;
 use crate::identity::subst_valuetype;
@@ -547,10 +548,10 @@ impl TypeDefinition
     pub fn instantiate(
         &self,
         args: &[Rc<Value>],
-    ) -> Result<ValueType, usize>
+    ) -> Result<ValueType, FamilyArity>
     {
         if args.len() != self.params.len() {
-            return Err(self.params.len());
+            return Err(FamilyArity::from(self.params.len()));
         }
         let mut body = self.body.as_ref().clone();
         for (param, arg) in self.params.iter().zip(args.iter()) {

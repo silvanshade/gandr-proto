@@ -1891,11 +1891,11 @@ fn align_binders(
         },
         // One side quantifies and the other does not: they agree exactly when
         // the quantification is vacuous.
-        | (Some(left), None) => {
-            (!occurs_free_comptype(left_res, NameRef::from(left))).then(|| Rc::clone(right_res))
-        },
+        | (Some(left), None) => (!bool::from(occurs_free_comptype(left_res, NameRef::from(left))))
+            .then(|| Rc::clone(right_res)),
         | (None, Some(right)) => {
-            (!occurs_free_comptype(right_res, NameRef::from(right))).then(|| Rc::clone(right_res))
+            (!bool::from(occurs_free_comptype(right_res, NameRef::from(right))))
+                .then(|| Rc::clone(right_res))
         },
     }
 }
