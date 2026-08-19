@@ -44,12 +44,37 @@ data HomPlus(l : Type, r : Type, x : SumOb(l, r), y : SumOb(l, r)) : Type {
   HomInr : (c : r, d : r, g : Integer) --> HomPlus(l, r, Inr(c), Inr(d));
 }
 
+data ProdHom(a : PairOb(Integer, String), b : PairOb(Integer, String)) : Type {
+  PairHom : (f : Integer, g : Integer) --> ProdHom(a, b);
+}
+
+def prod_id(x : PairOb(Integer, String)) -> F ProdHom(x, x) {
+  case x {
+    Pair(l, r) => ret PairHom(0, 0)
+  }
+}
+
+def coprod_id(x : SumOb(Integer, String)) -> F HomPlus(Integer, String, x, x) {
+  case x {
+    Inl(a) => ret HomInl(a, a, 0),
+    Inr(b) => ret HomInr(b, b, 0)
+  }
+}
+
+def mixed_elim(a : Integer, b : String, h : HomPlus(Integer, String, Inl(a), Inr(b))) -> F Integer {
+  case h {}
+}
+
 def empty_probe() -> F EmptyHom(Star, Star) {
   empty_id(Star)
 }
 
-// The harness checks. empty_id is the empty match on a type with no
-// constructors. HomPlus states the coproduct family; it is not yet a
-// bound definition.
+// The harness checks. HomPlus elaborates. coprod_id binds with constructor
+// goals. mixed_elim binds but its indices lowered to Unknown; that is not
+// evidence the mixed hom is empty.
+//@ expect: goal
 //@ expect-def: empty_id
 //@ expect-def: unit_id
+//@ expect-def: prod_id
+//@ expect-def: coprod_id
+//@ expect-def: mixed_elim
