@@ -22,32 +22,41 @@
 #[cfg(test)]
 mod tests
 {
-    use std::fs;
-    use std::path::Path;
 
     use gandr_surface_engine::session::ItemOutcome;
     use gandr_surface_engine::session::Session;
 
-    /// The setoid instance, relative to the corpus crate root.
-    const SETOIDS: &str = "examples/model/higher-cells/cat-shape-setoids.gandr";
-
-    /// The setoid instance as a path, for the helper below.
-    fn setoids() -> &'static Path
-    {
-        Path::new(SETOIDS)
-    }
+    /// The category of discrete setoids: an object is a type, a hom is a
+    /// function, and equality is `Path`.
+    ///
+    /// The source is carried here rather than read from the corpus because the
+    /// corpus gate admits only programs the molder can mold, and these forms
+    /// are not among them. The verification does not depend on where the text
+    /// lives.
+    ///
+    /// **The index arguments are verified by hand against `comp`'s
+    /// declaration**, and they have to be: a `Path`'s endpoints are converted
+    /// but never typed, so any index assignment elaborates. The left unit law
+    /// is `comp(a, a, b, id(a), f)`, because `id(a) : a -> F a` fixes the
+    /// middle index; the right is `comp(a, b, b, f, id(b))`.
+    const FLAGSHIP: &str = concat!(
+        "def id(a: Type, x: a) -> F a { ret x }\n",
+        "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), g: U[\u{3c9}] (b -> F c), \
+         x: a) -> F c { run y <- f(x); g(y) }\n",
+        "def unitL(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> F(Path((U(a -> F b)), thunk { \
+         comp(a, a, b, thunk { id(a) }, f) }, f)) { ret here(f) }\n",
+        "def unitR(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> F(Path((U(a -> F b)), thunk { \
+         comp(a, b, b, f, thunk { id(b) }) }, f)) { ret here(f) }\n",
+    );
 
     /// Elaborates `path` and returns each definition's name beside the debug
     /// rendering of its type, printing the whole submission for diagnosis.
-    fn elaborated_definitions(path: &Path) -> Vec<(String, String)>
+    fn elaborated_definitions() -> Vec<(String, String)>
     {
-        let text = fs::read_to_string(path).expect("example must be readable");
         let mut session = Session::new();
-        let submission = session
-            .submit(text.as_str())
-            .expect("lowering must be total");
+        let submission = session.submit(FLAGSHIP).expect("lowering must be total");
         let mut definitions = Vec::new();
-        println!("=== {} ===", path.display());
+        println!("=== the setoid instance ===");
         for (index, outcome) in submission.outcomes.iter().enumerate() {
             match *outcome {
                 | ItemOutcome::Definition {
@@ -173,34 +182,64 @@ mod tests
         }
     }
 
-    /// **The left unit law of the category of setoids is a bound definition.**
+    /// **Both unit laws of the category of setoids are bound definitions.**
     ///
-    /// This is the durable half and the reason the harness exists. The law
+    /// This is the durable half and the reason the harness exists. Each law
     /// states an identity between an application of a defined operation and a
-    /// variable, and it is *checked* — delta across the definition, beta
-    /// through the application spine, thunk eta at the end, and the definition
-    /// chain reaching the item that needs it, all composing.
+    /// variable, and both are *checked*: delta across the definition, beta
+    /// through the application spine, thunk eta at the `U` side, the returner's
+    /// right unit at the `F` side, and the definition chain reaching the item
+    /// that needs it, all composing.
     ///
-    /// It deliberately does **not** assert anything about the right unit law,
-    /// which refuses today for a reason that is expected to stop holding: it
-    /// bottoms out at the returner's right unit, and a test pinning today's
-    /// refusal would become a false claim the moment that rule lands.
+    /// The two laws are not symmetric in what they require, which is why both
+    /// are asserted. The left law puts the identity first, so its bind fires on
+    /// a returner and reduces without the `F` side at all. The right law puts
+    /// it second, leaving `M >>= ret`, so it needs the returner's right unit —
+    /// and needs that rule to read a sequence's triviality from its normal form
+    /// rather than its stored body, because the triviality is only visible
+    /// after a definition unfolds.
+    ///
+    /// **What this does not establish**: that either law's *statement* is
+    /// well-formed. A `Path`'s endpoints are converted and never typed, so the
+    /// indices in the source are checked by hand and by nothing else.
     #[test]
-    fn the_left_unit_law_is_checked()
+    fn both_unit_laws_are_checked()
     {
-        let bound = elaborated_definitions(setoids())
+        let bound: Vec<String> = elaborated_definitions()
             .into_iter()
-            .any(|(name, _rendered)| name == "unitL");
-        assert!(
-            bound,
-            "the left unit law must be a bound definition rather than a type error"
-        );
+            .map(|(name, _rendered)| name)
+            .collect();
+        for law in ["unitL", "unitR"] {
+            assert!(
+                bound.iter().any(|name| name == law),
+                "the unit law `{law}` must be a bound definition rather than a type error; bound: \
+                 {bound:?}"
+            );
+        }
+    }
+
+    /// No item of the instance carries a gradual unknown.
+    ///
+    /// The unknown is consistent with everything, so a law accepted at a type
+    /// mentioning one is inhabited trivially rather than proved. An earlier
+    /// spelling of this instance did exactly that: it accepted with a result
+    /// type of `F(Unknown)`.
+    #[test]
+    fn the_instance_carries_no_gradual_unknown()
+    {
+        for (name, rendered) in elaborated_definitions() {
+            assert!(
+                !rendered.contains("Unknown"),
+                "`{name}` must elaborate with no gradual unknown, because anything checked at a \
+                 type mentioning one is consistent with everything; got {rendered}"
+            );
+        }
     }
 
     #[test]
     fn the_setoid_operations_are_fully_written()
     {
-        for (name, rendered) in elaborated_definitions(setoids()) {
+        for (name, rendered) in elaborated_definitions() {
             if name != "id" && name != "comp" {
                 continue;
             }

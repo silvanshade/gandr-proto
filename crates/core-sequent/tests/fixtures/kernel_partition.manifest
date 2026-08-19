@@ -1,17 +1,17 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 254
-; corpus-fixtures-b3sum: 72af907b1f8c4df3033405dc9000c7ae1df8ffa1f2fa382062dc2657fbe66f7b
+; items: 243
+; corpus-fixtures-b3sum: 76eb20dfbe06635589d784ef38db9a50cca01d5e1cbafa85ce52736086934b37
 ; class declared-data: 23
 ; class effects-control: 11
-; class eligible: 24
-; class hole-unknown: 20
-; class identity: 14
+; class eligible: 23
+; class hole-unknown: 16
+; class identity: 12
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 10
-; class open-free-name: 94
+; class not-typeable: 8
+; class open-free-name: 92
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -137,22 +137,11 @@ model/higher-cells/cat-shape-bicartesian.gandr	2	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	3	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	4	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	5	open-free-name
-model/higher-cells/cat-shape-glob.gandr	0	hole-unknown
 model/higher-cells/cat-shape-probes.gandr	0	identity
 model/higher-cells/cat-shape-probes.gandr	1	identity
 model/higher-cells/cat-shape-probes.gandr	2	open-free-name
 model/higher-cells/cat-shape-probes.gandr	3	not-typeable
 model/higher-cells/cat-shape-probes.gandr	4	not-typeable
-model/higher-cells/cat-shape-setoids.gandr	0	hole-unknown
-model/higher-cells/cat-shape-setoids.gandr	1	not-typeable
-model/higher-cells/cat-shape-setoids.gandr	2	not-typeable
-model/higher-cells/cat-shape-setoids.gandr	3	identity
-model/higher-cells/cat-shape-setoids.gandr	4	identity
-model/higher-cells/cat-shape-setoids.gandr	5	open-free-name
-model/higher-cells/cat-shape-setoids.gandr	6	hole-unknown
-model/higher-cells/cat-shape-setoids.gandr	7	eligible
-model/higher-cells/cat-shape-setoids.gandr	8	open-free-name
-model/higher-cells/cat-shape-setoids.gandr	9	hole-unknown
 model/identity/back.gandr	0	identity
 model/identity/back.gandr	1	identity
 model/identity/cong-thunk.gandr	0	open-free-name

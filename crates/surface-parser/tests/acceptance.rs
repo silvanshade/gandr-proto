@@ -829,16 +829,24 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // type whose endpoints are applications, which used to degrade its whole
     // declared type to the gradual unknown, and the one whose endpoint applies
     // a name defined nowhere, which used to be accepted outright.
+    // The higher-cells rung adds two under `higher-cells/`: the bicartesian
+    // structure of CAT as further CatShape instances, and the isolated probes
+    // for the CatShape neighbourhood, where each form is its own item so a
+    // swallow or a silent gradual unknown cannot hide behind a sibling. The
+    // rung's remaining programs — the shape presentation, its surface twin, the
+    // glob instance, and the setoid instance — are held out of the corpus while
+    // the molder does not reach sign blocks, indexed sorts, and `Path` types.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        132, base_count,
-        "the model + pathological trees are 132 files (57 model + 75 pathological, including the two description-member fixtures)"
+        134, base_count,
+        "the model + pathological trees are 134 files (59 model + 75 pathological, including the \
+         two description-member fixtures)"
     );
     assert_eq!(
-        132, base_clean,
-        "all 132 model + pathological files mold clean"
+        134, base_clean,
+        "all 134 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");
