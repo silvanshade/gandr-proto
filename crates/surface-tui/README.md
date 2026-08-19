@@ -10,12 +10,14 @@ This crate does not parse, lower, type, or mark.
 
 - A full-screen face on `gandr tui`.
 - A smoke face on `gandr tui --smoke` that draws one frame on a test backend and prints a launch note.
-- Input, transcript, and goals panes over the shared loop.
+- A `HlRole` style map whose grouping matches the language-server face's `token_of_role`.
+  An empty `source_hl` draws plain text.
+  There is no indicator that highlighting is unwired.
 
 ## Planned but absent
 
-- Semantic-token highlighting.
-  The highlighter consumes `HlSpan` produced by the language-server face.
+- Report-carried highlight spans.
+  The view styles `HlRole` and does not speak the LSP integer legend.
 - Goal-directed completion.
 - PTY job panes.
 

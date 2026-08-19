@@ -113,7 +113,7 @@ fn run_on(mut terminal: Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<(
         }
         let mapped = match key.code {
             | KeyCode::Esc => Some(AppKey::Quit),
-            | KeyCode::Char('q') if app.input().is_empty() => Some(AppKey::Quit),
+            | KeyCode::Char('q') if app.input.is_empty() => Some(AppKey::Quit),
             | KeyCode::Enter => Some(AppKey::Enter),
             | KeyCode::Backspace => Some(AppKey::Backspace),
             | KeyCode::Char(ch) => Some(AppKey::Char(InputChar::from(ch))),
