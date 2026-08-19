@@ -1,17 +1,17 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 225
-; corpus-fixtures-b3sum: 9c640e32a24a8ab37a25b0ddb01d705b3d08fe26d83835086bdc3068fa3c65d7
-; class declared-data: 13
+; items: 243
+; corpus-fixtures-b3sum: 405b2b317a00761deda0b094898daad8665db3e5cba32fcdd621613883172604
+; class declared-data: 23
 ; class effects-control: 11
 ; class eligible: 23
-; class hole-unknown: 15
-; class identity: 10
+; class hole-unknown: 16
+; class identity: 12
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 6
-; class open-free-name: 89
+; class not-typeable: 8
+; class open-free-name: 92
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -119,12 +119,29 @@ model/data/data-either.gandr	0	declared-data
 model/data/data-either.gandr	1	open-free-name
 model/data/data-enum.gandr	0	declared-data
 model/data/data-enum.gandr	1	open-free-name
+model/data/data-matched-arms.gandr	0	declared-data
+model/data/data-matched-arms.gandr	1	declared-data
+model/data/data-matched-arms.gandr	2	declared-data
+model/data/data-matched-arms.gandr	3	declared-data
+model/data/data-matched-arms.gandr	4	declared-data
+model/data/data-matched-arms.gandr	5	open-free-name
 model/data/data-maybe.gandr	0	declared-data
 model/data/data-maybe.gandr	1	open-free-name
 model/data/data-nested-type.gandr	0	structural-stock
 model/data/data-nested-type.gandr	1	open-free-name
 model/data/data-record.gandr	0	declared-data
 model/data/data-record.gandr	1	open-free-name
+model/higher-cells/cat-shape-bicartesian.gandr	0	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	1	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	2	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	3	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	4	declared-data
+model/higher-cells/cat-shape-bicartesian.gandr	5	open-free-name
+model/higher-cells/cat-shape-probes.gandr	0	identity
+model/higher-cells/cat-shape-probes.gandr	1	identity
+model/higher-cells/cat-shape-probes.gandr	2	open-free-name
+model/higher-cells/cat-shape-probes.gandr	3	not-typeable
+model/higher-cells/cat-shape-probes.gandr	4	not-typeable
 model/identity/back.gandr	0	identity
 model/identity/back.gandr	1	identity
 model/identity/cong-thunk.gandr	0	open-free-name
@@ -157,6 +174,7 @@ pathological/builtins/int-division-by-zero.gandr	0	open-free-name
 pathological/codata/missing-observation.gandr	0	structural-stock
 pathological/data/absurd-empty-match.gandr	0	declared-data
 pathological/data/field-type-mismatch.gandr	0	declared-data
+pathological/data/literal-column-declined.gandr	0	hole-unknown
 pathological/data/nested-nominal-mismatch.gandr	0	structural-stock
 pathological/data/nominal-distinctness.gandr	0	declared-data
 pathological/data/non-exhaustive-match.gandr	0	declared-data
