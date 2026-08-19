@@ -1,0 +1,11 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/data/data-matched-arms.gandr
+; source-b3sum: 8d7f02d47452cabf68c509c33607a61e7e6c74ab1fd15494a13ef8cefcc056e1
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 6
+Ret(Thunk(Omega, Abs("c", None, Bind(Ret(Var("c")), "%tmp0", Bind(Ret(Thunk(Omega, Ret(Int(1)))), "%tmp1", DataCase(Var("%tmp0"), [("_", Ret(Int(0))), ("_", Force(Var("%tmp1"))), ("_", Force(Var("%tmp1")))]))))))
+Ret(Thunk(Omega, Abs("c", None, Bind(Ret(Var("c")), "%tmp2", Bind(Ret(Thunk(Omega, Ret(Int(1)))), "%tmp3", DataCase(Var("%tmp2"), [("_", Force(Var("%tmp3"))), ("_", Force(Var("%tmp3"))), ("_", Ret(Int(0)))]))))))
+Ret(Thunk(Omega, Abs("m", None, Bind(Ret(Var("m")), "%tmp4", DataCase(Var("%tmp4"), [("_", Ret(Int(0))), ("%tmp5", DataCase(Var("%tmp5"), [("_", Ret(Int(0))), ("%tmp6", Bind(Ret(Var("%tmp6")), "n", Ret(Var("n"))))]))])))))
+Ret(Other)
+Ret(Other)
+Stuck(ForcedNonThunk)

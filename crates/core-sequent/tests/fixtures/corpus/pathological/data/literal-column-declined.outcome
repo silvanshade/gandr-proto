@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/data/literal-column-declined.gandr
+; source-b3sum: f9fdeee4cd30a75103a68a3a8428ca8f8e3a9395fb1425ddc87e19105c9e4f75
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Thunk(Omega, Abs("m", None, Hole(0))))
