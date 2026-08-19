@@ -479,7 +479,7 @@ impl Definitions
 /// turns it into semantic values on the hot path, and holding a handle is what
 /// keeps that sharing. A type body is never evaluated — this domain has no
 /// semantic type former — so it is compared as ordinary syntax by
-/// [`gandr_core_nbe::conv::type_converts`], and the substitution that
+/// `gandr_core_nbe::conv::type_converts`, and the substitution that
 /// instantiates it is a syntax-to-syntax rewrite. Naming it in the arena would
 /// buy nothing and cost a read-back at every unfolding.
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -976,7 +976,7 @@ pub enum CompType
     /// classifies exactly the functions `A → B` does, and giving that type two
     /// spellings would put a canonicity question at every construction site.
     /// Instead the binder is **written by the elaborator, never inferred**, and
-    /// [`gandr_core_nbe::conv::type_converts`] is the single place that relates
+    /// `gandr_core_nbe::conv::type_converts` is the single place that relates
     /// a `Π` with an unused binder to the corresponding plain arrow.
     ///
     /// # Why the binder is written rather than derived
@@ -984,7 +984,7 @@ pub enum CompType
     /// The obvious alternative — construct `Π` only when the variable occurs
     /// free in the codomain, and a plain arrow otherwise — is sound in the
     /// tree as it stands: metavariables are term-sorted
-    /// ([`gandr_core_unify::MetaSort`]) and their solutions are closed, so no
+    /// (the unifier's metavariable sorts) and their solutions are closed, so no
     /// codomain can acquire a dependency on the binder after the type is
     /// built. It is declined anyway. That argument rests on a property a later
     /// rung could change without noticing it was load-bearing, and a binder the
