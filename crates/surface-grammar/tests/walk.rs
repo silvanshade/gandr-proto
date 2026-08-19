@@ -80,7 +80,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x2f5e_9ca4_4823_0d6e);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x7b7f_3e41_68e8_6da4);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -168,7 +168,11 @@ mod contracts
     /// arithmetic `val`, `run`, and `unpack` already pay for their keywords.
     /// Neither widens a label from single- to multi-mold: `->` and `:` are
     /// multi-mold already.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2180);
+    // The kinded type component adds eight. `type T : κ` is a third
+    // alternative in the module-signature field, and a signature field is
+    // inlined at every site that admits a signature — so the arity is sites
+    // rather than forms, exactly as the statement forms above are.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2188);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -201,7 +205,7 @@ mod contracts
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 199),
+        (":", 207),
         (":>", 2),
         (";", 223),
         ("<", 4),
