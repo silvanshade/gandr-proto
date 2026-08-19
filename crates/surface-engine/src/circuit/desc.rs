@@ -194,8 +194,85 @@ pub fn sign_desc(
         return None;
     }
     let region = cursor.until_close_brace();
+    if let Some(unread) = unread_region(shape, &region) {
+        diagnostics.push(unread);
+        return None;
+    }
     let members = split_before_leads(shape.reader, &region, &MEMBER_LEADS);
     Some(block_desc(shape, &members, name, serial, diagnostics))
+}
+
+/// The decline a `sign` block earns when part of its member region was not
+/// read.
+///
+/// **A member the melder could not classify absorbs every member after it**,
+/// and the absorbed run surfaces as one unlabelled node rather than as an error
+/// — so a block whose second member is unterminated elaborates to a description
+/// holding only its first, with **no diagnostic of any kind**. The flagship
+/// shape is exactly that: a `sign` block whose members are newline-separated
+/// yields one sort, no operations, and no rules, and reports nothing.
+///
+/// Reading the block that far and publishing what was recognized is the
+/// capability-boundary violation: the description would claim to present a
+/// theory the author did not write, and every member after the first would be
+/// gone with no signal. So the block is declined and the span where reading
+/// stopped is named.
+///
+/// **The signal is a member lead the reader did not read as one**, and it
+/// arrives two ways because the melder loses the boundary two ways. `sort`,
+/// `oper`, `rule` and `data` are contextual rather than reserved, so a lead
+/// following an unterminated member is molded as whatever its position
+/// suggests: sometimes it is **mislabelled** — the second `sort` of a
+/// newline-separated pair reads as a type variable — and sometimes the whole
+/// remainder is **absorbed** into one unclassified run. Either way the split,
+/// which looks for the lead's own label, cannot see the boundary.
+///
+/// **It is deliberately not "an unclassified node appears".** A complete read
+/// leaves the closer unlabelled, and a member the reader could not classify
+/// leaves its own unlabelled run while still being *placed* by the split —
+/// that one has a more precise decline of its own, and taking it here would
+/// replace a report naming the member with one naming the block. What
+/// distinguishes the absorbed run is that a member lead survives inside it as a
+/// word, which is content the split owed a member and never got one.
+///
+/// # Contract
+/// - ensures: [`None`] for a region every node of which is labelled, and for
+///   the trailing unlabelled closer a complete read leaves behind.
+/// - ensures: the diagnostic names the unread span, so the report points at
+///   where reading stopped rather than at the block.
+/// - panics: none.
+fn unread_region(
+    shape: Shape<'_, '_>,
+    region: &[NodeId],
+) -> Option<ElabDiagnostic>
+{
+    let unread = region.iter().copied().find(|&id| {
+        let text = shape.reader.text(id).0;
+        match shape.reader.label(id) {
+            // A lead molded as something else — the second `sort` of a
+            // newline-separated pair reads as a type variable — is a boundary
+            // the split cannot see, because the split looks for the lead's own
+            // label.
+            | Some(label) => MEMBER_LEADS
+                .iter()
+                .any(|lead| lead.0 == text.trim() && *lead != label),
+            // An unclassified run holding a lead as a word of its own is the
+            // same boundary, absorbed rather than mislabelled. Reading it as a
+            // word rather than as a substring is what keeps an operation named
+            // `sorted` out of it.
+            | None => text
+                .split_whitespace()
+                .any(|word| MEMBER_LEADS.iter().any(|lead| lead.0 == word)),
+        }
+    })?;
+    Some(ElabDiagnostic::new(
+        String::from(
+            "this `sign` block's members were not separated where the reader could see it, so \
+             every member from this one on was dropped rather than presented: a member is \
+             terminated by `;`, and an unterminated member absorbs the ones that follow it",
+        ),
+        shape.reader.span(unread),
+    ))
 }
 
 /// Read one top-level circuit declaration into a **singleton** description.

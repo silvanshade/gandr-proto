@@ -69,6 +69,8 @@ mod session;
 #[cfg(test)]
 mod share;
 #[cfg(test)]
+mod sign_members;
+#[cfg(test)]
 mod surface;
 #[cfg(test)]
 mod total;
