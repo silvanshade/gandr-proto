@@ -56,3 +56,4 @@ includes = [".config/mise/tasks"]
 aube = "1.41.0"
 node = "26.7.0"
 typst = "0.15.1"
+"cargo:stgit" = "2.6.1"
