@@ -36,7 +36,7 @@ module SetoidCatLaws : #{
     ret here(f)
   }
 
-  def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), comp(a, a, b, f, id(b)), f)) {
+  def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, a, b, f, thunk { id(b) }) }, f)) {
     ret here(f)
   }
 
