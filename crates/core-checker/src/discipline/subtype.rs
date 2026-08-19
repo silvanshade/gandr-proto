@@ -321,12 +321,26 @@ pub fn comp_subtype(
 fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
 {
     // The normalizer is minted only if an invariant position is actually met,
-    // and it is then reused for every one in this run. It carries the **empty**
-    // definitional environment, and that is correct rather than convenient: the
-    // core term language has no definition form at all, so nothing the checker
-    // compares can have an unfolding rule. A populated environment belongs to
-    // the elaborator, which reaches conversion through the normalizer's own
-    // entry points rather than through this relation.
+    // and it is then reused for every one in this run.
+    //
+    // **It carries the EMPTY definitional environment, and that is a known
+    // limitation rather than a design choice.** This comment previously said
+    // the empty environment was correct because the core term language has no
+    // definition form, so nothing compared here could have an unfolding rule.
+    // That was true when it was written and it is no longer true: definitions
+    // now reach the types this relation compares, and a definition mentioned in
+    // an identity endpoint or a family index is a **free variable** to a
+    // normalizer built here — so it never unfolds, and a law field whose
+    // endpoint computes across a definition is refused rather than proved.
+    //
+    // The refusal is sound: nothing is accepted that should not be. What is
+    // lost is availability, and the loss is not small — it is exactly the
+    // fragment a proved law lives in.
+    //
+    // Repairing it is not a change at this line. The checker holds no
+    // definitional environment at all, so there is nothing here to thread; one
+    // has to be carried through the relation's entries and through the three
+    // implementations that step in agreement with it. `gandr-wvd.6` owns that.
     let mut nbe: Option<Normalizer> = None;
     while let Some(goal) = goals.pop() {
         match goal {
