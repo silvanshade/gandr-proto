@@ -21,4 +21,5 @@ walk(p, fn(x, y, q) { (? : F(Path(Integer, y, x))) }, fn(x) { ret here(x) })
 // The harness checks:
 //@ expect: clean
 //@ expect-def: p
+//@ expect-type-without-unknown: p
 //@ expect-last-value: here(7)

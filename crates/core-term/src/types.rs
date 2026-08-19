@@ -12,6 +12,7 @@ use core::fmt;
 
 use crate::boundary::BinderName;
 use crate::boundary::DataTypeName;
+use crate::boundary::GradualUnknownStatus;
 use crate::boundary::SealComponentName;
 use crate::boundary::SealDeclarationName;
 use crate::boundary::TypeAtomName;
@@ -1185,4 +1186,127 @@ pub enum Ty
         /// The computation type.
         CompType,
     ),
+}
+
+/// One pending node in the gradual-unknown scan.
+enum UnknownScan<'ty>
+{
+    /// A value type still to inspect.
+    Value(&'ty ValueType),
+    /// A computation type still to inspect.
+    Comp(&'ty CompType),
+}
+
+impl Ty
+{
+    /// Whether this type mentions the **gradual unknown** anywhere in its
+    /// structure.
+    ///
+    /// # Why anyone asks
+    ///
+    /// [`ValueType::Unknown`] is consistent in both directions, so a type
+    /// carrying one accepts terms a fully-written type would refuse. That is
+    /// the point of the gradual boundary where the author left a hole, and it
+    /// is a **hazard where the author did not**: a lowering that could not
+    /// represent what was written degrades to the unknown, and the definition
+    /// then typechecks against a type its own source does not state.
+    ///
+    /// Nothing in an accepted result distinguishes those two cases, so a
+    /// consumer that needs an acceptance to be **evidence** asks this first.
+    ///
+    /// # What it does not cover
+    ///
+    /// The scan walks the **type** structure. [`ValueType::Path`] carries two
+    /// value endpoints, which are terms rather than types, and they are not
+    /// descended — an unknown hiding inside an endpoint's annotation is a
+    /// different property and this answers `false` for it.
+    ///
+    /// # Contract
+    /// - ensures: `true` exactly when some [`ValueType::Unknown`] or
+    ///   [`CompType::Unknown`] occurs in the type's own structure.
+    /// - panics: none.
+    ///
+    /// # Termination
+    /// - reason: the walk drains an explicit task stack over one finite type.
+    /// - measure: pending tasks on the stack.
+    /// - boundedness: a type is a finite tree of reference-counted children,
+    ///   and every task pushed is a strict child of the one that pushed it.
+    /// - input recursion: none.
+    #[inline]
+    #[must_use]
+    pub fn mentions_unknown(&self) -> GradualUnknownStatus
+    {
+        let mut pending = match *self {
+            | Self::Value(ref value_ty) => alloc::vec![UnknownScan::Value(value_ty)],
+            | Self::Comp(ref comp_ty) => alloc::vec![UnknownScan::Comp(comp_ty)],
+        };
+        while let Some(task) = pending.pop() {
+            match task {
+                | UnknownScan::Value(value_ty) => match *value_ty {
+                    | ValueType::Unknown => return GradualUnknownStatus::from(true),
+                    | ValueType::Atom(_)
+                    | ValueType::Unit
+                    | ValueType::Universe
+                    | ValueType::Sealed(_) => {},
+                    // A product, a sum and a dependent pair are all two value
+                    // children; the pair's binder names one of them and binds
+                    // no type, so the scan sees the same shape in all three.
+                    | ValueType::Prod(ref fst, ref snd)
+                    | ValueType::Sum(ref fst, ref snd)
+                    | ValueType::Sigma {
+                        ref fst, ref snd, ..
+                    } => {
+                        pending.push(UnknownScan::Value(fst));
+                        pending.push(UnknownScan::Value(snd));
+                    },
+                    | ValueType::List(ref element) => pending.push(UnknownScan::Value(element)),
+                    | ValueType::Record(ref fields) => {
+                        for field in fields.values() {
+                            pending.push(UnknownScan::Value(field));
+                        }
+                    },
+                    | ValueType::Thunk(_, ref body) => pending.push(UnknownScan::Comp(body)),
+                    | ValueType::Stk(ref consumed, ref delivered) => {
+                        pending.push(UnknownScan::Comp(consumed));
+                        pending.push(UnknownScan::Comp(delivered));
+                    },
+                    // The endpoints are terms; only the carrier is a type.
+                    | ValueType::Path { ref ty, .. } => pending.push(UnknownScan::Value(ty)),
+                    // A family application's arguments are **terms**, on the
+                    // same footing as an identity type's endpoints, so the scan
+                    // stops here for the same reason: this answers a question
+                    // about the type structure, and an unknown reachable only
+                    // through a term is a different question.
+                    | ValueType::Family { .. } => {},
+                    | ValueType::Data { ref args, .. } => {
+                        for arg in args {
+                            pending.push(UnknownScan::Value(arg));
+                        }
+                    },
+                    | ValueType::Package { ref payload, .. } => {
+                        pending.push(UnknownScan::Value(payload));
+                    },
+                },
+                | UnknownScan::Comp(comp_ty) => match *comp_ty {
+                    | CompType::Unknown => return GradualUnknownStatus::from(true),
+                    | CompType::F(ref produced, _) => {
+                        pending.push(UnknownScan::Value(produced));
+                    },
+                    // The binder names a value variable and carries no type,
+                    // so the dependent and non-dependent arrows scan alike.
+                    | CompType::Arrow {
+                        ref arg, ref res, ..
+                    } => {
+                        pending.push(UnknownScan::Value(arg));
+                        pending.push(UnknownScan::Comp(res));
+                    },
+                    | CompType::With(ref fst, ref snd) => {
+                        pending.push(UnknownScan::Comp(fst));
+                        pending.push(UnknownScan::Comp(snd));
+                    },
+                },
+            }
+        }
+        GradualUnknownStatus::from(false)
+    }
 }

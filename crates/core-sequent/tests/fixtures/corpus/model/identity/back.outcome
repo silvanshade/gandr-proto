@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/identity/back.gandr
-; source-b3sum: 6521c01db912197e6bee50f83929460a40cce442f4ca63f79784ba0c5b343d50
+; source-b3sum: c5767520ad6d26973d1894f7632ccd36a20b23e3de4eaea7484f80fe8fa624c6
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Other)

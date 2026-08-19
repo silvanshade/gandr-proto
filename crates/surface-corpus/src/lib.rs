@@ -54,6 +54,7 @@
 //! | `expect` | `clean` / `goal` / `lowers` | whole-run expectation |
 //! | `expect-last-value` | rendered value | the last expression item returns this value |
 //! | `expect-def` | name | a definition of `name` entered scope |
+//! | `expect-type-without-unknown` | name | the definition of `name` elaborated to a type mentioning no gradual unknown |
 //! | `expect-kernel-admitted` | name | the definition of `name` crossed the certified kernel's choke point |
 //! | `expect-kernel-outside-s1` | name | the definition of `name` has no image in the kernel's closed S1 vocabulary |
 //! | `expect-diagnostic` | substring | some diagnostic message contains it |
@@ -279,6 +280,41 @@ pub enum Expect
     ),
     /// `expect-def: name` — a definition of `name` typed and entered scope.
     Def(
+        /// The defined name.
+        String,
+    ),
+    /// `expect-type-without-unknown: name` — the definition of `name` typed,
+    /// and its elaborated type mentions **no gradual unknown** anywhere.
+    ///
+    /// # Why an example asserts this rather than reading it
+    ///
+    /// The gradual unknown is consistent in both directions, so a type carrying
+    /// one accepts terms a fully-written type would refuse. Where the author
+    /// left a hole that is the boundary working; where the author did **not**,
+    /// it is a lowering that could not represent what was written degrading to
+    /// the unknown, and the definition then typechecks against a type its own
+    /// source does not state.
+    ///
+    /// **Nothing in an accepted run distinguishes those two cases**, so an
+    /// example whose point is that a type is *checked* — a law field, a
+    /// signature member, an identity type's carrier — asserts the absence
+    /// rather than reading the reported type by eye. Without it, a clean run
+    /// and a silently degraded one are the same observation.
+    ///
+    /// Pairs with [`Self::Clean`]: clean says the run raised nothing, this
+    /// says the thing it raised nothing about was fully written.
+    ///
+    /// # What it cannot tell apart
+    ///
+    /// **An author-written `?` and a degradation are the same elaborated
+    /// type**, so an example whose source deliberately writes the unknown —
+    /// a `Walk` motive carrier, a gradual annotation — cannot assert this of
+    /// the definition carrying it. That is not a gap in the directive; it is
+    /// the underlying defect surfacing one level up, and the reason a note at
+    /// the degradation site would be worth more than this check. Assert it of
+    /// the definitions whose types the example claims are fully written, which
+    /// is where a silent degradation would actually do damage.
+    TypeWithoutUnknown(
         /// The defined name.
         String,
     ),
@@ -564,6 +600,9 @@ where
             },
             | "expect-last-value" => expects.push(Expect::LastValue(value.to_owned())),
             | "expect-def" => expects.push(Expect::Def(value.to_owned())),
+            | "expect-type-without-unknown" => {
+                expects.push(Expect::TypeWithoutUnknown(value.to_owned()));
+            },
             | "expect-kernel-admitted" => {
                 expects.push(Expect::KernelAdmitted(value.to_owned()));
             },
@@ -818,6 +857,27 @@ fn session_failure(
             }
             else {
                 Some(format!("expected a bound definition of `{name}`"))
+            }
+        },
+        | Expect::TypeWithoutUnknown(ref name) => {
+            let defined = run.outcomes.iter().find_map(|outcome| match *outcome {
+                | ItemOutcome::Definition {
+                    name: ref bound_name,
+                    ref ty,
+                    ..
+                } if bound_name == name => Some(ty),
+                | _ => None,
+            });
+            match defined {
+                | Some(ty) if bool::from(ty.mentions_unknown()) => Some(format!(
+                    "expected the type of `{name}` to mention no gradual unknown, but it \
+                     elaborated to {ty:?} — a type carrying an unknown accepts terms the \
+                     written type would refuse, so an acceptance against it is not evidence"
+                )),
+                | Some(_) => None,
+                | None => Some(format!(
+                    "expected a definition of `{name}` whose type could be inspected"
+                )),
             }
         },
         | Expect::KernelAdmitted(ref name) => {
@@ -2327,6 +2387,45 @@ mod tests
             "holey",
             outcome_label(&first_outcome(&session_run(&["{ }"]))).as_ref(),
             "a holey item"
+        );
+    }
+
+    #[test]
+    fn a_degraded_type_and_a_written_one_are_separated()
+    {
+        // **The separating pair, and it is the whole point of the directive.**
+        // Both programs run clean. Their types differ, and nothing in either
+        // run says so: `written`'s identity type carries the carrier its source
+        // states, while `degraded`'s endpoint is out of the type-position
+        // fragment, so total-mode lowering swallowed the refusal and the whole
+        // declared type became the gradual unknown.
+        //
+        // An assertion that only checks the good case passes against a
+        // predicate that never fires, so the failing half is the one that
+        // gives the directive meaning.
+        let written =
+            session_run(&["def written(x: Integer) -> F Path(Integer, x, x) { ret here(x) }"]);
+        assert_pass(session_failure(&written, &Expect::Clean));
+        assert_pass(session_failure(
+            &written,
+            &Expect::TypeWithoutUnknown("written".to_owned()),
+        ));
+
+        let degraded = session_run(&[
+            "def degraded(x: Integer) -> F Path(Integer, [1, 2], x) { ret here(x) }",
+        ]);
+        assert_pass(session_failure(&degraded, &Expect::Clean));
+        assert_fail(
+            session_failure(
+                &degraded,
+                &Expect::TypeWithoutUnknown("degraded".to_owned()),
+            ),
+            "mention no gradual unknown",
+        );
+
+        assert_fail(
+            session_failure(&written, &Expect::TypeWithoutUnknown("absent".to_owned())),
+            "whose type could be inspected",
         );
     }
 

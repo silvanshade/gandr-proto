@@ -33,8 +33,18 @@ def cong_double = thunk {
 
 cong_double(here(4))
 
-// The harness checks:
+// The harness checks. `expect-type-without-unknown` on `double` asserts that a
+// fully-written signature elaborated as written rather than degrading to the
+// gradual unknown, which is consistent with everything and would leave the run
+// clean either way.
+//
+// It is deliberately NOT asserted of `cong_double`, and the reason is worth
+// having: that motive writes its carrier as `?`, so `cong_double`'s type
+// genuinely mentions the unknown -- author-written, the gradual boundary doing
+// its job. The directive cannot tell an author's `?` from a degradation,
+// because the elaborated type is the same either way.
 //@ expect: clean
 //@ expect-def: double
 //@ expect-def: cong_double
+//@ expect-type-without-unknown: double
 //@ expect-last-value: here(<thunk>)

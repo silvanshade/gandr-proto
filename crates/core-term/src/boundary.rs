@@ -429,6 +429,11 @@ copy_wrapper!(
     "Whether unfolding a definition made case-tree progress."
 );
 copy_wrapper!(
+    GradualUnknownStatus,
+    bool,
+    "Whether a type mentions the gradual unknown anywhere in its structure."
+);
+copy_wrapper!(
     EndpointArity,
     usize,
     "Number of arguments in an applied identity-type endpoint."

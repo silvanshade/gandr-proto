@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/identity/cong-thunk.gandr
-; source-b3sum: d3800a6f78975036f884af917dffa7298611287471494557111472a007c071d2
+; source-b3sum: 432b806ea4f9130ec7e74e17020e2e7c51f4e73e509c38eaa65fa732a23bc3d5
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 3
 Ret(Thunk(Omega, Abs("x", None, Bind(App(App(Force(Var("add")), Var("x")), Var("x")), "%tmp0", Ret(Var("%tmp0"))))))
