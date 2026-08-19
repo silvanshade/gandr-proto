@@ -193,11 +193,10 @@ impl core::error::Error for PosOfByteError
 {
 }
 
-/// A semantic highlight role (the capture classes of the tree-sitter highlight
-/// surface, folded to the classes a theme styles).
+/// A semantic highlight role.
 ///
-/// Shared by every renderer — in-process and bus client alike — so all
-/// project the same role vocabulary.
+/// Shared by every renderer — language server, TUI, and bus client alike —
+/// so all project the same role vocabulary.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HlRole

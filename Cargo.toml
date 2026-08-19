@@ -24,6 +24,7 @@ members = [
   "crates/surface-driver",
   "crates/surface-engine",
   "crates/surface-grammar",
+  "crates/surface-lsp",
   "crates/surface-parser",
   "crates/surface-render-remote",
   "crates/surface-syntax",
@@ -308,20 +309,29 @@ path = "crates/surface-corpus"
 # - gandr
 # - gandr-core-sequent (dev)
 # - gandr-surface-corpus
+# - gandr-surface-lsp
 [workspace.dependencies.gandr-surface-engine]
 path = "crates/surface-engine"
 
 # Checked precedence-bounded grammar core over gandr precedence DAGs.
 # consumers:
 # - gandr-surface-engine
+# - gandr-surface-lsp
 # - gandr-surface-parser
 [workspace.dependencies.gandr-surface-grammar]
 path = "crates/surface-grammar"
+
+# Language-server face: JSON-RPC encoder over the pipeline report and highlight spans.
+# consumers:
+# - gandr
+[workspace.dependencies.gandr-surface-lsp]
+path = "crates/surface-lsp"
 
 # Resumable push-machine melder and obligation taxonomy over the checked PBG.
 # consumers:
 # - gandr-surface-engine
 # - gandr-surface-grammar (dev)
+# - gandr-surface-lsp
 [workspace.dependencies.gandr-surface-parser]
 path = "crates/surface-parser"
 
@@ -329,6 +339,7 @@ path = "crates/surface-parser"
 # consumers:
 # - gandr-surface-engine
 # - gandr-surface-grammar
+# - gandr-surface-lsp
 [workspace.dependencies.gandr-surface-render-remote]
 path = "crates/surface-render-remote"
 
@@ -336,6 +347,7 @@ path = "crates/surface-render-remote"
 # consumers:
 # - gandr-surface-engine
 # - gandr-surface-grammar
+# - gandr-surface-lsp
 # - gandr-surface-parser
 [workspace.dependencies.gandr-surface-syntax]
 path = "crates/surface-syntax"
@@ -571,6 +583,7 @@ features = ["std"]
 # Serialization framework.
 # consumers:
 # - gandr-surface-engine
+# - gandr-surface-lsp
 # - gandr-surface-render-remote
 # - gandr-workflow-gates
 [workspace.dependencies.serde]
@@ -581,6 +594,7 @@ features = ["derive", "std"]
 # JSON codec for serde.
 # consumers:
 # - gandr-surface-engine
+# - gandr-surface-lsp
 # - gandr-surface-render-remote (dev)
 # - gandr-workflow-gates
 [workspace.dependencies.serde_json]
@@ -611,6 +625,7 @@ features = ["full", "parsing", "visit"]
 # - gandr-storage-artifact
 # - gandr-storage-prolly-trees
 # - gandr-surface-engine
+# - gandr-surface-lsp
 # - gandr-theory-orders
 [workspace.dependencies.thiserror]
 version = "2.0.18"

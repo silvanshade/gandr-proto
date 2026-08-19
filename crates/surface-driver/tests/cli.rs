@@ -298,6 +298,26 @@ mod tests
     }
 
     #[test]
+    fn lsp_capabilities_prints_the_token_legend()
+    {
+        let output = drive(["lsp", "--capabilities"]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(0_i32)),
+            "the capabilities smoke path leaves successfully"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("\"keyword\""),
+            "the smoke path must name the token legend; got {stdout}"
+        );
+        assert!(
+            stdout.contains("semanticTokensProvider"),
+            "the smoke path must advertise semantic tokens; got {stdout}"
+        );
+    }
+
+    #[test]
     fn a_negative_exit_code_wraps_the_way_a_shell_wraps_it()
     {
         let script = ScratchScript::write("exit-negative", "{ proc.exit(-1) }\n");

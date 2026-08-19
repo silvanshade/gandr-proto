@@ -1,4 +1,4 @@
-//! The gandr toolchain driver — the script-runner face.
+//! The gandr toolchain driver — the script-runner and language-server faces.
 //!
 //! `gandr <file>` runs one gandr source file: the driver hands the path to
 //! [`gandr_runtime_ffi::run_source_file`], which lowers, links, prelude-checks,
@@ -6,11 +6,15 @@
 //! receives a rendered returned value on standard output, while the run's
 //! [`gandr_runtime_ffi::FfiShellOutcome`] determines the process exit status.
 //!
-//! The REPL, `tui`, `lsp`, `mcp`, `fmt`, and `build` faces are **deferred**:
-//! the REPL waits on a line-editor decision wired to the landed grammar,
-//! parser, and syntax crates, and the rest have no implementing crate in the
-//! tree. `Cargo.toml` records which. They arrive with their dependency edges,
-//! not by uncommenting.
+//! `gandr lsp` is the language-server face, implemented by
+//! [`gandr_surface_lsp`]. `gandr lsp --capabilities` prints the advertised
+//! initialize result and is the observable smoke path.
+//!
+//! The REPL, `tui`, `mcp`, `fmt`, and `build` faces are **deferred**: the REPL
+//! waits on a line-editor decision wired to the landed grammar, parser, and
+//! syntax crates, and the rest have no implementing crate in the tree.
+//! `Cargo.toml` records which. They arrive with their dependency edges, not
+//! by uncommenting.
 
 use std::ffi::OsString;
 use std::io::Write as _;
@@ -21,6 +25,9 @@ use gandr_core_term::syntax::Comp;
 use gandr_runtime_ffi::FfiRunError;
 use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source_file;
+use gandr_surface_lsp::advertised_capabilities_text;
+use gandr_surface_lsp::run_stdio;
+
 /// Route a completed returned value to the process caller.
 ///
 /// # Contract
@@ -54,7 +61,7 @@ const EXIT_REFUSED: ExitStatus = ExitStatus(2_i64);
 const EXIT_STATUS_MODULUS: i64 = 256_i64;
 
 /// What the driver accepts on the command line.
-const USAGE: &str = "usage: gandr <file>\n\nRuns one gandr source file. The REPL and the tui/lsp/mcp/fmt/build faces are deferred.\n";
+const USAGE: &str = "usage: gandr <file>\n       gandr lsp [--capabilities]\n\nRuns one gandr source file, or the language-server face. The REPL and the tui/mcp/fmt/build faces are deferred.\n";
 
 /// A process exit status the driver is prepared to leave with.
 #[repr(transparent)]
@@ -128,6 +135,10 @@ enum Request
     Run(OsString),
     /// Print the usage text and leave successfully.
     Usage,
+    /// Serve the language-server protocol on stdio.
+    Lsp,
+    /// Print the advertised language-server capabilities and leave.
+    LspCapabilities,
 }
 
 /// Program entry point.
@@ -158,7 +169,8 @@ fn main() -> ExitCode
 /// - requires: `arguments` begins with the executable name.
 /// - ensures: a usage request prints [`USAGE`] to standard output and reports
 ///   [`EXIT_COMPLETED`]; a run request reports the status [`classify`] derives
-///   from the run.
+///   from the run; `lsp --capabilities` prints the advertised initialize
+///   result; `lsp` serves the protocol on stdio.
 /// - provides: the driver's complete argument-to-status behaviour, separated
 ///   from the process boundary so a test can drive it.
 /// - fails: a malformed command line prints [`USAGE`] to standard error and
@@ -178,6 +190,7 @@ fn main() -> ExitCode
 /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
 /// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
+/// - witness: `cli::tests::lsp_capabilities_prints_the_token_legend`
 fn serve<Arguments>(arguments: Arguments) -> ExitStatus
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -186,6 +199,18 @@ where
         | Some(Request::Usage) => {
             announce(USAGE);
             EXIT_COMPLETED
+        },
+        | Some(Request::LspCapabilities) => {
+            let text = advertised_capabilities_text();
+            announce(&text);
+            EXIT_COMPLETED
+        },
+        | Some(Request::Lsp) => match run_stdio() {
+            | Ok(()) => EXIT_COMPLETED,
+            | Err(error) => {
+                report(&format!("gandr: {error}\n"));
+                EXIT_FAILED
+            },
         },
         | Some(Request::Run(path)) => match run_source_file(std::path::Path::new(&path)) {
             | Ok(outcome) => {
@@ -204,45 +229,53 @@ where
     }
 }
 
-/// Recognize the driver's one accepted command line.
+/// Recognize the driver's accepted command line.
 ///
 /// # Contract
 /// - requires: `arguments` begins with the executable name, which is skipped.
-/// - ensures: `Some(Request::Usage)` for exactly `--help` or `-h`, and
-///   `Some(Request::Run(path))` for exactly one operand that is not one of
-///   those and does not begin with `-`.
+/// - ensures: `Some(Request::Usage)` for exactly `--help` or `-h`;
+///   `Some(Request::Lsp)` for exactly `lsp`; `Some(Request::LspCapabilities)`
+///   for exactly `lsp --capabilities`; `Some(Request::Run(path))` for exactly
+///   one operand that is not one of those and does not begin with `-`.
 /// - provides: the closed accepted-command-line surface of the script-runner
-///   face.
-/// - fails: returns `None` for no operand, for more than one argument, and for
-///   a UTF-8 argument that begins with `-` and is neither help spelling.
+///   and language-server faces.
+/// - fails: returns `None` for no operand, for more than the accepted arity,
+///   and for a UTF-8 argument that begins with `-` and is neither help spelling
+///   nor the `lsp` capabilities flag in its slot.
 /// - panics: none.
-/// - intension: the arity check runs BEFORE the help check, so `--help` with a
-///   trailing argument is a malformed command line rather than a help request.
-///   A bare `-` and a non-UTF-8 argument beginning with `-` are both taken as
-///   paths: there is no standard-input face for `-` to mean, and a path is not
-///   required to be UTF-8. A deferred face named WITHOUT a leading dash —
-///   `gandr tui` — is therefore read as a path and fails as a missing file, not
-///   as an unknown subcommand; that is honest only while no subcommand exists,
-///   and the first subcommand to land owes this function a real command table.
+/// - intension: `lsp` is recognized before the one-operand rule, so `lsp
+///   --capabilities` is a command rather than a second path. A deferred face
+///   named WITHOUT a leading dash — `gandr tui` — is still read as a path and
+///   fails as a missing file.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — the accepted forms and the three refusal returns are
-///   separated by the argument lists the CLI suite passes to the real binary,
-///   with the bare-dash and deferred-subcommand paths pinned separately because
-///   the intension above is the surprising part.
+/// - hypothesis: L3 only — the accepted forms and the refusal returns are
+///   separated by the argument lists the CLI suite passes to the real binary.
 /// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
 /// - witness: `cli::tests::a_second_operand_is_refused`
 /// - witness: `cli::tests::an_unknown_flag_is_refused`
 /// - witness: `cli::tests::help_prints_usage_and_leaves_successfully`
 /// - witness: `cli::tests::a_bare_dash_is_a_path_not_standard_input`
 /// - witness: `cli::tests::a_deferred_subcommand_name_is_read_as_a_path`
+/// - witness: `cli::tests::lsp_capabilities_prints_the_token_legend`
 fn parse_request<Arguments>(arguments: Arguments) -> Option<Request>
 where
     Arguments: IntoIterator<Item = OsString>,
 {
     let mut operands = arguments.into_iter().skip(1);
     let first = operands.next()?;
+    let second = operands.next();
     if operands.next().is_some() {
+        return None;
+    }
+    if first == *"lsp" {
+        return match second {
+            | None => Some(Request::Lsp),
+            | Some(flag) if flag == *"--capabilities" => Some(Request::LspCapabilities),
+            | Some(_) => None,
+        };
+    }
+    if second.is_some() {
         return None;
     }
     if first == *"--help" || first == *"-h" {

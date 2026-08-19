@@ -4,6 +4,14 @@ Notable changes to the gandr workspace, newest first.
 This is the single workspace changelog; the per-crate `docs/` directories it replaces are leaving the tree, and their salvageable history is preserved here.
 Entries dated before 2026-07-21 record the relevant tier's lineage before its absorption into this tree.
 
+## 2026-08-19
+
+- **surface-lsp / surface-driver**: the language-server face lands as `gandr-surface-lsp` and is wired as `gandr lsp`.
+  The crate is a hand-rolled JSON-RPC encoder over the pipeline report and the shared `HlRole` / `HlSpan` vocabulary: it parses, lowers, types, and marks nothing.
+  Semantic tokens use the standard LSP registry (keyword through label, plus declaration and defaultLibrary modifiers).
+  Diagnostics, hover, and completion project the same whole-file report.
+  `gandr lsp --capabilities` prints the advertised initialize result and is the observable smoke path.
+
 ## 2026-08-16
 
 - **surface-engine / surface-render-remote**: the parse's recovery obligations become a live report surface, replacing the reserved slot that always serialized as `[]`.

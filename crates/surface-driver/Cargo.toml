@@ -6,7 +6,7 @@ name = "gandr"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The gandr toolchain driver: the script runner, with the REPL and the tui/lsp/mcp/fmt/build subcommand namespace deferred"
+description = "The gandr toolchain driver: the script runner and the language-server face, with the REPL and the tui/mcp/fmt/build subcommand namespace deferred"
 license.workspace = true
 publish.workspace = true
 autotests = false
@@ -29,6 +29,8 @@ gandr-runtime-ffi.workspace = true
 # The language-level source entry: retained for the shell-facing API and
 # preparation types.
 gandr-surface-engine.workspace = true
+# The language-server face: `gandr lsp` and `gandr lsp --capabilities`.
+gandr-surface-lsp.workspace = true
 
 [dev-dependencies]
 gandr-runtime-ffi = { workspace = true, features = [
@@ -48,8 +50,8 @@ gandr-runtime-ffi = { workspace = true, features = [
 #   parser's public boundary takes);
 # * `gandr tui` needs the terminal programming environment, which has no
 #   crate in this tree at all — it is deferred with the editor faces;
-# * `gandr lsp` / `gandr mcp` / `gandr fmt` / `gandr build` are subcommand
-#   slots with no implementing crate in the tree.
+# * `gandr mcp` / `gandr fmt` / `gandr build` are subcommand slots with no
+#   implementing crate in the tree.
 #
 # Adding a face means adding its real dependency edge in the same change, not
 # uncommenting a line: the predecessor manifest spelled paths (`../gandr-core`)

@@ -1,0 +1,40 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-lsp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Language-server face: a hand-rolled JSON-RPC encoder over the pipeline report and highlight spans"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "capabilities"
+path = "tests/capabilities.rs"
+
+[dependencies]
+# Whole-file recheck: total lowering and the versioned diagnostic report.
+gandr-surface-engine.workspace = true
+# Mold-driven highlighter that produces the shared HlSpan vocabulary.
+gandr-surface-grammar.workspace = true
+# Batch parse that commits the CST the highlighter classifies.
+gandr-surface-parser.workspace = true
+# Shared highlight roles, diagnostic cards, and byte-to-position types.
+gandr-surface-render-remote.workspace = true
+# Borrowed source slice the parser's public boundary takes.
+gandr-surface-syntax.workspace = true
+# JSON-RPC envelopes and the LSP subset this face serves.
+serde.workspace = true
+serde_json.workspace = true
+# Framing and analysis error types.
+thiserror.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

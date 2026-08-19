@@ -586,6 +586,7 @@ dependencies = [
  "gandr-core-term",
  "gandr-runtime-ffi",
  "gandr-surface-engine",
+ "gandr-surface-lsp",
 ]
 
 [[package]]
@@ -800,6 +801,20 @@ dependencies = [
  "gandr-surface-render-remote",
  "gandr-surface-syntax",
  "gandr-theory-graphs",
+]
+
+[[package]]
+name = "gandr-surface-lsp"
+version = "0.0.0"
+dependencies = [
+ "gandr-surface-engine",
+ "gandr-surface-grammar",
+ "gandr-surface-parser",
+ "gandr-surface-render-remote",
+ "gandr-surface-syntax",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
