@@ -1,0 +1,1 @@
+module M : #{ type T = Integer, u : T, f : U[ω] (T -> T -> F T) } { def u = 0; def f(x: Integer, y: Integer) -> F Integer { ret x + y } }
