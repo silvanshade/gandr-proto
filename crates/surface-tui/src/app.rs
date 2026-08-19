@@ -57,11 +57,11 @@ pub struct App
     /// The shared read-evaluate loop.
     loop_state: SessionLoop,
     /// The current input buffer.
-    pub(crate) input: String,
+    pub input: String,
     /// Submitted transcript blocks, newest last.
-    pub(crate) transcript: Vec<TranscriptBlock>,
+    pub transcript: Vec<TranscriptBlock>,
     /// Status text drawn in the footer.
-    pub(crate) status: String,
+    pub status: String,
 }
 
 impl App

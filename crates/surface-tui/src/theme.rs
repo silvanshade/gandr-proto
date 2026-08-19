@@ -19,21 +19,14 @@ use ratatui::style::Style;
 pub fn style_of(role: HlRole) -> Style
 {
     let color = match role {
-        | HlRole::Keyword | HlRole::Boolean => Color::Magenta,
-        | HlRole::Operator => Color::Cyan,
-        | HlRole::FunctionDef | HlRole::FunctionCall => Color::Blue,
-        | HlRole::VariableDef | HlRole::Variable => Color::Reset,
-        | HlRole::VariableParam => Color::Yellow,
-        | HlRole::Member => Color::Yellow,
-        | HlRole::Constructor => Color::Blue,
-        | HlRole::Type | HlRole::TypeBuiltin => Color::Green,
-        | HlRole::TypeVariable => Color::Green,
-        | HlRole::Number => Color::Yellow,
+        | HlRole::Keyword | HlRole::Boolean | HlRole::Hole | HlRole::Directive => Color::Magenta,
+        | HlRole::Operator | HlRole::Label => Color::Cyan,
+        | HlRole::FunctionDef | HlRole::FunctionCall | HlRole::Constructor => Color::Blue,
+        | HlRole::VariableDef | HlRole::Variable | HlRole::Other => Color::Reset,
+        | HlRole::VariableParam | HlRole::Member | HlRole::Number => Color::Yellow,
+        | HlRole::Type | HlRole::TypeBuiltin | HlRole::TypeVariable => Color::Green,
         | HlRole::StringLit | HlRole::Character | HlRole::Escape | HlRole::Path => Color::Red,
         | HlRole::Comment => Color::DarkGray,
-        | HlRole::Hole | HlRole::Directive => Color::Magenta,
-        | HlRole::Label => Color::Cyan,
-        | HlRole::Other => Color::Reset,
     };
     Style::default().fg(color)
 }
