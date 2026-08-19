@@ -81,9 +81,9 @@
 //! [`KernelVerdict`]: crate::kernel::KernelVerdict
 
 use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
-use std::rc::Rc;
 
 use gandr_core_incremental::checkpoint::Checkpoints;
 use gandr_core_incremental::checkpoint::ItemTyping;
@@ -985,7 +985,7 @@ mod tests
             .ctx
             .definition_chain()
             .iter()
-            .map(|(name, _)| name.clone())
+            .map(|entry| entry.0.clone())
             .collect();
         assert!(
             names.iter().any(|name| name == "plain"),
