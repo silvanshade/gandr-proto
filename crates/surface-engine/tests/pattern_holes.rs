@@ -500,14 +500,12 @@ mod tests
     #[test]
     fn an_uncompiled_arm_is_declined_and_a_hole_is_not()
     {
-        let declined = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} \
-             pick(Red)"
-        );
+        let declined = "def pick(n : Integer) -> F Integer { case n { 0 => ret 1, _ => ret 2 } } \
+                        pick(0)";
         assert!(
-            matches!(run_source(declined.as_str()), Err(RunError::Lower(_))),
-            "a top-level catch-all needs an arm body two branches can reach, and is declined by \
-             name rather than dropped"
+            matches!(run_source(declined), Err(RunError::Lower(_))),
+            "an integer column needs an equality test this eliminator does not switch on, and is \
+             declined by name rather than dropped"
         );
         let hole = alloc::format!(
             "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} }} \
@@ -520,19 +518,24 @@ mod tests
         );
     }
 
-    /// Two arms sharing one constructor head are declined by name rather than
-    /// compiled into a branch that silently never runs.
+    /// Two arms sharing one constructor head are told apart by their
+    /// arguments rather than declined: the tag's branch tests one level
+    /// deeper, and both arms live under it.
+    ///
+    /// The behaviour this suite still owns is the *hole's* — that an arm at a
+    /// shared head does not escape an unfinished test written before it. The
+    /// compilation itself is the `matrix` suite's subject.
     #[test]
-    fn two_arms_at_one_head_are_declined_by_name()
+    fn a_hole_shadows_the_second_arm_at_one_head()
     {
         let program = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             Some(No) => ret 8, None => ret 1 }} }} pick(None)"
+            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ ? => ret 0, Some(Yes(k)) => \
+             ret (k + 1), Some(No) => ret 8, None => ret 1 }} }} pick(None)"
         );
-        assert!(
-            matches!(run_source(program.as_str()), Err(RunError::Lower(_))),
-            "the second arm at `Some` is reachable only through a join point the core has no \
-             former for"
+        assert_eq!(
+            Some(Blame::Hole),
+            blamed(run_source(program.as_str())),
+            "the unfinished test precedes both arms at `Some` and stops the match"
         );
     }
 

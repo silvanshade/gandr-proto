@@ -98,6 +98,15 @@
 
 pub(crate) mod codata;
 pub(crate) mod data;
+#[cfg_attr(
+    dylint_lib = "non_topologically_sorted_functions",
+    allow(
+        unknown_lints,
+        non_topologically_sorted_functions,
+        reason = "the worklist modules place their public drivers before the step helpers for readability; the caller-before-callee rule conflicts with that deliberate top-down layout pending a layout redesign"
+    )
+)]
+mod matrix;
 pub mod node_kinds;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -3403,6 +3412,16 @@ impl Lowerer<'_>
         // out of arms that name none.
         if let Some(stuck) = self.case_stuck_at_the_first_arm(node)? {
             return self.ascribe_answer(node, stuck);
+        }
+        // An arm set the tag walk cannot place — a catch-all, an or-pattern
+        // with distinguishable alternatives, or two arms at one head — goes to
+        // the matrix compiler, which shares an arm body several branches reach
+        // through a join point ([`matrix`]). The predicate is false for every
+        // arm set the tag walk already compiles, so nothing that lowered
+        // before changes shape.
+        if bool::from(self.arm_set_needs_matrix(node)) {
+            let body = self.matrix_case(node)?;
+            return self.ascribe_answer(node, body);
         }
         // A `case` over declared constructors, or an EMPTY `case v {}` (the
         // absurd match over an uninhabited datatype — no arm reveals the

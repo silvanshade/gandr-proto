@@ -280,6 +280,10 @@ semantic_copy!(
     pub struct ListCaseFlag(bool);
 );
 semantic_copy!(
+    /// Whether a case arm set needs the pattern-matrix compiler.
+    pub struct MatrixRequired(bool);
+);
+semantic_copy!(
     /// Whether adjacent shell fragments belong to one word.
     pub struct ShellWordContinuation(bool);
 );
@@ -299,6 +303,10 @@ semantic_borrowed_str!(
 semantic_borrowed_str!(
     /// Borrowed data constructor name at a lowering boundary.
     pub struct ConstructorName;
+);
+semantic_borrowed_str!(
+    /// Borrowed name of the datatype a compiled pattern column switches on.
+    pub struct ConstructorOwner;
 );
 semantic_borrowed_str!(
     /// Borrowed codata observation name.
@@ -463,6 +471,22 @@ semantic_copy!(
 semantic_copy!(
     /// Number of sub-patterns one compound pattern frame assembles.
     pub struct SubPatternCount(usize);
+);
+semantic_copy!(
+    /// Position of one surface arm in a `case`'s source-ordered arm set.
+    pub struct ArmIndex(usize);
+);
+semantic_copy!(
+    /// Position of one column in a compiled pattern matrix.
+    pub struct ColumnIndex(usize);
+);
+semantic_copy!(
+    /// Position of one row in a compiled pattern matrix.
+    pub struct RowIndex(usize);
+);
+semantic_copy!(
+    /// Number of decision-tree leaves that reach one surface arm.
+    pub struct LeafCount(usize);
 );
 semantic_copy!(
     /// Number of binders required by a surface lambda role.

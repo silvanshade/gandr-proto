@@ -1,0 +1,66 @@
+// Arms that overlap: a catch-all, an or-pattern, and two arms at one head.
+//
+// A `case` places its arms by constructor tag, and three ordinary shapes ask
+// for one arm body to be reached from more than one tag. The compiler binds
+// such a body once, before the match, and each branch that reaches it forces
+// that binding -- a join point, which is a compilation device rather than
+// anything written here.
+//
+// `_` is the catch-all: it takes every tag no earlier arm named. The arms
+// before it keep their own tags, so appending a catch-all to a finished match
+// never changes what the finished part does.
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
+
+def rank(c : Color) -> F Integer {
+  case c {
+    Red => ret 0,
+    _ => ret 1
+  }
+}
+
+// `p | q` names two tags for one body. Written out, the two arms would have
+// to repeat the body; here they share it.
+def warm(c : Color) -> F Integer {
+  case c {
+    Red | Green => ret 1,
+    Blue => ret 0
+  }
+}
+
+// Two arms at ONE constructor head are told apart by their arguments rather
+// than by their heads, so the branch at that tag tests one level deeper and
+// both arms live under it. Before, the second arm was unreachable and the
+// match was declined; now `Some(No)` reaches its own body.
+data Inner : Type {
+  No : Inner;
+  Yes : (n : Integer) --> Inner;
+}
+
+data Outer : Type {
+  None : Outer;
+  Some : (i : Inner) --> Outer;
+}
+
+def depth(m : Outer) -> F Integer {
+  case m {
+    Some(Yes(n)) => ret n,
+    Some(No) => ret 0,
+    None => ret 0
+  }
+}
+
+def inner = (Yes(41) : Inner);
+def answer = (Some(inner) : Outer);
+
+depth(answer)
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: rank
+//@ expect-def: warm
+//@ expect-def: depth
+//@ expect-last-value: 41

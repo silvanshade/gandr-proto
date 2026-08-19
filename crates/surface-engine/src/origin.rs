@@ -243,6 +243,16 @@ pub enum ElabKind
     /// as-binder: `p as x` ⇒ `Bind(Ret v, x, …)`. The name is bound rather
     /// than substituted so the binder keeps one occurrence and cannot capture.
     PatternAlias,
+    /// The join point a compiled match binds when one arm body is reached
+    /// from more than one branch: `run %j <- ret ((thunk { fn(%p) { body } })
+    /// : U_ω (? → ?))`, with each reaching branch a `force %j %x`. The core
+    /// has no join-point former because a join point is a compilation device
+    /// rather than a term someone writes.
+    PatternJoin,
+    /// The occurrence a compiled match binds its scrutinee to, so every test
+    /// beneath reads one variable rather than re-evaluating the scrutinee
+    /// expression.
+    PatternScrutinee,
     /// A module-select `M.l` whose value is a known module name ⇒ the flat
     /// qualified `Var("M.l")` (the module layer's namespace half — pure
     /// elaboration, unlike the structural `t.fst` / `t.snd` projection the

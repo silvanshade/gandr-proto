@@ -46,14 +46,20 @@
 //! sub-patterns, as-binders, pattern holes anywhere, and or-patterns all of
 //! whose alternatives are indeterminate.
 //!
-//! Declined, each named rather than dropped by shape: a top-level catch-all,
-//! an or-pattern with distinguishable alternatives, two arms sharing one
-//! constructor head, and the literal, tuple, record, and list forms. Every one
-//! of those needs an arm body reachable from more than one branch — a join
-//! point the core has no former for — or a head domain this eliminator does not
-//! switch on. A declined arm behaves exactly as an unreadable arm did before
-//! this module existed: strict mode fails with [`LowerError::Unsupported`],
-//! total mode skips it.
+//! Three shapes the tag walk cannot place go to [`super::matrix`] instead: a
+//! top-level catch-all, an or-pattern with distinguishable alternatives, and
+//! two arms sharing one constructor head. Each needs one arm body reached from
+//! more than one branch, which that module supplies as a bound thunk — the
+//! join point — rather than as a core former. The primitives here are what it
+//! emits with: this module owns reading the pattern grammar and the shape of
+//! one compiled arm, and the matrix compiler owns the order the tests run in.
+//!
+//! Still declined by name rather than dropped by shape: the literal, tuple,
+//! record, and list forms, whose head domain this eliminator does not switch
+//! on. That is a missing *test* rather than a missing join, so no amount of
+//! sharing reaches it. A declined arm behaves exactly as an unreadable arm did
+//! before this module existed: strict mode fails with
+//! [`LowerError::Unsupported`], total mode skips it.
 //!
 //! [`Comp::DataCase`]: gandr_core_term::syntax::Comp::DataCase
 //! [`Comp::Hole`]: gandr_core_term::syntax::Comp::Hole
@@ -1073,7 +1079,7 @@ impl Lowerer<'_>
     ///   a pattern hole addresses the same way an expression hole does and the
     ///   goal stream needs no second addressing scheme.
     /// - panics: none.
-    fn mint_stuck(
+    pub(super) fn mint_stuck(
         &mut self,
         node: SynNode<'_>,
         name: Option<String>,

@@ -45,6 +45,8 @@ mod kernel;
 #[cfg(test)]
 mod live_match;
 #[cfg(test)]
+mod matrix;
+#[cfg(test)]
 mod namespace;
 #[cfg(test)]
 mod origin_identity;

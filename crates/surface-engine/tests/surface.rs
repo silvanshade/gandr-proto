@@ -477,7 +477,10 @@ mod tests
     #[test]
     fn out_of_fragment_arm_shapes_are_unsupported()
     {
-        // A catch-all wildcard arm is out of the binary-sum fragment.
+        // A catch-all wildcard arm is out of the binary-sum fragment. The
+        // pattern-matrix compiler takes a catch-all only beside a declared data
+        // constructor, because an arm set naming no constructor family reveals
+        // none to be matched against.
         assert!(matches!(
             strict_error("case v { _ => ret 0 }"),
             LowerError::Unsupported {

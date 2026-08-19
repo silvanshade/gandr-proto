@@ -95,6 +95,15 @@ mod tests
     /// head test alone, and the first-arm hole that settles nothing for any
     /// scrutinee. The surface tree lost its `pattern-holes.gandr` reservation
     /// in the same change, which is what promotion means.
+    ///
+    /// Overlapping arms register in the `data/` subtrees rather than at either
+    /// root: `model/data/data-matched-arms.gandr` is the one model program for
+    /// the three shapes the pattern-matrix compiler took — a top-level
+    /// catch-all, an or-pattern with distinguishable alternatives, and two arms
+    /// at one constructor head — and `pathological/data/
+    /// literal-column-declined.gandr` is the failure golden for the shape it
+    /// did not take, a literal column, whose decline must stay observable as a
+    /// goal rather than regressing into a dropped arm.
     #[test]
     fn frozen_root_fixture_cardinality_is_31_and_40()
     {

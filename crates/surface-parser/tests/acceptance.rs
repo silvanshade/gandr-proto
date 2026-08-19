@@ -719,8 +719,8 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let files = gandr_files(&examples);
     assert!(files.len() >= 50, "corpus is populated ({})", files.len());
 
-    // Per-tree accounting: model + pathological hold at 128 / 128 clean — 56
-    // files under `model/` and 72 under `pathological/`, counted by path — and
+    // Per-tree accounting: model + pathological hold at 132 / 132 clean — 57
+    // files under `model/` and 75 under `pathological/`, counted by path — and
     // the surface tree must be non-empty and clean; the single gate spans all
     // three trees.
     let mut clean = 0_usize;
@@ -833,12 +833,12 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        130, base_count,
-        "the model + pathological trees are 130 files (56 model + 74 pathological, including the two description-member fixtures)"
+        132, base_count,
+        "the model + pathological trees are 132 files (57 model + 75 pathological, including the two description-member fixtures)"
     );
     assert_eq!(
-        130, base_clean,
-        "all 130 model + pathological files mold clean"
+        132, base_clean,
+        "all 132 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

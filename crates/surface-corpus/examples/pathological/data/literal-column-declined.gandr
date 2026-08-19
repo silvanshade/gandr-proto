@@ -1,0 +1,32 @@
+// Failure golden: a literal column is declined by name, not dropped.
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+//
+// Three arm shapes that once declined now compile, because each needed only
+// one arm body reached from more than one branch, and the compiler binds such
+// a body once and lets each reaching branch force it: a top-level catch-all,
+// an or-pattern with distinguishable alternatives, and two arms at one
+// constructor head. `data-matched-arms.gandr` in the model tree is those three.
+//
+// A literal column is a DIFFERENT absence and no amount of sharing reaches it.
+// `0` is not a constructor of any declared datatype, so there is no tag to
+// place the arm at; deciding it needs an equality test the declared-data
+// eliminator does not switch on. The arm is therefore declined by name.
+//
+// What this witness pins is that the decline stays a decline. A dropped arm
+// would leave the item lowering cleanly and answering `1` for every `Some`,
+// which is a wrong answer with no report; a declined arm leaves the item
+// holey, so a goal is what a reader is given. The goal is the decline made
+// observable, and its absence is the regression.
+data Outer : Type {
+  None : Outer;
+  Some : (n : Integer) --> Outer;
+}
+
+def by_literal(m : Outer) -> F Integer {
+  case m {
+    Some(0) => ret 0,
+    None => ret 1
+  }
+}
+
+//@ expect: goal
