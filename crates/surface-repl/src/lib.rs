@@ -1,7 +1,7 @@
 //! The read-evaluate loop over the headless session engine.
 //!
 //! The line editor owns raw text. The validator gates on parse completeness
-//! only. The landed [`Session`] carries typed context across lines. This
+//! only. The landed session engine carries typed context across lines. This
 //! crate encodes the report; it does not parse, lower, type, or mark.
 
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::print_stderr))]
