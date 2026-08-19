@@ -36,18 +36,18 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_term::boundary::DefinitionCount;
-use gandr_core_term::boundary::DefinitionHeightLevel;
-use gandr_core_term::boundary::NameRef;
-use gandr_core_term::boundary::ScopeDepth;
-use gandr_core_term::identity::subst_valuetype;
-use gandr_core_term::syntax::CompNode;
-use gandr_core_term::syntax::CompNodeId;
-use gandr_core_term::syntax::FlatArena;
-use gandr_core_term::syntax::Value;
-use gandr_core_term::syntax::ValueNode;
-use gandr_core_term::syntax::ValueNodeId;
-use gandr_core_term::types::ValueType;
+use crate::boundary::DefinitionCount;
+use crate::boundary::DefinitionHeightLevel;
+use crate::boundary::NameRef;
+use crate::boundary::ScopeDepth;
+use crate::identity::subst_valuetype;
+use crate::syntax::CompNode;
+use crate::syntax::CompNodeId;
+use crate::syntax::FlatArena;
+use crate::syntax::Value;
+use crate::syntax::ValueNode;
+use crate::syntax::ValueNodeId;
+use crate::types::ValueType;
 
 /// Whether the engine may unfold a definition speculatively.
 ///
@@ -68,7 +68,7 @@ pub enum Transparency
 
 /// One definition: a name's body, its definitional height, and its
 /// transparency.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Definition
 {
     /// The body the name unfolds to, named in the syntax store rather than
@@ -127,7 +127,7 @@ impl Definition
 ///   when they ask whether a head unfolds — one table, so the two policies
 ///   cannot drift apart.
 /// - panics: none.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Definitions
 {
     /// The scope stack, outermost first. The root scope is always present.
@@ -178,9 +178,9 @@ impl Definitions
     /// Whether no scope binds any name.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> gandr_core_term::boundary::InternerEmptyStatus
+    pub fn is_empty(&self) -> crate::boundary::InternerEmptyStatus
     {
-        gandr_core_term::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
+        crate::boundary::InternerEmptyStatus::from(usize::from(self.len()) == 0)
     }
 
     /// Opens a nested scope.
@@ -478,10 +478,10 @@ impl Definitions
 /// turns it into semantic values on the hot path, and holding a handle is what
 /// keeps that sharing. A type body is never evaluated — this domain has no
 /// semantic type former — so it is compared as ordinary syntax by
-/// [`crate::conv::type_converts`], and the substitution that instantiates it is
-/// a syntax-to-syntax rewrite. Naming it in the arena would buy nothing and
-/// cost a read-back at every unfolding.
-#[derive(Clone, Debug)]
+/// [`gandr_core_nbe::conv::type_converts`], and the substitution that
+/// instantiates it is a syntax-to-syntax rewrite. Naming it in the arena would
+/// buy nothing and cost a read-back at every unfolding.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeDefinition
 {
     /// The parameter names, in application order. Empty for a plain type

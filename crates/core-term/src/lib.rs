@@ -65,6 +65,7 @@ extern crate alloc;
 
 pub mod boundary;
 pub mod ctx;
+pub mod defs;
 pub mod effect;
 pub mod error;
 pub mod grade;

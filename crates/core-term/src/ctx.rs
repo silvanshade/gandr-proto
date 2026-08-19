@@ -30,6 +30,7 @@
 use crate::boundary::ContextEmptyStatus;
 use crate::boundary::ContextLength;
 use crate::boundary::NameRef;
+use crate::defs::Definitions;
 use crate::types::ValueType;
 
 /// The linear context zone `Σ` (the effects and control record's one-shot
@@ -145,6 +146,19 @@ pub struct Ctx
     entries: Vec<(String, ValueType)>,
     /// The linear zone `Σ` (vacuous in v0).
     sigma: Sigma,
+    /// The **definitional environment**: which names carry an unfolding rule,
+    /// at what height, and how transparently.
+    ///
+    /// It lives on the context rather than beside it because conversion is
+    /// reached from three implementations through one relation, and a
+    /// definitional equality that varied by *which site asked* would not be a
+    /// definitional equality. Carrying it here is what makes "the same
+    /// environment everywhere" structural instead of a convention.
+    ///
+    /// Empty is the valid initial state and is exactly the pre-unfolding
+    /// behaviour, so a context built anywhere without one behaves as it always
+    /// did.
+    defs: Definitions,
 }
 
 impl Ctx
@@ -155,6 +169,33 @@ impl Ctx
     pub fn new() -> Self
     {
         Self::default()
+    }
+
+    /// The definitional environment this context carries.
+    #[inline]
+    #[must_use]
+    pub fn definitions(&self) -> &Definitions
+    {
+        &self.defs
+    }
+
+    /// The definitional environment, mutably — how a caller populates it.
+    #[inline]
+    pub fn definitions_mut(&mut self) -> &mut Definitions
+    {
+        &mut self.defs
+    }
+
+    /// Returns a context carrying `defs` (builder style).
+    #[inline]
+    #[must_use]
+    pub fn with_definitions(
+        mut self,
+        defs: Definitions,
+    ) -> Self
+    {
+        self.defs = defs;
+        self
     }
 
     /// Returns a context extended with `name : ty` (builder style).

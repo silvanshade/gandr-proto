@@ -82,7 +82,17 @@
 extern crate alloc;
 
 pub mod conv;
-pub mod defs;
+/// The definitional environment, re-exported.
+///
+/// It **lives in [`gandr_core_term`]**, because it is core vocabulary rather
+/// than normalizer-private state: its entire dependency surface is that
+/// crate's own `FlatArena`, `ValueNodeId` and `DefinitionHeightLevel`. This
+/// crate was the natural home while the normalizer was its only consumer, and
+/// stopped being one when the typing context needed to carry it.
+///
+/// The re-export is what keeps that move invisible to every existing
+/// consumer.
+pub use gandr_core_term::defs;
 pub mod eval;
 pub mod intern;
 pub mod quote;
@@ -93,11 +103,11 @@ use alloc::rc::Rc;
 use gandr_core_term::boundary::ConversionFuel;
 use gandr_core_term::boundary::ValueEquality;
 use gandr_core_term::boundary::VariableLevel;
+use gandr_core_term::defs::Definitions;
 use gandr_core_term::syntax::FlatArena;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::syntax::ValueNodeId;
 
-use crate::defs::Definitions;
 use crate::intern::SyntaxInterner;
 use crate::sem::SemArena;
 use crate::sem::SemError;
