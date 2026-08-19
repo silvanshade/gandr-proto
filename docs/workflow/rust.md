@@ -72,6 +72,9 @@
   The Agda metatheory is the specification oracle, not an implementation blueprint — the Rust is its _iterative shadow_; a divergence in shape is expected, only a divergence in result is a bug (the differentials compare answers, not call graphs).
 - **Arithmetic is checked, never bare.** `saturating_*` for monotone counters/depths, `checked_*` where overflow must surface (the grade semiring clamps finite overflow to `ω`), `wrapping_*` only for hashing.
   `arithmetic_side_effects` is denied workspace-wide.
+- **Embedded syntax is written raw.** A string literal carrying actual surface syntax — or any multi-line embedded content: fixtures, expected renderings, corpus snippets — is a raw string (`r#"…"#` style) with real newlines, never an escaped-`\n` literal split across backslash continuations.
+  Escaped snippets are unreadable and undiffable, and rustfmt's continuation reflow moves the backslash breaks so the literal's visual shape drifts from its content.
+  `crates/surface-engine/tests/desc_cells.rs` carries the worked form: the snippet reads exactly as the language writes it.
 
 ### Lints and enforcement
 

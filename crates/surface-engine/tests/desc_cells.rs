@@ -20,14 +20,20 @@ mod tests
 
     /// A `Nat` theory whose `add` is declared single-output and whose two rules
     /// are in the supported flattening fragment.
-    const NAT_ADD: &str = "data NatAdd : Type {\n  Zero : NatAdd;\n  Succ : (n : NatAdd) --> \
-                           NatAdd;\n  oper add(m : NatAdd, n : NatAdd) -> NatAdd;\n  rule \
-                           add(Zero, n) ==> n;\n  rule add(Succ(m), n) ==> Succ(add(m, n));\n}";
+    const NAT_ADD: &str = r#"data NatAdd : Type {
+  Zero : NatAdd;
+  Succ : (n : NatAdd) --> NatAdd;
+  oper add(m : NatAdd, n : NatAdd) -> NatAdd;
+  rule add(Zero, n) ==> n;
+  rule add(Succ(m), n) ==> Succ(add(m, n));
+}"#;
 
     /// The promoted many-out witness: a well-formed description whose `divmod`
     /// the single-continuation cell grammar cannot hold.
-    const NAT_DIV: &str = "data NatDiv : Type {\n  Zero : NatDiv;\n  oper divmod(m : NatDiv, n : \
-                           NatDiv) -> (q : NatDiv, r : NatDiv);\n}";
+    const NAT_DIV: &str = r#"data NatDiv : Type {
+  Zero : NatDiv;
+  oper divmod(m : NatDiv, n : NatDiv) -> (q : NatDiv, r : NatDiv);
+}"#;
 
     #[test]
     fn a_declared_single_output_operation_lets_its_rule_become_a_cell()
@@ -108,8 +114,11 @@ mod tests
         // The rule's left-hand side applies `divmod`, whose result the operation
         // frame's single return continuation cannot carry: elaborating it would
         // silently drop the second output port.
-        let source = "data NatDiv2 : Type {\n  Zero : NatDiv2;\n  oper divmod(m : NatDiv2, n : \
-                      NatDiv2) -> (q : NatDiv2, r : NatDiv2);\n  rule divmod(Zero, n) ==> Zero;\n}";
+        let source = r#"data NatDiv2 : Type {
+  Zero : NatDiv2;
+  oper divmod(m : NatDiv2, n : NatDiv2) -> (q : NatDiv2, r : NatDiv2);
+  rule divmod(Zero, n) ==> Zero;
+}"#;
         let elab = elaborate_data_descs(source);
         let cells = elaborate_desc_cells(&elab.descs);
         assert!(
@@ -177,9 +186,13 @@ mod tests
         // constructor frame cells where they were. That is the property a
         // consumer reading a store by id depends on: the order is the source's,
         // so it is reviewable and diffable rather than incidental.
-        const SWAPPED: &str = "data NatAdd : Type {\n  Zero : NatAdd;\n  Succ : (n : NatAdd) --> \
-                               NatAdd;\n  oper add(m : NatAdd, n : NatAdd) -> NatAdd;\n  rule \
-                               add(Succ(m), n) ==> Succ(add(m, n));\n  rule add(Zero, n) ==> n;\n}";
+        const SWAPPED: &str = r#"data NatAdd : Type {
+  Zero : NatAdd;
+  Succ : (n : NatAdd) --> NatAdd;
+  oper add(m : NatAdd, n : NatAdd) -> NatAdd;
+  rule add(Succ(m), n) ==> Succ(add(m, n));
+  rule add(Zero, n) ==> n;
+}"#;
         let declared = identities(TestText(NAT_ADD));
         let swapped = identities(TestText(SWAPPED));
         assert_eq!(4, declared.len(), "two frame cells and two rule cells");
@@ -208,8 +221,12 @@ mod tests
         // written twice occupies one address rather than two. The store's
         // length is therefore a count of distinct cells, which is what the
         // corpus `expect-desc-store-cells` expectation is asserting.
-        let twice = "data Idem : Type {\n  Zero : Idem;\n  oper f(x : Idem) -> Idem;\n  rule \
-                     f(Zero) ==> Zero;\n  rule f(Zero) ==> Zero;\n}";
+        let twice = r#"data Idem : Type {
+  Zero : Idem;
+  oper f(x : Idem) -> Idem;
+  rule f(Zero) ==> Zero;
+  rule f(Zero) ==> Zero;
+}"#;
         let elab = elaborate_data_descs(twice);
         assert_eq!(
             2,
