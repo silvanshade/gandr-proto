@@ -85,7 +85,16 @@ module SetoidCat : #{
 // composite endpoints parse and here(f) checks, and once type Hom : Ob -> Ob
 // -> Type is a real type component. Today the law fields are
 // MissingDelimiter goals and the kinded Hom module binds without a decline.
+// `expect: goal` still holds, but NOT for the reason it was written: the goal
+// today is the kinded `type Hom : Ob -> Ob -> Type` member, not the law fields.
+// `unitL` is a checked definition, and `expect-def` says so here rather than
+// leaving the corpus silent about the one thing this example exists to show.
+//
+// The no-unknown half of the claim is carried by the crate test
+// `the_left_unit_law_is_checked` until `expect-type-without-unknown` lands on
+// main; the corpus claim is deliberately weaker than the full one until then.
 //@ expect: goal
+//@ expect-def: unitL
 //@ expect-def: SetoidCatLaws
 //@ expect-def: marker
 //@ expect-def: SetoidCat
