@@ -585,6 +585,16 @@ fn discharge(
                         | Some(witness) => values.push(witness.as_ref().clone()),
                         | None => values.push(ty.clone()),
                     },
+                    // A type-family application passes through whole. Its
+                    // arguments are **values**, which this walk does not
+                    // substitute for, and its head is not a discharge site at
+                    // this rung: a witness for a family-kinded component would
+                    // be a type-level abstraction, and none exists to supply.
+                    // The signature elaborator is what keeps a family component
+                    // out of a package's abstract list; nothing here can
+                    // silently discharge one, because nothing here matches a
+                    // head against the substitution.
+                    | ValueType::Family { .. }
                     | ValueType::Unit
                     | ValueType::Unknown
                     | ValueType::Universe
@@ -1124,6 +1134,12 @@ fn collect_atom_names(
             | TypeRef::Value(node) => match *node {
                 | ValueType::Atom(ref name) => {
                     let _fresh = out.insert(name.clone());
+                },
+                // A family head is a type-name reference like any other, so it
+                // is collected. Its arguments are values and this walk collects
+                // type names, so they are not descended into.
+                | ValueType::Family { ref head, .. } => {
+                    let _fresh = out.insert(head.clone());
                 },
                 | ValueType::Unit
                 | ValueType::Unknown

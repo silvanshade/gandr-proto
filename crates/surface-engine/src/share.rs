@@ -2152,6 +2152,14 @@ enum PlugFinish
     ValueTypeStk,
     /// Pop two values and one value type, push the identity type.
     ValueTypePath,
+    /// Pop the argument values, push the type-family application.
+    ValueTypeFamily
+    {
+        /// The family-kinded head's name.
+        head: String,
+        /// The number of argument values to pop.
+        argc: ChildCount,
+    },
     /// Pop `argc` value types, push the data application.
     ValueTypeData
     {
@@ -2937,6 +2945,16 @@ impl<'template> PlugEngine<'template>
                     }));
                 self.tasks.push(PlugTask::ValueType(payload));
             },
+            | ValueType::Family { head, args } => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::ValueTypeFamily {
+                        head: head.clone(),
+                        argc: ChildCount::from(args.len()),
+                    }));
+                for argument in args.iter().rev() {
+                    self.tasks.push(PlugTask::Value(argument));
+                }
+            },
             | ValueType::Data { id, args } => {
                 self.tasks.push(PlugTask::Finish(PlugFinish::ValueTypeData {
                     id: id.clone(),
@@ -3396,6 +3414,13 @@ impl<'template> PlugEngine<'template>
                     ty: Rc::new(ty),
                     lhs: Rc::new(lhs),
                     rhs: Rc::new(rhs),
+                });
+            },
+            | PlugFinish::ValueTypeFamily { head, argc } => {
+                let args = self.pop_values(argc)?;
+                self.value_types.push(ValueType::Family {
+                    head,
+                    args: args.into_iter().map(Rc::new).collect(),
                 });
             },
             | PlugFinish::ValueTypeData { id, argc } => {
@@ -4537,6 +4562,11 @@ fn walk_value_type<'template>(
             tasks.push(WalkTask::Value(rhs));
             tasks.push(WalkTask::Value(lhs));
             tasks.push(WalkTask::ValueType(ty));
+        },
+        | ValueType::Family { args, .. } => {
+            for argument in args.iter().rev() {
+                tasks.push(WalkTask::Value(argument));
+            }
         },
         | ValueType::Data { args, .. } => {
             for argument in args.iter().rev() {

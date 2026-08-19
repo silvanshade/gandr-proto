@@ -504,6 +504,55 @@ pub enum ValueType
         /// The dependent tail type `B`, which may mention `binder`.
         snd: Rc<Self>,
     },
+    /// A **type family applied to value arguments** — `H(v₁, …, vₙ)`, the
+    /// type an indexed sort denotes.
+    ///
+    /// This is what `type Hom : Ob → Ob → Type` in a module signature makes
+    /// writable: `Hom` is a family-kinded name, and `Hom(a, b)` is a *type*
+    /// formed by applying it to two values. The higher-cells design's weak
+    /// category needs exactly this, which is why the category is the stage-1
+    /// flagship where the monoid is the near-term one.
+    ///
+    /// # It is a neutral spine, not a decoded code
+    ///
+    /// A type in term position **is** the type: there is no code grammar, no
+    /// decoding, and no universe eliminator anywhere in the design. So `Hom(a,
+    /// b)` is not `El` applied to something — it is a type former whose head
+    /// carries no unfolding rule, compared the way every neutral is compared:
+    /// **head first, then arguments pointwise**. That is the same shape
+    /// [`Data`](ValueType::Data) already has, with values where `Data` has
+    /// types.
+    ///
+    /// A head that *does* carry an unfolding rule is a defined family, and
+    /// unfolding it is the definitional environment's job rather than this
+    /// former's.
+    ///
+    /// # Conversion descends into the arguments
+    ///
+    /// Comparing `Hom(a, b)` with `Hom(a′, b′)` reduces to comparing values, so
+    /// definitional equality inside a type is the same relation as outside it —
+    /// exactly as at a [`Path`](ValueType::Path) endpoint, and reusing that
+    /// machinery rather than adding a second kind of descent.
+    ///
+    /// Subtyping is **invariant**, the [`Path`](ValueType::Path) and
+    /// [`Sigma`](ValueType::Sigma) precedent: variance in an index is a
+    /// refinement this rung does not make.
+    ///
+    /// # The zero-argument case is not spelled here
+    ///
+    /// A family applied to no arguments is an ordinary type name, which is
+    /// [`Atom`](ValueType::Atom). Admitting an empty `args` would give one type
+    /// two spellings, so [`Self::family`] refuses to build one and returns the
+    /// atom instead.
+    ///
+    /// [`Atom`]: ValueType::Atom
+    Family
+    {
+        /// The family-kinded head's name.
+        head: String,
+        /// The value arguments, in application order. Never empty.
+        args: Vec<Rc<Value>>,
+    },
     /// A **sealed abstract type** `Sealed(a)` — the fresh nominal atom an
     /// opaque ascription mints for one abstract type component.
     ///
@@ -969,6 +1018,35 @@ pub enum CompType
     /// extension; see [`ValueType::Unknown`] — the same decision, per sort,
     /// so the machine's polarity invariant stays sharp).
     Unknown,
+}
+
+impl ValueType
+{
+    /// Builds a type-family application `head(args…)`, or the bare
+    /// [`Atom`](Self::Atom) when `args` is empty.
+    ///
+    /// The empty case is redirected rather than rejected because a caller
+    /// building a family from a parameter list it did not write has no reason
+    /// to special-case arity zero, and because one type with two spellings is
+    /// the failure this redirect exists to prevent.
+    ///
+    /// # Contract
+    /// - ensures: returns `Family` with a non-empty `args`, or `Atom(head)`
+    ///   when `args` is empty.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn family(
+        head: impl Into<String>,
+        args: Vec<Rc<Value>>,
+    ) -> Self
+    {
+        let head = head.into();
+        if args.is_empty() {
+            return Self::Atom(head);
+        }
+        Self::Family { head, args }
+    }
 }
 
 impl CompType

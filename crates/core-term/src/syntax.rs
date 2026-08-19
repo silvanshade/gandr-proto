@@ -302,6 +302,17 @@ pub enum ValueTypeNode
         /// The type-argument ids `ā`.
         args: Vec<ValueTypeNodeId>,
     },
+    /// The type-family application `head(args…)`, the flat mirror of
+    /// [`crate::types::ValueType::Family`]. The head is an owned attribute; the
+    /// arguments are **value**-arena ids, because a family is indexed by values
+    /// where [`Self::Data`] is parameterized by types.
+    Family
+    {
+        /// The family-kinded head's name.
+        head: String,
+        /// The argument value ids, in application order.
+        args: Vec<ValueNodeId>,
+    },
     /// The predicative code universe `Type` (ADR-81), the flat mirror of
     /// [`crate::types::ValueType::Universe`].
     Universe,
@@ -2638,6 +2649,16 @@ enum LegacyAllocFinish<'legacy>
         /// ids on the result stack.
         args: &'legacy [Rc<ValueType>],
     },
+    /// Reassembles a type-family [`ValueTypeNode::Family`] from the head and
+    /// the converted argument value ids.
+    ValueTypeFamily
+    {
+        /// The family-kinded head's name.
+        head: &'legacy str,
+        /// The legacy arguments, mirrored one-for-one by the converted ids on
+        /// the result stack.
+        args: &'legacy [Rc<Value>],
+    },
     /// Reassembles a dependent-pair [`ValueTypeNode::Sigma`] from the binder
     /// name and the converted head/tail type ids.
     ValueTypeSigma(&'legacy str),
@@ -2938,6 +2959,16 @@ enum FlatReadFinish<'arena>
         /// The flat type-argument ids, mirrored one-for-one by the read-back
         /// types on the result stack.
         args: &'arena [ValueTypeNodeId],
+    },
+    /// Reassembles a type-family [`ValueType::Family`] from the head and the
+    /// read-back argument values.
+    ValueTypeFamily
+    {
+        /// The family-kinded head's name.
+        head: &'arena str,
+        /// The flat argument ids, mirrored one-for-one by the read-back values
+        /// on the result stack.
+        args: &'arena [ValueNodeId],
     },
     /// Reassembles a dependent-pair [`ValueType::Sigma`] from the binder name
     /// and the read-back head/tail types.
@@ -3619,6 +3650,17 @@ impl FlatArena
                     carrier.as_ref(),
                 )));
             },
+            | ValueType::Family { ref head, ref args } => {
+                work.push(LegacyAllocFrame::Finish(
+                    LegacyAllocFinish::ValueTypeFamily {
+                        head: head.as_str(),
+                        args,
+                    },
+                ));
+                for arg in args.iter().rev() {
+                    work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(arg.as_ref())));
+                }
+            },
             | ValueType::Data { ref id, ref args } => {
                 work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValueTypeData {
                     id,
@@ -4223,6 +4265,17 @@ impl FlatArena
                 let id = self
                     .value_types
                     .alloc(ValueTypeNode::Path { ty, lhs, rhs })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::ValueType(id));
+            },
+            | LegacyAllocFinish::ValueTypeFamily { head, args } => {
+                let arg_ids = pop_alloc_values(results, args.len().into())?;
+                let id = self
+                    .value_types
+                    .alloc(ValueTypeNode::Family {
+                        head: head.to_owned(),
+                        args: arg_ids,
+                    })
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
             },
@@ -4832,6 +4885,15 @@ impl FlatArena
                 work.push(FlatReadFrame::Visit(FlatRoot::Value(lhs)));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(ty)));
             },
+            | ValueTypeNode::Family { ref head, ref args } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::ValueTypeFamily {
+                    head: head.as_str(),
+                    args,
+                }));
+                for arg in args.iter().rev() {
+                    work.push(FlatReadFrame::Visit(FlatRoot::Value(*arg)));
+                }
+            },
             | ValueTypeNode::Data {
                 id: ref data_id,
                 ref args,
@@ -5366,6 +5428,13 @@ impl FlatArena
                     ty: Rc::new(ty),
                     lhs: Rc::new(lhs),
                     rhs: Rc::new(rhs),
+                }));
+            },
+            | FlatReadFinish::ValueTypeFamily { head, args } => {
+                let values = pop_read_values(results, args.len().into())?;
+                results.push(StructuralRoot::ValueType(ValueType::Family {
+                    head: head.to_owned(),
+                    args: values.into_iter().map(Rc::new).collect(),
                 }));
             },
             | FlatReadFinish::ValueTypeData { id, args } => {

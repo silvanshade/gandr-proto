@@ -235,6 +235,13 @@ pub enum BridgeRejection
     /// no information.
     #[error("a dependent function type has no S1 image (S1 has no value-indexed type former)")]
     DependentFunctionType,
+    /// A type-family application `H(v₁, …, vₙ)`.
+    ///
+    /// Refused for the same reason a dependent function type is: an applied
+    /// family is a type indexed by value terms, and S1 has no such former. The
+    /// zero-argument case is an [`ValueType::Atom`] and never reaches here.
+    #[error("a type-family application has no S1 image (S1 has no value-indexed type former)")]
+    TypeFamilyApplication,
     /// A typed machine-numeric literal (`u32`/`u64`/`i32`/`i64`/`f32`/`f64`).
     #[error(
         "a machine-numeric literal has no S1 image (S1's base atoms are Integer/String/Numeric)"
@@ -338,6 +345,7 @@ impl BridgeRejection
             | Self::FixpointFormer => BridgeExclusionClass("recursion"),
             | Self::PureEmbedding => BridgeExclusionClass("pure-embedding"),
             | Self::DependentFunctionType => BridgeExclusionClass("dependent-arrow"),
+            | Self::TypeFamilyApplication => BridgeExclusionClass("type-family"),
             | Self::UnboundSeal(_) => BridgeExclusionClass("unbound-seal"),
             | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => {
                 BridgeExclusionClass("machine-numeric")
@@ -647,6 +655,9 @@ fn lower_type<'core>(
                 | ValueType::Path { .. } => return Err(BridgeRejection::PathType),
                 | ValueType::Data { .. } => return Err(BridgeRejection::DataType),
                 | ValueType::Universe => return Err(BridgeRejection::UniverseType),
+                | ValueType::Family { .. } => {
+                    return Err(BridgeRejection::TypeFamilyApplication);
+                },
                 | ValueType::Sealed(ref seal) => match context.seal(seal) {
                     | Some(index) => TypeOut::Value(arena.value_type_abstract(index)),
                     | None => {

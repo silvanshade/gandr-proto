@@ -392,6 +392,18 @@ fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
                         goals.push(SubtypeGoal::Comp(Rc::clone(lo_c), Rc::clone(hi_c)));
                         goals.push(SubtypeGoal::Comp(Rc::clone(hi_b), Rc::clone(lo_b)));
                     },
+                    // A type-family application is compared **invariantly**,
+                    // the `Path` precedent exactly: variance in an index is a
+                    // refinement this rung does not make, and conversion is the
+                    // relation that decides index equality. Delegating the whole
+                    // pair keeps that decision in one place rather than
+                    // re-deriving the spine comparison here.
+                    | (&ValueType::Family { .. }, &ValueType::Family { .. }) => {
+                        let nbe = nbe.get_or_insert_with(Normalizer::new);
+                        if !bool::from(type_converts(nbe, sub.as_ref(), sup.as_ref())) {
+                            return false.into();
+                        }
+                    },
                     | (
                         &ValueType::Path {
                             ty: ref lo_ty,

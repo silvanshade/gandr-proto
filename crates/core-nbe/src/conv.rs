@@ -1520,6 +1520,34 @@ fn value_type_goal(
             ));
             ValueEquality::from(true)
         },
+        // A neutral type spine: heads first, then arguments pointwise. The
+        // arguments are values, so this is where a type comparison descends
+        // into terms — the same descent a `Path` endpoint makes, through the
+        // same relation, rather than a second kind of descent.
+        //
+        // Arity is compared before the arguments because two spines with
+        // different arities are different types whatever their common prefix
+        // says.
+        | (
+            &ValueType::Family {
+                head: ref left_head,
+                args: ref left_args,
+            },
+            &ValueType::Family {
+                head: ref right_head,
+                args: ref right_args,
+            },
+        ) => {
+            if left_head != right_head || left_args.len() != right_args.len() {
+                return ValueEquality::from(false);
+            }
+            for (left_arg, right_arg) in left_args.iter().zip(right_args.iter()) {
+                if !bool::from(converts(nbe, left_arg, right_arg)) {
+                    return ValueEquality::from(false);
+                }
+            }
+            ValueEquality::from(true)
+        },
         | (
             &ValueType::Path {
                 ty: ref left_ty,

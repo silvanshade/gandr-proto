@@ -241,6 +241,19 @@ enum ValueFinish<'type_>
     /// Rebuild a declared-data application from its id and rebuilt arguments
     /// (the `usize` is the argument count).
     Data(crate::types::DataId, usize),
+    /// Rebuild a type-family application from its head and the borrowed
+    /// argument values, each substituted through [`subst_value`].
+    ///
+    /// The arguments are **values**, so they are held borrowed and substituted
+    /// at the rebuild exactly as a `Path` endpoint is, rather than being pushed
+    /// onto the type worklist as `Data`'s type arguments are.
+    Family
+    {
+        /// The family-kinded head's name, kept verbatim.
+        head: &'type_ str,
+        /// The borrowed argument values.
+        args: &'type_ [Rc<Value>],
+    },
     /// Rebuild a dependent pair `Σ(x : A). B`, substituting into the tail only
     /// when the binder does not shadow the substituted name.
     Sigma
@@ -375,6 +388,15 @@ fn subst_type(
                     tasks.push(TypeTask::FinishValue(ValueFinish::Path(lhs, rhs)));
                     tasks.push(TypeTask::Value(carrier));
                 },
+                | ValueType::Family {
+                    ref head,
+                    ref args,
+                } => {
+                    tasks.push(TypeTask::FinishValue(ValueFinish::Family {
+                        head: head.as_str(),
+                        args: args.as_slice(),
+                    }));
+                },
                 | ValueType::Data { ref id, ref args } => {
                     tasks.push(TypeTask::FinishValue(ValueFinish::Data(
                         id.clone(),
@@ -476,6 +498,15 @@ fn subst_type(
                     let delivers = pop_comp_type(&mut comps);
                     let consumes = pop_comp_type(&mut comps);
                     values.push(ValueType::Stk(Rc::new(consumes), Rc::new(delivers)));
+                },
+                | ValueFinish::Family { head, args } => {
+                    values.push(ValueType::Family {
+                        head: alloc::string::String::from(head),
+                        args: args
+                            .iter()
+                            .map(|arg| Rc::new(subst_value(arg, name, repl)))
+                            .collect(),
+                    });
                 },
                 | ValueFinish::Path(lhs, rhs) => {
                     let carrier = pop_value_type(&mut values);

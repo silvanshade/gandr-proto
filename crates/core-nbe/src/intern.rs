@@ -951,6 +951,18 @@ fn visit_value_type<'term>(
                 work.push(KeyTask::ValueType(*arg));
             }
         },
+        | ValueTypeNode::Family { ref head, ref args } => {
+            // A neutral type spine: head bytes, arity, then the argument
+            // values, which are ordinary value keys. Emitting the arity before
+            // the arguments is what stops `H(a, b)` and a differently-shaped
+            // spine with the same argument stream sharing a key.
+            tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(15)));
+            length(tokens, SemanticNodeCount::from(args.len()));
+            for arg in args.iter().rev() {
+                work.push(KeyTask::Value(*arg));
+            }
+            work.push(KeyTask::Name(head.as_str()));
+        },
         | ValueTypeNode::Universe => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(10)));
         },

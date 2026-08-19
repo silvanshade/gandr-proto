@@ -2470,6 +2470,81 @@ mod tests
         assert!(!bool::from(nbe.type_converts(&left, &apart)));
     }
 
+    /// `Hom(a, b)` over the two given index values.
+    fn hom(
+        lhs: Rc<Value>,
+        rhs: Rc<Value>,
+    ) -> ValueType
+    {
+        ValueType::family("Hom", alloc::vec![lhs, rhs])
+    }
+
+    /// A family application's indices are compared through the normalizer, so
+    /// a redex and its contractum in index position are the same type. This is
+    /// the descent into terms inside a type, at a family rather than at a
+    /// `Path`.
+    #[test]
+    fn family_indices_convert_up_to_beta()
+    {
+        let mut nbe = Normalizer::new();
+        let redex = thunk(Comp::app(
+            Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+            Value::Int(3),
+        ));
+        let contractum = thunk(Comp::ret(Value::Int(3)));
+        assert!(
+            bool::from(nbe.type_converts(
+                &hom(Rc::clone(&redex), Rc::clone(&contractum)),
+                &hom(Rc::clone(&contractum), Rc::clone(&redex)),
+            )),
+            "family indices did not convert up to beta"
+        );
+    }
+
+    /// The separating cases, and they are the point of the test: a congruence
+    /// that only ever reports equal things equal is compatible with being a
+    /// no-op. Each pair below differs in exactly one of the three things the
+    /// spine comparison looks at — the head, an index, the arity — and each
+    /// must be refused.
+    #[test]
+    fn family_spines_are_separated_by_head_index_and_arity()
+    {
+        let mut nbe = Normalizer::new();
+        let one = thunk(Comp::ret(Value::Int(1)));
+        let two = thunk(Comp::ret(Value::Int(2)));
+        let base = hom(Rc::clone(&one), Rc::clone(&one));
+
+        let other_head = ValueType::family("Obj", alloc::vec![Rc::clone(&one), Rc::clone(&one)]);
+        assert!(
+            !bool::from(nbe.type_converts(&base, &other_head)),
+            "two families with different heads must not convert"
+        );
+
+        let other_index = hom(Rc::clone(&one), two);
+        assert!(
+            !bool::from(nbe.type_converts(&base, &other_index)),
+            "two families differing in one index must not convert"
+        );
+
+        let other_arity = ValueType::family("Hom", alloc::vec![one]);
+        assert!(
+            !bool::from(nbe.type_converts(&base, &other_arity)),
+            "two families of different arity must not convert"
+        );
+    }
+
+    /// A family applied to nothing is the bare atom, so one type never gets two
+    /// spellings. The constructor is where that is enforced.
+    #[test]
+    fn a_family_applied_to_nothing_is_the_atom()
+    {
+        assert_eq!(
+            ValueType::family("Ob", Vec::new()),
+            ValueType::Atom(String::from("Ob")),
+            "an empty argument list must redirect to the atom spelling"
+        );
+    }
+
     /// A dependent function type built over a `Path` whose endpoints are the
     /// bound variable — the shape `Model(CatShape)`'s `id` field takes.
     fn dependent_pi(binder: &str) -> CompType

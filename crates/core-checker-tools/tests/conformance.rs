@@ -238,6 +238,10 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
                 // A sealed atom joins them for the same reason and one more:
                 // it has no children at all, so there is nowhere for an
                 // `Unknown` to hide inside one.
+                // A family application's children are **values**, and a value
+                // carries no type-level `Unknown` to find, so the spine is
+                // static exactly when its head is — which is to say always.
+                | ValueType::Family { .. }
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Universe
@@ -5906,6 +5910,14 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
             | RebuildStep::Value(ty) => match *ty {
                 | ValueType::Atom(ref name) => {
                     outputs.push(RebuildOutput::Value(ValueType::Atom(name.clone())));
+                },
+                // The arguments are values, which this rebuild does not visit,
+                // so the spine is rebuilt whole.
+                | ValueType::Family { ref head, ref args } => {
+                    outputs.push(RebuildOutput::Value(ValueType::Family {
+                        head: head.clone(),
+                        args: args.clone(),
+                    }));
                 },
                 | ValueType::Unit => outputs.push(RebuildOutput::Value(ValueType::Unit)),
                 | ValueType::Sealed(ref seal) => {

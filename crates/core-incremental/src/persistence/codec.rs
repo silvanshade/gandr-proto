@@ -113,10 +113,13 @@ tags! {
     // here rather than folded into CT_ARROW: a non-dependent arrow keeps the
     // exact bytes it encoded to before `Π` existed, so every checkpoint an
     // earlier build wrote still decodes and still round-trips canonically.
-    // The number follows whatever the chain already assigned — a tag is a wire
+    // The numbers follow whatever the chain already assigned — a tag is a wire
     // identity, so renumbering an existing one would invalidate every artifact
     // that carries it.
     CT_PI = 69,
+    // VT_FAMILY is the type-family application. Appended for the same reason
+    // CT_PI is: every tag an earlier build wrote keeps its number.
+    VT_FAMILY = 70,
 }
 
 /// Encodes a lowered program using the canonical persistence grammar.
@@ -471,6 +474,11 @@ impl<'value> Encoder<'value>
                 self.work.push(Work::Value(rhs));
                 self.work.push(Work::Value(lhs));
                 self.work.push(Work::ValueType(ty));
+            },
+            | ValueType::Family { ref args, .. } => {
+                for arg in args.iter().rev() {
+                    self.work.push(Work::Value(arg));
+                }
             },
             | ValueType::Atom(_)
             | ValueType::Unit
@@ -856,6 +864,11 @@ impl<'value> Encoder<'value>
             | ValueType::Stk(..) => self.byte(VT_STK),
             | ValueType::Path { .. } => self.byte(VT_PATH),
             | ValueType::Universe => self.byte(VT_UNIVERSE),
+            | ValueType::Family { ref head, ref args } => {
+                self.byte(VT_FAMILY);
+                self.string(head)?;
+                self.len(args.len())?;
+            },
             | ValueType::Sigma { ref binder, .. } => {
                 self.byte(VT_SIGMA);
                 self.string(binder)?;
@@ -1493,6 +1506,16 @@ fn decode_token(
             nodes.push(Node::ValueType(ValueType::path(ty, lhs, rhs)));
         },
         | VT_UNIVERSE => nodes.push(Node::ValueType(ValueType::Universe)),
+        | VT_FAMILY => {
+            let head = reader.string()?;
+            let arity = reader.len()?;
+            let mut args = Vec::with_capacity(arity);
+            for _ in 0 .. arity {
+                args.push(Rc::new(pop_value(nodes)?));
+            }
+            args.reverse();
+            nodes.push(Node::ValueType(ValueType::family(head, args)));
+        },
         | VT_SIGMA => {
             let binder = reader.string()?;
             let snd = pop_value_type(nodes)?;
