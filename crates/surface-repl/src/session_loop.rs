@@ -99,7 +99,7 @@ impl SessionLoop
     {
         let text = line.as_ref();
         if self.pending.is_empty() {
-            if let Some(event) = meta_command(text) {
+            if let Some(event) = meta_command(line) {
                 return Ok(event);
             }
             if text.is_empty() {
@@ -132,9 +132,9 @@ impl Default for SessionLoop
 }
 
 /// Interpret a meta-command offered against an empty pending buffer.
-fn meta_command(text: &str) -> Option<LoopEvent>
+fn meta_command(text: SourceSlice<'_>) -> Option<LoopEvent>
 {
-    match text {
+    match text.as_ref() {
         | ":q" | ":quit" => Some(LoopEvent::Quit),
         | ":help" => Some(LoopEvent::Info(String::from(
             "Enter submits a parse-complete buffer. Holes are typeable. :q leaves.",
