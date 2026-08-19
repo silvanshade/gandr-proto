@@ -55,6 +55,8 @@ mod origin_identity;
 #[cfg(test)]
 mod packages;
 #[cfg(test)]
+mod path_carrier;
+#[cfg(test)]
 mod pattern_holes;
 #[cfg(test)]
 mod proptest;
