@@ -81,18 +81,18 @@ term: Value(
     ),
 )
 === origin ===
-[0] => 0..47 #56139d4cc787b505 [DefFunctionSugar]
-[0, 0] => 0..47 #56139d4cc787b505 [DefFunctionSugar]
-[0, 0, 0] => 40..45 #9e7229c6ef6c47bc
-[0, 0, 0, 0] => 44..45 #69b0d09892e27b0b
-[1] => 48..101 #29ac27addc4064a0 [DefFunctionSugar]
-[1, 0] => 48..101 #29ac27addc4064a0 [DefFunctionSugar]
-[1, 0, 0] => 88..99 #3ec52f812f37bfec [BindHoist]
-[1, 0, 0, 0] => 93..98 #459a76071a9c2974 [OperatorElab]
-[1, 0, 0, 0, 0] => 93..98 #459a76071a9c2974 [OperatorElab]
-[1, 0, 0, 0, 0, 0] => 95..96 #6273bfca56443668 [OperatorElab]
-[1, 0, 0, 0, 0, 0, 0] => 95..96 #6273bfca56443668 [OperatorElab]
-[1, 0, 0, 0, 0, 1] => 93..94 #69b0d09892e27b0b
-[1, 0, 0, 0, 1] => 97..98 #9c41d48539ce3034
-[1, 0, 0, 1] => 88..99 #3ec52f812f37bfec
-[1, 0, 0, 1, 0] => 92..99 #4666605f49e6de4d [BindHoist]
+[0] => 0..47 #7fa9b1b0a9d2c1b8 [DefFunctionSugar]
+[0, 0] => 0..47 #7fa9b1b0a9d2c1b8 [DefFunctionSugar]
+[0, 0, 0] => 40..45 #21944a50adf2394c
+[0, 0, 0, 0] => 44..45 #cf27d9ec7d5db2f3
+[1] => 48..101 #1d394802594488bd [DefFunctionSugar]
+[1, 0] => 48..101 #1d394802594488bd [DefFunctionSugar]
+[1, 0, 0] => 88..99 #9fc7092c72542bd0 [BindHoist]
+[1, 0, 0, 0] => 93..98 #547d48485a77facb [OperatorElab]
+[1, 0, 0, 0, 0] => 93..98 #547d48485a77facb [OperatorElab]
+[1, 0, 0, 0, 0, 0] => 95..96 #c7eac91e40bf6e50 [OperatorElab]
+[1, 0, 0, 0, 0, 0, 0] => 95..96 #c7eac91e40bf6e50 [OperatorElab]
+[1, 0, 0, 0, 0, 1] => 93..94 #cf27d9ec7d5db2f3
+[1, 0, 0, 0, 1] => 97..98 #01b8cdd924494cec
+[1, 0, 0, 1] => 88..99 #9fc7092c72542bd0
+[1, 0, 0, 1, 0] => 92..99 #f0f84f2f74bc4567 [BindHoist]
