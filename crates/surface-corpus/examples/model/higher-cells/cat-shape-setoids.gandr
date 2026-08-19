@@ -32,7 +32,7 @@ module SetoidCatLaws : #{
     g(y)
   }
 
-  def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), comp(a, b, b, id(a), f), f)) {
+  def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) {
     ret here(f)
   }
 

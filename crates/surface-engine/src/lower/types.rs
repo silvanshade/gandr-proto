@@ -1075,6 +1075,9 @@ enum EndpointTask<'tree>
     /// Rebuild an application from the head value and `arity` argument values
     /// already on the result stack.
     Apply(SynNode<'tree>, EndpointArity),
+    /// Re-wrap the application already on the result stack as a **thunk**
+    /// rather than as the value it returns.
+    Suspend(SynNode<'tree>),
 }
 
 /// Lowers one identity-type endpoint.
@@ -1127,6 +1130,25 @@ fn lower_endpoint_value(
         match task {
             | EndpointTask::Node(current) => {
                 schedule_endpoint(source, current, &mut pending, &mut built)?;
+            },
+            | EndpointTask::Suspend(node) => {
+                // The application beneath was lowered as the value it RETURNS.
+                // At a thunked carrier the endpoint is the function itself, so
+                // the same computation is re-wrapped as a suspension. The two
+                // spellings share one computation and differ only in which of
+                // the two values over it the source meant.
+                let embedded = built.pop().ok_or_else(|| LowerError::MalformedNode {
+                    kind: node.kind(),
+                    byte_range: node.byte_range(),
+                })?;
+                let Value::Run(body) = embedded
+                else {
+                    return Err(LowerError::Unsupported {
+                        kind: node.kind(),
+                        byte_range: node.byte_range(),
+                    });
+                };
+                built.push(Value::Thunk(Grade::OMEGA, body));
             },
             | EndpointTask::Apply(head_node, arity) => {
                 let start = built.len().saturating_sub(usize::from(arity));
@@ -1194,6 +1216,29 @@ fn schedule_endpoint<'tree>(
             let arguments_node = required_field(node, node_kinds::FIELD_ARGUMENTS)?;
             let arguments = named_non_extra_children(arguments_node);
             schedule_application(node, function, arguments, pending);
+        },
+        // **A suspended endpoint.** A carrier of thunk type asks for the
+        // function rather than the value it returns, and a thunk literal is how
+        // a source says which it means.
+        //
+        // Only a body that is one application is admitted, which is what a law
+        // field writes. A thunk body is a computation block in general, and
+        // lowering an arbitrary one needs the full lowerer that a type position
+        // cannot reach — so a wider body **declines by name** rather than
+        // degrading, and the decline is the capability boundary rather than a
+        // judgement about the source.
+        | node_kinds::THUNK_EXPRESSION => {
+            let body = required_field(node, node_kinds::FIELD_BODY)?;
+            let children = named_non_extra_children(body);
+            let [tail] = *children.as_slice()
+            else {
+                return Err(LowerError::Unsupported {
+                    kind: node.kind(),
+                    byte_range: node.byte_range(),
+                });
+            };
+            pending.push(EndpointTask::Suspend(node));
+            pending.push(EndpointTask::Node(tail));
         },
         | node_kinds::TYPE_APPLICATION => {
             let constructor = required_field(node, node_kinds::FIELD_CONSTRUCTOR)?;
