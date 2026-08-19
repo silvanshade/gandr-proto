@@ -516,13 +516,20 @@ mod tests
 
     use super::Server;
     use super::advertised_capabilities;
+    use crate::boundary::FramePayload;
+    use crate::protocol::TokenUnit;
+
+    fn payload(body: &str) -> FramePayload<'_>
+    {
+        FramePayload::from(body.as_bytes())
+    }
 
     #[test]
     fn initialize_advertises_the_token_legend()
     {
         let mut server = Server::new();
-        let outcome = server.handle_payload(crate::boundary::FramePayload::from(
-            br#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.as_slice(),
+        let outcome = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
         ));
         let Some(message) = outcome.messages.first()
         else {
@@ -534,5 +541,80 @@ mod tests
             .expect("legend");
         assert_eq!(Some("keyword"), types.first().and_then(Value::as_str));
         assert_eq!(advertised_capabilities(), message["result"]);
+    }
+
+    #[test]
+    fn semantic_tokens_full_answers_a_known_document()
+    {
+        let mut server = Server::new();
+        let initialized = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+        ));
+        assert!(
+            initialized
+                .messages
+                .first()
+                .is_some_and(|message| message.get("result").is_some()),
+            "initialize must succeed before documents are opened"
+        );
+        let opened = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/example.gandr","languageId":"gandr","version":1,"text":"def f = 42;\n"}}}"#,
+        ));
+        assert!(
+            opened.messages.iter().any(|message| {
+                message.get("method").and_then(Value::as_str)
+                    == Some("textDocument/publishDiagnostics")
+            }),
+            "didOpen must publish diagnostics rather than stay silent"
+        );
+        let outcome = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/example.gandr"}}}"#,
+        ));
+        let Some(message) = outcome.messages.first()
+        else {
+            panic!("semanticTokens/full must answer");
+        };
+        assert!(
+            message.get("error").is_none(),
+            "advertised semantic tokens must be honoured, got {message}"
+        );
+        let data = message
+            .pointer("/result/data")
+            .and_then(Value::as_array)
+            .expect("token stream");
+        assert!(
+            !data.is_empty(),
+            "a definition must produce at least one token"
+        );
+        assert_eq!(0, data.len() % 5, "tokens are five integers each");
+        let units: Vec<u32> = data
+            .iter()
+            .map(|value| {
+                u32::from(serde_json::from_value::<TokenUnit>(value.clone()).expect("unit"))
+            })
+            .collect();
+        assert_eq!(
+            [0_u32, 0_u32, 3_u32, 0_u32, 0_u32],
+            units[0 .. 5],
+            "the first token is `def` as a keyword at line 0 column 0"
+        );
+        let hover = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#,
+        ));
+        assert!(
+            hover.messages.first().is_some_and(|message| {
+                message.get("result").is_some() && message.get("error").is_none()
+            }),
+            "advertised hover must be honoured"
+        );
+        let completion = server.handle_payload(payload(
+            r#"{"jsonrpc":"2.0","id":4,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#,
+        ));
+        assert!(
+            completion.messages.first().is_some_and(|message| {
+                message.get("result").is_some() && message.get("error").is_none()
+            }),
+            "advertised completion must be honoured"
+        );
     }
 }
