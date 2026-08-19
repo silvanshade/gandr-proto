@@ -80,6 +80,7 @@ use gandr_core_checker::judgements::stack::returner_components;
 use gandr_core_checker::judgements::stack::stk_components;
 use gandr_core_checker::judgements::stack::with_component;
 use gandr_core_term::boundary::MachineStepCount;
+use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::StackDepth;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::effect::EffectOp;
@@ -1443,7 +1444,11 @@ fn step_comp(
         | Comp::Abs(name, annot, body) => match (annot, dir) {
             | (None, Dir::Check(CompType::Arrow { binder, arg, res })) => {
                 ctx.bind(name.clone(), arg.as_ref().clone());
-                let body_dir = Dir::Check(relocate_codomain(binder.as_deref(), &name, &res));
+                let body_dir = Dir::Check(relocate_codomain(
+                    binder.as_deref().map(NameRef::from),
+                    NameRef::from(name.as_str()),
+                    &res,
+                ));
                 stack.push(Frame::Abs {
                     binder: binder.as_ref().map(|_| name.clone()),
                     var: name,
@@ -2218,7 +2223,7 @@ fn step_return(
             // checker's `rule_abs` step for step.
             let binder = match dir {
                 | Dir::Check(_) => binder,
-                | Dir::Infer => inferred_binder(&var, &res_ty),
+                | Dir::Infer => inferred_binder(NameRef::from(var.as_str()), &res_ty),
             };
             finish_comp(
                 ctx,
@@ -2276,7 +2281,7 @@ fn step_return(
             expect_value(ty)?;
             // Dependent application: the codomain is closed at the argument the
             // head was applied to, matching the recursive checker's `rule_app`.
-            let applied = instantiate_codomain(binder.as_deref(), &result, &arg);
+            let applied = instantiate_codomain(binder.as_deref().map(NameRef::from), &result, &arg);
             finish_comp(ctx, applied, dir).map(return_comp)
         },
         | Frame::Ret { dir } => {
@@ -2824,7 +2829,8 @@ fn step_return(
             expect_value(ty)?;
             // The frame supplied the argument, so a dependent codomain closes
             // here before the walk continues from it.
-            let applied = instantiate_codomain(binder.as_deref(), &result_input, &arg);
+            let applied =
+                instantiate_codomain(binder.as_deref().map(NameRef::from), &result_input, &arg);
             walk_stack(rest, applied, dir, stack, ctx)
         },
         // Rule Reify (the stack-judgment walk; A3.3 `+control`): a bind frame's

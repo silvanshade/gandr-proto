@@ -2690,11 +2690,11 @@ mod tests
 
     /// A dependent function type built over a `Path` whose endpoints are the
     /// bound variable — the shape `Model(CatShape)`'s `id` field takes.
-    fn dependent_pi(binder: &str) -> CompType
+    fn dependent_pi(binder: NameRef<'_>) -> CompType
     {
-        let occurrence = Rc::new(Value::var(NameRef::from(binder)));
+        let occurrence = Rc::new(Value::var(binder));
         CompType::pi(
-            binder,
+            binder.as_ref(),
             ValueType::integer(),
             CompType::F(
                 Rc::new(ValueType::Path {
@@ -2714,7 +2714,10 @@ mod tests
     {
         let mut nbe = Normalizer::new();
         assert!(
-            bool::from(nbe.comp_type_converts(&dependent_pi("a"), &dependent_pi("b"))),
+            bool::from(nbe.comp_type_converts(
+                &dependent_pi(NameRef::from("a")),
+                &dependent_pi(NameRef::from("b")),
+            )),
             "two spellings of one dependent function type did not convert"
         );
     }
@@ -2747,7 +2750,7 @@ mod tests
     fn dependent_pi_does_not_convert_with_the_plain_arrow()
     {
         let mut nbe = Normalizer::new();
-        let dependent = dependent_pi("a");
+        let dependent = dependent_pi(NameRef::from("a"));
         let CompType::Arrow { ref res, .. } = dependent
         else {
             panic!("the constructor built a function type")

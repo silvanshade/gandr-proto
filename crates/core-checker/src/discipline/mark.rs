@@ -82,6 +82,7 @@ use gandr_core_term::boundary::ContextLength;
 use gandr_core_term::boundary::ErrorStatus;
 use gandr_core_term::boundary::I64Literal;
 use gandr_core_term::boundary::MarkingEmptyStatus;
+use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::PathIndex;
 use gandr_core_term::boundary::PathSegments;
 use gandr_core_term::ctx::Ctx;
@@ -2573,7 +2574,11 @@ impl Marker
                     // body in the lambda's; relocating the codomain is what
                     // puts them in one scope (the recursive checker's
                     // `relocate_codomain`, mirrored step for step).
-                    let expected_res = relocate_codomain(binder.as_deref(), &name, &res);
+                    let expected_res = relocate_codomain(
+                        binder.as_deref().map(NameRef::from),
+                        NameRef::from(name.as_str()),
+                        &res,
+                    );
                     self.schedule_child_comp(
                         0,
                         body,
@@ -3687,7 +3692,7 @@ impl Marker
                 let ty = finish_comp(
                     &self.ctx,
                     CompType::Arrow {
-                        binder: inferred_binder(&name, &res_ty),
+                        binder: inferred_binder(NameRef::from(name.as_str()), &res_ty),
                         arg: annot_ty,
                         res: Rc::new(res_ty),
                     },
@@ -3734,7 +3739,8 @@ impl Marker
             } => {
                 let _arg_ty = expect_value(done);
                 let _popped = self.path.pop();
-                let applied = instantiate_codomain(binder.as_deref(), &res, arg.as_ref());
+                let applied =
+                    instantiate_codomain(binder.as_deref().map(NameRef::from), &res, arg.as_ref());
                 let ty = finish_comp(&self.ctx, applied, dir, &mut pending.marks);
                 run.result = Some(MarkResult::Comp(pending.finish(self, ty)));
             },
@@ -4470,7 +4476,11 @@ impl Marker
             } => {
                 let _value_ty = expect_value(done);
                 let _popped = self.path.pop();
-                let applied = instantiate_codomain(binder.as_deref(), &result_ty, arg.as_ref());
+                let applied = instantiate_codomain(
+                    binder.as_deref().map(NameRef::from),
+                    &result_ty,
+                    arg.as_ref(),
+                );
                 run.work = Some(MarkWork::StackValue(StackValueWork {
                     stack: unrc(rest),
                     input: applied,

@@ -1395,10 +1395,14 @@ enum TypeGoal
 /// distinct verdict.
 ///
 /// # Termination
-/// - reason: the walk drains an explicit goal stack over finite type trees.
-/// - measure: pending goals.
-/// - boundedness: every goal decomposes into strictly smaller type pairs.
-/// - input recursion: none.
+/// - reason: the cycle runs only through family unfolding, which replaces a
+///   spine by a strictly shorter definition.
+/// - measure: the multiset of both sides' definitional heights, then the
+///   pending goal stack.
+/// - boundedness: the definitional environment is finite, so heights are
+///   finitely many.
+/// - input recursion: every recursive call is made on a strictly smaller
+///   measure.
 fn type_converts_run(
     nbe: &mut Normalizer,
     lhs: &ValueType,
@@ -1415,10 +1419,14 @@ fn type_converts_run(
 /// decide **one** relation rather than two that have to be kept in step.
 ///
 /// # Termination
-/// - reason: the walk drains an explicit goal stack over finite type trees.
-/// - measure: pending goals.
-/// - boundedness: every goal decomposes into strictly smaller type pairs.
-/// - input recursion: none.
+/// - reason: the cycle runs only through family unfolding, which replaces a
+///   spine by a strictly shorter definition.
+/// - measure: the multiset of both sides' definitional heights, then the
+///   pending goal stack.
+/// - boundedness: the definitional environment is finite, so heights are
+///   finitely many.
+/// - input recursion: every recursive call is made on a strictly smaller
+///   measure.
 fn drain_type_goals(
     nbe: &mut Normalizer,
     goals: &mut Vec<TypeGoal>,
@@ -1557,6 +1565,16 @@ pub fn default_family_unfold_order(context: &FamilyUnfoldContext) -> Vec<FamilyU
 }
 
 /// Compares one value-type pair.
+///
+/// # Termination
+/// - reason: the cycle runs only through family unfolding, which replaces a
+///   spine by a strictly shorter definition.
+/// - measure: the multiset of both sides' definitional heights, then the
+///   pending goal stack.
+/// - boundedness: the definitional environment is finite, so heights are
+///   finitely many.
+/// - input recursion: every recursive call is made on a strictly smaller
+///   measure.
 fn value_type_goal(
     nbe: &mut Normalizer,
     lhs: &Rc<ValueType>,
@@ -1570,6 +1588,13 @@ fn value_type_goal(
     {
         return ValueEquality::from(true);
     }
+    // Delta before structure: a head that carries a definition is unfolded
+    // first, so every arm below compares heads that have no unfolding rule left.
+    // Doing it here rather than in the family arm is what keeps the comparison a
+    // flat goal stack — the alternative is congruence-then-retry, which is a
+    // search, and a search here would recurse over caller-controlled depth.
+    let lhs = &unfold_head(nbe, lhs);
+    let rhs = &unfold_head(nbe, rhs);
     match (&**lhs, &**rhs) {
         | (&ValueType::Atom(ref left), &ValueType::Atom(ref right)) => {
             ValueEquality::from(left == right)
@@ -1643,8 +1668,8 @@ fn value_type_goal(
         // definition — with the ORDER of those attempts chosen by policy and
         // the SET of them fixed, so no policy can change the relation
         // (`default_family_unfold_order`).
-        | (&ValueType::Family { .. }, _) | (_, &ValueType::Family { .. }) => {
-            family_goal(nbe, lhs, rhs)
+        | (&ValueType::Family { .. }, &ValueType::Family { .. }) => {
+            family_congruence(nbe, lhs, rhs)
         },
         | (
             &ValueType::Path {
@@ -1720,67 +1745,51 @@ fn value_type_goal(
     }
 }
 
-/// Decides a pair where at least one side is a family spine.
+/// Unfolds a type to weak-head normal form with respect to the definitional
+/// environment: while the head is a family carrying a definition, replace it by
+/// its instantiated body.
 ///
-/// **The exhaustive-search discipline.** Every applicable step is tried before
-/// the pair is refused; the policy decides only what order they are tried in.
-/// A step that would loop is impossible because unfolding strictly lowers the
-/// definitional height of the side it fires on, and a finite environment has
-/// finitely many heights.
+/// **This is the family-unfolding node, and it is a loop rather than a
+/// recursion.** Recursing here would descend the host stack over
+/// caller-controlled data — the depth is whatever a source's definition chain
+/// makes it — which is the hazard this engine's explicit-worklist discipline
+/// exists to refuse. Draining a loop costs the same and cannot overflow.
+///
+/// # Why unfolding both sides first is the same relation
+///
+/// The alternative shape is to try congruence, then fall back to unfolding on
+/// failure. That is a search with backtracking, and it decides the same
+/// relation: unfolding only **merges** equivalence classes, never separates
+/// them, so a pair equal by congruence is equal after unfolding too. Unfolding
+/// first is therefore at least as complete and needs no search — and it is what
+/// lets the comparison stay a flat goal stack.
+///
+/// The policy still governs, and still governs the only thing it may: **how
+/// much unfolding is spent and in what order**, never which pairs are related
+/// (`default_family_unfold_order`).
+///
+/// # Contract
+/// - ensures: returns a type whose head is not a family with a definition in
+///   scope, equal to the input under the definitional environment.
+/// - panics: none.
 ///
 /// # Termination
-/// - reason: each unfolding step replaces a family by its body, whose height is
-///   strictly below the family's, and heights are finite naturals.
-/// - measure: the multiset of the two sides' definitional heights.
-/// - boundedness: the definitional environment is finite.
-/// - input recursion: the recursive call is on a strictly smaller measure.
-fn family_goal(
-    nbe: &mut Normalizer,
-    lhs: &Rc<ValueType>,
-    rhs: &Rc<ValueType>,
-) -> ValueEquality
+/// - reason: each step replaces a family by its body, whose definitional height
+///   is strictly lower.
+/// - measure: the definitional height of the head.
+/// - boundedness: the environment is finite, so heights are finitely many and
+///   the walk is bounded.
+/// - input recursion: none.
+fn unfold_head(
+    nbe: &Normalizer,
+    ty: &Rc<ValueType>,
+) -> Rc<ValueType>
 {
-    let facts = |ty: &ValueType| match *ty {
-        | ValueType::Family { ref head, .. } => nbe
-            .definitions()
-            .lookup_type(NameRef::from(head.as_str()))
-            .map(|definition| FamilyFacts {
-                height: definition.height(),
-                transparency: definition.transparency(),
-            }),
-        | _ => None,
-    };
-    let same_head = match (&**lhs, &**rhs) {
-        | (
-            &ValueType::Family { head: ref left, .. },
-            &ValueType::Family {
-                head: ref right, ..
-            },
-        ) => left == right,
-        | _ => false,
-    };
-    let context = FamilyUnfoldContext {
-        same_head,
-        left: facts(lhs),
-        right: facts(rhs),
-    };
-    for step in default_family_unfold_order(&context) {
-        let decided = match step {
-            | FamilyUnfoldStep::Congruence => family_congruence(nbe, lhs, rhs),
-            | FamilyUnfoldStep::UnfoldLeft => match unfold_family(nbe, lhs) {
-                | Some(unfolded) => type_converts_run(nbe, &unfolded, rhs),
-                | None => ValueEquality::from(false),
-            },
-            | FamilyUnfoldStep::UnfoldRight => match unfold_family(nbe, rhs) {
-                | Some(unfolded) => type_converts_run(nbe, lhs, &unfolded),
-                | None => ValueEquality::from(false),
-            },
-        };
-        if bool::from(decided) {
-            return decided;
-        }
+    let mut current = Rc::clone(ty);
+    while let Some(unfolded) = unfold_family(nbe, &current) {
+        current = Rc::new(unfolded);
     }
-    ValueEquality::from(false)
+    current
 }
 
 /// Compares two family spines without unfolding either: heads, then arity, then
@@ -1871,8 +1880,8 @@ fn unfold_family(
 ///   binder occurs free on one side and has no counterpart on the other.
 /// - panics: none.
 fn align_binders(
-    left_binder: Option<&str>,
-    right_binder: Option<&str>,
+    left_binder: Option<NameRef<'_>>,
+    right_binder: Option<NameRef<'_>>,
     left_res: &Rc<CompType>,
     right_res: &Rc<CompType>,
 ) -> Option<Rc<CompType>>
@@ -1880,22 +1889,22 @@ fn align_binders(
     match (left_binder, right_binder) {
         | (None, None) => Some(Rc::clone(right_res)),
         | (Some(left), Some(right)) => {
-            if left == right {
+            if left.as_ref() == right.as_ref() {
                 return Some(Rc::clone(right_res));
             }
             Some(Rc::new(subst_comptype(
                 right_res,
-                NameRef::from(right),
-                &Value::Var(String::from(left)),
+                right,
+                &Value::Var(String::from(left.as_ref())),
             )))
         },
         // One side quantifies and the other does not: they agree exactly when
         // the quantification is vacuous.
-        | (Some(left), None) => (!bool::from(occurs_free_comptype(left_res, NameRef::from(left))))
-            .then(|| Rc::clone(right_res)),
+        | (Some(left), None) => {
+            (!bool::from(occurs_free_comptype(left_res, left))).then(|| Rc::clone(right_res))
+        },
         | (None, Some(right)) => {
-            (!bool::from(occurs_free_comptype(right_res, NameRef::from(right))))
-                .then(|| Rc::clone(right_res))
+            (!bool::from(occurs_free_comptype(right_res, right))).then(|| Rc::clone(right_res))
         },
     }
 }
@@ -1936,8 +1945,8 @@ fn comp_type_goal(
             },
         ) => {
             let Some(right_res) = align_binders(
-                left_binder.as_deref(),
-                right_binder.as_deref(),
+                left_binder.as_deref().map(NameRef::from),
+                right_binder.as_deref().map(NameRef::from),
                 left_res,
                 right_res,
             )

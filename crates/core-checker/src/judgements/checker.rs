@@ -941,7 +941,11 @@ impl Rec
                 // are the same variable under two names, so the codomain is
                 // relocated into the body's scope before the body is checked
                 // against it.
-                let expected_res = relocate_codomain(binder.as_deref(), &name, &res);
+                let expected_res = relocate_codomain(
+                    binder.as_deref().map(NameRef::from),
+                    NameRef::from(name.as_str()),
+                    &res,
+                );
                 let res_ty = self.comp(unrc(body), Dir::Check(expected_res))?;
                 self.ctx.unbind();
                 finish_comp(
@@ -980,7 +984,7 @@ impl Rec
                 finish_comp(
                     &self.ctx,
                     CompType::Arrow {
-                        binder: inferred_binder(&name, &res_ty),
+                        binder: inferred_binder(NameRef::from(name.as_str()), &res_ty),
                         arg: annot_ty,
                         res: Rc::new(res_ty),
                     },
@@ -1023,7 +1027,11 @@ impl Rec
                 // argument the head was applied to. A non-dependent arrow
                 // carries no binder and the codomain passes through unchanged,
                 // which is the pre-`Π` behaviour exactly.
-                let applied = instantiate_codomain(binder.as_deref(), res.as_ref(), arg.as_ref());
+                let applied = instantiate_codomain(
+                    binder.as_deref().map(NameRef::from),
+                    res.as_ref(),
+                    arg.as_ref(),
+                );
                 finish_comp(&self.ctx, applied, dir)
             },
             // The matched arrow (A2.2 holes extension): an `Unknown` head
@@ -1961,7 +1969,8 @@ impl Rec
                 // The frame supplies the argument, so a dependent codomain is
                 // closed here — the same instantiation the App rule performs,
                 // reached through the stack instead of through the term.
-                let result_ty = instantiate_codomain(binder.as_deref(), &result_ty, &value);
+                let result_ty =
+                    instantiate_codomain(binder.as_deref().map(NameRef::from), &result_ty, &value);
                 self.stack_infer(unrc(rest), result_ty)
             },
             | Stack::Bind(name, cont, rest) => {
@@ -2279,16 +2288,16 @@ where
 #[inline]
 #[must_use]
 pub fn relocate_codomain(
-    binder: Option<&str>,
-    name: &str,
+    binder: Option<NameRef<'_>>,
+    name: NameRef<'_>,
     res: &Rc<CompType>,
 ) -> CompType
 {
     match binder {
-        | Some(bound) if bound != name => subst_comptype(
+        | Some(bound) if bound.as_ref() != name.as_ref() => subst_comptype(
             res.as_ref(),
-            NameRef::from(bound),
-            &Value::Var(alloc::string::String::from(name)),
+            bound,
+            &Value::Var(alloc::string::String::from(name.as_ref())),
         ),
         | Some(_) | None => res.as_ref().clone(),
     }
@@ -2310,13 +2319,13 @@ pub fn relocate_codomain(
 #[inline]
 #[must_use]
 pub fn instantiate_codomain(
-    binder: Option<&str>,
+    binder: Option<NameRef<'_>>,
     res: &CompType,
     arg: &Value,
 ) -> CompType
 {
     match binder {
-        | Some(bound) => subst_comptype(res, NameRef::from(bound), arg),
+        | Some(bound) => subst_comptype(res, bound, arg),
         | None => res.clone(),
     }
 }
@@ -2343,12 +2352,11 @@ pub fn instantiate_codomain(
 #[inline]
 #[must_use]
 pub fn inferred_binder(
-    name: &str,
+    name: NameRef<'_>,
     res: &CompType,
 ) -> Option<alloc::string::String>
 {
-    bool::from(occurs_free_comptype(res, NameRef::from(name)))
-        .then(|| alloc::string::String::from(name))
+    bool::from(occurs_free_comptype(res, name)).then(|| alloc::string::String::from(name.as_ref()))
 }
 
 /// Builds the identity eliminator's result type `C[a/x][b/y][p/q]` (ADR-76):
