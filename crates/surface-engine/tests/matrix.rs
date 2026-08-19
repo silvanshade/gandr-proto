@@ -30,8 +30,10 @@ mod tests
     use gandr_core_term::outcome::Eval;
     use gandr_core_term::syntax::Value;
     use gandr_runtime_effects::ShellOutcome;
+    use gandr_surface_engine::live_match::MatchObligation;
     use gandr_surface_engine::run::RunError;
     use gandr_surface_engine::run::run_source;
+    use gandr_surface_engine::session::Session;
 
     use crate::common::TestInteger;
     use crate::common::TestText;
@@ -211,7 +213,111 @@ mod tests
         );
     }
 
+    // --- Coverage and compilation agree ---------------------------------------
+
+    /// **The compiler and the coverage analysis are two independent readers of
+    /// one pattern grammar, and the arm sets this compiler newly takes are
+    /// exactly where they can newly disagree.**
+    ///
+    /// The property is one biconditional: the analysis calls an arm set
+    /// exhaustive precisely when no scrutinee reaches a missing-arm hole in the
+    /// compiled match. Either direction failing is a defect and they are
+    /// different defects — an analysis that reported a covered match
+    /// inexhaustive would raise an obligation nobody can discharge, and one
+    /// that reported an uncovered match exhaustive would promise a totality the
+    /// runtime does not have.
+    ///
+    /// The fourth case is what makes the other three worth asserting. A test
+    /// that only shows covered matches reported covered passes just as well
+    /// against an analysis that reports everything covered.
+    #[test]
+    fn coverage_agrees_with_the_compiler_on_the_arm_sets_it_takes()
+    {
+        let catch_all = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }}"
+        );
+        assert!(
+            uncovered(TestText(catch_all.as_str())).is_empty(),
+            "a catch-all covers every tag no earlier arm named"
+        );
+        assert!(
+            [TestText("Red"), TestText("Green"), TestText("Blue")]
+                .into_iter()
+                .all(|scrutinee| blamed(catch_all_run(scrutinee)).is_none()),
+            "and no scrutinee reaches a missing-arm hole"
+        );
+
+        let or_pattern = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red | Green => ret 7, Blue => \
+             ret 9 }} }}"
+        );
+        assert!(
+            uncovered(TestText(or_pattern.as_str())).is_empty(),
+            "an or-pattern covers each tag it names"
+        );
+
+        let shared_head = alloc::format!(
+            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
+             Some(No) => ret 8, None => ret 1 }} }}"
+        );
+        assert!(
+            uncovered(TestText(shared_head.as_str())).is_empty(),
+            "two arms at one head cover that head between them"
+        );
+
+        // The separating case: drop the arm that covers `None`.
+        let missing = alloc::format!(
+            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
+             Some(No) => ret 8 }} }}"
+        );
+        assert!(
+            !uncovered(TestText(missing.as_str())).is_empty(),
+            "the analysis names the tag no arm reaches"
+        );
+        let reached = alloc::format!(
+            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
+             Some(No) => ret 8 }} }} pick(None)"
+        );
+        assert_eq!(
+            Some(Blame::Hole),
+            blamed(run_source(reached.as_str())),
+            "and that tag reaches the missing-arm hole the analysis predicted"
+        );
+    }
+
     // --- Helpers --------------------------------------------------------------
+
+    /// The catch-all fixture run against `scrutinee`, for the agreement test.
+    fn catch_all_run(scrutinee: TestText<'_>) -> Result<ShellOutcome, RunError>
+    {
+        let scrutinee = scrutinee.0;
+        let program = alloc::format!(
+            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} \
+             pick({scrutinee})"
+        );
+        run_source(program.as_str())
+    }
+
+    /// Every exhaustiveness obligation the live analysis raises for a source's
+    /// matches, certain and possible alike.
+    fn uncovered(source: TestText<'_>) -> alloc::vec::Vec<MatchObligation>
+    {
+        let mut session = Session::new();
+        let submission = session.submit(source.0).expect("lowering must not fail");
+        submission
+            .matches
+            .iter()
+            .flat_map(|analysis| analysis.obligations.iter())
+            .filter(|obligation| {
+                matches!(
+                    **obligation,
+                    MatchObligation::Inexhaustive { .. }
+                        | MatchObligation::PossiblyInexhaustive { .. }
+                )
+            })
+            .cloned()
+            .collect()
+    }
 
     /// The catch-all fixture, run against `scrutinee`.
     fn catch_all(scrutinee: TestText<'_>) -> Result<ShellOutcome, RunError>
