@@ -22,13 +22,17 @@ sign CatShape {
 }
 
 // Every member here IS terminated. The elaborator declines anyway, at the
-// indexed sort `Hom(dom: Ob, cod: Ob)`, and the decline names member separation
-// rather than the indexed sort -- so the message points at the wrong cause for
-// this file. Recorded rather than worked around.
+// indexed sort `Hom(dom: Ob, cod: Ob)`, which it cannot yet read.
 //
-// The previous expectation asserted a render keeping only `sort Ob`. That was
-// true while the members were dropped SILENTLY; the drop is now a decline, so
-// asserting the truncated render would be asserting a behaviour that no longer
+// The decline used to assert a single cause -- unterminated members -- which
+// was the wrong one for this file and would have sent a reader to add
+// semicolons that were already there. It now names both possibilities and says
+// to check the member before adding a terminator, so this file is a witness for
+// the ambiguous case rather than a counterexample to the message.
+//
+// The expectation before that asserted a render keeping only `sort Ob`, true
+// while the members were dropped SILENTLY. The drop is a decline now, so
+// asserting the truncated render would assert a behaviour that no longer
 // exists. The decline is what this file witnesses until the indexed sort lands.
 //@ mode: desc
-//@ expect-desc-decline: members were not separated
+//@ expect-desc-decline: reading stopped inside a member
