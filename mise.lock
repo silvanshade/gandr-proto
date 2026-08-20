@@ -185,7 +185,7 @@ version = "0.4.14"
 backend = "cargo:prek"
 
 [[tools."cargo:rumdl"]]
-version = "0.2.55"
+version = "0.2.57"
 backend = "cargo:rumdl"
 
 [[tools."cargo:sizelint"]]
@@ -239,47 +239,47 @@ url = "https://github.com/numtide/treefmt/releases/download/v2.5.0/treefmt_2.5.0
 url_api = "https://api.github.com/repos/numtide/treefmt/releases/assets/391045231"
 
 [[tools."github:superradcompany/microsandbox"]]
-version = "0.6.9"
+version = "0.6.10"
 backend = "github:superradcompany/microsandbox"
 
 [tools."github:superradcompany/microsandbox".options]
 matching_regex = "^microsandbox-"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-arm64"]
-checksum = "sha256:1e791ddf8e9b445e6de58c3a069f97eb7bd8406ff7b14bb3af0214ac644249f1"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276221"
+checksum = "sha256:b248700b9760a8955e6785676f1a5738df225743427defacfad5f42f8db57b6b"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324839"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-arm64-musl"]
-checksum = "sha256:1e791ddf8e9b445e6de58c3a069f97eb7bd8406ff7b14bb3af0214ac644249f1"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276221"
+checksum = "sha256:b248700b9760a8955e6785676f1a5738df225743427defacfad5f42f8db57b6b"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324839"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-x64"]
-checksum = "sha256:8e90eadfe12166b1f4d933954a5486fad144c06366c284a60f030dc1daa0deb6"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276224"
+checksum = "sha256:53e632e80cb4f2efa753f8a3848acd840d0ab130062df02afcb33aa71c260c48"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324840"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-x64-musl"]
-checksum = "sha256:8e90eadfe12166b1f4d933954a5486fad144c06366c284a60f030dc1daa0deb6"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276224"
+checksum = "sha256:53e632e80cb4f2efa753f8a3848acd840d0ab130062df02afcb33aa71c260c48"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324840"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.macos-arm64"]
-checksum = "sha256:af0d2a89dbb7f8417f05e638c4bd56a367bf63e5992eee4d5d567dfdfde8034b"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-darwin-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276220"
+checksum = "sha256:a1742728676bbdfa3850e59df4b85b9df7dabcfd7e1c270876725aecdd3e992c"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-darwin-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324828"
 provenance = "github-attestations"
 provenance_verified = true
 
 [tools."github:superradcompany/microsandbox"."platforms.windows-x64"]
-checksum = "sha256:a425f9af8d8e44eeda7adc98a1d10b8759150eec78d3c04db47172242576a75c"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.9/microsandbox-windows-x86_64.zip"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/515276249"
+checksum = "sha256:b12a7c471d27910f91ddc87efb2e227957ebcdc14520acb4d80488b7546c4c20"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.10/microsandbox-windows-x86_64.zip"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/519324870"
 provenance = "github-attestations"
 
 [[tools."github:tombi-toml/tombi"]]
@@ -366,11 +366,11 @@ version = "21.2.2"
 backend = "npm:@commitlint/cli"
 
 [[tools."npm:oxfmt"]]
-version = "0.63.0"
+version = "0.64.0"
 backend = "npm:oxfmt"
 
 [[tools."npm:oxlint"]]
-version = "1.78.0"
+version = "1.79.0"
 backend = "npm:oxlint"
 
 [[tools."npm:oxlint-tsgolint"]]
