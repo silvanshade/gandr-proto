@@ -5184,7 +5184,11 @@ impl Lowerer<'_>
                         // shadow the host `fs` — the same shadow event any
                         // other declaration over a builtin performs, rather
                         // than the try-foreign-then-host order it used to be.
-                        self.declare_foreign(&module, child)?;
+                        let name_node = match child.child_by_field_name(node_kinds::FIELD_ALIAS) {
+                            | Some(name_node) => name_node,
+                            | None => required_field(child, node_kinds::FIELD_LIBRARY)?,
+                        };
+                        self.declare_foreign(&module, name_node.byte_range())?;
                         self.foreign.insert(module.name.clone(), module.clone());
                         foreign.push(module);
                     },
@@ -5343,7 +5347,8 @@ impl Lowerer<'_>
                         if child.kind() != node_kinds::MODULE_DECLARATION
                             && let Some(name) = item.name.as_deref()
                         {
-                            self.declare_definition(ScopeSegment(name), child)?;
+                            let name_node = required_field(child, node_kinds::FIELD_NAME)?;
+                            self.declare_definition(ScopeSegment(name), name_node.byte_range())?;
                         }
                         items.push(item);
                         origins.push(origin);
@@ -5505,14 +5510,15 @@ impl Lowerer<'_>
     /// ambient host surface" now lives.
     ///
     /// # Contract
-    /// - ensures: `m` and every `m.op` resolve after the call.
+    /// - ensures: `m` and every `m.op` resolve after the call, and a shadowing
+    ///   event retains the exact namespace token in `site`.
     /// - fails: [`LowerError::ShadowedBuiltin`] when the policy refuses the
     ///   displacement of a builtin.
     /// - panics: none.
     fn declare_foreign(
         &mut self,
         module: &ForeignModule,
-        node: SynNode<'_>,
+        site: SourceRange,
     ) -> LowerResult<()>
     {
         let mut namespace = Trie::empty();
@@ -5520,7 +5526,7 @@ impl Lowerer<'_>
             NamePath::root(),
             Binding::new(
                 Recognized::ForeignNamespace,
-                RecognitionSite::Source(node.byte_range()),
+                RecognitionSite::Source(site.clone()),
             ),
         ));
         for function in &module.functions {
@@ -5528,27 +5534,25 @@ impl Lowerer<'_>
                 namespace_path(ScopeSegment(function.op.as_str())),
                 Binding::new(
                     Recognized::ForeignMember,
-                    RecognitionSite::Source(node.byte_range()),
+                    RecognitionSite::Source(site.clone()),
                 ),
             ));
         }
         self.recognition
-            .declare(
-                Segment::from(module.name.clone()),
-                namespace,
-                node.byte_range(),
-            )
+            .declare(Segment::from(module.name.clone()), namespace, site.clone())
             .map_err(|error| LowerError::ShadowedBuiltin {
                 error,
-                byte_range: node.byte_range(),
+                byte_range: site,
             })
     }
 
     /// Binds one top-level `def` name in the outermost scope.
+    ///
+    /// `site` is the identifier token, not the enclosing declaration.
     fn declare_definition(
         &mut self,
         name: ScopeSegment<'_>,
-        node: SynNode<'_>,
+        site: SourceRange,
     ) -> LowerResult<()>
     {
         let mut namespace = Trie::empty();
@@ -5556,40 +5560,34 @@ impl Lowerer<'_>
             NamePath::root(),
             Binding::new(
                 Recognized::Definition,
-                RecognitionSite::Source(node.byte_range()),
+                RecognitionSite::Source(site.clone()),
             ),
         ));
         self.recognition
-            .declare(
-                Segment::from(name.0.to_owned()),
-                namespace,
-                node.byte_range(),
-            )
+            .declare(Segment::from(name.0.to_owned()), namespace, site.clone())
             .map_err(|error| LowerError::ShadowedBuiltin {
                 error,
-                byte_range: node.byte_range(),
+                byte_range: site,
             })
     }
 
     /// Binds one top-level `module` declaration's whole namespace — the module
     /// itself, every value component, and every nested module component — in
     /// the outermost scope.
+    ///
+    /// `site` is the identifier token, not the enclosing declaration.
     fn declare_module(
         &mut self,
         name: ScopeSegment<'_>,
         namespace: Trie<Recognized, RecognitionSite>,
-        node: SynNode<'_>,
+        site: SourceRange,
     ) -> LowerResult<()>
     {
         self.recognition
-            .declare(
-                Segment::from(name.0.to_owned()),
-                namespace,
-                node.byte_range(),
-            )
+            .declare(Segment::from(name.0.to_owned()), namespace, site.clone())
             .map_err(|error| LowerError::ShadowedBuiltin {
                 error,
-                byte_range: node.byte_range(),
+                byte_range: site,
             })
     }
 
@@ -5900,7 +5898,11 @@ impl Lowerer<'_>
         .to_owned();
         let path = NamePath::from_segments(Vec::from([Segment::from(name.clone())]));
         let lowered = self.module_at(node, None, &path)?;
-        self.declare_module(ScopeSegment(name.as_str()), lowered.namespace, node)?;
+        self.declare_module(
+            ScopeSegment(name.as_str()),
+            lowered.namespace,
+            name_node.byte_range(),
+        )?;
         Ok((
             Item {
                 name: Some(name),
