@@ -513,6 +513,7 @@ fn initialize_result(encoding: PositionEncoding) -> Value
 mod tests
 {
     use serde_json::Value;
+    use serde_json::json;
 
     use super::Server;
     use super::advertised_capabilities;
@@ -610,6 +611,54 @@ mod tests
                 message.get("result").is_some() && message.get("error").is_none()
             }),
             "advertised completion must be honoured"
+        );
+    }
+
+    #[test]
+    fn a_refused_program_is_published_as_an_editor_diagnostic()
+    {
+        let mut server = Server::new();
+        let source = concat!(
+            "def fst(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F (U(a -> F a)) { ret f }\n",
+            "def bad(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> ",
+            "F(Path((U(a -> F a)), fst(a, f, g), g)) { ret here(g) }\n",
+        );
+        let payload = serde_json::to_vec(&json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file:///tmp/refused.gandr",
+                    "languageId": "gandr",
+                    "version": 1_u32,
+                    "text": source,
+                }
+            }
+        }))
+        .expect("the test request must encode");
+        let opened = server.handle_payload(FramePayload::from(payload.as_slice()));
+        let published = opened
+            .messages
+            .iter()
+            .find(|message| {
+                message.get("method").and_then(Value::as_str)
+                    == Some("textDocument/publishDiagnostics")
+            })
+            .expect("didOpen must publish the merged refusal");
+        let diagnostics = published
+            .pointer("/params/diagnostics")
+            .and_then(Value::as_array)
+            .expect("publishDiagnostics carries an array");
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic.get("severity").and_then(Value::as_u64) == Some(1_u64)
+                    && diagnostic
+                        .get("message")
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| message.contains("type mismatch"))
+                    && diagnostic.get("range").is_some()
+            }),
+            "the protocol payload must carry a ranged error diagnostic: {published}"
         );
     }
 }

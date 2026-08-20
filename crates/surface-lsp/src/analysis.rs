@@ -1,4 +1,4 @@
-//! One whole-file recheck: parse, highlight, lower, report.
+//! One whole-file recheck: parse, highlight, and submit.
 //!
 //! This module calls the pipeline. It does not parse, lower, type, or mark
 //! on its own.
@@ -8,9 +8,10 @@ use alloc::vec::Vec;
 
 use gandr_surface_engine::diag::Report;
 use gandr_surface_engine::diag::Severity;
-use gandr_surface_engine::diag::report;
-use gandr_surface_engine::lower::lower_source_total;
-use gandr_surface_engine::prelude_ctx;
+use gandr_surface_engine::session::ItemOutcome;
+use gandr_surface_engine::session::Session;
+use gandr_surface_engine::session::Submission;
+use gandr_surface_engine::session::Verdict;
 use gandr_surface_grammar::built_in;
 use gandr_surface_grammar::highlight;
 use gandr_surface_parser::parse;
@@ -41,8 +42,8 @@ pub struct Analysis
     source: String,
     /// Highlight spans over that source.
     highlights: Vec<HlSpan>,
-    /// Pipeline report for that source.
-    report: Report,
+    /// Pipeline submission for that source.
+    submission: Submission,
 }
 
 impl Analysis
@@ -67,14 +68,13 @@ impl Analysis
             },
             | Err(_) => Vec::new(),
         };
-        let report = match lower_source_total(source.as_str().into()) {
-            | Ok(lowered) => report(&lowered, &prelude_ctx()),
-            | Err(_) => empty_report(),
-        };
+        let submission = Session::new()
+            .submit(source.as_str())
+            .unwrap_or_else(|_| empty_submission());
         Self {
             source,
             highlights,
-            report,
+            submission,
         }
     }
 
@@ -101,11 +101,12 @@ impl Analysis
         }
     }
 
-    /// Project the report into editor diagnostics.
+    /// Project the merged verdict stream into editor diagnostics.
     ///
     /// # Contract
-    /// - ensures: one diagnostic per report diagnostic that has a span, plus
-    ///   one warning per obligation row.
+    /// - ensures: one diagnostic per visible error verdict, using the source
+    ///   span when present and the whole document for an outcome-only refusal,
+    ///   plus one warning per obligation row.
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -116,27 +117,44 @@ impl Analysis
     {
         let index = LineIndex::new(SourceText::from(self.source.as_str()));
         let mut out = Vec::new();
-        for diagnostic in &self.report.diagnostics {
-            let Some(span) = diagnostic.span.as_ref()
-            else {
-                continue;
+        for verdict in self.submission.verdicts() {
+            let (start, end, severity, message) = match verdict {
+                | Verdict::Diagnostic(diagnostic) => {
+                    let Some(span) = diagnostic.span.as_ref()
+                    else {
+                        continue;
+                    };
+                    (
+                        span.start,
+                        span.end,
+                        match diagnostic.severity {
+                            | Severity::Error => DiagnosticSeverity::ERROR,
+                            | Severity::Warning => DiagnosticSeverity::WARNING,
+                        },
+                        diagnostic.message.clone(),
+                    )
+                },
+                | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => (
+                    0_usize,
+                    self.source.len(),
+                    DiagnosticSeverity::ERROR,
+                    error.to_string(),
+                ),
+                | Verdict::Outcome(_) | Verdict::Goal(_) => continue,
             };
             out.push(Diagnostic {
                 range: range_of_bytes(
                     SourceText::from(self.source.as_str()),
                     &index,
-                    ByteOffset::from(span.start),
-                    ByteOffset::from(span.end),
+                    ByteOffset::from(start),
+                    ByteOffset::from(end),
                     encoding,
                 ),
-                severity: match diagnostic.severity {
-                    | Severity::Error => DiagnosticSeverity::ERROR,
-                    | Severity::Warning => DiagnosticSeverity::WARNING,
-                },
-                message: diagnostic.message.clone(),
+                severity,
+                message,
             });
         }
-        for obligation in &self.report.obligations {
+        for obligation in &self.submission.report.obligations {
             out.push(Diagnostic {
                 range: range_of_bytes(
                     SourceText::from(self.source.as_str()),
@@ -173,7 +191,7 @@ impl Analysis
             position,
             encoding,
         );
-        for goal in &self.report.goals {
+        for goal in &self.submission.report.goals {
             if bool::from(contains(
                 ByteOffset::from(goal.span.start),
                 ByteOffset::from(goal.span.end),
@@ -194,7 +212,7 @@ impl Analysis
                 });
             }
         }
-        for diagnostic in &self.report.diagnostics {
+        for diagnostic in &self.submission.report.diagnostics {
             let Some(span) = diagnostic.span.as_ref()
             else {
                 continue;
@@ -233,7 +251,7 @@ impl Analysis
             position,
             encoding,
         );
-        for goal in &self.report.goals {
+        for goal in &self.submission.report.goals {
             if !bool::from(contains(
                 ByteOffset::from(goal.span.start),
                 ByteOffset::from(goal.span.end),
@@ -285,16 +303,21 @@ fn range_of_bytes(
     )
 }
 
-/// An empty report used when lowering is unavailable.
-fn empty_report() -> Report
+/// An empty submission used when lowering is unavailable.
+fn empty_submission() -> Submission
 {
-    Report {
-        schema_version: gandr_surface_engine::diag::SCHEMA_VERSION,
-        diagnostics: Vec::new(),
-        goals: Vec::new(),
-        marks: Vec::new(),
-        attributes: Vec::new(),
-        obligations: Vec::new(),
+    Submission {
+        report: Report {
+            schema_version: gandr_surface_engine::diag::SCHEMA_VERSION,
+            diagnostics: Vec::new(),
+            goals: Vec::new(),
+            marks: Vec::new(),
+            attributes: Vec::new(),
+            obligations: Vec::new(),
+        },
+        outcomes: Vec::new(),
+        kernel: Vec::new(),
+        matches: Vec::new(),
     }
 }
 
