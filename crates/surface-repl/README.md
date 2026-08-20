@@ -12,7 +12,7 @@ It does not parse, lower, type, or mark.
 ## Current provision
 
 - Parse-completeness via the parser's public `expected` query.
-- Session submit and transcript encoding for definitions, expressions, diagnostics, and goals.
+- Session submit and transcript encoding for definitions, expressions, coded diagnostics (`[E0001] …`), and goals.
 - A batch face over standard input for non-interactive transcripts.
 - An interactive face on a line editor for a terminal.
 

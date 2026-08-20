@@ -14,6 +14,8 @@
 use core::fmt;
 use core::ops::Range;
 
+use crate::diagnostic::DiagnosticCode;
+
 /// Whether a marker denotes an error rather than the empty-hole tint.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "codecs", serde(transparent))]
@@ -405,6 +407,8 @@ impl AttrCard
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DiagCard
 {
+    /// Stable diagnostic registry code.
+    pub code: DiagnosticCode,
     /// The primary message.
     pub message: String,
     /// The source byte span, when resolvable.
@@ -428,6 +432,7 @@ impl DiagCard
     #[inline]
     #[must_use]
     pub fn new(
+        code: DiagnosticCode,
         message: String,
         span: Option<Range<ByteOffset>>,
         expr: Option<String>,
@@ -436,6 +441,7 @@ impl DiagCard
     ) -> Self
     {
         Self {
+            code,
             message,
             span,
             expr,
@@ -856,6 +862,7 @@ mod tests
     use super::TranscriptBlock;
     use super::byte_of_pos;
     use super::pos_of_byte;
+    use crate::diagnostic::DiagnosticCode;
 
     #[test]
     fn constructors_store_fields_verbatim()
@@ -875,12 +882,14 @@ mod tests
         assert_eq!("unbound", mark.message);
 
         let diag = DiagCard::new(
+            DiagnosticCode::TypeMismatch,
             "type mismatch".to_owned(),
             Some(ByteOffset::from(1) .. ByteOffset::from(4)),
             Some("f x".to_owned()),
             Some("elaborated here".to_owned()),
             vec!["while checking f".to_owned(), "in application".to_owned()],
         );
+        assert_eq!(DiagnosticCode::TypeMismatch, diag.code);
         assert_eq!("type mismatch", diag.message);
         assert_eq!(Some(ByteOffset::from(1) .. ByteOffset::from(4)), diag.span);
         assert_eq!(Some("f x"), diag.expr.as_deref());
@@ -988,6 +997,7 @@ mod tests
         assert_eq!(mark, decoded_mark);
 
         let diag = DiagCard::new(
+            DiagnosticCode::TypeMismatch,
             "type mismatch".to_owned(),
             Some(ByteOffset::from(1) .. ByteOffset::from(4)),
             Some("f x".to_owned()),
@@ -997,6 +1007,7 @@ mod tests
         let diag_json = serde_json::to_value(&diag).expect("serialize diagnostic");
         assert_eq!(
             serde_json::json!({
+                "code": "E0001",
                 "message": "type mismatch",
                 "span": {"start": 1_usize, "end": 4_usize},
                 "expr": "f x",

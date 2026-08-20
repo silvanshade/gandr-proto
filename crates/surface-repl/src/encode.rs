@@ -4,6 +4,7 @@
 //! lower, type, or mark. Highlight spans stay empty: this crate consumes
 //! [`HlSpan`] and never produces one.
 
+use gandr_surface_engine::diag::message_of;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
@@ -52,7 +53,10 @@ fn encode_verdict(
     match verdict {
         | Verdict::Outcome(outcome) => encode_outcome(outcome, lines),
         | Verdict::Diagnostic(diagnostic) => {
-            lines.push((OutKind::Diag, diagnostic.message.clone()));
+            lines.push((
+                OutKind::Diag,
+                format!("[{}] {}", diagnostic.code, diagnostic.message),
+            ));
         },
         | Verdict::Goal(goal) => {
             let expected = goal.expected.as_deref().unwrap_or("?");
@@ -81,7 +85,8 @@ fn encode_outcome(
             lines.push((OutKind::Value, format!("{value:?}")));
         },
         | &ItemOutcome::TypeError { ref error } => {
-            lines.push((OutKind::Diag, format!("{error}")));
+            let message = message_of(error);
+            lines.push((OutKind::Diag, format!("[{}] {message}", message.code())));
         },
         | &ItemOutcome::Holey => {
             lines.push((

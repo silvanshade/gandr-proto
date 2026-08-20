@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "GradeError",
@@ -8,8 +8,15 @@
         "upper": "Fin(1)"
       },
       "item": 0,
+      "code": "E0005",
       "severity": "error",
-      "message": "grade order requirement failed: Omega ⊑ Fin(1) does not hold",
+      "message": {
+        "message_template": "GradeOrder",
+        "message_arguments": {
+          "lower": "Omega",
+          "upper": "Fin(1)"
+        }
+      },
       "span": {
         "start": 35,
         "end": 53

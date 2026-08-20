@@ -6,8 +6,10 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_surface_engine::diag::DiagnosticMessage;
 use gandr_surface_engine::diag::Report;
 use gandr_surface_engine::diag::Severity;
+use gandr_surface_engine::diag::message_of;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Session;
 use gandr_surface_engine::session::Submission;
@@ -118,7 +120,7 @@ impl Analysis
         let index = LineIndex::new(SourceText::from(self.source.as_str()));
         let mut out = Vec::new();
         for verdict in self.submission.verdicts() {
-            let (start, end, severity, message) = match verdict {
+            let (start, end, severity, code, message) = match verdict {
                 | Verdict::Diagnostic(diagnostic) => {
                     let Some(span) = diagnostic.span.as_ref()
                     else {
@@ -131,15 +133,20 @@ impl Analysis
                             | Severity::Error => DiagnosticSeverity::ERROR,
                             | Severity::Warning => DiagnosticSeverity::WARNING,
                         },
-                        diagnostic.message.clone(),
+                        diagnostic.code,
+                        diagnostic.message.to_string(),
                     )
                 },
-                | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => (
-                    0_usize,
-                    self.source.len(),
-                    DiagnosticSeverity::ERROR,
-                    error.to_string(),
-                ),
+                | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
+                    let message = message_of(error);
+                    (
+                        0_usize,
+                        self.source.len(),
+                        DiagnosticSeverity::ERROR,
+                        message.code(),
+                        message.to_string(),
+                    )
+                },
                 | Verdict::Outcome(_) | Verdict::Goal(_) => continue,
             };
             out.push(Diagnostic {
@@ -151,10 +158,14 @@ impl Analysis
                     encoding,
                 ),
                 severity,
+                code,
                 message,
             });
         }
         for obligation in &self.submission.report.obligations {
+            let message = DiagnosticMessage::ParseRepair {
+                class: format!("{:?}", obligation.class),
+            };
             out.push(Diagnostic {
                 range: range_of_bytes(
                     SourceText::from(self.source.as_str()),
@@ -163,8 +174,9 @@ impl Analysis
                     ByteOffset::from(obligation.span.end),
                     encoding,
                 ),
+                code: message.code(),
                 severity: DiagnosticSeverity::WARNING,
-                message: format!("parse repaired: {:?}", obligation.class),
+                message: message.to_string(),
             });
         }
         out
@@ -223,7 +235,7 @@ impl Analysis
                 byte,
             )) {
                 return Some(Hover {
-                    contents: MarkupContent::markdown(diagnostic.message.clone()),
+                    contents: MarkupContent::markdown(diagnostic.message.to_string()),
                 });
             }
         }

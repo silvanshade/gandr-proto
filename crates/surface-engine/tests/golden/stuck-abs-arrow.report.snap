@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -7,8 +7,15 @@
         "hint": "an abstraction only checks against an arrow type"
       },
       "item": 0,
+      "code": "E0003",
       "severity": "error",
-      "message": "no typing rule applies to term Comp(Abs(\"x\", None, Ret(Var(\"x\")))): an abstraction only checks against an arrow type",
+      "message": {
+        "message_template": "StuckExpression",
+        "message_arguments": {
+          "expression": "Comp(Abs(\"x\", None, Ret(Var(\"x\"))))",
+          "hint": "an abstraction only checks against an arrow type"
+        }
+      },
       "span": {
         "start": 42,
         "end": 57

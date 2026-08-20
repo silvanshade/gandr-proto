@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -7,8 +7,15 @@
         "hint": "a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type"
       },
       "item": 0,
+      "code": "E0003",
       "severity": "error",
-      "message": "no typing rule applies to term Comp(Split { scrut: Pair(Int(1), Int(2)), fst_name: \"x\", snd_name: \"y\", motive: None, body: Ret(Var(\"x\")) }): a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type",
+      "message": {
+        "message_template": "StuckExpression",
+        "message_arguments": {
+          "expression": "Comp(Split { scrut: Pair(Int(1), Int(2)), fst_name: \"x\", snd_name: \"y\", motive: None, body: Ret(Var(\"x\")) })",
+          "hint": "a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type"
+        }
+      },
       "span": {
         "start": 8,
         "end": 36

@@ -6,6 +6,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_surface_render_remote::diagnostic::DiagnosticCode;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -326,6 +327,8 @@ pub struct Diagnostic
 {
     /// Source range.
     pub range: Range,
+    /// Stable diagnostic identifier.
+    pub code: DiagnosticCode,
     /// Severity: 1 error, 2 warning.
     pub severity: DiagnosticSeverity,
     /// Human message.

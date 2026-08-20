@@ -8,7 +8,7 @@ It calls the public parse, highlight, lower, and report passes and re-encodes th
 ## Current provision
 
 - Semantic tokens from `HlRole` / `HlSpan`, using the standard LSP token-type registry agreed with the TUI highlighter.
-- Diagnostics, hover, and completion over the same whole-file report envelope.
+- Diagnostics with stable `code` values, hover, and completion over the same whole-file report envelope.
 - Content-Length JSON-RPC on stdio.
 - `gandr lsp --capabilities`, the advertised initialize result.
 

@@ -10,6 +10,8 @@
 //!
 //! Two layers live here:
 //!
+//! - [`diagnostic`] — the stable diagnostic-code registry and localizable
+//!   message arguments shared by every renderer.
 //! - [`present`] — the `Send`-safe presentation seam: highlight/mark spans,
 //!   diagnostic and goal cards, the preview and transcript frames, and the byte
 //!   ↔ position projection. In-process renderers and the serialized bus carry
@@ -25,5 +27,6 @@
 //! needs the in-process types pays nothing by default; the bus and
 //! language-server adapters opt in when they need the wire image.
 
+pub mod diagnostic;
 pub mod present;
 pub mod wire;

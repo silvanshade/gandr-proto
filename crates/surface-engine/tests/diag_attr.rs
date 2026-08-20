@@ -83,9 +83,10 @@ mod tests
             "a repeated single-valued attribute is a Duplicate diagnostic"
         );
         assert!(
-            diagnostics(source)
-                .iter()
-                .any(|diagnostic| diagnostic.message.contains("duplicate attribute `doc`")),
+            diagnostics(source).iter().any(|diagnostic| diagnostic
+                .message
+                .to_string()
+                .contains("duplicate attribute `doc`")),
             "the duplicate message names the attribute"
         );
     }
@@ -108,16 +109,19 @@ mod tests
         // A near-miss of a registry name gets a did-you-mean.
         let near = diagnostics("@[dco(\"x\")]\ndef f = 42;\n");
         assert!(
-            near.iter()
-                .any(|diagnostic| diagnostic.message.contains("did you mean `doc`?")),
+            near.iter().any(|diagnostic| diagnostic
+                .message
+                .to_string()
+                .contains("did you mean `doc`?")),
             "a close unknown attribute suggests the registry name: {near:?}"
         );
         // A far-off name gets no suggestion.
         let far = diagnostics("@[zzzzzzzz]\ndef f = 42;\n");
         assert!(
             far.iter().any(|diagnostic| {
-                diagnostic.message.contains("unknown attribute `zzzzzzzz`")
-                    && !diagnostic.message.contains("did you mean")
+                let message = diagnostic.message.to_string();
+                message.contains("unknown attribute `zzzzzzzz`")
+                    && !message.contains("did you mean")
             }),
             "a distant unknown attribute has no suggestion: {far:?}"
         );

@@ -100,6 +100,8 @@ use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
+pub use gandr_surface_render_remote::diagnostic::DiagnosticCode;
+pub use gandr_surface_render_remote::diagnostic::DiagnosticMessage;
 use gandr_surface_render_remote::present::ObligationClass;
 
 use crate::attributes;
@@ -131,7 +133,10 @@ use crate::render;
 /// `3` — the reserved `obligations` slot, always `[]`, became the parse's live
 /// recovery obligations as a typed [`ObligationReport`] array; a meaning change
 /// on the same precedent, hence a bump.
-pub const SCHEMA_VERSION: u32 = 3;
+///
+/// `4` — rendered `message` text became a stable `code` plus a typed message
+/// template and arguments; consumers render the prose they need.
+pub const SCHEMA_VERSION: u32 = 4;
 
 /// A byte span `[start, end)` in the source.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -356,10 +361,12 @@ pub struct Diagnostic
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub item: Option<usize>,
-    /// The severity (always [`Severity::Error`] at Stage 1).
+    /// Stable registry code.
+    pub code: DiagnosticCode,
+    /// Fatality classification.
     pub severity: Severity,
-    /// The human-readable message — the [`TypeError`]'s `Display`.
-    pub message: String,
+    /// Localizable template identity and typed arguments.
+    pub message: DiagnosticMessage,
     /// The source span, where resolvable (see the module doc's span
     /// decision); a precise sub-node span for `Descend` failures, else the
     /// enclosing item's span.
@@ -862,14 +869,13 @@ pub const fn obligation_class(class: Oblig) -> ObligationClass
 fn shadowed_diagnostic(shadowed: &crate::recognition::ShadowedBuiltin) -> Diagnostic
 {
     let path = format!("{}", shadowed.path);
+    let message = DiagnosticMessage::ShadowedName { path: path.clone() };
     Diagnostic {
-        detail: DiagnosticDetail::ShadowedName { path: path.clone() },
+        detail: DiagnosticDetail::ShadowedName { path },
         item: None,
+        code: message.code(),
         severity: Severity::Warning,
-        message: format!(
-            "`{path}` is a prelude or host name; this declaration takes it, and the policy allows \
-             it"
-        ),
+        message,
         span: Some(Span {
             start: shadowed.byte_range.0.start,
             end: shadowed.byte_range.0.end,
@@ -910,14 +916,17 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             AttributeProblem::Unknown {
                 suggestion: suggestion.clone(),
             },
-            unknown_attribute_message(name.into(), suggestion.as_deref().map(Into::into)),
+            DiagnosticMessage::UnknownAttribute {
+                name: name.clone(),
+                suggestion: suggestion.clone(),
+            },
             span,
         ),
         | attributes::AttrFinding::Duplicate { ref name, ref span } => {
             attribute_problem_diagnostic(
                 name.into(),
                 AttributeProblem::Duplicate,
-                format!("duplicate attribute `{name}` (single-valued)"),
+                DiagnosticMessage::DuplicateAttribute { name: name.clone() },
                 span,
             )
         },
@@ -925,7 +934,7 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             attribute_problem_diagnostic(
                 name.into(),
                 AttributeProblem::MissingPayload,
-                format!("attribute `{name}` requires a payload"),
+                DiagnosticMessage::MissingAttributePayload { name: name.clone() },
                 span,
             )
         },
@@ -933,7 +942,7 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             attribute_problem_diagnostic(
                 name.into(),
                 AttributeProblem::NonValuePayload,
-                format!("attribute `{name}` payload must be a value, not a computation"),
+                DiagnosticMessage::NonValueAttributePayload { name: name.clone() },
                 span,
             )
         },
@@ -941,16 +950,20 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             ref error,
             ref span,
             ..
-        } => Diagnostic {
-            detail: detail_of(error),
-            item: None,
-            severity: Severity::Error,
-            message: error.to_string(),
-            span: Some(Span::from(span.clone())),
-            elaboration: None,
-            expr: None,
-            context_chain: Vec::new(),
-            ctx: Vec::new(),
+        } => {
+            let message = message_of(error);
+            Diagnostic {
+                detail: detail_of(error),
+                item: None,
+                code: message.code(),
+                severity: Severity::Error,
+                message,
+                span: Some(Span::from(span.clone())),
+                elaboration: None,
+                expr: None,
+                context_chain: Vec::new(),
+                ctx: Vec::new(),
+            }
         },
     }
 }
@@ -959,7 +972,7 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
 fn attribute_problem_diagnostic(
     name: AttributeName<'_>,
     problem: AttributeProblem,
-    message: String,
+    message: DiagnosticMessage,
     span: &SourceRange,
 ) -> Diagnostic
 {
@@ -968,6 +981,7 @@ fn attribute_problem_diagnostic(
             name: name.0.to_owned(),
             problem,
         },
+        code: message.code(),
         item: None,
         severity: Severity::Error,
         message,
@@ -976,24 +990,6 @@ fn attribute_problem_diagnostic(
         expr: None,
         context_chain: Vec::new(),
         ctx: Vec::new(),
-    }
-}
-
-/// The `UnknownAttribute` message, with a did-you-mean when a registry name is
-/// close enough.
-fn unknown_attribute_message(
-    name: AttributeName<'_>,
-    suggestion: Option<AttributeName<'_>>,
-) -> String
-{
-    match suggestion {
-        | Some(candidate) => {
-            format!(
-                "unknown attribute `{}`; did you mean `{}`?",
-                name.0, candidate.0
-            )
-        },
-        | None => format!("unknown attribute `{}`", name.0),
     }
 }
 
@@ -1087,11 +1083,13 @@ fn build_diagnostic(
 ) -> Diagnostic
 {
     let (span, elaboration) = resolve_span(item_index, failure, lowered);
+    let message = message_of(error);
     Diagnostic {
         detail: detail_of(error),
         item: Some(usize::from(item_index)),
+        code: message.code(),
         severity: Severity::Error,
-        message: message_of(error),
+        message,
         span,
         elaboration,
         expr: offending_expr(failure.control()),
@@ -1131,37 +1129,40 @@ fn detail_of(error: &TypeError) -> DiagnosticDetail
     }
 }
 
-/// The human message for a type error. Identical to the core `Display`
-/// (`TypeError::to_string`), EXCEPT a `TypeMismatch` / `ShapeMismatch` whose
-/// operands mention a declared datatype renders those operands by their surface
-/// spelling ([`render_type_operand`]) — so a nominal mismatch reads
-/// `Maybe(Integer)` / `Celsius`, never the raw `Debug` of a `DataId`
-/// (declared-data design Decision 2's O(1)-render corollary). Every
-/// non-declared-data mismatch keeps the core `Display` byte-for-byte (the
-/// golden report snapshots pin it).
-fn message_of(error: &TypeError) -> String
+/// The localizable message template and arguments for a type error.
+///
+/// Declared datatype operands use their surface spelling; every other operand
+/// retains the core error's stable `Debug` representation.
+#[inline]
+#[must_use]
+pub fn message_of(error: &TypeError) -> DiagnosticMessage
 {
     match *error {
         | TypeError::TypeMismatch {
             ref expected,
             ref actual,
-        } if mentions_data(expected).0 || mentions_data(actual).0 => {
-            format!(
-                "type mismatch: expected {}, actual {}",
-                render_type_operand(expected),
-                render_type_operand(actual)
-            )
+        } => DiagnosticMessage::TypeMismatch {
+            expected: render_type_operand(expected),
+            actual: render_type_operand(actual),
         },
         | TypeError::ShapeMismatch {
             expected,
             ref actual,
-        } if mentions_data(actual).0 => {
-            format!(
-                "type shape mismatch: expected {expected}, actual {}",
-                render_type_operand(actual)
-            )
+        } => DiagnosticMessage::ShapeMismatch {
+            expected_shape: expected.to_owned(),
+            actual: render_type_operand(actual),
         },
-        | _ => error.to_string(),
+        | TypeError::StuckExpr { ref expr, hint } => DiagnosticMessage::StuckExpression {
+            expression: format!("{expr:?}"),
+            hint: hint.to_owned(),
+        },
+        | TypeError::UnboundVariable { ref name } => {
+            DiagnosticMessage::UnboundVariable { name: name.clone() }
+        },
+        | TypeError::GradeError { lower, upper } => DiagnosticMessage::GradeOrder {
+            lower: format!("{lower:?}"),
+            upper: format!("{upper:?}"),
+        },
     }
 }
 

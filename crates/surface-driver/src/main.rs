@@ -432,11 +432,18 @@ fn verdict_failure(verdict: Verdict<'_>) -> Option<ScriptFailure>
 {
     match verdict {
         | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
-            Some(ScriptFailure(format!("type checking failed: {error}")))
+            let message = gandr_surface_engine::diag::message_of(error);
+            Some(ScriptFailure(format!(
+                "type checking failed: [{}] {message}",
+                message.code()
+            )))
         },
-        | Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Error => Some(
-            ScriptFailure(format!("type checking failed: {}", diagnostic.message)),
-        ),
+        | Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Error => {
+            Some(ScriptFailure(format!(
+                "type checking failed: [{}] {}",
+                diagnostic.code, diagnostic.message
+            )))
+        },
         | Verdict::Outcome(_) | Verdict::Diagnostic(_) | Verdict::Goal(_) => None,
     }
 }

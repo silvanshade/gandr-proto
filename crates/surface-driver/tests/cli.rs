@@ -581,6 +581,10 @@ mod tests
             "the refusal names the checker as its source; got {stderr}"
         );
         assert!(
+            stderr.contains("[E0001]"),
+            "the terminal refusal carries the stable type-mismatch code; got {stderr}"
+        );
+        assert!(
             output.stdout.is_empty(),
             "a refused script routes no result; got {}",
             String::from_utf8_lossy(&output.stdout)
@@ -611,6 +615,10 @@ def bad(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F(Path((U(a -> F a
         assert!(
             stderr.contains("type checking failed"),
             "the merged verdict stream must report the refusal; got {stderr}"
+        );
+        assert!(
+            stderr.contains("[E0001]"),
+            "the outcome-only refusal carries the stable type-mismatch code; got {stderr}"
         );
         assert!(
             output.stdout.is_empty(),

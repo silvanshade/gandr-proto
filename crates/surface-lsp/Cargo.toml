@@ -22,8 +22,9 @@ gandr-surface-engine.workspace = true
 gandr-surface-grammar.workspace = true
 # Batch parse that commits the CST the highlighter classifies.
 gandr-surface-parser.workspace = true
-# Shared highlight roles, diagnostic cards, and byte-to-position types.
-gandr-surface-render-remote.workspace = true
+# Shared highlight roles, coded diagnostics, and byte-to-position types; LSP
+# always serializes this wire vocabulary.
+gandr-surface-render-remote = { workspace = true, features = ["codecs"] }
 # Borrowed source slice the parser's public boundary takes.
 gandr-surface-syntax.workspace = true
 # JSON-RPC envelopes and the LSP subset this face serves.

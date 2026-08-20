@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "TypeMismatch",
@@ -8,8 +8,15 @@
         "actual": "Value(Atom(\"Integer\"))"
       },
       "item": 0,
+      "code": "E0001",
       "severity": "error",
-      "message": "type mismatch: expected Value(Unit), actual Value(Atom(\"Integer\"))",
+      "message": {
+        "message_template": "TypeMismatch",
+        "message_arguments": {
+          "expected": "Value(Unit)",
+          "actual": "Value(Atom(\"Integer\"))"
+        }
+      },
       "span": {
         "start": 22,
         "end": 23

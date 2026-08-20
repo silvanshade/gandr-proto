@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -7,8 +7,15 @@
         "hint": "annotate this injection"
       },
       "item": 0,
+      "code": "E0003",
       "severity": "error",
-      "message": "no typing rule applies to term Value(Inj(Fst, Int(1))): annotate this injection",
+      "message": {
+        "message_template": "StuckExpression",
+        "message_arguments": {
+          "expression": "Value(Inj(Fst, Int(1)))",
+          "hint": "annotate this injection"
+        }
+      },
       "span": {
         "start": 0,
         "end": 6

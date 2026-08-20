@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -7,8 +7,15 @@
         "hint": "case only checks; annotate or supply an expected type"
       },
       "item": 0,
+      "code": "E0003",
       "severity": "error",
-      "message": "no typing rule applies to term Comp(Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0))))): case only checks; annotate or supply an expected type",
+      "message": {
+        "message_template": "StuckExpression",
+        "message_arguments": {
+          "expression": "Comp(Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0)))))",
+          "hint": "case only checks; annotate or supply an expected type"
+        }
+      },
       "span": {
         "start": 0,
         "end": 70

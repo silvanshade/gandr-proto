@@ -11,6 +11,7 @@ When it arrives, the two render crates share this vocabulary rather than each mi
 
 ## Current provision
 
+- `diagnostic`, the single dense registry of stable diagnostic codes and the localizable message templates with their typed arguments.
 - `present`, the `Send`-safe presentation seam: highlight and mark spans, diagnostic and goal cards, cursor types and completion candidates, the preview and transcript frames, and the total byte-offset to row-and-column projection.
   The pipeline's own semantic values are `Rc`-based and must not leave the worker thread; everything here is plain data, so it crosses a channel or a socket.
 - `wire`, the render-bus schema at version 2: the `RenderFrame` envelope with its per-document routing keys and validating decode, the hello/frame/delta/resync/detach message set, the machine-state and report projections a renderer paints, the node-delta patch form, and the capability advertisement.

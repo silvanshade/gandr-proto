@@ -146,8 +146,10 @@ mod tests
         {
             | LoopEvent::Submitted(block) => {
                 assert!(
-                    block.lines.iter().any(|pair| pair.0 == OutKind::Diag),
-                    "the merged verdict stream must show the outcome-only refusal: {:?}",
+                    block.lines.iter().any(|pair| {
+                        pair.0 == OutKind::Diag && pair.1.starts_with("[E0001]")
+                    }),
+                    "the merged verdict stream must show the coded outcome-only refusal: {:?}",
                     block.lines
                 );
             },

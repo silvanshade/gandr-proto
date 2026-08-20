@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "diagnostics": [
     {
       "kind": "UnboundVariable",
@@ -7,8 +7,14 @@
         "name": "nonesuch"
       },
       "item": 0,
+      "code": "E0004",
       "severity": "error",
-      "message": "variable is unbound: nonesuch",
+      "message": {
+        "message_template": "UnboundVariable",
+        "message_arguments": {
+          "name": "nonesuch"
+        }
+      },
       "span": {
         "start": 0,
         "end": 8

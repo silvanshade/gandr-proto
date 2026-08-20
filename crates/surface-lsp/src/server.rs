@@ -652,6 +652,7 @@ mod tests
         assert!(
             diagnostics.iter().any(|diagnostic| {
                 diagnostic.get("severity").and_then(Value::as_u64) == Some(1_u64)
+                    && diagnostic.get("code").and_then(Value::as_str) == Some("E0001")
                     && diagnostic
                         .get("message")
                         .and_then(Value::as_str)

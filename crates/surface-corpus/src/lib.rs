@@ -724,7 +724,7 @@ fn check_session(
         match session.submit(item) {
             | Ok(submission) => {
                 for diagnostic in &submission.report.diagnostics {
-                    run.diagnostics.push(diagnostic.message.clone());
+                    run.diagnostics.push(diagnostic.message.to_string());
                 }
                 run.goals = run.goals.saturating_add(submission.report.goals.len());
                 for attribute in &submission.report.attributes {
@@ -2713,7 +2713,7 @@ mod tests
             match session.submit(item) {
                 | Ok(submission) => {
                     for diagnostic in &submission.report.diagnostics {
-                        run.diagnostics.push(diagnostic.message.clone());
+                        run.diagnostics.push(diagnostic.message.to_string());
                     }
                     run.goals = run.goals.saturating_add(submission.report.goals.len());
                     for attribute in &submission.report.attributes {
