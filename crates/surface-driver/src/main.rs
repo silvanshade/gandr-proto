@@ -21,6 +21,7 @@ use gandr_core_term::outcome::Eval;
 use gandr_core_term::syntax::Comp;
 use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source;
+use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Session;
@@ -30,6 +31,7 @@ use gandr_surface_lsp::run_stdio;
 use gandr_surface_repl::BatchStatus;
 use gandr_surface_repl::run_batch;
 use gandr_surface_repl::run_interactive;
+use gandr_surface_syntax::SourceSlice;
 use gandr_surface_tui::run as run_tui;
 use gandr_surface_tui::run_smoke;
 
@@ -421,31 +423,41 @@ fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
     let submission = session
         .submit(source.as_str())
         .map_err(|error| ScriptFailure(format!("lowering failed: {error}")))?;
-    if let Some(error) = submission.verdicts().find_map(verdict_failure) {
+    let source_slice = SourceSlice::from(source.as_str());
+    if let Some(error) = submission
+        .verdicts()
+        .find_map(|verdict| verdict_failure(source_slice, Some(path), &verdict))
+    {
         return Err(error);
     }
     run_source(source.as_str()).map_err(|error| ScriptFailure(error.to_string()))
 }
 
-/// Render one error verdict as a script refusal.
-fn verdict_failure(verdict: Verdict<'_>) -> Option<ScriptFailure>
+/// Render one fatal verdict as a script refusal.
+///
+/// # Contract
+/// - requires: `source` is the exact script text that produced `verdict`;
+///   `path` names that source for the annotated report.
+/// - ensures: report diagnostics and outcome-only type errors become one `type
+///   checking failed:` refusal containing the facade's located snippet.
+/// - provides: one shared terminal diagnostic path for the script face.
+/// - returns: `None` for warnings, values, definitions, and goals.
+/// - panics: none.
+fn verdict_failure(
+    source: SourceSlice<'_>,
+    path: Option<&std::path::Path>,
+    verdict: &Verdict<'_>,
+) -> Option<ScriptFailure>
 {
-    match verdict {
-        | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
-            let message = gandr_surface_engine::diag::message_of(error);
-            Some(ScriptFailure(format!(
-                "type checking failed: [{}] {message}",
-                message.code()
-            )))
-        },
-        | Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Error => {
-            Some(ScriptFailure(format!(
-                "type checking failed: [{}] {}",
-                diagnostic.code, diagnostic.message
-            )))
-        },
-        | Verdict::Outcome(_) | Verdict::Diagnostic(_) | Verdict::Goal(_) => None,
-    }
+    let fatal = match *verdict {
+        | Verdict::Outcome(&ItemOutcome::TypeError { .. }) => true,
+        | Verdict::Diagnostic(diagnostic) => diagnostic.severity == Severity::Error,
+        | Verdict::Outcome(_) | Verdict::Goal(_) => false,
+    };
+    fatal
+        .then(|| render_verdict(source, path, verdict))
+        .flatten()
+        .map(|rendered| ScriptFailure(format!("type checking failed:\n{rendered}")))
 }
 
 /// Render a source-preparation failure as one diagnostic line.

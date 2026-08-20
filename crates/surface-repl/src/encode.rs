@@ -4,7 +4,7 @@
 //! lower, type, or mark. Highlight spans stay empty: this crate consumes
 //! [`HlSpan`] and never produces one.
 
-use gandr_surface_engine::diag::message_of;
+use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
@@ -39,24 +39,30 @@ pub fn encode_submission(
 {
     let mut lines = Vec::new();
     for verdict in submission.verdicts() {
-        encode_verdict(verdict, &mut lines);
+        encode_verdict(source, verdict, &mut lines);
     }
     TranscriptBlock::new(String::from(source.as_ref()), Vec::<HlSpan>::new(), lines)
 }
 
 /// Append the lines one merged verdict contributes.
+///
+/// # Contract
+/// - requires: `source` is the exact text that produced `verdict`.
+/// - ensures: diagnostic-bearing verdicts are rendered by the shared facade;
+///   values, definitions, and goals retain their existing transcript kinds.
+/// - provides: one REPL presentation path for source diagnostics.
+/// - panics: none.
 fn encode_verdict(
+    source: SourceSlice<'_>,
     verdict: Verdict<'_>,
     lines: &mut Vec<(OutKind, String)>,
 )
 {
     match verdict {
-        | Verdict::Outcome(outcome) => encode_outcome(outcome, lines),
+        | Verdict::Outcome(outcome) => encode_outcome(source, outcome, lines),
         | Verdict::Diagnostic(diagnostic) => {
-            lines.push((
-                OutKind::Diag,
-                format!("[{}] {}", diagnostic.code, diagnostic.message),
-            ));
+            let verdict = Verdict::Diagnostic(diagnostic);
+            push_diagnostic(source, &verdict, lines);
         },
         | Verdict::Goal(goal) => {
             let expected = goal.expected.as_deref().unwrap_or("?");
@@ -65,8 +71,21 @@ fn encode_verdict(
     }
 }
 
+/// Append one facade-rendered diagnostic without exposing renderer types.
+fn push_diagnostic(
+    source: SourceSlice<'_>,
+    verdict: &Verdict<'_>,
+    lines: &mut Vec<(OutKind, String)>,
+)
+{
+    if let Some(rendered) = render_verdict(source, None, verdict) {
+        lines.push((OutKind::Diag, rendered));
+    }
+}
+
 /// Append the lines one item outcome contributes.
 fn encode_outcome(
+    source: SourceSlice<'_>,
     outcome: &ItemOutcome,
     lines: &mut Vec<(OutKind, String)>,
 )
@@ -84,9 +103,9 @@ fn encode_outcome(
             lines.push((OutKind::Type, format!("{ty:?}")));
             lines.push((OutKind::Value, format!("{value:?}")));
         },
-        | &ItemOutcome::TypeError { ref error } => {
-            let message = message_of(error);
-            lines.push((OutKind::Diag, format!("[{}] {message}", message.code())));
+        | &ItemOutcome::TypeError { .. } => {
+            let verdict = Verdict::Outcome(outcome);
+            push_diagnostic(source, &verdict, lines);
         },
         | &ItemOutcome::Holey => {
             lines.push((

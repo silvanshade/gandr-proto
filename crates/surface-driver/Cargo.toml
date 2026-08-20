@@ -23,6 +23,8 @@ gandr-core-term.workspace = true
 # The combined source entry: ordinary shell operations and declared native FFI
 # operations share one prepared lowering seam and one host driver.
 gandr-runtime-ffi.workspace = true
+# Terminal source diagnostics over merged verdict spans.
+gandr-surface-diagnostics.workspace = true
 # The language-level source entry: retained for the shell-facing API and
 # preparation types.
 gandr-surface-engine.workspace = true
@@ -30,6 +32,8 @@ gandr-surface-engine.workspace = true
 gandr-surface-lsp.workspace = true
 # The read-evaluate loop: bare `gandr` is the line-editor face.
 gandr-surface-repl.workspace = true
+# Shared source text wrapper for facade span rendering.
+gandr-surface-syntax.workspace = true
 # The terminal programming environment: `gandr tui`.
 gandr-surface-tui.workspace = true
 

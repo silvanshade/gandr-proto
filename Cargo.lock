@@ -42,6 +42,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "annotate-snippets"
+version = "0.12.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f211a51805bc641f3ad5b7664c77d2547af685cc33b4cd8d31964027a46f13f1"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -808,9 +818,11 @@ version = "0.0.0"
 dependencies = [
  "gandr-core-term",
  "gandr-runtime-ffi",
+ "gandr-surface-diagnostics",
  "gandr-surface-engine",
  "gandr-surface-lsp",
  "gandr-surface-repl",
+ "gandr-surface-syntax",
  "gandr-surface-tui",
 ]
 
@@ -987,6 +999,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-surface-diagnostics"
+version = "0.0.0"
+dependencies = [
+ "annotate-snippets",
+ "gandr-core-term",
+ "gandr-surface-engine",
+ "gandr-surface-syntax",
+]
+
+[[package]]
 name = "gandr-surface-engine"
 version = "0.0.0"
 dependencies = [
@@ -1063,6 +1085,7 @@ dependencies = [
 name = "gandr-surface-repl"
 version = "0.0.0"
 dependencies = [
+ "gandr-surface-diagnostics",
  "gandr-surface-engine",
  "gandr-surface-grammar",
  "gandr-surface-parser",

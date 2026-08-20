@@ -16,6 +16,8 @@ name = "loop"
 path = "tests/loop.rs"
 
 [dependencies]
+# Terminal source diagnostics over merged verdict spans.
+gandr-surface-diagnostics.workspace = true
 gandr-surface-engine.workspace = true
 gandr-surface-grammar.workspace = true
 gandr-surface-parser.workspace = true

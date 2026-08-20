@@ -21,6 +21,7 @@ members = [
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
   "crates/surface-corpus",
+  "crates/surface-diagnostics",
   "crates/surface-driver",
   "crates/surface-engine",
   "crates/surface-grammar",
@@ -66,6 +67,14 @@ publish = false
 
 [workspace.dependencies.afl]
 version = "=0.18.2"
+default-features = false
+
+# Terminal diagnostic snippets over source spans. Keep defaults off: the facade
+# selects plain Unicode rendering and does not need ANSI integration.
+# consumers:
+# - gandr-surface-diagnostics
+[workspace.dependencies.annotate-snippets]
+version = "0.12.16"
 default-features = false
 
 # Bao verified-streaming codec (BLAKE3 Merkle tree) — a storage-tier interop
@@ -307,6 +316,13 @@ path = "crates/storage-prolly-trees"
 # consumers: none (corpus harness root)
 [workspace.dependencies.gandr-surface-corpus]
 path = "crates/surface-corpus"
+
+# Terminal-facing source diagnostics over merged surface verdicts.
+# consumers:
+# - gandr-surface-driver
+# - gandr-surface-repl
+[workspace.dependencies.gandr-surface-diagnostics]
+path = "crates/surface-diagnostics"
 
 # Surface lowering engine: CST-to-core lowering, origin tracking, sessions.
 # consumers:

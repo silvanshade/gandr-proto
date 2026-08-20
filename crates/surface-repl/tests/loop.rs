@@ -125,6 +125,14 @@ mod tests
         }
     }
 
+    /// The REPL exposes the same located report as the script face while
+    /// retaining the stable diagnostic code.
+    ///
+    /// # Contract
+    /// - ensures: an outcome-only type refusal is a diagnostic block containing
+    ///   the code and both semantic operand labels.
+    /// - provides: a regression witness for the facade routing seam.
+    /// - panics: none beyond an unmet observable contract.
     #[test]
     fn an_outcome_only_refusal_is_visible_in_the_repl()
     {
@@ -147,9 +155,12 @@ mod tests
             | LoopEvent::Submitted(block) => {
                 assert!(
                     block.lines.iter().any(|pair| {
-                        pair.0 == OutKind::Diag && pair.1.starts_with("[E0001]")
+                        pair.0 == OutKind::Diag
+                            && pair.1.contains("error[E0001]")
+                            && pair.1.contains("expected")
+                            && pair.1.contains("found")
                     }),
-                    "the merged verdict stream must show the coded outcome-only refusal: {:?}",
+                    "the merged verdict stream must show the located outcome-only refusal: {:?}",
                     block.lines
                 );
             },

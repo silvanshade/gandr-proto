@@ -16,7 +16,7 @@ The package name is what a user types; the directory name places the crate in th
   On a pipe it runs a batch transcript.
 - `gandr tui` is the terminal programming environment.
   `gandr tui --smoke` draws one test-backend frame and prints a launch note.
-- `gandr <file>` checks the merged verdict stream before execution, renders refusals with their stable diagnostic code, and runs accepted source through `gandr-runtime-ffi` under the combined native and shell host.
+- `gandr <file>` checks the merged verdict stream before execution, renders refusals as located `annotate-snippets` reports with their stable diagnostic code, and runs accepted source through `gandr-runtime-ffi` under the combined native and shell host.
 - `gandr lsp` serves the language-server protocol on standard input and output.
 - `gandr lsp --capabilities` prints the advertised initialize result, including the semantic-token legend.
 - A returned script value is written once to standard output.
