@@ -254,7 +254,7 @@ mod tests
                 ("grade-thunk", "1"),
                 ("grade-force", "z"),
             ];
-            for ((name, _descriptor, source), (expected_name, expected)) in
+            for (&(name, _descriptor, source), &(expected_name, expected)) in
                 ERROR_CORPUS.iter().zip(EXPECTED)
             {
                 assert_eq!(
@@ -264,7 +264,7 @@ mod tests
                 let diagnostic = first_diagnostic(source);
                 let span = primary_span(&diagnostic);
                 assert_eq!(
-                    Some(*expected),
+                    Some(expected),
                     source.get(span.start .. span.end),
                     "{name}: primary source locus"
                 );

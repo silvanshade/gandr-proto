@@ -1026,7 +1026,7 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
             cst_node: first.cst_node(),
             cst_hash: first.cst_hash(),
             byte_range: SourceRange(
-                first.start_byte().0 .. chain_end.unwrap_or(first.end_byte().0),
+                first.start_byte().0 .. chain_end.unwrap_or_else(|| first.end_byte().0),
             ),
             elaboration: None,
             note: None,

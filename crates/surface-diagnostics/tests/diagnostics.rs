@@ -66,4 +66,23 @@ mod tests
         assert!(reports[0].contains("while checking the forced value"));
         assert!(reports[0].contains("expected a thunk type, found"));
     }
+
+    #[test]
+    fn a_labeled_context_retains_its_locus_and_cause()
+    {
+        const SOURCE: &str = "force(1)\n";
+        let mut session = Session::new();
+        let mut submission = session
+            .submit(SOURCE)
+            .expect("the force fixture must lower into a report");
+        submission.report.diagnostics[0].contexts[0].annotations[0].label =
+            Some(String::from("forced operand"));
+        let reports = render_submission(SourceSlice::from(SOURCE), None, &submission);
+        assert_eq!(1, reports.len());
+        assert!(
+            reports[0].contains("forced operand; while checking the forced value"),
+            "the terminal projection must retain both structured label pieces: {}",
+            reports[0]
+        );
+    }
 }

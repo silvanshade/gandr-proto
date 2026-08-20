@@ -128,13 +128,19 @@ fn render_diagnostic(
             notes.push(format!("while {}", context.prose));
             continue;
         }
-        annotations.extend(context.annotations.iter().map(|annotation| {
-            let mut projected = project_annotation(annotation);
-            if projected.label.is_none() {
-                projected.label = Some(format!("while {}", context.prose));
-            }
-            projected
-        }));
+        annotations.extend(
+            context
+                .annotations
+                .iter()
+                .map(|annotation| RenderAnnotation {
+                    kind: annotation.kind,
+                    span: annotation.span.clone(),
+                    label: Some(context_annotation_label(
+                        annotation.label.as_deref(),
+                        context.prose.as_str(),
+                    )),
+                }),
+        );
     }
     render_report(RenderReport {
         source,
@@ -247,5 +253,17 @@ fn project_annotation(annotation: &DiagnosticAnnotation) -> RenderAnnotation
         kind: annotation.kind,
         span: annotation.span.clone(),
         label: annotation.label.clone(),
+    }
+}
+
+/// Composes one locus-specific label with the cause that owns the annotation.
+fn context_annotation_label(
+    label: Option<&str>,
+    prose: &str,
+) -> String
+{
+    match label {
+        | Some(label) => format!("{label}; while {prose}"),
+        | None => format!("while {prose}"),
     }
 }

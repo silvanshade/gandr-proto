@@ -1014,10 +1014,10 @@ fn attribute_problem_diagnostic(
 ) -> Diagnostic
 {
     let label = match &problem {
-        | AttributeProblem::Unknown { .. } => "unknown attribute",
-        | AttributeProblem::Duplicate => "duplicate attribute",
-        | AttributeProblem::MissingPayload => "payload required",
-        | AttributeProblem::NonValuePayload => "payload must be a value",
+        | &AttributeProblem::Unknown { .. } => "unknown attribute",
+        | &AttributeProblem::Duplicate => "duplicate attribute",
+        | &AttributeProblem::MissingPayload => "payload required",
+        | &AttributeProblem::NonValuePayload => "payload must be a value",
     };
     Diagnostic {
         detail: DiagnosticDetail::Attribute {
@@ -1082,12 +1082,12 @@ struct MachineFailure
 }
 
 /// One source-origin node paired with its item-relative core-term path.
-struct OriginLocus
+struct OriginLocus<'origin>
 {
     /// Stable identity retained after the compatibility path is consumed.
     id: OriginNodeId,
-    /// Core-term path used only to verify traversal synchronization.
-    term_path: Vec<u32>,
+    /// Borrowed core-term path used only to verify traversal synchronization.
+    term_path: &'origin [u32],
 }
 
 /// Carries exact source identity beside the span-free typing machine.
@@ -1104,23 +1104,23 @@ struct OriginLocus
 /// - hypothesis: L3 — return-position localization, repeated equal siblings,
 ///   and a direct descend failure distinguish cursor, stack, and desync errors.
 /// - witness: `diag::tests::provenance::force_shape_failure_points_to_its_argument`
-struct FailureLocusTracker<'term>
+struct FailureLocusTracker<'term, 'origin>
 {
     /// Original item term used to verify each preorder entry.
     term: &'term Term,
     /// Unvisited loci, reversed so the next preorder node is popped in O(1).
-    pending: Vec<OriginLocus>,
+    pending: Vec<OriginLocus<'origin>>,
     /// Entered term occurrences not yet completed, outermost first.
     active: Vec<OriginNodeId>,
 }
 
-impl<'term> FailureLocusTracker<'term>
+impl<'term, 'origin> FailureLocusTracker<'term, 'origin>
 {
     /// Builds the tracker for one lowered item.
     fn new(
         item_index: ItemIndex,
         item: &'term Item,
-        lowered: &Lowered,
+        lowered: &'origin Lowered,
     ) -> Self
     {
         let target = u32::try_from(item_index.0).ok();
@@ -1132,10 +1132,7 @@ impl<'term> FailureLocusTracker<'term>
                 if Some(first) != target || resolve(&item.term, term_path).is_none() {
                     return None;
                 }
-                Some(OriginLocus {
-                    id,
-                    term_path: term_path.to_vec(),
-                })
+                Some(OriginLocus { id, term_path })
             })
             .collect::<Vec<_>>();
         pending.reverse();
@@ -1164,7 +1161,7 @@ impl<'term> FailureLocusTracker<'term>
             self.active.clear();
             return;
         };
-        let matched = match (control, resolve(self.term, locus.term_path.as_slice())) {
+        let matched = match (control, resolve(self.term, locus.term_path)) {
             | (&Control::DescendValue { ref value, .. }, Some(TermRef::Value(found))) => {
                 value == found
             },

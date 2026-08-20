@@ -112,7 +112,8 @@ impl Analysis
     /// # Contract
     /// - ensures: one diagnostic per visible error verdict; the first primary
     ///   annotation is the LSP lead, every remaining root or context annotation
-    ///   becomes related information, and genuinely unlocated refusals use the
+    ///   becomes related information, context loci retain both their annotation
+    ///   label and owning cause, and genuinely unlocated refusals use the
     ///   protocol-required zero-width origin range rather than claiming the
     ///   whole document.
     /// - panics: none.
@@ -134,17 +135,20 @@ impl Analysis
                         .iter()
                         .position(|annotation| annotation.kind == DiagnosticAnnotationKind::Primary)
                         .or_else(|| (!diagnostic.annotations.is_empty()).then_some(0));
-                    let (start, end) = lead.map_or((0, 0), |index| {
-                        let span = &diagnostic.annotations[index].span;
-                        (span.start, span.end)
-                    });
+                    let (start, end) = lead
+                        .and_then(|index| diagnostic.annotations.get(index))
+                        .map_or((0, 0), |annotation| {
+                            (annotation.span.start, annotation.span.end)
+                        });
                     let mut message = diagnostic.message.to_string();
                     let mut related_information = diagnostic
                         .annotations
                         .iter()
                         .enumerate()
-                        .filter(|(index, _annotation)| Some(*index) != lead)
-                        .map(|(_index, annotation)| {
+                        .filter_map(|(index, annotation)| {
+                            (Some(index) != lead).then_some(annotation)
+                        })
+                        .map(|annotation| {
                             related(
                                 uri,
                                 SourceText::from(self.source.as_str()),
@@ -170,7 +174,10 @@ impl Analysis
                                 &index,
                                 encoding,
                                 &annotation.span,
-                                format!("while {}", context.prose),
+                                context_annotation_message(
+                                    annotation.label.as_deref(),
+                                    context.prose.as_str(),
+                                ),
                             )
                         }));
                     }
@@ -405,6 +412,18 @@ fn related(
     }
 }
 
+/// Composes one locus-specific label with the cause that owns the annotation.
+fn context_annotation_message(
+    label: Option<&str>,
+    prose: &str,
+) -> String
+{
+    match label {
+        | Some(label) => format!("{label}; while {prose}"),
+        | None => format!("while {prose}"),
+    }
+}
+
 /// An empty submission used when lowering is unavailable.
 fn empty_submission() -> Submission
 {
@@ -461,6 +480,21 @@ mod tests
             diagnostics[0].related_information[0]
                 .message
                 .contains("function of an application")
+        );
+    }
+
+    #[test]
+    fn a_labeled_context_keeps_its_locus_and_cause_in_related_information()
+    {
+        let mut analysis = Analysis::check(String::from("(ret 1)(2)\n"));
+        analysis.submission.report.diagnostics[0].contexts[0].annotations[0].label =
+            Some(String::from("application head"));
+        let uri = DocumentUri::from(String::from("file:///shape.gandr"));
+        let diagnostics = analysis.diagnostics(PositionEncoding::Utf16, &uri);
+        assert_eq!(1, diagnostics.len());
+        assert_eq!(
+            "application head; while checking the function of an application",
+            diagnostics[0].related_information[0].message
         );
     }
 }
