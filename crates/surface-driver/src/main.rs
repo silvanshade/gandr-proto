@@ -399,20 +399,23 @@ fn classify(outcome: &FfiShellOutcome) -> ExitStatus
     }
 }
 
-/// Check a script's merged verdict stream, then run accepted source.
+/// Check a script's merged verdict stream, report non-fatal findings, then run
+/// accepted source.
 ///
 /// # Contract
 /// - requires: `path` names the source the caller asked to run.
-/// - ensures: a typing refusal from either report diagnostics or item outcomes
-///   is returned before the host runs.
+/// - ensures: warnings are rendered without changing success status, and a
+///   typing refusal from either report diagnostics or item outcomes is returned
+///   before the host runs.
 /// - provides: the script face's single source-check and execution seam.
 /// - fails: returns a rendered read, lowering, verdict, linking, or checking
 ///   failure.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — a report diagnostic and an outcome-only type error
-///   are separated by the merged verdict accessor.
+/// - hypothesis: L3 only — warning, report-error, and outcome-only error
+///   verdicts are separated by the merged verdict accessor.
+/// - witness: `cli::tests::a_successful_script_reports_a_shadowing_warning`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
 /// - witness: `cli::tests::an_outcome_only_refusal_is_visible_in_a_script_run`
 fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
@@ -424,11 +427,17 @@ fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
         .submit(source.as_str())
         .map_err(|error| ScriptFailure(format!("lowering failed: {error}")))?;
     let source_slice = SourceSlice::from(source.as_str());
-    if let Some(error) = submission
-        .verdicts()
-        .find_map(|verdict| verdict_failure(source_slice, Some(path), &verdict))
-    {
-        return Err(error);
+    for verdict in submission.verdicts() {
+        if let Some(error) = verdict_failure(source_slice, Some(path), &verdict) {
+            return Err(error);
+        }
+        if matches!(
+            verdict,
+            Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Warning
+        ) && let Some(rendered) = render_verdict(source_slice, Some(path), &verdict)
+        {
+            report(&format!("{rendered}\n"));
+        }
     }
     run_source(source.as_str()).map_err(|error| ScriptFailure(error.to_string()))
 }

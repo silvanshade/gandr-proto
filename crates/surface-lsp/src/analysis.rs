@@ -6,6 +6,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_surface_engine::diag::DiagnosticAnnotationKind;
 use gandr_surface_engine::diag::DiagnosticMessage;
 use gandr_surface_engine::diag::Report;
 use gandr_surface_engine::diag::Severity;
@@ -28,8 +29,11 @@ use crate::position::byte_of_position;
 use crate::position::position_of_byte;
 use crate::protocol::CompletionItem;
 use crate::protocol::Diagnostic;
+use crate::protocol::DiagnosticRelatedInformation;
 use crate::protocol::DiagnosticSeverity;
+use crate::protocol::DocumentUri;
 use crate::protocol::Hover;
+use crate::protocol::Location;
 use crate::protocol::MarkupContent;
 use crate::protocol::Position;
 use crate::protocol::Range;
@@ -106,45 +110,91 @@ impl Analysis
     /// Project the merged verdict stream into editor diagnostics.
     ///
     /// # Contract
-    /// - ensures: one diagnostic per visible error verdict, using the source
-    ///   span when present and the whole document for an outcome-only refusal,
-    ///   plus one warning per obligation row.
+    /// - ensures: one diagnostic per visible error verdict; the first primary
+    ///   annotation is the LSP lead, every remaining root or context annotation
+    ///   becomes related information, and genuinely unlocated refusals use the
+    ///   protocol-required zero-width origin range rather than claiming the
+    ///   whole document.
     /// - panics: none.
     #[inline]
     #[must_use]
     pub fn diagnostics(
         &self,
         encoding: PositionEncoding,
+        uri: &DocumentUri,
     ) -> Vec<Diagnostic>
     {
         let index = LineIndex::new(SourceText::from(self.source.as_str()));
         let mut out = Vec::new();
         for verdict in self.submission.verdicts() {
-            let (start, end, severity, code, message) = match verdict {
+            let (start, end, severity, code, message, related_information) = match verdict {
                 | Verdict::Diagnostic(diagnostic) => {
-                    let Some(span) = diagnostic.span.as_ref()
-                    else {
-                        continue;
-                    };
+                    let lead = diagnostic
+                        .annotations
+                        .iter()
+                        .position(|annotation| annotation.kind == DiagnosticAnnotationKind::Primary)
+                        .or_else(|| (!diagnostic.annotations.is_empty()).then_some(0));
+                    let (start, end) = lead.map_or((0, 0), |index| {
+                        let span = &diagnostic.annotations[index].span;
+                        (span.start, span.end)
+                    });
+                    let mut message = diagnostic.message.to_string();
+                    let mut related_information = diagnostic
+                        .annotations
+                        .iter()
+                        .enumerate()
+                        .filter(|(index, _annotation)| Some(*index) != lead)
+                        .map(|(_index, annotation)| {
+                            related(
+                                uri,
+                                SourceText::from(self.source.as_str()),
+                                &index,
+                                encoding,
+                                &annotation.span,
+                                annotation
+                                    .label
+                                    .clone()
+                                    .unwrap_or_else(|| diagnostic.message.to_string()),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    for context in &diagnostic.contexts {
+                        if context.annotations.is_empty() {
+                            message.push_str("\nwhile ");
+                            message.push_str(&context.prose);
+                        }
+                        related_information.extend(context.annotations.iter().map(|annotation| {
+                            related(
+                                uri,
+                                SourceText::from(self.source.as_str()),
+                                &index,
+                                encoding,
+                                &annotation.span,
+                                format!("while {}", context.prose),
+                            )
+                        }));
+                    }
                     (
-                        span.start,
-                        span.end,
+                        start,
+                        end,
                         match diagnostic.severity {
                             | Severity::Error => DiagnosticSeverity::ERROR,
                             | Severity::Warning => DiagnosticSeverity::WARNING,
                         },
                         diagnostic.code,
-                        diagnostic.message.to_string(),
+                        message,
+                        related_information,
                     )
                 },
                 | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
                     let message = message_of(error);
                     (
                         0_usize,
-                        self.source.len(),
+                        0_usize,
                         DiagnosticSeverity::ERROR,
                         message.code(),
                         message.to_string(),
+                        Vec::new(),
                     )
                 },
                 | Verdict::Outcome(_) | Verdict::Goal(_) => continue,
@@ -160,6 +210,7 @@ impl Analysis
                 severity,
                 code,
                 message,
+                related_information,
             });
         }
         for obligation in &self.submission.report.obligations {
@@ -177,6 +228,7 @@ impl Analysis
                 code: message.code(),
                 severity: DiagnosticSeverity::WARNING,
                 message: message.to_string(),
+                related_information: Vec::new(),
             });
         }
         out
@@ -225,18 +277,31 @@ impl Analysis
             }
         }
         for diagnostic in &self.submission.report.diagnostics {
-            let Some(span) = diagnostic.span.as_ref()
-            else {
-                continue;
-            };
-            if bool::from(contains(
-                ByteOffset::from(span.start),
-                ByteOffset::from(span.end),
-                byte,
-            )) {
-                return Some(Hover {
-                    contents: MarkupContent::markdown(diagnostic.message.to_string()),
-                });
+            for annotation in &diagnostic.annotations {
+                let span = &annotation.span;
+                if bool::from(contains(
+                    ByteOffset::from(span.start),
+                    ByteOffset::from(span.end),
+                    byte,
+                )) {
+                    return Some(Hover {
+                        contents: MarkupContent::markdown(diagnostic.message.to_string()),
+                    });
+                }
+            }
+            for context in &diagnostic.contexts {
+                for annotation in &context.annotations {
+                    let span = &annotation.span;
+                    if bool::from(contains(
+                        ByteOffset::from(span.start),
+                        ByteOffset::from(span.end),
+                        byte,
+                    )) {
+                        return Some(Hover {
+                            contents: MarkupContent::markdown(format!("while {}", context.prose)),
+                        });
+                    }
+                }
             }
         }
         None
@@ -315,6 +380,31 @@ fn range_of_bytes(
     )
 }
 
+/// Builds standard LSP related information for one engine-owned locus.
+fn related(
+    uri: &DocumentUri,
+    text: SourceText<'_>,
+    index: &LineIndex,
+    encoding: PositionEncoding,
+    span: &gandr_surface_engine::diag::Span,
+    message: String,
+) -> DiagnosticRelatedInformation
+{
+    DiagnosticRelatedInformation {
+        location: Location {
+            uri: uri.clone(),
+            range: range_of_bytes(
+                text,
+                index,
+                ByteOffset::from(span.start),
+                ByteOffset::from(span.end),
+                encoding,
+            ),
+        },
+        message,
+    }
+}
+
 /// An empty submission used when lowering is unavailable.
 fn empty_submission() -> Submission
 {
@@ -338,6 +428,7 @@ mod tests
 {
     use super::Analysis;
     use crate::position::PositionEncoding;
+    use crate::protocol::DocumentUri;
     use crate::protocol::Position;
 
     #[test]
@@ -356,5 +447,20 @@ mod tests
     {
         let analysis = Analysis::check(String::from("def f = 42;\n"));
         let _hover = analysis.hover(Position::default(), PositionEncoding::Utf16);
+    }
+
+    #[test]
+    fn causal_contexts_become_lsp_related_information()
+    {
+        let analysis = Analysis::check(String::from("(ret 1)(2)\n"));
+        let uri = DocumentUri::from(String::from("file:///shape.gandr"));
+        let diagnostics = analysis.diagnostics(PositionEncoding::Utf16, &uri);
+        assert_eq!(1, diagnostics.len());
+        assert_eq!(1, diagnostics[0].related_information.len());
+        assert!(
+            diagnostics[0].related_information[0]
+                .message
+                .contains("function of an application")
+        );
     }
 }

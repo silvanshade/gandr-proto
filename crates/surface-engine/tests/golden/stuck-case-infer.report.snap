@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -16,12 +16,18 @@
           "hint": "case only checks; annotate or supply an expected type"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 70
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 0,
+            "end": 70
+          },
+          "label": "case only checks; annotate or supply an expected type"
+        }
+      ],
       "expr": "Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0))))",
-      "context_chain": [],
+      "contexts": [],
       "ctx": []
     }
   ],

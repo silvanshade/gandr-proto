@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "GradeError",
@@ -17,24 +17,58 @@
           "upper": "Fin(0)"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 52
-      },
-      "elaboration": "DefFunctionSugar",
-      "context_chain": [
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 49,
+            "end": 50
+          },
+          "label": "required Fin(1) ≤ Fin(0)"
+        }
+      ],
+      "contexts": [
         {
           "role": "Thunk",
-          "prose": "checking the body of a thunk"
+          "prose": "checking the body of a thunk",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 0,
+                "end": 52
+              },
+              "elaboration": "DefFunctionSugar"
+            }
+          ]
         },
         {
           "role": "Abs",
           "prose": "checking the body of an abstraction binding `z`",
-          "binder": "z"
+          "binder": "z",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 0,
+                "end": 52
+              },
+              "elaboration": "DefFunctionSugar"
+            }
+          ]
         },
         {
           "role": "Force",
-          "prose": "checking the forced value"
+          "prose": "checking the forced value",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 43,
+                "end": 50
+              }
+            }
+          ]
         }
       ],
       "ctx": [

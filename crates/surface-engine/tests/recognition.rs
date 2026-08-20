@@ -567,8 +567,8 @@ fn contains_perform(comp: &Comp) -> MatchDecision
 #[test]
 fn a_shadowed_builtin_is_reported_as_a_warning()
 {
-    let lowered =
-        lower_source_total("def list = 1;\ndef used = list;".into()).expect("total lowering");
+    const SOURCE: &str = "def list = 1;\ndef used = list;";
+    let lowered = lower_source_total(SOURCE.into()).expect("total lowering");
     let report = gandr_surface_engine::diag::report(&lowered, &prelude_ctx());
     let warnings: Vec<&gandr_surface_engine::diag::Diagnostic> = report
         .diagnostics
@@ -584,10 +584,11 @@ fn a_shadowed_builtin_is_reported_as_a_warning()
         "the warning names the shadowed path: {:?}",
         warnings[0]
     );
-    assert!(
-        warnings[0].span.is_some(),
-        "the warning is source-ranged: {:?}",
-        warnings[0]
+    let span = &warnings[0].annotations[0].span;
+    assert_eq!(
+        Some("list"),
+        SOURCE.get(span.start .. span.end),
+        "the warning primary must be the shadowing declaration name"
     );
 }
 

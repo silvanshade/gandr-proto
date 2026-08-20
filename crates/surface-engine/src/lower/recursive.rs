@@ -41,6 +41,8 @@ use crate::boundary::NodeText;
 use crate::boundary::SourceRange;
 use crate::origin::ElabKind;
 use crate::origin::OriginEntry;
+use crate::origin::OriginFacet;
+use crate::origin::OriginFacetKind;
 use crate::origin::OriginNode;
 use crate::synnode::SynNode;
 /// Stable handle for one pending-hoist buffer owned by the lowering machine.
@@ -303,6 +305,17 @@ impl<'tree> StatementCursor<'tree>
             nodes: self.nodes,
             next,
         })
+    }
+
+    /// Returns the end of the remaining source chain, excluding its enclosing
+    /// block delimiter.
+    fn end_byte(
+        &self,
+        tail: Option<SynNode<'tree>>,
+    ) -> Option<usize>
+    {
+        tail.or_else(|| self.nodes.last().copied())
+            .map(|node| node.end_byte().0)
     }
 }
 
@@ -887,6 +900,9 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
             | Ok(grade) => grade,
             | Err(error) => return Self::returned(Err(error)),
         };
+        let grade_range = node
+            .child_by_field_name(node_kinds::FIELD_GRADE)
+            .map(SynNode::byte_range);
         let body_node = match super::required_field(node, node_kinds::FIELD_BODY) {
             | Ok(body_node) => body_node,
             | Err(error) => return Self::returned(Err(error)),
@@ -896,10 +912,14 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
             move |_machine, output| {
                 let result = expect_comp(output, body_node).and_then(|body| {
                     let readback = body.readback_comp()?;
-                    VOut::from_legacy_value(
-                        &Value::thunk(grade, readback),
-                        OriginNode::new(entry(node, None), alloc::vec![body.origin]),
-                    )
+                    let mut origin = OriginNode::new(entry(node, None), alloc::vec![body.origin]);
+                    if let Some(byte_range) = grade_range {
+                        origin = origin.with_facet(OriginFacet {
+                            kind: OriginFacetKind::Grade,
+                            byte_range,
+                        });
+                    }
+                    VOut::from_legacy_value(&Value::thunk(grade, readback), origin)
                 });
                 Self::returned(result.map(Lowered::Value))
             },
@@ -974,6 +994,7 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
         block_node: SynNode<'tree>,
     ) -> LowerStep<'run, 'src, 'tree>
     {
+        let chain_end = statements.end_byte(tail);
         let (first, rest) = statements.pop();
         let Some(first) = first
         else {
@@ -1004,7 +1025,9 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
         let span = OriginEntry {
             cst_node: first.cst_node(),
             cst_hash: first.cst_hash(),
-            byte_range: SourceRange(first.start_byte().0 .. block_node.end_byte().0),
+            byte_range: SourceRange(
+                first.start_byte().0 .. chain_end.unwrap_or(first.end_byte().0),
+            ),
             elaboration: None,
             note: None,
         };

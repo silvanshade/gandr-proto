@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -16,15 +16,30 @@
           "hint": "an abstraction only checks against an arrow type"
         }
       },
-      "span": {
-        "start": 42,
-        "end": 57
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 42,
+            "end": 57
+          },
+          "label": "an abstraction only checks against an arrow type"
+        }
+      ],
       "expr": "Abs(\"x\", None, Ret(Var(\"x\")))",
-      "context_chain": [
+      "contexts": [
         {
           "role": "Thunk",
-          "prose": "checking the body of a thunk"
+          "prose": "checking the body of a thunk",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 34,
+                "end": 59
+              }
+            }
+          ]
         }
       ],
       "ctx": []

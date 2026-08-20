@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "ShapeMismatch",
@@ -17,14 +17,29 @@
           "actual": "Value(Atom(\"Integer\"))"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 8
-      },
-      "context_chain": [
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 6,
+            "end": 7
+          },
+          "label": "expected a thunk type, found Value(Atom(\"Integer\"))"
+        }
+      ],
+      "contexts": [
         {
           "role": "Force",
-          "prose": "checking the forced value"
+          "prose": "checking the forced value",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 0,
+                "end": 8
+              }
+            }
+          ]
         }
       ],
       "ctx": []

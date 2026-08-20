@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "GradeError",
@@ -17,12 +17,18 @@
           "upper": "Fin(1)"
         }
       },
-      "span": {
-        "start": 35,
-        "end": 53
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 41,
+            "end": 42
+          },
+          "label": "required Omega ≤ Fin(1)"
+        }
+      ],
       "expr": "Thunk(Fin(1), Ret(Int(1)))",
-      "context_chain": [],
+      "contexts": [],
       "ctx": []
     }
   ],

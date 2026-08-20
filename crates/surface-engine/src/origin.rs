@@ -453,6 +453,28 @@ pub struct OriginEntry
     pub note: Option<HoleNote>,
 }
 
+/// A semantically meaningful source component of one lowered term node.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum OriginFacetKind
+{
+    /// An explicit grade written on a graded term former.
+    Grade,
+}
+
+/// Exact source provenance for one non-child component of a lowered term.
+///
+/// Facets retain information such as a grade token that belongs to a semantic
+/// node but is not itself a term child. Diagnostics can therefore select the
+/// precise component named by an error without distorting the shadow tree.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OriginFacet
+{
+    /// The component's semantic role.
+    pub kind: OriginFacetKind,
+    /// Its exact half-open source range.
+    pub byte_range: SourceRange,
+}
+
 /// The origin side table: stable origin node ID → [`OriginEntry`].
 ///
 /// Backed by `BTreeMap`s so iteration order and compatibility snapshots are
@@ -465,6 +487,8 @@ pub struct OriginMap
     entries: BTreeMap<OriginNodeId, OriginEntry>,
     /// Compatibility readback from path-oriented callers to stable IDs.
     path_index: BTreeMap<OriginPath, OriginNodeId>,
+    /// Non-child semantic components retained for each origin node.
+    facets: BTreeMap<OriginNodeId, Vec<OriginFacet>>,
 }
 
 impl OriginMap
@@ -528,6 +552,17 @@ impl OriginMap
             .filter_map(|(path, id)| self.entries.get(id).map(|entry| (path, *id, entry)))
     }
 
+    /// Returns the ordered semantic components retained for `id`.
+    #[inline]
+    #[must_use]
+    pub fn facets(
+        &self,
+        id: OriginNodeId,
+    ) -> &[OriginFacet]
+    {
+        self.facets.get(&id).map_or(&[], Vec::as_slice)
+    }
+
     /// The number of recorded term nodes.
     #[inline]
     #[must_use]
@@ -585,6 +620,7 @@ impl OriginMap
         id: OriginNodeId,
         path: OriginPath,
         entry: OriginEntry,
+        facets: Vec<OriginFacet>,
     )
     {
         // Duplicate IDs/paths cannot arise from the shadow-tree flattening
@@ -592,6 +628,9 @@ impl OriginMap
         // without an unreachable error path.
         let _previous_entry = self.entries.insert(id, entry);
         let _previous_path = self.path_index.insert(path, id);
+        if !facets.is_empty() {
+            let _previous_facets = self.facets.insert(id, facets);
+        }
     }
 
     /// Flattens one item-root origin tree into this map.
@@ -627,6 +666,8 @@ pub(crate) struct OriginNode
     entry: OriginEntry,
     /// The origins of the node's term children, in [`resolve`] order.
     children: Vec<Self>,
+    /// Non-child source components owned by this semantic node.
+    facets: Vec<OriginFacet>,
 }
 
 impl OriginNode
@@ -637,13 +678,38 @@ impl OriginNode
         children: Vec<Self>,
     ) -> Self
     {
-        Self { entry, children }
+        Self {
+            entry,
+            children,
+            facets: Vec::new(),
+        }
     }
 
     /// Builds a childless shadow node.
     pub(crate) fn leaf(entry: OriginEntry) -> Self
     {
         Self::new(entry, Vec::new())
+    }
+
+    /// Rebinds this semantic root to the surface wrapper that denotes it,
+    /// preserving the child origins that mirror the term's shape.
+    pub(crate) fn with_root_entry(
+        mut self,
+        entry: OriginEntry,
+    ) -> Self
+    {
+        self.entry = entry;
+        self
+    }
+
+    /// Attaches one non-child semantic source component to this root.
+    pub(crate) fn with_facet(
+        mut self,
+        facet: OriginFacet,
+    ) -> Self
+    {
+        self.facets.push(facet);
+        self
     }
 
     /// Whether this shadow tree already records a recovery over `span`: an
@@ -687,7 +753,7 @@ impl OriginNode
         while let Some((node, node_path)) = pending.pop() {
             let id = OriginNodeId::new(*next_id);
             next_id.0 = next_id.0.saturating_add(1);
-            map.insert(id, node_path.clone(), node.entry);
+            map.insert(id, node_path.clone(), node.entry, node.facets);
             for (index, child) in node.children.into_iter().enumerate().rev() {
                 // Most constructors have at most three children; a list
                 // literal is n-ary (list-former design), so the index can be arbitrary.

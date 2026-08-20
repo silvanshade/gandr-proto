@@ -15,8 +15,8 @@ use annotate_snippets::Snippet;
 use annotate_snippets::renderer::DecorStyle;
 use gandr_core_term::error::TypeError;
 use gandr_surface_engine::diag::Diagnostic;
-use gandr_surface_engine::diag::DiagnosticDetail;
-use gandr_surface_engine::diag::DiagnosticMessage;
+use gandr_surface_engine::diag::DiagnosticAnnotation;
+use gandr_surface_engine::diag::DiagnosticAnnotationKind;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::diag::Span;
 use gandr_surface_engine::diag::message_of;
@@ -24,6 +24,7 @@ use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
 use gandr_surface_syntax::SourceSlice;
+
 /// Shared render request passed to the report renderer.
 struct RenderReport<'text>
 {
@@ -37,13 +38,23 @@ struct RenderReport<'text>
     code: String,
     /// Human-facing title text for the report.
     title_text: String,
-    /// Source span to annotate, when location exists.
-    span: Option<&'text Span>,
-    /// Label to attach to the primary annotation.
-    label: String,
+    /// Ordered source annotations to project into the snippet backend.
+    annotations: Vec<RenderAnnotation>,
     /// Optional notes displayed below the main report.
     notes: Vec<String>,
 }
+
+/// Backend projection of one domain annotation.
+struct RenderAnnotation
+{
+    /// Domain role retained until the annotate-snippets boundary.
+    kind: DiagnosticAnnotationKind,
+    /// Exact source range.
+    span: Span,
+    /// Locus-specific label.
+    label: Option<String>,
+}
+
 /// Render every diagnostic in a submitted source's merged verdict stream.
 ///
 /// # Contract
@@ -106,20 +117,33 @@ fn render_diagnostic(
     diagnostic: &Diagnostic,
 ) -> String
 {
-    let label = label_for_detail(&diagnostic.detail, &diagnostic.message);
+    let mut annotations = diagnostic
+        .annotations
+        .iter()
+        .map(project_annotation)
+        .collect::<Vec<_>>();
+    let mut notes = Vec::new();
+    for context in &diagnostic.contexts {
+        if context.annotations.is_empty() {
+            notes.push(format!("while {}", context.prose));
+            continue;
+        }
+        annotations.extend(context.annotations.iter().map(|annotation| {
+            let mut projected = project_annotation(annotation);
+            if projected.label.is_none() {
+                projected.label = Some(format!("while {}", context.prose));
+            }
+            projected
+        }));
+    }
     render_report(RenderReport {
         source,
         path,
         severity: diagnostic.severity,
         code: diagnostic.code.to_string(),
         title_text: diagnostic.message.to_string(),
-        span: diagnostic.span.as_ref(),
-        label,
-        notes: diagnostic
-            .context_chain
-            .iter()
-            .map(|frame| format!("while {}", frame.prose))
-            .collect(),
+        annotations,
+        notes,
     })
 }
 
@@ -131,19 +155,13 @@ fn render_type_error(
 ) -> String
 {
     let message = message_of(error);
-    let span = (!source.as_ref().is_empty()).then(|| Span {
-        start: 0,
-        end: source.as_ref().len(),
-    });
-    let label = label_for_message(&message);
     render_report(RenderReport {
         source,
         path,
         severity: Severity::Error,
         code: message.code().to_string(),
         title_text: message.to_string(),
-        span: span.as_ref(),
-        label,
+        annotations: Vec::new(),
         notes: Vec::new(),
     })
 }
@@ -156,27 +174,37 @@ fn render_report(
         severity,
         code,
         title_text,
-        span,
-        label,
+        annotations,
         notes,
     }: RenderReport<'_>
 ) -> String
 {
     let title = level_for(severity).primary_title(title_text).id(code);
     let mut group = Group::with_title(title);
-    let range = valid_range(source, span);
-    if let Some(range) = range {
-        let mut snippet = Snippet::source(source.as_ref());
-        if let Some(path) = path {
-            snippet = snippet.path(path.to_string_lossy().into_owned());
-        }
-        group = group.element(
-            snippet.annotation(
-                AnnotationKind::Primary
-                    .span(range.start .. range.end)
-                    .label(label),
-            ),
+    let valid = annotations
+        .iter()
+        .filter_map(|annotation| {
+            valid_range(source, &annotation.span).map(|range| (annotation, range))
+        })
+        .collect::<Vec<_>>();
+    if !valid.is_empty() {
+        let snippet_path = path.map_or_else(
+            || "<input>".to_owned(),
+            |path| path.to_string_lossy().into_owned(),
         );
+        let mut snippet = Snippet::source(source.as_ref()).path(snippet_path);
+        for (annotation, range) in valid {
+            let kind = match annotation.kind {
+                | DiagnosticAnnotationKind::Primary => AnnotationKind::Primary,
+                | DiagnosticAnnotationKind::Context => AnnotationKind::Context,
+            };
+            let mut rendered = kind.span(range.start .. range.end);
+            if let Some(ref label) = annotation.label {
+                rendered = rendered.label(label.clone());
+            }
+            snippet = snippet.annotation(rendered);
+        }
+        group = group.element(snippet);
     }
     else if let Some(path) = path {
         group = group.element(Origin::path(path.to_string_lossy().into_owned()));
@@ -202,10 +230,9 @@ fn level_for(severity: Severity) -> Level<'static>
 /// Keep a source span only when it is a valid UTF-8 byte range in `source`.
 fn valid_range(
     source: SourceSlice<'_>,
-    span: Option<&Span>,
+    span: &Span,
 ) -> Option<Span>
 {
-    let span = span?;
     if span.start > span.end {
         return None;
     }
@@ -213,33 +240,12 @@ fn valid_range(
     Some(span.clone())
 }
 
-/// Label a report diagnostic with its most useful semantic operands.
-fn label_for_detail(
-    detail: &DiagnosticDetail,
-    message: &DiagnosticMessage,
-) -> String
+/// Projects one engine annotation without leaking the backend into the domain.
+fn project_annotation(annotation: &DiagnosticAnnotation) -> RenderAnnotation
 {
-    match detail {
-        | &DiagnosticDetail::TypeMismatch {
-            ref expected,
-            ref actual,
-        } => {
-            format!("expected {expected}, found {actual}")
-        },
-        | _ => label_for_message(message),
-    }
-}
-
-/// Label an outcome-level diagnostic with its message operands.
-fn label_for_message(message: &DiagnosticMessage) -> String
-{
-    match message {
-        | &DiagnosticMessage::TypeMismatch {
-            ref expected,
-            ref actual,
-        } => {
-            format!("expected {expected}, found {actual}")
-        },
-        | _ => message.to_string(),
+    RenderAnnotation {
+        kind: annotation.kind,
+        span: annotation.span.clone(),
+        label: annotation.label.clone(),
     }
 }

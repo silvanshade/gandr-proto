@@ -273,7 +273,7 @@ impl Server
             crate::boundary::MethodName::from("textDocument/publishDiagnostics"),
             &json!(PublishDiagnosticsParams {
                 uri: uri.clone(),
-                diagnostics: analysis.diagnostics(self.encoding),
+                diagnostics: analysis.diagnostics(self.encoding, uri),
             }),
         )]))
     }

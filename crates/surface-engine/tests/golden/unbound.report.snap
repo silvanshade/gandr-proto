@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "UnboundVariable",
@@ -15,12 +15,18 @@
           "name": "nonesuch"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 8
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 0,
+            "end": 8
+          },
+          "label": "not found in this scope"
+        }
+      ],
       "expr": "Var(\"nonesuch\")",
-      "context_chain": [],
+      "contexts": [],
       "ctx": []
     }
   ],

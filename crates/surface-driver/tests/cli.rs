@@ -563,6 +563,24 @@ mod tests
     }
 
     #[test]
+    fn a_successful_script_reports_a_shadowing_warning()
+    {
+        let script = ScratchScript::write("shadow-warning", "def list = 1;\nlist\n");
+        let output = drive([&script.path]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(0_i32)),
+            "a warning must not turn an accepted run into a refusal"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("warning[W0010]") && stderr.contains("this declaration shadows list"),
+            "the successful script must expose its located warning; got {stderr}"
+        );
+        assert_eq!(output.stdout, b"Int(1)\n");
+    }
+
+    #[test]
     fn an_ill_typed_script_is_refused_by_the_checker()
     {
         // The source parses and links, so only the checker's refusal stands

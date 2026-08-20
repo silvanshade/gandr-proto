@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "ShapeMismatch",
@@ -17,18 +17,42 @@
           "actual": "Value(Atom(\"Integer\"))"
         }
       },
-      "span": {
-        "start": 34,
-        "end": 65
-      },
-      "context_chain": [
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 55,
+            "end": 56
+          },
+          "label": "expected a product type, found Value(Atom(\"Integer\"))"
+        }
+      ],
+      "contexts": [
         {
           "role": "Thunk",
-          "prose": "checking the body of a thunk"
+          "prose": "checking the body of a thunk",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 34,
+                "end": 65
+              }
+            }
+          ]
         },
         {
           "role": "Split",
-          "prose": "checking the scrutinee of a split binding `(x, y)`"
+          "prose": "checking the scrutinee of a split binding `(x, y)`",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 42,
+                "end": 63
+              }
+            }
+          ]
         }
       ],
       "ctx": []
@@ -46,7 +70,7 @@
       "item": 0,
       "span": {
         "start": 42,
-        "end": 65
+        "end": 63
       },
       "analyzed": "Comp(F(Atom(\"Integer\")))",
       "synthesized": "Comp(F(Atom(\"Integer\")))"

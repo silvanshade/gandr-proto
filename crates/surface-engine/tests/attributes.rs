@@ -222,20 +222,26 @@ mod tests
         assert_eq!("doc", built.attributes[0].schema);
         assert_eq!(AttrTier::Inert, built.attributes[0].tier);
         // The unknown `bogus` folds into the ordinary diagnostics stream.
-        let unknown = built.diagnostics.iter().find(|diagnostic| {
-            matches!(
-                diagnostic.detail,
-                DiagnosticDetail::Attribute {
-                    ref name,
-                    problem: AttributeProblem::Unknown { .. },
-                } if name == "bogus"
-            )
-        });
-        assert!(
-            unknown.is_some(),
-            "the unknown attribute is a diagnostic: {:?}",
-            built.diagnostics
-        );
+        let unknown = built
+            .diagnostics
+            .iter()
+            .find(|diagnostic| {
+                matches!(
+                    diagnostic.detail,
+                    DiagnosticDetail::Attribute {
+                        ref name,
+                        problem: AttributeProblem::Unknown { .. },
+                    } if name == "bogus"
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "the unknown attribute is a diagnostic: {:?}",
+                    built.diagnostics
+                )
+            });
+        let span = &unknown.annotations[0].span;
+        assert_eq!(Some("bogus"), source.get(span.start .. span.end));
     }
 
     #[cfg(feature = "codecs")]

@@ -16,7 +16,7 @@
 #[cfg(test)]
 mod tests
 {
-    use gandr_surface_engine::diag::ContextFrame;
+    use gandr_surface_engine::diag::DiagnosticContext;
     use gandr_surface_engine::diag::report;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
@@ -93,7 +93,7 @@ mod tests
         }
     }
 
-    /// Whether some diagnostic frame carries `role` with a non-empty prose.
+    /// Whether some diagnostic frame carries `role`, prose, and its own locus.
     fn has_role<'source, 'role>(
         source: impl Into<TestText<'source>>,
         role: impl Into<TestText<'role>>,
@@ -103,7 +103,9 @@ mod tests
         let role = role.into().0;
         frames(source)
             .iter()
-            .any(|frame| frame.role == role && !frame.prose.is_empty())
+            .any(|frame| {
+                frame.role == role && !frame.prose.is_empty() && !frame.annotations.is_empty()
+            })
             .into()
     }
     #[test]
@@ -128,14 +130,14 @@ mod tests
     }
 
     /// The context frames of every diagnostic of a totally-lowered source.
-    fn frames<'text>(source: impl Into<TestText<'text>>) -> Vec<ContextFrame>
+    fn frames<'text>(source: impl Into<TestText<'text>>) -> Vec<DiagnosticContext>
     {
         let source = source.into().0;
         let lowered = lower_source_total(source.into()).expect("total lowering never errs");
         report(&lowered, &prelude_ctx())
             .diagnostics
             .into_iter()
-            .flat_map(|diagnostic| diagnostic.context_chain)
+            .flat_map(|diagnostic| diagnostic.contexts)
             .collect()
     }
 }

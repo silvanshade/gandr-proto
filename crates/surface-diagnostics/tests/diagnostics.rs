@@ -51,4 +51,19 @@ mod tests
             "the terminal layout is a public surface"
         );
     }
+
+    #[test]
+    fn a_pathless_report_names_input_and_renders_causal_context()
+    {
+        const SOURCE: &str = "force(1)\n";
+        let mut session = Session::new();
+        let submission = session
+            .submit(SOURCE)
+            .expect("the force fixture must lower into a report");
+        let reports = render_submission(SourceSlice::from(SOURCE), None, &submission);
+        assert_eq!(1, reports.len());
+        assert!(reports[0].contains("<input>:1:7"));
+        assert!(reports[0].contains("while checking the forced value"));
+        assert!(reports[0].contains("expected a thunk type, found"));
+    }
 }

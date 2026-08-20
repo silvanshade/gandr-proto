@@ -321,6 +321,26 @@ pub struct PublishDiagnosticsParams
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// One secondary diagnostic location with its own explanation.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DiagnosticRelatedInformation
+{
+    /// Document and range owning the related locus.
+    pub location: Location,
+    /// Explanation specific to this locus.
+    pub message: String,
+}
+
+/// One document location.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct Location
+{
+    /// Document identity.
+    pub uri: DocumentUri,
+    /// Exact source range.
+    pub range: Range,
+}
+
 /// One editor diagnostic.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Diagnostic
@@ -333,6 +353,13 @@ pub struct Diagnostic
     pub severity: DiagnosticSeverity,
     /// Human message.
     pub message: String,
+    /// Located causal or co-primary information retained from the engine.
+    #[serde(
+        default,
+        rename = "relatedInformation",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub related_information: Vec<DiagnosticRelatedInformation>,
 }
 
 /// LSP diagnostic severity.

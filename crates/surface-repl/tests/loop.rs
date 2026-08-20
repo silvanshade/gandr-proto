@@ -125,12 +125,12 @@ mod tests
         }
     }
 
-    /// The REPL exposes the same located report as the script face while
-    /// retaining the stable diagnostic code.
+    /// The REPL exposes an outcome-only refusal without inventing a source
+    /// span, while retaining the stable diagnostic code and operands.
     ///
     /// # Contract
-    /// - ensures: an outcome-only type refusal is a diagnostic block containing
-    ///   the code and both semantic operand labels.
+    /// - ensures: an outcome-only type refusal is an unlocated diagnostic block
+    ///   containing the code and both semantic operand labels.
     /// - provides: a regression witness for the facade routing seam.
     /// - panics: none beyond an unmet observable contract.
     #[test]
@@ -159,8 +159,9 @@ mod tests
                             && pair.1.contains("error[E0001]")
                             && pair.1.contains("expected")
                             && pair.1.contains("found")
+                            && !pair.1.contains('━')
                     }),
-                    "the merged verdict stream must show the located outcome-only refusal: {:?}",
+                    "the merged verdict stream must show an honest unlocated refusal: {:?}",
                     block.lines
                 );
             },

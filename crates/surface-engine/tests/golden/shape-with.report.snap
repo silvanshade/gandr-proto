@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "ShapeMismatch",
@@ -17,14 +17,29 @@
           "actual": "Comp(F(Atom(\"Integer\")))"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 11
-      },
-      "context_chain": [
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 0,
+            "end": 7
+          },
+          "label": "expected a with-type, found Comp(F(Atom(\"Integer\")))"
+        }
+      ],
+      "contexts": [
         {
           "role": "Prj",
-          "prose": "checking the target of a projection"
+          "prose": "checking the target of a projection",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 0,
+                "end": 11
+              }
+            }
+          ]
         }
       ],
       "ctx": []

@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "StuckExpr",
@@ -16,12 +16,18 @@
           "hint": "annotate the binder or check against an arrow type"
         }
       },
-      "span": {
-        "start": 0,
-        "end": 15
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 0,
+            "end": 15
+          },
+          "label": "annotate the binder or check against an arrow type"
+        }
+      ],
       "expr": "Abs(\"x\", None, Ret(Var(\"x\")))",
-      "context_chain": [],
+      "contexts": [],
       "ctx": []
     }
   ],

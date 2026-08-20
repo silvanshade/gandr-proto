@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "TypeMismatch",
@@ -17,12 +17,18 @@
           "actual": "Value(Atom(\"Integer\"))"
         }
       },
-      "span": {
-        "start": 22,
-        "end": 23
-      },
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 22,
+            "end": 23
+          },
+          "label": "expected Value(Unit), found Value(Atom(\"Integer\"))"
+        }
+      ],
       "expr": "Int(1)",
-      "context_chain": [],
+      "contexts": [],
       "ctx": []
     }
   ],

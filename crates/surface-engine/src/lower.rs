@@ -1572,7 +1572,6 @@ enum EOut
         COut,
     ),
 }
-
 /// A pending hoist: a computation that occurred in value position, to be
 /// bound by a synthesized `Bind` around the nearest enclosing computation.
 struct Hoist
@@ -2783,7 +2782,13 @@ impl Lowerer<'_>
             | other => other?,
         };
         let head = match lowered_head {
-            | EOut::Comp(comp) => comp,
+            | EOut::Comp(mut comp) => {
+                // A transparent parenthesis is syntax for this exact call
+                // head, not another semantic term node. Preserve its range on
+                // the existing root without changing the shadow-tree shape.
+                comp.origin = comp.origin.with_root_entry(entry(function, None));
+                comp
+            },
             // The force sugar: a value head (variable, thunk literal, …) is
             // wrapped in `Force` — in CBPV the application head must be a
             // computation, decidable at lowering with no type information.
@@ -4345,7 +4350,12 @@ impl Lowerer<'_>
             | other => other?,
         };
         let target = match lowered_target {
-            | EOut::Comp(comp) => comp,
+            | EOut::Comp(mut comp) => {
+                // As for a call head, transparent parentheses belong to this
+                // exact projection target, not to another semantic term node.
+                comp.origin = comp.origin.with_root_entry(entry(target_node, None));
+                comp
+            },
             | EOut::Value(value) => COut::from_legacy_comp(
                 &Comp::Force(Rc::new({
                     let readback_value = value.readback_value()?;

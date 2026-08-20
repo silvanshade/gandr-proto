@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "diagnostics": [
     {
       "kind": "ShapeMismatch",
@@ -17,18 +17,42 @@
           "actual": "Value(Atom(\"Integer\"))"
         }
       },
-      "span": {
-        "start": 34,
-        "end": 87
-      },
-      "context_chain": [
+      "annotations": [
+        {
+          "kind": "primary",
+          "span": {
+            "start": 47,
+            "end": 48
+          },
+          "label": "expected a sum type, found Value(Atom(\"Integer\"))"
+        }
+      ],
+      "contexts": [
         {
           "role": "Thunk",
-          "prose": "checking the body of a thunk"
+          "prose": "checking the body of a thunk",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 34,
+                "end": 87
+              }
+            }
+          ]
         },
         {
           "role": "CaseScrut",
-          "prose": "checking the scrutinee of a case"
+          "prose": "checking the scrutinee of a case",
+          "annotations": [
+            {
+              "kind": "context",
+              "span": {
+                "start": 42,
+                "end": 85
+              }
+            }
+          ]
         }
       ],
       "ctx": []

@@ -42,6 +42,7 @@ mod tests
     use std::path::PathBuf;
 
     use gandr_surface_engine::diag::Diagnostic;
+    use gandr_surface_engine::diag::DiagnosticAnnotationKind;
     use gandr_surface_engine::diag::DiagnosticDetail;
     use gandr_surface_engine::diag::MarkDetail;
     use gandr_surface_engine::diag::MarkReport;
@@ -222,6 +223,86 @@ mod tests
             }
         }
     }
+    /// Exact source provenance for machine failures.
+    mod provenance
+    {
+        use super::*;
+
+        /// Every implemented machine diagnostic keeps the smallest justified
+        /// primary surface expression or token.
+        #[test]
+        fn error_corpus_has_exact_primary_loci()
+        {
+            const EXPECTED: &[(&str, &str)] = &[
+                ("type-mismatch", "1"),
+                ("shape-arrow", "(ret 1)"),
+                ("shape-thunk", "1"),
+                ("shape-returner", "fn(y: Integer) { ret y }"),
+                ("shape-sum", "1"),
+                ("shape-prod", "1"),
+                ("shape-with", "(ret 1)"),
+                ("stuck-inject", "Inl(1)"),
+                ("stuck-binder", "fn(x) { ret x }"),
+                ("stuck-abs-arrow", "fn(x) { ret x }"),
+                (
+                    "stuck-case-infer",
+                    "case (Inl(1) : Integer + Integer) { Inl(x) => ret x, Inr(y) => ret 0 }",
+                ),
+                ("stuck-with-infer", "co { fst = ret 1, snd = ret 2 }"),
+                ("stuck-split-motive", "val (x, y) = (1, 2); ret x"),
+                ("unbound", "nonesuch"),
+                ("grade-thunk", "1"),
+                ("grade-force", "z"),
+            ];
+            for ((name, _descriptor, source), (expected_name, expected)) in
+                ERROR_CORPUS.iter().zip(EXPECTED)
+            {
+                assert_eq!(
+                    name, expected_name,
+                    "the provenance table follows the corpus"
+                );
+                let diagnostic = first_diagnostic(source);
+                let span = primary_span(&diagnostic);
+                assert_eq!(
+                    Some(*expected),
+                    source.get(span.start .. span.end),
+                    "{name}: primary source locus"
+                );
+            }
+        }
+
+        /// Structurally equal siblings retain occurrence identity: the second
+        /// literal is the one checked against `Unit`.
+        #[test]
+        fn repeated_equal_subterms_point_to_the_failing_occurrence()
+        {
+            const SOURCE: &str = "def d = ((1, 1) : Integer * Unit);\n";
+            let diagnostic = first_diagnostic(SOURCE);
+            let span = primary_span(&diagnostic);
+            assert_eq!(SOURCE.rfind('1'), Some(span.start));
+            assert_eq!(Some("1"), SOURCE.get(span.start .. span.end));
+        }
+
+        fn first_diagnostic(source: &str) -> Diagnostic
+        {
+            let lowered =
+                lower_source_total(source.into()).expect("the provenance fixture must lower");
+            diagnostics(&lowered, &prelude_ctx())
+                .into_iter()
+                .next()
+                .expect("the provenance fixture must fail")
+        }
+
+        fn primary_span(diagnostic: &Diagnostic) -> &gandr_surface_engine::diag::Span
+        {
+            &diagnostic
+                .annotations
+                .iter()
+                .find(|annotation| annotation.kind == DiagnosticAnnotationKind::Primary)
+                .expect("the machine failure must retain primary provenance")
+                .span
+        }
+    }
 
     /// Acceptance class 2: golden reports.
     #[cfg(feature = "codecs")]
@@ -291,7 +372,13 @@ mod tests
                     "{name}: the envelope must carry the schema version"
                 );
                 for diagnostic in &built.diagnostics {
-                    if let Some(ref span) = diagnostic.span {
+                    for annotation in diagnostic.annotations.iter().chain(
+                        diagnostic
+                            .contexts
+                            .iter()
+                            .flat_map(|context| &context.annotations),
+                    ) {
+                        let span = &annotation.span;
                         assert!(
                             span.start <= span.end && span.end <= source.len(),
                             "{name}: span {span:?} must lie within the source"

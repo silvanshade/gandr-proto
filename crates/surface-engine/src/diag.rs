@@ -18,14 +18,14 @@
 //! byte span intact. It is the envelope's one syntactic surface — every other
 //! field describes the tree that recovery produced.
 //!
-//! The marks and the diagnostics are **complementary** realizations of the same
-//! type system: the diagnostics are the machine's fail-fast derivation view
-//! (first failure per item, with the partial-derivation `context_chain`); the
-//! marks are the marker's *total* per-node decoration (every node, every type
-//! error localized and recovered). They detect the same type errors, but their
-//! spans and some kind labels differ — diagnostics fall back to the enclosing
-//! item's span for `Return`-position failures, and the marker specializes some
-//! kinds (e.g. `Thunkability` vs the diagnostic's `GradeError`).
+//! The marks and diagnostics are **complementary** realizations of the same
+//! type system: diagnostics are the machine's fail-fast derivation view (first
+//! failure per item, with ordered, source-annotated machine contexts); marks
+//! are the marker's *total* per-node decoration (every node, every type error
+//! localized and recovered). They detect the same type errors, while the
+//! diagnostic driver additionally carries the exact active [`OriginNodeId`]
+//! chain beside the parser-free machine so both `Descend`- and
+//! `Return`-position failures retain source provenance.
 //!
 //! # serde placement (decision tree)
 //!
@@ -53,29 +53,17 @@
 //! deferred to avoid duplicating — and risking divergence from — the lowerer's
 //! spelling decisions.
 //!
-//! # Span resolution (decision tree)
+//! # Span resolution
 //!
-//! [SPECULATIVE DECISION, D4 reversal-trigger (b) noted, not fired.] The
-//! `OriginMap` stores CST origins by stable origin IDs and exposes legacy path
-//! readback for diagnostics; a [`FailureState`] carries the offending sub-term
-//! in its control register but **no path**. For a `Descend`-position failure
-//! (the offending term is in the control register) the precise sub-node span is
-//! recovered by a structural match of the offending term against the recorded
-//! origin nodes of its item, in compatibility path order — so
-//! `UnboundVariable`, every `StuckExpr`, the axiom `TypeMismatch`, and the
-//! `Descend`-site `GradeError` get exact sub-node spans (with the elaboration
-//! tag (an elaborated-node failure reports the surface range with
-//! the elaboration noted). For a `Return`-position failure (the control
-//! register is a *type*, the failing frame is on the stack) the diagnostic
-//! falls back to the **enclosing item's** span — always within the source — and
-//! relies on the [`Diagnostic::context_chain`] (the partial derivation) to
-//! localize the error structurally. Structurally-identical sibling sub-terms
-//! resolve to the first in path order; this is a known imprecision of the
-//! current surface, not a
-//! soundness issue (every reported span lies within the source). The origin
-//! side table's reversal
-//! trigger — "diagnostics need spans the origin map cannot address" — is
-//! therefore **not** fired: the item-span fallback keeps every range valid.
+//! The core typing machine remains parser- and span-free. The surface
+//! diagnostic driver pairs its control trace with the origin map's
+//! deterministic preorder: each `Descend` enters the next exact origin node,
+//! and each successful `Return` transition leaves the completed node. The
+//! active origin ID at a failure is therefore the offending term occurrence
+//! even when equal sibling terms repeat. Structural equality only checks that
+//! the two traversals remain synchronized; it never selects an occurrence. If
+//! they diverge, provenance is dropped and the diagnostic is honestly unlocated
+//! rather than borrowing an enclosing or guessed span.
 
 use core::ops::Range;
 
@@ -92,9 +80,7 @@ use gandr_core_machine::Outcome;
 use gandr_core_machine::step;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
-use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Term;
-use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
@@ -118,6 +104,8 @@ use crate::goals::goals_report_with_contexts;
 use crate::goals::initial_state;
 use crate::lower::Lowered;
 use crate::lower::obligation_range;
+use crate::origin::OriginFacetKind;
+use crate::origin::OriginNodeId;
 use crate::origin::TermRef;
 use crate::origin::resolve;
 use crate::render;
@@ -136,7 +124,10 @@ use crate::render;
 ///
 /// `4` — rendered `message` text became a stable `code` plus a typed message
 /// template and arguments; consumers render the prose they need.
-pub const SCHEMA_VERSION: u32 = 4;
+///
+/// `5` — the single `span` and unlocated context strings became ordered,
+/// role-bearing annotations on both the diagnostic and each machine context.
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// A byte span `[start, end)` in the source.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -168,6 +159,58 @@ impl From<SourceRange> for Span
     {
         Self::from(range.0)
     }
+}
+
+/// The semantic role of one source annotation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "codecs",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "lowercase")
+)]
+pub enum DiagnosticAnnotationKind
+{
+    /// A locus directly participating in the reported failure.
+    Primary,
+    /// A broader source locus explaining one pending machine obligation.
+    Context,
+}
+
+/// One exact, backend-independent source annotation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
+pub struct DiagnosticAnnotation
+{
+    /// Whether this locus is primary or contextual.
+    pub kind: DiagnosticAnnotationKind,
+    /// Exact half-open UTF-8 byte range.
+    pub span: Span,
+    /// Operand-specific explanation for this locus, when available.
+    #[cfg_attr(
+        feature = "codecs",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub label: Option<String>,
+    /// Lowering elaboration attached to this locus, when synthesized.
+    #[cfg_attr(
+        feature = "codecs",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub elaboration: Option<String>,
+}
+
+/// Builds the common single-primary annotation set for source-owned findings.
+fn single_primary(
+    span: Span,
+    label: String,
+) -> Vec<DiagnosticAnnotation>
+{
+    vec![DiagnosticAnnotation {
+        kind: DiagnosticAnnotationKind::Primary,
+        span,
+        label: Some(label),
+        elaboration: None,
+    }]
 }
 
 /// One typing-context hypothesis `name : type`, rendered for the agent
@@ -319,27 +362,27 @@ pub enum AttributeProblem
     NonValuePayload,
 }
 
-/// One frame of the partial derivation, rendered as agent-facing context
-/// (D7's `context_chain`).
+/// One pending machine obligation with its own exact source annotations.
 ///
-/// The chain is the failure frame stack in **outermost-first** order (the
-/// reading "while checking the body of `square` … while checking the argument
-/// of …"): the first entry is the outermost pending obligation, the last is
-/// the frame the failure occurred under.
+/// Contexts retain the failure frame stack's domain semantics in
+/// **outermost-first** order: the first entry is the outermost pending
+/// obligation, and the last is the frame directly containing the failure.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-pub struct ContextFrame
+pub struct DiagnosticContext
 {
     /// The machine frame's name (e.g. `AppFn`), for stable machine parsing.
     pub role: String,
     /// A prose description of the pending obligation.
     pub prose: String,
-    /// The frame's binder name, when it carries one (abstractions, binds).
+    /// The frame's binder name, when the frame carries real binder information.
     #[cfg_attr(
         feature = "codecs",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub binder: Option<String>,
+    /// Ordered source loci belonging to this pending obligation.
+    pub annotations: Vec<DiagnosticAnnotation>,
 }
 
 /// One source-ranged diagnostic: a [`TypeError`] mapped through its
@@ -367,31 +410,22 @@ pub struct Diagnostic
     pub severity: Severity,
     /// Localizable template identity and typed arguments.
     pub message: DiagnosticMessage,
-    /// The source span, where resolvable (see the module doc's span
-    /// decision); a precise sub-node span for `Descend` failures, else the
-    /// enclosing item's span.
-    #[cfg_attr(
-        feature = "codecs",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
-    pub span: Option<Span>,
-    /// The elaboration tag of the span's origin node, when it is a
-    /// synthesized node (`def` sugar, operator elaboration, …).
-    #[cfg_attr(
-        feature = "codecs",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
-    pub elaboration: Option<String>,
+    /// Ordered exact source loci directly participating in this failure.
+    ///
+    /// Multiple primary loci are permitted when their relationship is the
+    /// error. Backend adapters may choose a lead range without discarding the
+    /// remaining annotations from the domain report.
+    pub annotations: Vec<DiagnosticAnnotation>,
     /// The offending sub-term, rendered, for a `Descend`-position failure;
     /// absent for a `Return`-position failure (the control register is a
-    /// type, not a term — the [`Self::context_chain`] localizes it instead).
+    /// type, not a term — [`Self::contexts`] retains its enclosing reasons).
     #[cfg_attr(
         feature = "codecs",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub expr: Option<String>,
-    /// The partial derivation as a context chain (outermost first).
-    pub context_chain: Vec<ContextFrame>,
+    /// Pending machine obligations, outermost first, each with its own loci.
+    pub contexts: Vec<DiagnosticContext>,
     /// `Γ` at the failure point, beyond the caller's base context (the base —
     /// e.g. the prelude — is implied, as in the goals report).
     pub ctx: Vec<Binding>,
@@ -711,12 +745,13 @@ pub fn report(
     let mut marks = Vec::new();
     let mut ctx = base.clone();
     for (item_index, item) in lowered.items.iter().enumerate() {
+        let item_index = ItemIndex::from(item_index);
         let item_base = ctx.clone();
         let base_len = item_base.bindings().len();
         item_bases.push(item_base.clone());
-        match item_machine_result(item, &item_base) {
+        match item_machine_result(item_index, item, lowered, &item_base) {
             | Ok(ty) => {
-                let holey = hole_items.get(item_index).copied().unwrap_or(true);
+                let holey = hole_items.get(item_index.0).copied().unwrap_or(true);
                 if !holey
                     && let Some(ref name) = item.name
                     && let Some(value_type) = bound_value_type(&ty)
@@ -724,18 +759,16 @@ pub fn report(
                     ctx.bind(name.clone(), value_type);
                 }
             },
-            | Err(pair) => {
-                let (error, failure) = *pair;
+            | Err(failure) => {
                 diagnostics.push(build_diagnostic(
-                    item_index.into(),
-                    &error,
+                    item_index,
                     &failure,
                     lowered,
                     base_len.into(),
                 ));
             },
         }
-        push_marks_for_item(item_index.into(), item, &item_base, lowered, &mut marks);
+        push_marks_for_item(item_index, item, &item_base, lowered, &mut marks);
     }
     diagnostics.extend(attr_pass.findings.iter().map(attribute_diagnostic));
     diagnostics.extend(lowered.shadowed_builtins().iter().map(shadowed_diagnostic));
@@ -870,19 +903,22 @@ fn shadowed_diagnostic(shadowed: &crate::recognition::ShadowedBuiltin) -> Diagno
 {
     let path = format!("{}", shadowed.path);
     let message = DiagnosticMessage::ShadowedName { path: path.clone() };
+    let label = format!("this declaration shadows {path}");
     Diagnostic {
         detail: DiagnosticDetail::ShadowedName { path },
         item: None,
         code: message.code(),
         severity: Severity::Warning,
         message,
-        span: Some(Span {
-            start: shadowed.byte_range.0.start,
-            end: shadowed.byte_range.0.end,
-        }),
-        elaboration: None,
+        annotations: single_primary(
+            Span {
+                start: shadowed.byte_range.0.start,
+                end: shadowed.byte_range.0.end,
+            },
+            label,
+        ),
         expr: None,
-        context_chain: Vec::new(),
+        contexts: Vec::new(),
         ctx: Vec::new(),
     }
 }
@@ -952,16 +988,17 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             ..
         } => {
             let message = message_of(error);
+            let detail = detail_of(error);
+            let label = primary_label(&detail);
             Diagnostic {
-                detail: detail_of(error),
+                detail,
                 item: None,
                 code: message.code(),
                 severity: Severity::Error,
                 message,
-                span: Some(Span::from(span.clone())),
-                elaboration: None,
+                annotations: single_primary(Span::from(span.clone()), label),
                 expr: None,
-                context_chain: Vec::new(),
+                contexts: Vec::new(),
                 ctx: Vec::new(),
             }
         },
@@ -976,6 +1013,12 @@ fn attribute_problem_diagnostic(
     span: &SourceRange,
 ) -> Diagnostic
 {
+    let label = match &problem {
+        | AttributeProblem::Unknown { .. } => "unknown attribute",
+        | AttributeProblem::Duplicate => "duplicate attribute",
+        | AttributeProblem::MissingPayload => "payload required",
+        | AttributeProblem::NonValuePayload => "payload must be a value",
+    };
     Diagnostic {
         detail: DiagnosticDetail::Attribute {
             name: name.0.to_owned(),
@@ -985,10 +1028,9 @@ fn attribute_problem_diagnostic(
         item: None,
         severity: Severity::Error,
         message,
-        span: Some(Span::from(span.clone())),
-        elaboration: None,
+        annotations: single_primary(Span::from(span.clone()), label.to_owned()),
         expr: None,
-        context_chain: Vec::new(),
+        contexts: Vec::new(),
         ctx: Vec::new(),
     }
 }
@@ -1015,10 +1057,10 @@ pub fn diagnostics(
     let base_len = base.bindings().len();
     let mut out = Vec::new();
     for (item_index, item) in lowered.items.iter().enumerate() {
-        if let Some((error, failure)) = first_failure(item, base) {
+        let item_index = ItemIndex::from(item_index);
+        if let Some(failure) = first_failure(item_index, item, lowered, base) {
             out.push(build_diagnostic(
-                item_index.into(),
-                &error,
+                item_index,
                 &failure,
                 lowered,
                 base_len.into(),
@@ -1028,36 +1070,175 @@ pub fn diagnostics(
     out
 }
 
-/// Drives one item through the machine to its first failure, returning the
-/// error and the captured [`FailureState`], or [`None`] if it types to
-/// `Done`.
-fn first_failure(
-    item: &Item,
-    base: &Ctx,
-) -> Option<(TypeError, FailureState)>
+/// One machine failure with its exact active surface-origin identity.
+struct MachineFailure
 {
-    match item_machine_result(item, base) {
-        | Err(pair) => Some(*pair),
+    /// The core typing failure.
+    error: TypeError,
+    /// The machine state at the failed step.
+    state: FailureState,
+    /// Exact active origin chain, outermost through the failing occurrence.
+    origins: Vec<OriginNodeId>,
+}
+
+/// One source-origin node paired with its item-relative core-term path.
+struct OriginLocus
+{
+    /// Stable identity retained after the compatibility path is consumed.
+    id: OriginNodeId,
+    /// Core-term path used only to verify traversal synchronization.
+    term_path: Vec<u32>,
+}
+
+/// Carries exact source identity beside the span-free typing machine.
+///
+/// # Contract
+/// - requires: `pending` is the item's core-term origin nodes in preorder.
+/// - ensures: [`Self::current`] is the exact active occurrence while the
+///   machine and origin preorder agree; any disagreement clears provenance.
+/// - provides: occurrence identity for both `Descend` and `Return` failures
+///   without changing the core machine's parser-free interface.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — return-position localization, repeated equal siblings,
+///   and a direct descend failure distinguish cursor, stack, and desync errors.
+/// - witness: `diag::tests::provenance::force_shape_failure_points_to_its_argument`
+struct FailureLocusTracker<'term>
+{
+    /// Original item term used to verify each preorder entry.
+    term: &'term Term,
+    /// Unvisited loci, reversed so the next preorder node is popped in O(1).
+    pending: Vec<OriginLocus>,
+    /// Entered term occurrences not yet completed, outermost first.
+    active: Vec<OriginNodeId>,
+}
+
+impl<'term> FailureLocusTracker<'term>
+{
+    /// Builds the tracker for one lowered item.
+    fn new(
+        item_index: ItemIndex,
+        item: &'term Item,
+        lowered: &Lowered,
+    ) -> Self
+    {
+        let target = u32::try_from(item_index.0).ok();
+        let mut pending = lowered
+            .origin
+            .iter_paths()
+            .filter_map(|(path, id, _entry)| {
+                let (&first, term_path) = path.0.split_first()?;
+                if Some(first) != target || resolve(&item.term, term_path).is_none() {
+                    return None;
+                }
+                Some(OriginLocus {
+                    id,
+                    term_path: term_path.to_vec(),
+                })
+            })
+            .collect::<Vec<_>>();
+        pending.reverse();
+        Self {
+            term: &item.term,
+            pending,
+            active: Vec::new(),
+        }
+    }
+
+    /// Enters the next exact occurrence when `control` descends a term.
+    fn enter(
+        &mut self,
+        control: &Control,
+    )
+    {
+        let descending = matches!(
+            *control,
+            Control::DescendValue { .. } | Control::DescendComp { .. }
+        );
+        if !descending {
+            return;
+        }
+        let Some(locus) = self.pending.pop()
+        else {
+            self.active.clear();
+            return;
+        };
+        let matched = match (control, resolve(self.term, locus.term_path.as_slice())) {
+            | (&Control::DescendValue { ref value, .. }, Some(TermRef::Value(found))) => {
+                value == found
+            },
+            | (&Control::DescendComp { ref comp, .. }, Some(TermRef::Comp(found))) => comp == found,
+            | _ => false,
+        };
+        if matched {
+            self.active.push(locus.id);
+        }
+        else {
+            self.pending.clear();
+            self.active.clear();
+        }
+    }
+
+    /// Leaves the term occurrence whose successful type is being consumed.
+    fn finish(&mut self)
+    {
+        self.active.pop();
+    }
+
+    /// Returns the exact active occurrence chain at the current control.
+    fn current_chain(&self) -> Vec<OriginNodeId>
+    {
+        self.active.clone()
+    }
+}
+
+/// Drives one item through the machine to its first failure.
+fn first_failure(
+    item_index: ItemIndex,
+    item: &Item,
+    lowered: &Lowered,
+    base: &Ctx,
+) -> Option<MachineFailure>
+{
+    match item_machine_result(item_index, item, lowered, base) {
+        | Err(failure) => Some(*failure),
         | Ok(_) => None,
     }
 }
 
-/// Drives one item through the machine, returning the typed terminal result
-/// or the first failure.
+/// Drives one item through the machine while retaining exact source identity.
 fn item_machine_result(
+    item_index: ItemIndex,
     item: &Item,
+    lowered: &Lowered,
     base: &Ctx,
-) -> Result<Ty, Box<(TypeError, FailureState)>>
+) -> Result<Ty, Box<MachineFailure>>
 {
     let mut state = initial_state(item, base);
+    let mut loci = FailureLocusTracker::new(item_index, item, lowered);
+    loci.enter(state.control());
     loop {
+        let returning = matches!(*state.control(), Control::Return { .. });
         match step(state) {
-            | Outcome::Step(next) => state = next,
+            | Outcome::Step(next) => {
+                if returning {
+                    loci.finish();
+                }
+                loci.enter(next.control());
+                state = next;
+            },
             | Outcome::Done(ty) => return Ok(ty),
             | Outcome::Error {
                 error,
                 state: failure,
-            } => return Err(Box::new((error, failure))),
+            } => {
+                return Err(Box::new(MachineFailure {
+                    error,
+                    state: failure,
+                    origins: loci.current_chain(),
+                }));
+            },
         }
     }
 }
@@ -1076,25 +1257,47 @@ fn bound_value_type(ty: &Ty) -> Option<ValueType>
 /// Assembles one [`Diagnostic`] from a captured failure.
 fn build_diagnostic(
     item_index: ItemIndex,
-    error: &TypeError,
-    failure: &FailureState,
+    failure: &MachineFailure,
     lowered: &Lowered,
     base_len: ContextLength,
 ) -> Diagnostic
 {
-    let (span, elaboration) = resolve_span(item_index, failure, lowered);
-    let message = message_of(error);
+    let detail = detail_of(&failure.error);
+    let message = message_of(&failure.error);
+    let annotations = failure
+        .origins
+        .last()
+        .and_then(|&origin| {
+            failure_annotation(&failure.error, origin, primary_label(&detail), lowered)
+        })
+        .into_iter()
+        .collect();
+    let stack = failure.state.stack();
+    let enclosing = failure
+        .origins
+        .get(.. failure.origins.len().saturating_sub(1))
+        .filter(|origins| origins.len() == stack.len());
+    let contexts = stack
+        .iter()
+        .enumerate()
+        .map(|(index, frame)| {
+            diagnostic_context(
+                frame,
+                enclosing.and_then(|origins| origins.get(index)),
+                lowered,
+            )
+        })
+        .collect();
     Diagnostic {
-        detail: detail_of(error),
+        detail,
         item: Some(usize::from(item_index)),
         code: message.code(),
         severity: Severity::Error,
         message,
-        span,
-        elaboration,
-        expr: offending_expr(failure.control()),
-        context_chain: failure.stack().iter().map(context_frame).collect(),
-        ctx: bindings_beyond(failure.ctx(), base_len),
+        annotations,
+        expr: offending_expr(failure.state.control()),
+        contexts,
+        ctx: bindings_beyond(failure.state.ctx(), base_len),
     }
 }
 
@@ -1126,6 +1329,47 @@ fn detail_of(error: &TypeError) -> DiagnosticDetail
             lower: format!("{lower:?}"),
             upper: format!("{upper:?}"),
         },
+    }
+}
+
+/// The shortest useful semantic label for a diagnostic's primary locus.
+fn primary_label(detail: &DiagnosticDetail) -> String
+{
+    match *detail {
+        | DiagnosticDetail::TypeMismatch {
+            ref expected,
+            ref actual,
+        } => format!("expected {expected}, found {actual}"),
+        | DiagnosticDetail::ShapeMismatch {
+            ref expected_shape,
+            ref actual,
+        } => format!("expected {expected_shape}, found {actual}"),
+        | DiagnosticDetail::StuckExpr { ref hint } => hint.clone(),
+        | DiagnosticDetail::UnboundVariable { .. } => "not found in this scope".to_owned(),
+        | DiagnosticDetail::GradeError {
+            ref lower,
+            ref upper,
+        } => format!("required {lower} ≤ {upper}"),
+        | DiagnosticDetail::Attribute {
+            problem: AttributeProblem::Unknown { .. },
+            ..
+        } => "unknown attribute".to_owned(),
+        | DiagnosticDetail::Attribute {
+            problem: AttributeProblem::Duplicate,
+            ..
+        } => "duplicate attribute".to_owned(),
+        | DiagnosticDetail::Attribute {
+            problem: AttributeProblem::MissingPayload,
+            ..
+        } => "payload required".to_owned(),
+        | DiagnosticDetail::Attribute {
+            problem: AttributeProblem::NonValuePayload,
+            ..
+        } => "payload must be a value".to_owned(),
+        | DiagnosticDetail::ShadowedName { ref path } => {
+            format!("this declaration shadows {path}")
+        },
+        | DiagnosticDetail::Other => "reported here".to_owned(),
     }
 }
 
@@ -1268,31 +1512,54 @@ fn type_mentions_data(root: TypeNode<'_>) -> DataMention
     DataMention(false)
 }
 
-/// Resolves the source span for a failure: a precise sub-node span for a
-/// `Descend` failure, else the enclosing item's span (see the module doc's
-/// span decision). The second element is the span node's elaboration tag,
-/// when present.
-fn resolve_span(
-    item_index: ItemIndex,
-    failure: &FailureState,
+/// Resolves the exact failing occurrence to a primary source annotation.
+///
+/// A grade error selects the explicit grade facet retained by lowering; every
+/// other error uses the semantic node's own range. No missing location is
+/// replaced with an enclosing-item fiction.
+fn failure_annotation(
+    error: &TypeError,
+    origin: OriginNodeId,
+    label: String,
     lowered: &Lowered,
-) -> (Option<Span>, Option<String>)
+) -> Option<DiagnosticAnnotation>
 {
-    if let Some((range, elaboration)) = precise_span(item_index, failure, lowered) {
-        return (
-            Some(Span::from(range)),
-            elaboration.map(|elab| format!("{elab:?}")),
-        );
+    let entry = lowered.origin.get(origin)?;
+    let byte_range = if matches!(*error, TypeError::GradeError { .. }) {
+        lowered
+            .origin
+            .facets(origin)
+            .iter()
+            .find(|facet| facet.kind == OriginFacetKind::Grade)
+            .map_or_else(
+                || entry.byte_range.clone(),
+                |facet| facet.byte_range.clone(),
+            )
     }
-    // Fallback: the enclosing item's root origin entry — always in-source.
-    let item_path = [u32::try_from(item_index.0).unwrap_or(u32::MAX)];
-    match lowered.origin.get_path(&item_path) {
-        | Some(entry) => (
-            Some(Span::from(entry.byte_range.clone())),
-            entry.elaboration.map(|elab| format!("{elab:?}")),
-        ),
-        | None => (None, None),
-    }
+    else {
+        entry.byte_range.clone()
+    };
+    Some(DiagnosticAnnotation {
+        kind: DiagnosticAnnotationKind::Primary,
+        span: Span::from(byte_range),
+        label: Some(label),
+        elaboration: entry.elaboration.map(|elab| format!("{elab:?}")),
+    })
+}
+
+/// Resolves one pending machine obligation to its own contextual annotation.
+fn context_annotation(
+    origin: OriginNodeId,
+    lowered: &Lowered,
+) -> Option<DiagnosticAnnotation>
+{
+    let entry = lowered.origin.get(origin)?;
+    Some(DiagnosticAnnotation {
+        kind: DiagnosticAnnotationKind::Context,
+        span: Span::from(entry.byte_range.clone()),
+        label: None,
+        elaboration: entry.elaboration.map(|elab| format!("{elab:?}")),
+    })
 }
 
 /// Renders the offending sub-term of a `Descend`-position failure; [`None`]
@@ -1329,14 +1596,22 @@ fn bindings_beyond(
         .collect()
 }
 
-/// Renders one frame as a [`ContextFrame`].
-fn context_frame(frame: &Frame) -> ContextFrame
+/// Renders one machine frame as a semantic diagnostic context.
+fn diagnostic_context(
+    frame: &Frame,
+    origin: Option<&OriginNodeId>,
+    lowered: &Lowered,
+) -> DiagnosticContext
 {
     let (role, prose, binder) = frame_description(frame);
-    ContextFrame {
+    DiagnosticContext {
         role: role.0.to_owned(),
         prose,
         binder,
+        annotations: origin
+            .and_then(|&origin| context_annotation(origin, lowered))
+            .into_iter()
+            .collect(),
     }
 }
 
@@ -1457,55 +1732,6 @@ fn frame_description(frame: &Frame) -> (ContextRole<'static>, String, Option<Str
             None,
         ),
     }
-}
-
-/// The offending sub-term of a `Descend` failure, borrowed.
-enum Offending<'term>
-{
-    /// A value sub-term.
-    Value(&'term Value),
-    /// A computation sub-term.
-    Comp(&'term Comp),
-}
-
-/// Finds the recorded origin node of `item_index` whose term structurally
-/// equals the failure's offending control sub-term, returning its byte range
-/// and elaboration. [`None`] for a `Return` failure or an unmatched term.
-fn precise_span(
-    item_index: ItemIndex,
-    failure: &FailureState,
-    lowered: &Lowered,
-) -> Option<(SourceRange, Option<crate::origin::ElabKind>)>
-{
-    let offending = match *failure.control() {
-        | Control::DescendValue { ref value, .. } => Offending::Value(value),
-        | Control::DescendComp { ref comp, .. } => Offending::Comp(comp),
-        | _ => return None,
-    };
-    let item = lowered.items.get(item_index.0)?;
-    let target = u32::try_from(item_index.0).ok()?;
-    for (path, _id, entry) in lowered.origin.iter_paths() {
-        let Some((&first, term_path)) = path.split_first()
-        else {
-            continue;
-        };
-        if first != target {
-            continue;
-        }
-        let Some(node) = resolve(&item.term, term_path)
-        else {
-            continue;
-        };
-        let matched = match (&offending, node) {
-            | (&Offending::Value(value), TermRef::Value(found)) => value == found,
-            | (&Offending::Comp(comp), TermRef::Comp(found)) => comp == found,
-            | _ => false,
-        };
-        if matched {
-            return Some((entry.byte_range.clone(), entry.elaboration));
-        }
-    }
-    None
 }
 
 /// Renders one [`Goal`] as a [`GoalReport`].
