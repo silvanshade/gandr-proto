@@ -3,11 +3,11 @@
 //! Bare `gandr` is the read-evaluate loop. `gandr tui` is the terminal
 //! programming environment. `gandr lsp` is the language-server face, and
 //! `gandr lsp --capabilities` prints the advertised initialize result.
-//! `gandr <file>` runs one gandr source file: the driver hands the path to
-//! [`gandr_runtime_ffi::run_source_file`], which lowers, links, prelude-checks,
-//! and runs the program under the combined native/shell host. The caller
-//! receives a rendered returned value on standard output, while the run's
-//! [`gandr_runtime_ffi::FfiShellOutcome`] determines the process exit status.
+//! `gandr <file>` reads one gandr source file, checks its merged verdict
+//! stream, and runs accepted source under the combined native/shell host. The
+//! caller receives a rendered returned value on standard output, while the
+//! run's [`gandr_runtime_ffi::FfiShellOutcome`] determines the process exit
+//! status.
 //!
 //! The `mcp`, `fmt`, and `build` faces remain deferred and arrive with their
 //! own crates, not by uncommenting a line.
@@ -19,9 +19,12 @@ use std::process::ExitCode;
 
 use gandr_core_term::outcome::Eval;
 use gandr_core_term::syntax::Comp;
-use gandr_runtime_ffi::FfiRunError;
 use gandr_runtime_ffi::FfiShellOutcome;
-use gandr_runtime_ffi::run_source_file;
+use gandr_runtime_ffi::run_source;
+use gandr_surface_engine::diag::Severity;
+use gandr_surface_engine::session::ItemOutcome;
+use gandr_surface_engine::session::Session;
+use gandr_surface_engine::session::Verdict;
 use gandr_surface_lsp::advertised_capabilities_text;
 use gandr_surface_lsp::run_stdio;
 use gandr_surface_repl::BatchStatus;
@@ -74,6 +77,23 @@ struct ExitStatus(i64);
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct DiagnosticText<'text>(&'text str);
+
+/// A source file the script face refused before execution.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ScriptFailure(String);
+
+impl core::fmt::Display for ScriptFailure
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        f.write_str(self.0.as_str())
+    }
+}
 
 impl<'text> From<&'text str> for DiagnosticText<'text>
 {
@@ -221,7 +241,7 @@ where
                 EXIT_FAILED
             },
         },
-        | Some(Request::Run(path)) => match run_source_file(std::path::Path::new(&path)) {
+        | Some(Request::Run(path)) => match run_script(std::path::Path::new(&path)) {
             | Ok(outcome) => {
                 announce_result(&outcome);
                 classify(&outcome)
@@ -377,6 +397,50 @@ fn classify(outcome: &FfiShellOutcome) -> ExitStatus
     }
 }
 
+/// Check a script's merged verdict stream, then run accepted source.
+///
+/// # Contract
+/// - requires: `path` names the source the caller asked to run.
+/// - ensures: a typing refusal from either report diagnostics or item outcomes
+///   is returned before the host runs.
+/// - provides: the script face's single source-check and execution seam.
+/// - fails: returns a rendered read, lowering, verdict, linking, or checking
+///   failure.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — a report diagnostic and an outcome-only type error
+///   are separated by the merged verdict accessor.
+/// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
+/// - witness: `cli::tests::an_outcome_only_refusal_is_visible_in_a_script_run`
+fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
+{
+    let source = std::fs::read_to_string(path)
+        .map_err(|error| ScriptFailure(format!("cannot read `{}`: {error}", path.display())))?;
+    let mut session = Session::new();
+    let submission = session
+        .submit(source.as_str())
+        .map_err(|error| ScriptFailure(format!("lowering failed: {error}")))?;
+    if let Some(error) = submission.verdicts().find_map(verdict_failure) {
+        return Err(error);
+    }
+    run_source(source.as_str()).map_err(|error| ScriptFailure(error.to_string()))
+}
+
+/// Render one error verdict as a script refusal.
+fn verdict_failure(verdict: Verdict<'_>) -> Option<ScriptFailure>
+{
+    match verdict {
+        | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
+            Some(ScriptFailure(format!("type checking failed: {error}")))
+        },
+        | Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Error => Some(
+            ScriptFailure(format!("type checking failed: {}", diagnostic.message)),
+        ),
+        | Verdict::Outcome(_) | Verdict::Diagnostic(_) | Verdict::Goal(_) => None,
+    }
+}
+
 /// Render a source-preparation failure as one diagnostic line.
 ///
 /// # Contract
@@ -393,7 +457,7 @@ fn classify(outcome: &FfiShellOutcome) -> ExitStatus
 /// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 /// - witness: `cli::tests::a_script_with_no_program_is_refused`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
-fn refusal(error: &FfiRunError) -> String
+fn refusal(error: &ScriptFailure) -> String
 {
     format!("gandr: {error}\n")
 }

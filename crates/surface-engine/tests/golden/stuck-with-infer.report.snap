@@ -6,6 +6,7 @@
       "data": {
         "hint": "a lazy pair only checks against a with-type"
       },
+      "item": 0,
       "severity": "error",
       "message": "no typing rule applies to term Comp(With(Ret(Int(1)), Ret(Int(2)))): a lazy pair only checks against a with-type",
       "span": {

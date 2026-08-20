@@ -6,6 +6,7 @@
       "data": {
         "hint": "annotate this injection"
       },
+      "item": 0,
       "severity": "error",
       "message": "no typing rule applies to term Value(Inj(Fst, Int(1))): annotate this injection",
       "span": {

@@ -7,6 +7,7 @@
         "lower": "Fin(1)",
         "upper": "Fin(0)"
       },
+      "item": 0,
       "severity": "error",
       "message": "grade order requirement failed: Fin(1) ⊑ Fin(0) does not hold",
       "span": {

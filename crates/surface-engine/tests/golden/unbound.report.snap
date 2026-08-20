@@ -6,6 +6,7 @@
       "data": {
         "name": "nonesuch"
       },
+      "item": 0,
       "severity": "error",
       "message": "variable is unbound: nonesuch",
       "span": {

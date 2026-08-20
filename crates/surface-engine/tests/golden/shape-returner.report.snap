@@ -7,6 +7,7 @@
         "expected_shape": "a returner type",
         "actual": "Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
       },
+      "item": 0,
       "severity": "error",
       "message": "type shape mismatch: expected a returner type, actual Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))",
       "span": {

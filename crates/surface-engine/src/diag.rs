@@ -346,6 +346,16 @@ pub struct Diagnostic
     /// The kind-specific payload (`kind` + `data`).
     #[cfg_attr(feature = "codecs", serde(flatten))]
     pub detail: DiagnosticDetail,
+    /// The lowered item this diagnostic rejects, when it comes from item
+    /// typing.
+    ///
+    /// Recognition and attribute diagnostics are report-level findings and do
+    /// not claim an item outcome.
+    #[cfg_attr(
+        feature = "codecs",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub item: Option<usize>,
     /// The severity (always [`Severity::Error`] at Stage 1).
     pub severity: Severity,
     /// The human-readable message — the [`TypeError`]'s `Display`.
@@ -854,6 +864,7 @@ fn shadowed_diagnostic(shadowed: &crate::recognition::ShadowedBuiltin) -> Diagno
     let path = format!("{}", shadowed.path);
     Diagnostic {
         detail: DiagnosticDetail::ShadowedName { path: path.clone() },
+        item: None,
         severity: Severity::Warning,
         message: format!(
             "`{path}` is a prelude or host name; this declaration takes it, and the policy allows \
@@ -932,6 +943,7 @@ fn attribute_diagnostic(finding: &attributes::AttrFinding) -> Diagnostic
             ..
         } => Diagnostic {
             detail: detail_of(error),
+            item: None,
             severity: Severity::Error,
             message: error.to_string(),
             span: Some(Span::from(span.clone())),
@@ -956,6 +968,7 @@ fn attribute_problem_diagnostic(
             name: name.0.to_owned(),
             problem,
         },
+        item: None,
         severity: Severity::Error,
         message,
         span: Some(Span::from(span.clone())),
@@ -1076,6 +1089,7 @@ fn build_diagnostic(
     let (span, elaboration) = resolve_span(item_index, failure, lowered);
     Diagnostic {
         detail: detail_of(error),
+        item: Some(usize::from(item_index)),
         severity: Severity::Error,
         message: message_of(error),
         span,

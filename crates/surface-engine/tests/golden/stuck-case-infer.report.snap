@@ -6,6 +6,7 @@
       "data": {
         "hint": "case only checks; annotate or supply an expected type"
       },
+      "item": 0,
       "severity": "error",
       "message": "no typing rule applies to term Comp(Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0))))): case only checks; annotate or supply an expected type",
       "span": {

@@ -6,6 +6,7 @@
       "data": {
         "hint": "an abstraction only checks against an arrow type"
       },
+      "item": 0,
       "severity": "error",
       "message": "no typing rule applies to term Comp(Abs(\"x\", None, Ret(Var(\"x\")))): an abstraction only checks against an arrow type",
       "span": {

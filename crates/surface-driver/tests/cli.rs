@@ -588,6 +588,38 @@ mod tests
     }
 
     #[test]
+    fn an_outcome_only_refusal_is_visible_in_a_script_run()
+    {
+        let script = ScratchScript::write(
+            "outcome-only-refusal",
+            r#"def fst(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F (U(a -> F a)) {
+  ret f
+}
+def bad(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), fst(a, f, g), g)) {
+  ret here(g)
+}
+{ ret 0 }
+"#,
+        );
+        let output = drive([&script.path]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(2_i32)),
+            "an outcome-only typing refusal never reaches the machine"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("type checking failed"),
+            "the merged verdict stream must report the refusal; got {stderr}"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "a refused script routes no result; got {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    #[test]
     fn a_script_whose_tool_cannot_spawn_leaves_with_a_failure_status()
     {
         // A spawn the host cannot perform is a fatal host failure, not a

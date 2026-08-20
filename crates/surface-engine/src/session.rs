@@ -201,6 +201,21 @@ pub enum ItemOutcome
     /// submission's report.
     Holey,
 }
+/// One user-visible row from a [`Submission`].
+///
+/// The stream prefers a source-ranged [`diag::Diagnostic`] over the matching
+/// [`ItemOutcome::TypeError`]. An outcome with no matching diagnostic remains
+/// visible as the fallback that prevents a refused item from looking clean.
+#[derive(Clone, Copy, Debug)]
+pub enum Verdict<'submission>
+{
+    /// An item outcome not represented by a source-ranged diagnostic.
+    Outcome(&'submission ItemOutcome),
+    /// A source-ranged report diagnostic.
+    Diagnostic(&'submission diag::Diagnostic),
+    /// A hole goal from the report.
+    Goal(&'submission diag::GoalReport),
+}
 
 /// The structured result of one [`Session::submit`].
 ///
@@ -233,6 +248,44 @@ pub struct Submission
     /// publishes, so a consumer reading both needs no translation between them,
     /// and neither has to know how many core items any source item lowered to.
     pub matches: Vec<MatchAnalysis>,
+}
+impl Submission
+{
+    /// Merge item outcomes, diagnostics, and goals into the user-visible
+    /// stream.
+    ///
+    /// # Contract
+    /// - ensures: every item typing failure contributes exactly one verdict,
+    ///   preferring its source-ranged diagnostic and retaining the outcome when
+    ///   the report omitted it.
+    /// - ensures: every report-level diagnostic and goal is preserved.
+    /// - provides: the sole verdict stream for interactive faces.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — a diagnostic-backed typing failure and an
+    ///   outcome-only typing failure are separated by the report's item link.
+    /// - witness: `session::tests::verdicts_keep_an_outcome_only_type_error_visible`
+    #[inline]
+    pub fn verdicts(&self) -> impl Iterator<Item = Verdict<'_>>
+    {
+        let outcomes = self
+            .outcomes
+            .iter()
+            .enumerate()
+            .filter_map(|(item, outcome)| {
+                let represented = matches!(outcome, ItemOutcome::TypeError { .. })
+                    && self
+                        .report
+                        .diagnostics
+                        .iter()
+                        .any(|diagnostic| diagnostic.item == Some(item));
+                (!represented).then_some(Verdict::Outcome(outcome))
+            });
+        let diagnostics = self.report.diagnostics.iter().map(Verdict::Diagnostic);
+        let goals = self.report.goals.iter().map(Verdict::Goal);
+        outcomes.chain(diagnostics).chain(goals)
+    }
 }
 
 /// A REPL session: item-granular typing checkpoints and the definition values
@@ -1125,6 +1178,36 @@ mod tests
                 .iter()
                 .any(|outcome| matches!(*outcome, ItemOutcome::TypeError { .. })),
             "a law asserting the wrong endpoint was accepted"
+        );
+    }
+
+    #[test]
+    fn verdicts_keep_an_outcome_only_type_error_visible()
+    {
+        let submission = Submission {
+            report: diag::Report {
+                schema_version: diag::SCHEMA_VERSION,
+                diagnostics: Vec::new(),
+                goals: Vec::new(),
+                marks: Vec::new(),
+                attributes: Vec::new(),
+                obligations: Vec::new(),
+            },
+            outcomes: alloc::vec![ItemOutcome::TypeError {
+                error: TypeError::UnboundVariable {
+                    name: "missing".to_owned(),
+                },
+            }],
+            kernel: alloc::vec![KernelVerdict::Withheld {
+                reason: WithheldReason::Untyped,
+            }],
+            matches: Vec::new(),
+        };
+        assert!(
+            submission
+                .verdicts()
+                .any(|verdict| matches!(verdict, Verdict::Outcome(&ItemOutcome::TypeError { .. }))),
+            "the merged stream must retain a refusal omitted by report diagnostics"
         );
     }
 

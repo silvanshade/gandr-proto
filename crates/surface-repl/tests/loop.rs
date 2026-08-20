@@ -126,6 +126,36 @@ mod tests
     }
 
     #[test]
+    fn an_outcome_only_refusal_is_visible_in_the_repl()
+    {
+        let mut session = SessionLoop::new();
+        let _definition = session
+            .offer(SourceSlice::from(
+                r#"def fst(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F (U(a -> F a)) {
+  ret f
+}"#,
+            ))
+            .expect("the definition must submit");
+        match session
+            .offer(SourceSlice::from(
+                r#"def bad(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), fst(a, f, g), g)) {
+  ret here(g)
+}"#,
+            ))
+            .expect("the refused law must submit")
+        {
+            | LoopEvent::Submitted(block) => {
+                assert!(
+                    block.lines.iter().any(|pair| pair.0 == OutKind::Diag),
+                    "the merged verdict stream must show the outcome-only refusal: {:?}",
+                    block.lines
+                );
+            },
+            | event => panic!("expected a refused submission, got {event:?}"),
+        }
+    }
+
+    #[test]
     fn quit_stops_the_loop()
     {
         let mut session = SessionLoop::new();

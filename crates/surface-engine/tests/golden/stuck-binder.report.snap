@@ -6,6 +6,7 @@
       "data": {
         "hint": "annotate the binder or check against an arrow type"
       },
+      "item": 0,
       "severity": "error",
       "message": "no typing rule applies to term Comp(Abs(\"x\", None, Ret(Var(\"x\")))): annotate the binder or check against an arrow type",
       "span": {
