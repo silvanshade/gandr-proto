@@ -3,9 +3,9 @@
 The Rust side of the compilation host boundary.
 A core computation goes in, a plain-old-data program image comes out, and the C++26 compilation host under [`runtime/compile-host/`](../../runtime/compile-host/README.md) compiles and runs it — returning the same value the L machine produces, with the run's accounted work beside it.
 
-The host is **found at run time, never linked**.
-It builds against a discovered MLIR installation, so linking it would make every Rust build in the workspace depend on a toolchain the workspace does not pin.
-A checkout with no MLIR builds and tests this crate in full; the host's absence is an ordinary reported outcome.
+The host is **linked, never looked up**, and the link sits behind the `full` feature.
+MLIR is pinned and the merge wall requires it on every checkout, so a `full` build binds every boundary entry at link time: a name or a signature that drifts from `abi.h` is a build failure naming the symbol.
+The default build acquires no MLIR and no C++ toolchain, and exercises the lowering, the encoder and the renderer on any machine.
 
 ## Current provision
 
@@ -38,17 +38,22 @@ The gap closes when the image can represent a thunk, which is the codata rung.
 
 ## Using it
 
-The crate builds and tests with no MLIR.
-To exercise the half that needs a host, build one first:
+**The default build acquires no MLIR and no C++ toolchain**, and `mise run compile-host:default-graph` is the witness: it builds the crate in a target directory of its own and fails if the build script emitted a single link directive.
+
+The `full` feature links the host, so a `full` build needs the pinned toolchain:
 
 ```sh
-mise run compile-host:build
 cargo nextest run --package gandr-runtime-compile-host --all-targets --features=full
 ```
 
-The bridge's own cases report an absent host and stop.
-`GANDR_COMPILE_HOST_REQUIRED=1` turns that report into a failure, which is what `mise run compile-host:wall` sets once it has built a host — that task is the merge wall's compile-host lane, and it skips only when no MLIR toolchain can be discovered at all.
-`GANDR_COMPILE_HOST_LIBRARY` names the host library explicitly; otherwise the conventional build output under the workspace root is used.
+`build.rs` runs `mise run compile-host:build` for you and then reads the link line that build writes.
+It does not reconstruct that line: `runtime/compile-host/CMakeLists.txt` carries the rule that the aggregate shared libraries are linked and the component archives never are, and restating it here would be a copy that can drift from the one that matters.
+
+**The bridge's cases are unconditional under `full`.** A binary that exists has had every boundary entry resolved by the linker, so there is no absent-host report and no skip.
+A name or a signature that drifts from `abi.h` is a build failure, and `bridge::a_boundary_symbol_that_drifts_fails_at_link_time` shows it by linking two tiny translation units against the host's own archive — one calling a declared entry, one calling a one-character drift from it.
+
+The linker is not the layout authority and does not become one.
+It proves symbol presence and binding; `tests/contract.rs` holds this crate's mirror of the boundary to the host's own headers, runs on any machine with no host at all, and catches the change a linker cannot see.
 
 ## Theoretical ideas relied on
 

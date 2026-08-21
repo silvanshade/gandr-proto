@@ -155,6 +155,29 @@ target_link_libraries(gandr-compile-host-abi PRIVATE gandr-compile-host-core)
 target_compile_options(gandr-compile-host-abi PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
 set_target_properties(gandr-compile-host-abi PROPERTIES CXX_VISIBILITY_PRESET default)
 
+# The same boundary as an archive, for a caller that binds at link time rather
+# than through a symbol lookup. It is the same `src/abi.cpp` and the same core
+# behind it, so there is one boundary implementation and two ways to reach it.
+#
+# What the archive deliberately does NOT do is restate the link discipline
+# above. It carries `gandr-compile-host-core` as a PUBLIC dependency, and the
+# core carries `MLIR`, `LLVM` and `MLIRExecutionEngine`, so a consumer that asks
+# CMake for this target's link interface gets the aggregate shared libraries and
+# never the component archives. That rule lives here and is not copied into any
+# consumer's build script.
+add_library(gandr-compile-host-abi-static STATIC src/abi.cpp)
+target_link_libraries(gandr-compile-host-abi-static PUBLIC gandr-compile-host-core)
+target_compile_options(gandr-compile-host-abi-static PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
+
+# The link line a foreign build system needs, written by the build that owns the
+# discipline rather than reconstructed by the consumer. One flag per line.
+file(
+  GENERATE
+  OUTPUT ${CMAKE_BINARY_DIR}/gandr-compile-host-link.txt
+  CONTENT
+    "$<TARGET_FILE:gandr-compile-host-abi-static>\n$<TARGET_FILE:gandr-compile-host-core>\n$<JOIN:$<TARGET_FILE:MLIR>,>\n$<JOIN:$<TARGET_FILE:LLVM>,>\n$<JOIN:$<TARGET_FILE:MLIRExecutionEngine>,>\n"
+)
+
 # A deliberately incomplete boundary: it declares the version and the ordinary
 # run entry and exports no release. It exists so the Rust side's resolution
 # order is witnessed rather than argued — a caller that resolved the release

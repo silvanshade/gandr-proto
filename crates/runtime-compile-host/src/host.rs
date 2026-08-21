@@ -1,33 +1,35 @@
-//! The interop boundary: resolving the compilation host's C ABI at run time.
+//! The interop boundary: the compilation host's C ABI, bound by the linker.
 //!
-//! The host is built against a discovered MLIR installation, so it is found
-//! rather than linked. That is the whole reason this is a dynamic boundary: a
-//! statically linked bridge would make every Rust build in the workspace
-//! depend on an installation the workspace does not pin, which is a much
-//! larger claim than this crate makes.
+//! MLIR is pinned and `compile-host:wall` requires it on every checkout, so
+//! the host is linked rather than looked up. The linker resolves every entry
+//! this module declares, which means a boundary that drifts is a build
+//! failure at the point of the drift instead of a refusal at the point of the
+//! call. Nothing here searches, opens, or resolves a symbol by name.
+//!
+//! The link itself sits behind the `full` feature, and `build.rs` is where
+//! that is decided. Without it the crate acquires no MLIR and no C++
+//! toolchain, and this module's host-bearing half does not exist.
+//!
+//! **The layout authority is elsewhere and stays there.** The linker proves
+//! that every symbol is present and bound; it cannot see that a struct field
+//! moved. `tests/contract.rs` holds this crate's mirror of the boundary to the
+//! host's own headers, and neither check substitutes for the other.
 
-use std::ffi::CStr;
-use std::ffi::c_char;
-use std::path::Path;
-use std::path::PathBuf;
+#![allow(
+    unknown_lints,
+    reason = "The local dylint library supplies primitive_signature, and the stable compiler does not know the name."
+)]
+#![allow(
+    primitive_signature,
+    reason = "The declarations below mirror a C header; their primitives ARE the boundary's types, and a wrapper here would describe a different ABI."
+)]
 
+use core::ffi::CStr;
+use core::ffi::c_char;
+
+use crate::ABI_VERSION;
 use crate::image::ImageBytes;
-
-/// The boundary version this crate speaks.
-///
-/// The host declares the same number in its own header; a library built from
-/// a different revision is refused rather than called, because a struct whose
-/// layout changed has no other symptom across a dynamic boundary.
-pub const ABI_VERSION: u32 = 1;
-
-/// The environment variable naming the host library explicitly.
-pub const LIBRARY_PATH_VARIABLE: &str = "GANDR_COMPILE_HOST_LIBRARY";
-
-/// The build output the discovery falls back to, relative to a workspace root.
-pub const DEFAULT_LIBRARY_DIRECTORY: &str = "runtime/compile-host/build";
-
-/// The library's base name, without the platform's prefix or extension.
-pub const LIBRARY_STEM: &str = "gandr-compile-host-abi";
+use crate::render::RenderedValue;
 
 /// What one run produced, as the boundary reports it.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -41,41 +43,6 @@ pub struct HostAnswer
     pub discards: LedgerCount,
     /// The arena words the run consumed.
     pub allocated: ArenaWords,
-}
-
-/// A value in the canonical rendering both sides compare on.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct RenderedValue(String);
-
-impl AsRef<str> for RenderedValue
-{
-    #[inline]
-    fn as_ref(&self) -> &str
-    {
-        &self.0
-    }
-}
-
-impl From<String> for RenderedValue
-{
-    #[inline]
-    fn from(text: String) -> Self
-    {
-        Self(text)
-    }
-}
-
-impl core::fmt::Display for RenderedValue
-{
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
-    {
-        f.write_str(&self.0)
-    }
 }
 
 /// One of the run's accounted-work counters.
@@ -247,27 +214,6 @@ impl core::fmt::Display for RefusalStage
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum HostError
 {
-    /// No host library could be found.
-    ///
-    /// This is the ordinary state of a checkout with no MLIR installation, and
-    /// it is a report rather than a failure of the build: nothing in the Rust
-    /// workspace links the host, so its absence is discovered here and nowhere
-    /// earlier.
-    #[error("no compilation host library was found; looked at {looked}")]
-    Unavailable
-    {
-        /// Where the discovery looked.
-        looked: SearchReport,
-    },
-    /// The library was found but could not be loaded or bound.
-    #[error("the compilation host library at {path} could not be bound: {detail}")]
-    NotBindable
-    {
-        /// The library that was found.
-        path: LibraryPath,
-        /// What the loader said.
-        detail: LoaderDetail,
-    },
     /// The library speaks a different boundary version.
     #[error(
         "the compilation host library declares ABI version {found}, and this crate speaks {expected}"
@@ -316,60 +262,6 @@ impl core::fmt::Display for AbiVersion
     }
 }
 
-/// A path to a host library.
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct LibraryPath(PathBuf);
-
-impl LibraryPath
-{
-    /// The path.
-    #[inline]
-    #[must_use]
-    pub fn as_path(&self) -> &Path
-    {
-        &self.0
-    }
-}
-
-impl From<PathBuf> for LibraryPath
-{
-    #[inline]
-    fn from(path: PathBuf) -> Self
-    {
-        Self(path)
-    }
-}
-
-impl core::fmt::Display for LibraryPath
-{
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
-    {
-        write!(f, "{}", self.0.display())
-    }
-}
-
-/// What the dynamic loader said about a library it would not bind.
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct LoaderDetail(String);
-
-impl core::fmt::Display for LoaderDetail
-{
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
-    {
-        f.write_str(&self.0)
-    }
-}
-
 /// What a refusing stage said.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -393,34 +285,6 @@ impl core::fmt::Display for RefusalDetail
     ) -> core::fmt::Result
     {
         f.write_str(&self.0)
-    }
-}
-
-/// The places the discovery looked for a host library.
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct SearchReport(Vec<PathBuf>);
-
-impl core::fmt::Display for SearchReport
-{
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
-    {
-        let mut first = true;
-        for path in &self.0 {
-            if !first {
-                f.write_str(", ")?;
-            }
-            first = false;
-            write!(f, "{}", path.display())?;
-        }
-        if first {
-            f.write_str("nowhere")?;
-        }
-        Ok(())
     }
 }
 
@@ -456,208 +320,91 @@ impl Default for RawOutcome
     }
 }
 
-/// The boundary entry that runs an image on a host-sized heap.
-type RunEntry = unsafe extern "C" fn(*const u8, usize, *mut RawOutcome) -> i32;
+// The host's C boundary, declared once and resolved by the linker.
+//
+// Each signature is the one `include/gandr/compile_host/abi.h` declares. A name
+// or a signature that drifts from that header is a link error naming the
+// symbol, which is the property the `full` feature exists to buy.
+//
+// Every entry is `extern "C"` over plain old data. A pointer a caller passes is
+// read for the duration of the call and never retained, and the text an outcome
+// carries is owned by the host until `gandr_compile_host_outcome_release`
+// clears it; each call site below carries the obligation that applies to it.
+unsafe extern "C" {
+    /// The boundary version the linked host implements.
+    fn gandr_compile_host_abi_version() -> u32;
 
-/// The boundary entry that runs an image on a caller-sized heap.
-type RunWithHeapEntry = unsafe extern "C" fn(*const u8, usize, u64, *mut RawOutcome) -> i32;
+    /// Compiles and runs an image, sizing the heap from the image.
+    fn gandr_compile_host_run(
+        bytes: *const u8,
+        length: usize,
+        outcome: *mut RawOutcome,
+    ) -> i32;
 
-/// The boundary entry that reports the library's version.
-type VersionEntry = unsafe extern "C" fn() -> u32;
+    /// Compiles and runs an image on a heap of the caller's size.
+    fn gandr_compile_host_run_with_heap(
+        bytes: *const u8,
+        length: usize,
+        heap_words: u64,
+        outcome: *mut RawOutcome,
+    ) -> i32;
 
-/// The boundary entry that releases what an outcome owns.
-type ReleaseEntry = unsafe extern "C" fn(*mut RawOutcome);
+    /// Runs an image on the host's reference interpreter.
+    fn gandr_compile_host_interpret(
+        bytes: *const u8,
+        length: usize,
+        outcome: *mut RawOutcome,
+    ) -> i32;
 
-/// A boundary symbol's name, NUL-terminated as the loader wants it.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(transparent)]
-struct SymbolName(&'static [u8]);
-
-impl core::fmt::Display for SymbolName
-{
-    /// The name without its terminator.
-    ///
-    /// The loader reports a failed lookup as "dlsym failed" and says nothing
-    /// about what it was looking for, so the name is carried into the message
-    /// here — a caller debugging a partial or mismatched library needs the
-    /// symbol far more than the verb.
-    #[inline]
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
-    {
-        let spelled = self
-            .0
-            .split_last()
-            .map_or(self.0, |(_terminator, head)| head);
-        match core::str::from_utf8(spelled) {
-            | Ok(name) => f.write_str(name),
-            | Err(_not_utf8) => f.write_str("a symbol whose name is not UTF-8"),
-        }
-    }
+    /// Releases what a filled outcome owns.
+    fn gandr_compile_host_outcome_release(outcome: *mut RawOutcome);
 }
 
-/// The version entry's symbol.
-const VERSION_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_abi_version\0");
-
-/// The ordinary run entry's symbol.
-const RUN_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_run\0");
-
-/// The sized-heap run entry's symbol.
-const RUN_WITH_HEAP_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_run_with_heap\0");
-
-/// The reference-interpreter entry's symbol.
-const INTERPRET_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_interpret\0");
-
-/// The release entry's symbol.
-const RELEASE_SYMBOL: SymbolName = SymbolName(b"gandr_compile_host_outcome_release\0");
-
-/// A bound compilation host.
+/// The linked compilation host.
 ///
-/// Holding the library open for the caller's lifetime is deliberate: each run
-/// builds its own MLIR context, so the cost of loading is paid once while no
-/// state is shared between runs.
-#[derive(Debug)]
-pub struct CompileHost
-{
-    /// The loaded library, kept alive for as long as the entries are used.
-    library: libloading::Library,
-    /// Where it was loaded from.
-    path: LibraryPath,
-}
+/// A zero-sized handle rather than an open library: the entries are bound by
+/// the linker, so there is nothing to keep alive and nothing to close. Holding
+/// one is a statement that the boundary version was checked.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct CompileHost;
 
 impl CompileHost
 {
-    /// Finds and binds the host library.
+    /// Binds the linked host after checking its boundary version.
     ///
-    /// The search is the mirror of the host's own MLIR discovery: an explicit
-    /// environment variable wins, then the conventional build output under the
-    /// workspace root.
+    /// There is no search and no fallback. The linker has already resolved
+    /// every entry, so the only thing left to establish is that the host
+    /// agrees with this crate about what the fields mean.
     ///
     /// # Contract
-    /// - requires: nothing; an absent host is an ordinary outcome.
-    /// - ensures: a returned host has been checked against this crate's
-    ///   boundary version.
-    /// - provides: the entry every caller uses, so the search order is stated
-    ///   in one place.
-    /// - fails: [`HostError::Unavailable`] when nothing was found,
-    ///   [`HostError::NotBindable`] when a found library would not load, and
-    ///   [`HostError::VersionMismatch`] when it speaks another version.
+    /// - requires: nothing.
+    /// - ensures: a returned host declares [`ABI_VERSION`].
+    /// - provides: the one entry every caller uses.
+    /// - fails: [`HostError::VersionMismatch`] when the linked host speaks
+    ///   another version.
     /// - panics: none.
     ///
     /// # Errors
-    /// The variants above.
+    /// The variant above.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 — the search order and the version check are separated
-    ///   by pointwise cases: a variable naming a missing file, a variable
-    ///   naming the real library, and no variable at all.
-    /// - witness: `bridge::an_absent_host_is_reported_rather_than_fatal`
+    /// - hypothesis: L3 — the version check is the only decision here, and it
+    ///   is exercised by every bridge case that binds before running.
     /// - witness: `bridge::the_bridge_agrees_with_the_l_machine_on_every_named_program`
     #[inline]
-    pub fn discover() -> Result<Self, HostError>
+    pub fn bind() -> Result<Self, HostError>
     {
-        let mut looked: Vec<PathBuf> = Vec::new();
-        if let Some(named) = std::env::var_os(LIBRARY_PATH_VARIABLE) {
-            let path = PathBuf::from(named);
-            looked.push(path.clone());
-            if path.is_file() {
-                return Self::open(&path);
-            }
-        }
-        for candidate in default_candidates() {
-            looked.push(candidate.clone());
-            if candidate.is_file() {
-                return Self::open(&candidate);
-            }
-        }
-        Err(HostError::Unavailable {
-            looked: SearchReport(looked),
-        })
-    }
-
-    /// Binds a host library at a known path.
-    ///
-    /// # Contract
-    /// - requires: `path` names a shared library built from this repository's
-    ///   compilation host.
-    /// - ensures: the library's declared boundary version equals
-    ///   [`ABI_VERSION`], or the call fails rather than proceeding.
-    /// - provides: the explicit-path entry, for a caller that already located
-    ///   the build.
-    /// - fails: [`HostError::NotBindable`], [`HostError::VersionMismatch`].
-    /// - panics: none.
-    ///
-    /// # Errors
-    /// The variants above.
-    ///
-    /// # Adequacy
-    /// - hypothesis: L3 — the two failure modes are separated by a path that is
-    ///   not a library and a library whose version entry disagrees; the success
-    ///   case is carried by the differential.
-    /// - witness: `bridge::an_absent_host_is_reported_rather_than_fatal`
-    #[inline]
-    pub fn open(path: &Path) -> Result<Self, HostError>
-    {
-        // The loader takes the name as text, so a path this platform admits
-        // but Unicode does not is refused here rather than lossily converted.
-        let Some(name) = path.to_str()
-        else {
-            return Err(HostError::NotBindable {
-                path: LibraryPath(path.to_path_buf()),
-                detail: LoaderDetail(String::from("the library path is not valid UTF-8")),
-            });
-        };
-
-        // SAFETY: loading a shared library runs its initializers, which is why
-        // the call is unsafe. The library named here is this repository's own
-        // compilation host, built by `mise run compile-host:build`; the caller
-        // supplies the path and the version check below refuses anything that
-        // does not declare this boundary.
-        let library = unsafe { libloading::Library::new(name) };
-        let library = match library {
-            | Ok(library) => library,
-            | Err(error) => {
-                return Err(HostError::NotBindable {
-                    path: LibraryPath(path.to_path_buf()),
-                    detail: LoaderDetail(error.to_string()),
-                });
-            },
-        };
-
-        let host = Self {
-            library,
-            path: LibraryPath(path.to_path_buf()),
-        };
-        let found = host.declared_version()?;
+        // SAFETY: the linked entry takes no arguments and returns a plain
+        // integer, so nothing outlives the call.
+        let found = AbiVersion(unsafe { gandr_compile_host_abi_version() });
         if found != AbiVersion(ABI_VERSION) {
             return Err(HostError::VersionMismatch {
                 found,
                 expected: AbiVersion(ABI_VERSION),
             });
         }
-        Ok(host)
-    }
-
-    /// Where this host was loaded from.
-    #[inline]
-    #[must_use]
-    pub fn path(&self) -> &LibraryPath
-    {
-        &self.path
-    }
-
-    /// The boundary version the library declares.
-    fn declared_version(&self) -> Result<AbiVersion, HostError>
-    {
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol, which is what `entry` requires of its caller.
-        let entry = unsafe { self.entry::<VersionEntry>(VERSION_SYMBOL) }?;
-        // SAFETY: the entry was resolved from the library bound above and
-        // returns a plain integer, so nothing outlives the call.
-        let version = unsafe { entry() };
-        Ok(AbiVersion(version))
+        Ok(Self)
     }
 
     /// Compiles and runs an encoded image, letting the host size the heap.
@@ -668,7 +415,6 @@ impl CompileHost
     ///   its arena consumption.
     /// - provides: the ordinary run entry.
     /// - fails: [`HostError::Refused`] naming the stage that refused;
-    ///   [`HostError::NotBindable`] if a symbol will not resolve.
     /// - panics: none.
     ///
     /// # Errors
@@ -686,21 +432,14 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
-        // The release entry is resolved **before** the run, and that order is
-        // the point: a run allocates the outcome's text, so discovering a
-        // missing release afterwards would leak on the way to reporting a
-        // library this crate cannot bind.
-        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol.
-        let entry = unsafe { self.entry::<RunEntry>(RUN_SYMBOL) }?;
         // SAFETY: `bytes` is a live slice for the duration of the call and its
         // length is passed beside it; `outcome` is a live local of the layout
         // `abi.h` declares. The host copies out of the slice and does not
         // retain it, and the text it writes into `outcome` is released below.
-        let status = unsafe { entry(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
-        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
+        let status =
+            unsafe { gandr_compile_host_run(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
+        Self::finish(BoundaryStatus::from(status), &mut outcome)
     }
 
     /// Compiles and runs an encoded image on a heap of the caller's size.
@@ -729,22 +468,17 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
-        // Resolved before the run, as in `run`.
-        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol.
-        let entry = unsafe { self.entry::<RunWithHeapEntry>(RUN_WITH_HEAP_SYMBOL) }?;
         // SAFETY: as `run`, with the heap size passed by value.
         let status = unsafe {
-            entry(
+            gandr_compile_host_run_with_heap(
                 bytes.as_ptr(),
                 bytes.len(),
                 u64::from(heap),
                 &raw mut outcome,
             )
         };
-        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
+        Self::finish(BoundaryStatus::from(status), &mut outcome)
     }
 
     /// Runs an encoded image on the host's reference interpreter.
@@ -771,80 +505,28 @@ impl CompileHost
     ) -> Result<HostAnswer, HostError>
     {
         let bytes: &[u8] = image.as_ref();
-        // Resolved before the run, as in `run`.
-        let release = self.release_entry()?;
         let mut outcome = RawOutcome::default();
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol.
-        let entry = unsafe { self.entry::<RunEntry>(INTERPRET_SYMBOL) }?;
         // SAFETY: as `run`.
-        let status = unsafe { entry(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
-        Self::finish(BoundaryStatus::from(status), &mut outcome, &release)
-    }
-
-    /// Resolves one boundary entry by name.
-    ///
-    /// # Safety
-    /// The caller states that `Entry` is the signature `abi.h` declares for
-    /// `name`. Nothing here can check that, which is why the entry types are
-    /// declared once in this module beside the header they mirror.
-    unsafe fn entry<Entry>(
-        &self,
-        name: SymbolName,
-    ) -> Result<libloading::Symbol<'_, Entry>, HostError>
-    {
-        // SAFETY: forwarded from this function's own safety contract; the
-        // symbol is looked up in the library this host bound.
-        let resolved = unsafe { self.library.get::<Entry>(name.0) };
-        match resolved {
-            | Ok(symbol) => Ok(symbol),
-            | Err(error) => Err(HostError::NotBindable {
-                path: self.path.clone(),
-                detail: LoaderDetail(alloc::format!("resolving {name}: {error}")),
-            }),
-        }
-    }
-
-    /// Resolves the release entry.
-    ///
-    /// Every caller does this **before** invoking a run, which is what makes
-    /// the release on the way out infallible: [`CompileHost::finish`] takes
-    /// the resolved entry rather than looking one up, so there is no path on
-    /// which an allocated outcome meets a failing lookup.
-    ///
-    /// # Contract
-    /// - ensures: a returned symbol is the release entry `abi.h` declares.
-    /// - provides: the resolution `finish` requires by type.
-    /// - fails: [`HostError::NotBindable`] when the library exports no such
-    ///   symbol, before anything has been allocated.
-    /// - panics: none.
-    ///
-    /// # Errors
-    /// [`HostError::NotBindable`].
-    fn release_entry(&self) -> Result<libloading::Symbol<'_, ReleaseEntry>, HostError>
-    {
-        // SAFETY: the signature named here is the one `abi.h` declares for
-        // this symbol.
-        unsafe { self.entry::<ReleaseEntry>(RELEASE_SYMBOL) }
+        let status =
+            unsafe { gandr_compile_host_interpret(bytes.as_ptr(), bytes.len(), &raw mut outcome) };
+        Self::finish(BoundaryStatus::from(status), &mut outcome)
     }
 
     /// Reads a filled outcome, releases what it owns, and reports the answer.
     ///
-    /// Taking the release entry as an argument rather than resolving one is
-    /// the whole discipline: an outcome reaches this function only after its
-    /// caller has already proved the release exists, so the type makes the
-    /// leaking order unreachable rather than merely unused.
+    /// The release is a linked call rather than a resolution, so the order
+    /// that used to matter cannot go wrong: there is no lookup that could fail
+    /// after a run has already allocated the outcome's text.
     fn finish(
         status: BoundaryStatus,
         outcome: &mut RawOutcome,
-        release: &libloading::Symbol<'_, ReleaseEntry>,
     ) -> Result<HostAnswer, HostError>
     {
         let text = read_text(outcome);
         // SAFETY: `outcome` was filled by one of the entries above, which is
         // exactly the precondition `gandr_compile_host_outcome_release`
         // states; it clears the pointer, so a second release is inert.
-        unsafe { release(&raw mut *outcome) };
+        unsafe { gandr_compile_host_outcome_release(&raw mut *outcome) };
 
         if status != STATUS_OK {
             return Err(HostError::Refused {
@@ -853,7 +535,7 @@ impl CompileHost
             });
         }
         Ok(HostAnswer {
-            value: RenderedValue(text),
+            value: RenderedValue::from(text),
             duplications: LedgerCount(outcome.duplications),
             discards: LedgerCount(outcome.discards),
             allocated: ArenaWords(outcome.allocated_words),
@@ -875,44 +557,6 @@ fn read_text(outcome: &RawOutcome) -> String
     // until released, and the release happens after this read in `finish`.
     let borrowed = unsafe { CStr::from_ptr(outcome.text) };
     borrowed.to_str().map(str::to_owned).unwrap_or_default()
-}
-
-/// The conventional build outputs the discovery falls back to.
-///
-/// The workspace root is derived from this crate's manifest directory, which
-/// Cargo supplies at compile time, so the fallback does not depend on the
-/// current working directory.
-fn default_candidates() -> Vec<PathBuf>
-{
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let Some(crates_directory) = manifest.parent()
-    else {
-        return Vec::new();
-    };
-    let Some(workspace) = crates_directory.parent()
-    else {
-        return Vec::new();
-    };
-    let directory = workspace.join(DEFAULT_LIBRARY_DIRECTORY);
-    let mut candidates = Vec::new();
-    for name in library_file_names() {
-        candidates.push(directory.join(name));
-    }
-    candidates
-}
-
-/// The platform's spellings of the host library's file name.
-fn library_file_names() -> Vec<String>
-{
-    let mut names = Vec::new();
-    if cfg!(target_os = "macos") {
-        names.push(alloc::format!("lib{LIBRARY_STEM}.dylib"));
-    }
-    if cfg!(target_os = "windows") {
-        names.push(alloc::format!("{LIBRARY_STEM}.dll"));
-    }
-    names.push(alloc::format!("lib{LIBRARY_STEM}.so"));
-    names
 }
 
 #[cfg(test)]
@@ -965,29 +609,6 @@ mod tests
     #[test]
     fn every_host_failure_renders_its_own_message()
     {
-        let unavailable = HostError::Unavailable {
-            looked: SearchReport(alloc::vec![
-                PathBuf::from("/one/libhost.dylib"),
-                PathBuf::from("/two/libhost.so"),
-            ]),
-        };
-        let rendered = unavailable.to_string();
-        assert!(rendered.contains("/one/libhost.dylib"), "{rendered}");
-        assert!(rendered.contains("/two/libhost.so"), "{rendered}");
-
-        // A report that looked nowhere still renders, which is the case a
-        // caller meets when the environment names nothing and the
-        // conventional path cannot be derived.
-        assert_eq!(SearchReport(Vec::new()).to_string(), "nowhere");
-
-        let unbindable = HostError::NotBindable {
-            path: LibraryPath::from(PathBuf::from("/somewhere/libhost.dylib")),
-            detail: LoaderDetail(String::from("dlsym failed")),
-        };
-        let rendered = unbindable.to_string();
-        assert!(rendered.contains("/somewhere/libhost.dylib"), "{rendered}");
-        assert!(rendered.contains("dlsym failed"), "{rendered}");
-
         let mismatched = HostError::VersionMismatch {
             found: AbiVersion::from(7),
             expected: AbiVersion::from(ABI_VERSION),
@@ -1007,32 +628,6 @@ mod tests
         assert_eq!(borrowed, "would not fit");
     }
 
-    /// A symbol name renders without its terminator, so a loader failure says
-    /// what it was looking for.
-    #[test]
-    fn a_symbol_name_renders_without_its_terminator()
-    {
-        assert_eq!(
-            RELEASE_SYMBOL.to_string(),
-            "gandr_compile_host_outcome_release"
-        );
-        assert_eq!(RUN_SYMBOL.to_string(), "gandr_compile_host_run");
-        assert_eq!(VERSION_SYMBOL.to_string(), "gandr_compile_host_abi_version");
-        assert_eq!(INTERPRET_SYMBOL.to_string(), "gandr_compile_host_interpret");
-        assert_eq!(
-            RUN_WITH_HEAP_SYMBOL.to_string(),
-            "gandr_compile_host_run_with_heap"
-        );
-
-        // The two degenerate shapes: no terminator to strip, and bytes that
-        // are not text at all.
-        assert_eq!(SymbolName(b"").to_string(), "");
-        assert_eq!(
-            SymbolName(b"\xff\xfe\0").to_string(),
-            "a symbol whose name is not UTF-8"
-        );
-    }
-
     /// The boundary's values round-trip through their wrappers.
     #[test]
     fn the_boundaries_values_round_trip_through_their_wrappers()
@@ -1046,10 +641,6 @@ mod tests
         assert_eq!(rendered.to_string(), "(int 5)");
         let borrowed: &str = rendered.as_ref();
         assert_eq!(borrowed, "(int 5)");
-
-        let path = LibraryPath::from(PathBuf::from("/a/b"));
-        assert_eq!(path.as_path(), Path::new("/a/b"));
-        assert_eq!(path.to_string(), "/a/b");
     }
 
     /// A message the boundary did not write is read as empty rather than as a
@@ -1068,50 +659,5 @@ mod tests
             ..RawOutcome::default()
         };
         assert_eq!(read_text(&outcome), String::from("a detail"));
-    }
-
-    /// The discovery names the platform's spellings and derives its directory
-    /// from the manifest rather than from the current directory.
-    #[test]
-    fn the_discovery_looks_where_the_build_puts_the_library()
-    {
-        let names = library_file_names();
-        assert!(
-            names.iter().all(|name| name.contains(LIBRARY_STEM)),
-            "every candidate name carries the library's stem"
-        );
-        assert!(
-            names.contains(&alloc::format!("lib{LIBRARY_STEM}.so")),
-            "the ELF spelling is always a candidate"
-        );
-
-        let candidates = default_candidates();
-        assert!(!candidates.is_empty(), "the fallback derives a directory");
-        for candidate in &candidates {
-            assert!(
-                candidate.ends_with(
-                    Path::new(DEFAULT_LIBRARY_DIRECTORY)
-                        .join(candidate.file_name().expect("a candidate names a file"))
-                ),
-                "a candidate sits under the conventional build output: {}",
-                candidate.display()
-            );
-        }
-    }
-
-    /// A path this platform admits but Unicode does not is refused rather
-    /// than lossily converted.
-    #[test]
-    fn a_library_path_that_is_not_text_is_refused()
-    {
-        use std::os::unix::ffi::OsStrExt as _;
-
-        let raw = std::ffi::OsStr::from_bytes(b"/tmp/\xff\xfe-not-utf8.dylib");
-        let refused = CompileHost::open(Path::new(raw));
-        let Err(HostError::NotBindable { detail, .. }) = refused
-        else {
-            panic!("a non-UTF-8 path was not refused: {refused:?}");
-        };
-        assert_eq!(detail.to_string(), "the library path is not valid UTF-8");
     }
 }

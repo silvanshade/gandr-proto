@@ -533,7 +533,6 @@ default-features = false
 
 # `dlopen`/`dlsym` over the platform loader, with lifetime-checked symbols.
 # consumers:
-# - gandr-runtime-compile-host
 # - gandr-runtime-ffi
 [workspace.dependencies.libloading]
 version = "0.9.0"

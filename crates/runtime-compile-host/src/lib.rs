@@ -4,26 +4,51 @@
 //! handed to the compilation host through a small C boundary; the run's value
 //! and its accounted work come back. That path is the whole crate.
 //!
-//! The host is **found at run time, never linked**. It is built against a
-//! discovered MLIR installation, so a checkout without one still builds and
-//! tests this crate: [`CompileHost::discover`] reports an absent host as an
-//! ordinary outcome, and the parts that do not need it — the lowering, the
-//! encoder, the renderer — are exercised unconditionally.
+//! **The host is linked, never looked up, and the link sits behind the `full`
+//! feature.** MLIR is pinned and `compile-host:wall` requires it on every
+//! checkout, so a build that enables `full` binds every boundary entry at link
+//! time: a name or a signature that drifts is a build failure naming the
+//! symbol rather than a refusal at the point of the call.
+//!
+//! Without `full` the crate acquires no MLIR and no C++ toolchain, and its
+//! host-bearing half does not exist. The parts that never needed a host — the
+//! lowering, the encoder, the renderer — are the default surface and are
+//! exercised on any machine.
 //!
 //! ```no_run
+//! # #[cfg(feature = "full")]
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use gandr_core_term::syntax::Comp;
 //! use gandr_core_term::syntax::Value;
 //! use gandr_runtime_compile_host::CompileHost;
 //! use gandr_runtime_compile_host::compile_and_run;
 //!
-//! let host = CompileHost::discover()?;
+//! let host = CompileHost::bind()?;
 //! let answer = compile_and_run(&host, &Comp::ret(Value::Int(5)))?;
 //! assert_eq!(answer.value.to_string(), "(int 5)");
-//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "full"))]
+//! # fn main() {}
 //! ```
 
 extern crate alloc;
 
+/// The boundary version this crate speaks.
+///
+/// The host declares the same number in its own header, and `CompileHost::bind`
+/// compares them before anything else runs. The linker cannot make that
+/// comparison: two revisions can export the same symbols with the same
+/// signatures and disagree about what a field means.
+///
+/// It sits here rather than beside the boundary it describes, because
+/// `tests/contract.rs` holds it against the host's own header on a machine with
+/// no host built at all, and that independence is the point of that gate.
+pub const ABI_VERSION: u32 = 1;
+
+// The host-bearing half exists only where the host is linked; `build.rs`
+// makes that decision and the default build acquires no MLIR at all.
+#[cfg(feature = "full")]
 pub mod host;
 pub mod image;
 pub mod lower;
@@ -35,13 +60,17 @@ use gandr_core_term::ctx::Ctx;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::types::CompType;
 
+#[cfg(feature = "full")]
 pub use crate::host::CompileHost;
+#[cfg(feature = "full")]
 pub use crate::host::HostAnswer;
+#[cfg(feature = "full")]
 pub use crate::host::HostError;
 pub use crate::image::Image;
 pub use crate::lower::LowerError;
 pub use crate::lower::lower_computation;
 pub use crate::render::RenderError;
+pub use crate::render::RenderedValue;
 
 /// What can go wrong on the way from a core computation to a host answer.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
@@ -65,7 +94,11 @@ pub enum BridgeError
         #[from]
         source: LowerError,
     },
-    /// The host refused, or could not be reached.
+    /// The host refused.
+    ///
+    /// Only the `full` build can reach a host, so only that build can carry
+    /// this variant.
+    #[cfg(feature = "full")]
     #[error("the compilation host did not answer: {source}")]
     NotRun
     {
@@ -119,6 +152,7 @@ impl core::fmt::Display for CheckerDetail
 ///   triggered pointwise by a computation that reaches exactly that stage.
 /// - witness: `bridge::the_bridge_agrees_with_the_l_machine_on_every_named_program`
 /// - witness: `bridge::a_computation_outside_the_slice_is_refused_before_the_boundary`
+#[cfg(feature = "full")]
 #[inline]
 pub fn compile_and_run(
     host: &CompileHost,
@@ -161,6 +195,7 @@ pub fn compile_and_run(
 /// - hypothesis: L2 — the answers are held to the L machine's own, which is the
 ///   only oracle these programs have, since they have no type.
 /// - witness: `bridge::the_bridge_agrees_with_the_l_machine_on_every_named_program`
+#[cfg(feature = "full")]
 #[inline]
 pub fn run_machine_program(
     host: &CompileHost,

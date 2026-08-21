@@ -1,9 +1,11 @@
 //! The source-level contract gate over the compilation host.
 //!
-//! The host's own gates need a discovered MLIR installation, so a change that
-//! broke the host without touching Rust would pass the merge wall. This file
-//! narrows that gap from the Rust side, and it is deliberate about how far it
-//! reaches.
+//! This file runs on any machine, with no host built and no toolchain
+//! present, which is what makes it the layout authority. The linker binds the
+//! `full` build's boundary entries and proves every symbol is present; it
+//! cannot see that a struct field moved or that a status number changed
+//! meaning. That is this file's job, and neither check substitutes for the
+//! other.
 //!
 //! **What it proves.** Every number and declaration this crate's mirror of the
 //! boundary depends on still says what it says in the host's own sources: the
@@ -23,7 +25,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use gandr_runtime_compile_host::host::ABI_VERSION;
+use gandr_runtime_compile_host::ABI_VERSION;
 use gandr_runtime_compile_host::image::CtorTag;
 use gandr_runtime_compile_host::image::IMAGE_WIRE_VERSION;
 use gandr_runtime_compile_host::image::MAX_IMAGE_NODES;

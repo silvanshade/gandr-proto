@@ -13,7 +13,40 @@
 use gandr_core_term::syntax::Side;
 use gandr_core_term::syntax::Value;
 
-use crate::host::RenderedValue;
+/// A value in the canonical rendering both sides compare on.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct RenderedValue(String);
+
+impl AsRef<str> for RenderedValue
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        &self.0
+    }
+}
+
+impl From<String> for RenderedValue
+{
+    #[inline]
+    fn from(text: String) -> Self
+    {
+        Self(text)
+    }
+}
+
+impl core::fmt::Display for RenderedValue
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        f.write_str(&self.0)
+    }
+}
 
 /// What can go wrong while rendering a value.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]

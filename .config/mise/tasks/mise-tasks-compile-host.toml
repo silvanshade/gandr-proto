@@ -203,6 +203,46 @@ runner="$prefix/bin/run-clang-tidy"
 echo "compile-host: every source satisfies runtime/.clang-tidy"
 '''
 
+# The witness that the DEFAULT dependency graph acquires nothing.
+#
+# The `full` feature links the host, which means a `full` build needs MLIR and
+# a C++ toolchain. The claim this lane holds is that the default build needs
+# neither, and it is checked rather than asserted: after a default build, the
+# crate's build script must have emitted no link directive at all. A build
+# script that started emitting one would make every `cargo check` in the
+# workspace acquire the toolchain, which is the cost the feature exists to
+# bound.
+["compile-host:default-graph"]
+description = "Check that the bridge crate's default build emits no link directives and pulls in no host"
+run = '''
+set -eu
+
+# A target directory of its own, and this is the whole reason: a `full` build
+# leaves its build-script output beside a default one, so measuring in a shared
+# directory reads the wrong build and reports a link the default never emitted.
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+
+CARGO_TARGET_DIR="$scratch" cargo build --quiet --package gandr-runtime-compile-host
+
+emitted=$(cat "$scratch"/debug/build/gandr-runtime-compile-host-*/output 2>/dev/null | grep 'cargo:rustc-link' || true)
+if [ -n "$emitted" ]; then
+  echo "compile-host: the default build emitted link directives, so it is not toolchain-free:" >&2
+  printf '%s\n' "$emitted" >&2
+  exit 1
+fi
+
+# And nothing in the default graph is a loader or a C++ interop crate.
+graph=$(cargo tree --quiet --package gandr-runtime-compile-host --edges normal)
+if printf '%s\n' "$graph" | grep -qE '(libloading|^cxx | cxx |cxx-build) v'; then
+  echo "compile-host: the default dependency graph acquired a loader or a C++ interop crate" >&2
+  printf '%s\n' "$graph" >&2
+  exit 1
+fi
+
+echo "compile-host: the default build emits no link directives and its graph carries no host"
+'''
+
 # The differential's other half is a Rust test on the merge wall
 # (crates/core-sequent/tests/compile_host_agreement.rs), which holds the same
 # fixture to what the L machine answers. Passing both is what makes the
@@ -406,10 +446,12 @@ mise run compile-host:tidy
 mise run compile-host:test
 mise run compile-host:differential
 mise run compile-host:fuzz-smoke
+mise run compile-host:default-graph
 
-# The bridge's own cases skip when no host is built. Under the pin one always
-# is, so they are required rather than conditional.
-GANDR_COMPILE_HOST_REQUIRED=1 cargo nextest run \
+# The bridge's cases need the linked host, so they run under the feature that
+# links it. `GANDR_COMPILE_HOST_REQUIRED` is retired with the discovery it
+# guarded: a build that produced this binary already resolved every entry.
+cargo nextest run \
   --package gandr-runtime-compile-host \
   --all-targets \
   --features=full

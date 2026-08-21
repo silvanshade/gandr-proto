@@ -23,7 +23,6 @@ gandr-core-checker.workspace = true
 gandr-core-machine.workspace = true
 # The term substrate the lowering and the renderer are stated over.
 gandr-core-term.workspace = true
-libloading.workspace = true
 thiserror = { workspace = true }
 
 [dev-dependencies]

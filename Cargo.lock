@@ -936,7 +936,6 @@ dependencies = [
  "gandr-core-machine",
  "gandr-core-sequent",
  "gandr-core-term",
- "libloading",
  "thiserror 2.0.19",
 ]
 

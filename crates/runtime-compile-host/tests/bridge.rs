@@ -1,24 +1,22 @@
-//! The bridge, driven end to end against a built compilation host.
+//! The bridge, driven end to end against the linked compilation host.
 //!
-//! The host's toolchain is a discovered MLIR installation rather than a pinned
-//! dependency, so these cases are **conditional by construction**: with no
-//! host present they report the absence and stop. That would be a weak gate on
-//! its own — a skipping test is weakest exactly when the toolchain is what
-//! broke — so two things carry the weight beside it.
+//! **These cases are unconditional.** This module compiles only under the
+//! `full` feature, which links the host, so a binary that exists at all has
+//! already had every boundary entry resolved by the linker. There is no
+//! absence to report and no skip to weaken the gate.
 //!
-//! First, `GANDR_COMPILE_HOST_REQUIRED` turns the condition off: with it set,
-//! an absent host is a failure rather than a skip, and the present-toolchain
-//! lane (`mise run compile-host:wall`) sets it. Second, `contract` holds this
-//! crate's mirror of the boundary to the host's own headers unconditionally,
-//! so the failure this file cannot see without a host — a host that changed
-//! its representation — is caught on the merge wall regardless.
+//! Two checks divide the work and neither substitutes for the other. The
+//! linker proves that every symbol is present and bound, which is what
+//! `a_boundary_symbol_that_drifts_fails_at_link_time` exercises from the
+//! outside. `contract` proves that the layout this crate mirrors is the layout
+//! the host declares, and it runs on any machine with no host at all — a
+//! linker cannot see that a struct field moved.
 
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::Value;
 use gandr_runtime_compile_host::BridgeError;
 use gandr_runtime_compile_host::CompileHost;
 use gandr_runtime_compile_host::HostError;
-use gandr_runtime_compile_host::check_and_lower;
 use gandr_runtime_compile_host::compile_and_run;
 use gandr_runtime_compile_host::host::HeapWords;
 use gandr_runtime_compile_host::host::RefusalStage;
@@ -29,32 +27,20 @@ use gandr_runtime_compile_host::run_machine_program;
 use crate::programs;
 use crate::rendering::machine_answer;
 
-/// The variable that turns an absent host from a skip into a failure.
-const REQUIRED_VARIABLE: &str = "GANDR_COMPILE_HOST_REQUIRED";
-
 /// The reserved heap words a run needs before it can allocate anything.
 ///
 /// The host declares the same number; `contract` holds the two equal.
 const RESERVED_PREFIX_WORDS: u64 = 4;
 
-/// The host, or nothing when this checkout has none built.
+/// The linked host.
 ///
-/// An absent host is reported and the case stops — unless the lane says the
-/// host must be there, in which case its absence is the finding.
-fn host_or_skip() -> Option<CompileHost>
+/// There is no absence to report. This module compiles only under the feature
+/// that links the host, so reaching this function at all means the linker
+/// already resolved every entry; the one thing left to establish is that the
+/// linked host agrees with this crate about the boundary version.
+fn host() -> CompileHost
 {
-    match CompileHost::discover() {
-        | Ok(host) => Some(host),
-        | Err(HostError::Unavailable { looked }) => {
-            assert!(
-                std::env::var_os(REQUIRED_VARIABLE).is_none(),
-                "{REQUIRED_VARIABLE} is set and no compilation host was found; looked at {looked}"
-            );
-            eprintln!("no compilation host built; skipping. looked at {looked}");
-            None
-        },
-        | Err(other) => panic!("a compilation host was found but could not be bound: {other}"),
-    }
+    CompileHost::bind().expect("the linked host declares this crate's boundary version")
 }
 
 /// The bridge's answer for every named program is the L machine's answer.
@@ -67,10 +53,7 @@ fn host_or_skip() -> Option<CompileHost>
 #[test]
 fn the_bridge_agrees_with_the_l_machine_on_every_named_program()
 {
-    let Some(host) = host_or_skip()
-    else {
-        return;
-    };
+    let host = host();
 
     for program in programs::named() {
         // The grade programs are machine-level rather than typed: the core's
@@ -105,10 +88,7 @@ fn the_bridge_agrees_with_the_l_machine_on_every_named_program()
 #[test]
 fn the_bridge_agrees_with_the_image_on_accounted_work()
 {
-    let Some(host) = host_or_skip()
-    else {
-        return;
-    };
+    let host = host();
 
     let mut exercised = 0_u32;
     for program in programs::named() {
@@ -143,10 +123,7 @@ fn the_bridge_agrees_with_the_image_on_accounted_work()
 #[test]
 fn the_two_host_paths_agree_through_the_bridge()
 {
-    let Some(host) = host_or_skip()
-    else {
-        return;
-    };
+    let host = host();
 
     for program in programs::named() {
         let image = lower_computation(&program.comp).expect("the named programs lower");
@@ -184,10 +161,7 @@ fn the_two_host_paths_agree_through_the_bridge()
 #[test]
 fn the_bridge_sees_the_compiled_bounds_check()
 {
-    let Some(host) = host_or_skip()
-    else {
-        return;
-    };
+    let host = host();
 
     let mut exercised = 0_u32;
     for program in programs::named() {
@@ -237,10 +211,7 @@ fn the_bridge_sees_the_compiled_bounds_check()
 #[test]
 fn a_computation_outside_the_slice_is_refused_before_the_boundary()
 {
-    let Some(host) = host_or_skip()
-    else {
-        return;
-    };
+    let host = host();
 
     let outside = Comp::ret(Value::Str(String::from("text")));
     let refused = compile_and_run(&host, &outside);
@@ -263,95 +234,129 @@ fn a_computation_outside_the_slice_is_refused_before_the_boundary()
 /// the release is resolved first, the failure arrives before the run is
 /// invoked at all, and `CompileHost::finish` takes the resolved entry by type
 /// rather than looking one up, so the leaking order is unreachable rather than
-/// merely unused.
+/// A boundary that drifts is a LINK error naming the symbol.
+///
+/// This is the property the `full` feature buys, and it replaces a run-time
+/// one. The bridge used to resolve each entry by name, so a host missing an
+/// entry was a refusal at the moment of the call — late, and only on a machine
+/// that ran the case. The linker resolves every entry now, so the same defect
+/// stops the build.
+///
+/// Proving that from inside a test binary takes a second link, because a
+/// failing link is exactly the thing that would stop this binary existing. The
+/// case compiles two tiny C translation units against the host's own archive:
+/// one calling an entry the boundary declares, one calling a name it does not.
+/// The first links, the second does not, and the failure names the symbol.
 #[test]
-fn a_library_without_a_release_entry_is_refused_before_any_run()
+fn a_boundary_symbol_that_drifts_fails_at_link_time()
 {
-    let Some(partial) = partial_library()
-    else {
-        return;
-    };
+    let build = compile_host_build_directory();
+    let link_line = std::fs::read_to_string(build.join("gandr-compile-host-link.txt"))
+        .expect("the host build writes its link line");
+    let libraries: Vec<&str> = link_line
+        .lines()
+        .filter(|entry| !entry.trim().is_empty())
+        .collect();
+    assert!(!libraries.is_empty(), "the link line names libraries");
 
-    let host = CompileHost::open(&partial);
-    let Ok(host) = host
-    else {
-        panic!("the partial boundary declares this crate's version and should bind: {host:?}");
-    };
+    let clang = compile_host_clang();
+    let scratch =
+        std::env::temp_dir().join(alloc::format!("gandr-link-witness-{}", std::process::id()));
+    std::fs::create_dir_all(&scratch).expect("a scratch directory");
 
-    let image = check_and_lower(&Comp::ret(Value::Int(5))).expect("the computation lowers");
-    let bytes = image.encode();
-    let refused = host.run(&bytes);
-    let Err(HostError::NotBindable { detail, .. }) = refused
-    else {
-        panic!("a boundary without a release entry was not refused: {refused:?}");
-    };
-    assert!(
-        detail
-            .to_string()
-            .contains("gandr_compile_host_outcome_release"),
-        "the refusal names the symbol that is missing: {detail}"
-    );
+    // The declared entry, and a name the boundary does not declare. Nothing
+    // else differs, so a difference in outcome is the symbol and not the setup.
+    //
+    // The absent name is BUILT rather than written. A misspelling of the real
+    // entry is what this case wants and is exactly what the repository's typo
+    // formatter silently repairs — which would turn the negative case into a
+    // second copy of the positive one, and a witness that cannot fail is worse
+    // than no witness.
+    let declared = "gandr_compile_host_abi_version";
+    let absent = alloc::format!("{declared}_no_such_entry");
+    let cases = [
+        ("present", declared, true),
+        ("drifted", absent.as_str(), false),
+    ];
+    for (name, symbol, should_link) in cases {
+        // Declared `extern "C"`, because that is what the boundary is: the
+        // compiler CMake recorded is a C++ driver, and an unqualified
+        // declaration would be mangled into a different symbol entirely.
+        let source = scratch.join(alloc::format!("{name}.cpp"));
+        std::fs::write(
+            &source,
+            alloc::format!(
+                "extern \"C\" unsigned int {symbol}(void);\nint main() {{ return static_cast<int>({symbol}()); }}\n"
+            ),
+        )
+        .expect("the witness source is writable");
 
-    // The same holds for the other two entries, so the order is a property of
-    // the boundary rather than of one method.
-    assert!(matches!(
-        host.run_with_heap(&bytes, HeapWords::from(64_u64)),
-        Err(HostError::NotBindable { .. })
-    ));
-    assert!(matches!(
-        host.interpret(&bytes),
-        Err(HostError::NotBindable { .. })
-    ));
-}
+        let mut command = std::process::Command::new(&clang);
+        command
+            .arg(&source)
+            .arg("-o")
+            .arg(scratch.join(name))
+            .arg("-lc++");
+        for library in &libraries {
+            command.arg(library);
+        }
+        let linked = command.output().expect("the pinned clang runs");
 
-/// The deliberately incomplete boundary, when this checkout has built one.
-fn partial_library() -> Option<std::path::PathBuf>
-{
-    let Ok(host) = CompileHost::discover()
-    else {
-        eprintln!("no compilation host built; skipping the boundary-order witness");
-        return None;
-    };
-    let directory = host.path().as_path().parent()?;
-    for name in [
-        "libgandr-compile-host-abi-partial.dylib",
-        "libgandr-compile-host-abi-partial.so",
-        "gandr-compile-host-abi-partial.dll",
-    ] {
-        let candidate = directory.join(name);
-        if candidate.is_file() {
-            return Some(candidate);
+        if should_link {
+            assert!(
+                linked.status.success(),
+                "the declared entry did not link: {}",
+                String::from_utf8_lossy(&linked.stderr)
+            );
+        }
+        else {
+            assert!(
+                !linked.status.success(),
+                "a symbol the boundary does not declare linked anyway"
+            );
+            let reported = String::from_utf8_lossy(&linked.stderr);
+            assert!(
+                reported.contains(symbol),
+                "the link failure names the missing symbol: {reported}"
+            );
         }
     }
-    panic!("a compilation host is built but its partial boundary is not beside it");
+
+    drop(std::fs::remove_dir_all(&scratch));
 }
 
-/// An absent host is an ordinary reported outcome, never a panic and never a
-/// build failure.
-///
-/// This case needs no host, which is the point: the Rust workspace builds and
-/// tests with no MLIR anywhere, and the absence is discovered here.
-#[test]
-fn an_absent_host_is_reported_rather_than_fatal()
+/// The host's build directory, from this crate's manifest.
+fn compile_host_build_directory() -> std::path::PathBuf
 {
-    let missing = std::path::Path::new("/nonexistent/libgandr-compile-host-abi.dylib");
-    let refused = CompileHost::open(missing);
-    let Err(HostError::NotBindable { path, .. }) = refused
-    else {
-        panic!("a missing library was not reported as unbindable: {refused:?}");
-    };
-    assert_eq!(path.as_path(), missing);
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("crates/<name> sits under the workspace")
+        .join("runtime/compile-host/build")
+}
 
-    // Discovery itself is total: it answers with a host or with a typed
-    // report, on any machine.
-    match CompileHost::discover() {
-        | Ok(host) => assert!(host.path().as_path().is_file()),
-        | Err(HostError::Unavailable { looked }) => {
-            assert!(
-                !looked.to_string().is_empty(),
-                "the report names where it looked"
-            );
-        },
-        | Err(other) => panic!("discovery reported an unexpected failure: {other}"),
+/// The `clang` that ships beside the pinned MLIR, as `CMake` recorded it.
+///
+/// Read from the host's own `CMake` cache rather than found on `PATH`: the
+/// witness must link with the compiler the host was built by, and a different
+/// one on `PATH` would be a different question.
+fn compile_host_clang() -> std::path::PathBuf
+{
+    let cache = compile_host_build_directory().join("CMakeCache.txt");
+    let text = std::fs::read_to_string(&cache).expect("the host build has a cache");
+    // The task passes the compiler on the command line, so CMake records it
+    // as UNINITIALIZED rather than as a cached FILEPATH; both spellings are
+    // accepted so the witness does not depend on how the build was invoked.
+    for line in text.lines() {
+        for key in [
+            "CMAKE_CXX_COMPILER:FILEPATH=",
+            "CMAKE_CXX_COMPILER:UNINITIALIZED=",
+            "CMAKE_CXX_COMPILER:STRING=",
+        ] {
+            if let Some(value) = line.strip_prefix(key) {
+                return std::path::PathBuf::from(value);
+            }
+        }
     }
+    panic!("the `CMake` cache names no C++ compiler");
 }
