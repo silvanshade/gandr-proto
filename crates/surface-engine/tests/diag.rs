@@ -520,10 +520,14 @@ def g = thunk { ret ?seed };
         /// Well-typed, hole-free sources — the oracle's negative direction (no
         /// error marks, and no marks at all since there are no holes).
         const WELL_TYPED_CORPUS: &[&str] = &[
-            "ret 1\n",
-            "1\n",
-            "thunk { ret 1 }\n",
-            "force (thunk { ret 1 })\n",
+            r#"ret 1
+"#,
+            r#"1
+"#,
+            r#"thunk { ret 1 }
+"#,
+            r#"force (thunk { ret 1 })
+"#,
         ];
 
         /// `(name, expected-kind, source)` — one fixture per **reachable** mark
@@ -536,25 +540,47 @@ def g = thunk { ret ?seed };
             (
                 "type-mismatch",
                 "TypeMismatch",
-                "def x : Unit;\ndef x = 1;\n",
+                r#"def x : Unit;
+def x = 1;
+"#,
             ),
-            ("shape", "ShapeMismatch", "(ret 1)(2)\n"),
-            ("stuck", "Stuck", "Inl(1)\n"),
-            ("free", "FreeVariable", "nonesuch\n"),
+            (
+                "shape",
+                "ShapeMismatch",
+                r#"(ret 1)(2)
+"#,
+            ),
+            (
+                "stuck",
+                "Stuck",
+                r#"Inl(1)
+"#,
+            ),
+            (
+                "free",
+                "FreeVariable",
+                r#"nonesuch
+"#,
+            ),
             (
                 "grade-budget",
                 "GradeBudget",
-                "def t : U[ω] (F Integer);\ndef t = thunk[1] { ret 1 };\n",
+                r#"def t : U[ω] (F Integer);
+def t = thunk[1] { ret 1 };
+"#,
             ),
             (
                 "thunkability",
                 "Thunkability",
-                "def f(z : U[0] (F Integer)) -> F Integer { force z }\n",
+                r#"def f(z : U[0] (F Integer)) -> F Integer { force z }
+"#,
             ),
             (
                 "empty-hole",
                 "EmptyHole",
-                "def k : U[1] (F Integer);\ndef k = thunk { ? };\n",
+                r#"def k : U[1] (F Integer);
+def k = thunk { ? };
+"#,
             ),
         ];
 
@@ -615,7 +641,9 @@ def g = thunk { ret ?seed };
             }
             // Well-typed but hole-bearing: the accept-side classification — a
             // real non-error mark is surfaced (the empty hole), never an error.
-            let with_hole = "def k : U[1] (F Integer);\ndef k = thunk { ? };\n";
+            let with_hole = r#"def k : U[1] (F Integer);
+def k = thunk { ? };
+"#;
             let surfaced = marks_of(with_hole);
             assert!(
                 !surfaced.is_empty() && surfaced.iter().all(|mark| !mark.is_error),
