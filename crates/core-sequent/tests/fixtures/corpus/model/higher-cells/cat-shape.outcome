@@ -1,0 +1,5 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/higher-cells/cat-shape.gandr
+; source-b3sum: fade6324b03d5e70b9bb595628a4ae31b9a8e6bb0dd409b1bd49ad99b6a860ee
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 0

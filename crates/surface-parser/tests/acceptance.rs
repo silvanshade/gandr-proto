@@ -925,13 +925,15 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        134, base_count,
-        "the model + pathological trees are 134 files (59 model + 75 pathological, including the \
-         two description-member fixtures)"
+        137, base_count,
+        "the model + pathological trees are 137 files (62 model + 75 pathological, including the \
+         two description-member fixtures and the three higher-cells flagship programs — the \
+         category shape in its model form, the infinity-graph consumer, and the setoids \
+         instance)"
     );
     assert_eq!(
-        134, base_clean,
-        "all 134 model + pathological files mold clean"
+        137, base_clean,
+        "all 137 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");
