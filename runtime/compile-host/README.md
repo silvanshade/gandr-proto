@@ -49,12 +49,34 @@ There is no optimization of the emitted program beyond what the standard MLIR pi
 ## Using it
 
 Every entry point is a named task, run from the repository root.
-MLIR is discovered rather than pinned: `GANDR_MLIR_PREFIX` wins, then a Homebrew `llvm` keg, then whatever `llvm-config` is on `PATH`.
-The compiling clang must be the one that ships beside the discovered MLIR; the configure step refuses a version mismatch, because mixing two builds across that boundary fails far from its cause.
+
+**MLIR is pinned.** `runtime/compile-host/cmake/mlir-pin.cmake` names one revision, one version, one archive and one sha256, and every consumer reads them from there: the CMake configure includes it, the tasks parse it.
+The current pin is `llvmorg-22.1.8`, upstream unmodified — `mlir-patches/series` is empty and is the place to check that.
+
+The source build is not landed yet, so the local bootstrap satisfies the pin from an installed toolchain: `GANDR_MLIR_PREFIX` wins, then a Homebrew `llvm` keg, then `llvm-config` on `PATH`.
+What makes that a pin rather than a preference is the **equality check** — a candidate whose `LLVM_PACKAGE_VERSION` is not the pinned version is refused, not used, and the configure refuses it a second time.
+The compiling clang must be the one that ships beside it, because mixing two builds across that boundary fails far from its cause.
+
+Exceptions and RTTI follow the keg for the same reason: `LLVM_ENABLE_EH` is `OFF`, so the host builds `-fno-exceptions`, and `LLVM_ENABLE_RTTI` is `ON`, so RTTI stays — the lawful departure `docs/workflow/cpp.md` records, taken at the flag site and propagating nowhere.
+Both are read from the keg at configure time; an EH-enabled keg is a fatal configure error.
+
+The pin moves through one command, and only through it:
+
+```sh
+mise run compile-host:pin-update --revision llvmorg-22.1.9
+```
+
+It fetches that release's archive, hashes what it actually received, and rewrites all four facts together — a revision without a measured digest is not a pin.
+It does not install the toolchain; the bootstrap has to supply the new version before anything configures again, which is the friction a pin is supposed to have.
 
 | Task                                 | Does                                                                            |
 | ------------------------------------ | ------------------------------------------------------------------------------- |
-| `mise run compile-host:configure`    | configure the build against the discovered MLIR                                 |
+| `mise run compile-host:pin`          | print the pinned revision, version, archive and sha256                          |
+| `mise run compile-host:prefix`       | resolve the install prefix that satisfies the pin, or fail naming why not       |
+| `mise run compile-host:pin-update`   | move the pin to a named release, measuring the archive's digest                 |
+| `mise run compile-host:configure`    | configure the build against the pinned MLIR                                     |
+| `mise run compile-host:format`       | check every source against `runtime/.clang-format`                              |
+| `mise run compile-host:tidy`         | check every source against `runtime/.clang-tidy`                                |
 | `mise run compile-host:build`        | build the host, its test binary, and its fuzz entry                             |
 | `mise run compile-host:test`         | run the regression suite                                                        |
 | `mise run compile-host:differential` | diff the compiled slice's answers against the L machine's fixture               |
@@ -62,7 +84,7 @@ The compiling clang must be the one that ships beside the discovered MLIR; the c
 | `mise run compile-host:fuzz-smoke`   | replay every committed fuzz seed through the entry surface                      |
 | `mise run compile-host:fuzz`         | run an AFL++ campaign over the entry surface                                    |
 | `mise run compile-host:mutants`      | apply the curated mutant catalogue and require the suite to catch each          |
-| `mise run compile-host:wall`         | run the gates above when an MLIR toolchain is discoverable, and say so when not |
+| `mise run compile-host:wall`         | run every gate above against the pinned toolchain                               |
 
 The binary itself has modes for looking at intermediate stages:
 
@@ -73,13 +95,19 @@ runtime/compile-host/build/gandr-compile-host --interpret-samples
 ```
 
 `compile-host:wall` **is** on the merge wall, and the rest are the pieces it composes.
-Its condition is **discovery and nothing else**: it skips only when it can prove the toolchain is absent — no MLIR prefix, no `lib/cmake/mlir` under it, or no `clang++` beside it — because requiring an installation the repository does not pin would be a much larger claim than this slice makes.
-**Once a candidate is found every later step is fatal**: a configure failure, a build failure, a failing case, a differential mismatch, a bridge failure.
-A toolchain whose compiler and MLIR disagree is a failure of this task, not an absence — treating any configure failure as an optional-toolchain skip would leave a broken `CMakeLists.txt` or a broken source with a green wall and a reassuring message.
-`GANDR_COMPILE_HOST_STRICT=1` additionally turns the absence skip into a failure.
 
-Two things ride the wall unconditionally beside it: the Rust half of the agreement differential, and the source-level contract gate in `crates/runtime-compile-host/tests/contract.rs`, which holds this host's declared numbers and disciplines to what the Rust mirror assumes.
-Neither reaches behaviour — that is what the conditional lane is for.
+**It has no condition.** A pin is exactly the claim that the wall may assume the toolchain, so an installation that is absent, that carries no `lib/cmake/mlir`, that ships no `clang++`, or that is a version other than the pinned one is a **failure** of this task.
+The absence skip and the `GANDR_COMPILE_HOST_STRICT` switch that turned it off are retired by the pin's execution, along with the discovered-toolchain reading they implemented.
+
+**Everything after resolution is fatal**, which is the rule the old skip's own defect taught and the part that has not changed: a configure failure, a format finding, a tidy finding, a build failure, a failing case, a differential mismatch, a bridge failure.
+None of them is an absence, and none may leave this task green with a reassuring message.
+
+The two conventions lanes ride here, so conformance to `runtime/.clang-format` and `runtime/.clang-tidy` is gated rather than aspirational.
+Both use the `clang-format` and `clang-tidy` that ship beside the pinned MLIR: a formatter of a different vintage reflows differently, and a tidy of a different vintage knows different checks.
+
+Two things ride the wall beside it and need no toolchain at all: the Rust half of the agreement differential, and the source-level contract gate in `crates/runtime-compile-host/tests/contract.rs`, which holds this host's declared numbers and disciplines to what the Rust mirror assumes.
+Neither reaches behaviour — that is what the lane above is for.
+The contract gate reads source text and compares it with whitespace collapsed, deliberately: it is about what the host declares, and the format policy has a lane of its own.
 
 ## The ideas it rests on
 

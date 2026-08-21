@@ -20,11 +20,23 @@ option(
 option(GANDR_COMPILE_HOST_BUILD_TESTS "Build the compile host's test binaries" ON)
 option(GANDR_COMPILE_HOST_BUILD_FUZZ "Build the fuzz entry surface" ON)
 
-# MLIR is *found*, never fetched: it is an installed toolchain whose headers,
-# libraries and TableGen generator must match the compiling clang exactly.
-# `MLIR_DIR` is supplied by the invoking task, which discovers the installation
-# rather than hard-coding one.
+# The pin. One revision, one version, one sha256, in one file that the mise
+# tasks parse and this configure includes.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mlir-pin.cmake)
+
+# MLIR is *pinned*. Until the source build lands, the local bootstrap satisfies
+# the pin from an installed toolchain — `MLIR_DIR` is supplied by the invoking
+# task — and the pin's force is the equality check below: an installation that
+# is not the pinned version is refused rather than accepted as a substitute.
 find_package(MLIR REQUIRED CONFIG)
+
+if(NOT LLVM_PACKAGE_VERSION VERSION_EQUAL GANDR_MLIR_PIN_VERSION)
+  message(
+    FATAL_ERROR
+    "the MLIR at ${MLIR_INSTALL_PREFIX} is ${LLVM_PACKAGE_VERSION} but this tree pins ${GANDR_MLIR_PIN_REVISION} (${GANDR_MLIR_PIN_VERSION}); install the pinned toolchain or move the pin with 'mise run compile-host:pin-update'"
+  )
+endif()
+message(STATUS "compile-host: pinned to ${GANDR_MLIR_PIN_REVISION}, satisfied by ${MLIR_INSTALL_PREFIX}")
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}" "${LLVM_CMAKE_DIR}")
 include(TableGen)
@@ -34,7 +46,8 @@ include(HandleLLVMOptions)
 
 # The toolchain-match check. An `-frtti` MLIR consumed by a differently built
 # clang is an ODR hazard that surfaces as a link or run-time failure far from
-# its cause, so the mismatch is refused at configure time.
+# its cause, so the mismatch is refused at configure time. The MLIR half is
+# already held to the pin above, so agreeing here means both agree with it.
 if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL LLVM_PACKAGE_VERSION)
   set(_gandr_toolchain_message
       "compiling C++ compiler is version ${CMAKE_CXX_COMPILER_VERSION} but the discovered MLIR is ${LLVM_PACKAGE_VERSION}"

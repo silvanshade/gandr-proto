@@ -3,42 +3,116 @@
 
 # The C++26 MLIR compilation host under runtime/compile-host.
 #
-# MLIR is an installed toolchain rather than a pinned dependency, so these
-# tasks *discover* it and never hard-code an installation: MLIR_DIR wins,
-# then a Homebrew llvm keg, then whatever llvm-config is on PATH. The compiling
-# clang must be the one that ships beside the discovered MLIR — the CMake
+# MLIR is PINNED. runtime/compile-host/cmake/mlir-pin.cmake names one revision,
+# one version and one sha256, and it is the only place any of the three is
+# written; these tasks parse it rather than restating it. Until the source
+# build lands, the local bootstrap satisfies the pin from an installed
+# toolchain, and the pin's force is an equality check: a toolchain that is not
+# the pinned version is refused, never accepted as a substitute. Nothing here
+# may lean on a discovered-toolchain posture — that reading is retired.
+#
+# Where a prefix is looked for, it is a search for the PINNED toolchain rather
+# than for whatever is installed: GANDR_MLIR_PREFIX wins, then a Homebrew llvm
+# keg, then llvm-config on PATH, and each candidate must report the pinned
+# version. The compiling clang must be the one that ships beside it — the CMake
 # configure refuses a mismatch, because an ODR mismatch across that boundary
 # surfaces far from its cause.
 #
 # One of these tasks IS on the merge wall: compile-host:wall, at the bottom of
-# this file. It is conditional on the toolchain being discoverable and on
-# nothing else — once a candidate MLIR and its compiler are found, every
-# configure, build, test, differential and bridge failure is fatal. The rest
-# of the tasks are the pieces it composes and are not separately on the wall.
+# this file. It has no absence skip: the pin is what lets the wall assume the
+# toolchain, so an absent or wrong-version MLIR is a failure and every
+# configure, format, tidy, build, test, differential and bridge failure after
+# it is fatal. The rest of the tasks are the pieces it composes and are not
+# separately on the wall.
 #
 # Two things ride the wall unconditionally beside it: the Rust half of the
 # host's agreement differential (the fixture against the L machine), and the
 # source-level contract gate in crates/runtime-compile-host, both inside
 # cargo:nextest.
 
+# The pinned toolchain's prefix, resolved once and named so every task below
+# asks the same question the same way.
+#
+# This is a search for the PINNED toolchain, not for whatever is installed:
+# every candidate is checked against the version in
+# runtime/compile-host/cmake/mlir-pin.cmake, and a candidate that is not it is
+# refused rather than used. The pin file is parsed here rather than restated,
+# so moving the pin moves every consumer at once.
+["compile-host:pin"]
+description = "Print the pinned MLIR revision, version, sha256 and archive as shell assignments"
+run = '''
+set -eu
+pin=runtime/compile-host/cmake/mlir-pin.cmake
+[ -r "$pin" ] || { echo "compile-host: $pin is unreadable" >&2; exit 1; }
+
+# One pass over the file: a `set(NAME` opens a binding, and the first quoted
+# string after it is its value, whether it sits on the same line or the next.
+# The formatter is free to wrap a long value without breaking this.
+values=$(awk '
+  /^set\(GANDR_MLIR_PIN_(REVISION|VERSION|SHA256|ARCHIVE)/ {
+    name = $0
+    sub(/^set\(/, "", name)
+    sub(/[^A-Z0-9_].*$/, "", name)
+    pending = name
+  }
+  pending != "" {
+    line = $0
+    if (match(line, /"[^"]*"/)) {
+      value = substr(line, RSTART + 1, RLENGTH - 2)
+      print pending "=" value
+      pending = ""
+    }
+  }
+' "$pin")
+
+for key in REVISION VERSION SHA256 ARCHIVE; do
+  case "$values" in
+    *"GANDR_MLIR_PIN_$key="*) ;;
+    *) echo "compile-host: $pin carries no GANDR_MLIR_PIN_$key" >&2; exit 1 ;;
+  esac
+done
+printf '%s\n' "$values"
+'''
+
+["compile-host:prefix"]
+description = "Resolve the install prefix that satisfies the MLIR pin, or fail naming why it does not"
+run = '''
+set -eu
+eval "$(mise run compile-host:pin)"
+
+satisfies() {
+  candidate=$1
+  [ -n "$candidate" ] || return 1
+  [ -d "$candidate/lib/cmake/mlir" ] || return 1
+  [ -x "$candidate/bin/clang++" ] || return 1
+  found=$(sed -n 's/^set(LLVM_PACKAGE_VERSION \(.*\))$/\1/p' "$candidate/lib/cmake/llvm/LLVMConfig.cmake" 2>/dev/null | head -n 1)
+  [ "$found" = "$GANDR_MLIR_PIN_VERSION" ]
+}
+
+for candidate in \
+  "${GANDR_MLIR_PREFIX:-}" \
+  "$(command -v brew >/dev/null 2>&1 && brew --prefix llvm 2>/dev/null || true)" \
+  "$(command -v llvm-config >/dev/null 2>&1 && llvm-config --prefix || true)"
+do
+  if satisfies "$candidate"; then
+    printf '%s\n' "$candidate"
+    exit 0
+  fi
+done
+
+echo "compile-host: no installation satisfies the pin $GANDR_MLIR_PIN_REVISION ($GANDR_MLIR_PIN_VERSION)." >&2
+echo "compile-host: MLIR is pinned, so this is a failure rather than an absence." >&2
+echo "compile-host: install the pinned toolchain, or point GANDR_MLIR_PREFIX at one whose lib/cmake/mlir, bin/clang++ and LLVM_PACKAGE_VERSION all agree with it." >&2
+exit 1
+'''
+
 ["compile-host:configure"]
-description = "Configure the C++26 MLIR compilation host against the discovered MLIR installation"
+description = "Configure the C++26 MLIR compilation host against the pinned MLIR installation"
 run = '''
 set -eu
 
-prefix=${GANDR_MLIR_PREFIX:-}
-if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
-  prefix=$(brew --prefix llvm 2>/dev/null || true)
-fi
-if [ -z "$prefix" ] && command -v llvm-config >/dev/null 2>&1; then
-  prefix=$(llvm-config --prefix)
-fi
-if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
-  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX to one whose lib/cmake/mlir exists" >&2
-  exit 1
-fi
-
-echo "compile-host: MLIR at $prefix"
+prefix=$(mise run compile-host:prefix)
+echo "compile-host: pinned MLIR at $prefix"
 cmake \
   -S runtime/compile-host \
   -B "${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}" \
@@ -63,6 +137,70 @@ depends = ["compile-host:build"]
 run = '''
 set -eu
 ctest --test-dir "${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}" --output-on-failure
+'''
+
+# The conventions contract's two enforcement surfaces, as gated lanes rather
+# than as something a contributor is trusted to have run. `runtime/.clang-format`
+# and `runtime/.clang-tidy` are the policy; these tasks only apply it.
+#
+# Both use the clang-format and clang-tidy that ship beside the PINNED MLIR, so
+# the answer does not depend on which clang happens to be on PATH — a
+# formatter of a different vintage reflows differently and a tidy of a
+# different vintage knows different checks.
+["compile-host:format"]
+description = "Check the compilation host's sources against runtime/.clang-format"
+run = '''
+set -eu
+prefix=$(mise run compile-host:prefix)
+formatter="$prefix/bin/clang-format"
+[ -x "$formatter" ] || { echo "compile-host: the pinned toolchain at $prefix ships no clang-format" >&2; exit 1; }
+
+listing=$(mktemp)
+trap 'rm -f "$listing"' EXIT
+find runtime/compile-host/src runtime/compile-host/include runtime/compile-host/tests runtime/compile-host/tools \
+  -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.c' \) | sort > "$listing"
+
+# Redirected rather than piped, so the loop runs in this shell and the failure
+# it records survives it.
+status=0
+while read -r file; do
+  if ! "$formatter" --style=file:runtime/.clang-format "$file" | diff -u "$file" - > /dev/null; then
+    echo "compile-host: $file is not what runtime/.clang-format produces" >&2
+    "$formatter" --style=file:runtime/.clang-format "$file" | diff -u "$file" - >&2 || true
+    status=1
+  fi
+done < "$listing"
+
+if [ "$status" -ne 0 ]; then
+  echo "compile-host: run the same clang-format with -i to fix" >&2
+  exit 1
+fi
+echo "compile-host: every source is what runtime/.clang-format produces"
+'''
+
+# The tidy lane needs a BUILT tree, not merely a configured one: the compile
+# database names the module-map response files that the build writes, and
+# clang-tidy replays the same command line. Findings are errors here — the tree
+# is clean, and the point of a lane is that it stays that way.
+["compile-host:tidy"]
+description = "Check the compilation host's sources against runtime/.clang-tidy"
+depends = ["compile-host:build"]
+run = '''
+set -eu
+prefix=$(mise run compile-host:prefix)
+build=${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}
+runner="$prefix/bin/run-clang-tidy"
+[ -x "$runner" ] || { echo "compile-host: the pinned toolchain at $prefix ships no run-clang-tidy" >&2; exit 1; }
+
+"$runner" \
+  -clang-tidy-binary "$prefix/bin/clang-tidy" \
+  -clang-apply-replacements-binary "$prefix/bin/clang-apply-replacements" \
+  -p "$build" \
+  -config-file=runtime/.clang-tidy \
+  -warnings-as-errors='*' \
+  -quiet -hide-progress -j "${GANDR_COMPILE_HOST_TIDY_JOBS:-8}" \
+  'runtime/compile-host/(src|tests|tools)/'
+echo "compile-host: every source satisfies runtime/.clang-tidy"
 '''
 
 # The differential's other half is a Rust test on the merge wall
@@ -137,14 +275,7 @@ if [ -z "$afl_cxx" ]; then
 fi
 afl_fuzz=$(dirname "$afl_cxx")/afl-fuzz
 
-prefix=${GANDR_MLIR_PREFIX:-}
-if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
-  prefix=$(brew --prefix llvm 2>/dev/null || true)
-fi
-if [ -z "$prefix" ]; then
-  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX" >&2
-  exit 1
-fi
+prefix=$(mise run compile-host:prefix)
 
 build=runtime/compile-host/build-fuzz
 cmake \
@@ -177,14 +308,7 @@ description = "Apply the compilation host's curated mutant catalogue and require
 run = '''
 set -eu
 
-prefix=${GANDR_MLIR_PREFIX:-}
-if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
-  prefix=$(brew --prefix llvm 2>/dev/null || true)
-fi
-if [ -z "$prefix" ] || [ ! -d "$prefix/lib/cmake/mlir" ]; then
-  echo "compile-host: no MLIR installation found; set GANDR_MLIR_PREFIX" >&2
-  exit 1
-fi
+prefix=$(mise run compile-host:prefix)
 
 catalogue=runtime/compile-host/mutation/catalogue.tsv
 scratch=$(mktemp -d)
@@ -201,6 +325,8 @@ while IFS="$(printf '\t')" read -r name file expression; do
   rm -rf "$tree"
   cp -R runtime/compile-host "$tree"
   rm -rf "$tree/build" "$tree/build-fuzz" "$tree/build-debug"
+  # The copy carries cmake/mlir-pin.cmake with it, so a mutant tree is held to
+  # the same pin as the real one.
 
   target="$tree/$file"
   cp "$target" "$target.original"
@@ -236,81 +362,134 @@ echo "compile-host: $applied mutants applied, $survived survived"
 [ "$survived" -eq 0 ]
 '''
 
-# The conditional present-toolchain lane, and the exact shape of its condition.
+# The compile host's lane on gate:merge, and the exact shape of its condition.
 #
-# The host's own gates need a discovered MLIR installation, so the merge wall
-# cannot require them unconditionally: making every Rust change depend on an
-# installation the repository does not pin is a much larger claim than this
-# slice makes. What the wall CAN require is that a checkout which HAS one runs
-# them.
+# There is no condition. MLIR is pinned, and a pin is precisely the claim that
+# the wall may assume the toolchain: an installation that is absent, that
+# carries no lib/cmake/mlir, that ships no clang++, or that is a version other
+# than the pinned one is a FAILURE of this task. The absence skip that used to
+# live here — and the GANDR_COMPILE_HOST_STRICT switch that turned it off — are
+# retired by the pin's execution, and the discovered-toolchain reading they
+# implemented is retired with them.
 #
-# The condition is DISCOVERY, and nothing else. This task skips only when it
-# can prove the toolchain is absent — no MLIR prefix, no lib/cmake/mlir under
-# it, or no clang++ beside it. Once a candidate is found, every later step is
-# fatal: a configure failure, a build failure, a failing regression case, a
-# differential mismatch, a bridge failure. That boundary is deliberate and it
-# was drawn the other way first, which was the defect: treating any configure
-# failure as an optional-toolchain skip means a broken CMakeLists or a broken
-# host source leaves gate:merge green with a reassuring message, which is the
-# one outcome a gate must never produce. A toolchain whose compiler and MLIR
-# disagree is a real failure of this task, not an absence.
+# What that replaces is worth stating, because the skip was carefully drawn and
+# the reason it existed no longer holds. It existed because requiring an
+# installation the repository did not pin was a larger claim than the slice
+# made. The repository pins one now, in runtime/compile-host/cmake/mlir-pin.cmake.
 #
-# GANDR_COMPILE_HOST_STRICT=1 additionally turns the absence skip into a
-# failure, which is the switch a pinned-MLIR future flips.
+# What has NOT changed is the rule the skip's own defect taught: once anything
+# after resolution fails, it is fatal. A configure failure, a format finding, a
+# tidy finding, a build failure, a failing regression case, a differential
+# mismatch, a bridge failure — none of them is an absence, and none of them may
+# leave this task green with a reassuring message.
 #
-# What still does not ride here: nothing about the host's behaviour is proven
-# on a checkout without MLIR. The unconditional half is the source-level
-# contract gate in crates/runtime-compile-host/tests/contract.rs, which runs
-# inside cargo:nextest and holds the Rust mirror of the boundary to the host's
-# own headers.
+# Riding here beside the behaviour: the two conventions lanes, so conformance
+# to runtime/.clang-format and runtime/.clang-tidy is gated rather than
+# aspirational.
+#
+# Riding unconditionally elsewhere: the Rust half of the agreement differential
+# and the source-level contract gate in crates/runtime-compile-host, both
+# inside cargo:nextest. They remain the half that needs no toolchain at all.
 ["compile-host:wall"]
-description = "Run the compilation host's gates when an MLIR toolchain is discoverable"
+description = "Run the compilation host's gates against the pinned MLIR toolchain"
 run = '''
 set -eu
 
-absent() {
-  if [ -n "${GANDR_COMPILE_HOST_STRICT:-}" ]; then
-    echo "compile-host: $1 (GANDR_COMPILE_HOST_STRICT is set, so this is a failure)" >&2
-    exit 1
-  fi
-  echo "compile-host: $1"
-  echo "compile-host: the host's gates are SKIPPED; the source-level contract gate ran inside cargo:nextest"
-  exit 0
-}
-
-prefix=${GANDR_MLIR_PREFIX:-}
-if [ -z "$prefix" ] && command -v brew >/dev/null 2>&1; then
-  prefix=$(brew --prefix llvm 2>/dev/null || true)
-fi
-if [ -z "$prefix" ] && command -v llvm-config >/dev/null 2>&1; then
-  prefix=$(llvm-config --prefix)
-fi
-
-# The three absence conditions, and they are the only three.
-if [ -z "$prefix" ]; then
-  absent "no MLIR installation was found"
-fi
-if [ ! -d "$prefix/lib/cmake/mlir" ]; then
-  absent "the installation at $prefix carries no lib/cmake/mlir"
-fi
-if [ ! -x "$prefix/bin/clang++" ]; then
-  absent "the installation at $prefix ships no clang++ to build against it"
-fi
-
-echo "compile-host: MLIR discovered at $prefix; every step below is required"
+eval "$(mise run compile-host:pin)"
+prefix=$(mise run compile-host:prefix)
+echo "compile-host: pin $GANDR_MLIR_PIN_REVISION satisfied at $prefix; every step below is required"
 
 mise run compile-host:configure
+mise run compile-host:format
 mise run compile-host:build
+mise run compile-host:tidy
 mise run compile-host:test
 mise run compile-host:differential
 mise run compile-host:fuzz-smoke
 
-# The bridge's own cases skip when no host is built. Here one is, so they are
-# required rather than conditional.
+# The bridge's own cases skip when no host is built. Under the pin one always
+# is, so they are required rather than conditional.
 GANDR_COMPILE_HOST_REQUIRED=1 cargo nextest run \
   --package gandr-runtime-compile-host \
   --all-targets \
   --features=full
 
-echo "compile-host: the host's gates passed against the MLIR at $prefix"
+echo "compile-host: the host's gates passed against $GANDR_MLIR_PIN_REVISION at $prefix"
+'''
+
+# Moving the pin, which is the only supported way it moves.
+#
+# The update is one command because the three facts have to move together: a
+# revision without its digest is not a pin, and a digest that was transcribed
+# rather than measured is not one either. This task fetches the archive for the
+# named revision, hashes what it actually received, and writes revision,
+# version, archive and sha256 back into cmake/mlir-pin.cmake in one edit.
+#
+# It does NOT install the toolchain. After a bump the local bootstrap has to
+# supply the new version before anything configures again, which is the
+# friction a pin is supposed to have.
+["compile-host:pin-update"]
+description = "Move the MLIR pin to a named llvm-project release, measuring the archive's digest"
+usage = '''
+flag "--revision <revision>" help="The llvm-project release tag to pin, as llvmorg-22.1.9"
+'''
+run = '''
+set -eu
+
+revision="{{usage.revision}}"
+if [ -z "$revision" ]; then
+  echo "compile-host: name the release to pin, as 'mise run compile-host:pin-update --revision llvmorg-22.1.9'" >&2
+  exit 1
+fi
+case "$revision" in
+  llvmorg-*) version=${revision#llvmorg-} ;;
+  *) echo "compile-host: '$revision' is not an llvmorg-<version> tag" >&2; exit 1 ;;
+esac
+
+archive="https://github.com/llvm/llvm-project/releases/download/$revision/llvm-project-$version.src.tar.xz"
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+
+echo "compile-host: fetching $archive"
+if ! curl -fsSL --retry 2 -o "$scratch/archive.tar.xz" "$archive"; then
+  echo "compile-host: $revision has no source archive at $archive" >&2
+  exit 1
+fi
+sha256=$(shasum -a 256 "$scratch/archive.tar.xz" | cut -d' ' -f1)
+echo "compile-host: measured sha256 $sha256"
+
+pin=runtime/compile-host/cmake/mlir-pin.cmake
+python3 - "$pin" "$revision" "$version" "$archive" "$sha256" <<'PYTHON'
+import re
+import sys
+
+path, revision, version, archive, sha256 = sys.argv[1:6]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+
+for name, value in (
+    ("GANDR_MLIR_PIN_REVISION", revision),
+    ("GANDR_MLIR_PIN_VERSION", version),
+    ("GANDR_MLIR_PIN_SHA256", sha256),
+):
+    pattern = re.compile(r'^set\(' + name + r'\s+"[^"]*"\)$', re.M)
+    text, count = pattern.subn(f'set({name} "{value}")', text)
+    if count != 1:
+        raise SystemExit(f"{path} does not carry exactly one {name}")
+
+pattern = re.compile(r'^set\(GANDR_MLIR_PIN_ARCHIVE\n\s*"[^"]*"\n\)$', re.M)
+text, count = pattern.subn(f'set(GANDR_MLIR_PIN_ARCHIVE\n    "{archive}"\n)', text)
+if count != 1:
+    raise SystemExit(f"{path} does not carry exactly one GANDR_MLIR_PIN_ARCHIVE")
+
+# The comment beside the revision names the same release; keep it honest.
+text = re.sub(r"llvmorg-\d+\.\d+\.\d+", revision, text)
+text = re.sub(r"llvm-project-\d+\.\d+\.\d+\.src", f"llvm-project-{version}.src", text)
+
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PYTHON
+
+echo "compile-host: pin moved to $revision; install that toolchain before configuring again"
+mise run compile-host:pin
 '''

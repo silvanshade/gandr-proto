@@ -26,13 +26,13 @@ Editor and CI both read the same two files; there is no second copy.
 - **Warnings are errors.** `-Wall -Wextra -Wconversion -Wsign-conversion -Werror` on every target.
 - **One keg.** The C++ compiler and the MLIR/LLVM libraries come from the **same install prefix**, verified at configure time; a prefix or version mismatch is a fatal configure error, not a warning.
   An RTTI-enabled keg linked by a mismatched host is an ODR hazard, which is why this is checked rather than trusted.
-- **MLIR is pinned** (owner ruling, 2026-08-19): the host builds against one exact MLIR/LLVM revision recorded in the tree, and **no new host design leans on the discovered-toolchain posture** — the run-time C ABI lookup, the optional-absence wall skip, and the "whatever keg is installed" reading are all transitional.
-  The pin mechanism follows the Mojo compiler's (KGEN): an exact `llvm-project` revision with its sha256, fetched as a pinned **archive** and built as part of the project's own build, updated only through a dedicated update tool.
+- **MLIR is pinned**, and the pin is executed: `runtime/compile-host/cmake/mlir-pin.cmake` carries the revision, the version, the archive and its sha256, and it is the only place any of the four is written.
+  The pin is `llvmorg-22.1.8`, upstream unmodified — `runtime/compile-host/mlir-patches/series` is empty and is where a reader confirms that.
+  The mechanism follows the Mojo compiler's (KGEN): an exact `llvm-project` revision with its sha256, fetched as a pinned **archive** rather than submoduled, with local modifications carried as a curated Stacked Git (`stg`) series over the fetched tree, moved only through `mise run compile-host:pin-update --revision <tag>`, which measures the digest by hashing what it fetched rather than transcribing one.
   A submodule is rejected — the repository is massive and the archive fetch is far faster.
-  Local modifications ride a curated patch set maintained as a Stacked Git (`stg`) series, applied over the fetched archive.
-  `llvmorg-22.1.8` is the candidate pin.
-  Until the source-built pin lands, the local bootstrap satisfies the pin from the Homebrew keg exactly as the `ss-56o.1` spike's macOS toolchain file does — vanilla-clang discovery, the compiler/MLIR keg-match as a **fatal** configure check, the `CMAKE_CXX_STDLIB_MODULES_JSON` override for `import std` — with the discovered version checked against the pinned one rather than accepted as found.
-  The conditional `compile-host:wall` lane on `gate:merge` owns the lawful-skip rule for checkouts without the toolchain ([the compiled-runtime wall rule](../../runtime/compile-host/README.md)); the pin's execution retires the skip (`GANDR_COMPILE_HOST_STRICT=1` becomes the default posture).
+  The source build is not landed; until it is, the local bootstrap satisfies the pin from an installed toolchain, and what makes that a pin rather than a preference is the **equality check** — a candidate whose `LLVM_PACKAGE_VERSION` is not the pinned version is refused by `compile-host:prefix` and refused again by the configure.
+  **`compile-host:wall` has no absence skip**, because a pin is precisely the claim that the wall may assume the toolchain; the skip and the `GANDR_COMPILE_HOST_STRICT` switch are retired, and with them the "whatever keg is installed" reading ([the compiled-runtime wall rule](../../runtime/compile-host/README.md)).
+  The one transitional thing left is the bridge's run-time C ABI lookup, which `gandr-8sxt` owns.
 
 ## Modules first
 
@@ -45,9 +45,12 @@ Editor and CI both read the same two files; there is no second copy.
 ## Exceptions, RTTI, `noexcept`
 
 - **No exceptions.** `-fno-exceptions` everywhere; errors are values (`std::expected`, status structs, the host's own outcome types), never thrown.
-  This matches the keg: LLVM/MLIR are themselves built without exceptions.
+  This matches the keg, and the match is **read** rather than assumed: the configure takes `LLVM_ENABLE_EH` from the discovered installation and refuses an EH-enabled one outright.
+  What the flag costs at a C boundary is stated where the boundary is declared rather than hidden: every recoverable host or validation failure remains a status, while process-fatal resource exhaustion and LLVM's own fatal-error path abort.
+  That is not a concession the flag extracts — **the linked LLVM aborts on those paths however the consuming target is built**, so a boundary promising otherwise was promising something it did not own.
 - **No RTTI wherever linkable.** The posture is `-fno-rtti`; the one lawful departure is an MLIR install built `LLVM_ENABLE_RTTI ON`, where the MLIR-facing target matches the keg because a mixed-RTTI link is an ODR hazard.
   That departure is **recorded at the flag site**, never taken silently, and it never propagates above the MLIR-facing layer.
+  The ordinary distribution kegs are `LLVM_ENABLE_RTTI ON`, so the compile host takes the departure today; the configure reads the value and prints the posture it chose beside the pin it resolved.
 - **`noexcept` everywhere possible.** Every function that does not deliberately cross a potentially-throwing boundary is declared `noexcept`.
   Under `-fno-exceptions` this is nearly every function; the annotation is still written, because it is an interface promise the type system carries and the optimizer uses, not a restatement of a flag.
 
@@ -68,4 +71,8 @@ The Rust conventions transfer wherever C++ can express them; where a rule below 
 - `clang-format` runs against `runtime/.clang-format`; a formatting diff is never hand-negotiated.
 - `clang-tidy` runs against `runtime/.clang-tidy` with the project's compile commands; a finding is fixed at the source or suppressed at the narrowest scope with a `// NOLINT(check-name)` carrying a reason — the C++ counterpart of `#[expect(lint, reason = "…")]`.
   Bare `// NOLINT` and file-wide suppression are prohibited.
-- Both run as part of a C++ change's own gates before the wall, on the changed files at minimum.
+- **Both are gated lanes on `compile-host:wall`**, not a discipline a contributor is trusted to have exercised: `mise run compile-host:format` and `mise run compile-host:tidy`, using the tools that ship beside the pinned MLIR so the answer does not depend on which `clang` is on `PATH`.
+  A tidy finding is an error there; the tree is clean and the lane is what keeps it so.
+- **A suppression above a function definition must be `NOLINTBEGIN`/`NOLINTEND`.** The format policy puts the return type on its own line, so a function-level diagnostic lands on the _name_ line and a `NOLINTNEXTLINE` above the definition covers the wrong one.
+  This is not obvious from a failing run, because the finding simply persists.
+- **A source-text gate must not become a second format gate.** `crates/runtime-compile-host/tests/contract.rs` reads the host's headers to hold declared numbers to their Rust mirror; it compares with whitespace collapsed and keys on symbols rather than signatures, because macro alignment, qualifier placement and return-type position are the format policy's to decide.
