@@ -9,20 +9,29 @@
 // - panics: none; a failure is a printed diagnostic and an exit status.
 
 #include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/interpret.hpp"
 #include "gandr/compile_host/jit.hpp"
 #include "gandr/compile_host/pipeline.hpp"
 #include "gandr/compile_host/samples.hpp"
 #include "gandr/compile_host/status.hpp"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OwningOpRef.h"
 
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <ios>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <utility>
 #include <vector>
 
 namespace {

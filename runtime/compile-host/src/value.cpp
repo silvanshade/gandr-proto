@@ -1,7 +1,13 @@
 #include "gandr/compile_host/value.hpp"
 
+#include "gandr/compile_host/image.hpp"
+
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gandr::compile_host {

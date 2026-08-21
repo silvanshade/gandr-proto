@@ -1,9 +1,18 @@
 #include "gandr/compile_host/dialect.hpp"
 
+// TableGen writes the type parser, the type printer and their dispatch switch
+// into the .inc files this translation unit includes below, so two of the
+// headers here are used by generated text the include analysis does not read.
+#include "gandr/compile_host/image.hpp"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/DialectImplementation.h"
+#include "mlir/IR/DialectImplementation.h" // NOLINT(misc-include-cleaner)
+#include "mlir/IR/Region.h"
+#include "mlir/Support/LLVM.h"
 
-#include "llvm/ADT/TypeSwitch.h"
+#include "llvm/ADT/TypeSwitch.h" // NOLINT(misc-include-cleaner)
+
+#include <cstdint>
+#include <optional>
 
 // See the note in `dialect.hpp`: the generated definitions are held outside the
 // host's own warning wall, which stays on for everything below them.

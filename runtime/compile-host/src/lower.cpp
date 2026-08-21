@@ -1,17 +1,28 @@
 #include "gandr/compile_host/dialect.hpp"
 #include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/pipeline.hpp"
+#include "gandr/compile_host/status.hpp"
 #include "gandr/compile_host/value.hpp"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/IR/Block.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/IRMapping.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/Region.h"
+#include "mlir/IR/Value.h"
+#include "mlir/Support/LLVM.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <optional>
 #include <string>
-#include <vector>
+#include <string_view>
 
 namespace gandr::compile_host {
 namespace {

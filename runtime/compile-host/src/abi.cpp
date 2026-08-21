@@ -5,14 +5,13 @@
 #include "gandr/compile_host/jit.hpp"
 #include "gandr/compile_host/status.hpp"
 
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <new>
 #include <optional>
 #include <span>
-#include <string>
 #include <string_view>
-#include <vector>
 
 namespace {
 

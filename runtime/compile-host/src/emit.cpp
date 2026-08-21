@@ -1,6 +1,8 @@
 #include "gandr/compile_host/emit.hpp"
 
 #include "gandr/compile_host/dialect.hpp"
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/status.hpp"
 #include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
@@ -12,13 +14,21 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/UB/IR/UBOps.h"
+#include "mlir/IR/Block.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/IRMapping.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
+#include "mlir/IR/OwningOpRef.h"
+#include "mlir/IR/Value.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace gandr::compile_host {

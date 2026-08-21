@@ -1,21 +1,30 @@
 #include "gandr/compile_host/jit.hpp"
 
 #include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/pipeline.hpp"
+#include "gandr/compile_host/status.hpp"
+#include "gandr/compile_host/value.hpp"
 #include "mlir/ExecutionEngine/CRunnerUtils.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/ExecutionEngine/OptUtils.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OwningOpRef.h"
 
 #include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
+#include <expected>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gandr::compile_host {

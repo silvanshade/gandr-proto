@@ -1,9 +1,15 @@
 #include "gandr/compile_host/interpret.hpp"
 
 #include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/jit.hpp"
+#include "gandr/compile_host/status.hpp"
 #include "gandr/compile_host/value.hpp"
 
 #include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <optional>
 #include <string>
 #include <vector>
 

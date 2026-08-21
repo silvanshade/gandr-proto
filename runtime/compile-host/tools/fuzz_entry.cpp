@@ -23,12 +23,23 @@
 #include "gandr/compile_host/emit.hpp"
 #include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/interpret.hpp"
+#include "gandr/compile_host/jit.hpp"
 #include "gandr/compile_host/pipeline.hpp"
+#include "gandr/compile_host/status.hpp"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OwningOpRef.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <ios>
 #include <iterator>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 

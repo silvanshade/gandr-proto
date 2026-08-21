@@ -1,15 +1,16 @@
 #include "gandr/compile_host/pipeline.hpp"
 
 #include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/status.hpp"
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMPass.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Support/LLVM.h"
 #include "mlir/Transforms/Passes.h"
-
-#include "llvm/Support/raw_ostream.h"
 
 #include <string>
 
