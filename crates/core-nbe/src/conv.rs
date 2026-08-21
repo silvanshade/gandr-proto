@@ -69,6 +69,9 @@ use gandr_core_term::static_term::StaticArg;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::ValueType;
+pub use gandr_kernel_conversion_trace::ConversionDecision;
+pub use gandr_kernel_conversion_trace::NullSink;
+pub use gandr_kernel_conversion_trace::TraceSink;
 
 use crate::Normalizer;
 use crate::defs::Transparency;
@@ -96,6 +99,21 @@ use crate::sem::SemError;
 use crate::sem::SemValueId;
 use crate::sem::SemValueNode;
 use crate::sem::ValueUnfold;
+
+/// The node identity carried by one NBE conversion decision.
+///
+/// The trace is a session artifact, so these ids are intentionally local to
+/// the semantic arena and are not a persistence or wire-format identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceId
+{
+    /// A semantic value node.
+    Value(SemValueId),
+    /// A semantic computation node.
+    Comp(SemCompId),
+    /// A closure entered while comparing computations.
+    Closure(ClosureId),
+}
 
 /// The speculation state a goal is compared under.
 ///
@@ -186,9 +204,32 @@ pub fn converts(
     rhs: &Rc<Value>,
 ) -> ValueEquality
 {
+    let mut sink = NullSink;
+    converts_with_sink(nbe, lhs, rhs, &mut sink)
+}
+
+/// Decides source-value conversion while emitting decision-grain events.
+///
+/// # Contract
+/// - ensures: returns the same verdict as [`converts`], while `sink` receives
+///   the decisions the conversion strategy made in order.
+/// - provides: the untrusted engine's session-artifact seam for kernel replay.
+/// - fails: never; an arena error is absorbed into a **distinct** verdict.
+/// - panics: none.
+#[must_use]
+#[inline]
+pub fn converts_with_sink<S>(
+    nbe: &mut Normalizer,
+    lhs: &Rc<Value>,
+    rhs: &Rc<Value>,
+    sink: &mut S,
+) -> ValueEquality
+where
+    S: TraceSink<TraceId>,
+{
     let opened = nbe.begin_run();
     let decision =
-        converts_checked(nbe, lhs, rhs).unwrap_or_else(|_error| ValueEquality::from(false));
+        converts_checked(nbe, lhs, rhs, sink).unwrap_or_else(|_error| ValueEquality::from(false));
     nbe.finish_run(opened);
     decision
 }
@@ -198,17 +239,20 @@ pub fn converts(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn converts_checked(
+fn converts_checked<S>(
     nbe: &mut Normalizer,
     lhs: &Rc<Value>,
     rhs: &Rc<Value>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let lhs = nbe.lower_input(lhs)?;
     let rhs = nbe.lower_input(rhs)?;
     let lhs = eval_value(nbe, SemArena::EMPTY_ENV, lhs)?;
     let rhs = eval_value(nbe, SemArena::EMPTY_ENV, rhs)?;
-    converts_values(nbe, lhs, rhs)
+    converts_values_with_sink(nbe, lhs, rhs, sink)
 }
 
 /// Decides definitional equality of two semantic values.
@@ -230,7 +274,30 @@ pub fn converts_values(
     rhs: SemValueId,
 ) -> Result<ValueEquality, SemError>
 {
-    run(nbe, alloc::vec![Frame::Value(lhs, rhs, ConvState::Flex)])
+    let mut sink = NullSink;
+    converts_values_with_sink(nbe, lhs, rhs, &mut sink)
+}
+
+/// Decides semantic-value conversion while emitting decisions to `sink`.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+#[inline]
+pub fn converts_values_with_sink<S>(
+    nbe: &mut Normalizer,
+    lhs: SemValueId,
+    rhs: SemValueId,
+    sink: &mut S,
+) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
+{
+    run(
+        nbe,
+        alloc::vec![Frame::Value(lhs, rhs, ConvState::Flex)],
+        sink,
+    )
 }
 
 /// Decides definitional equality of two semantic computations.
@@ -245,7 +312,30 @@ pub fn converts_comps(
     rhs: SemCompId,
 ) -> Result<ValueEquality, SemError>
 {
-    run(nbe, alloc::vec![Frame::Comp(lhs, rhs, ConvState::Flex)])
+    let mut sink = NullSink;
+    converts_comps_with_sink(nbe, lhs, rhs, &mut sink)
+}
+
+/// Decides semantic-computation conversion while emitting decisions to `sink`.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+#[inline]
+pub fn converts_comps_with_sink<S>(
+    nbe: &mut Normalizer,
+    lhs: SemCompId,
+    rhs: SemCompId,
+    sink: &mut S,
+) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
+{
+    run(
+        nbe,
+        alloc::vec![Frame::Comp(lhs, rhs, ConvState::Flex)],
+        sink,
+    )
 }
 
 /// Drains the goal stack, backtracking to a choice point on failure.
@@ -260,22 +350,25 @@ pub fn converts_comps(
 /// - boundedness: unfolding is bounded by the normalizer's fuel, and a choice
 ///   point is discarded once fired.
 /// - input recursion: none.
-fn run(
+fn run<S>(
     nbe: &mut Normalizer,
     mut goals: Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     while let Some(frame) = goals.pop() {
         let failed = match frame {
             | Frame::Choice(..) => false,
             | Frame::Value(lhs, rhs, state) => {
-                !bool::from(value_goal(nbe, lhs, rhs, state, &mut goals)?)
+                !bool::from(value_goal(nbe, lhs, rhs, state, &mut goals, sink)?)
             },
             | Frame::Comp(lhs, rhs, state) => {
-                !bool::from(comp_goal(nbe, lhs, rhs, state, &mut goals)?)
+                !bool::from(comp_goal(nbe, lhs, rhs, state, &mut goals, sink)?)
             },
         };
-        if failed && !bool::from(backtrack(nbe, &mut goals)?) {
+        if failed && !bool::from(backtrack(nbe, &mut goals, sink)?) {
             return Ok(ValueEquality::from(false));
         }
     }
@@ -290,15 +383,18 @@ fn run(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn backtrack(
+fn backtrack<S>(
     nbe: &mut Normalizer,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<BacktrackStatus, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     while let Some(frame) = goals.pop() {
         if let Frame::Choice(lhs, rhs) = frame {
-            let unfolded_lhs = unfold_comp(nbe, lhs, ConvState::Full)?.unwrap_or(lhs);
-            let unfolded_rhs = unfold_comp(nbe, rhs, ConvState::Full)?.unwrap_or(rhs);
+            let unfolded_lhs = unfold_comp(nbe, lhs, ConvState::Full, sink)?.unwrap_or(lhs);
+            let unfolded_rhs = unfold_comp(nbe, rhs, ConvState::Full, sink)?.unwrap_or(rhs);
             if unfolded_lhs == lhs && unfolded_rhs == rhs {
                 continue;
             }
@@ -320,16 +416,22 @@ fn backtrack(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn resolve_embedding(
+fn resolve_embedding<S>(
     nbe: &mut Normalizer,
     id: SemValueId,
     node: &SemValueNode,
+    sink: &mut S,
 ) -> Result<SemValueId, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let SemValueNode::Run(cell) = *node
     else {
         return Ok(id);
     };
+    sink.record(ConversionDecision::Force {
+        thunk: TraceId::Closure(cell),
+    });
     let whnf = enter_nullary(nbe, cell, ForceMode::Unfold)?;
     match *nbe.arena().comp(whnf)?.node() {
         | SemCompNode::Return(produced) => Ok(produced),
@@ -344,16 +446,23 @@ fn resolve_embedding(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn value_goal(
+fn value_goal<S>(
     nbe: &mut Normalizer,
     lhs: SemValueId,
     rhs: SemValueId,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     // Step 1: one id in one arena is one value.
     if lhs == rhs {
+        sink.record(ConversionDecision::ComparedShared {
+            left: TraceId::Value(lhs),
+            right: TraceId::Value(rhs),
+        });
         return Ok(ValueEquality::from(true));
     }
     // Step 2: the cached guard word, read only in the distinct direction.
@@ -382,8 +491,8 @@ fn value_goal(
     // the embedding with the value it produced; a computation stuck on a
     // variable leaves the embedding alone and the pair falls through to the
     // congruence arm below. Either side may resolve, so the rule fires on both.
-    let resolved_lhs = resolve_embedding(nbe, lhs, &lhs_node)?;
-    let resolved_rhs = resolve_embedding(nbe, rhs, &rhs_node)?;
+    let resolved_lhs = resolve_embedding(nbe, lhs, &lhs_node, sink)?;
+    let resolved_rhs = resolve_embedding(nbe, rhs, &rhs_node, sink)?;
     if resolved_lhs != lhs || resolved_rhs != rhs {
         goals.push(Frame::Value(resolved_lhs, resolved_rhs, state));
         return Ok(ValueEquality::from(true));
@@ -415,7 +524,15 @@ fn value_goal(
             // a variable, or out of budget — so the only equality on offer is
             // congruence under the embedding, which is the ordinary
             // computation-conversion path one level down.
-            closures_goal(nbe, left, right, ClosureArity::from(0_usize), state, goals)?;
+            closures_goal(
+                nbe,
+                left,
+                right,
+                ClosureArity::from(0_usize),
+                state,
+                goals,
+                sink,
+            )?;
             return Ok(ValueEquality::from(true));
         },
         | (&SemValueNode::Pair(left_fst, left_snd), &SemValueNode::Pair(right_fst, right_snd)) => {
@@ -520,7 +637,13 @@ fn value_goal(
             if left_grade != right_grade {
                 return Ok(ValueEquality::from(false));
             }
+            sink.record(ConversionDecision::Force {
+                thunk: TraceId::Closure(left_cell),
+            });
             let left = crate::eval::enter_nullary(nbe, left_cell, state.force())?;
+            sink.record(ConversionDecision::Force {
+                thunk: TraceId::Closure(right_cell),
+            });
             let right = crate::eval::enter_nullary(nbe, right_cell, state.force())?;
             goals.push(Frame::Comp(left, right, state));
             return Ok(ValueEquality::from(true));
@@ -556,7 +679,13 @@ fn value_goal(
         | (&SemValueNode::Thunk(grade, _), _) | (_, &SemValueNode::Thunk(grade, _))
             if bool::from(Grade::ONE.leq(grade)) =>
         {
+            sink.record(ConversionDecision::Force {
+                thunk: TraceId::Value(lhs),
+            });
             let left = force_head(nbe, lhs, state.force())?;
+            sink.record(ConversionDecision::Force {
+                thunk: TraceId::Value(rhs),
+            });
             let right = force_head(nbe, rhs, state.force())?;
             goals.push(Frame::Comp(left, right, state));
             return Ok(ValueEquality::from(true));
@@ -578,9 +707,12 @@ fn value_goal(
     // Steps 4 and 5: the heads disagree, so unfold — the taller side first, and
     // the only side that can unfold when just one has a rule.
     if !bool::from(state.unfolds()) {
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Value(lhs),
+        });
         return Ok(ValueEquality::from(false));
     }
-    let unfolded = unfold_value_side(nbe, lhs, rhs, state)?;
+    let unfolded = unfold_value_side(nbe, lhs, rhs, state, sink)?;
     match unfolded {
         | Some((lhs, rhs)) => {
             goals.push(Frame::Value(lhs, rhs, state));
@@ -589,39 +721,83 @@ fn value_goal(
         | None => Ok(ValueEquality::from(false)),
     }
 }
+/// Forces one semantic value while recording the conversion decision.
+///
+/// The shared sink receives the decision grain only: it does not observe the
+/// reduction sequence used to produce the value.
+///
+/// # Errors
+///
+/// Returns [`SemError`] on arena exhaustion or an unresolvable id.
+fn force_value_decision<S>(
+    nbe: &mut Normalizer,
+    id: SemValueId,
+    mode: ForceMode,
+    sink: &mut S,
+) -> Result<SemValueId, SemError>
+where
+    S: TraceSink<TraceId>,
+{
+    sink.record(ConversionDecision::Force {
+        thunk: TraceId::Value(id),
+    });
+    let unfolded = force_value(nbe, id, mode)?;
+    sink.record(if unfolded == id {
+        ConversionDecision::Postpone {
+            constant: TraceId::Value(id),
+        }
+    }
+    else {
+        ConversionDecision::Unfold {
+            constant: TraceId::Value(id),
+        }
+    });
+    Ok(unfolded)
+}
 
 /// Unfolds whichever side of a value pair the height rule selects.
 ///
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn unfold_value_side(
+fn unfold_value_side<S>(
     nbe: &mut Normalizer,
     lhs: SemValueId,
     rhs: SemValueId,
     state: ConvState,
+    sink: &mut S,
 ) -> Result<Option<(SemValueId, SemValueId)>, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let lhs_height = value_height(nbe, lhs)?;
     let rhs_height = value_height(nbe, rhs)?;
     let mode = state.force();
     match (lhs_height, rhs_height) {
-        | (None, None) => Ok(None),
+        | (None, None) => {
+            sink.record(ConversionDecision::Postpone {
+                constant: TraceId::Value(lhs),
+            });
+            sink.record(ConversionDecision::Postpone {
+                constant: TraceId::Value(rhs),
+            });
+            Ok(None)
+        },
         | (Some(_), None) => {
-            let unfolded = force_value(nbe, lhs, mode)?;
+            let unfolded = force_value_decision(nbe, lhs, mode, sink)?;
             Ok((unfolded != lhs).then_some((unfolded, rhs)))
         },
         | (None, Some(_)) => {
-            let unfolded = force_value(nbe, rhs, mode)?;
+            let unfolded = force_value_decision(nbe, rhs, mode, sink)?;
             Ok((unfolded != rhs).then_some((lhs, unfolded)))
         },
         | (Some(left), Some(right)) => {
             if u32::from(left) >= u32::from(right) {
-                let unfolded = force_value(nbe, lhs, mode)?;
+                let unfolded = force_value_decision(nbe, lhs, mode, sink)?;
                 Ok((unfolded != lhs).then_some((unfolded, rhs)))
             }
             else {
-                let unfolded = force_value(nbe, rhs, mode)?;
+                let unfolded = force_value_decision(nbe, rhs, mode, sink)?;
                 Ok((unfolded != rhs).then_some((lhs, unfolded)))
             }
         },
@@ -650,15 +826,22 @@ fn value_height(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn comp_goal(
+fn comp_goal<S>(
     nbe: &mut Normalizer,
     lhs: SemCompId,
     rhs: SemCompId,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     if lhs == rhs {
+        sink.record(ConversionDecision::ComparedShared {
+            left: TraceId::Comp(lhs),
+            right: TraceId::Comp(rhs),
+        });
         return Ok(ValueEquality::from(true));
     }
     let lhs_node = nbe.arena().comp(lhs)?.node().clone();
@@ -692,16 +875,19 @@ fn comp_goal(
             Ok(ValueEquality::from(true))
         },
         | (&SemCompNode::Neutral(left), &SemCompNode::Neutral(right)) => {
-            neutral_goal(nbe, lhs, rhs, left, right, state, goals)
+            neutral_goal(nbe, lhs, rhs, left, right, state, goals, sink)
         },
         | _ => {
             // A returner against a neutral, or two canonical forms of different
             // polarity: only an unfolding can still reconcile them.
             if !bool::from(state.unfolds()) {
+                sink.record(ConversionDecision::Postpone {
+                    constant: TraceId::Comp(lhs),
+                });
                 return Ok(ValueEquality::from(false));
             }
-            let left = unfold_comp(nbe, lhs, state)?;
-            let right = unfold_comp(nbe, rhs, state)?;
+            let left = unfold_comp(nbe, lhs, state, sink)?;
+            let right = unfold_comp(nbe, rhs, state, sink)?;
             match (left, right) {
                 | (None, None) => Ok(ValueEquality::from(false)),
                 | (left, right) => {
@@ -722,7 +908,11 @@ fn comp_goal(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn neutral_goal(
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the neutral goal names both semantic heads, state, goal stack, and sink explicitly; a context struct would only relocate these conversion-owned fields"
+)]
+fn neutral_goal<S>(
     nbe: &mut Normalizer,
     lhs_comp: SemCompId,
     rhs_comp: SemCompId,
@@ -730,7 +920,10 @@ fn neutral_goal(
     rhs: crate::sem::NeutralId,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let (lhs_head, lhs_spine, lhs_face) = {
         let neutral = nbe.arena().neutral(lhs)?;
@@ -754,6 +947,12 @@ fn neutral_goal(
     let speculating = bool::from(state.unfolds())
         && (bool::from(lhs_face.unfoldable()) || bool::from(rhs_face.unfoldable()));
     if speculating {
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(lhs_comp),
+        });
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(rhs_comp),
+        });
         goals.push(Frame::Choice(lhs_comp, rhs_comp));
     }
     let inner = if speculating { ConvState::Rigid } else { state };
@@ -763,17 +962,17 @@ fn neutral_goal(
     // as the spine without it. Dropping it after the length check would be too
     // late: two spines differing only by such an entry would be refused on
     // their lengths before any entry was examined.
-    let lhs_spine = canonical_spine(nbe, &lhs_spine)?;
-    let rhs_spine = canonical_spine(nbe, &rhs_spine)?;
+    let lhs_spine = canonical_spine(nbe, &lhs_spine, sink)?;
+    let rhs_spine = canonical_spine(nbe, &rhs_spine, sink)?;
     if lhs_spine.len() != rhs_spine.len() {
         return Ok(ValueEquality::from(false));
     }
     for (left, right) in lhs_spine.iter().zip(rhs_spine.iter()).rev() {
-        if !bool::from(spine_goal(nbe, *left, *right, inner, goals)?) {
+        if !bool::from(spine_goal(nbe, *left, *right, inner, goals, sink)?) {
             return Ok(ValueEquality::from(false));
         }
     }
-    head_goal(nbe, &lhs_head, &rhs_head, inner, goals)
+    head_goal(nbe, &lhs_head, &rhs_head, inner, goals, sink)
 }
 
 /// Drops every spine entry that is the identity eliminator: a sequence whose
@@ -808,15 +1007,18 @@ fn neutral_goal(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn canonical_spine(
+fn canonical_spine<S>(
     nbe: &mut Normalizer,
     spine: &[Elim],
+    sink: &mut S,
 ) -> Result<Vec<Elim>, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let mut canonical = Vec::with_capacity(spine.len());
     for entry in spine {
         if let Elim::Sequence(cont) = *entry
-            && bool::from(normalized_continuation_is_identity(nbe, cont)?)
+            && bool::from(normalized_continuation_is_identity(nbe, cont, sink)?)
         {
             continue;
         }
@@ -835,10 +1037,13 @@ fn canonical_spine(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn normalized_continuation_is_identity(
+fn normalized_continuation_is_identity<S>(
     nbe: &mut Normalizer,
     cont: ClosureId,
+    _sink: &mut S,
 ) -> Result<TrivialContinuation, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let level = nbe.fresh_level();
     let fresh = value(
@@ -861,13 +1066,16 @@ fn normalized_continuation_is_identity(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn spine_goal(
+fn spine_goal<S>(
     nbe: &mut Normalizer,
     lhs: Elim,
     rhs: Elim,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     match (lhs, rhs) {
         | (Elim::Apply(left), Elim::Apply(right)) => {
@@ -876,7 +1084,15 @@ fn spine_goal(
         },
         | (Elim::Project(left), Elim::Project(right)) => Ok(ValueEquality::from(left == right)),
         | (Elim::Sequence(left), Elim::Sequence(right)) => {
-            closures_goal(nbe, left, right, ClosureArity::from(1_usize), state, goals)?;
+            closures_goal(
+                nbe,
+                left,
+                right,
+                ClosureArity::from(1_usize),
+                state,
+                goals,
+                sink,
+            )?;
             Ok(ValueEquality::from(true))
         },
         | _ => Ok(ValueEquality::from(false)),
@@ -893,14 +1109,17 @@ fn spine_goal(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn closures_goal(
+fn closures_goal<S>(
     nbe: &mut Normalizer,
     lhs: ClosureId,
     rhs: ClosureId,
     arity: ClosureArity,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    _sink: &mut S,
 ) -> Result<(), SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let arity = usize::from(arity);
     let mut fresh = Vec::with_capacity(arity);
@@ -920,13 +1139,16 @@ fn closures_goal(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn head_goal(
+fn head_goal<S>(
     nbe: &mut Normalizer,
     lhs: &NeutralHead,
     rhs: &NeutralHead,
     state: ConvState,
     goals: &mut Vec<Frame>,
+    sink: &mut S,
 ) -> Result<ValueEquality, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     match (lhs, rhs) {
         | (
@@ -948,6 +1170,7 @@ fn head_goal(
                 ClosureArity::from(1_usize),
                 state,
                 goals,
+                sink,
             )?;
             closures_goal(
                 nbe,
@@ -956,6 +1179,7 @@ fn head_goal(
                 ClosureArity::from(1_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
             Ok(ValueEquality::from(true))
@@ -984,6 +1208,7 @@ fn head_goal(
                     ClosureArity::from(1_usize),
                     state,
                     goals,
+                    sink,
                 )?;
             }
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
@@ -1008,6 +1233,7 @@ fn head_goal(
                 ClosureArity::from(2_usize),
                 state,
                 goals,
+                sink,
             )?;
             closures_goal(
                 nbe,
@@ -1016,6 +1242,7 @@ fn head_goal(
                 ClosureArity::from(0_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
             Ok(ValueEquality::from(true))
@@ -1037,6 +1264,7 @@ fn head_goal(
                 ClosureArity::from(2_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
             Ok(ValueEquality::from(true))
@@ -1066,6 +1294,7 @@ fn head_goal(
                 ClosureArity::from(1_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
             Ok(ValueEquality::from(true))
@@ -1103,6 +1332,7 @@ fn head_goal(
                 ClosureArity::from(1_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_scrutinee, right_scrutinee, state));
             Ok(ValueEquality::from(true))
@@ -1181,6 +1411,7 @@ fn head_goal(
                     ClosureArity::from(2_usize),
                     state,
                     goals,
+                    sink,
                 )?;
             }
             closures_goal(
@@ -1190,6 +1421,7 @@ fn head_goal(
                 ClosureArity::from(1_usize),
                 state,
                 goals,
+                sink,
             )?;
             closures_goal(
                 nbe,
@@ -1198,6 +1430,7 @@ fn head_goal(
                 ClosureArity::from(0_usize),
                 state,
                 goals,
+                sink,
             )?;
             Ok(ValueEquality::from(true))
         },
@@ -1218,22 +1451,47 @@ fn head_goal(
                 ClosureArity::from(0_usize),
                 state,
                 goals,
+                sink,
             )?;
             goals.push(Frame::Value(left_value, right_value, state));
             Ok(ValueEquality::from(true))
         },
         | (&NeutralHead::Reset(left), &NeutralHead::Reset(right)) => {
-            closures_goal(nbe, left, right, ClosureArity::from(0_usize), state, goals)?;
+            closures_goal(
+                nbe,
+                left,
+                right,
+                ClosureArity::from(0_usize),
+                state,
+                goals,
+                sink,
+            )?;
             Ok(ValueEquality::from(true))
         },
         | (&NeutralHead::Shift(left), &NeutralHead::Shift(right)) => {
-            closures_goal(nbe, left, right, ClosureArity::from(1_usize), state, goals)?;
+            closures_goal(
+                nbe,
+                left,
+                right,
+                ClosureArity::from(1_usize),
+                state,
+                goals,
+                sink,
+            )?;
             Ok(ValueEquality::from(true))
         },
         | (&NeutralHead::Fix(left), &NeutralHead::Fix(right)) => {
             // Congruence under the self-reference binder, and nothing more:
             // the fixpoint is never unfolded here.
-            closures_goal(nbe, left, right, ClosureArity::from(1_usize), state, goals)?;
+            closures_goal(
+                nbe,
+                left,
+                right,
+                ClosureArity::from(1_usize),
+                state,
+                goals,
+                sink,
+            )?;
             Ok(ValueEquality::from(true))
         },
         | (&NeutralHead::Hole(_), _) | (_, &NeutralHead::Hole(_)) => Ok(ValueEquality::from(true)),
@@ -1351,14 +1609,20 @@ fn same_package_head(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-fn unfold_comp(
+fn unfold_comp<S>(
     nbe: &mut Normalizer,
     id: SemCompId,
     state: ConvState,
+    sink: &mut S,
 ) -> Result<Option<SemCompId>, SemError>
+where
+    S: TraceSink<TraceId>,
 {
     let SemCompNode::Neutral(stuck) = *nbe.arena().comp(id)?.node()
     else {
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(id),
+        });
         return Ok(None);
     };
     let (head, spine, face) = {
@@ -1370,19 +1634,43 @@ fn unfold_comp(
         )
     };
     match face {
-        | CompUnfold::Forced(forced) => return Ok(Some(forced)),
-        | CompUnfold::Rigid => return Ok(None),
-        | CompUnfold::Blocked(_) if matches!(state, ConvState::Flex) => return Ok(None),
+        | CompUnfold::Forced(forced) => {
+            sink.record(ConversionDecision::Unfold {
+                constant: TraceId::Comp(id),
+            });
+            return Ok(Some(forced));
+        },
+        | CompUnfold::Rigid => {
+            sink.record(ConversionDecision::Postpone {
+                constant: TraceId::Comp(id),
+            });
+            return Ok(None);
+        },
+        | CompUnfold::Blocked(_) if matches!(state, ConvState::Flex) => {
+            sink.record(ConversionDecision::Postpone {
+                constant: TraceId::Comp(id),
+            });
+            return Ok(None);
+        },
         | CompUnfold::Blocked(_) | CompUnfold::Pending(_) => {},
     }
     let NeutralHead::Force(carried) = head
     else {
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(id),
+        });
         return Ok(None);
     };
-    let unfolded = force_value(nbe, carried, ForceMode::Unfold)?;
+    let unfolded = force_value_decision(nbe, carried, ForceMode::Unfold, sink)?;
     if unfolded == carried {
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(id),
+        });
         return Ok(None);
     }
+    sink.record(ConversionDecision::Force {
+        thunk: TraceId::Value(unfolded),
+    });
     let base = force_head(nbe, unfolded, ForceMode::Unfold)?;
     let result = rerun_spine(nbe, base, &spine, ForceMode::Unfold)?;
     if matches!(state, ConvState::Flex) && !bool::from(made_progress(nbe, result)?) {
@@ -1390,10 +1678,16 @@ fn unfold_comp(
             nbe.arena_mut()
                 .set_unfold_face(stuck, CompUnfold::Blocked(height))?;
         }
+        sink.record(ConversionDecision::Postpone {
+            constant: TraceId::Comp(id),
+        });
         return Ok(None);
     }
     nbe.arena_mut()
         .set_unfold_face(stuck, CompUnfold::Forced(result))?;
+    sink.record(ConversionDecision::Unfold {
+        constant: TraceId::Comp(id),
+    });
     Ok(Some(result))
 }
 

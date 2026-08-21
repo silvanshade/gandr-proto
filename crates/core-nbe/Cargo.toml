@@ -13,6 +13,9 @@ publish.workspace = true
 [dependencies]
 # The core CBPV terms and types this engine evaluates, compares, and reads back.
 gandr-core-term.workspace = true
+# The dependency-free decision vocabulary shared with the certified kernel's
+# replay surface.
+gandr-kernel-conversion-trace.workspace = true
 gandr-kernel-strata.workspace = true
 
 [features]
