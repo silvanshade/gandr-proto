@@ -333,6 +333,14 @@ fn subst_type(
     while let Some(task) = tasks.pop() {
         match task {
             | TypeTask::Value(ty) => match *ty {
+                | ValueType::Atom(ref atom) if atom == name.as_ref() => {
+                    match *repl {
+                        | Value::Var(ref replacement) => {
+                            values.push(ValueType::Atom(replacement.clone()));
+                        },
+                        | _ => values.push(ty.clone()),
+                    }
+                },
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Unknown
@@ -669,6 +677,16 @@ mod tests
         assert_eq!(
             subst_valuetype(&stack, NameRef::from("absent"), &Value::Unit),
             stack
+        );
+    }
+    #[test]
+    fn atom_substitution_replaces_matching_variable()
+    {
+        let atom = ValueType::Atom(String::from("a"));
+
+        assert_eq!(
+            subst_valuetype(&atom, NameRef::from("a"), &Value::Var(String::from("b"))),
+            ValueType::Atom(String::from("b"))
         );
     }
 }
