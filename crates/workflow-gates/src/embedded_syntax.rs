@@ -352,7 +352,9 @@ impl Scanner<'_, '_>
     fn skip_char_literal(&mut self)
     {
         let next = self.bytes.get(self.index.saturating_add(1)).copied();
-        if next.is_none_or(|value| value.is_ascii_alphabetic()) {
+        let is_lifetime = next.is_some_and(|value| value.is_ascii_alphanumeric() || value == b'_')
+            && self.bytes.get(self.index.saturating_add(2)) != Some(&b'\'');
+        if is_lifetime {
             self.index = self.index.saturating_add(1);
             return;
         }
@@ -613,6 +615,7 @@ mod tests
     fn allows_only_the_explicit_escape_subject_marker()
     {
         let source = format!(
+            // workflow-gates: allow-escaped-newline
             "#[cfg(test)]\nmod tests {{\n    // {ALLOW_ESCAPED_NEWLINE_MARKER}\n    let text = \"\\n\";\n}}\n"
         );
         let findings = findings_for_source(
@@ -633,6 +636,123 @@ mod tests
             Path::new("/repo/crates/demo/tests/fixture.rs"),
             EmbeddedSourceText::from(source),
             TestFileFlag::from(true),
+        );
+        assert_eq!(1, findings.len());
+    }
+    #[test]
+    fn single_letter_byte_literals_keep_downstream_scan_synchronized()
+    {
+        let source = r##"
+        #[cfg(test)]
+        mod tests {
+            fn reproduction() {
+                let encoded_b = [1, 0, 0, 0, b'b'];
+                let label_index = 0;
+                let mut noncanonical = [b'a'];
+                noncanonical[label_index] = b'a';
+                let squatter = b"another store's bytes";
+                assert_eq!(
+                    noncanonical,
+                    [b'a'],
+                    "a store leaves a file it did not create byte-identical"
+                );
+                assert_eq!(
+                    squatter,
+                    b"another store's bytes",
+                    "and still publishes its own record"
+                );
+            }
+        }
+        "##;
+        let findings = findings_for_source(
+            Path::new("/repo"),
+            Path::new("/repo/crates/demo/src/lib.rs"),
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(false),
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn lifetime_syntax_is_not_consumed_as_a_character_literal()
+    {
+        let source = r##"
+        #[cfg(test)]
+        mod tests {
+            fn fixture<'a>(value: &'a str) {
+                let _ = value;
+            }
+        }
+        "##;
+        let findings = findings_for_source(
+            Path::new("/repo"),
+            Path::new("/repo/crates/demo/src/lib.rs"),
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(false),
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn escaped_character_literals_keep_the_existing_path()
+    {
+        let source = r##"
+        #[cfg(test)]
+        mod tests {
+            fn fixture() {
+                let newline = '\n';
+                let _ = newline;
+            }
+        }
+        "##;
+        let findings = findings_for_source(
+            Path::new("/repo"),
+            Path::new("/repo/crates/demo/src/lib.rs"),
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(false),
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn downstream_innocent_strings_are_not_reported()
+    {
+        let source = r##"
+        #[cfg(test)]
+        mod tests {
+            fn fixture() {
+                let first = "ordinary output";
+                let second = "another label";
+                let _ = (first, second);
+            }
+        }
+        "##;
+        let findings = findings_for_source(
+            Path::new("/repo"),
+            Path::new("/repo/crates/demo/src/lib.rs"),
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(false),
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn genuine_embedded_syntax_positive_still_reports()
+    {
+        let source = r##"
+        #[cfg(test)]
+        mod tests {
+            fn fixture() {
+                let source = "def x = 1;\ndef y = 2;\n";
+                let _ = source;
+            }
+        }
+        "##;
+        let findings = findings_for_source(
+            Path::new("/repo"),
+            Path::new("/repo/crates/demo/src/lib.rs"),
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(false),
         );
         assert_eq!(1, findings.len());
     }
