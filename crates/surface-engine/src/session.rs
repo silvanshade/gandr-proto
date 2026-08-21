@@ -1099,8 +1099,7 @@ mod tests
             .expect("the definition lowers");
         let law = session
             .submit(
-                "def law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), \
-                 f)) { ret here(f) }",
+                r#"def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) { ret here(f) }"#,
             )
             .expect("the law lowers");
         let refusals: Vec<&ItemOutcome> = law
@@ -1135,9 +1134,8 @@ mod tests
         let mut session = Session::new();
         let submission = session
             .submit(
-                "def pick(a: Type, f: U[\u{3c9}] (a -> F a)) -> F (U(a -> F a)) { ret f }\ndef \
-                 law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) \
-                 { ret here(f) }",
+                r#"def pick(a: Type, f: U[ω] (a -> F a)) -> F (U(a -> F a)) { ret f }
+def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) { ret here(f) }"#,
             )
             .expect("both definitions lower");
         let refusals: Vec<&ItemOutcome> = submission
@@ -1147,8 +1145,7 @@ mod tests
             .collect();
         assert!(
             refusals.is_empty(),
-            "a law must type against a definition declared earlier in the same \
-             source, exactly as it does across two submissions: {refusals:?}"
+            r#"a law must type against a definition declared earlier in the same source, exactly as it does across two submissions: {refusals:?}"#
         );
     }
 
@@ -1161,14 +1158,12 @@ mod tests
         let mut session = Session::new();
         let _fst = session
             .submit(
-                "def fst(a: Type, f: U[\u{3c9}] (a -> F a), g: U[\u{3c9}] (a -> F a)) -> F (U(a \
-                 -> F a)) { ret f }",
+                r#"def fst(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F (U(a -> F a)) { ret f }"#,
             )
             .expect("the definition lowers");
         let law = session
             .submit(
-                "def bad(a: Type, f: U[\u{3c9}] (a -> F a), g: U[\u{3c9}] (a -> F a)) -> \
-                 F(Path((U(a -> F a)), fst(a, f, g), g)) { ret here(g) }",
+                r#"def bad(a: Type, f: U[ω] (a -> F a), g: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), fst(a, f, g), g)) { ret here(g) }"#,
             )
             .expect("the law lowers");
         assert!(
