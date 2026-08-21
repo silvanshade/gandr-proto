@@ -126,11 +126,17 @@ use core::marker::PhantomData;
 
 use gandr_core_term::boundary::EffectSignatureName;
 use gandr_core_term::boundary::OperationName;
+use gandr_core_term::classifier::Classifier;
 use gandr_core_term::effect::EffectOp;
 use gandr_core_term::effect::EffectRow;
 use gandr_core_term::effect::EffectSig;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::prim::NativePrim;
+use gandr_core_term::static_term::FamilyApp;
+use gandr_core_term::static_term::StaticArg;
+use gandr_core_term::static_term::StaticBinder;
+use gandr_core_term::static_term::StaticNeutral;
+use gandr_core_term::static_term::StaticTerm;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::OpClause;
 use gandr_core_term::syntax::Side;
@@ -142,6 +148,7 @@ use gandr_core_term::syntax::WalkMotive;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::DataId;
 use gandr_core_term::types::SealId;
+use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 
 /// The seam-name prefix a [`ShareNode::Graft`] template uses for its plug
@@ -1944,6 +1951,14 @@ enum PlugTask<'template>
     ValueType(&'template ValueType),
     /// Descend a computation type.
     CompType(&'template CompType),
+    /// Descend a static argument.
+    StaticArg(&'template StaticArg),
+    /// Descend a static neutral.
+    StaticNeutral(&'template StaticNeutral),
+    /// Descend a static term.
+    StaticTerm(&'template StaticTerm),
+    /// Descend a ground type.
+    Ty(&'template Ty),
     /// Descend an effect signature.
     Sig(&'template EffectSig),
     /// Descend one signature operation.
@@ -2152,13 +2167,38 @@ enum PlugFinish
     ValueTypeStk,
     /// Pop two values and one value type, push the identity type.
     ValueTypePath,
-    /// Pop the argument values, push the type-family application.
+    /// Pop one static term, push a typed static argument.
+    StaticArgType,
+    /// Pop one value, push a value-index static argument.
+    StaticArgValue,
+    /// Pop one static neutral and one static argument, push the application.
+    StaticNeutralApp,
+    /// Pop one quoted type, push a static quote.
+    StaticTermQuote,
+    /// Pop one static term, push a static Pi.
+    StaticTermPi(StaticBinder),
+    /// Pop one static term, push a static lambda.
+    StaticTermLam(StaticBinder),
+    /// Pop one static term and one static argument, push the application.
+    StaticTermApp,
+    /// Pop one static neutral, push a neutral static term.
+    StaticTermNeutral,
+    /// Pop one value type, push a quoted value type.
+    TyValue,
+    /// Pop one computation type, push a quoted computation type.
+    TyComp,
+    /// Pop one rebuilt static neutral, push the value type-family application.
     ValueTypeFamily
     {
-        /// The family-kinded head's name.
-        head: String,
-        /// The number of argument values to pop.
-        argc: ChildCount,
+        /// The family result classifier.
+        result: Classifier,
+    },
+    /// Pop one rebuilt static neutral, push the computation type-family
+    /// application.
+    CompTypeFamily
+    {
+        /// The family result classifier.
+        result: Classifier,
     },
     /// Pop `argc` value types, push the data application.
     ValueTypeData
@@ -2229,6 +2269,14 @@ struct PlugEngine<'template>
     value_types: Vec<ValueType>,
     /// Rebuilt computation types.
     comp_types: Vec<CompType>,
+    /// Rebuilt ground types quoted in static terms.
+    tys: Vec<Ty>,
+    /// Rebuilt static arguments.
+    static_args: Vec<StaticArg>,
+    /// Rebuilt static neutrals.
+    static_neutrals: Vec<StaticNeutral>,
+    /// Rebuilt static terms.
+    static_terms: Vec<StaticTerm>,
     /// Rebuilt operations.
     ops: Vec<EffectOp>,
     /// Rebuilt signatures.
@@ -2264,6 +2312,10 @@ where
         stacks: Vec::new(),
         value_types: Vec::new(),
         comp_types: Vec::new(),
+        tys: Vec::new(),
+        static_args: Vec::new(),
+        static_neutrals: Vec::new(),
+        static_terms: Vec::new(),
         ops: Vec::new(),
         sigs: Vec::new(),
         rows: Vec::new(),
@@ -2339,6 +2391,10 @@ impl<'template> PlugEngine<'template>
             && self.stacks.is_empty()
             && self.value_types.is_empty()
             && self.comp_types.is_empty()
+            && self.tys.is_empty()
+            && self.static_args.is_empty()
+            && self.static_neutrals.is_empty()
+            && self.static_terms.is_empty()
             && self.ops.is_empty()
             && self.sigs.is_empty()
             && self.rows.is_empty()
@@ -2393,6 +2449,33 @@ impl<'template> PlugEngine<'template>
     fn pop_comp_type(&mut self) -> Result<CompType, EraseError>
     {
         self.comp_types.pop().ok_or(EraseError::TraversalInvariant)
+    }
+    /// Pop one rebuilt ground type.
+    fn pop_ty(&mut self) -> Result<Ty, EraseError>
+    {
+        self.tys.pop().ok_or(EraseError::TraversalInvariant)
+    }
+
+    /// Pop one rebuilt static argument.
+    fn pop_static_arg(&mut self) -> Result<StaticArg, EraseError>
+    {
+        self.static_args.pop().ok_or(EraseError::TraversalInvariant)
+    }
+
+    /// Pop one rebuilt static neutral.
+    fn pop_static_neutral(&mut self) -> Result<StaticNeutral, EraseError>
+    {
+        self.static_neutrals
+            .pop()
+            .ok_or(EraseError::TraversalInvariant)
+    }
+
+    /// Pop one rebuilt static term.
+    fn pop_static_term(&mut self) -> Result<StaticTerm, EraseError>
+    {
+        self.static_terms
+            .pop()
+            .ok_or(EraseError::TraversalInvariant)
     }
 
     /// Pop one rebuilt signature.
@@ -2513,6 +2596,10 @@ impl<'template> PlugEngine<'template>
             | PlugTask::Stack(stack) => self.visit_stack(stack),
             | PlugTask::ValueType(value_type) => self.visit_value_type(value_type),
             | PlugTask::CompType(comp_type) => self.visit_comp_type(comp_type),
+            | PlugTask::StaticArg(argument) => self.visit_static_arg(argument),
+            | PlugTask::StaticNeutral(neutral) => self.visit_static_neutral(neutral),
+            | PlugTask::StaticTerm(term) => self.visit_static_term(term),
+            | PlugTask::Ty(ty) => self.visit_ty(ty),
             | PlugTask::Sig(sig) => self.visit_sig(sig),
             | PlugTask::Op(op) => self.visit_op(op),
             | PlugTask::Row(row) => self.visit_row(row),
@@ -2945,15 +3032,13 @@ impl<'template> PlugEngine<'template>
                     }));
                 self.tasks.push(PlugTask::ValueType(payload));
             },
-            | ValueType::Family { head, args } => {
+            | ValueType::Family(application) => {
                 self.tasks
                     .push(PlugTask::Finish(PlugFinish::ValueTypeFamily {
-                        head: head.clone(),
-                        argc: ChildCount::from(args.len()),
+                        result: application.result().clone(),
                     }));
-                for argument in args.iter().rev() {
-                    self.tasks.push(PlugTask::Value(argument));
-                }
+                self.tasks
+                    .push(PlugTask::StaticNeutral(application.neutral()));
             },
             | ValueType::Data { id, args } => {
                 self.tasks.push(PlugTask::Finish(PlugFinish::ValueTypeData {
@@ -3011,7 +3096,134 @@ impl<'template> PlugEngine<'template>
                 self.tasks.push(PlugTask::CompType(second));
                 self.tasks.push(PlugTask::CompType(first));
             },
+            | CompType::Family(application) => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::CompTypeFamily {
+                        result: application.result().clone(),
+                    }));
+                self.tasks
+                    .push(PlugTask::StaticNeutral(application.neutral()));
+            },
             | CompType::Unknown => self.comp_types.push(CompType::Unknown),
+        }
+        Ok(())
+    }
+
+    /// Descend one quoted ground type.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        clippy::unnecessary_wraps,
+        reason = "Visitor results share one fallible worklist protocol; descendant failures propagate through the uniform Result seam."
+    )]
+    fn visit_ty(
+        &mut self,
+        ty: &'template Ty,
+    ) -> Result<(), EraseError>
+    {
+        match ty {
+            | Ty::Value(value_type) => {
+                self.tasks.push(PlugTask::Finish(PlugFinish::TyValue));
+                self.tasks.push(PlugTask::ValueType(value_type));
+            },
+            | Ty::Comp(comp_type) => {
+                self.tasks.push(PlugTask::Finish(PlugFinish::TyComp));
+                self.tasks.push(PlugTask::CompType(comp_type));
+            },
+        }
+        Ok(())
+    }
+
+    /// Descend one static argument.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        clippy::unnecessary_wraps,
+        reason = "Visitor results share one fallible worklist protocol; descendant failures propagate through the uniform Result seam."
+    )]
+    fn visit_static_arg(
+        &mut self,
+        argument: &'template StaticArg,
+    ) -> Result<(), EraseError>
+    {
+        match argument {
+            | StaticArg::Level(_) | StaticArg::Sort(_) => {
+                self.static_args.push(argument.clone());
+            },
+            | StaticArg::Type(term) => {
+                self.tasks.push(PlugTask::Finish(PlugFinish::StaticArgType));
+                self.tasks.push(PlugTask::StaticTerm(term));
+            },
+            | StaticArg::Value(value) => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticArgValue));
+                self.tasks.push(PlugTask::Value(value));
+            },
+        }
+        Ok(())
+    }
+
+    /// Descend one static neutral.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        clippy::unnecessary_wraps,
+        reason = "Visitor results share one fallible worklist protocol; descendant failures propagate through the uniform Result seam."
+    )]
+    fn visit_static_neutral(
+        &mut self,
+        neutral: &'template StaticNeutral,
+    ) -> Result<(), EraseError>
+    {
+        match neutral {
+            | StaticNeutral::Head(_) => self.static_neutrals.push(neutral.clone()),
+            | StaticNeutral::App { head, argument } => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticNeutralApp));
+                self.tasks.push(PlugTask::StaticArg(argument));
+                self.tasks.push(PlugTask::StaticNeutral(head));
+            },
+        }
+        Ok(())
+    }
+
+    /// Descend one static term.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        clippy::unnecessary_wraps,
+        reason = "Visitor results share one fallible worklist protocol; descendant failures propagate through the uniform Result seam."
+    )]
+    fn visit_static_term(
+        &mut self,
+        term: &'template StaticTerm,
+    ) -> Result<(), EraseError>
+    {
+        match term {
+            | StaticTerm::Var(_) | StaticTerm::Universe(_) => {
+                self.static_terms.push(term.clone());
+            },
+            | StaticTerm::Quote(ty) => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticTermQuote));
+                self.tasks.push(PlugTask::Ty(ty));
+            },
+            | StaticTerm::Pi { binder, codomain } => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticTermPi(binder.clone())));
+                self.tasks.push(PlugTask::StaticTerm(codomain));
+            },
+            | StaticTerm::Lam { binder, body } => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticTermLam(binder.clone())));
+                self.tasks.push(PlugTask::StaticTerm(body));
+            },
+            | StaticTerm::App { function, argument } => {
+                self.tasks.push(PlugTask::Finish(PlugFinish::StaticTermApp));
+                self.tasks.push(PlugTask::StaticArg(argument));
+                self.tasks.push(PlugTask::StaticTerm(function));
+            },
+            | StaticTerm::Neutral(neutral) => {
+                self.tasks
+                    .push(PlugTask::Finish(PlugFinish::StaticTermNeutral));
+                self.tasks.push(PlugTask::StaticNeutral(neutral));
+            },
         }
         Ok(())
     }
@@ -3369,6 +3581,63 @@ impl<'template> PlugEngine<'template>
                 let rest = self.pop_stack()?;
                 self.stacks.push(Stack::Prj(side, Rc::new(rest)));
             },
+            | PlugFinish::StaticArgType => {
+                let term = self.pop_static_term()?;
+                self.static_args.push(StaticArg::Type(Rc::new(term)));
+            },
+            | PlugFinish::StaticArgValue => {
+                let value = self.pop_value()?;
+                self.static_args.push(StaticArg::Value(Rc::new(value)));
+            },
+            | PlugFinish::StaticNeutralApp => {
+                let argument = self.pop_static_arg()?;
+                let head = self.pop_static_neutral()?;
+                self.static_neutrals
+                    .push(StaticNeutral::app(head, argument));
+            },
+            | PlugFinish::StaticTermQuote => {
+                let ty = self.pop_ty()?;
+                self.static_terms.push(StaticTerm::Quote(Rc::new(ty)));
+            },
+            | PlugFinish::StaticTermPi(binder) => {
+                let codomain = self.pop_static_term()?;
+                self.static_terms.push(StaticTerm::Pi {
+                    binder,
+                    codomain: Rc::new(codomain),
+                });
+            },
+            | PlugFinish::StaticTermLam(binder) => {
+                let body = self.pop_static_term()?;
+                self.static_terms.push(StaticTerm::Lam {
+                    binder,
+                    body: Rc::new(body),
+                });
+            },
+            | PlugFinish::StaticTermApp => {
+                let argument = self.pop_static_arg()?;
+                let function = self.pop_static_term()?;
+                self.static_terms.push(StaticTerm::App {
+                    function: Rc::new(function),
+                    argument,
+                });
+            },
+            | PlugFinish::StaticTermNeutral => {
+                let neutral = self.pop_static_neutral()?;
+                self.static_terms.push(StaticTerm::Neutral(neutral));
+            },
+            | PlugFinish::TyValue => {
+                let value_type = self.pop_value_type()?;
+                self.tys.push(Ty::Value(value_type));
+            },
+            | PlugFinish::TyComp => {
+                let comp_type = self.pop_comp_type()?;
+                self.tys.push(Ty::Comp(comp_type));
+            },
+            | PlugFinish::ValueTypeFamily { result } => {
+                let neutral = self.pop_static_neutral()?;
+                self.value_types
+                    .push(ValueType::Family(FamilyApp::new(neutral, result)));
+            },
             | PlugFinish::ValueTypeProd => {
                 let second = self.pop_value_type()?;
                 let first = self.pop_value_type()?;
@@ -3416,13 +3685,6 @@ impl<'template> PlugEngine<'template>
                     rhs: Rc::new(rhs),
                 });
             },
-            | PlugFinish::ValueTypeFamily { head, argc } => {
-                let args = self.pop_values(argc)?;
-                self.value_types.push(ValueType::Family {
-                    head,
-                    args: args.into_iter().map(Rc::new).collect(),
-                });
-            },
             | PlugFinish::ValueTypeData { id, argc } => {
                 let args = self.pop_value_types(argc)?;
                 self.value_types.push(ValueType::Data {
@@ -3466,6 +3728,11 @@ impl<'template> PlugEngine<'template>
                 let first = self.pop_comp_type()?;
                 self.comp_types
                     .push(CompType::With(Rc::new(first), Rc::new(second)));
+            },
+            | PlugFinish::CompTypeFamily { result } => {
+                let neutral = self.pop_static_neutral()?;
+                self.comp_types
+                    .push(CompType::Family(FamilyApp::new(neutral, result)));
             },
             | PlugFinish::OpFinish { name } => {
                 let reply = self.pop_value_type()?;
@@ -4125,6 +4392,14 @@ enum WalkTask<'template>
     ValueType(&'template ValueType),
     /// Descend a computation type.
     CompType(&'template CompType),
+    /// Descend a static argument.
+    StaticArg(&'template StaticArg),
+    /// Descend a static neutral.
+    StaticNeutral(&'template StaticNeutral),
+    /// Descend a static term.
+    StaticTerm(&'template StaticTerm),
+    /// Descend a ground type.
+    Ty(&'template Ty),
     /// Descend an effect signature.
     Sig(&'template EffectSig),
     /// Descend one signature operation.
@@ -4261,6 +4536,10 @@ fn collect_template_seams(
             | WalkTask::Stack(stack) => walk_stack(stack, &mut tasks, seams)?,
             | WalkTask::ValueType(value_type) => walk_value_type(value_type, &mut tasks, seams)?,
             | WalkTask::CompType(comp_type) => walk_comp_type(comp_type, &mut tasks, seams)?,
+            | WalkTask::StaticArg(argument) => walk_static_arg(argument, &mut tasks, seams)?,
+            | WalkTask::StaticNeutral(neutral) => walk_static_neutral(neutral, &mut tasks, seams)?,
+            | WalkTask::StaticTerm(term) => walk_static_term(term, &mut tasks, seams)?,
+            | WalkTask::Ty(ty) => walk_ty(ty, &mut tasks, seams)?,
             | WalkTask::Sig(sig) => {
                 for op in sig.ops().iter().rev() {
                     tasks.push(WalkTask::Op(op));
@@ -4563,10 +4842,8 @@ fn walk_value_type<'template>(
             tasks.push(WalkTask::Value(lhs));
             tasks.push(WalkTask::ValueType(ty));
         },
-        | ValueType::Family { args, .. } => {
-            for argument in args.iter().rev() {
-                tasks.push(WalkTask::Value(argument));
-            }
+        | ValueType::Family(application) => {
+            tasks.push(WalkTask::StaticNeutral(application.neutral()));
         },
         | ValueType::Data { args, .. } => {
             for argument in args.iter().rev() {
@@ -4588,6 +4865,98 @@ fn walk_value_type<'template>(
             }
             tasks.push(WalkTask::ValueType(payload));
         },
+    }
+    Ok(())
+}
+
+/// Descend one quoted ground type.
+#[expect(
+    clippy::pattern_type_mismatch,
+    clippy::unnecessary_wraps,
+    reason = "The template walk uses one fallible Result protocol across all syntax families."
+)]
+fn walk_ty<'template>(
+    ty: &'template Ty,
+    tasks: &mut Vec<WalkTask<'template>>,
+    _seams: &mut Vec<SeamIndex>,
+) -> Result<(), ValidationError>
+{
+    match ty {
+        | Ty::Value(value_type) => tasks.push(WalkTask::ValueType(value_type)),
+        | Ty::Comp(comp_type) => tasks.push(WalkTask::CompType(comp_type)),
+    }
+    Ok(())
+}
+
+/// Descend one static argument.
+#[expect(
+    clippy::pattern_type_mismatch,
+    clippy::unnecessary_wraps,
+    reason = "The template walk uses one fallible Result protocol across all syntax families."
+)]
+fn walk_static_arg<'template>(
+    argument: &'template StaticArg,
+    tasks: &mut Vec<WalkTask<'template>>,
+    _seams: &mut Vec<SeamIndex>,
+) -> Result<(), ValidationError>
+{
+    match argument {
+        | StaticArg::Level(_) | StaticArg::Sort(_) => {},
+        | StaticArg::Type(term) => tasks.push(WalkTask::StaticTerm(term)),
+        | StaticArg::Value(value) => tasks.push(WalkTask::Value(value)),
+    }
+    Ok(())
+}
+
+/// Descend one static neutral.
+#[expect(
+    clippy::pattern_type_mismatch,
+    clippy::unnecessary_wraps,
+    reason = "The template walk uses one fallible Result protocol across all syntax families."
+)]
+fn walk_static_neutral<'template>(
+    neutral: &'template StaticNeutral,
+    tasks: &mut Vec<WalkTask<'template>>,
+    _seams: &mut Vec<SeamIndex>,
+) -> Result<(), ValidationError>
+{
+    match neutral {
+        | StaticNeutral::Head(_) => {},
+        | StaticNeutral::App { head, argument } => {
+            tasks.push(WalkTask::StaticArg(argument));
+            tasks.push(WalkTask::StaticNeutral(head));
+        },
+    }
+    Ok(())
+}
+
+/// Descend one static term.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "The template walk matches borrowed static nodes by reference."
+)]
+fn walk_static_term<'template>(
+    term: &'template StaticTerm,
+    tasks: &mut Vec<WalkTask<'template>>,
+    _seams: &mut Vec<SeamIndex>,
+) -> Result<(), ValidationError>
+{
+    match term {
+        | StaticTerm::Var(_) | StaticTerm::Universe(_) => {},
+        | StaticTerm::Quote(ty) => tasks.push(WalkTask::Ty(ty)),
+        | StaticTerm::Pi { binder, codomain }
+        | StaticTerm::Lam {
+            binder,
+            body: codomain,
+        } => {
+            check_binder(binder.variable().name().as_ref())?;
+            tasks.push(WalkTask::StaticTerm(codomain));
+        },
+        | StaticTerm::App { function, argument } => {
+            tasks.push(WalkTask::StaticArg(argument));
+            tasks.push(WalkTask::StaticTerm(function));
+        },
+        | StaticTerm::Neutral(neutral) => tasks.push(WalkTask::StaticNeutral(neutral)),
     }
     Ok(())
 }
@@ -4624,6 +4993,9 @@ fn walk_comp_type<'template>(
             tasks.push(WalkTask::CompType(second));
             tasks.push(WalkTask::CompType(first));
         },
+        | CompType::Family(application) => {
+            tasks.push(WalkTask::StaticNeutral(application.neutral()));
+        },
         | CompType::Unknown => {},
     }
     Ok(())
@@ -4637,6 +5009,11 @@ mod tests
     use alloc::string::String;
     use alloc::vec;
     use alloc::vec::Vec;
+
+    use gandr_core_term::classifier::GroundSort;
+    use gandr_core_term::classifier::SortExpr;
+    use gandr_core_term::static_term::StaticVar;
+    use gandr_kernel_strata::Level;
 
     use super::*;
 
@@ -4834,6 +5211,44 @@ mod tests
             "arity two with first-occurrence positions 0 then 1 is canonical"
         );
     }
+    #[test]
+    fn type_family_plug_preserves_typed_static_arguments()
+    {
+        let result = Classifier::new(GroundSort::Value, Level::zero());
+        let arguments = [
+            StaticArg::Level(Level::zero()),
+            StaticArg::Sort(SortExpr::value()),
+            StaticArg::Type(Rc::new(StaticTerm::Quote(Rc::new(Ty::Value(
+                ValueType::Unit,
+            ))))),
+            StaticArg::Value(Rc::new(Value::Var(seam(0)))),
+        ];
+        let neutral = arguments.into_iter().fold(
+            StaticNeutral::head(StaticVar::new("Family")),
+            StaticNeutral::app,
+        );
+        let template =
+            AnyHost::ValueType(ValueType::family(FamilyApp::new(neutral, result.clone())));
+        let children = [AnyHost::Value(int(41))];
+        let plugged = plug_host(&template, &children).expect("family plug");
+        let expected_arguments = [
+            StaticArg::Level(Level::zero()),
+            StaticArg::Sort(SortExpr::value()),
+            StaticArg::Type(Rc::new(StaticTerm::Quote(Rc::new(Ty::Value(
+                ValueType::Unit,
+            ))))),
+            StaticArg::Value(Rc::new(int(41))),
+        ];
+        let expected_neutral = expected_arguments.into_iter().fold(
+            StaticNeutral::head(StaticVar::new("Family")),
+            StaticNeutral::app,
+        );
+        assert_eq!(
+            plugged,
+            AnyHost::ValueType(ValueType::family(FamilyApp::new(expected_neutral, result,)))
+        );
+    }
+
     #[test]
     fn value_grafts_plug_through_every_composite_shape()
     {

@@ -700,6 +700,9 @@ fn lower_type<'core>(
                     continue 'expand;
                 },
                 | CompType::With(..) => return Err(BridgeRejection::WithType),
+                | CompType::Family(_) => {
+                    return Err(BridgeRejection::TypeFamilyApplication);
+                },
                 | CompType::Unknown => return Err(BridgeRejection::UnknownComputationType),
             },
         };

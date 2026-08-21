@@ -64,6 +64,11 @@ use gandr_core_term::syntax::CompTypeNodeId;
 use gandr_core_term::syntax::FlatArena;
 use gandr_core_term::syntax::StackNode;
 use gandr_core_term::syntax::StackNodeId;
+use gandr_core_term::syntax::StaticArgNode;
+use gandr_core_term::syntax::StaticFamilyNode;
+use gandr_core_term::syntax::StaticFamilyNodeId;
+use gandr_core_term::syntax::StaticTermNode;
+use gandr_core_term::syntax::StaticTermNodeId;
 use gandr_core_term::syntax::ValueNode;
 use gandr_core_term::syntax::ValueNodeId;
 use gandr_core_term::syntax::ValueTypeNode;
@@ -268,6 +273,12 @@ enum KeyTask<'term>
     Stack(StackNodeId),
     /// Emit the tokens of a value type node.
     ValueType(ValueTypeNodeId),
+    /// Emit the tokens of a static-term node.
+    StaticTerm(StaticTermNodeId),
+    /// Emit the tokens of a static-family node.
+    StaticFamily(StaticFamilyNodeId),
+    /// Emit one static-family argument.
+    StaticArg(StaticArgNode),
     /// Emit the tokens of a computation type node.
     CompType(CompTypeNodeId),
     /// Push one binder onto the canonical value scope.
@@ -310,6 +321,12 @@ mod tag
     pub const COMP_TYPE: u64 = 0x5000;
     /// The tag of a payload word folded in verbatim.
     pub const WORD: u64 = 0x6000;
+    /// The base of the static-term tag block.
+    pub const STATIC_TERM: u64 = 0x7000;
+    /// The base of the static-family tag block.
+    pub const STATIC_FAMILY: u64 = 0x7100;
+    /// The base of the static-argument tag block.
+    pub const STATIC_ARG: u64 = 0x7200;
 }
 
 /// The canonical key of the term rooted at `term`: its full structural content
@@ -473,6 +490,17 @@ fn key_from(
             | KeyTask::CompType(id) => match arena.comp_types.get(id) {
                 | Some(node) => visit_comp_type(node, &mut tokens, &mut work),
                 | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::StaticTerm(id) => match arena.static_terms.get(id) {
+                | Some(node) => visit_static_term(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::StaticFamily(id) => match arena.static_families.get(id) {
+                | Some(node) => visit_static_family(node, &mut tokens, &mut work),
+                | None => tokens.push(CanonicalToken::from(tag::DANGLING)),
+            },
+            | KeyTask::StaticArg(argument) => {
+                visit_static_arg(argument, &mut tokens, &mut work);
             },
         }
     }
@@ -864,6 +892,110 @@ fn visit_stack<'term>(
     }
 }
 
+/// Emits the canonical tokens of one flat static argument and queues any
+/// recursive child id it carries.
+fn visit_static_arg(
+    argument: StaticArgNode,
+    tokens: &mut Vec<CanonicalToken>,
+    work: &mut Vec<KeyTask<'_>>,
+)
+{
+    match argument {
+        | StaticArgNode::Level(level) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_ARG));
+            hashed(tokens, &level);
+        },
+        | StaticArgNode::Sort(sort) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_ARG.saturating_add(1)));
+            hashed(tokens, &sort);
+        },
+        | StaticArgNode::Type(term) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_ARG.saturating_add(2)));
+            work.push(KeyTask::StaticTerm(term));
+        },
+        | StaticArgNode::Value(value) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_ARG.saturating_add(3)));
+            work.push(KeyTask::Value(value));
+        },
+    }
+}
+
+/// Emits the canonical tokens of one flat static family and queues its
+/// flattened arguments.
+fn visit_static_family(
+    node: &StaticFamilyNode,
+    tokens: &mut Vec<CanonicalToken>,
+    work: &mut Vec<KeyTask<'_>>,
+)
+{
+    tokens.push(CanonicalToken::from(tag::STATIC_FAMILY));
+    hashed(tokens, &node.head);
+    hashed(tokens, &node.result);
+    length(tokens, SemanticNodeCount::from(node.args.len()));
+    for argument in node.args.iter().rev() {
+        work.push(KeyTask::StaticArg(argument.clone()));
+    }
+}
+
+/// Emits the canonical tokens of one flat static term and queues its
+/// recursive children.
+fn visit_static_term(
+    node: &StaticTermNode,
+    tokens: &mut Vec<CanonicalToken>,
+    work: &mut Vec<KeyTask<'_>>,
+)
+{
+    match node {
+        | &StaticTermNode::Var(ref name) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM));
+            hashed(tokens, name);
+        },
+        | &StaticTermNode::Universe(ref classifier) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(1)));
+            hashed(tokens, classifier);
+        },
+        | &StaticTermNode::QuoteValue(ty) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(2)));
+            work.push(KeyTask::ValueType(ty));
+        },
+        | &StaticTermNode::QuoteComp(ty) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(3)));
+            work.push(KeyTask::CompType(ty));
+        },
+        | &StaticTermNode::Pi {
+            ref binder,
+            codomain,
+        } => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(4)));
+            hashed(tokens, &binder.name);
+            hashed(tokens, &binder.classifier);
+            work.push(KeyTask::StaticTerm(codomain));
+        },
+        | &StaticTermNode::Lam { ref binder, body } => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(5)));
+            hashed(tokens, &binder.name);
+            hashed(tokens, &binder.classifier);
+            work.push(KeyTask::StaticTerm(body));
+        },
+        | &StaticTermNode::App {
+            function,
+            ref argument,
+        } => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(6)));
+            work.push(KeyTask::StaticArg(argument.clone()));
+            work.push(KeyTask::StaticTerm(function));
+        },
+        | &StaticTermNode::Neutral(ref neutral) => {
+            tokens.push(CanonicalToken::from(tag::STATIC_TERM.saturating_add(7)));
+            hashed(tokens, &neutral.head);
+            length(tokens, SemanticNodeCount::from(neutral.args.len()));
+            for argument in neutral.args.iter().rev() {
+                work.push(KeyTask::StaticArg(argument.clone()));
+            }
+        },
+    }
+}
+
 /// Emits the canonical tokens of one value type node and queues its children.
 ///
 /// `types` is the **type**-binder scope, disjoint from the value scope the
@@ -951,17 +1083,9 @@ fn visit_value_type<'term>(
                 work.push(KeyTask::ValueType(*arg));
             }
         },
-        | ValueTypeNode::Family { ref head, ref args } => {
-            // A neutral type spine: head bytes, arity, then the argument
-            // values, which are ordinary value keys. Emitting the arity before
-            // the arguments is what stops `H(a, b)` and a differently-shaped
-            // spine with the same argument stream sharing a key.
+        | ValueTypeNode::Family(family) => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(15)));
-            length(tokens, SemanticNodeCount::from(args.len()));
-            for arg in args.iter().rev() {
-                work.push(KeyTask::Value(*arg));
-            }
-            work.push(KeyTask::Name(head.as_str()));
+            work.push(KeyTask::StaticFamily(family));
         },
         | ValueTypeNode::Universe {
             ref sort,
@@ -1061,8 +1185,12 @@ fn visit_comp_type<'term>(
             work.push(KeyTask::CompType(snd));
             work.push(KeyTask::CompType(fst));
         },
-        | CompTypeNode::Unknown => {
+        | CompTypeNode::Family(family) => {
             tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(3)));
+            work.push(KeyTask::StaticFamily(family));
+        },
+        | CompTypeNode::Unknown => {
+            tokens.push(CanonicalToken::from(tag::COMP_TYPE.saturating_add(4)));
         },
     }
 }

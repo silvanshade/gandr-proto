@@ -4,13 +4,13 @@ use alloc::vec::Vec;
 
 use gandr_core_term::boundary::FamilyArity;
 use gandr_core_term::boundary::TypeAtomName;
-use gandr_core_term::boundary::TypeFamilyName;
 use gandr_core_term::classifier::Classifier;
 use gandr_core_term::classifier::GroundSort;
 use gandr_core_term::classifier::SortExpr;
 use gandr_core_term::error::FormationError;
 use gandr_core_term::error::UnsupportedForm;
 use gandr_core_term::grade::Grade;
+use gandr_core_term::static_term::StaticArg;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::ValueType;
@@ -271,14 +271,16 @@ fn run(
                     let level = level.succ().map_err(FormationError::LevelOverflow)?;
                     results.push(value_classifier(level));
                 },
-                | ValueType::Family { ref head, ref args } => {
-                    let Some(signature) = ctx.family_signature(TypeFamilyName::from(head)).cloned()
+                | ValueType::Family(ref application) => {
+                    let head = application.neutral().head_name();
+                    let Some(signature) = ctx.family_signature(head).cloned()
                     else {
                         return Err(FormationError::UnsupportedForm(
                             UnsupportedForm::UnboundTypeFamily,
                         ));
                     };
                     let expected = signature.arity();
+                    let args = application.neutral().arguments();
                     let actual = FamilyArity::from(args.len());
                     if actual != expected {
                         return Err(FormationError::FamilyArity {
@@ -291,7 +293,16 @@ fn run(
                         .zip(signature.argument_classifiers())
                         .enumerate()
                     {
-                        let actual = family_argument_classifier(argument)?;
+                        let actual = match argument {
+                            | &StaticArg::Value(ref value) => {
+                                family_argument_classifier(value.as_ref())?
+                            },
+                            | _ => {
+                                return Err(FormationError::UnsupportedForm(
+                                    UnsupportedForm::DependentFamilyArgument,
+                                ));
+                            },
+                        };
                         if actual != *expected {
                             return Err(FormationError::FamilyArgumentClassifier {
                                 position,
@@ -340,6 +351,14 @@ fn run(
                     pending.push(Task::FinishComp(CompFinish::With));
                     pending.push(Task::Comp(snd));
                     pending.push(Task::Comp(fst));
+                },
+                | CompType::Family(ref application) => {
+                    let result = ctx
+                        .check_level(application.result().level())
+                        .and_then(|()| {
+                            require_sort(application.result().clone(), GroundSort::Computation)
+                        })?;
+                    results.push(result);
                 },
                 | CompType::Unknown => {
                     results.push(comp_classifier(Level::zero()));
@@ -467,6 +486,10 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_term::boundary::NameRef;
+    use gandr_core_term::static_term::FamilyApp;
+    use gandr_core_term::static_term::StaticNeutral;
+    use gandr_core_term::static_term::StaticVar;
     use gandr_core_term::types::CompTypeTag;
     use gandr_core_term::types::DataId;
     use gandr_core_term::types::SealId;
@@ -479,6 +502,17 @@ mod tests
     fn value_at(level: Level) -> Classifier
     {
         Classifier::new(GroundSort::Value, level)
+    }
+    fn family(
+        name: NameRef<'_>,
+        arguments: Vec<Rc<Value>>,
+    ) -> ValueType
+    {
+        let neutral = arguments.into_iter().map(StaticArg::Value).fold(
+            StaticNeutral::head(StaticVar::new(name.as_ref())),
+            StaticNeutral::app,
+        );
+        ValueType::family(FamilyApp::new(neutral, value_at(Level::zero())))
     }
 
     fn context() -> FormationContext
@@ -540,7 +574,7 @@ mod tests
             ),
             (
                 ValueTypeTag::Family,
-                ValueType::family("F", vec![Rc::new(Value::Unit)]),
+                family(NameRef::from("F"), vec![Rc::new(Value::Unit)]),
             ),
             (ValueTypeTag::Sealed, ValueType::Sealed(sealed)),
             (
@@ -558,6 +592,13 @@ mod tests
             (
                 CompTypeTag::Arrow,
                 CompType::arrow(ValueType::Unit, CompType::returner(ValueType::Unit)),
+            ),
+            (
+                CompTypeTag::Family,
+                CompType::Family(FamilyApp::new(
+                    StaticNeutral::head(StaticVar::new("F")),
+                    Classifier::new(GroundSort::Computation, Level::zero()),
+                )),
             ),
             (
                 CompTypeTag::With,
@@ -624,7 +665,9 @@ mod tests
     fn unsupported_forms_have_nominal_kinds()
     {
         let ctx = context();
-        let family = ValueType::family("F", vec![Rc::new(Value::Var("x".to_owned()))]);
+        let family = family(NameRef::from("F"), vec![Rc::new(Value::Var(
+            "x".to_owned(),
+        ))]);
         assert_eq!(
             Err(FormationError::UnsupportedForm(
                 UnsupportedForm::DependentFamilyArgument,
@@ -672,7 +715,10 @@ mod tests
     fn family_applied_at_wrong_arity_raises_the_exact_variant()
     {
         let ctx = context();
-        let family = ValueType::family("F", vec![Rc::new(Value::Unit), Rc::new(Value::Unit)]);
+        let family = family(NameRef::from("F"), vec![
+            Rc::new(Value::Unit),
+            Rc::new(Value::Unit),
+        ]);
         assert_eq!(
             Err(FormationError::FamilyArity {
                 expected: 1,
@@ -694,7 +740,7 @@ mod tests
                 value_at(Level::zero()),
             ),
         );
-        let family = ValueType::family("F", vec![Rc::new(Value::Unit)]);
+        let family = family(NameRef::from("F"), vec![Rc::new(Value::Unit)]);
         assert!(matches!(
             family.infer_classifier(&ctx),
             Err(FormationError::FamilyArgumentClassifier { position: 0, .. })

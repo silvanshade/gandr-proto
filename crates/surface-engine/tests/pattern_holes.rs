@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "RunError retains full diagnostics in pattern-hole test helpers."
+)]
+
 //! A `case` arm whose pattern is a typed hole: what it compiles to, what it
 //! runs to, and what filling it does.
 //!

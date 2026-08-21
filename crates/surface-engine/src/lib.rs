@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full types across the surface execution boundary."
+)]
+
 //! The surface engine for the gandr language: the CST-to-core front end the
 //! incremental typing pipeline
 //! (`spec:implementation/incremental-pipeline.md`) runs on.

@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "RunError retains full diagnostics in matrix test helpers."
+)]
+
 //! The pattern-matrix compiler and the join point: what an arm set the tag
 //! walk cannot place now compiles to, and what it still declines.
 //!

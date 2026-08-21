@@ -3,6 +3,10 @@
     non_topologically_sorted_functions,
     reason = "the type-directed generator roots are mutually recursive through value and computation strategies"
 )]
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full types for diagnostics in conformance helpers."
+)]
 
 //! Conformance suite: the recursive checker and the typing machine must agree
 //! *step for step* (ADR-9; the roadmap's Stage 1).
@@ -243,7 +247,7 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
                 // A family application's children are **values**, and a value
                 // carries no type-level `Unknown` to find, so the spine is
                 // static exactly when its head is — which is to say always.
-                | ValueType::Family { .. }
+                | ValueType::Family(_)
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Universe { .. }
@@ -300,6 +304,7 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
                     pending.push(StaticGoal::Comp(fst));
                     pending.push(StaticGoal::Comp(snd));
                 },
+                | CompType::Family(_) => {},
                 | CompType::Unknown => return false.into(),
             },
         }
@@ -5900,11 +5905,8 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                 },
                 // The arguments are values, which this rebuild does not visit,
                 // so the spine is rebuilt whole.
-                | ValueType::Family { ref head, ref args } => {
-                    outputs.push(RebuildOutput::Value(ValueType::Family {
-                        head: head.clone(),
-                        args: args.clone(),
-                    }));
+                | ValueType::Family(ref application) => {
+                    outputs.push(RebuildOutput::Value(ValueType::Family(application.clone())));
                 },
                 | ValueType::Unit => outputs.push(RebuildOutput::Value(ValueType::Unit)),
                 | ValueType::Sealed(ref seal) => {
@@ -6021,6 +6023,9 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                     steps.push(RebuildStep::Frame(RebuildFrame::CompWith));
                     steps.push(RebuildStep::Comp(snd));
                     steps.push(RebuildStep::Comp(fst));
+                },
+                | CompType::Family(ref application) => {
+                    outputs.push(RebuildOutput::Comp(CompType::Family(application.clone())));
                 },
                 | CompType::Unknown => outputs.push(RebuildOutput::Comp(CompType::Unknown)),
             },

@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full diagnostics in totality helpers."
+)]
+
 //! Total-lowering acceptance tests, one module per class:
 //!
 //! 1. [`tests::recovery_fixtures`] — `incomplete-input.gandr` and

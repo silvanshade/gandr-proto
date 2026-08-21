@@ -53,6 +53,7 @@ use crate::boundary::FreeOccurrence;
 use crate::boundary::NameRef;
 use crate::effect::EffectRow;
 use crate::grade::Grade;
+use crate::static_term::FamilyApp;
 use crate::subst::subst_value;
 use crate::syntax::Value;
 use crate::types::CompType;
@@ -242,19 +243,9 @@ enum ValueFinish<'type_>
     /// Rebuild a declared-data application from its id and rebuilt arguments
     /// (the `usize` is the argument count).
     Data(crate::types::DataId, usize),
-    /// Rebuild a type-family application from its head and the borrowed
-    /// argument values, each substituted through [`subst_value`].
-    ///
-    /// The arguments are **values**, so they are held borrowed and substituted
-    /// at the rebuild exactly as a `Path` endpoint is, rather than being pushed
-    /// onto the type worklist as `Data`'s type arguments are.
-    Family
-    {
-        /// The family-kinded head's name, kept verbatim.
-        head: &'type_ str,
-        /// The borrowed argument values.
-        args: &'type_ [Rc<Value>],
-    },
+    /// Rebuild a classifier-bearing family application, substituting value
+    /// indices through its static neutral spine.
+    Family(FamilyApp),
     /// Rebuild a dependent pair `Σ(x : A). B`, substituting into the tail only
     /// when the binder does not shadow the substituted name.
     Sigma
@@ -303,6 +294,9 @@ enum CompFinish<'type_>
     },
     /// Rebuild a `with` type from its rebuilt components.
     With,
+    /// Rebuild a computation-family application after substituting its value
+    /// arguments.
+    Family(FamilyApp),
 }
 
 /// The iterative value-into-type substitution engine (ADR-47 T1): the shared
@@ -339,14 +333,6 @@ fn subst_type(
     while let Some(task) = tasks.pop() {
         match task {
             | TypeTask::Value(ty) => match *ty {
-                | ValueType::Atom(ref atom) if atom == name.as_ref() => {
-                    match *repl {
-                        | Value::Var(ref replacement) => {
-                            values.push(ValueType::Atom(replacement.clone()));
-                        },
-                        | _ => values.push(ty.clone()),
-                    }
-                },
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Unknown
@@ -397,14 +383,10 @@ fn subst_type(
                     tasks.push(TypeTask::FinishValue(ValueFinish::Path(lhs, rhs)));
                     tasks.push(TypeTask::Value(carrier));
                 },
-                | ValueType::Family {
-                    ref head,
-                    ref args,
-                } => {
-                    tasks.push(TypeTask::FinishValue(ValueFinish::Family {
-                        head: head.as_str(),
-                        args: args.as_slice(),
-                    }));
+                | ValueType::Family(ref application) => {
+                    tasks.push(TypeTask::FinishValue(ValueFinish::Family(
+                        application.clone(),
+                    )));
                 },
                 | ValueType::Data { ref id, ref args } => {
                     tasks.push(TypeTask::FinishValue(ValueFinish::Data(
@@ -471,6 +453,11 @@ fn subst_type(
                     tasks.push(TypeTask::Comp(snd));
                     tasks.push(TypeTask::Comp(fst));
                 },
+                | CompType::Family(ref application) => {
+                    tasks.push(TypeTask::FinishComp(CompFinish::Family(
+                        application.clone(),
+                    )));
+                },
             },
             | TypeTask::FinishValue(finish) => match finish {
                 | ValueFinish::Prod => {
@@ -508,14 +495,8 @@ fn subst_type(
                     let consumes = pop_comp_type(&mut comps);
                     values.push(ValueType::Stk(Rc::new(consumes), Rc::new(delivers)));
                 },
-                | ValueFinish::Family { head, args } => {
-                    values.push(ValueType::Family {
-                        head: alloc::string::String::from(head),
-                        args: args
-                            .iter()
-                            .map(|arg| Rc::new(subst_value(arg, name, repl)))
-                            .collect(),
-                    });
+                | ValueFinish::Family(application) => {
+                    values.push(ValueType::Family(application.substitute_value(name, repl)));
                 },
                 | ValueFinish::Path(lhs, rhs) => {
                     let carrier = pop_value_type(&mut values);
@@ -590,6 +571,9 @@ fn subst_type(
                     let snd = pop_comp_type(&mut comps);
                     let fst = pop_comp_type(&mut comps);
                     comps.push(CompType::With(Rc::new(fst), Rc::new(snd)));
+                },
+                | CompFinish::Family(application) => {
+                    comps.push(CompType::Family(application.substitute_value(name, repl)));
                 },
             },
         }

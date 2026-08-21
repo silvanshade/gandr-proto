@@ -3,6 +3,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_term::boundary::GradeBound;
+use gandr_core_term::classifier::Classifier;
 use gandr_core_term::classifier::SortExpr;
 use gandr_core_term::classifier::SortParam;
 use gandr_core_term::effect::EffectRow;
@@ -10,6 +11,12 @@ use gandr_core_term::error::TypeError;
 use gandr_core_term::error::text;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::prim::NativePrim;
+use gandr_core_term::static_term::FamilyApp;
+use gandr_core_term::static_term::StaticArg;
+use gandr_core_term::static_term::StaticBinder;
+use gandr_core_term::static_term::StaticNeutral;
+use gandr_core_term::static_term::StaticTerm;
+use gandr_core_term::static_term::StaticVar;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::NumLit;
 use gandr_core_term::syntax::Side;
@@ -32,9 +39,9 @@ use crate::persistence::UnsupportedPersistence;
 use crate::region::Program;
 
 /// Magic and version prefix for canonical program encodings.
-const PROGRAM_MAGIC: &[u8; 8] = b"GPRG\0\0\0\x02";
+const PROGRAM_MAGIC: &[u8; 8] = b"GPRG\0\0\0\x03";
 /// Magic and version prefix for canonical checkpoint encodings.
-const CHECKPOINT_MAGIC: &[u8; 8] = b"GCP\0\0\0\0\x02";
+const CHECKPOINT_MAGIC: &[u8; 8] = b"GCP\0\0\0\0\x03";
 /// The incremental codec's independent decode-time cap for variable offsets.
 ///
 /// This format has its own identity and does not reuse the kernel export
@@ -42,7 +49,6 @@ const CHECKPOINT_MAGIC: &[u8; 8] = b"GCP\0\0\0\0\x02";
 /// well-formed but intentionally non-round-tripping until strata exposes an
 /// O(1) offset constructor.
 const MAX_DECODED_LEVEL_OFFSET: u64 = 4096;
-
 /// Declares the stable one-byte tags in the persistence grammar.
 macro_rules! tags {
     ($($name:ident = $value:literal),+ $(,)?) => {
@@ -128,13 +134,24 @@ tags! {
     // earlier build wrote still decodes and still round-trips canonically.
     // The numbers follow whatever the chain already assigned — a tag is a wire
     // identity, so renumbering an existing one would invalidate every artifact
-    // that carries it.
+    // that carries it. This version's family payload is a typed static carrier.
     CT_PI = 69,
-    // VT_FAMILY is the type-family application. Appended for the same reason
-    // CT_PI is: every tag an earlier build wrote keeps its number.
     VT_FAMILY = 70,
+    CT_FAMILY = 71,
+    STATIC_ARG_LEVEL = 72,
+    STATIC_ARG_SORT = 73,
+    STATIC_ARG_TYPE = 74,
+    STATIC_ARG_VALUE = 75,
+    STATIC_NEUTRAL_HEAD = 77,
+    STATIC_NEUTRAL_APP = 78,
+    STATIC_TERM_VAR = 79,
+    STATIC_TERM_UNIVERSE = 80,
+    STATIC_TERM_QUOTE = 81,
+    STATIC_TERM_PI = 82,
+    STATIC_TERM_LAM = 83,
+    STATIC_TERM_APP = 84,
+    STATIC_TERM_NEUTRAL = 85,
 }
-
 /// Encodes a lowered program using the canonical persistence grammar.
 pub(super) fn encode_program(program: &Program) -> Result<Vec<u8>, CheckpointStoreError>
 {
@@ -193,6 +210,12 @@ enum Work<'value>
     CompType(&'value CompType),
     /// Visits a computation.
     Comp(&'value Comp),
+    /// Visits a static argument.
+    StaticArg(&'value StaticArg),
+    /// Visits a static neutral.
+    StaticNeutral(&'value StaticNeutral),
+    /// Visits a static term.
+    StaticTerm(&'value StaticTerm),
     /// Emits a program after its children.
     EmitProgram(&'value Program),
     /// Emits a checkpoint set after its children.
@@ -217,6 +240,12 @@ enum Work<'value>
     EmitCompType(&'value CompType),
     /// Emits a computation after its children.
     EmitComp(&'value Comp),
+    /// Emits a static argument after its children.
+    EmitStaticArg(&'value StaticArg),
+    /// Emits a static neutral after its children.
+    EmitStaticNeutral(&'value StaticNeutral),
+    /// Emits a static term after its children.
+    EmitStaticTerm(&'value StaticTerm),
 }
 
 /// Iterative canonical encoder with an explicit semantic work stack.
@@ -260,6 +289,9 @@ impl<'value> Encoder<'value>
                 | Work::ValueType(value) => self.visit_value_type(value)?,
                 | Work::CompType(value) => self.visit_comp_type(value)?,
                 | Work::Comp(value) => self.visit_comp(value)?,
+                | Work::StaticArg(value) => self.visit_static_arg(value),
+                | Work::StaticNeutral(value) => self.visit_static_neutral(value),
+                | Work::StaticTerm(value) => self.visit_static_term(value),
                 | Work::EmitProgram(value) => self.emit_program(value)?,
                 | Work::EmitCheckpoints(value) => self.emit_checkpoints(value)?,
                 | Work::EmitItemCheckpoint(value) => self.emit_item_checkpoint(value)?,
@@ -272,6 +304,9 @@ impl<'value> Encoder<'value>
                 | Work::EmitValueType(value) => self.emit_value_type(value)?,
                 | Work::EmitCompType(value) => self.emit_comp_type(value)?,
                 | Work::EmitComp(value) => self.emit_comp(value)?,
+                | Work::EmitStaticArg(value) => self.emit_static_arg(value)?,
+                | Work::EmitStaticNeutral(value) => self.emit_static_neutral(value)?,
+                | Work::EmitStaticTerm(value) => self.emit_static_term(value)?,
             }
         }
         Ok(self.bytes)
@@ -485,10 +520,8 @@ impl<'value> Encoder<'value>
                 self.work.push(Work::Value(lhs));
                 self.work.push(Work::ValueType(ty));
             },
-            | ValueType::Family { ref args, .. } => {
-                for arg in args.iter().rev() {
-                    self.work.push(Work::Value(arg));
-                }
+            | ValueType::Family(ref application) => {
+                self.work.push(Work::StaticNeutral(application.neutral()));
             },
             | ValueType::Atom(_)
             | ValueType::Unit
@@ -525,9 +558,74 @@ impl<'value> Encoder<'value>
                 self.work.push(Work::CompType(snd));
                 self.work.push(Work::CompType(fst));
             },
+            | CompType::Family(ref application) => {
+                self.work.push(Work::StaticNeutral(application.neutral()));
+            },
             | CompType::Unknown => {},
         }
         Ok(())
+    }
+
+    /// Schedules one static argument and its recursive payload.
+    fn visit_static_arg(
+        &mut self,
+        value: &'value StaticArg,
+    )
+    {
+        self.work.push(Work::EmitStaticArg(value));
+        match value {
+            | &StaticArg::Level(_) | &StaticArg::Sort(_) => {},
+            | &StaticArg::Type(ref term) => self.work.push(Work::StaticTerm(term)),
+            | &StaticArg::Value(ref value) => self.work.push(Work::Value(value)),
+        }
+    }
+
+    /// Schedules one static neutral without recursing through Rust call frames.
+    fn visit_static_neutral(
+        &mut self,
+        value: &'value StaticNeutral,
+    )
+    {
+        self.work.push(Work::EmitStaticNeutral(value));
+        match value {
+            | &StaticNeutral::Head(_) => {},
+            | &StaticNeutral::App {
+                ref head,
+                ref argument,
+            } => {
+                self.work.push(Work::StaticArg(argument));
+                self.work.push(Work::StaticNeutral(head));
+            },
+        }
+    }
+
+    /// Schedules one static term and its recursive payload.
+    fn visit_static_term(
+        &mut self,
+        value: &'value StaticTerm,
+    )
+    {
+        self.work.push(Work::EmitStaticTerm(value));
+        match value {
+            | &StaticTerm::Var(_) | &StaticTerm::Universe(_) => {},
+            | &StaticTerm::Quote(ref ty) => self.work.push(Work::Ty(ty)),
+            | &StaticTerm::Neutral(ref neutral) => {
+                self.work.push(Work::StaticNeutral(neutral));
+            },
+            | &StaticTerm::Pi { ref codomain, .. }
+            | &StaticTerm::Lam {
+                body: ref codomain, ..
+            } => {
+                self.work.push(Work::StaticTerm(codomain));
+            },
+            | &StaticTerm::App {
+                ref function,
+                ref argument,
+            } => {
+                self.work.push(Work::StaticArg(argument));
+                self.work.push(Work::StaticTerm(function));
+            },
+        }
     }
 
     /// Schedules a computation or rejects opaque effect operations and
@@ -881,10 +979,9 @@ impl<'value> Encoder<'value>
                 self.sort(sort)?;
                 self.level(level)?;
             },
-            | ValueType::Family { ref head, ref args } => {
+            | ValueType::Family(ref application) => {
                 self.byte(VT_FAMILY);
-                self.string(head)?;
-                self.len(args.len())?;
+                self.classifier(application.result())?;
             },
             | ValueType::Sigma { ref binder, .. } => {
                 self.byte(VT_SIGMA);
@@ -920,9 +1017,92 @@ impl<'value> Encoder<'value>
                 self.string(binder)?;
             },
             | CompType::With(..) => self.byte(CT_WITH),
+            | CompType::Family(ref application) => {
+                self.byte(CT_FAMILY);
+                self.classifier(application.result())?;
+            },
             | CompType::Unknown => self.byte(CT_UNKNOWN),
         }
         Ok(())
+    }
+
+    /// Emits one static argument after its recursive payload.
+    fn emit_static_arg(
+        &mut self,
+        value: &StaticArg,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        match value {
+            | &StaticArg::Level(ref level) => {
+                self.byte(STATIC_ARG_LEVEL);
+                self.level(level)?;
+            },
+            | &StaticArg::Sort(ref sort) => {
+                self.byte(STATIC_ARG_SORT);
+                self.sort(sort)?;
+            },
+            | &StaticArg::Type(_) => self.byte(STATIC_ARG_TYPE),
+            | &StaticArg::Value(_) => self.byte(STATIC_ARG_VALUE),
+        }
+        Ok(())
+    }
+
+    /// Emits one static neutral after its recursive payload.
+    fn emit_static_neutral(
+        &mut self,
+        value: &StaticNeutral,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        match value {
+            | &StaticNeutral::Head(ref variable) => {
+                self.byte(STATIC_NEUTRAL_HEAD);
+                self.string(variable.name().as_ref())?;
+            },
+            | &StaticNeutral::App { .. } => self.byte(STATIC_NEUTRAL_APP),
+        }
+        Ok(())
+    }
+
+    /// Emits one static term after its recursive payload.
+    fn emit_static_term(
+        &mut self,
+        value: &StaticTerm,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        match value {
+            | &StaticTerm::Var(ref variable) => {
+                self.byte(STATIC_TERM_VAR);
+                self.string(variable.name().as_ref())?;
+            },
+            | &StaticTerm::Universe(ref classifier) => {
+                self.byte(STATIC_TERM_UNIVERSE);
+                self.classifier(classifier)?;
+            },
+            | &StaticTerm::Quote(_) => self.byte(STATIC_TERM_QUOTE),
+            | &StaticTerm::Pi { ref binder, .. } => {
+                self.byte(STATIC_TERM_PI);
+                self.string(binder.variable().name().as_ref())?;
+                self.classifier(binder.classifier())?;
+            },
+            | &StaticTerm::Lam { ref binder, .. } => {
+                self.byte(STATIC_TERM_LAM);
+                self.string(binder.variable().name().as_ref())?;
+                self.classifier(binder.classifier())?;
+            },
+            | &StaticTerm::App { .. } => self.byte(STATIC_TERM_APP),
+            | &StaticTerm::Neutral(_) => self.byte(STATIC_TERM_NEUTRAL),
+        }
+        Ok(())
+    }
+
+    /// Emits a classifier's sort and level in canonical order.
+    fn classifier(
+        &mut self,
+        value: &Classifier,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        self.sort(value.sort())?;
+        self.level(value.level())
     }
 
     /// Emits the stable variant and scalar fields of a computation.
@@ -1339,6 +1519,13 @@ impl<'bytes> Reader<'bytes>
             | _ => Err(CheckpointStoreError::Corrupt),
         }
     }
+    /// Reads one canonical classifier.
+    fn classifier(&mut self) -> Result<Classifier, CheckpointStoreError>
+    {
+        let sort = self.sort()?;
+        let level = self.level()?;
+        Ok(Classifier::new(sort, level))
+    }
 
     /// Reads and reconstructs one canonical kernel-strata level.
     ///
@@ -1389,6 +1576,10 @@ impl<'bytes> Reader<'bytes>
 }
 
 /// Completed semantic nodes held by the iterative postfix decoder.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "The postfix decoder keeps complete nodes inline for iterative ownership."
+)]
 enum Node
 {
     /// A complete checkpoint set.
@@ -1413,6 +1604,12 @@ enum Node
     CompType(CompType),
     /// One computation.
     Comp(Comp),
+    /// One static argument.
+    StaticArg(StaticArg),
+    /// One static neutral.
+    StaticNeutral(StaticNeutral),
+    /// One static term.
+    StaticTerm(StaticTerm),
 }
 
 /// Decodes one postfix token and reduces available children into a semantic
@@ -1520,6 +1717,72 @@ fn decode_token(
             let value = pop_comp_type(nodes)?;
             nodes.push(Node::Ty(Ty::Comp(value)));
         },
+        | STATIC_ARG_LEVEL => {
+            nodes.push(Node::StaticArg(StaticArg::Level(reader.level()?)));
+        },
+        | STATIC_ARG_SORT => {
+            nodes.push(Node::StaticArg(StaticArg::Sort(reader.sort()?)));
+        },
+        | STATIC_ARG_TYPE => {
+            let term = pop_static_term(nodes)?;
+            nodes.push(Node::StaticArg(StaticArg::Type(Rc::new(term))));
+        },
+        | STATIC_ARG_VALUE => {
+            let value = pop_value(nodes)?;
+            nodes.push(Node::StaticArg(StaticArg::Value(Rc::new(value))));
+        },
+        | STATIC_NEUTRAL_HEAD => {
+            nodes.push(Node::StaticNeutral(StaticNeutral::head(StaticVar::new(
+                reader.string()?,
+            ))));
+        },
+        | STATIC_NEUTRAL_APP => {
+            let argument = pop_static_arg(nodes)?;
+            let head = pop_static_neutral(nodes)?;
+            nodes.push(Node::StaticNeutral(StaticNeutral::app(head, argument)));
+        },
+        | STATIC_TERM_VAR => {
+            nodes.push(Node::StaticTerm(StaticTerm::Var(StaticVar::new(
+                reader.string()?,
+            ))));
+        },
+        | STATIC_TERM_UNIVERSE => {
+            nodes.push(Node::StaticTerm(StaticTerm::Universe(reader.classifier()?)));
+        },
+        | STATIC_TERM_QUOTE => {
+            let ty = pop_ty(nodes)?;
+            nodes.push(Node::StaticTerm(StaticTerm::Quote(Rc::new(ty))));
+        },
+        | STATIC_TERM_PI => {
+            let name = reader.string()?;
+            let classifier = reader.classifier()?;
+            let codomain = pop_static_term(nodes)?;
+            nodes.push(Node::StaticTerm(StaticTerm::Pi {
+                binder: StaticBinder::new(StaticVar::new(name), classifier),
+                codomain: Rc::new(codomain),
+            }));
+        },
+        | STATIC_TERM_LAM => {
+            let name = reader.string()?;
+            let classifier = reader.classifier()?;
+            let body = pop_static_term(nodes)?;
+            nodes.push(Node::StaticTerm(StaticTerm::Lam {
+                binder: StaticBinder::new(StaticVar::new(name), classifier),
+                body: Rc::new(body),
+            }));
+        },
+        | STATIC_TERM_APP => {
+            let argument = pop_static_arg(nodes)?;
+            let function = pop_static_term(nodes)?;
+            nodes.push(Node::StaticTerm(StaticTerm::App {
+                function: Rc::new(function),
+                argument,
+            }));
+        },
+        | STATIC_TERM_NEUTRAL => {
+            let neutral = pop_static_neutral(nodes)?;
+            nodes.push(Node::StaticTerm(StaticTerm::Neutral(neutral)));
+        },
         | VALUE_VAR => nodes.push(Node::Value(Value::Var(reader.string()?))),
         | VALUE_UNIT => nodes.push(Node::Value(Value::Unit)),
         | VALUE_INT => nodes.push(Node::Value(Value::Int(reader.i64()?))),
@@ -1622,14 +1885,11 @@ fn decode_token(
             nodes.push(Node::ValueType(ValueType::universe(sort, level)));
         },
         | VT_FAMILY => {
-            let head = reader.string()?;
-            let arity = reader.len()?;
-            let mut args = Vec::with_capacity(arity);
-            for _ in 0 .. arity {
-                args.push(Rc::new(pop_value(nodes)?));
-            }
-            args.reverse();
-            nodes.push(Node::ValueType(ValueType::family(head, args)));
+            let result = reader.classifier()?;
+            let neutral = pop_static_neutral(nodes)?;
+            nodes.push(Node::ValueType(ValueType::family(FamilyApp::new(
+                neutral, result,
+            ))));
         },
         | VT_SIGMA => {
             let binder = reader.string()?;
@@ -1657,6 +1917,13 @@ fn decode_token(
             let snd = pop_comp_type(nodes)?;
             let fst = pop_comp_type(nodes)?;
             nodes.push(Node::CompType(CompType::with(fst, snd)));
+        },
+        | CT_FAMILY => {
+            let result = reader.classifier()?;
+            let neutral = pop_static_neutral(nodes)?;
+            nodes.push(Node::CompType(CompType::family(FamilyApp::new(
+                neutral, result,
+            ))));
         },
         | CT_UNKNOWN => nodes.push(Node::CompType(CompType::Unknown)),
         | COMP_ABS => {
@@ -1892,6 +2159,9 @@ pop_node!(pop_value, Value, Value);
 pop_node!(pop_value_type, ValueType, ValueType);
 pop_node!(pop_comp_type, CompType, CompType);
 pop_node!(pop_comp, Comp, Comp);
+pop_node!(pop_static_arg, StaticArg, StaticArg);
+pop_node!(pop_static_neutral, StaticNeutral, StaticNeutral);
+pop_node!(pop_static_term, StaticTerm, StaticTerm);
 
 /// Reduces two value-type nodes through a binary constructor.
 fn binary_value_type(

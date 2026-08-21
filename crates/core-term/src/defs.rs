@@ -398,8 +398,10 @@ impl Definitions
         let mut work = alloc::vec![body];
         while let Some(node) = work.pop() {
             match *node {
-                | ValueType::Family { ref head, .. } => {
-                    if let Some(definition) = self.lookup_type(NameRef::from(head.as_str())) {
+                | ValueType::Family(ref application) => {
+                    if let Some(definition) = self.lookup_type(NameRef::from(
+                        application.neutral().head_variable().name().as_ref(),
+                    )) {
                         tallest = tallest.max(u32::from(definition.height));
                     }
                 },

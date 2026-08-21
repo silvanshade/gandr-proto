@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "RunError retains full diagnostics across the FFI execution boundary."
+)]
+
 //! Least-authority native C ABI execution over the shared host-effect seam.
 //!
 //! [`FfiHost`] is constructed from the lowered foreign-module declarations. It

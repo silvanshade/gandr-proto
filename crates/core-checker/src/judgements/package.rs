@@ -692,6 +692,9 @@ fn discharge(
                         tasks.push(Task::Comp(res, Rc::clone(&subst)));
                         tasks.push(Task::Value(arg, subst));
                     },
+                    | CompType::Family(ref application) => {
+                        comps.push(CompType::Family(application.clone()));
+                    },
                     | CompType::With(ref fst, ref snd) => {
                         tasks.push(Task::FinishComp(CompFinish::With));
                         tasks.push(Task::Comp(snd, Rc::clone(&subst)));
@@ -1135,11 +1138,11 @@ fn collect_atom_names(
                 | ValueType::Atom(ref name) => {
                     let _fresh = out.insert(name.clone());
                 },
-                // A family head is a type-name reference like any other, so it
-                // is collected. Its arguments are values and this walk collects
-                // type names, so they are not descended into.
-                | ValueType::Family { ref head, .. } => {
-                    let _fresh = out.insert(head.clone());
+                // A family head is a type-name reference like any other. Its
+                // static arguments are not type-name binders at this walk's
+                // substitution boundary.
+                | ValueType::Family(ref application) => {
+                    let _fresh = out.insert(application.neutral().head_name().as_ref().to_owned());
                 },
                 | ValueType::Unit
                 | ValueType::Unknown
@@ -1196,6 +1199,9 @@ fn collect_atom_names(
                     work.push(TypeRef::Value(arg));
                     work.push(TypeRef::Comp(res));
                 },
+                | CompType::Family(ref application) => {
+                    let _fresh = out.insert(application.neutral().head_name().as_ref().to_owned());
+                },
                 | CompType::With(ref fst, ref snd) => {
                     work.push(TypeRef::Comp(fst));
                     work.push(TypeRef::Comp(snd));
@@ -1219,6 +1225,9 @@ fn collect_comp_atom_names(
         } => {
             collect_atom_names(arg, out);
             collect_comp_atom_names_iter(res, out);
+        },
+        | CompType::Family(ref application) => {
+            let _fresh = out.insert(application.neutral().head_name().as_ref().to_owned());
         },
         | CompType::With(ref fst, ref snd) => {
             collect_comp_atom_names_iter(fst, out);

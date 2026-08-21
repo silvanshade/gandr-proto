@@ -64,6 +64,7 @@ thiserror.workspace = true
 # generators, which live one tier up so the checker crate carries no test-only
 # surface.
 gandr-core-checker-tools.workspace = true
+gandr-kernel-strata.workspace = true
 gandr-theory-cell-complexes.workspace = true
 gandr-theory-coherent-resolutions.workspace = true
 proptest.workspace = true

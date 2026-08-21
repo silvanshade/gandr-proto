@@ -24,6 +24,7 @@ use crate::classifier::GroundSort;
 use crate::classifier::SortExpr;
 use crate::effect::EffectRow;
 use crate::grade::Grade;
+use crate::static_term::FamilyApp;
 use crate::syntax::Value;
 
 /// The **core-local nominal identity** of a declared datatype (ADR-80).
@@ -508,55 +509,12 @@ pub enum ValueType
         /// The dependent tail type `B`, which may mention `binder`.
         snd: Rc<Self>,
     },
-    /// A **type family applied to value arguments** — `H(v₁, …, vₙ)`, the
-    /// type an indexed sort denotes.
+    /// A classifier-bearing neutral type-family application.
     ///
-    /// This is what `type Hom : Ob → Ob → Type` in a module signature makes
-    /// writable: `Hom` is a family-kinded name, and `Hom(a, b)` is a *type*
-    /// formed by applying it to two values. The higher-cells design's weak
-    /// category needs exactly this, which is why the category is the stage-1
-    /// flagship where the monoid is the near-term one.
-    ///
-    /// # It is a neutral spine, not a decoded code
-    ///
-    /// A type in term position **is** the type: there is no code grammar, no
-    /// decoding, and no universe eliminator anywhere in the design. So `Hom(a,
-    /// b)` is not `El` applied to something — it is a type former whose head
-    /// carries no unfolding rule, compared the way every neutral is compared:
-    /// **head first, then arguments pointwise**. That is the same shape
-    /// [`Data`](ValueType::Data) already has, with values where `Data` has
-    /// types.
-    ///
-    /// A head that *does* carry an unfolding rule is a defined family, and
-    /// unfolding it is the definitional environment's job rather than this
-    /// former's.
-    ///
-    /// # Conversion descends into the arguments
-    ///
-    /// Comparing `Hom(a, b)` with `Hom(a′, b′)` reduces to comparing values, so
-    /// definitional equality inside a type is the same relation as outside it —
-    /// exactly as at a [`Path`](ValueType::Path) endpoint, and reusing that
-    /// machinery rather than adding a second kind of descent.
-    ///
-    /// Subtyping is **invariant**, the [`Path`](ValueType::Path) and
-    /// [`Sigma`](ValueType::Sigma) precedent: variance in an index is a
-    /// refinement this rung does not make.
-    ///
-    /// # The zero-argument case is not spelled here
-    ///
-    /// A family applied to no arguments is an ordinary type name, which is
-    /// [`Atom`](ValueType::Atom). Admitting an empty `args` would give one type
-    /// two spellings, so [`Self::family`] refuses to build one and returns the
-    /// atom instead.
-    ///
-    /// [`Atom`]: ValueType::Atom
-    Family
-    {
-        /// The family-kinded head's name.
-        head: String,
-        /// The value arguments, in application order. Never empty.
-        args: Vec<Rc<Value>>,
-    },
+    /// The neutral and its declared result classifier travel together so the
+    /// same family application can be read as either a value type or a
+    /// computation type without a second kind layer.
+    Family(FamilyApp),
     /// A **sealed abstract type** `Sealed(a)` — the fresh nominal atom an
     /// opaque ascription mints for one abstract type component.
     ///
@@ -1025,6 +983,11 @@ pub enum CompType
         /// The result's computation type `B`, which may mention `binder`.
         res: Rc<Self>,
     },
+    /// A classifier-bearing neutral type-family application.
+    ///
+    /// The neutral is shared with value types; its declared result classifier
+    /// selects the carrier sort.
+    Family(FamilyApp),
     /// The lazy product ("with") `B & B′`.
     With(
         /// The first component.
@@ -1040,32 +1003,17 @@ pub enum CompType
 
 impl ValueType
 {
-    /// Builds a type-family application `head(args…)`, or the bare
-    /// [`Atom`](Self::Atom) when `args` is empty.
-    ///
-    /// The empty case is redirected rather than rejected because a caller
-    /// building a family from a parameter list it did not write has no reason
-    /// to special-case arity zero, and because one type with two spellings is
-    /// the failure this redirect exists to prevent.
+    /// Builds a classifier-bearing type-family application.
     ///
     /// # Contract
-    /// - ensures: returns `Family` with a non-empty `args`, or `Atom(head)`
-    ///   when `args` is empty.
+    /// - ensures: stores `application` without changing its neutral or result
+    ///   classifier.
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn family<H>(
-        head: H,
-        args: Vec<Rc<Value>>,
-    ) -> Self
-    where
-        H: Into<String>,
+    pub fn family(application: FamilyApp) -> Self
     {
-        let head = head.into();
-        if args.is_empty() {
-            return Self::Atom(head);
-        }
-        Self::Family { head, args }
+        Self::Family(application)
     }
 }
 
@@ -1125,6 +1073,18 @@ impl CompType
             res: Rc::new(res),
         }
     }
+    /// Builds a classifier-bearing computation-family application.
+    ///
+    /// # Contract
+    /// - ensures: stores `application` without changing its neutral or result
+    ///   classifier.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn family(application: FamilyApp) -> Self
+    {
+        Self::Family(application)
+    }
 
     /// Builds a lazy product `fst & snd`.
     #[inline]
@@ -1183,6 +1143,7 @@ impl core::fmt::Debug for CompType
                 .field(res)
                 .finish(),
             | Self::With(ref fst, ref snd) => f.debug_tuple("With").field(fst).field(snd).finish(),
+            | Self::Family(ref application) => f.debug_tuple("Family").field(application).finish(),
             | Self::Unknown => f.write_str("Unknown"),
         }
     }
@@ -1274,7 +1235,7 @@ impl Ty
                     // for that reason rather than for want of structure: this
                     // answers a question about the type, and an unknown
                     // reachable only through a term is a different question.
-                    | ValueType::Family { .. } => {},
+                    | ValueType::Family(_) => {},
                     // A product, a sum and a dependent pair are all two value
                     // children; the pair's binder names one of them and binds
                     // no type, so the scan sees the same shape in all three.
@@ -1325,6 +1286,7 @@ impl Ty
                         pending.push(UnknownScan::Comp(fst));
                         pending.push(UnknownScan::Comp(snd));
                     },
+                    | CompType::Family(_) => {},
                 },
             }
         }
@@ -1418,6 +1380,8 @@ pub enum CompTypeTag
     F,
     /// [`CompType::Arrow`].
     Arrow,
+    /// [`CompType::Family`].
+    Family,
     /// [`CompType::With`].
     With,
     /// [`CompType::Unknown`].
@@ -1427,7 +1391,13 @@ pub enum CompTypeTag
 impl CompTypeTag
 {
     /// Every computation-type constructor, in declaration order.
-    pub const ALL: [Self; 4] = [Self::F, Self::Arrow, Self::With, Self::Unknown];
+    pub const ALL: [Self; 5] = [
+        Self::F,
+        Self::Arrow,
+        Self::Family,
+        Self::With,
+        Self::Unknown,
+    ];
 }
 
 impl ValueType
@@ -1457,7 +1427,7 @@ impl ValueType
             | Self::Data { .. } => ValueTypeTag::Data,
             | Self::Universe { .. } => ValueTypeTag::Universe,
             | Self::Sigma { .. } => ValueTypeTag::Sigma,
-            | Self::Family { .. } => ValueTypeTag::Family,
+            | Self::Family(_) => ValueTypeTag::Family,
             | Self::Sealed(_) => ValueTypeTag::Sealed,
             | Self::Package { .. } => ValueTypeTag::Package,
             | Self::Unknown => ValueTypeTag::Unknown,
@@ -1482,6 +1452,7 @@ impl CompType
         match *self {
             | Self::F(..) => CompTypeTag::F,
             | Self::Arrow { .. } => CompTypeTag::Arrow,
+            | Self::Family(_) => CompTypeTag::Family,
             | Self::With(..) => CompTypeTag::With,
             | Self::Unknown => CompTypeTag::Unknown,
         }

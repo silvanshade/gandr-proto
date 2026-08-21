@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full diagnostics in source property helpers."
+)]
+
 //! Grammar-directed property tests for the pipeline's totality and
 //! source-level checker ≡ machine agreement.
 //!

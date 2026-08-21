@@ -609,6 +609,8 @@ mod tests
 
     use gandr_core_term::boundary::EffectSignatureName;
     use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::classifier::Classifier;
+    use gandr_core_term::classifier::GroundSort;
     use gandr_core_term::classifier::SortExpr;
     use gandr_core_term::effect::EffectOp;
     use gandr_core_term::effect::EffectSig;
@@ -616,6 +618,11 @@ mod tests
     use gandr_core_term::error::text;
     use gandr_core_term::grade::Grade;
     use gandr_core_term::prim::NativePrim;
+    use gandr_core_term::static_term::FamilyApp;
+    use gandr_core_term::static_term::StaticArg;
+    use gandr_core_term::static_term::StaticNeutral;
+    use gandr_core_term::static_term::StaticTerm;
+    use gandr_core_term::static_term::StaticVar;
     use gandr_core_term::syntax::Comp;
     use gandr_core_term::syntax::NumLit;
     use gandr_core_term::syntax::SplitMotive;
@@ -1032,6 +1039,53 @@ mod tests
         };
         let bytes = encode_checkpoints(&checkpoints).unwrap();
         assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
+    fn all_static_args_family() -> FamilyApp
+    {
+        let arguments = [
+            StaticArg::Level(Level::zero()),
+            StaticArg::Sort(SortExpr::computation()),
+            StaticArg::Type(Rc::new(StaticTerm::Quote(Rc::new(Ty::Value(
+                ValueType::atom("Quoted"),
+            ))))),
+            StaticArg::Value(Rc::new(Value::int(7))),
+        ];
+        let neutral = arguments.into_iter().fold(
+            StaticNeutral::head(StaticVar::new("Family")),
+            StaticNeutral::app,
+        );
+        FamilyApp::new(neutral, Classifier::new(GroundSort::Value, Level::zero()))
+    }
+
+    #[test]
+    fn typed_static_family_arguments_round_trip()
+    {
+        let family = all_static_args_family();
+        let checkpoints = Checkpoints {
+            items: alloc::vec![checkpoint_item(
+                Term::Value(Value::Unit),
+                Some(Ty::Value(ValueType::family(family.clone()))),
+                ItemTyping::Expression {
+                    ty: Ty::Comp(CompType::family(family)),
+                },
+            )],
+        };
+        let bytes = encode_checkpoints(&checkpoints).unwrap();
+        assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
+    #[test]
+    fn legacy_checkpoint_identity_is_rejected_after_static_family_move()
+    {
+        let checkpoints = checkpoint(Term::Value(Value::Unit), Some(Ty::Value(ValueType::Unit)));
+        let mut legacy_bytes = encode_checkpoints(&checkpoints).unwrap();
+        let legacy_magic = b"GCP\0\0\0\0\x02";
+        legacy_bytes[.. legacy_magic.len()].copy_from_slice(legacy_magic);
+        assert_eq!(
+            decode_checkpoints(&legacy_bytes),
+            Err(CheckpointStoreError::Corrupt)
+        );
     }
 
     #[test]

@@ -876,7 +876,7 @@ name = "gandr-core-nbe"
 version = "0.0.0"
 dependencies = [
  "gandr-core-term",
- "gandr-kernel-conversion-trace",
+ "gandr-kernel-strata",
 ]
 
 [[package]]
@@ -1027,6 +1027,7 @@ dependencies = [
  "gandr-core-sequent",
  "gandr-core-term",
  "gandr-kernel-core",
+ "gandr-kernel-strata",
  "gandr-runtime-effects",
  "gandr-storage-artifact",
  "gandr-storage-prolly-trees",

@@ -424,6 +424,16 @@ copy_wrapper!(
     "Number of canonical entries in the normalizer's syntax interner."
 );
 copy_wrapper!(
+    StaticTermCount,
+    usize,
+    "Number of structurally distinct static terms in an interner."
+);
+copy_wrapper!(
+    StaticTermIndex,
+    u32,
+    "Index of a structurally interned static term."
+);
+copy_wrapper!(
     ProgressStatus,
     bool,
     "Whether unfolding a definition made case-tree progress."

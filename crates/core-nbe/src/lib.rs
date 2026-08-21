@@ -538,24 +538,6 @@ impl Normalizer
     {
         conv::converts(self, lhs, rhs)
     }
-    /// Decides definitional equality while emitting decision-grain events to
-    /// `sink`.
-    ///
-    /// The sink is statically dispatched and receives conversion choices, not
-    /// reduction steps. Its identity values are local to this normalizer run
-    /// and are not a persistence or wire-format contract.
-    #[inline]
-    pub fn converts_with_sink<S>(
-        &mut self,
-        lhs: &Rc<Value>,
-        rhs: &Rc<Value>,
-        sink: &mut S,
-    ) -> ValueEquality
-    where
-        S: conv::TraceSink<conv::TraceId>,
-    {
-        conv::converts_with_sink(self, lhs, rhs, sink)
-    }
 
     /// Decides definitional equality of two value types.
     ///
@@ -647,35 +629,23 @@ mod tests
     use gandr_core_term::boundary::SealDeclarationName;
     use gandr_core_term::boundary::TypeAtomName;
     use gandr_core_term::boundary::TypeSerial;
+    use gandr_core_term::classifier::Classifier;
+    use gandr_core_term::classifier::GroundSort;
     use gandr_core_term::effect::EffectSig;
     use gandr_core_term::grade::Grade;
+    use gandr_core_term::static_term::FamilyApp;
+    use gandr_core_term::static_term::StaticArg;
+    use gandr_core_term::static_term::StaticNeutral;
+    use gandr_core_term::static_term::StaticVar;
     use gandr_core_term::syntax::Comp;
     use gandr_core_term::syntax::Side;
     use gandr_core_term::syntax::WalkBase;
     use gandr_core_term::syntax::WalkMotive;
     use gandr_core_term::types::CompType;
     use gandr_core_term::types::ValueType;
+    use gandr_kernel_strata::Level;
 
     use super::*;
-    use crate::conv::ConversionDecision;
-    use crate::conv::NullSink;
-    use crate::conv::TraceId;
-    use crate::conv::TraceSink;
-
-    #[repr(transparent)]
-    struct RecordingSink(Vec<ConversionDecision<TraceId>>);
-
-    impl TraceSink<TraceId> for RecordingSink
-    {
-        fn record(
-            &mut self,
-            decision: ConversionDecision<TraceId>,
-        )
-        {
-            self.0.push(decision);
-        }
-    }
-
     use crate::defs::Transparency;
     use crate::eval::ForceMode;
     use crate::eval::eval_value;
@@ -2537,7 +2507,10 @@ mod tests
         );
         let one = thunk(Comp::ret(Value::Int(1)));
         let two = thunk(Comp::ret(Value::Int(2)));
-        let applied = ValueType::family("Pair", alloc::vec![Rc::clone(&one), Rc::clone(&two)]);
+        let applied = family(NameRef::from("Pair"), alloc::vec![
+            Rc::clone(&one),
+            Rc::clone(&two)
+        ]);
         let expanded = ValueType::Path {
             ty: Rc::new(ValueType::Unit),
             lhs: Rc::clone(&one),
@@ -2573,7 +2546,10 @@ mod tests
     fn an_abstract_family_does_not_unfold()
     {
         let one = thunk(Comp::ret(Value::Int(1)));
-        let applied = ValueType::family("Hom", alloc::vec![Rc::clone(&one), Rc::clone(&one)]);
+        let applied = family(NameRef::from("Hom"), alloc::vec![
+            Rc::clone(&one),
+            Rc::clone(&one)
+        ]);
         let body = ValueType::Path {
             ty: Rc::new(ValueType::Unit),
             lhs: Rc::clone(&one),
@@ -2615,7 +2591,7 @@ mod tests
             Rc::new(ValueType::Unit),
         );
         let one = thunk(Comp::ret(Value::Int(1)));
-        let under_applied = ValueType::family("Hom", alloc::vec![one]);
+        let under_applied = family(NameRef::from("Hom"), alloc::vec![one]);
         assert!(
             !bool::from(nbe.type_converts(&under_applied, &ValueType::Unit)),
             "a spine of the wrong arity must not unfold to the definition's body"
@@ -2629,7 +2605,7 @@ mod tests
     fn a_family_definition_expires_with_its_scope()
     {
         let mut nbe = Normalizer::new();
-        let applied = ValueType::family("Hom", alloc::vec![
+        let applied = family(NameRef::from("Hom"), alloc::vec![
             Rc::new(Value::Unit),
             Rc::new(Value::Unit)
         ]);
@@ -2689,7 +2665,7 @@ mod tests
         ));
         assert!(
             !bool::from(nbe.converts(&erased, &bare)),
-            r#"a 0-graded thunk eta-expanded, manufacturing a force the grade discipline refuses"#,
+            r#"a 0-graded thunk eta-expanded, manufacturing a force the grade discipline refuses"#
         );
         assert!(
             !bool::from(nbe.converts(&bare, &erased)),
@@ -2740,7 +2716,7 @@ mod tests
         let witnessed = Rc::new(var("f"));
         assert!(
             bool::from(nbe.converts(&stated, &witnessed)),
-            r#"a thunked five-argument application over a definition did not reduce to the variable it returns"#,
+            r#"a thunked five-argument application over a definition did not reduce to the variable it returns"#
         );
 
         // The separating case: the same spine against a *different* variable
@@ -2844,7 +2820,7 @@ mod tests
         let bare = thunk(neutral());
         assert!(
             bool::from(nbe.converts(&piped, &bare)),
-            r#"a continuation that reduces to a return of its binder did not collapse — the canonicalization is reading the stored body rather than the normal form"#,
+            r#"a continuation that reduces to a return of its binder did not collapse — the canonicalization is reading the stored body rather than the normal form"#
         );
         assert!(
             bool::from(nbe.converts(&bare, &piped)),
@@ -2954,13 +2930,29 @@ mod tests
         );
     }
 
+    /// Builds a classifier-bearing value family from runtime value indices.
+    fn family(
+        name: NameRef<'_>,
+        args: Vec<Rc<Value>>,
+    ) -> ValueType
+    {
+        let neutral = args.into_iter().map(StaticArg::Value).fold(
+            StaticNeutral::head(StaticVar::new(name.as_ref())),
+            StaticNeutral::app,
+        );
+        ValueType::family(FamilyApp::new(
+            neutral,
+            Classifier::new(GroundSort::Value, Level::zero()),
+        ))
+    }
+
     /// `Hom(a, b)` over the two given index values.
     fn hom(
         lhs: Rc<Value>,
         rhs: Rc<Value>,
     ) -> ValueType
     {
-        ValueType::family("Hom", alloc::vec![lhs, rhs])
+        family(NameRef::from("Hom"), alloc::vec![lhs, rhs])
     }
 
     /// A family application's indices are compared through the normalizer, so
@@ -2998,7 +2990,10 @@ mod tests
         let two = thunk(Comp::ret(Value::Int(2)));
         let base = hom(Rc::clone(&one), Rc::clone(&one));
 
-        let other_head = ValueType::family("Obj", alloc::vec![Rc::clone(&one), Rc::clone(&one)]);
+        let other_head = family(NameRef::from("Obj"), alloc::vec![
+            Rc::clone(&one),
+            Rc::clone(&one)
+        ]);
         assert!(
             !bool::from(nbe.type_converts(&base, &other_head)),
             "two families with different heads must not convert"
@@ -3010,23 +3005,24 @@ mod tests
             "two families differing in one index must not convert"
         );
 
-        let other_arity = ValueType::family("Hom", alloc::vec![one]);
+        let other_arity = family(NameRef::from("Hom"), alloc::vec![one]);
         assert!(
             !bool::from(nbe.type_converts(&base, &other_arity)),
             "two families of different arity must not convert"
         );
     }
 
-    /// A family applied to nothing is the bare atom, so one type never gets two
-    /// spellings. The constructor is where that is enforced.
+    /// A zero-argument family remains a classifier-bearing family application,
+    /// so its head is not confused with a rigid atom.
     #[test]
-    fn a_family_applied_to_nothing_is_the_atom()
+    fn a_zero_argument_family_remains_a_family_application()
     {
-        assert_eq!(
-            ValueType::family("Ob", Vec::new()),
-            ValueType::Atom(String::from("Ob")),
-            "an empty argument list must redirect to the atom spelling"
-        );
+        let ValueType::Family(application) = family(NameRef::from("Ob"), Vec::new())
+        else {
+            panic!("zero-argument family lost its family application");
+        };
+        assert_eq!("Ob", application.neutral().head_name().as_ref());
+        assert!(application.neutral().arguments().is_empty());
     }
 
     /// A dependent function type built over a `Path` whose endpoints are the
@@ -3304,42 +3300,6 @@ mod tests
         let watermark = nbe.next_level();
         assert_eq!(nbe.fresh_level(), watermark);
         assert_ne!(nbe.next_level(), watermark);
-    }
-    #[test]
-    fn conversion_sink_preserves_verdict_and_emits_unfold()
-    {
-        let lhs = var(NameRef::from("one"));
-        let rhs = var(NameRef::from("also_one"));
-        let mut traced = Normalizer::new();
-        traced
-            .define(NameRef::from("one"), &int(IntegerLiteral::from(1_i64)))
-            .unwrap();
-        traced
-            .define(NameRef::from("also_one"), &var(NameRef::from("one")))
-            .unwrap();
-        let mut sink = RecordingSink(Vec::new());
-        let traced_verdict = traced.converts_with_sink(&lhs, &rhs, &mut sink);
-        assert!(bool::from(traced_verdict));
-        assert!(
-            sink.0
-                .iter()
-                .any(|decision| matches!(decision, ConversionDecision::Unfold { .. })),
-            "the sink receives a decision-grain unfolding"
-        );
-
-        let mut defaulted = Normalizer::new();
-        defaulted
-            .define(NameRef::from("one"), &int(IntegerLiteral::from(1_i64)))
-            .unwrap();
-        defaulted
-            .define(NameRef::from("also_one"), &var(NameRef::from("one")))
-            .unwrap();
-        assert_eq!(traced_verdict, defaulted.converts(&lhs, &rhs));
-        let mut null = NullSink;
-        assert_eq!(
-            traced_verdict,
-            defaulted.converts_with_sink(&lhs, &rhs, &mut null),
-        );
     }
 
     #[test]

@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full types for diagnostics across incremental boundaries."
+)]
+
 //! Item-granular incremental typing for the gandr language
 //! (`incremental-pipeline.md` §"Checkpoints and the reuse rule" through
 //! §"Derivation merging and identity stability").

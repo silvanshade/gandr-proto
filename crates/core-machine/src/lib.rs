@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full types for diagnostics across machine boundaries."
+)]
+
 //! The defunctionalized typing machine (`spec:implementation/typing-machine.md`
 //! §"Machine state" through §"The step function", core subset).
 //!

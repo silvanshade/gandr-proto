@@ -1,3 +1,8 @@
+#![expect(
+    clippy::result_large_err,
+    reason = "TypeError retains full types for diagnostics across checker boundaries."
+)]
+
 //! Core CBPV (call-by-push-value) type checking for the gandr language.
 //!
 //! This crate implements Stage 1 of the gandr roadmap (milestone A1 of the

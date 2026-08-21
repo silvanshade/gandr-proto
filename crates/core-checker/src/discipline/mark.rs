@@ -607,6 +607,10 @@ struct PendingComp
     marks: Vec<Mark>,
 }
 
+#[expect(
+    clippy::large_enum_variant,
+    reason = "The iterative marking worklist keeps its state inline for ownership and drop order."
+)]
 /// One unit of work in the iterative marking machine.
 enum MarkWork
 {

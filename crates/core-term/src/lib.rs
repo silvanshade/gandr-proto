@@ -27,6 +27,8 @@
 //!   judgement over them provably total;
 //! - [`classifier`] — the `(sort, level)` pair a type is formed at, over the
 //!   one level algebra `gandr-kernel-strata` owns;
+//! - [`static_term`] — the erased static dependent core: the type-level
+//!   calculus whose normal forms reify into the two ground type enums;
 //! - [`ctx`] — the two-zone typing context `Γ; Σ`;
 //! - [`subst`] — the iterative capture-avoiding substitution engine over terms,
 //!   and the hole substitution the elaborator plugs;
@@ -78,6 +80,7 @@ pub mod intern;
 pub mod nominal;
 pub mod outcome;
 pub mod prim;
+pub mod static_term;
 pub mod subst;
 pub mod syntax;
 pub mod types;

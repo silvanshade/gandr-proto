@@ -315,6 +315,10 @@ pub enum LiteralConstraint
 /// so the decision procedures never touch a CST: translation happens once, and
 /// what follows is ordinary structural recursion over a closed vocabulary.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Pattern shapes stay inline because translation and analysis own them structurally."
+)]
 pub enum PatternShape
 {
     /// A pattern-position typed hole `?` / `?name` — an unfinished *test*,
@@ -594,6 +598,10 @@ pub struct MatchAnalysis
 // --- Translation from the CST ------------------------------------------------
 
 /// One step of the iterative translation.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "The translation worklist keeps emitted shapes inline for iterative ownership."
+)]
 enum Step<'tree>
 {
     /// Read a CST node and emit its shape, or expand it into sub-steps.

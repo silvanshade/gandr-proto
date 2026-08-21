@@ -375,6 +375,10 @@ impl EffectRow
 ///
 /// Returns [`TypeError::ShapeMismatch`] when an effectful bound computation is
 /// sequenced into a non-returner continuation.
+#[expect(
+    clippy::result_large_err,
+    reason = "Type errors retain actual types for diagnostics across this public result boundary."
+)]
 #[inline]
 pub fn combine_bind_row(
     bound_row: &EffectRow,

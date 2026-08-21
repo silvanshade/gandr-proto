@@ -37,6 +37,11 @@ use crate::effect::EffectRow;
 use crate::effect::EffectSig;
 use crate::grade::Grade;
 use crate::prim::NativePrim;
+use crate::static_term::FamilyApp;
+use crate::static_term::StaticArg;
+use crate::static_term::StaticBinder;
+use crate::static_term::StaticNeutral;
+use crate::static_term::StaticTerm;
 use crate::types::CompType;
 use crate::types::DataId;
 use crate::types::SealId;
@@ -253,10 +258,14 @@ pub type ValueNodeId = NodeId<ValueNode>;
 pub type CompNodeId = NodeId<CompNode>;
 /// Canonical reified-stack node ids.
 pub type StackNodeId = NodeId<StackNode>;
-/// Canonical value-type node ids.
+/// Canonical value-type node id.
 pub type ValueTypeNodeId = NodeId<ValueTypeNode>;
-/// Canonical computation-type node ids.
+/// Canonical computation-type node id.
 pub type CompTypeNodeId = NodeId<CompTypeNode>;
+/// Canonical static-term node id.
+pub type StaticTermNodeId = NodeId<StaticTermNode>;
+/// Canonical static-family node id.
+pub type StaticFamilyNodeId = NodeId<StaticFamilyNode>;
 /// Canonical value arena.
 pub type ValueArena = NodeArena<ValueNode>;
 /// Canonical computation arena.
@@ -267,6 +276,104 @@ pub type StackArena = NodeArena<StackNode>;
 pub type ValueTypeArena = NodeArena<ValueTypeNode>;
 /// Canonical computation-type arena.
 pub type CompTypeArena = NodeArena<CompTypeNode>;
+/// Canonical static-term arena.
+pub type StaticTermArena = NodeArena<StaticTermNode>;
+/// Canonical static-family arena.
+pub type StaticFamilyArena = NodeArena<StaticFamilyNode>;
+
+/// A static binder in the flat carrier.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StaticBinderNode
+{
+    /// The bound variable name.
+    pub name: String,
+    /// The classifier at which the variable ranges.
+    pub classifier: crate::classifier::Classifier,
+}
+
+/// A static argument in the flat carrier.
+///
+/// Level and sort arguments remain owned scalar attributes. Type arguments
+/// refer to the static-term arena, and value arguments refer to the existing
+/// value arena.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StaticArgNode
+{
+    /// A universe level.
+    Level(Level),
+    /// A sort, ground or abstract.
+    Sort(SortExpr),
+    /// A static type term.
+    Type(StaticTermNodeId),
+    /// A value index.
+    Value(ValueNodeId),
+}
+
+/// A flattened static neutral spine.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StaticNeutralNode
+{
+    /// The neutral head variable name.
+    pub head: String,
+    /// Static arguments in source order.
+    pub args: Vec<StaticArgNode>,
+}
+
+/// A classifier-bearing flattened family application.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StaticFamilyNode
+{
+    /// The family head variable name.
+    pub head: String,
+    /// Static arguments in source order.
+    pub args: Vec<StaticArgNode>,
+    /// The declaration's result classifier.
+    pub result: crate::classifier::Classifier,
+}
+
+/// A static term in the flat carrier.
+///
+/// Every recursive static child is a typed arena id. The only owned compound
+/// field is a finite vector of `StaticArgNode` values whose recursive payloads
+/// are ids.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StaticTermNode
+{
+    /// A static variable.
+    Var(String),
+    /// A static universe classifier.
+    Universe(crate::classifier::Classifier),
+    /// A quoted value type.
+    QuoteValue(ValueTypeNodeId),
+    /// A quoted computation type.
+    QuoteComp(CompTypeNodeId),
+    /// A dependent static function type.
+    Pi
+    {
+        /// The static binder.
+        binder: StaticBinderNode,
+        /// The codomain.
+        codomain: StaticTermNodeId,
+    },
+    /// A static lambda.
+    Lam
+    {
+        /// The static binder.
+        binder: StaticBinderNode,
+        /// The body.
+        body: StaticTermNodeId,
+    },
+    /// A static application.
+    App
+    {
+        /// The function.
+        function: StaticTermNodeId,
+        /// The static argument.
+        argument: StaticArgNode,
+    },
+    /// A flattened neutral.
+    Neutral(StaticNeutralNode),
+}
 
 /// A value type node in the flat ADR-50 carrier.
 ///
@@ -305,17 +412,8 @@ pub enum ValueTypeNode
         /// The type-argument ids `ā`.
         args: Vec<ValueTypeNodeId>,
     },
-    /// The type-family application `head(args…)`, the flat mirror of
-    /// [`crate::types::ValueType::Family`]. The head is an owned attribute; the
-    /// arguments are **value**-arena ids, because a family is indexed by values
-    /// where [`Self::Data`] is parameterized by types.
-    Family
-    {
-        /// The family-kinded head's name.
-        head: String,
-        /// The argument value ids, in application order.
-        args: Vec<ValueNodeId>,
-    },
+    /// A classifier-bearing static family application.
+    Family(StaticFamilyNodeId),
     /// A universe `Type[sort, level]`, the flat mirror of
     /// [`crate::types::ValueType::Universe`].
     ///
@@ -385,6 +483,8 @@ pub enum CompTypeNode
         res: CompTypeNodeId,
     },
     With(CompTypeNodeId, CompTypeNodeId),
+    /// A classifier-bearing static family application.
+    Family(StaticFamilyNodeId),
     Unknown,
 }
 
@@ -2549,6 +2649,10 @@ pub struct FlatArena
     pub value_types: ValueTypeArena,
     /// Canonical computation type nodes.
     pub comp_types: CompTypeArena,
+    /// Canonical static-term nodes.
+    pub static_terms: StaticTermArena,
+    /// Canonical static-family nodes.
+    pub static_families: StaticFamilyArena,
 }
 
 /// A checked flat-arena bridge failure.
@@ -2567,6 +2671,10 @@ pub enum ArenaBridgeError
     MissingValueType(ValueTypeNodeId),
     /// A computation-type id did not belong to this bridge arena.
     MissingCompType(CompTypeNodeId),
+    /// A static-term id did not belong to this bridge arena.
+    MissingStaticTerm(StaticTermNodeId),
+    /// A static-family id did not belong to this bridge arena.
+    MissingStaticFamily(StaticFamilyNodeId),
     /// The iterative bridge reached an impossible mixed-sort state.
     TraversalInvariant,
 }
@@ -2583,6 +2691,12 @@ enum LegacyRoot<'legacy>
     ValueType(&'legacy ValueType),
     /// A legacy computation type awaiting conversion.
     CompType(&'legacy CompType),
+    /// A legacy static term awaiting conversion.
+    StaticTerm(&'legacy StaticTerm),
+    /// A legacy static family application awaiting conversion.
+    StaticFamily(&'legacy FamilyApp),
+    /// A borrowed static argument awaiting conversion.
+    StaticArg(&'legacy StaticArg),
     /// A legacy value awaiting conversion.
     Value(&'legacy Value),
     /// A legacy computation awaiting conversion.
@@ -2602,6 +2716,12 @@ enum LegacyRootId
     ValueType(ValueTypeNodeId),
     /// An id into the computation-type arena.
     CompType(CompTypeNodeId),
+    /// An id into the static-term arena.
+    StaticTerm(StaticTermNodeId),
+    /// An id into the static-family arena.
+    StaticFamily(StaticFamilyNodeId),
+    /// A converted static argument.
+    StaticArg(StaticArgNode),
     /// An id into the value arena.
     Value(ValueNodeId),
     /// An id into the computation arena.
@@ -2616,6 +2736,8 @@ enum LegacyAllocFrame<'legacy>
     /// Descend into a legacy subtree: allocate leaf forms immediately or
     /// schedule the reassembly step plus one `Visit` frame per child.
     Visit(LegacyRoot<'legacy>),
+    /// Drain a flattened static-argument spine one reference at a time.
+    StaticArgs(Vec<&'legacy StaticArg>),
     /// Reassemble a flat node from the converted children on the result
     /// stack.
     Finish(LegacyAllocFinish<'legacy>),
@@ -2661,16 +2783,24 @@ enum LegacyAllocFinish<'legacy>
         /// ids on the result stack.
         args: &'legacy [Rc<ValueType>],
     },
-    /// Reassembles a type-family [`ValueTypeNode::Family`] from the head and
-    /// the converted argument value ids.
-    ValueTypeFamily
-    {
-        /// The family-kinded head's name.
-        head: &'legacy str,
-        /// The legacy arguments, mirrored one-for-one by the converted ids on
-        /// the result stack.
-        args: &'legacy [Rc<Value>],
-    },
+    /// Reassembles a type-family node from a converted static-family id.
+    ValueTypeFamily,
+    /// Reassembles a static term's quoted value type.
+    StaticTermQuoteValue,
+    /// Reassembles a static term's quoted computation type.
+    StaticTermQuoteComp,
+    /// Reassembles a static term's dependent function.
+    StaticTermPi(&'legacy StaticBinder),
+    /// Reassembles a static term's lambda.
+    StaticTermLam(&'legacy StaticBinder),
+    /// Reassembles a static term's application.
+    StaticTermApp,
+    /// Reassembles a flattened static neutral.
+    StaticTermNeutral(&'legacy StaticNeutral, usize),
+    /// Reassembles a static type argument.
+    StaticArgType,
+    /// Reassembles a static value argument.
+    StaticArgValue,
     /// Reassembles a dependent-pair [`ValueTypeNode::Sigma`] from the binder
     /// name and the converted head/tail type ids.
     ValueTypeSigma(&'legacy str),
@@ -2686,6 +2816,10 @@ enum LegacyAllocFinish<'legacy>
     /// Reassembles a returner [`CompTypeNode::F`] from the converted value
     /// type id and the borrowed effect row.
     CompTypeF(&'legacy EffectRow),
+    /// Reassembles a computation-family node from a converted static-family id.
+    CompTypeFamily,
+    /// Reassembles a flattened static family application.
+    StaticFamily(&'legacy FamilyApp, usize),
     /// Reassembles an arrow [`CompTypeNode::Arrow`] from the borrowed binder,
     /// the converted argument value-type id, and the result
     /// computation-type id.
@@ -2891,12 +3025,18 @@ enum FlatRoot
     ValueType(ValueTypeNodeId),
     /// A computation-type node id awaiting read-back.
     CompType(CompTypeNodeId),
+    /// A static-term node id awaiting read-back.
+    StaticTerm(StaticTermNodeId),
+    /// A static-family node id awaiting read-back.
+    StaticFamily(StaticFamilyNodeId),
     /// A value node id awaiting read-back.
     Value(ValueNodeId),
     /// A computation node id awaiting read-back.
     Comp(CompNodeId),
     /// A stack node id awaiting read-back.
     Stack(StackNodeId),
+    /// A flat static argument payload awaiting read-back.
+    StaticArg(StaticArgNode),
 }
 
 /// A sort-tagged structural term produced by the iterative read-back
@@ -2911,6 +3051,12 @@ enum StructuralRoot
     ValueType(ValueType),
     /// A rebuilt legacy computation type.
     CompType(CompType),
+    /// A rebuilt legacy static term.
+    StaticTerm(StaticTerm),
+    /// A rebuilt legacy static family application.
+    StaticFamily(FamilyApp),
+    /// A rebuilt legacy static argument.
+    StaticArg(StaticArg),
     /// A rebuilt legacy value.
     Value(Value),
     /// A rebuilt legacy computation.
@@ -2962,6 +3108,26 @@ enum FlatReadFinish<'arena>
     /// Reassembles an identity [`ValueType::Path`] from the read-back carrier
     /// type and value endpoints.
     ValueTypePath,
+    /// Reassembles a value-family application from a static-family payload.
+    ValueTypeFamily(&'arena StaticFamilyNode),
+    /// Reassembles a static term quoting a value type.
+    StaticTermQuoteValue,
+    /// Reassembles a static term quoting a computation type.
+    StaticTermQuoteComp,
+    /// Reassembles a static dependent function.
+    StaticTermPi(&'arena StaticBinderNode),
+    /// Reassembles a static lambda.
+    StaticTermLam(&'arena StaticBinderNode),
+    /// Reassembles a static application.
+    StaticTermApp,
+    /// Reassembles a flattened static neutral.
+    StaticTermNeutral(&'arena StaticNeutralNode),
+    /// Reassembles a static type argument.
+    StaticArgType,
+    /// Reassembles a static value argument.
+    StaticArgValue,
+    /// Reassembles a static family application.
+    StaticFamily(&'arena StaticFamilyNode),
     /// Reassembles a declared-data [`ValueType::Data`] from the read-back
     /// type arguments.
     ValueTypeData
@@ -2971,16 +3137,6 @@ enum FlatReadFinish<'arena>
         /// The flat type-argument ids, mirrored one-for-one by the read-back
         /// types on the result stack.
         args: &'arena [ValueTypeNodeId],
-    },
-    /// Reassembles a type-family [`ValueType::Family`] from the head and the
-    /// read-back argument values.
-    ValueTypeFamily
-    {
-        /// The family-kinded head's name.
-        head: &'arena str,
-        /// The flat argument ids, mirrored one-for-one by the read-back values
-        /// on the result stack.
-        args: &'arena [ValueNodeId],
     },
     /// Reassembles a dependent-pair [`ValueType::Sigma`] from the binder name
     /// and the read-back head/tail types.
@@ -2999,6 +3155,9 @@ enum FlatReadFinish<'arena>
     CompTypeF(&'arena EffectRow),
     /// Reassembles an arrow [`CompType::Arrow`] from the borrowed binder, the
     /// read-back argument value type, and the result computation type.
+    /// Reassembles a computation-family application from a static payload.
+    CompTypeFamily(&'arena StaticFamilyNode),
+    /// The optional dependent binder carried by the arrow.
     CompTypeArrow(Option<&'arena str>),
     /// Reassembles a with [`CompType::With`] from the two read-back component
     /// computation types.
@@ -3202,6 +3361,52 @@ fn pop_alloc_comp_type(results: &mut Vec<LegacyRootId>)
         | _ => Err(ArenaBridgeError::TraversalInvariant),
     }
 }
+/// Pops a static-term id off the allocation result stack.
+fn pop_alloc_static_term(
+    results: &mut Vec<LegacyRootId>
+) -> Result<StaticTermNodeId, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(LegacyRootId::StaticTerm(id)) => Ok(id),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops a static-family id off the allocation result stack.
+fn pop_alloc_static_family(
+    results: &mut Vec<LegacyRootId>
+) -> Result<StaticFamilyNodeId, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(LegacyRootId::StaticFamily(id)) => Ok(id),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops a static argument off the allocation result stack.
+fn pop_alloc_static_arg(results: &mut Vec<LegacyRootId>)
+-> Result<StaticArgNode, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(LegacyRootId::StaticArg(argument)) => Ok(argument),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops static arguments off the allocation result stack in source order.
+fn pop_alloc_static_args(
+    results: &mut Vec<LegacyRootId>,
+    count: ArenaLength,
+) -> Result<Vec<StaticArgNode>, ArenaBridgeError>
+{
+    let count = usize::from(count);
+    let mut arguments = Vec::with_capacity(count);
+    for _ in 0 .. count {
+        arguments.push(pop_alloc_static_arg(results)?);
+    }
+    arguments.reverse();
+    Ok(arguments)
+}
 
 /// Pops a stack id off the allocation result stack.
 ///
@@ -3361,6 +3566,48 @@ fn pop_read_comp_type(results: &mut Vec<StructuralRoot>) -> Result<CompType, Are
         | _ => Err(ArenaBridgeError::TraversalInvariant),
     }
 }
+/// Pops a static term off the read-back result stack.
+fn pop_read_static_term(results: &mut Vec<StructuralRoot>) -> Result<StaticTerm, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(StructuralRoot::StaticTerm(term)) => Ok(term),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops a static family application off the read-back result stack.
+fn pop_read_static_family(results: &mut Vec<StructuralRoot>)
+-> Result<FamilyApp, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(StructuralRoot::StaticFamily(family)) => Ok(family),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops a static argument off the read-back result stack.
+fn pop_read_static_arg(results: &mut Vec<StructuralRoot>) -> Result<StaticArg, ArenaBridgeError>
+{
+    match results.pop() {
+        | Some(StructuralRoot::StaticArg(argument)) => Ok(argument),
+        | _ => Err(ArenaBridgeError::TraversalInvariant),
+    }
+}
+
+/// Pops static arguments off the read-back result stack in source order.
+fn pop_read_static_args(
+    results: &mut Vec<StructuralRoot>,
+    count: ArenaLength,
+) -> Result<Vec<StaticArg>, ArenaBridgeError>
+{
+    let count = usize::from(count);
+    let mut arguments = Vec::with_capacity(count);
+    for _ in 0 .. count {
+        arguments.push(pop_read_static_arg(results)?);
+    }
+    arguments.reverse();
+    Ok(arguments)
+}
 
 /// Pops a reified stack off the read-back result stack.
 ///
@@ -3502,6 +3749,29 @@ fn pop_read_comp(results: &mut Vec<StructuralRoot>) -> Result<Comp, ArenaBridgeE
     }
 }
 
+/// Collects a neutral's static arguments in source order without recursion.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "The arena bridge follows borrowed neutral nodes without cloning the spine."
+)]
+fn static_argument_refs(neutral: &StaticNeutral) -> Vec<&StaticArg>
+{
+    let mut arguments = Vec::new();
+    let mut current = neutral;
+    loop {
+        match current {
+            | StaticNeutral::Head(_) => {
+                arguments.reverse();
+                return arguments;
+            },
+            | StaticNeutral::App { head, argument } => {
+                arguments.push(argument);
+                current = head.as_ref();
+            },
+        }
+    }
+}
+
 impl FlatArena
 {
     /// Creates an empty bridge arena set.
@@ -3528,6 +3798,9 @@ impl FlatArena
     ///   exceed its id space; [`ArenaBridgeError::TraversalInvariant`] when the
     ///   result-stack bookkeeping no longer matches the schedule.
     /// - panics: none.
+    /// - ownership: no `TyOwned` deep clone is retained; the worklist borrows
+    ///   the original Rc-backed legacy subtrees for the outer call and copies
+    ///   only scalar attributes and typed ids.
     ///
     /// # Termination
     /// - reason: explicit post-order worklist over finite legacy syntax; no
@@ -3552,6 +3825,15 @@ impl FlatArena
                     | LegacyRoot::CompType(ty) => {
                         self.schedule_alloc_comp_type(ty, &mut work, &mut results)?;
                     },
+                    | LegacyRoot::StaticTerm(term) => {
+                        self.schedule_alloc_static_term(term, &mut work, &mut results)?;
+                    },
+                    | LegacyRoot::StaticFamily(application) => {
+                        Self::schedule_alloc_static_family(application, &mut work);
+                    },
+                    | LegacyRoot::StaticArg(argument) => {
+                        Self::schedule_alloc_static_arg(argument, &mut work, &mut results);
+                    },
                     | LegacyRoot::Value(value) => {
                         self.schedule_alloc_value(value, &mut work, &mut results)?;
                     },
@@ -3561,6 +3843,12 @@ impl FlatArena
                     | LegacyRoot::Stack(stack) => {
                         self.schedule_alloc_stack(stack, &mut work, &mut results)?;
                     },
+                },
+                | LegacyAllocFrame::StaticArgs(mut arguments) => {
+                    if let Some(argument) = arguments.pop() {
+                        work.push(LegacyAllocFrame::StaticArgs(arguments));
+                        work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticArg(argument)));
+                    }
                 },
                 | LegacyAllocFrame::Finish(finish) => self.finish_alloc(&finish, &mut results)?,
             }
@@ -3662,16 +3950,11 @@ impl FlatArena
                     carrier.as_ref(),
                 )));
             },
-            | ValueType::Family { ref head, ref args } => {
-                work.push(LegacyAllocFrame::Finish(
-                    LegacyAllocFinish::ValueTypeFamily {
-                        head: head.as_str(),
-                        args,
-                    },
-                ));
-                for arg in args.iter().rev() {
-                    work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(arg.as_ref())));
-                }
+            | ValueType::Family(ref application) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValueTypeFamily));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticFamily(
+                    application,
+                )));
             },
             | ValueType::Data { ref id, ref args } => {
                 work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::ValueTypeData {
@@ -3777,6 +4060,12 @@ impl FlatArena
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::CompType(snd.as_ref())));
                 work.push(LegacyAllocFrame::Visit(LegacyRoot::CompType(fst.as_ref())));
             },
+            | CompType::Family(ref application) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::CompTypeFamily));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticFamily(
+                    application,
+                )));
+            },
             | CompType::Unknown => {
                 let id = self
                     .comp_types
@@ -3786,6 +4075,132 @@ impl FlatArena
             },
         }
         Ok(())
+    }
+    /// Schedules a static term onto the explicit allocation worklist.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        reason = "The arena bridge matches borrowed static nodes without taking ownership."
+    )]
+    fn schedule_alloc_static_term<'legacy>(
+        &mut self,
+        term: &'legacy StaticTerm,
+        work: &mut Vec<LegacyAllocFrame<'legacy>>,
+        results: &mut Vec<LegacyRootId>,
+    ) -> Result<(), ArenaBridgeError>
+    {
+        match *term {
+            | StaticTerm::Var(ref variable) => {
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::Var(variable.name().as_ref().to_owned()))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | StaticTerm::Universe(ref classifier) => {
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::Universe(classifier.clone()))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | StaticTerm::Quote(ref quoted) => match quoted.as_ref() {
+                | crate::types::Ty::Value(value_type) => {
+                    work.push(LegacyAllocFrame::Finish(
+                        LegacyAllocFinish::StaticTermQuoteValue,
+                    ));
+                    work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(value_type)));
+                },
+                | crate::types::Ty::Comp(comp_type) => {
+                    work.push(LegacyAllocFrame::Finish(
+                        LegacyAllocFinish::StaticTermQuoteComp,
+                    ));
+                    work.push(LegacyAllocFrame::Visit(LegacyRoot::CompType(comp_type)));
+                },
+            },
+            | StaticTerm::Pi {
+                ref binder,
+                ref codomain,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticTermPi(
+                    binder,
+                )));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticTerm(
+                    codomain.as_ref(),
+                )));
+            },
+            | StaticTerm::Lam {
+                ref binder,
+                ref body,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticTermLam(
+                    binder,
+                )));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticTerm(
+                    body.as_ref(),
+                )));
+            },
+            | StaticTerm::App {
+                ref function,
+                ref argument,
+            } => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticTermApp));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticArg(argument)));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticTerm(
+                    function.as_ref(),
+                )));
+            },
+            | StaticTerm::Neutral(ref neutral) => {
+                let mut arguments = static_argument_refs(neutral);
+                arguments.reverse();
+                work.push(LegacyAllocFrame::Finish(
+                    LegacyAllocFinish::StaticTermNeutral(neutral, arguments.len()),
+                ));
+                work.push(LegacyAllocFrame::StaticArgs(arguments));
+            },
+        }
+        Ok(())
+    }
+
+    /// Schedules a static family application onto the explicit worklist.
+    fn schedule_alloc_static_family<'legacy>(
+        application: &'legacy FamilyApp,
+        work: &mut Vec<LegacyAllocFrame<'legacy>>,
+    )
+    {
+        let mut arguments = static_argument_refs(application.neutral());
+        arguments.reverse();
+        work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticFamily(
+            application,
+            arguments.len(),
+        )));
+        work.push(LegacyAllocFrame::StaticArgs(arguments));
+    }
+
+    /// Schedules one static argument and its recursive child, if any.
+    fn schedule_alloc_static_arg<'legacy>(
+        argument: &'legacy StaticArg,
+        work: &mut Vec<LegacyAllocFrame<'legacy>>,
+        results: &mut Vec<LegacyRootId>,
+    )
+    {
+        match argument {
+            | &StaticArg::Level(ref level) => {
+                results.push(LegacyRootId::StaticArg(StaticArgNode::Level(level.clone())));
+            },
+            | &StaticArg::Sort(ref sort) => {
+                results.push(LegacyRootId::StaticArg(StaticArgNode::Sort(sort.clone())));
+            },
+            | &StaticArg::Type(ref term) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticArgType));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::StaticTerm(
+                    term.as_ref(),
+                )));
+            },
+            | &StaticArg::Value(ref value) => {
+                work.push(LegacyAllocFrame::Finish(LegacyAllocFinish::StaticArgValue));
+                work.push(LegacyAllocFrame::Visit(LegacyRoot::Value(value.as_ref())));
+            },
+        }
     }
 
     /// Schedules the flat allocation of one legacy value.
@@ -4286,16 +4701,82 @@ impl FlatArena
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
             },
-            | LegacyAllocFinish::ValueTypeFamily { head, args } => {
-                let arg_ids = pop_alloc_values(results, args.len().into())?;
+            | LegacyAllocFinish::ValueTypeFamily => {
+                let family = pop_alloc_static_family(results)?;
                 let id = self
                     .value_types
-                    .alloc(ValueTypeNode::Family {
-                        head: head.to_owned(),
-                        args: arg_ids,
-                    })
+                    .alloc(ValueTypeNode::Family(family))
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
+            },
+            | LegacyAllocFinish::StaticTermQuoteValue => {
+                let value_type = pop_alloc_value_type(results)?;
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::QuoteValue(value_type))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticTermQuoteComp => {
+                let comp_type = pop_alloc_comp_type(results)?;
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::QuoteComp(comp_type))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticTermPi(binder) => {
+                let codomain = pop_alloc_static_term(results)?;
+                let binder = StaticBinderNode {
+                    name: binder.variable().name().as_ref().to_owned(),
+                    classifier: binder.classifier().clone(),
+                };
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::Pi { binder, codomain })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticTermLam(binder) => {
+                let body = pop_alloc_static_term(results)?;
+                let binder = StaticBinderNode {
+                    name: binder.variable().name().as_ref().to_owned(),
+                    classifier: binder.classifier().clone(),
+                };
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::Lam { binder, body })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticTermApp => {
+                let argument = pop_alloc_static_arg(results)?;
+                let function = pop_alloc_static_term(results)?;
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::App { function, argument })
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticTermNeutral(neutral, count) => {
+                let args = pop_alloc_static_args(results, count.into())?;
+                let node = StaticNeutralNode {
+                    head: neutral.head_variable().name().as_ref().to_owned(),
+                    args,
+                };
+                let id = self
+                    .static_terms
+                    .alloc(StaticTermNode::Neutral(node))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticTerm(id));
+            },
+            | LegacyAllocFinish::StaticArgType => {
+                let term = pop_alloc_static_term(results)?;
+                results.push(LegacyRootId::StaticArg(StaticArgNode::Type(term)));
+            },
+            | LegacyAllocFinish::StaticArgValue => {
+                let value = pop_alloc_value(results)?;
+                results.push(LegacyRootId::StaticArg(StaticArgNode::Value(value)));
             },
             | LegacyAllocFinish::ValueTypeData { id: data_id, args } => {
                 let arg_ids = pop_alloc_value_types(results, args.len().into())?;
@@ -4390,6 +4871,32 @@ impl FlatArena
                     .alloc(CompTypeNode::With(fst, snd))
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::CompType(id));
+            },
+            | LegacyAllocFinish::CompTypeFamily => {
+                let family = pop_alloc_static_family(results)?;
+                let id = self
+                    .comp_types
+                    .alloc(CompTypeNode::Family(family))
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::CompType(id));
+            },
+            | LegacyAllocFinish::StaticFamily(application, count) => {
+                let args = pop_alloc_static_args(results, count.into())?;
+                let node = StaticFamilyNode {
+                    head: application
+                        .neutral()
+                        .head_variable()
+                        .name()
+                        .as_ref()
+                        .to_owned(),
+                    args,
+                    result: application.result().clone(),
+                };
+                let id = self
+                    .static_families
+                    .alloc(node)
+                    .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
+                results.push(LegacyRootId::StaticFamily(id));
             },
             | LegacyAllocFinish::ValuePair => {
                 let snd = pop_alloc_value(results)?;
@@ -4815,12 +5322,23 @@ impl FlatArena
                     | FlatRoot::CompType(id) => {
                         self.schedule_read_comp_type(id, &mut work, &mut results)?;
                     },
+                    | FlatRoot::StaticTerm(id) => {
+                        self.schedule_read_static_term(id, &mut work, &mut results)?;
+                    },
+                    | FlatRoot::StaticFamily(id) => {
+                        self.schedule_read_static_family(id, &mut work, &mut results)?;
+                    },
                     | FlatRoot::Value(id) => {
                         self.schedule_read_value(id, &mut work, &mut results)?;
                     },
-                    | FlatRoot::Comp(id) => self.schedule_read_comp(id, &mut work, &mut results)?,
+                    | FlatRoot::Comp(id) => {
+                        self.schedule_read_comp(id, &mut work, &mut results)?;
+                    },
                     | FlatRoot::Stack(id) => {
                         self.schedule_read_stack(id, &mut work, &mut results)?;
+                    },
+                    | FlatRoot::StaticArg(argument) => {
+                        Self::schedule_read_static_arg(argument, &mut work, &mut results);
                     },
                 },
                 | FlatReadFrame::Finish(finish) => Self::finish_read(&finish, &mut results)?,
@@ -4832,6 +5350,112 @@ impl FlatArena
         }
         else {
             Err(ArenaBridgeError::TraversalInvariant)
+        }
+    }
+
+    /// Schedules a static term for iterative read-back.
+    fn schedule_read_static_term<'arena>(
+        &'arena self,
+        id: StaticTermNodeId,
+        work: &mut Vec<FlatReadFrame<'arena>>,
+        results: &mut Vec<StructuralRoot>,
+    ) -> Result<(), ArenaBridgeError>
+    {
+        let node = self
+            .static_terms
+            .get(id)
+            .ok_or(ArenaBridgeError::MissingStaticTerm(id))?;
+        match *node {
+            | StaticTermNode::Var(ref name) => {
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Var(
+                    crate::static_term::StaticVar::new(name.clone()),
+                )));
+            },
+            | StaticTermNode::Universe(ref classifier) => {
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Universe(
+                    classifier.clone(),
+                )));
+            },
+            | StaticTermNode::QuoteValue(value_type) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermQuoteValue));
+                work.push(FlatReadFrame::Visit(FlatRoot::ValueType(value_type)));
+            },
+            | StaticTermNode::QuoteComp(comp_type) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermQuoteComp));
+                work.push(FlatReadFrame::Visit(FlatRoot::CompType(comp_type)));
+            },
+            | StaticTermNode::Pi {
+                ref binder,
+                codomain,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermPi(binder)));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticTerm(codomain)));
+            },
+            | StaticTermNode::Lam { ref binder, body } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermLam(binder)));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticTerm(body)));
+            },
+            | StaticTermNode::App {
+                function,
+                ref argument,
+            } => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermApp));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticArg(argument.clone())));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticTerm(function)));
+            },
+            | StaticTermNode::Neutral(ref neutral) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticTermNeutral(
+                    neutral,
+                )));
+                for argument in neutral.args.iter().rev() {
+                    work.push(FlatReadFrame::Visit(FlatRoot::StaticArg(argument.clone())));
+                }
+            },
+        }
+        Ok(())
+    }
+
+    /// Schedules a static-family node for iterative read-back.
+    fn schedule_read_static_family<'arena>(
+        &'arena self,
+        id: StaticFamilyNodeId,
+        work: &mut Vec<FlatReadFrame<'arena>>,
+        _results: &mut Vec<StructuralRoot>,
+    ) -> Result<(), ArenaBridgeError>
+    {
+        let family = self
+            .static_families
+            .get(id)
+            .ok_or(ArenaBridgeError::MissingStaticFamily(id))?;
+        work.push(FlatReadFrame::Finish(FlatReadFinish::StaticFamily(family)));
+        for argument in family.args.iter().rev() {
+            work.push(FlatReadFrame::Visit(FlatRoot::StaticArg(argument.clone())));
+        }
+        Ok(())
+    }
+
+    /// Schedules a flat static argument for iterative read-back.
+    fn schedule_read_static_arg(
+        argument: StaticArgNode,
+        work: &mut Vec<FlatReadFrame<'_>>,
+        results: &mut Vec<StructuralRoot>,
+    )
+    {
+        match argument {
+            | StaticArgNode::Level(level) => {
+                results.push(StructuralRoot::StaticArg(StaticArg::Level(level)));
+            },
+            | StaticArgNode::Sort(sort) => {
+                results.push(StructuralRoot::StaticArg(StaticArg::Sort(sort)));
+            },
+            | StaticArgNode::Type(term) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticArgType));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticTerm(term)));
+            },
+            | StaticArgNode::Value(value) => {
+                work.push(FlatReadFrame::Finish(FlatReadFinish::StaticArgValue));
+                work.push(FlatReadFrame::Visit(FlatRoot::Value(value)));
+            },
         }
     }
 
@@ -4903,14 +5527,15 @@ impl FlatArena
                 work.push(FlatReadFrame::Visit(FlatRoot::Value(lhs)));
                 work.push(FlatReadFrame::Visit(FlatRoot::ValueType(ty)));
             },
-            | ValueTypeNode::Family { ref head, ref args } => {
-                work.push(FlatReadFrame::Finish(FlatReadFinish::ValueTypeFamily {
-                    head: head.as_str(),
-                    args,
-                }));
-                for arg in args.iter().rev() {
-                    work.push(FlatReadFrame::Visit(FlatRoot::Value(*arg)));
-                }
+            | ValueTypeNode::Family(family_id) => {
+                let family = self
+                    .static_families
+                    .get(family_id)
+                    .ok_or(ArenaBridgeError::MissingStaticFamily(family_id))?;
+                work.push(FlatReadFrame::Finish(FlatReadFinish::ValueTypeFamily(
+                    family,
+                )));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticFamily(family_id)));
             },
             | ValueTypeNode::Data {
                 id: ref data_id,
@@ -5009,6 +5634,16 @@ impl FlatArena
                 work.push(FlatReadFrame::Finish(FlatReadFinish::CompTypeWith));
                 work.push(FlatReadFrame::Visit(FlatRoot::CompType(snd)));
                 work.push(FlatReadFrame::Visit(FlatRoot::CompType(fst)));
+            },
+            | CompTypeNode::Family(family_id) => {
+                let family = self
+                    .static_families
+                    .get(family_id)
+                    .ok_or(ArenaBridgeError::MissingStaticFamily(family_id))?;
+                work.push(FlatReadFrame::Finish(FlatReadFinish::CompTypeFamily(
+                    family,
+                )));
+                work.push(FlatReadFrame::Visit(FlatRoot::StaticFamily(family_id)));
             },
             | CompTypeNode::Unknown => {
                 results.push(StructuralRoot::CompType(CompType::Unknown));
@@ -5454,12 +6089,78 @@ impl FlatArena
                     rhs: Rc::new(rhs),
                 }));
             },
-            | FlatReadFinish::ValueTypeFamily { head, args } => {
-                let values = pop_read_values(results, args.len().into())?;
-                results.push(StructuralRoot::ValueType(ValueType::Family {
-                    head: head.to_owned(),
-                    args: values.into_iter().map(Rc::new).collect(),
+            | FlatReadFinish::ValueTypeFamily(_family) => {
+                let family = pop_read_static_family(results)?;
+                results.push(StructuralRoot::ValueType(ValueType::Family(family)));
+            },
+            | FlatReadFinish::StaticTermQuoteValue => {
+                let value_type = pop_read_value_type(results)?;
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Quote(Rc::new(
+                    crate::types::Ty::Value(value_type),
+                ))));
+            },
+            | FlatReadFinish::StaticTermQuoteComp => {
+                let comp_type = pop_read_comp_type(results)?;
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Quote(Rc::new(
+                    crate::types::Ty::Comp(comp_type),
+                ))));
+            },
+            | FlatReadFinish::StaticTermPi(binder) => {
+                let codomain = pop_read_static_term(results)?;
+                let binder = StaticBinder::new(
+                    crate::static_term::StaticVar::new(binder.name.clone()),
+                    binder.classifier.clone(),
+                );
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Pi {
+                    binder,
+                    codomain: Rc::new(codomain),
                 }));
+            },
+            | FlatReadFinish::StaticTermLam(binder) => {
+                let body = pop_read_static_term(results)?;
+                let binder = StaticBinder::new(
+                    crate::static_term::StaticVar::new(binder.name.clone()),
+                    binder.classifier.clone(),
+                );
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Lam {
+                    binder,
+                    body: Rc::new(body),
+                }));
+            },
+            | FlatReadFinish::StaticTermApp => {
+                let argument = pop_read_static_arg(results)?;
+                let function = pop_read_static_term(results)?;
+                results.push(StructuralRoot::StaticTerm(StaticTerm::App {
+                    function: Rc::new(function),
+                    argument,
+                }));
+            },
+            | FlatReadFinish::StaticTermNeutral(neutral) => {
+                let arguments = pop_read_static_args(results, neutral.args.len().into())?;
+                let neutral = arguments.into_iter().fold(
+                    StaticNeutral::head(crate::static_term::StaticVar::new(neutral.head.clone())),
+                    StaticNeutral::app,
+                );
+                results.push(StructuralRoot::StaticTerm(StaticTerm::Neutral(neutral)));
+            },
+            | FlatReadFinish::StaticArgType => {
+                let term = pop_read_static_term(results)?;
+                results.push(StructuralRoot::StaticArg(StaticArg::Type(Rc::new(term))));
+            },
+            | FlatReadFinish::StaticArgValue => {
+                let value = pop_read_value(results)?;
+                results.push(StructuralRoot::StaticArg(StaticArg::Value(Rc::new(value))));
+            },
+            | FlatReadFinish::StaticFamily(family) => {
+                let arguments = pop_read_static_args(results, family.args.len().into())?;
+                let neutral = arguments.into_iter().fold(
+                    StaticNeutral::head(crate::static_term::StaticVar::new(family.head.clone())),
+                    StaticNeutral::app,
+                );
+                results.push(StructuralRoot::StaticFamily(FamilyApp::new(
+                    neutral,
+                    family.result.clone(),
+                )));
             },
             | FlatReadFinish::ValueTypeData { id, args } => {
                 let values = pop_read_value_types(results, args.len().into())?;
@@ -5528,6 +6229,10 @@ impl FlatArena
                     Rc::new(fst),
                     Rc::new(snd),
                 )));
+            },
+            | FlatReadFinish::CompTypeFamily(_family) => {
+                let family = pop_read_static_family(results)?;
+                results.push(StructuralRoot::CompType(CompType::Family(family)));
             },
             | FlatReadFinish::ValuePair => {
                 let snd = pop_read_value(results)?;
@@ -6140,11 +6845,112 @@ mod tests
     use super::ValueNode;
     use crate::boundary::IntegerLiteral;
     use crate::boundary::NodeIndex;
+    use crate::classifier::Classifier;
+    use crate::classifier::GroundSort;
     use crate::classifier::SortExpr;
     use crate::grade::Grade;
+    use crate::static_term::FamilyApp;
+    use crate::static_term::StaticArg;
+    use crate::static_term::StaticNeutral;
+    use crate::static_term::StaticTerm;
+    use crate::static_term::StaticVar;
     use crate::types::CompType;
     use crate::types::ValueType;
 
+    /// Static family arguments preserve their four source-level shapes:
+    /// scalar level and sort arguments, plus typed static-term and value
+    /// children.
+    #[test]
+    fn flat_arena_round_trips_all_static_argument_shapes()
+    {
+        let neutral = [
+            StaticArg::Level(Level::zero()),
+            StaticArg::Sort(SortExpr::computation()),
+            StaticArg::Type(Rc::new(StaticTerm::Universe(Classifier::new(
+                GroundSort::Value,
+                Level::zero(),
+            )))),
+            StaticArg::Value(Rc::new(Value::int(7))),
+        ]
+        .into_iter()
+        .fold(
+            StaticNeutral::head(StaticVar::new("Family")),
+            StaticNeutral::app,
+        );
+        let source = ValueType::family(FamilyApp::new(
+            neutral,
+            Classifier::new(GroundSort::Value, Level::zero()),
+        ));
+
+        let mut arena = FlatArena::new();
+        let root = arena
+            .alloc_value_type(&source)
+            .expect("static family with all argument shapes fits in the arena");
+        let readback = arena
+            .value_type(root)
+            .expect("static family with all argument shapes reads back");
+
+        assert_eq!(source, readback);
+    }
+
+    /// A family spine deeper than the native stack survives both bridge
+    /// directions, and dropping the flat carrier does not recurse through it.
+    ///
+    /// The owned legacy spine is deliberately forgotten after readback, so
+    /// this witness isolates the flat carrier's nonrecursive drop behavior
+    /// rather than claiming that the legacy Rc chain has iterative drop glue.
+    #[expect(
+        clippy::pattern_type_mismatch,
+        clippy::mem_forget,
+        reason = "This deep witness intentionally forgets legacy Rc trees to isolate flat drop."
+    )]
+    #[test]
+    fn flat_arena_round_trips_deep_static_family_without_stack_recursion()
+    {
+        const DEPTH: usize = 100_000;
+
+        let neutral = (0 .. DEPTH).fold(
+            StaticNeutral::head(StaticVar::new("DeepFamily")),
+            |head, _| StaticNeutral::app(head, StaticArg::Level(Level::zero())),
+        );
+        let source = ValueType::family(FamilyApp::new(
+            neutral,
+            Classifier::new(GroundSort::Value, Level::zero()),
+        ));
+
+        let mut arena = FlatArena::new();
+        let root = arena
+            .alloc_value_type(&source)
+            .expect("deep static family allocates iteratively");
+        let family_id = match arena.value_types.get(root) {
+            | Some(super::ValueTypeNode::Family(id)) => *id,
+            | _ => panic!("deep family root is not a family node"),
+        };
+        let flat_family = arena
+            .static_families
+            .get(family_id)
+            .expect("deep family node exists");
+        assert_eq!("DeepFamily", flat_family.head);
+        assert_eq!(DEPTH, flat_family.args.len());
+
+        let readback = arena
+            .value_type(root)
+            .expect("deep static family reads back iteratively");
+        match &readback {
+            | ValueType::Family(family) => {
+                assert_eq!("DeepFamily", family.neutral().head_name().as_ref());
+                assert_eq!(DEPTH, family.neutral().arguments().len());
+                assert!(family.neutral().arguments().into_iter().all(
+                    |argument| matches!(argument, StaticArg::Level(level) if level == Level::zero())
+                ));
+            },
+            | _ => panic!("deep family readback is not a family type"),
+        }
+
+        core::mem::forget(readback);
+        core::mem::forget(source);
+        drop(arena);
+    }
     /// The ADR-50 arena substrate allocates stable typed ids and exposes only
     /// checked lookup.
     #[test]
