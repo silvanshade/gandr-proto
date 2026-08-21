@@ -339,6 +339,14 @@ fn subst_type(
     while let Some(task) = tasks.pop() {
         match task {
             | TypeTask::Value(ty) => match *ty {
+                | ValueType::Atom(ref atom) if atom == name.as_ref() => {
+                    match *repl {
+                        | Value::Var(ref replacement) => {
+                            values.push(ValueType::Atom(replacement.clone()));
+                        },
+                        | _ => values.push(ty.clone()),
+                    }
+                },
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Unknown

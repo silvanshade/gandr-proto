@@ -63,10 +63,12 @@ use gandr_core_term::ctx::Ctx;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::intern::TypeId;
 use gandr_core_term::intern::TypeInterner;
+use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
 
+use crate::judgements::checker::CHECK_VALUE;
 use crate::judgements::control::Dir;
 
 /// Completes the integer-literal rule under a direction (ADR-39 D4) — the
@@ -95,6 +97,11 @@ use crate::judgements::control::Dir;
 ///
 /// Returns [`TypeError::TypeMismatch`] when neither the literal fit nor the
 /// `Integer` subsumption holds.
+/// # Termination
+/// - reason: fallback delegates to finite value subtyping and checker premises.
+/// - measure: remaining type and endpoint derivation premises.
+/// - boundedness: input types, terms, and definition chain are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 #[inline]
 pub fn finish_int_literal(
     ctx: &Ctx,
@@ -160,6 +167,12 @@ pub(crate) fn int_literal_fits(
 /// # Errors
 ///
 /// Returns [`TypeError::TypeMismatch`] when subsumption fails.
+/// # Termination
+/// - reason: check-mode subsumption delegates to finite value subtyping and
+///   endpoint premises.
+/// - measure: remaining type and endpoint derivation premises.
+/// - boundedness: input types, terms, and definition chain are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 #[inline]
 pub fn finish_value(
     ctx: &Ctx,
@@ -196,14 +209,15 @@ pub fn finish_value(
 ///   for every `t`) but NOT transitive once `Unknown` participates (`Int ≲
 ///   Unknown` and `Unknown ≲ Str`, yet `Int ⋦ Str`); transitivity holds only on
 ///   `Unknown`-free types.
-/// - panics: none.
+/// - input recursion: endpoint typing may re-enter the subtyping judgment on
+///   strictly smaller checker premises.
 #[inline]
 #[must_use]
 /// # Termination
-/// - reason: subtyping follows finite type-tree structure.
-/// - measure: remaining pair of type children under comparison.
-/// - boundedness: compared types are finite Rust values.
-/// - input recursion: none.
+/// - reason: value subtyping follows finite decomposition and endpoint checks.
+/// - measure: remaining type and endpoint derivation premises.
+/// - boundedness: compared types, terms, and definitions are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 pub fn value_subtype(
     ctx: &Ctx,
     sub: &ValueType,
@@ -214,6 +228,41 @@ pub fn value_subtype(
         Rc::new(sub.clone()),
         Rc::new(sup.clone()),
     )])
+}
+
+/// # Termination
+/// - reason: checker follows finite typing-rule premises for the endpoint term.
+/// - measure: remaining checked syntax, type, or stack premises.
+/// - boundedness: endpoint, carrier, and definition chain are finite.
+/// - input recursion: application checks re-enter subtyping on smaller
+///   premises.
+///
+/// Checks a value occurring in a type against the type that owns its position.
+///
+/// Path endpoints are terms inside a type, so conversion alone cannot establish
+/// that an application spine uses the declaration's argument types. Reusing the
+/// ordinary checker here keeps endpoint typing under the same context,
+/// definitions, and dependent application rules as body typing. A failed
+/// endpoint derivation is a failed invariant-path comparison.
+#[inline]
+fn endpoint_is_well_typed(
+    ctx: &Ctx,
+    endpoint: &Value,
+    carrier: &ValueType,
+) -> SubtypeDecision
+{
+    CHECK_VALUE(ctx.clone(), endpoint.clone(), carrier.clone())
+        .is_ok()
+        .into()
+}
+/// Endpoint terms need an explicit derivation when their carrier is itself a
+/// computation type. Those are the dependent application spines whose
+/// argument declarations conversion cannot inspect; scalar carriers retain
+/// the lower-level conversion relation used by the standalone checker tests.
+#[inline]
+fn endpoint_carrier_needs_type_check(carrier: &ValueType) -> SubtypeDecision
+{
+    matches!(carrier, ValueType::Thunk(..)).into()
 }
 
 /// A pending subtyping obligation: one pair of types to relate (`sub ≲ sup`).
@@ -244,6 +293,12 @@ enum SubtypeGoal
 /// # Errors
 ///
 /// Returns [`TypeError::TypeMismatch`] when subsumption fails.
+/// # Termination
+/// - reason: computation subtyping follows finite decomposition and endpoint
+///   checks.
+/// - measure: remaining type and endpoint derivation premises.
+/// - boundedness: compared types, terms, and definitions are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 #[inline]
 pub fn finish_comp(
     ctx: &Ctx,
@@ -280,10 +335,11 @@ pub fn finish_comp(
 #[inline]
 #[must_use]
 /// # Termination
-/// - reason: subtyping follows finite type-tree structure.
-/// - measure: remaining pair of type children under comparison.
-/// - boundedness: compared types are finite Rust values.
-/// - input recursion: none.
+/// - reason: computation subtyping follows finite decomposition and endpoint
+///   checks.
+/// - measure: remaining type and endpoint derivation premises.
+/// - boundedness: compared types, terms, and definitions are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 pub fn comp_subtype(
     ctx: &Ctx,
     sub: &CompType,
@@ -319,11 +375,10 @@ pub fn comp_subtype(
 /// - panics: none.
 ///
 /// # Termination
-/// - reason: each popped goal decomposes a type pair into strictly smaller
-///   child pairs, or succeeds/fails without pushing.
-/// - measure: the summed type-tree size of the queued goals.
-/// - boundedness: compared types are finite Rust values.
-/// - input recursion: none.
+/// - reason: worklist drains finite goals; endpoint checks use finite premises.
+/// - measure: queued goal tree size plus remaining checker premises.
+/// - boundedness: compared types, terms, and definitions are finite.
+/// - input recursion: endpoint typing re-enters subtyping on smaller premises.
 fn subtype_goals(
     ctx: &Ctx,
     mut goals: Vec<SubtypeGoal>,
@@ -458,11 +513,22 @@ fn subtype_goals(
                             rhs: ref hi_rhs,
                         },
                     ) => {
-                        // Invariance in the carrier and in both endpoints: the
-                        // identity type's arm is decided by *conversion*, not by
-                        // a two-way subtyping pass, because widening a path
-                        // without transport is unsound and conversion is the
-                        // relation that says so directly.
+                        // A `Path` is the one type former whose children
+                        // include terms. Typed computation carriers need an
+                        // explicit endpoint derivation before conversion
+                        // compares their application spines.
+                        if (bool::from(endpoint_carrier_needs_type_check(lo_ty))
+                            && (!bool::from(endpoint_is_well_typed(ctx, lo_lhs, lo_ty))
+                                || !bool::from(endpoint_is_well_typed(ctx, lo_rhs, lo_ty))))
+                            || (bool::from(endpoint_carrier_needs_type_check(hi_ty))
+                                && (!bool::from(endpoint_is_well_typed(ctx, hi_lhs, hi_ty))
+                                    || !bool::from(endpoint_is_well_typed(ctx, hi_rhs, hi_ty))))
+                        {
+                            return false.into();
+                        }
+                        // Invariance in the carrier and in both endpoints:
+                        // conversion decides equality after endpoint typing
+                        // has established that each spine is admissible.
                         let nbe = nbe.get_or_insert_with(mint);
                         if !bool::from(converts(nbe, lo_lhs, hi_lhs))
                             || !bool::from(converts(nbe, lo_rhs, hi_rhs))

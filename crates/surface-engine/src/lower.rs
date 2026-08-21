@@ -7648,9 +7648,15 @@ impl Lowerer<'_>
     ) -> Option<Ty>
     {
         let mut comp = result_ty?;
-        for param in params.iter().rev() {
-            let arg = param.1.clone()?;
-            comp = CompType::arrow(arg, comp);
+        for entry in params.iter().rev() {
+            let param_name = &entry.0;
+            let arg = entry.1.as_ref()?.clone();
+            comp = if arg == ValueType::atom("Type") {
+                CompType::pi(param_name.clone(), arg, comp)
+            }
+            else {
+                CompType::arrow(arg, comp)
+            };
         }
         Some(Ty::Value(ValueType::thunk(Grade::OMEGA, comp)))
     }

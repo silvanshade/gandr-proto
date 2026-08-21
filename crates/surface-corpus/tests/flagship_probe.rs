@@ -5,19 +5,16 @@
 //!
 //! A law field states an identity between applications of the shape's
 //! operations. Every check the flagship carries — the stated carrier, the
-//! stated endpoints, the corpus expectation over a definition's type — is aimed
-//! at **the law's own type**. None of them looks at the type of the
-//! **operation the law is about**.
+//! endpoint spines, the corpus expectation over a definition's type, and the
+//! operation declarations those spines invoke — is aimed at **the law's own
+//! type** and its dependent arguments.
 //!
-//! That level had no check on it, and it was wrong: the composition operation's
-//! function-typed parameters were written as bare arrows, which are computation
-//! types where value types are required, so they degraded to the gradual
-//! unknown while the law above them read clean. **Proving a law about an
-//! operation whose own argument types are unknown is not proving the law.**
-//!
-//! So this module asserts the operations are fully written, and prints every
-//! item's elaborated type beside it, because diagnosing the next failure needs
-//! the types rather than a verdict.
+//! The endpoint former is the boundary: it carries terms inside a type, so
+//! conversion can compare the resulting values while the checker validates
+//! each application argument against the operation's dependent signature.
+//! The operations' type parameters are explicit dependent products, allowing
+//! corrected index assignments to instantiate the signature before the
+//! endpoint conversion runs.
 
 #[cfg(test)]
 mod tests
@@ -34,11 +31,10 @@ mod tests
     /// are not among them. The verification does not depend on where the text
     /// lives.
     ///
-    /// **The index arguments are verified by hand against `comp`'s
-    /// declaration**, and they have to be: a `Path`'s endpoints are converted
-    /// but never typed, so any index assignment elaborates. The left unit law
-    /// is `comp(a, a, b, id(a), f)`, because `id(a) : a -> F a` fixes the
-    /// middle index; the right is `comp(a, b, b, f, id(b))`.
+    /// **The index arguments are checked against `comp`'s dependent
+    /// declaration.** The left unit law is `comp(a, a, b, id(a), f)`, because
+    /// `id(a) : a -> F a` fixes the middle index; the right is
+    /// `comp(a, b, b, f, id(b))`.
     const FLAGSHIP: &str = concat!(
         "def id(a: Type, x: a) -> F a { ret x }\n",
         "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), g: U[\u{3c9}] (b -> F c), \
@@ -199,9 +195,52 @@ mod tests
     /// rather than its stored body, because the triviality is only visible
     /// after a definition unfolds.
     ///
-    /// **What this does not establish**: that either law's *statement* is
-    /// well-formed. A `Path`'s endpoints are converted and never typed, so the
-    /// indices in the source are checked by hand and by nothing else.
+    /// The endpoint spine must check its indices against `comp`'s declaration.
+    ///
+    /// The body ignores type indices, so conversion alone accepts this
+    /// deliberately absurd `comp(a, b, b, ...)` endpoint: `id(a)` has the
+    /// wrong codomain for the first function slot. The formation-side endpoint
+    /// check must refuse it while the corrected unit laws remain accepted.
+    #[test]
+    fn absurd_endpoint_index_assignment_is_refused()
+    {
+        let source = concat!(
+            "def id(a: Type, x: a) -> F a { ret x }\n",
+            "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), \
+             g: U[\u{3c9}] (b -> F c), x: a) -> F c { run y <- f(x); g(y) }\n",
+            "def absurd(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> \
+             F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) \
+             { ret here(f) }\n",
+        );
+        let mut session = Session::new();
+        let submission = session.submit(source).expect("lowering must be total");
+        assert!(
+            matches!(submission.outcomes[2], ItemOutcome::TypeError { .. }),
+            "the absurd endpoint index assignment must be refused: {:?}",
+            submission.outcomes
+        );
+    }
+    /// A path body remains subject to ordinary term checking. Associativity
+    /// deliberately applies `mul` in the witness body, so it must not become
+    /// accepted merely because its endpoint indices are now checked.
+    #[test]
+    fn associativity_witness_application_is_refused()
+    {
+        let source = concat!(
+            "def unit = 0;\n",
+            "def mul(x: Integer, y: Integer) -> F Integer { ret x + y }\n",
+            "def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, \
+             mul(mul(x, y), z), mul(x, mul(y, z))) { ret here(mul(mul(x, y), z)) }\n",
+        );
+        let mut session = Session::new();
+        let submission = session.submit(source).expect("lowering must be total");
+        assert!(
+            matches!(submission.outcomes[2], ItemOutcome::TypeError { .. }),
+            "the associativity witness application must be refused: {:?}",
+            submission.outcomes
+        );
+    }
+
     #[test]
     fn both_unit_laws_are_checked()
     {
