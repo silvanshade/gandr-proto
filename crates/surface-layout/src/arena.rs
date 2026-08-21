@@ -376,6 +376,19 @@ impl VerbatimText
     {
         VerbatimLinesUsed::try_from(self.lines.len())
     }
+
+    /// Returns all physical fragment records in source order.
+    ///
+    /// # Contract
+    /// - requires: the records came from the same scan as [`Self::bytes`].
+    /// - ensures: the final empty fragment, when present, is retained.
+    /// - provides: exact widths and endings for cost computation.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn lines(&self) -> &[VerbatimLine]
+    {
+        &self.lines
+    }
 }
 
 impl<'source> From<&'source str> for TextSource<'source>
@@ -1027,6 +1040,73 @@ impl DocArena
         else {
             DocHandleStatus::Absent
         }
+    }
+    /// Returns a stored node for resolver lookup.
+    ///
+    /// # Contract
+    /// - requires: `node` may be stale or out of range.
+    /// - ensures: lookup returns `None` rather than indexing.
+    /// - provides: the resolver's checked node projection.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn node(
+        &self,
+        node: NodeId,
+    ) -> Option<DocNode>
+    {
+        let index = usize::try_from(u32::from(node)).ok()?;
+        self.nodes.get(index).copied()
+    }
+
+    /// Returns the finalized flattened image for a node.
+    ///
+    /// # Contract
+    /// - requires: `node` is an arena identity.
+    /// - ensures: every finalized identity has one image entry.
+    /// - provides: flatten resolution without a second memo dimension.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn flattened_node(
+        &self,
+        node: NodeId,
+    ) -> Option<NodeId>
+    {
+        let index = usize::try_from(u32::from(node)).ok()?;
+        self.flattened.get(index).copied()
+    }
+
+    /// Returns a checked text identity by its private store id.
+    ///
+    /// # Contract
+    /// - requires: `text` was minted by this arena.
+    /// - ensures: invalid identities return `None`.
+    /// - provides: byte and width metrics for resolution.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn text_identity(
+        &self,
+        text: TextId,
+    ) -> Option<&CheckedText>
+    {
+        let index = usize::try_from(u32::from(text)).ok()?;
+        self.texts.get(index)
+    }
+
+    /// Returns a verbatim identity by its private store id.
+    ///
+    /// # Contract
+    /// - requires: `verbatim` was minted by this arena.
+    /// - ensures: invalid identities return `None`.
+    /// - provides: exact bytes and physical fragment metrics.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn verbatim_identity(
+        &self,
+        verbatim: VerbatimId,
+    ) -> Option<&VerbatimText>
+    {
+        let index = usize::try_from(u32::from(verbatim)).ok()?;
+        self.verbatim.get(index)
     }
 }
 impl From<u32> for NodeId

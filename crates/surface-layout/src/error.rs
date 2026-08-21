@@ -1,4 +1,4 @@
-//! The build-phase error vocabulary.
+//! Build- and render-phase error vocabulary.
 //!
 //! Construction and finalization fail in exactly the ways enumerated here, and
 //! every one of them surfaces as a value. Nothing on a production path panics,
@@ -9,9 +9,9 @@
 //! on a kind, a site, or an operation is reading the whole space, so a new
 //! failure mode is a deliberate change here rather than a silent widening.
 //!
-//! The render-phase vocabulary is a separate closed space and arrives with
-//! slice three; build accounting and render accounting never share a counter,
-//! and a build failure can never consume a render budget.
+//! The render-phase vocabulary is also closed. Resolution and the later
+//! machine use separate render counters, and a build failure can never consume
+//! a render budget.
 
 use crate::units::LimitBound;
 
@@ -84,6 +84,131 @@ pub enum BuildArithmetic
     IdConversion,
     /// Adding a nesting amount to a current indentation.
     NestAmount,
+}
+
+/// Which render limit was crossed.
+///
+/// # Contract
+/// - requires: the value names the render counter whose ceiling was reached.
+/// - ensures: every resolution budget has one closed machine-readable kind.
+/// - provides: the limit classification in [`RenderError`].
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum RenderLimitKind
+{
+    /// Number of memoized in-bound states.
+    MemoStates,
+    /// Number of retained frontier entries.
+    FrontierEntries,
+    /// Number of plan nodes ever created.
+    PlanNodesCreated,
+    /// Number of simultaneously live plan nodes.
+    LivePlanNodes,
+    /// Number of output bytes accounted for.
+    OutputBytes,
+    /// Number of layout transitions and comparisons.
+    LayoutSteps,
+    /// Number of resolver work entries pushed.
+    ResolverWorkEntries,
+    /// Peak resolver work-vector length.
+    ResolverStack,
+    /// Number of virtual-machine instructions.
+    VmSteps,
+    /// Peak virtual-machine stack length.
+    VmStack,
+}
+
+/// Which render store or work stack failed to reserve.
+///
+/// # Contract
+/// - requires: the value identifies the allocation site that refused growth.
+/// - ensures: no unmetered render allocation is reported generically.
+/// - provides: the allocation classification in [`RenderError`].
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum RenderAllocationSite
+{
+    /// The in-bound memo table.
+    MemoTable,
+    /// A retained frontier.
+    Frontier,
+    /// The generational plan arena.
+    PlanArena,
+    /// The resolver's explicit work vector.
+    ResolverStack,
+    /// The virtual-machine stack.
+    VmStack,
+    /// The final output buffer.
+    Output,
+}
+
+/// Which checked render arithmetic operation overflowed.
+///
+/// # Contract
+/// - requires: the operation is the exact failed checked step.
+/// - ensures: arithmetic failures remain distinguishable from limits.
+/// - provides: the arithmetic classification in [`RenderError`].
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum RenderArithmetic
+{
+    /// Advancing a current column.
+    Column,
+    /// Advancing indentation.
+    Indentation,
+    /// Squaring or adding overflow cost.
+    SquaredOverflow,
+    /// Adding a line break.
+    LineBreaks,
+    /// Adding output bytes.
+    OutputBytes,
+    /// Incrementing the layout-step counter.
+    StepCounter,
+    /// Incrementing resolver work entries.
+    ResolverWorkCounter,
+    /// Incrementing a plan reference count.
+    PlanRefcount,
+}
+
+/// Why memoized layout resolution refused.
+///
+/// # Contract
+/// - requires: the error came from a checked render operation.
+/// - ensures: resolution returns a typed failure without partial output.
+/// - provides: the closed render-phase error space.
+/// - panics: none.
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+pub enum RenderError
+{
+    /// A document handle does not belong to the supplied arena.
+    #[error("the document handle does not belong to this layout arena")]
+    UnknownDoc,
+    /// The computation width is smaller than the page width.
+    #[error("the computation width must be at least the page width")]
+    InvalidWidth,
+    /// A checked render arithmetic operation overflowed.
+    #[error("a checked layout render computation overflowed: {operation:?}")]
+    ArithmeticOverflow
+    {
+        /// The operation whose checked step returned no result.
+        operation: RenderArithmetic,
+    },
+    /// A render store or work stack could not reserve capacity.
+    #[error("a layout render store could not reserve capacity: {site:?}")]
+    AllocationFailed
+    {
+        /// The store whose reservation failed.
+        site: RenderAllocationSite,
+    },
+    /// A named render ceiling was reached.
+    #[error("a layout render limit was reached: {kind:?}")]
+    LimitExceeded
+    {
+        /// The limit whose ceiling was reached.
+        kind: RenderLimitKind,
+        /// The configured ceiling.
+        limit: LimitBound,
+    },
 }
 
 /// Why document construction or finalization refused.

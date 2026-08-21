@@ -20,17 +20,40 @@ mod tests
     use gandr_surface_layout::error::BuildArithmetic;
     use gandr_surface_layout::error::BuildError;
     use gandr_surface_layout::error::BuildLimitKind;
+    use gandr_surface_layout::error::RenderError;
     use gandr_surface_layout::limits::BuildLimits;
     use gandr_surface_layout::limits::BuildMeter;
     use gandr_surface_layout::limits::BuildUsage;
+    use gandr_surface_layout::limits::RenderLimits;
+    use gandr_surface_layout::limits::RenderMeter;
+    use gandr_surface_layout::measure::LayoutCost;
+    use gandr_surface_layout::measure::LayoutOptions;
+    use gandr_surface_layout::measure::PhysicalLineEnding;
+    use gandr_surface_layout::measure::WidthTaint;
+    use gandr_surface_layout::resolve::resolve;
     use gandr_surface_layout::units::BuildStepsUsed;
+    use gandr_surface_layout::units::ComputationWidth;
     use gandr_surface_layout::units::DocNodesUsed;
+    use gandr_surface_layout::units::LineBreaks;
     use gandr_surface_layout::units::MaxBuildSteps;
     use gandr_surface_layout::units::MaxDocNodes;
+    use gandr_surface_layout::units::MaxFrontierEntries;
+    use gandr_surface_layout::units::MaxLayoutSteps;
+    use gandr_surface_layout::units::MaxLivePlanNodes;
+    use gandr_surface_layout::units::MaxMemoStates;
+    use gandr_surface_layout::units::MaxOutputBytes;
+    use gandr_surface_layout::units::MaxPlanNodesCreated;
+    use gandr_surface_layout::units::MaxResolverStack;
+    use gandr_surface_layout::units::MaxResolverWorkEntries;
     use gandr_surface_layout::units::MaxTextBytes;
     use gandr_surface_layout::units::MaxVerbatimLines;
+    use gandr_surface_layout::units::MaxVmStack;
+    use gandr_surface_layout::units::MaxVmSteps;
     use gandr_surface_layout::units::NestAmount;
+    use gandr_surface_layout::units::OutputBytes;
+    use gandr_surface_layout::units::PageWidth;
     use gandr_surface_layout::units::ScalarWidth;
+    use gandr_surface_layout::units::SquaredOverflow;
     use gandr_surface_layout::units::TextBytesUsed;
     use gandr_surface_layout::units::VerbatimLinesUsed;
     use proptest::prelude::*;
@@ -44,6 +67,34 @@ mod tests
             max_verbatim_lines: MaxVerbatimLines::from(1_000_000u32),
             max_build_steps: MaxBuildSteps::from(20_000_000u64),
         }
+    }
+
+    /// Render limits used by witnesses that do not exercise a boundary.
+    fn generous_render_limits() -> RenderLimits
+    {
+        RenderLimits {
+            max_memo_states: MaxMemoStates::from(1_000_000u64),
+            max_frontier_entries: MaxFrontierEntries::from(4_000_000u64),
+            max_plan_nodes_created: MaxPlanNodesCreated::from(16_000_000u64),
+            max_live_plan_nodes: MaxLivePlanNodes::from(8_000_000u64),
+            max_output_bytes: MaxOutputBytes::from(0x0400_0000u64),
+            max_layout_steps: MaxLayoutSteps::from(100_000_000u64),
+            max_resolver_work_entries: MaxResolverWorkEntries::from(100_000_000u64),
+            max_resolver_stack: MaxResolverStack::from(1_000_000u64),
+            max_vm_steps: MaxVmSteps::from(100_000_000u64),
+            max_vm_stack: MaxVmStack::from(1_000_000u64),
+        }
+    }
+
+    /// Resolve one finished root under generous render limits.
+    fn resolve_root(
+        arena: &DocArena,
+        root: DocId,
+        options: LayoutOptions,
+    ) -> Result<gandr_surface_layout::resolve::Resolved, RenderError>
+    {
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        resolve(arena, root, options, &mut meter)
     }
 
     /// The two graph shapes used by accounting tests.
@@ -1211,5 +1262,332 @@ mod tests
             let result = build_text(TextSource::from(text.as_str()));
             prop_assert!(result.is_ok());
         }
+    }
+    /// The public resolver preserves exact text cost and output size.
+    #[test]
+    fn resolver_returns_the_text_winner_summary() -> Result<(), RenderError>
+    {
+        let (arena, root, _) =
+            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let resolved = resolve_root(&arena, root, LayoutOptions::default())?;
+        assert_eq!(resolved.cost(), LayoutCost {
+            squared_overflow: SquaredOverflow::from(0u64),
+            line_breaks: LineBreaks::from(0u64),
+        });
+        assert_eq!(resolved.output_bytes(), OutputBytes::from(3u64));
+        assert_eq!(resolved.width_taint(), WidthTaint::Untainted);
+        Ok(())
+    }
+
+    /// A layout-owned line charges one break and its indentation overflow.
+    #[test]
+    fn resolver_charges_line_break_and_indentation() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let root = builder
+            .nest(NestAmount::from(4u32), builder.line())
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(8u32),
+            PhysicalLineEnding::CrLf,
+        )?;
+        let resolved = resolve_root(&arena, root, options)?;
+        assert_eq!(resolved.cost(), LayoutCost {
+            squared_overflow: SquaredOverflow::from(4u64),
+            line_breaks: LineBreaks::from(1u64),
+        });
+        assert_eq!(resolved.output_bytes(), OutputBytes::from(6u64));
+        Ok(())
+    }
+
+    /// Choice retains the lower lexicographic cost.
+    #[test]
+    fn resolver_choice_uses_squared_overflow_before_line_breaks() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let text = builder
+            .text(TextSource::from("abcdef"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let line = builder.line();
+        let root = builder
+            .choice(text, line)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::try_new(
+            PageWidth::from(3u32),
+            ComputationWidth::from(10u32),
+            PhysicalLineEnding::Lf,
+        )?;
+        let resolved = resolve_root(&arena, root, options)?;
+        assert_eq!(resolved.cost(), LayoutCost {
+            squared_overflow: SquaredOverflow::from(0u64),
+            line_breaks: LineBreaks::from(1u64),
+        });
+        assert_eq!(resolved.output_bytes(), OutputBytes::from(1u64));
+        Ok(())
+    }
+
+    /// A deliberately small exhaustive layout family agrees with a direct
+    /// cost oracle at both configured physical endings.
+    #[test]
+    fn exhaustive_small_documents_match_the_direct_oracle() -> Result<(), RenderError>
+    {
+        for page in [2u32, 4u32] {
+            for computation in [4u32, 8u32] {
+                for ending in [PhysicalLineEnding::Lf, PhysicalLineEnding::CrLf] {
+                    let mut build_meter = BuildMeter::try_new(generous_limits())
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let mut builder = DocBuilder::try_new(&mut build_meter)
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let empty = builder.empty();
+                    let text = builder
+                        .text(TextSource::from("abc"))
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let line = builder.line();
+                    let left = builder
+                        .concat(text, line)
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let right = builder
+                        .concat(empty, text)
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let root = builder
+                        .choice(left, right)
+                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+                    let options = LayoutOptions::try_new(
+                        PageWidth::from(page),
+                        ComputationWidth::from(computation),
+                        ending,
+                    )?;
+                    let resolved = resolve_root(&arena, root, options)?;
+                    let left_cost = LayoutCost {
+                        squared_overflow: SquaredOverflow::from(if 3u32 > page {
+                            let excess = u64::from(3u32 - page);
+                            excess.saturating_mul(excess)
+                        }
+                        else {
+                            0u64
+                        }),
+                        line_breaks: LineBreaks::from(1u64),
+                    };
+                    let right_cost = LayoutCost {
+                        squared_overflow: SquaredOverflow::from(if 3u32 > page {
+                            let excess = u64::from(3u32 - page);
+                            excess.saturating_mul(excess)
+                        }
+                        else {
+                            0u64
+                        }),
+                        line_breaks: LineBreaks::from(0u64),
+                    };
+                    let expected = if left_cost <= right_cost {
+                        left_cost
+                    }
+                    else {
+                        right_cost
+                    };
+                    assert_eq!(resolved.cost(), expected);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// A repeated in-bound choice state consumes one memo entry.
+    #[test]
+    fn shared_contexts_reuse_memo_states() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let text = builder
+            .text(TextSource::from("x"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let root = builder
+            .choice(text, text)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        let _resolved = resolve(&arena, root, LayoutOptions::default(), &mut meter)?;
+        assert_eq!(u64::from(meter.usage().memo_states), 2u64);
+        Ok(())
+    }
+
+    /// Out-of-bound shared contexts retain distinct deferred promises.
+    #[test]
+    fn tainted_contexts_remain_distinct() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let short = builder
+            .text(TextSource::from("aaa"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let long = builder
+            .text(TextSource::from("aaaa"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let shared = builder
+            .text(TextSource::from("x"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let left = builder
+            .concat(short, shared)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let right = builder
+            .concat(long, shared)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let root = builder
+            .choice(left, right)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(2u32),
+            PhysicalLineEnding::Lf,
+        )?;
+        let resolved = resolve_root(&arena, root, options)?;
+        assert_eq!(resolved.width_taint(), WidthTaint::Tainted);
+        assert_eq!(resolved.output_bytes(), OutputBytes::from(4u64));
+        Ok(())
+    }
+
+    /// Every render meter limit rejects its first disallowed operation.
+    #[test]
+    fn render_limits_fail_at_each_exact_boundary() -> Result<(), RenderError>
+    {
+        let (arena, root, _) =
+            build_text(TextSource::from("x")).map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::default();
+        let mut limits = generous_render_limits();
+        limits.max_memo_states = MaxMemoStates::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::MemoStates,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_plan_nodes_created = MaxPlanNodesCreated::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::PlanNodesCreated,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_live_plan_nodes = MaxLivePlanNodes::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::LivePlanNodes,
+                ..
+            })
+        ));
+
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let text = builder
+            .text(TextSource::from("x"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let choice = builder
+            .choice(text, text)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let choice_arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut limits = generous_render_limits();
+        limits.max_frontier_entries = MaxFrontierEntries::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&choice_arena, choice, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::FrontierEntries,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_output_bytes = MaxOutputBytes::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::OutputBytes,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_layout_steps = MaxLayoutSteps::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::LayoutSteps,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_resolver_work_entries = MaxResolverWorkEntries::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::ResolverWorkEntries,
+                ..
+            })
+        ));
+
+        let mut limits = generous_render_limits();
+        limits.max_resolver_stack = MaxResolverStack::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            resolve(&arena, root, options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::ResolverStack,
+                ..
+            })
+        ));
+
+        let mut meter = RenderMeter::try_new(RenderLimits {
+            max_vm_steps: MaxVmSteps::from(0u64),
+            ..generous_render_limits()
+        })?;
+        assert!(matches!(
+            meter.charge_vm_step(),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::VmSteps,
+                ..
+            })
+        ));
+        let mut meter = RenderMeter::try_new(RenderLimits {
+            max_vm_stack: MaxVmStack::from(0u64),
+            ..generous_render_limits()
+        })?;
+        assert!(matches!(
+            meter.observe_vm_stack(gandr_surface_layout::units::PeakVmStack::from(1u64)),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::VmStack,
+                ..
+            })
+        ));
+        Ok(())
     }
 }

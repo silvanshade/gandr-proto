@@ -14,22 +14,22 @@ Neither can be retrofitted onto a greedy representation without rewriting every 
 - The document algebra: empty, text, opaque verbatim text, soft and hard line breaks, unaligned concatenation, nesting, alignment, arbitrary choice, and flattening.
 - A builder that is the only insertion path, with typed errors and no infallible constructor.
 - Explicit build budgets and a meter that enforces them before any store grows.
+- Memoized, iterative Pareto resolution with squared-overflow cost, physical ending options, exact width taint, generational plan identities, and shared render budgets.
 
-## What is planned and not yet implemented
+## What remains
 
-- Measure, cost, width taint, and memoized iterative resolution.
-- The defunctionalized render machine, the fallback path for a width-tainted root, and end-to-end render metering.
+- The defunctionalized render machine, its entry point, rendered result, and tainted fallback execution.
 
 ## Using it
 
 A caller states its budgets, builds a document, and seals it:
 
 ```rust
+use gandr_surface_layout::arena::TextSource;
 use gandr_surface_layout::build::DocBuilder;
 use gandr_surface_layout::limits::BuildLimits;
 use gandr_surface_layout::limits::BuildMeter;
 use gandr_surface_layout::units::NestAmount;
-use gandr_surface_layout::units::TextSource;
 
 let mut meter = BuildMeter::try_new(BuildLimits::default())?;
 let mut builder = DocBuilder::try_new(&mut meter)?;

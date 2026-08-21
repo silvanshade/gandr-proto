@@ -14,15 +14,14 @@
 //! # What is built
 //!
 //! The crate lands in three slices, each of which is a complete crate that
-//! passes the merge wall on its own. This module map is the plan of record; a
-//! module marked for a later slice carries its full contract and its exact
-//! intended shapes in its own module documentation, and no code.
+//! passes the merge wall on its own. This module map is the plan of record;
+//! later render-machine modules remain contract-only until their slice.
 //!
-//! | slice | modules                                | public surface it adds                                                                   |
-//! | ----- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
-//! | one   | [`units`], [`error`], [`limits`], [`arena`], [`build`] | the document algebra, the builder, the sealed arena, build limits and build errors |
-//! | two   | [`measure`], [`taint`], [`resolve`]    | `LayoutOptions`, `LayoutCost`, `PageWidth`, `ComputationWidth`, `PhysicalLineEnding`      |
-//! | three | [`plan`], [`vm`], [`render`]           | `render`, `Rendered`, `RenderLimits`, `RenderMeter`, `RenderUsage`, `RenderError`         |
+//! | slice | modules                                | public surface it adds                                                                                     |
+//! | ----- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+//! | one   | [`units`], [`error`], [`limits`], [`arena`], [`build`] | the document algebra, builder, sealed arena, build limits, and build errors |
+//! | two   | [`measure`], [`taint`], [`plan`], [`mod@resolve`], [`limits`] | cost, taint, memoized resolution, plan identities, and render budgets |
+//! | three | [`vm`], [`render`]                      | the render machine, entry point, rendered bytes, and tainted fallback execution                          |
 //!
 //! # The boundary this crate owns
 //!
@@ -61,3 +60,16 @@ pub mod resolve;
 pub mod taint;
 pub mod units;
 pub mod vm;
+pub use error::RenderError;
+pub use limits::RenderLimits;
+pub use limits::RenderMeter;
+pub use limits::RenderUsage;
+pub use measure::LayoutCost;
+pub use measure::LayoutOptions;
+pub use measure::PhysicalLineEnding;
+pub use measure::WidthTaint;
+pub use plan::PlanId;
+pub use resolve::Resolved;
+pub use resolve::resolve;
+pub use units::ComputationWidth;
+pub use units::PageWidth;

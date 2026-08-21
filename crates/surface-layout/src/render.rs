@@ -1,6 +1,9 @@
-//! The render entry point and its budgets. **Slice three owns this module; it
-//! carries no code yet.**
+//! The render entry point and machine handoff.
 //!
+//! Slice two owns [`crate::limits::RenderLimits`],
+//! [`crate::limits::RenderMeter`], and [`crate::limits::RenderUsage`] because
+//! resolution spends those budgets. Slice three owns this module's render
+//! machine, rendered result, and tainted fallback execution.
 //! # The shapes
 //!
 //! ```text

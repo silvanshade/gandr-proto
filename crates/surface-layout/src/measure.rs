@@ -1,80 +1,337 @@
-//! Measure and cost. **Slice two owns this module; it carries no code yet.**
+//! Measure, cost, and resolution options.
 //!
-//! A measure summarizes one candidate layout of one subdocument in the exact
-//! context it was resolved in: what it costs, where it leaves the column, which
-//! render plan produces it, and how many bytes that plan emits.
-//!
-//! # The shapes
-//!
-//! ```text
-//! pub struct LayoutCost {
-//!     pub squared_overflow: SquaredOverflow,
-//!     pub line_breaks: LineBreaks,
-//! }
-//!
-//! pub struct LayoutOptions {
-//!     pub page_width: PageWidth,
-//!     pub computation_width: ComputationWidth,
-//!     pub line_ending: PhysicalLineEnding,
-//! }
-//!
-//! struct Measure {
-//!     last_column: Column,
-//!     cost: LayoutCost,
-//!     plan: PlanId,
-//!     output_bytes: OutputBytes,
-//! }
-//! ```
-//!
-//! `PageWidth` defaults to 100 columns and `ComputationWidth` to 120, and the
-//! computation width must be at least the page width. The default physical
-//! ending is a line feed.
-//!
-//! # The cost rule
-//!
-//! Costs order lexicographically by squared overflow, then by line count. For
-//! text extending a line from column `c` by `len`, the incremental overflow is
-//! `max(0, c + len - page_width)^2 - max(0, c - page_width)^2`. A layout-owned
-//! newline adds one line break, and the indentation it emits contributes
-//! overflow as text starting from column zero.
-//!
-//! Squaring is what makes the rule prefer many small overruns to one large one,
-//! which is the behaviour a reader actually wants from a printer that cannot
-//! fit everything.
-//!
-//! For verbatim records, charge the text rule from the incoming column across
-//! the first fragment, then `max(0, width - page_width)^2` from absolute column
-//! zero for every later fragment. The count of records carrying an ending is
-//! added to the line breaks. The ending column is the incoming column plus the
-//! sole fragment's width when there is only one, and otherwise the last
-//! fragment's width. Output bytes add the exact stored bytes.
-//!
-//! Overflow is charged for **every** fragment, so an over-wide middle line
-//! costs and taints the candidate even when the final line is short. A rule
-//! that looked only at the ending column would call such a layout free, which
-//! is precisely wrong.
-//!
-//! Every addition, square, width, indentation, and byte count is checked.
-//!
-//! # The frontier
-//!
-//! One measure dominates another exactly when its cost is no greater and its
-//! ending column is no greater, with at least one of the two strict. An
-//! untainted measure set is a non-empty, mutually non-dominating frontier
-//! sorted by strictly increasing cost and therefore strictly decreasing ending
-//! column. Equal cost and equal ending column keeps the left, earlier plan, so
-//! a tie is resolved by construction order rather than by whichever candidate
-//! happened to arrive second.
-//!
-//! Choice merges two sorted frontiers linearly. Concatenation combines each
-//! left measure with the memoized result of the right taken at that left's
-//! ending column, pruning as it goes rather than materializing a product. The
-//! root of an untainted result selects the least-cost measure.
-//!
-//! The ending-column dimension is not an optimization, it is what makes the
-//! answer correct: under unaligned concatenation a locally more expensive
-//! layout can leave a column that makes everything after it cheaper, and a
-//! frontier that tracked only cost would have already discarded it.
-//!
-//! Measures and mutable frontiers are private. A client sees the chosen cost on
-//! the rendered result and nothing else.
+//! Slice two owns this module because the resolver cannot decide a winning
+//! layout without its cost currency, width context, and physical line-ending
+//! policy. Mutable measures remain private; the public API exposes only the
+//! selected summary returned by [`crate::resolve::resolve`].
+
+use crate::error::RenderArithmetic;
+use crate::error::RenderError;
+use crate::plan::PlanId;
+use crate::units::Column;
+use crate::units::ComputationWidth;
+use crate::units::Indentation;
+use crate::units::LineBreaks;
+use crate::units::OutputBytes;
+use crate::units::PageWidth;
+use crate::units::ScalarWidth;
+use crate::units::SquaredOverflow;
+
+/// The physical ending emitted by layout-owned line nodes.
+///
+/// # Contract
+/// - requires: the value is selected before resolution starts.
+/// - ensures: all layout-owned endings use exactly this byte shape.
+/// - provides: the physical ending policy for a resolution.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[repr(u8)]
+pub enum PhysicalLineEnding
+{
+    /// A single line-feed byte.
+    Lf,
+    /// A carriage-return followed by line-feed.
+    CrLf,
+}
+
+impl PhysicalLineEnding
+{
+    /// Returns the exact byte width of this ending.
+    ///
+    /// # Contract
+    /// - requires: the ending is one of the closed enum variants.
+    /// - ensures: the returned count matches emitted bytes.
+    /// - provides: output accounting for layout-owned line nodes.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub(crate) fn byte_width(self) -> OutputBytes
+    {
+        match self {
+            | Self::Lf => OutputBytes::from(1u64),
+            | Self::CrLf => OutputBytes::from(2u64),
+        }
+    }
+}
+
+/// Options held constant for one resolution invocation.
+///
+/// # Contract
+/// - requires: `computation_width` is at least `page_width`.
+/// - ensures: every memo key observes one fixed width and ending policy.
+/// - provides: the caller's page, computation, and physical-ending choices.
+/// - fails: [`Self::try_new`] rejects an invalid width ordering.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct LayoutOptions
+{
+    /// The width used by the lexicographic cost.
+    pub page_width: PageWidth,
+    /// The width within which the optimality theorem is computed.
+    pub computation_width: ComputationWidth,
+    /// The ending emitted by layout-owned line nodes.
+    pub line_ending: PhysicalLineEnding,
+}
+
+impl Default for LayoutOptions
+{
+    #[inline]
+    fn default() -> Self
+    {
+        Self {
+            page_width: PageWidth::from(100u32),
+            computation_width: ComputationWidth::from(120u32),
+            line_ending: PhysicalLineEnding::Lf,
+        }
+    }
+}
+
+impl LayoutOptions
+{
+    /// Creates options after checking the width ordering.
+    ///
+    /// # Contract
+    /// - requires: both widths are nominal scalar-column ceilings.
+    /// - ensures: the computation width is no smaller than the page width.
+    /// - provides: validated resolution options.
+    /// - fails: returns [`RenderError::InvalidWidth`] for reversed widths.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns [`RenderError::InvalidWidth`] when computation is narrower than
+    /// the page.
+    #[inline]
+    pub fn try_new(
+        page_width: PageWidth,
+        computation_width: ComputationWidth,
+        line_ending: PhysicalLineEnding,
+    ) -> Result<Self, RenderError>
+    {
+        if u32::from(computation_width) < u32::from(page_width) {
+            return Err(RenderError::InvalidWidth);
+        }
+        Ok(Self {
+            page_width,
+            computation_width,
+            line_ending,
+        })
+    }
+}
+
+/// The lexicographic cost of one layout.
+///
+/// # Contract
+/// - requires: both components were accumulated through checked operations.
+/// - ensures: squared overflow is compared before line breaks.
+/// - provides: the public optimality projection.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct LayoutCost
+{
+    /// Incremental squared overflow.
+    pub squared_overflow: SquaredOverflow,
+    /// Layout-owned line endings.
+    pub line_breaks: LineBreaks,
+}
+
+impl LayoutCost
+{
+    /// Returns the zero cost.
+    ///
+    /// # Contract
+    /// - requires: no output has been charged.
+    /// - ensures: both components are zero.
+    /// - provides: the identity cost for [`crate::arena::DocNode::Empty`].
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub(crate) fn zero() -> Self
+    {
+        Self {
+            squared_overflow: SquaredOverflow::from(0u64),
+            line_breaks: LineBreaks::from(0u64),
+        }
+    }
+}
+
+/// Whether the selected root came from a width-tainted promise.
+///
+/// # Contract
+/// - requires: the value comes from the resolver's root state.
+/// - ensures: taint is reported without truncating the chosen output.
+/// - provides: a nominal public taint projection.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[repr(u8)]
+pub enum WidthTaint
+{
+    /// The selected root stayed inside the computation theorem.
+    Untainted,
+    /// The selected root required a retained width promise.
+    Tainted,
+}
+
+/// One private candidate measure.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Measure
+{
+    /// The column where this candidate ends.
+    pub last_column: Column,
+    /// The candidate's lexicographic cost.
+    pub cost: LayoutCost,
+    /// The first-order plan producing this candidate.
+    pub plan: PlanId,
+    /// Exact bytes emitted by this candidate.
+    pub output_bytes: OutputBytes,
+}
+
+/// Computes the overflow delta for one contiguous fragment.
+///
+/// # Contract
+/// - requires: `start` and `width` are checked scalar columns.
+/// - ensures: the result is the difference of squared excesses at the two
+///   endpoints.
+/// - provides: the incremental text and first-verbatim-fragment charge.
+/// - fails: reports checked column or square overflow.
+/// - panics: none.
+fn overflow_delta(
+    start: Column,
+    width: ScalarWidth,
+    page: PageWidth,
+) -> Result<SquaredOverflow, RenderError>
+{
+    let start_value = u64::from(u32::from(start));
+    let width_value = u64::from(u32::from(width));
+    let end_value =
+        start_value
+            .checked_add(width_value)
+            .ok_or(RenderError::ArithmeticOverflow {
+                operation: RenderArithmetic::Column,
+            })?;
+    let page_value = u64::from(u32::from(page));
+    let start_excess = start_value.saturating_sub(page_value);
+    let end_excess = end_value.saturating_sub(page_value);
+    let start_square =
+        start_excess
+            .checked_mul(start_excess)
+            .ok_or(RenderError::ArithmeticOverflow {
+                operation: RenderArithmetic::SquaredOverflow,
+            })?;
+    let end_square = end_excess
+        .checked_mul(end_excess)
+        .ok_or(RenderError::ArithmeticOverflow {
+            operation: RenderArithmetic::SquaredOverflow,
+        })?;
+    let delta = end_square
+        .checked_sub(start_square)
+        .ok_or(RenderError::ArithmeticOverflow {
+            operation: RenderArithmetic::SquaredOverflow,
+        })?;
+    Ok(SquaredOverflow::from(delta))
+}
+
+/// Computes an absolute-column overflow square for a later verbatim fragment.
+///
+/// # Contract
+/// - requires: `width` is a checked physical-fragment width.
+/// - ensures: the charge starts at column zero.
+/// - provides: the later-fragment cost contribution.
+/// - fails: reports checked square overflow.
+/// - panics: none.
+pub(crate) fn absolute_overflow(
+    width: ScalarWidth,
+    page: PageWidth,
+) -> Result<SquaredOverflow, RenderError>
+{
+    overflow_delta(Column::from(0u32), width, page)
+}
+
+/// Adds two costs with checked component arithmetic.
+///
+/// # Contract
+/// - requires: both costs came from checked layout fragments.
+/// - ensures: each component is added exactly once.
+/// - provides: concatenation and fragment accumulation.
+/// - fails: reports overflow in the named component.
+/// - panics: none.
+pub(crate) fn add_cost(
+    left: LayoutCost,
+    right: LayoutCost,
+) -> Result<LayoutCost, RenderError>
+{
+    let squared_overflow = u64::from(left.squared_overflow)
+        .checked_add(u64::from(right.squared_overflow))
+        .ok_or(RenderError::ArithmeticOverflow {
+            operation: RenderArithmetic::SquaredOverflow,
+        })?;
+    let line_breaks = u64::from(left.line_breaks)
+        .checked_add(u64::from(right.line_breaks))
+        .ok_or(RenderError::ArithmeticOverflow {
+            operation: RenderArithmetic::LineBreaks,
+        })?;
+    Ok(LayoutCost {
+        squared_overflow: SquaredOverflow::from(squared_overflow),
+        line_breaks: LineBreaks::from(line_breaks),
+    })
+}
+
+/// Adds exact output-byte counts with checked arithmetic.
+///
+/// # Contract
+/// - requires: both byte counts describe the same candidate.
+/// - ensures: no byte count wraps.
+/// - provides: concatenation output accounting.
+/// - fails: reports [`RenderArithmetic::OutputBytes`] on overflow.
+/// - panics: none.
+pub(crate) fn add_output_bytes(
+    left: OutputBytes,
+    right: OutputBytes,
+) -> Result<OutputBytes, RenderError>
+{
+    let bytes =
+        u64::from(left)
+            .checked_add(u64::from(right))
+            .ok_or(RenderError::ArithmeticOverflow {
+                operation: RenderArithmetic::OutputBytes,
+            })?;
+    Ok(OutputBytes::from(bytes))
+}
+
+/// Returns the cost of a text-like fragment starting at `column`.
+///
+/// # Contract
+/// - requires: `width` and `column` describe one stored fragment.
+/// - ensures: overflow is charged from the incoming column.
+/// - provides: the first-fragment cost rule.
+/// - fails: reports checked arithmetic overflow.
+/// - panics: none.
+pub(crate) fn incoming_overflow(
+    column: Column,
+    width: ScalarWidth,
+    page: PageWidth,
+) -> Result<SquaredOverflow, RenderError>
+{
+    overflow_delta(column, width, page)
+}
+
+/// Adds a line break and indentation to an existing cost.
+///
+/// # Contract
+/// - requires: `indentation` is the checked indentation of a line node.
+/// - ensures: one line break and indentation overflow are charged.
+/// - provides: the layout-owned newline cost rule.
+/// - fails: reports checked arithmetic overflow.
+/// - panics: none.
+pub(crate) fn line_cost(
+    indentation: Indentation,
+    page: PageWidth,
+) -> Result<LayoutCost, RenderError>
+{
+    let indentation_width = ScalarWidth::from(u32::from(indentation));
+    let overflow = absolute_overflow(indentation_width, page)?;
+    let line_breaks = 1u64;
+    Ok(LayoutCost {
+        squared_overflow: overflow,
+        line_breaks: LineBreaks::from(line_breaks),
+    })
+}

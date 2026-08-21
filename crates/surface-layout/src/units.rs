@@ -213,6 +213,275 @@ pub struct LimitBound
     bound: u64,
 }
 
+/// The requested page width used by the cost ordering.
+///
+/// # Contract
+/// - requires: the value is a scalar column ceiling.
+/// - ensures: the width remains distinct from computation and indentation.
+/// - provides: the public page-width currency.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct PageWidth(u32);
+
+/// The width within which the optimality theorem is computed.
+///
+/// # Contract
+/// - requires: the value is at least the page width for valid options.
+/// - ensures: in-bound resolver contexts are representable.
+/// - provides: the public computation-width currency.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct ComputationWidth(u32);
+
+/// A current output column.
+///
+/// # Contract
+/// - requires: the value is a checked scalar column.
+/// - ensures: column arithmetic remains nominal inside resolution.
+/// - provides: the resolver's column currency.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub(crate) struct Column(u32);
+
+/// An indentation column.
+///
+/// # Contract
+/// - requires: the value is a checked indentation.
+/// - ensures: indentation cannot be confused with a page width.
+/// - provides: the resolver's indentation currency.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub(crate) struct Indentation(u32);
+
+/// Squared overflow accumulated by a layout.
+///
+/// # Contract
+/// - requires: each increment was checked before addition.
+/// - ensures: ordering is the lexicographic cost's first component.
+/// - provides: the public overflow currency.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct SquaredOverflow(u64);
+
+/// Layout-owned physical line breaks.
+///
+/// # Contract
+/// - requires: every counted ending was emitted by a layout node.
+/// - ensures: the count is cumulative and checked.
+/// - provides: the public line-break cost component.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct LineBreaks(u64);
+
+/// Exact output bytes associated with a resolved plan.
+///
+/// # Contract
+/// - requires: bytes were counted from stored text and endings.
+/// - ensures: the count is checked before it is retained.
+/// - provides: the public output-size projection.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct OutputBytes(u64);
+
+/// A cumulative memo-state ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxMemoStates(u64);
+
+/// A cumulative frontier-entry ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxFrontierEntries(u64);
+
+/// A cumulative plan-allocation ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxPlanNodesCreated(u64);
+
+/// A simultaneous live-plan ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxLivePlanNodes(u64);
+
+/// A cumulative output-byte ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxOutputBytes(u64);
+
+/// A cumulative layout-step ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxLayoutSteps(u64);
+
+/// A cumulative resolver-work-entry ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxResolverWorkEntries(u64);
+
+/// A simultaneous resolver-stack ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxResolverStack(u64);
+
+/// A cumulative virtual-machine-step ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxVmSteps(u64);
+
+/// A simultaneous virtual-machine-stack ceiling.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MaxVmStack(u64);
+
+/// Cumulative memo states used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct MemoStatesUsed(u64);
+
+/// Cumulative frontier entries used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct FrontierEntriesUsed(u64);
+
+/// Cumulative plan nodes created by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct PlanNodesCreated(u64);
+
+/// Peak live plan nodes observed by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct PeakLivePlanNodes(u64);
+
+/// Cumulative output bytes used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct OutputBytesUsed(u64);
+
+/// Cumulative layout steps used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct LayoutStepsUsed(u64);
+
+/// Cumulative resolver work entries used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct ResolverWorkEntriesUsed(u64);
+
+/// Peak resolver stack observed by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct PeakResolverStack(u64);
+
+/// Cumulative virtual-machine steps used by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct VmStepsUsed(u64);
+
+/// Peak virtual-machine stack observed by a render meter.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct PeakVmStack(u64);
+
+/// Implements exact `u32` conversions for a transparent currency.
+macro_rules! u32_currency {
+    ($name:ty) => {
+        impl From<u32> for $name
+        {
+            #[inline]
+            fn from(value: u32) -> Self
+            {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for u32
+        {
+            #[inline]
+            fn from(value: $name) -> Self
+            {
+                value.0
+            }
+        }
+    };
+}
+
+/// Implements exact `u64` conversions for a transparent currency.
+macro_rules! u64_currency {
+    ($name:ty) => {
+        impl From<u64> for $name
+        {
+            #[inline]
+            fn from(value: u64) -> Self
+            {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for u64
+        {
+            #[inline]
+            fn from(value: $name) -> Self
+            {
+                value.0
+            }
+        }
+    };
+}
+
+u32_currency!(PageWidth);
+u32_currency!(ComputationWidth);
+u32_currency!(Column);
+u32_currency!(Indentation);
+u64_currency!(SquaredOverflow);
+u64_currency!(LineBreaks);
+u64_currency!(OutputBytes);
+u64_currency!(MaxMemoStates);
+u64_currency!(MaxFrontierEntries);
+u64_currency!(MaxPlanNodesCreated);
+u64_currency!(MaxLivePlanNodes);
+u64_currency!(MaxOutputBytes);
+u64_currency!(MaxLayoutSteps);
+u64_currency!(MaxResolverWorkEntries);
+u64_currency!(MaxResolverStack);
+u64_currency!(MaxVmSteps);
+u64_currency!(MaxVmStack);
+u64_currency!(MemoStatesUsed);
+u64_currency!(FrontierEntriesUsed);
+u64_currency!(PlanNodesCreated);
+u64_currency!(PeakLivePlanNodes);
+u64_currency!(OutputBytesUsed);
+u64_currency!(LayoutStepsUsed);
+u64_currency!(ResolverWorkEntriesUsed);
+u64_currency!(PeakResolverStack);
+u64_currency!(VmStepsUsed);
+u64_currency!(PeakVmStack);
+
+impl From<ScalarWidth> for Column
+{
+    #[inline]
+    fn from(width: ScalarWidth) -> Self
+    {
+        Self(u32::from(width))
+    }
+}
+
+impl From<NestAmount> for Indentation
+{
+    #[inline]
+    fn from(amount: NestAmount) -> Self
+    {
+        Self(u32::from(amount))
+    }
+}
+
 impl From<u32> for NestAmount
 {
     #[inline]
