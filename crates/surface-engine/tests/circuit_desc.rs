@@ -300,8 +300,7 @@ sign Shared {
         .collect();
     assert!(
         !standalone.is_empty() && standalone.iter().all(|message| reported.contains(message)),
-        "the fold's verdict reaches the description route unchanged: {standalone:#?} against \
-         {reported:#?}"
+        "fold verdict unchanged: {standalone:#?}; reported: {reported:#?}"
     );
 }
 
@@ -309,8 +308,7 @@ sign Shared {
 fn a_many_out_node_declines_naming_the_cell_alphabet_question()
 {
     let reported = messages(TestText(
-        "\
-sign Wide {
+        r#"sign Wide {
   sort Nat : Type;
   oper tee : (a : Nat) --> (b : Nat, c : Nat);
 
@@ -318,7 +316,7 @@ sign Wide {
     node : tee(x) --> (z, w);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("circuit rule `split`"),
@@ -331,8 +329,7 @@ sign Wide {
 fn a_many_out_interface_declines_naming_the_cell_alphabet_question()
 {
     let reported = messages(TestText(
-        "\
-sign WideFace {
+        r#"sign WideFace {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
 
@@ -340,7 +337,7 @@ sign WideFace {
     node : f(x) --> (y);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("circuit rule `pair` declares 2 output ports"),
@@ -353,8 +350,7 @@ sign WideFace {
 fn a_feed_statement_declines_naming_the_wheel_obligation()
 {
     let reported = messages(TestText(
-        "\
-sign Wheel {
+        r#"sign Wheel {
   sort Nat : Type;
   oper zip : (s : Nat, t : Nat) --> (u : Nat);
 
@@ -363,7 +359,7 @@ sign Wheel {
     feed : (out) --> (state);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("circuit rule `spin` carries a `feed` back-edge"),
@@ -404,14 +400,13 @@ fn a_two_redex_body_declines_with_both_occurrences()
 fn an_out_of_signature_frame_head_earns_the_declaration_tables_refusal()
 {
     let reported = messages(TestText(
-        "\
-sign Stray {
+        r#"sign Stray {
   sort Nat : Type;
   rule stray : (data x : Nat) ==> (z : Nat) {
     node : mystery(x) --> (z);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("circuit rule `stray`"),
@@ -424,8 +419,7 @@ sign Stray {
 fn a_redex_applying_an_undeclared_rewrite_earns_its_own_refusal()
 {
     let reported = messages(TestText(
-        "\
-sign NoPort {
+        r#"sign NoPort {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
 
@@ -434,7 +428,7 @@ sign NoPort {
     node : f(m) --> (z);
   };
 }
-",
+"#,
     ));
     assert!(
         reported.is_empty(),
@@ -446,8 +440,7 @@ sign NoPort {
 fn a_wiring_that_closes_a_cycle_earns_the_declaration_tables_refusal()
 {
     let reported = messages(TestText(
-        "\
-sign Loop {
+        r#"sign Loop {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
   oper g : (a : Nat) --> (b : Nat);
@@ -457,7 +450,7 @@ sign Loop {
     node : g(z) --> (w);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("circuit rule `spin`"),
@@ -487,15 +480,14 @@ fn a_repeated_argument_name_reaches_the_linearity_refusal()
     // the route, which is the reservation working, not the hazard.)
     let elab = elaborate_data_descs(
         TestText(
-            "\
-sign Copy {
+            r#"sign Copy {
   sort Nat : Type;
   oper add : (l : Nat, r : Nat) --> (s : Nat);
   rule copy2 : (data x : Nat) ==> (z : Nat) {
     node : add(x, x) --> (z);
   };
 }
-",
+"#,
         )
         .0,
     );
@@ -536,14 +528,22 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
     // pass the derivation's ceiling, and the surface says so with the ceiling
     // it hit instead of unfolding 2^12 nodes.
     let mut source = String::from(
-        "sign Doubling {\n  sort Nat : Type;\n  oper l : (a : Nat) --> (b : Nat);\n  oper r : (a          : Nat) --> (b : Nat);\n  oper add : (a : Nat, b : Nat) --> (c : Nat);\n  rule blow :          (data w0 : Nat) ==> (w12 : Nat) {\n",
+        r#"sign Doubling {
+  sort Nat : Type;
+  oper l : (a : Nat) --> (b : Nat);
+  oper r : (a          : Nat) --> (b : Nat);
+  oper add : (a : Nat, b : Nat) --> (c : Nat);
+  rule blow :          (data w0 : Nat) ==> (w12 : Nat) {
+"#,
     );
     for level in 1 ..= 12_u32 {
         let below = level.saturating_sub(1);
         write!(
             source,
-            "    node : l(w{below}) --> (a{level});\n    node : r(w{below}) --> (b{level});\n    \
-             node : add(a{level}, b{level}) --> (w{level});\n"
+            r#"    node : l(w{below}) --> (a{level});
+    node : r(w{below}) --> (b{level});
+    node : add(a{level}, b{level}) --> (w{level});
+"#,
         )
         .expect("writing to a String does not fail");
     }
@@ -564,8 +564,7 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
 fn an_oper_filler_stays_declined_and_names_its_own_rung()
 {
     let reported = messages(TestText(
-        "\
-sign Pipe {
+        r#"sign Pipe {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
 
@@ -573,7 +572,7 @@ sign Pipe {
     node : f(i) --> (o);
   };
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("the filler of `oper pipeline`"),
