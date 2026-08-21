@@ -24,6 +24,16 @@ use crate::support::walk_files;
 /// Stable source marker for a test whose subject is escape decoding itself.
 pub const ALLOW_ESCAPED_NEWLINE_MARKER: &str = "workflow-gates: allow-escaped-newline";
 
+crate::semantic_str!(pub(crate) struct EmbeddedSourceText);
+crate::semantic_bytes!(pub(crate) struct SourceBytes);
+crate::semantic_copy!(pub(crate) struct TestFileFlag(bool));
+crate::semantic_copy!(pub(crate) struct ByteIndex(usize));
+crate::semantic_copy!(pub(crate) struct SourceLineNumber(usize));
+crate::semantic_copy!(pub(crate) struct ReportFlag(bool));
+crate::semantic_copy!(pub(crate) struct TestContextFlag(bool));
+crate::semantic_copy!(pub(crate) struct SyntaxFlag(bool));
+crate::semantic_copy!(pub(crate) struct PrefixMatchFlag(bool));
+
 /// Run the embedded-syntax gate over all Rust sources below `workspace_root`.
 ///
 /// This full-tree entrypoint is useful for focused audits. The merge-wall task
@@ -104,7 +114,7 @@ where
         findings.extend(findings_for_source(
             workspace_root,
             &path,
-            &source,
+            EmbeddedSourceText::from(source.as_str()),
             test_file,
         ));
     }
@@ -121,18 +131,18 @@ where
 fn findings_for_source(
     workspace_root: &Path,
     path: &Path,
-    source: &str,
-    test_file: bool,
+    source: EmbeddedSourceText<'_>,
+    test_file: TestFileFlag,
 ) -> Vec<Finding>
 {
-    let bytes = source.as_bytes();
-    let lines = source.lines().collect::<Vec<_>>();
+    let bytes = source.as_ref().as_bytes();
+    let lines = source.as_ref().lines().collect::<Vec<_>>();
     let mut scanner = Scanner {
         bytes,
         lines: &lines,
         workspace_root,
         path,
-        test_file,
+        test_file: bool::from(test_file),
         index: 0,
         line: 1,
         brace_depth: 0,
@@ -149,19 +159,21 @@ fn findings_for_source(
 fn is_test_file(
     workspace_root: &Path,
     path: &Path,
-) -> bool
+) -> TestFileFlag
 {
     let relative = path.strip_prefix(workspace_root).unwrap_or(path);
     if relative
         .components()
         .any(|component| component.as_os_str() == OsStr::new("tests"))
     {
-        return true;
+        return TestFileFlag::from(true);
     }
-    relative
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .is_some_and(|stem| stem == "tests" || stem.ends_with("_tests"))
+    TestFileFlag::from(
+        relative
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .is_some_and(|stem| stem == "tests" || stem.ends_with("_tests")),
+    )
 }
 
 /// Stateful source scanner for ordinary Rust strings and test-item boundaries.
@@ -198,28 +210,37 @@ impl Scanner<'_, '_>
     fn scan(&mut self)
     {
         while let Some(byte) = self.bytes.get(self.index).copied() {
-            if self.starts_with(b"//") {
+            if bool::from(self.starts_with(SourceBytes::from(b"//"))) {
                 self.skip_line_comment();
             }
-            else if self.starts_with(b"/*") {
+            else if bool::from(self.starts_with(SourceBytes::from(b"/*"))) {
                 self.skip_block_comment();
             }
             else if byte == b'#' && self.bytes.get(self.index.saturating_add(1)) == Some(&b'[') {
                 self.scan_attribute();
             }
-            else if self.starts_with(b"br")
-                && self.looks_like_raw_string(self.index.saturating_add(2))
+            else if bool::from(self.starts_with(SourceBytes::from(b"br")))
+                && bool::from(
+                    self.looks_like_raw_string(ByteIndex::from(self.index.saturating_add(2))),
+                )
             {
-                self.skip_raw_string(self.index.saturating_add(1));
+                self.skip_raw_string(ByteIndex::from(self.index.saturating_add(1)));
             }
-            else if byte == b'r' && self.looks_like_raw_string(self.index.saturating_add(1)) {
-                self.skip_raw_string(self.index);
+            else if byte == b'r'
+                && bool::from(
+                    self.looks_like_raw_string(ByteIndex::from(self.index.saturating_add(1))),
+                )
+            {
+                self.skip_raw_string(ByteIndex::from(self.index));
             }
-            else if self.starts_with(b"b\"") {
-                self.scan_quoted(self.index.saturating_add(1), true);
+            else if bool::from(self.starts_with(SourceBytes::from(b"b\""))) {
+                self.scan_quoted(
+                    ByteIndex::from(self.index.saturating_add(1)),
+                    ReportFlag::from(true),
+                );
             }
             else if byte == b'\"' {
-                self.scan_quoted(self.index, true);
+                self.scan_quoted(ByteIndex::from(self.index), ReportFlag::from(true));
             }
             else if byte == b'\'' {
                 self.skip_char_literal();
@@ -309,11 +330,11 @@ impl Scanner<'_, '_>
         self.index = self.index.saturating_add(2);
         let mut depth = 1_usize;
         while self.index < self.bytes.len() && depth > 0 {
-            if self.starts_with(b"/*") {
+            if bool::from(self.starts_with(SourceBytes::from(b"/*"))) {
                 depth = depth.saturating_add(1);
                 self.index = self.index.saturating_add(2);
             }
-            else if self.starts_with(b"*/") {
+            else if bool::from(self.starts_with(SourceBytes::from(b"*/"))) {
                 depth = depth.saturating_sub(1);
                 self.index = self.index.saturating_add(2);
             }
@@ -361,12 +382,12 @@ impl Scanner<'_, '_>
     /// Scan a regular or byte string and report an escaped newline when active.
     fn scan_quoted(
         &mut self,
-        quote_index: usize,
-        report: bool,
+        quote_index: ByteIndex,
+        report: ReportFlag,
     )
     {
         let start_line = self.line;
-        let mut cursor = quote_index.saturating_add(1);
+        let mut cursor = quote_index.0.saturating_add(1);
         let mut escaped = false;
         let mut escaped_newline_count = 0_usize;
         while cursor < self.bytes.len() {
@@ -394,14 +415,14 @@ impl Scanner<'_, '_>
         }
         let content = self
             .bytes
-            .get(quote_index.saturating_add(1) .. cursor.saturating_sub(1))
+            .get(quote_index.0.saturating_add(1) .. cursor.saturating_sub(1))
             .unwrap_or(&[]);
-        if report
+        if bool::from(report)
             && (escaped_newline_count >= 2 || self.line > start_line)
-            && looks_like_embedded_syntax(content)
-            && self.in_test_context()
+            && bool::from(looks_like_embedded_syntax(SourceBytes::from(content)))
+            && bool::from(self.in_test_context())
         {
-            self.report(start_line);
+            self.report(SourceLineNumber::from(start_line));
         }
         self.index = cursor;
     }
@@ -409,10 +430,10 @@ impl Scanner<'_, '_>
     /// Consume a raw or byte-raw string without interpreting its contents.
     fn skip_raw_string(
         &mut self,
-        prefix_start: usize,
+        prefix_start: ByteIndex,
     )
     {
-        let mut quote = prefix_start;
+        let mut quote = prefix_start.0;
         if self.bytes.get(quote) == Some(&b'b') {
             quote = quote.saturating_add(1);
         }
@@ -452,33 +473,34 @@ impl Scanner<'_, '_>
     /// Return whether a raw-string delimiter begins at `index`.
     fn looks_like_raw_string(
         &self,
-        index: usize,
-    ) -> bool
+        index: ByteIndex,
+    ) -> PrefixMatchFlag
     {
-        let mut cursor = index;
+        let mut cursor = index.0;
         while self.bytes.get(cursor) == Some(&b'r') {
             cursor = cursor.saturating_add(1);
         }
         while self.bytes.get(cursor) == Some(&b'#') {
             cursor = cursor.saturating_add(1);
         }
-        self.bytes.get(cursor) == Some(&b'\"')
+        PrefixMatchFlag::from(self.bytes.get(cursor) == Some(&b'\"'))
     }
 
     /// Return whether the current source position lies in test code.
     #[inline]
-    fn in_test_context(&self) -> bool
+    fn in_test_context(&self) -> TestContextFlag
     {
-        self.test_file || !self.test_contexts.is_empty()
+        TestContextFlag::from(self.test_file || !self.test_contexts.is_empty())
     }
 
     /// Emit one stable finding unless the explicit local allow marker is
     /// present.
     fn report(
         &mut self,
-        line: usize,
+        line: SourceLineNumber,
     )
     {
+        let line = line.0;
         let allowed = self
             .lines
             .get(line.saturating_sub(1))
@@ -507,12 +529,14 @@ impl Scanner<'_, '_>
     #[inline]
     fn starts_with(
         &self,
-        prefix: &[u8],
-    ) -> bool
+        prefix: SourceBytes<'_>,
+    ) -> PrefixMatchFlag
     {
-        self.bytes
-            .get(self.index .. self.index.saturating_add(prefix.len()))
-            == Some(prefix)
+        PrefixMatchFlag::from(
+            self.bytes
+                .get(self.index .. self.index.saturating_add(prefix.0.len()))
+                .is_some_and(|value| value == prefix.0),
+        )
     }
 }
 
@@ -524,15 +548,15 @@ impl Scanner<'_, '_>
 /// markers are intentionally language-facing words and operators, so a new
 /// fixture still fails closed when it resembles source material.
 #[inline]
-fn looks_like_embedded_syntax(bytes: &[u8]) -> bool
+fn looks_like_embedded_syntax(bytes: SourceBytes<'_>) -> SyntaxFlag
 {
     const MARKERS: &[&str] = &[
         "def ", "module ", "extern ", "perform ", "return ", "ret ", "force(", "case ", "thunk",
         "fn(", "val ", "let ", "type ", "sign ", "oper ", "data ", "rule ", "node ", "sort ", "@[",
         "#{", "#!{", "->", "<-", "=>", "Inl(", "Inr(", "F ", "U[",
     ];
-    let text = String::from_utf8_lossy(bytes);
-    MARKERS.iter().any(|marker| text.contains(marker))
+    let text = String::from_utf8_lossy(bytes.0);
+    SyntaxFlag::from(MARKERS.iter().any(|marker| text.contains(marker)))
 }
 
 /// Derive the owning crate name from a workspace-relative `crates/` path.
@@ -557,6 +581,8 @@ mod tests
     use std::path::Path;
 
     use super::ALLOW_ESCAPED_NEWLINE_MARKER;
+    use super::EmbeddedSourceText;
+    use super::TestFileFlag;
     use super::findings_for_source;
 
     #[test]
@@ -576,8 +602,8 @@ mod tests
         let findings = findings_for_source(
             Path::new("/repo"),
             Path::new("/repo/crates/demo/src/lib.rs"),
-            &source,
-            false,
+            EmbeddedSourceText::from(&source),
+            TestFileFlag::from(false),
         );
         assert_eq!(1, findings.len());
         assert_eq!("escaped-newline-string", findings[0].kind);
@@ -592,8 +618,8 @@ mod tests
         let findings = findings_for_source(
             Path::new("/repo"),
             Path::new("/repo/crates/demo/src/lib.rs"),
-            &source,
-            false,
+            EmbeddedSourceText::from(&source),
+            TestFileFlag::from(false),
         );
         assert!(findings.is_empty());
     }
@@ -605,8 +631,8 @@ mod tests
         let findings = findings_for_source(
             Path::new("/repo"),
             Path::new("/repo/crates/demo/tests/fixture.rs"),
-            source,
-            true,
+            EmbeddedSourceText::from(source),
+            TestFileFlag::from(true),
         );
         assert_eq!(1, findings.len());
     }
