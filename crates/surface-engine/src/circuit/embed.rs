@@ -569,7 +569,7 @@ pub fn complete_circuit_rules(
 {
     let mut adapter_remaining = adapter_budget.0;
     let mut adapter_decline = None;
-    let mut seeds = Vec::new();
+    let mut seeds: Vec<CircuitOverlapSeed> = Vec::new();
     let mut seed_indices = HashMap::new();
     let mut rendered_indices = HashMap::new();
     let mut matches = Vec::new();
