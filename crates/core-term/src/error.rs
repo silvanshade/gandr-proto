@@ -11,8 +11,16 @@
 //! Both implementations must produce *equal* errors on the same input; this is
 //! asserted by the conformance property tests.
 
+use alloc::boxed::Box;
+
+use gandr_kernel_strata::Level;
+use gandr_kernel_strata::LevelError;
 use thiserror::Error;
 
+use crate::classifier::Classifier;
+use crate::classifier::GroundSort;
+use crate::classifier::SortExpr;
+use crate::effect::EffectRow;
 use crate::grade::Grade;
 use crate::syntax::Term;
 use crate::types::Ty;
@@ -198,6 +206,57 @@ pub mod text
          instead)";
 }
 
+/// The two types involved in a failed type comparison.
+///
+/// This payload is boxed inside [`TypeError`] because type errors are a cold
+/// failure path; keeping the two `Ty` values out of the enum preserves the
+/// hot representation of [`Ty`] after the classifier-bearing universe change.
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+#[error("expected {expected:?}, actual {actual:?}")]
+pub struct TypeMismatch
+{
+    /// The expected (checked-against) type.
+    pub expected: Ty,
+    /// The type the term actually has.
+    pub actual: Ty,
+}
+
+impl TypeMismatch
+{
+    /// Records the expected and actual types behind one cold-path allocation.
+    ///
+    /// # Contract
+    /// - ensures: preserves both types exactly.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn new(
+        expected: Ty,
+        actual: Ty,
+    ) -> Self
+    {
+        Self { expected, actual }
+    }
+}
+
+impl TypeError
+{
+    /// Constructs a boxed type-mismatch error on the cold failure path.
+    ///
+    /// # Contract
+    /// - ensures: preserves both types in one [`TypeMismatch`] payload.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn type_mismatch(
+        expected: Ty,
+        actual: Ty,
+    ) -> Self
+    {
+        Self::TypeMismatch(Box::new(TypeMismatch::new(expected, actual)))
+    }
+}
+
 /// A typing failure.
 ///
 /// `ShapeMismatch` is the elimination-form refinement of `TypeMismatch`
@@ -210,14 +269,8 @@ pub enum TypeError
 {
     /// Subsumption failed: the term's type is not a subtype of the expected
     /// type.
-    #[error("type mismatch: expected {expected:?}, actual {actual:?}")]
-    TypeMismatch
-    {
-        /// The expected (checked-against) type.
-        expected: Ty,
-        /// The type the term actually has.
-        actual: Ty,
-    },
+    #[error("type mismatch: {0}")]
+    TypeMismatch(Box<TypeMismatch>),
 
     /// An elimination's principal premise inferred a type of the wrong shape.
     #[error("type shape mismatch: expected {expected}, actual {actual:?}")]
@@ -255,5 +308,121 @@ pub enum TypeError
         lower: Grade,
         /// The right-hand side of the failed `⊑`.
         upper: Grade,
+    },
+}
+
+/// A formation constructor that this fragment does not admit.
+///
+/// This is deliberately closed: callers can distinguish the refused
+/// constructor without matching on diagnostic prose.
+#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
+pub enum UnsupportedForm
+{
+    /// A type family name has no declaration in the formation context.
+    #[error("unbound type family")]
+    UnboundTypeFamily,
+    /// A value-type constructor has no formation rule.
+    #[error("unrecognized value-type constructor")]
+    ValueTypeConstructor,
+    /// A computation-type constructor has no formation rule.
+    #[error("unrecognized computation-type constructor")]
+    ComputationTypeConstructor,
+    /// A dependent family argument has no value scope at this rung.
+    #[error("dependent family argument without a value scope")]
+    DependentFamilyArgument,
+    /// A formation child answer was requested from an empty result stack.
+    #[error("formation result stack underflow")]
+    ResultStackUnderflow,
+    /// A formation result stack ended with more than one answer.
+    #[error("formation result stack did not contain one answer")]
+    ResultStackCardinality,
+}
+
+/// Why a type failed to form.
+///
+/// Formation is total: every type constructor either receives a
+/// [`Classifier`] or one of these named failures. There is no fallthrough to
+/// [`ValueType::Unknown`], which is the gradual hole an author wrote and has a
+/// formation rule of its own.
+///
+/// Each variant carries the payload that discriminates it, so a test asserts
+/// the exact failure rather than merely that one occurred.
+///
+/// [`Classifier`]: crate::classifier::Classifier
+/// [`ValueType::Unknown`]: crate::types::ValueType::Unknown
+#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
+#[non_exhaustive]
+pub enum FormationError
+{
+    /// A former was given a premise at the wrong ground sort.
+    #[error("formation: wrong sort (expected {expected}, found {actual})")]
+    WrongSort
+    {
+        /// The sort the rule requires.
+        expected: GroundSort,
+        /// The sort the premise supplied.
+        actual: GroundSort,
+    },
+    /// A level escaped the scope that bound its variable.
+    #[error("formation: escaping level {0:?}")]
+    EscapingLevel(Level),
+    /// A type family was applied at the wrong arity.
+    #[error("formation: family arity (expected {expected}, found {actual})")]
+    FamilyArity
+    {
+        /// The number of arguments declared by the family.
+        expected: usize,
+        /// The number of arguments supplied by the application.
+        actual: usize,
+    },
+    /// A type family argument was at the wrong classifier.
+    #[error(
+        "formation: family argument {position} has classifier {actual:?}, expected {expected:?}"
+    )]
+    FamilyArgumentClassifier
+    {
+        /// The zero-based telescope position of the offending argument.
+        position: usize,
+        /// The classifier declared at that position.
+        expected: Classifier,
+        /// The classifier the argument has.
+        actual: Classifier,
+    },
+    /// An elimination crossed a sort edge no bound grants.
+    #[error("formation: illegal elimination from {from} to {to}")]
+    IllegalElimination
+    {
+        /// The sort the eliminator leaves.
+        from: GroundSort,
+        /// The sort the eliminator would enter.
+        to: GroundSort,
+    },
+    /// A name was not bound in the formation context.
+    ///
+    /// The name is intentionally scope-neutral: splitting the context into
+    /// classified and runtime zones must not alter the judgement's diagnostic.
+    #[error("formation: unbound name `{0}`")]
+    UnboundName(String),
+    /// The former is outside the fragment formation currently admits.
+    #[error("formation: unsupported form ({0})")]
+    UnsupportedForm(UnsupportedForm),
+    /// The sort is abstract, so it has no ground reading yet.
+    #[error("formation: abstract sort {0:?}")]
+    AbstractSort(SortExpr),
+    /// A successor operation crossed the representable level boundary.
+    #[error("formation: level arithmetic overflow")]
+    LevelOverflow(#[source] LevelError),
+    /// A graded bridge is outside the fragment formation currently admits.
+    ///
+    /// The ungraded floor admits `+U` and `-F` with their premise level
+    /// unchanged. Graded bridges become admissible when formation has a
+    /// declared action for the grade or effect row.
+    #[error("formation: graded bridge is outside the admitted fragment")]
+    GradedBridge
+    {
+        /// The non-default thunk grade, when the bridge is a thunk.
+        grade: Option<Grade>,
+        /// The non-empty returner effect row, when the bridge is a returner.
+        effects: Option<EffectRow>,
     },
 }

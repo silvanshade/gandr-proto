@@ -509,6 +509,21 @@ impl ShortCircuitFlag
 
 str_wrapper!(DataTypeName, "Borrowed declared datatype name.");
 str_wrapper!(TypeAtomName, "Borrowed core type atom name.");
+str_wrapper!(TypeFamilyName, "Borrowed type-family head name.");
+str_wrapper!(SortParamName, "Borrowed classifier sort-parameter name.");
+str_wrapper!(
+    SortLiteral,
+    "The ruled surface literal of a ground classifier sort."
+);
+
+impl SortLiteral<'static>
+{
+    /// The value sort's ruled literal.
+    pub const VALUE: Self = Self("+");
+    /// The computation sort's ruled literal.
+    pub const COMPUTATION: Self = Self("-");
+}
+
 str_wrapper!(
     SealDeclarationName,
     "Borrowed name of the declaration whose opaque ascription minted a sealed atom."

@@ -10,6 +10,8 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
+use gandr_kernel_strata::Level;
+
 use crate::boundary::ArenaEmptyStatus;
 use crate::boundary::ArenaLength;
 use crate::boundary::BinderName;
@@ -30,6 +32,7 @@ use crate::boundary::StringLiteral;
 use crate::boundary::StringText;
 use crate::boundary::U32Literal;
 use crate::boundary::U64Literal;
+use crate::classifier::SortExpr;
 use crate::effect::EffectRow;
 use crate::effect::EffectSig;
 use crate::grade::Grade;
@@ -313,9 +316,18 @@ pub enum ValueTypeNode
         /// The argument value ids, in application order.
         args: Vec<ValueNodeId>,
     },
-    /// The predicative code universe `Type` (ADR-81), the flat mirror of
+    /// A universe `Type[sort, level]`, the flat mirror of
     /// [`crate::types::ValueType::Universe`].
-    Universe,
+    ///
+    /// A leaf with owned attributes, like [`Self::Family`]'s head: neither the
+    /// sort nor the level is a type, so neither becomes an arena id.
+    Universe
+    {
+        /// The family this universe collects.
+        sort: SortExpr,
+        /// The level this universe sits at.
+        level: Level,
+    },
     /// A sealed abstract type, the flat mirror of
     /// [`crate::types::ValueType::Sealed`].
     ///
@@ -3670,10 +3682,16 @@ impl FlatArena
                     work.push(LegacyAllocFrame::Visit(LegacyRoot::ValueType(arg.as_ref())));
                 }
             },
-            | ValueType::Universe => {
+            | ValueType::Universe {
+                ref sort,
+                ref level,
+            } => {
                 let id = self
                     .value_types
-                    .alloc(ValueTypeNode::Universe)
+                    .alloc(ValueTypeNode::Universe {
+                        sort: sort.clone(),
+                        level: level.clone(),
+                    })
                     .ok_or(ArenaBridgeError::IdSpaceExhausted)?;
                 results.push(LegacyRootId::ValueType(id));
             },
@@ -4906,8 +4924,14 @@ impl FlatArena
                     work.push(FlatReadFrame::Visit(FlatRoot::ValueType(*arg)));
                 }
             },
-            | ValueTypeNode::Universe => {
-                results.push(StructuralRoot::ValueType(ValueType::Universe));
+            | ValueTypeNode::Universe {
+                ref sort,
+                ref level,
+            } => {
+                results.push(StructuralRoot::ValueType(ValueType::universe(
+                    sort.clone(),
+                    level.clone(),
+                )));
             },
             | ValueTypeNode::Sealed(ref seal) => {
                 results.push(StructuralRoot::ValueType(ValueType::Sealed(seal.clone())));
@@ -6106,6 +6130,8 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_kernel_strata::Level;
+
     use super::Comp;
     use super::FlatArena;
     use super::NodeArena;
@@ -6114,6 +6140,7 @@ mod tests
     use super::ValueNode;
     use crate::boundary::IntegerLiteral;
     use crate::boundary::NodeIndex;
+    use crate::classifier::SortExpr;
     use crate::grade::Grade;
     use crate::types::CompType;
     use crate::types::ValueType;
@@ -6167,6 +6194,46 @@ mod tests
         assert_eq!(arena.comp(comp_id), Ok(comp));
         assert_eq!(arena.value(value_id), Ok(value));
         assert_eq!(arena.stack(stack_id), Ok(stack));
+    }
+
+    /// The two ground classifier families remain distinct at the same level:
+    /// `Type[+, 0]` and `Type[-, 0]` are different arena nodes.
+    #[test]
+    fn flat_arena_distinguishes_type_plus_zero_and_type_minus_zero()
+    {
+        let level = Level::zero();
+        let value_universe = ValueType::universe(SortExpr::value(), level.clone());
+        let computation_universe = ValueType::universe(SortExpr::computation(), level);
+        assert_ne!(value_universe, computation_universe);
+
+        let mut arena = FlatArena::new();
+        let value_id = arena
+            .alloc_value_type(&value_universe)
+            .expect("value universe fits in the type arena");
+        let computation_id = arena
+            .alloc_value_type(&computation_universe)
+            .expect("computation universe fits in the type arena");
+        assert_ne!(value_id, computation_id);
+    }
+
+    /// The arena read-back preserves both classifier sort and shared level
+    /// fields for the two ground universe families.
+    #[test]
+    fn flat_arena_round_trips_universe_classifier_and_level()
+    {
+        let level = Level::zero();
+        let value_universe = ValueType::universe(SortExpr::value(), level.clone());
+        let computation_universe = ValueType::universe(SortExpr::computation(), level);
+        let mut arena = FlatArena::new();
+        let value_id = arena
+            .alloc_value_type(&value_universe)
+            .expect("value universe fits in the type arena");
+        let computation_id = arena
+            .alloc_value_type(&computation_universe)
+            .expect("computation universe fits in the type arena");
+
+        assert_eq!(Ok(value_universe), arena.value_type(value_id));
+        assert_eq!(Ok(computation_universe), arena.value_type(computation_id));
     }
 
     /// Lambda and thunk bodies cross the checked bridge as computation-root

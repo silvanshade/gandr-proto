@@ -23,7 +23,10 @@
 //!   distinct sorts over reference-counted children, plus the flat arena the
 //!   total marking traversal interns into;
 //! - [`types`] — the value and computation types that classify them, split by
-//!   the same polarity;
+//!   the same polarity, each with the variant census that keeps a downstream
+//!   judgement over them provably total;
+//! - [`classifier`] — the `(sort, level)` pair a type is formed at, over the
+//!   one level algebra `gandr-kernel-strata` owns;
 //! - [`ctx`] — the two-zone typing context `Γ; Σ`;
 //! - [`subst`] — the iterative capture-avoiding substitution engine over terms,
 //!   and the hole substitution the elaborator plugs;
@@ -64,6 +67,7 @@
 extern crate alloc;
 
 pub mod boundary;
+pub mod classifier;
 pub mod ctx;
 pub mod defs;
 pub mod effect;

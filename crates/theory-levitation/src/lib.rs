@@ -105,9 +105,9 @@
 //!
 //! * [`decode`](fn@decode) / [`decode_desc`] — **large elimination**: the
 //!   decoder `Desc → ValueType`, interpreting the decidable first-order
-//!   fragment (plus the [`Code::Field`] leaf) into the core value-type
-//!   universe. It targets the frozen-core code universe
-//!   ([`gandr_core_term::types::ValueType::Universe`]); the dependent pair
+//!   fragment (plus the [`Code::Field`] leaf) into the classifier-bearing core
+//!   value-type universe. Its target is a [`ValueType::Universe`] with explicit
+//!   `sort` and `level` fields; the dependent pair
 //!   [`gandr_core_term::types::ValueType::Sigma`] is the capability the decoder
 //!   will target once a dependent σ *code* lands, the current fragment being
 //!   non-dependent — see the [`decode`](mod@decode) module docs.
@@ -117,6 +117,8 @@
 //!
 //! The named ideas and their primary references are in this crate's
 //! `README.md`.
+//!
+//! [`ValueType::Universe`]: gandr_core_term::types::ValueType::Universe
 
 extern crate alloc;
 

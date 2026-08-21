@@ -20,6 +20,7 @@ path = "tests/lib.rs"
 # library dependency because `strategies` names `ValueType`, `CompType`, and
 # `Grade` in its public signatures.
 gandr-core-term.workspace = true
+gandr-kernel-strata.workspace = true
 proptest.workspace = true
 
 [dev-dependencies]

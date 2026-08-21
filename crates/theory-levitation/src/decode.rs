@@ -7,17 +7,17 @@
 //! interprets a whole tagged [`SignDesc`] (the μ decoder,
 //! [`DeclPolarity::Data`]) into the coproduct over its constructors. This is
 //! the single non-negotiable *dependent* capability the simply-typed checker
-//! lacked — a function *from data into the universe of types* — realized here
-//! as a total host function over the decidable first-order fragment `{1, var,
-//! ×, σ}` plus the V5 [`Code::Field`] leaf. The decoded types are elements of
-//! the code universe [`gandr_core_term::types::ValueType::Universe`]
-//! (feature 1) and use the dependent pair
-//! [`gandr_core_term::types::ValueType::Sigma`] (feature 2)
-//! nowhere yet — the current fragment is non-dependent, so it decodes into the
-//! non-dependent positive core (`1`, `×`, `+`, atoms); `Σ` is the stage-1
-//! capability that becomes `decode`'s target when a genuinely dependent σ
-//! *code* (a payload type depending on a tag value) lands with the
-//! codes-as-gandr-data step (stage 2). See the stage-1 consequences.
+//! lacked — a function *from data into the universe of types* — realized
+//! here as a total host function over the decidable first-order fragment
+//! `{1, var, ×, σ}` plus the V5 [`Code::Field`] leaf. The decoded types are
+//! elements of the classifier-bearing [`ValueType::Universe`] family, whose
+//! `sort` and `level` fields identify the target universe
+//! ([`ValueType::Sigma`] is feature 2) nowhere yet — the current fragment is
+//! non-dependent, so it decodes into the non-dependent positive core (`1`,
+//! `×`, `+`, atoms); `Σ` is the stage-1 capability that becomes `decode`'s
+//! target when a genuinely dependent σ *code* (a payload type depending on a
+//! tag value) lands with the codes-as-gandr-data step (stage 2). See the
+//! stage-1 consequences.
 //!
 //! **Decidable equality is preserved** (proposal §3): [`decode`] is a total
 //! *function* over the decidable-`Eq` [`Code`] fragment into the

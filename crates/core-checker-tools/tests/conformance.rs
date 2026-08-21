@@ -68,6 +68,7 @@ use gandr_core_term::boundary::I64Slice;
 use gandr_core_term::boundary::IntegerLiteral;
 use gandr_core_term::boundary::NumericLiteralName;
 use gandr_core_term::boundary::Staticness;
+use gandr_core_term::classifier::SortExpr;
 use gandr_core_term::ctx::Ctx;
 use gandr_core_term::effect::EffectOp;
 use gandr_core_term::effect::EffectRow;
@@ -82,6 +83,7 @@ use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
+use gandr_kernel_strata::Level;
 use proptest::prelude::*;
 use proptest::strategy::NewTree;
 use proptest::strategy::Union;
@@ -244,7 +246,7 @@ fn type_is_static_from(root: StaticGoal<'_>) -> Staticness
                 | ValueType::Family { .. }
                 | ValueType::Atom(_)
                 | ValueType::Unit
-                | ValueType::Universe
+                | ValueType::Universe { .. }
                 | ValueType::Sealed(_) => {},
                 // Products, sums, and dependent pairs decompose the same way:
                 // static iff both components are. The dependent pair's binder
@@ -378,7 +380,7 @@ mod declared_data
         let expected_ty = ValueType::data(celsius, Vec::new());
         let result = agree_value(&Ctx::new(), &wrong, &Dir::Check(expected_ty));
         assert!(
-            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            matches!(result, Err(TypeError::TypeMismatch(_))),
             "a Fahrenheit is not a Celsius (ADR-80 generativity)"
         );
     }
@@ -459,7 +461,7 @@ mod levitation
         let pair = Value::pair(Value::int(3), Value::here(Value::int(5)));
         let result = agree_value(&Ctx::new(), &pair, &Dir::Check(refl_sigma()));
         assert!(
-            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            matches!(result, Err(TypeError::TypeMismatch(_))),
             "the tail Path Integer 3 3 rejects a proof about 5 (ADR-81 dependency)"
         );
     }
@@ -489,20 +491,17 @@ mod levitation
     #[test]
     fn universe_subtyping_is_reflexive_only()
     {
-        assert!(bool::from(value_subtype(
-            &Ctx::new(),
-            &ValueType::Universe,
-            &ValueType::Universe
-        )));
+        let universe = ValueType::universe(SortExpr::value(), Level::zero());
+        assert!(bool::from(value_subtype(&Ctx::new(), &universe, &universe)));
         assert!(!bool::from(value_subtype(
             &Ctx::new(),
-            &ValueType::Universe,
+            &universe,
             &ValueType::Unit
         )));
         assert!(!bool::from(value_subtype(
             &Ctx::new(),
             &ValueType::Unit,
-            &ValueType::Universe
+            &universe
         )));
     }
 
@@ -712,7 +711,7 @@ mod packages
         );
         let result = agree_value(&Ctx::new(), &mismatched, &Dir::Check(counter(Grade::OMEGA)));
         assert!(
-            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            matches!(result, Err(TypeError::TypeMismatch(_))),
             "the seed is checked at the witness type Integer, so a string seed fails"
         );
     }
@@ -813,7 +812,7 @@ mod packages
             &Dir::Check(CompType::returner(ValueType::integer())),
         );
         assert!(
-            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            matches!(result, Err(TypeError::TypeMismatch(_))),
             "the seed is abstract inside the unpack, whatever the packer supplied"
         );
     }
@@ -863,7 +862,7 @@ mod packages
         let expected = CompType::returner(ValueType::integer());
         let result = agree_comp(&ctx, &crossed, &Dir::Check(expected.clone()));
         assert!(
-            matches!(result, Err(TypeError::TypeMismatch { .. })),
+            matches!(result, Err(TypeError::TypeMismatch(_))),
             "two unpacks mint two atoms, so their abstract types are not interchangeable"
         );
         // The same body, kept inside one unpack, is well typed — so the failure
@@ -2125,10 +2124,10 @@ mod negative
         let result = agree_value(&Ctx::new(), &Value::int(1), &Dir::Check(txt()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(txt()),
-                actual: Ty::Value(integer()),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(txt()),
+                Ty::Value(integer()),
+            )),
             "an integer literal must not check against another atom"
         );
     }
@@ -2143,10 +2142,10 @@ mod negative
         let result = agree_value(&base_ctx(), &pair, &Dir::Check(expected.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(expected),
-                actual: Ty::Value(ValueType::prod(int(), txt())),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(expected),
+                Ty::Value(ValueType::prod(int(), txt())),
+            )),
             "a pair against a sum must be a type mismatch"
         );
     }
@@ -2160,10 +2159,10 @@ mod negative
         let result = agree_value(&ctx, &Value::var("u"), &Dir::Check(expected.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(expected),
-                actual: Ty::Value(ValueType::thunk(Grade::ONE, CompType::returner(int()))),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(expected),
+                Ty::Value(ValueType::thunk(Grade::ONE, CompType::returner(int()))),
+            )),
             "U_1 (F Int) must not check against U_ω (F Int)"
         );
     }
@@ -2202,10 +2201,7 @@ mod subtype_rows
         let result = agree_value(&ctx, &Value::var("p"), &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(sup),
-                actual: Ty::Value(sub),
-            }),
+            Err(TypeError::type_mismatch(Ty::Value(sup), Ty::Value(sub),)),
             "(U_1 B) × Int </: (U_ω B) × Int"
         );
     }
@@ -2230,10 +2226,7 @@ mod subtype_rows
         let result = agree_value(&ctx, &Value::var("v"), &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(sup),
-                actual: Ty::Value(sub),
-            }),
+            Err(TypeError::type_mismatch(Ty::Value(sup), Ty::Value(sub),)),
             "(U_1 B) + Int </: (U_ω B) + Int"
         );
     }
@@ -2271,10 +2264,7 @@ mod subtype_rows
         let result = agree_value(&ctx, &Value::var("r"), &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(sup),
-                actual: Ty::Value(sub),
-            }),
+            Err(TypeError::type_mismatch(Ty::Value(sup), Ty::Value(sub),)),
             "a record missing a required field is not a subtype"
         );
     }
@@ -2306,10 +2296,7 @@ mod subtype_rows
         let result = agree_value(&ctx, &Value::var("r"), &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(sup),
-                actual: Ty::Value(sub),
-            }),
+            Err(TypeError::type_mismatch(Ty::Value(sup), Ty::Value(sub),)),
             "narrowing a shared field breaks record subtyping"
         );
     }
@@ -2426,10 +2413,10 @@ mod subtype_rows
         );
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(sup),
-                actual: Ty::Comp(CompType::returner(one_thunk(f_int()))),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Comp(sup),
+                Ty::Comp(CompType::returner(one_thunk(f_int()))),
+            )),
             "F (U_1 B) </: F (U_ω B)"
         );
     }
@@ -2456,10 +2443,10 @@ mod subtype_rows
         let result = agree_comp(&base_ctx(), &lam, &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(sup),
-                actual: Ty::Comp(CompType::arrow(omega_thunk(f_int()), f_int())),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Comp(sup),
+                Ty::Comp(CompType::arrow(omega_thunk(f_int()), f_int())),
+            )),
             "U_ω B → F Int </: U_1 B → F Int"
         );
     }
@@ -2501,10 +2488,7 @@ mod subtype_rows
         );
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(sup),
-                actual: Ty::Comp(inner),
-            }),
+            Err(TypeError::type_mismatch(Ty::Comp(sup), Ty::Comp(inner),)),
             "(F (U_1 B)) & (F Int) </: (F (U_ω B)) & (F Int)"
         );
     }
@@ -2541,10 +2525,7 @@ mod subtype_rows
         );
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(sup),
-                actual: Ty::Comp(inner),
-            }),
+            Err(TypeError::type_mismatch(Ty::Comp(sup), Ty::Comp(inner),)),
             "F^⟨State⟩ Int </: F^⟨⟩ Int"
         );
     }
@@ -2589,10 +2570,7 @@ mod subtype_rows
         let result = agree_value(&ctx, &Value::var("k"), &Dir::Check(sup.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(sup),
-                actual: Ty::Value(sub),
-            }),
+            Err(TypeError::type_mismatch(Ty::Value(sup), Ty::Value(sub),)),
             "Stk(F (U_ω B), …) </: Stk(F (U_1 B), …) — contravariant B"
         );
     }
@@ -3029,10 +3007,10 @@ mod effects
         let result = agree_comp(&Ctx::new(), &perf, &Dir::Infer);
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(integer()),
-                actual: Ty::Value(ValueType::Unit),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(integer()),
+                Ty::Value(ValueType::Unit),
+            )),
             "perform State.put () must mismatch (put takes Integer)"
         );
     }
@@ -3165,10 +3143,7 @@ mod effects
         let result = agree_comp(&Ctx::new(), &handler, &Dir::Check(answer.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(answer),
-                actual: Ty::Comp(leaked),
-            }),
+            Err(TypeError::type_mismatch(Ty::Comp(answer), Ty::Comp(leaked),)),
             "a handler leaking ⟨IO⟩ must fail the soundness leg ⟨IO⟩ ⊆ ⟨⟩"
         );
     }
@@ -3332,10 +3307,10 @@ mod effects
         let result = agree_comp(&Ctx::new(), &comp, &Dir::Check(pure_answer.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(pure_answer),
-                actual: Ty::Comp(accumulated),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Comp(pure_answer),
+                Ty::Comp(accumulated),
+            )),
             "a checking-mode bind must subsume its accumulated row (⟨State⟩ ⊄ ⟨⟩)"
         );
     }
@@ -3384,10 +3359,7 @@ mod effects
         let result = agree_comp(&Ctx::new(), &handler, &Dir::Check(answer.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(answer),
-                actual: Ty::Comp(leaked),
-            }),
+            Err(TypeError::type_mismatch(Ty::Comp(answer), Ty::Comp(leaked))),
             "a handler return clause must not launder ⟨IO⟩ through a bind"
         );
     }
@@ -3467,10 +3439,10 @@ mod control
         let result = agree_value(&Ctx::new(), &stk, &Dir::Check(dropped.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(dropped),
-                actual: Ty::Value(synthesized),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(dropped),
+                Ty::Value(synthesized)
+            )),
             "stk ε must not drop ⟨State⟩ from its delivered answer"
         );
     }
@@ -3576,10 +3548,10 @@ mod control
         let result = agree_value(&Ctx::new(), &stk, &Dir::Check(laundered.clone()));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(laundered),
-                actual: Ty::Value(synthesized),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(laundered),
+                Ty::Value(synthesized)
+            )),
             "a reified stack must not launder ⟨IO⟩ out of its delivered answer"
         );
     }
@@ -3667,10 +3639,10 @@ mod control
         let result = agree_comp(&Ctx::new(), &resume, &Dir::Infer);
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(integer()),
-                actual: Ty::Value(ValueType::Unit),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(integer()),
+                Ty::Value(ValueType::Unit)
+            )),
             "feeding ret () to a stack consuming F Integer must mismatch"
         );
     }
@@ -3710,10 +3682,10 @@ mod control
         let result = agree_comp(&Ctx::new(), &resume, &Dir::Check(pure(integer())));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Comp(pure(integer())),
-                actual: Ty::Comp(delivered),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Comp(pure(integer())),
+                Ty::Comp(delivered)
+            )),
             "a resume delivering ⟨State⟩ must not check against the pure F Integer"
         );
     }
@@ -3798,10 +3770,10 @@ mod control
         let result = agree_comp(&Ctx::new(), &comp, &Dir::Check(pure(integer())));
         assert_eq!(
             result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(integer()),
-                actual: Ty::Value(ValueType::Unit),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(integer()),
+                Ty::Value(ValueType::Unit)
+            )),
             "k must be bound at Stk(F Integer, F Integer): feeding ret () mismatches"
         );
     }
@@ -3901,10 +3873,10 @@ mod control
         let dropped_result = agree_value(&Ctx::new(), &stk, &Dir::Check(dropped.clone()));
         assert_eq!(
             dropped_result,
-            Err(TypeError::TypeMismatch {
-                expected: Ty::Value(dropped),
-                actual: Ty::Value(synthesized),
-            }),
+            Err(TypeError::type_mismatch(
+                Ty::Value(dropped),
+                Ty::Value(synthesized)
+            )),
             "an interior bind frame must not launder ⟨State⟩ out of the threaded answer"
         );
     }
@@ -5996,11 +5968,15 @@ fn rebuild_type_from(root: RebuildStep<'_>) -> RebuildOutput
                         steps.push(RebuildStep::Value(arg));
                     }
                 },
-                // The code universe has no children (ADR-81). The dependent
-                // pair rebuilds head and tail with fresh `Rc`s so the
-                // reflexivity oracle descends structurally into the `Sigma` arm
-                // rather than short-circuiting on `core::ptr::eq`.
-                | ValueType::Universe => outputs.push(RebuildOutput::Value(ValueType::Universe)),
+                // A universe has no child types, but its classifier-bearing
+                // fields remain part of the value reconstructed here.
+                | ValueType::Universe {
+                    ref sort,
+                    ref level,
+                } => outputs.push(RebuildOutput::Value(ValueType::universe(
+                    sort.clone(),
+                    level.clone(),
+                ))),
                 | ValueType::Sigma {
                     ref fst,
                     ref binder,

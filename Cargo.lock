@@ -846,6 +846,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-machine",
  "gandr-core-term",
+ "gandr-kernel-strata",
  "proptest",
 ]
 
@@ -857,6 +858,7 @@ dependencies = [
  "gandr-core-checker",
  "gandr-core-machine",
  "gandr-core-term",
+ "gandr-kernel-strata",
  "gandr-theory-orders",
  "proptest",
 ]
@@ -895,6 +897,7 @@ dependencies = [
 name = "gandr-core-term"
 version = "0.0.0"
 dependencies = [
+ "gandr-kernel-strata",
  "gandr-theory-nominal-automata",
  "no-panic",
  "regex",

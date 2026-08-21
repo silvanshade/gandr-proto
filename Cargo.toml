@@ -261,7 +261,9 @@ path = "crates/kernel-core"
 
 # The minimal certified kernel's level oracle (universe levels and landmark posets).
 # consumers:
+# - gandr-core-checker
 # - gandr-core-sequent (dev)
+# - gandr-core-term
 # - gandr-kernel-core
 [workspace.dependencies.gandr-kernel-strata]
 path = "crates/kernel-strata"

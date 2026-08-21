@@ -11,6 +11,12 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The one level algebra. `Level` is owned by the certified kernel's level
+# oracle and imported here rather than copied, so the surface, the checker,
+# the normalizer, and the kernel all order and join levels by the same
+# canonical form. The edge points down a tier and adds none: kernel-strata
+# depends on nothing.
+gandr-kernel-strata.workspace = true
 # The nominal atom substrate (ADR-41). This crate names its `Sort` trait and
 # `Unifiability`, and nothing else: `nominal::GandrSort` is the sort vocabulary
 # every machine-minted name-space is tagged with, and the trait impl is what

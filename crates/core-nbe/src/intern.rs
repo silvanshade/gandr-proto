@@ -963,8 +963,13 @@ fn visit_value_type<'term>(
             }
             work.push(KeyTask::Name(head.as_str()));
         },
-        | ValueTypeNode::Universe => {
+        | ValueTypeNode::Universe {
+            ref sort,
+            ref level,
+        } => {
             tokens.push(CanonicalToken::from(tag::VALUE_TYPE.saturating_add(10)));
+            hashed(tokens, sort);
+            hashed(tokens, level);
         },
         | ValueTypeNode::Sigma {
             fst,

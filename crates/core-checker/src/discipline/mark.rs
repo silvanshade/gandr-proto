@@ -6286,8 +6286,8 @@ impl Recoverable for EffectRow
 fn mark_of_error(error: TypeError) -> Mark
 {
     match error {
-        | TypeError::TypeMismatch { expected, actual } => {
-            Mark::TypeMismatch(Boundary::new(expected, actual))
+        | TypeError::TypeMismatch(mismatch) => {
+            Mark::TypeMismatch(Boundary::new(mismatch.expected, mismatch.actual))
         },
         | TypeError::ShapeMismatch { expected, actual } => Mark::ShapeMismatch { expected, actual },
         | TypeError::StuckExpr { hint, .. } => Mark::Stuck { hint },

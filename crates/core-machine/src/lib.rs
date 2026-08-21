@@ -1338,16 +1338,16 @@ fn step_value(
                 args,
             }) => {
                 if id != expected_id {
-                    return Err(TypeError::TypeMismatch {
-                        expected: Ty::Value(ValueType::Data {
+                    return Err(TypeError::type_mismatch(
+                        Ty::Value(ValueType::Data {
                             id: expected_id,
                             args,
                         }),
-                        actual: Ty::Value(ValueType::Data {
+                        Ty::Value(ValueType::Data {
                             id,
                             args: alloc::vec::Vec::new(),
                         }),
-                    });
+                    ));
                 }
                 stack.push(Frame::Ctor {
                     result: ValueType::Data {

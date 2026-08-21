@@ -3,6 +3,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_term::boundary::GradeBound;
+use gandr_core_term::classifier::SortExpr;
+use gandr_core_term::classifier::SortParam;
 use gandr_core_term::effect::EffectRow;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::error::text;
@@ -16,6 +18,10 @@ use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
+use gandr_kernel_strata::Level;
+use gandr_kernel_strata::LevelConstant;
+use gandr_kernel_strata::LevelVar;
+use gandr_kernel_strata::LevelVarIndex;
 
 use crate::checkpoint::Checkpoints;
 use crate::checkpoint::ItemCheckpoint;
@@ -26,9 +32,16 @@ use crate::persistence::UnsupportedPersistence;
 use crate::region::Program;
 
 /// Magic and version prefix for canonical program encodings.
-const PROGRAM_MAGIC: &[u8; 8] = b"GPRG\0\0\0\x01";
+const PROGRAM_MAGIC: &[u8; 8] = b"GPRG\0\0\0\x02";
 /// Magic and version prefix for canonical checkpoint encodings.
-const CHECKPOINT_MAGIC: &[u8; 8] = b"GCP\0\0\0\0\x01";
+const CHECKPOINT_MAGIC: &[u8; 8] = b"GCP\0\0\0\0\x02";
+/// The incremental codec's independent decode-time cap for variable offsets.
+///
+/// This format has its own identity and does not reuse the kernel export
+/// constant. Real universe levels use offsets `0` or `1`; larger values are
+/// well-formed but intentionally non-round-tripping until strata exposes an
+/// O(1) offset constructor.
+const MAX_DECODED_LEVEL_OFFSET: u64 = 4096;
 
 /// Declares the stable one-byte tags in the persistence grammar.
 macro_rules! tags {
@@ -330,12 +343,9 @@ impl<'value> Encoder<'value>
     {
         self.work.push(Work::EmitTypeError(value));
         match *value {
-            | TypeError::TypeMismatch {
-                ref expected,
-                ref actual,
-            } => {
-                self.work.push(Work::Ty(expected));
-                self.work.push(Work::Ty(actual));
+            | TypeError::TypeMismatch(ref mismatch) => {
+                self.work.push(Work::Ty(&mismatch.expected));
+                self.work.push(Work::Ty(&mismatch.actual));
             },
             | TypeError::ShapeMismatch { ref actual, .. } => self.work.push(Work::Ty(actual)),
             | TypeError::StuckExpr { ref expr, .. } => self.work.push(Work::Term(expr)),
@@ -482,7 +492,7 @@ impl<'value> Encoder<'value>
             },
             | ValueType::Atom(_)
             | ValueType::Unit
-            | ValueType::Universe
+            | ValueType::Universe { .. }
             | ValueType::Unknown
             | ValueType::Data { .. }
             | ValueType::Sealed(_)
@@ -706,7 +716,7 @@ impl<'value> Encoder<'value>
     ) -> Result<(), CheckpointStoreError>
     {
         match *value {
-            | TypeError::TypeMismatch { .. } => self.byte(ERROR_TYPE_MISMATCH),
+            | TypeError::TypeMismatch(..) => self.byte(ERROR_TYPE_MISMATCH),
             | TypeError::ShapeMismatch { expected, .. } => {
                 self.byte(ERROR_SHAPE_MISMATCH);
                 self.byte(error_text_tag(expected)?);
@@ -863,7 +873,14 @@ impl<'value> Encoder<'value>
             },
             | ValueType::Stk(..) => self.byte(VT_STK),
             | ValueType::Path { .. } => self.byte(VT_PATH),
-            | ValueType::Universe => self.byte(VT_UNIVERSE),
+            | ValueType::Universe {
+                ref sort,
+                ref level,
+            } => {
+                self.byte(VT_UNIVERSE);
+                self.sort(sort)?;
+                self.level(level)?;
+            },
             | ValueType::Family { ref head, ref args } => {
                 self.byte(VT_FAMILY);
                 self.string(head)?;
@@ -1088,6 +1105,43 @@ impl<'value> Encoder<'value>
                 .extend_from_slice(&grade_bound(value).to_le_bytes());
         }
     }
+    /// Appends a classifier sort in the canonical grammar.
+    fn sort(
+        &mut self,
+        value: &SortExpr,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        match *value {
+            | SortExpr::Ground(sort) => self.byte(match sort {
+                | gandr_core_term::classifier::GroundSort::Value => 0,
+                | gandr_core_term::classifier::GroundSort::Computation => 1,
+            }),
+            | SortExpr::Param(ref param) => {
+                self.byte(2);
+                self.string(param.name().as_ref())?;
+            },
+        }
+        Ok(())
+    }
+
+    /// Appends one canonical kernel-strata level.
+    fn level(
+        &mut self,
+        value: &Level,
+    ) -> Result<(), CheckpointStoreError>
+    {
+        self.bytes
+            .extend_from_slice(&u64::from(value.constant_part()).to_le_bytes());
+        let atoms = value.atoms().collect::<Vec<_>>();
+        self.len(atoms.len())?;
+        for (variable, offset) in atoms {
+            self.bytes
+                .extend_from_slice(&u32::from(variable.index()).to_le_bytes());
+            self.bytes
+                .extend_from_slice(&u64::from(offset).to_le_bytes());
+        }
+        Ok(())
+    }
 }
 
 /// Recovers the finite grade bound through the public grade order.
@@ -1272,6 +1326,66 @@ impl<'bytes> Reader<'bytes>
             | _ => Err(CheckpointStoreError::Corrupt),
         }
     }
+    /// Reads one classifier sort.
+    fn sort(&mut self) -> Result<SortExpr, CheckpointStoreError>
+    {
+        match self.byte()? {
+            | 0 => Ok(SortExpr::value()),
+            | 1 => Ok(SortExpr::computation()),
+            | 2 => {
+                let name = self.string()?;
+                Ok(SortExpr::Param(SortParam::new(name.as_str())))
+            },
+            | _ => Err(CheckpointStoreError::Corrupt),
+        }
+    }
+
+    /// Reads and reconstructs one canonical kernel-strata level.
+    ///
+    /// # Contract
+    /// - requires: the reader cursor points to a canonical level payload.
+    /// - ensures: returns the same canonical level represented by that payload.
+    /// - provides: a level rebuilt through the public strata algebra.
+    /// - fails: over-cap offsets return
+    ///   [`CheckpointStoreError::LevelOffsetTooLarge`]; malformed bytes and
+    ///   reconstruction overflow return [`CheckpointStoreError::Corrupt`].
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns [`CheckpointStoreError::LevelOffsetTooLarge`] when a variable
+    /// atom's offset meets or exceeds [`MAX_DECODED_LEVEL_OFFSET`].
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the round-trip witness and the over-cap witness
+    ///   distinguish the reconstructed level from refused malformed input.
+    /// - witness: `persistence::tests::universe_sorts_and_levels_round_trip`
+    /// - witness: `persistence::tests::oversized_level_offset_is_refused_with_exact_error`
+    fn level(&mut self) -> Result<Level, CheckpointStoreError>
+    {
+        let mut level = Level::constant(LevelConstant::from(self.u64()?));
+        let count = self.len()?;
+        for _ in 0 .. count {
+            let variable = LevelVar::from(LevelVarIndex::from(self.u32()?));
+            let raw_offset = self.u64()?;
+            if raw_offset >= MAX_DECODED_LEVEL_OFFSET {
+                return Err(CheckpointStoreError::LevelOffsetTooLarge { offset: raw_offset });
+            }
+            let mut atom = Level::var(variable);
+            let mut remaining = raw_offset;
+            while remaining > 0_u64 {
+                let successor = atom
+                    .succ()
+                    .map_err(|_error| CheckpointStoreError::Corrupt)?;
+                atom = successor;
+                let next_remaining = remaining
+                    .checked_sub(1_u64)
+                    .ok_or(CheckpointStoreError::Corrupt)?;
+                remaining = next_remaining;
+            }
+            level = level.max(&atom);
+        }
+        Ok(level)
+    }
 }
 
 /// Completed semantic nodes held by the iterative postfix decoder.
@@ -1366,10 +1480,7 @@ fn decode_token(
         | ERROR_TYPE_MISMATCH => {
             let expected = pop_ty(nodes)?;
             let actual = pop_ty(nodes)?;
-            nodes.push(Node::TypeError(TypeError::TypeMismatch {
-                expected,
-                actual,
-            }));
+            nodes.push(Node::TypeError(TypeError::type_mismatch(expected, actual)));
         },
         | ERROR_SHAPE_MISMATCH => {
             let expected = decode_error_text(reader.byte()?)?;
@@ -1505,7 +1616,11 @@ fn decode_token(
             let ty = pop_value_type(nodes)?;
             nodes.push(Node::ValueType(ValueType::path(ty, lhs, rhs)));
         },
-        | VT_UNIVERSE => nodes.push(Node::ValueType(ValueType::Universe)),
+        | VT_UNIVERSE => {
+            let sort = reader.sort()?;
+            let level = reader.level()?;
+            nodes.push(Node::ValueType(ValueType::universe(sort, level)));
+        },
         | VT_FAMILY => {
             let head = reader.string()?;
             let arity = reader.len()?;

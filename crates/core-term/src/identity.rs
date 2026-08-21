@@ -342,7 +342,7 @@ fn subst_type(
                 | ValueType::Atom(_)
                 | ValueType::Unit
                 | ValueType::Unknown
-                | ValueType::Universe
+                | ValueType::Universe { .. }
                 // A sealed atom is a leaf with no children to substitute into:
                 // it carries an identity and nothing else, so substitution
                 // passes it through unchanged. That is the same shape opacity

@@ -430,7 +430,7 @@ impl Definitions
                 // rather than a wrong answer — the same trade the value-side
                 // scan states in the other direction.
                 | ValueType::Unit
-                | ValueType::Universe
+                | ValueType::Universe { .. }
                 | ValueType::Unknown
                 | ValueType::Sealed(_)
                 | ValueType::Thunk(..)

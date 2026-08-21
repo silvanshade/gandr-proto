@@ -2892,7 +2892,7 @@ impl<'template> PlugEngine<'template>
         match value_type {
             | ValueType::Atom(name) => self.value_types.push(ValueType::Atom(name.clone())),
             | ValueType::Unit => self.value_types.push(ValueType::Unit),
-            | ValueType::Universe => self.value_types.push(ValueType::Universe),
+            | ValueType::Universe { .. } => self.value_types.push(value_type.clone()),
             | ValueType::Unknown => self.value_types.push(ValueType::Unknown),
             | ValueType::Sealed(id) => self.value_types.push(ValueType::Sealed(id.clone())),
             | ValueType::Prod(first, second) => {
@@ -4540,7 +4540,7 @@ fn walk_value_type<'template>(
     match value_type {
         | ValueType::Atom(_)
         | ValueType::Unit
-        | ValueType::Universe
+        | ValueType::Universe { .. }
         | ValueType::Unknown
         | ValueType::Sealed(_) => {},
         | ValueType::Prod(first, second) | ValueType::Sum(first, second) => {

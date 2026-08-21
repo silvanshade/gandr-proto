@@ -2679,9 +2679,9 @@ good
             assert!(
                 matches!(
                     &result,
-                    Err(TypeError::TypeMismatch { expected, actual })
-                        if *expected == Ty::Value(ValueType::string())
-                            && *actual == Ty::Value(actual_ty)
+                    Err(TypeError::TypeMismatch(mismatch))
+                        if mismatch.expected == Ty::Value(ValueType::string())
+                            && mismatch.actual == Ty::Value(actual_ty)
                 ),
                 "host escape must be rejected as an ordinary String type mismatch: {result:?}"
             );

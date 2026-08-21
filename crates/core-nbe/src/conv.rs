@@ -1725,9 +1725,17 @@ fn value_type_goal(
         | (&ValueType::Atom(ref left), &ValueType::Atom(ref right)) => {
             ValueEquality::from(left == right)
         },
-        | (&ValueType::Unit, &ValueType::Unit) | (&ValueType::Universe, &ValueType::Universe) => {
-            ValueEquality::from(true)
-        },
+        | (&ValueType::Unit, &ValueType::Unit) => ValueEquality::from(true),
+        | (
+            &ValueType::Universe {
+                sort: ref left_sort,
+                level: ref left_level,
+            },
+            &ValueType::Universe {
+                sort: ref right_sort,
+                level: ref right_level,
+            },
+        ) => ValueEquality::from(left_sort == right_sort && left_level == right_level),
         | (&ValueType::Sealed(ref left), &ValueType::Sealed(ref right)) => {
             ValueEquality::from(left == right)
         },

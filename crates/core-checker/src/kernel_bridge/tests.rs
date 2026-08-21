@@ -11,6 +11,7 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_term::classifier::SortExpr;
 use gandr_core_term::effect::EffectSig;
 use gandr_core_term::prim::NativePrim;
 use gandr_core_term::syntax::Comp;
@@ -423,13 +424,17 @@ fn pure_embedding_class_rejects_exactly()
 }
 
 #[test]
-fn universe_class_rejects_exactly()
+fn value_universe_rejects_with_universe_type()
 {
     let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::UniverseType),
-        lower_value_type(&BridgeContext::new(), &mut arena, &ValueType::Universe),
-        "the un-levelled code universe rejects with the exact UniverseType variant"
+        lower_value_type(
+            &BridgeContext::new(),
+            &mut arena,
+            &ValueType::universe(SortExpr::value(), Level::zero()),
+        ),
+        "a value-family universe rejects with the exact UniverseType variant"
     );
 }
 

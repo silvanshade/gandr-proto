@@ -613,16 +613,16 @@ impl Rec
                 args,
             }) => {
                 if id != expected_id {
-                    return Err(TypeError::TypeMismatch {
-                        expected: Ty::Value(ValueType::Data {
+                    return Err(TypeError::type_mismatch(
+                        Ty::Value(ValueType::Data {
                             id: expected_id,
                             args,
                         }),
-                        actual: Ty::Value(ValueType::Data {
+                        Ty::Value(ValueType::Data {
                             id,
                             args: Vec::new(),
                         }),
-                    });
+                    ));
                 }
                 self.value(unrc(payload), Dir::Infer)?;
                 Ok(ValueType::Data {

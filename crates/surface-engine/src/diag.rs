@@ -1303,12 +1303,9 @@ fn build_diagnostic(
 fn detail_of(error: &TypeError) -> DiagnosticDetail
 {
     match *error {
-        | TypeError::TypeMismatch {
-            ref expected,
-            ref actual,
-        } => DiagnosticDetail::TypeMismatch {
-            expected: render_type_operand(expected),
-            actual: render_type_operand(actual),
+        | TypeError::TypeMismatch(ref mismatch) => DiagnosticDetail::TypeMismatch {
+            expected: render_type_operand(&mismatch.expected),
+            actual: render_type_operand(&mismatch.actual),
         },
         | TypeError::ShapeMismatch {
             expected,
@@ -1380,12 +1377,9 @@ fn primary_label(detail: &DiagnosticDetail) -> String
 pub fn message_of(error: &TypeError) -> DiagnosticMessage
 {
     match *error {
-        | TypeError::TypeMismatch {
-            ref expected,
-            ref actual,
-        } => DiagnosticMessage::TypeMismatch {
-            expected: render_type_operand(expected),
-            actual: render_type_operand(actual),
+        | TypeError::TypeMismatch(ref mismatch) => DiagnosticMessage::TypeMismatch {
+            expected: render_type_operand(&mismatch.expected),
+            actual: render_type_operand(&mismatch.actual),
         },
         | TypeError::ShapeMismatch {
             expected,

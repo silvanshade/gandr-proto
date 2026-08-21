@@ -153,7 +153,7 @@ pub(crate) fn int_literal_fits(
 /// - ensures: in `Dir::Infer` returns `constructed` unchanged (infallible); in
 ///   `Dir::Check(expected)` returns `expected` when `value_subtype(constructed,
 ///   expected)` holds.
-/// - fails: `TypeError::TypeMismatch { expected, actual }` (with `actual` =
+/// - fails: `TypeError::TypeMismatch(mismatch)` (with `mismatch.actual` =
 ///   `constructed`) when the check-mode subsumption fails.
 /// - panics: none.
 ///
@@ -174,10 +174,10 @@ pub fn finish_value(
                 Ok(expected)
             }
             else {
-                Err(TypeError::TypeMismatch {
-                    expected: Ty::Value(expected),
-                    actual: Ty::Value(constructed),
-                })
+                Err(TypeError::type_mismatch(
+                    Ty::Value(expected),
+                    Ty::Value(constructed),
+                ))
             }
         },
     }
@@ -237,7 +237,7 @@ enum SubtypeGoal
 /// - ensures: in `Dir::Infer` returns `constructed` unchanged (infallible); in
 ///   `Dir::Check(expected)` returns `expected` when `comp_subtype(constructed,
 ///   expected)` holds.
-/// - fails: `TypeError::TypeMismatch { expected, actual }` (with `actual` =
+/// - fails: `TypeError::TypeMismatch(mismatch)` (with `mismatch.actual` =
 ///   `constructed`) when the check-mode subsumption fails.
 /// - panics: none.
 ///
@@ -258,10 +258,10 @@ pub fn finish_comp(
                 Ok(expected)
             }
             else {
-                Err(TypeError::TypeMismatch {
-                    expected: Ty::Comp(expected),
-                    actual: Ty::Comp(constructed),
-                })
+                Err(TypeError::type_mismatch(
+                    Ty::Comp(expected),
+                    Ty::Comp(constructed),
+                ))
             }
         },
     }
@@ -373,9 +373,17 @@ fn subtype_goals(
                 }
                 match (sub.as_ref(), sup.as_ref()) {
                     | (&ValueType::Atom(ref lhs), &ValueType::Atom(ref rhs)) if lhs == rhs => {},
-                    | (&ValueType::Unit, &ValueType::Unit)
-                    | (&ValueType::Universe, &ValueType::Universe) => {},
-                    // A sealed atom relates to itself by identity and to nothing
+                    | (&ValueType::Unit, &ValueType::Unit) => {},
+                    | (
+                        &ValueType::Universe {
+                            sort: ref lhs_sort,
+                            level: ref lhs_level,
+                        },
+                        &ValueType::Universe {
+                            sort: ref rhs_sort,
+                            level: ref rhs_level,
+                        },
+                    ) if lhs_sort == rhs_sort && lhs_level == rhs_level => {},
                     // else — the same nominal-before-structural discipline
                     // `Data` takes, minus the carrier. The catch-all below is
                     // what refuses a seal against its representation, so opacity

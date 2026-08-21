@@ -14,9 +14,9 @@
 //! This module is **strictly additive** over the reflection face and the
 //! engine: it reflects the directed reading, it does not re-implement the
 //! rewrite engine. It stages behind levitation stage 1 (ADR-81 —
-//! `ValueType::Universe` + `Sigma` + `decode`, landed), which is the gate §7
-//! names, because dipresheaf-shaped protypes over reflected signatures need the
-//! typed `Desc` layer.
+//! classifier-bearing `ValueType::Universe` plus `Sigma` and `decode`, landed),
+//! which is the gate §7 names, because dipresheaf-shaped protypes over
+//! reflected signatures need the typed `Desc` layer.
 //!
 //! # The ladder (§7)
 //!
@@ -58,11 +58,11 @@
 //! # Out of scope (direction only)
 //!
 //! LLV's **directed univalence** (`homSet(A, B) ≅ A ⇒ B`) — the second-order
-//! step LLV's own future work names — is **not scoped** here. It is a reflected
-//! bead-ready residual: it needs the directed-hom *type* to be an object of the
-//! reflected universe (levitation stage 1's `Universe`) and a transport law
-//! relating it to the reflected function space, neither of which this fragment
-//! builds.
+//! step LLV's own future work names — is **not scoped** here. It is a
+//! reflected bead-ready residual: it needs the directed-hom *type* to be an
+//! object of the classifier-bearing reflected universe (with explicit `sort`
+//! and `level`) and a transport law relating it to the reflected function
+//! space, neither of which this fragment builds.
 //!
 //! # Soundness posture (§8; ADR-68 D4)
 //!

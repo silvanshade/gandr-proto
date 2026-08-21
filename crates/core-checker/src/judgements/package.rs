@@ -597,7 +597,7 @@ fn discharge(
                     | ValueType::Family { .. }
                     | ValueType::Unit
                     | ValueType::Unknown
-                    | ValueType::Universe
+                    | ValueType::Universe { .. }
                     | ValueType::Sealed(_) => values.push(ty.clone()),
                     | ValueType::Prod(ref fst, ref snd) => {
                         tasks.push(Task::FinishValue(ValueFinish::Prod));
@@ -1143,7 +1143,7 @@ fn collect_atom_names(
                 },
                 | ValueType::Unit
                 | ValueType::Unknown
-                | ValueType::Universe
+                | ValueType::Universe { .. }
                 | ValueType::Sealed(_) => {},
                 // Products, sums and dependent pairs are the same walk: both
                 // children are types and neither binds a type name.

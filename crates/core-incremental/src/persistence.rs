@@ -99,6 +99,12 @@ pub enum CheckpointStoreError
     UnsupportedPersistence(UnsupportedPersistence),
     /// A file artifact is truncated or has an invalid schema.
     Corrupt,
+    /// A well-formed level variable atom exceeded the bounded decode limit.
+    LevelOffsetTooLarge
+    {
+        /// The rejected variable atom offset.
+        offset: u64,
+    },
     /// A valid semantic payload used a non-canonical byte representation.
     NonCanonical,
     /// The backing store could not complete an operating-system request.
@@ -603,6 +609,7 @@ mod tests
 
     use gandr_core_term::boundary::EffectSignatureName;
     use gandr_core_term::boundary::OperationName;
+    use gandr_core_term::classifier::SortExpr;
     use gandr_core_term::effect::EffectOp;
     use gandr_core_term::effect::EffectSig;
     use gandr_core_term::error::TypeError;
@@ -622,6 +629,9 @@ mod tests
     use gandr_core_term::types::SealId;
     use gandr_core_term::types::Ty;
     use gandr_core_term::types::ValueType;
+    use gandr_kernel_strata::Level;
+    use gandr_kernel_strata::LevelVar;
+    use gandr_kernel_strata::LevelVarIndex;
 
     use super::*;
     use crate::checkpoint::ItemCheckpoint;
@@ -811,7 +821,10 @@ mod tests
                 Value::here(Value::Unit),
             )),
         );
-        type_fields.insert(String::from("universe"), Rc::new(ValueType::Universe));
+        type_fields.insert(
+            String::from("universe"),
+            Rc::new(ValueType::universe(SortExpr::value(), Level::zero())),
+        );
         type_fields.insert(
             String::from("sigma"),
             Rc::new(ValueType::sigma(
@@ -953,10 +966,7 @@ mod tests
                 ty: Ty::Comp(with),
             }),
             checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
-                error: TypeError::TypeMismatch {
-                    expected: value_ty.clone(),
-                    actual: Ty::Value(ValueType::Unknown),
-                },
+                error: TypeError::type_mismatch(value_ty.clone(), Ty::Value(ValueType::Unknown)),
             }),
             checkpoint_item(simple_term.clone(), None, ItemTyping::TypeError {
                 error: TypeError::ShapeMismatch {
@@ -993,6 +1003,64 @@ mod tests
         let checkpoints = Checkpoints { items };
         let bytes = encode_checkpoints(&checkpoints).unwrap();
         assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
+    #[test]
+    fn universe_sorts_and_levels_round_trip()
+    {
+        let variable = LevelVar::from(LevelVarIndex::from(37_u32));
+        let level = Level::var(variable).succ().unwrap();
+        let checkpoints = Checkpoints {
+            items: alloc::vec![
+                checkpoint_item(
+                    Term::Value(Value::Unit),
+                    Some(Ty::Value(ValueType::universe(
+                        SortExpr::value(),
+                        level.clone(),
+                    ))),
+                    ItemTyping::Holey,
+                ),
+                checkpoint_item(
+                    Term::Value(Value::Unit),
+                    Some(Ty::Value(ValueType::universe(
+                        SortExpr::computation(),
+                        level,
+                    ))),
+                    ItemTyping::Holey,
+                ),
+            ],
+        };
+        let bytes = encode_checkpoints(&checkpoints).unwrap();
+        assert_eq!(decode_checkpoints(&bytes).unwrap(), checkpoints);
+    }
+
+    #[test]
+    fn oversized_level_offset_is_refused_with_exact_error()
+    {
+        let variable = LevelVar::from(LevelVarIndex::from(37_u32));
+        let checkpoints = checkpoint(
+            Term::Value(Value::Unit),
+            Some(Ty::Value(ValueType::universe(
+                SortExpr::value(),
+                Level::var(variable),
+            ))),
+        );
+        let mut encoded = encode_checkpoints(&checkpoints).unwrap();
+        let needle = [37_u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let variable_offset = encoded
+            .windows(needle.len())
+            .position(|window| window == needle)
+            .expect("universe variable atom");
+        let offset_start = variable_offset.checked_add(4).expect("offset start");
+        let offset_end = offset_start.checked_add(8).expect("offset end");
+        let offset = encoded
+            .get_mut(offset_start .. offset_end)
+            .expect("offset bytes");
+        offset.copy_from_slice(&u64::MAX.to_le_bytes());
+        assert_eq!(
+            decode_checkpoints(&encoded),
+            Err(CheckpointStoreError::LevelOffsetTooLarge { offset: u64::MAX })
+        );
     }
 
     /// The band-01-rung-07 native primitives round-trip through the checkpoint

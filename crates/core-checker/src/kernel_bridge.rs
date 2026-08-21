@@ -49,12 +49,13 @@
 //!
 //! # Levels
 //!
-//! Core CBPV carries **no universe levels** (its `Universe` is the un-levelled
-//! ADR-81 code universe, rejected here — the kernel's levelled universe and
-//! explicit lifts are authored kernel-native). A bridged
-//! declaration is therefore level-**monomorphic**
-//! ([`gandr_kernel_core::LevelSignature::monomorphic`]); the level machinery is
-//! exercised only by the kernel-native goldens.
+//! Core CBPV carries classifier-bearing universes: each `Universe` records
+//! the family it classifies and its `gandr_kernel_strata::Level`. The bridge
+//! still rejects those universes because neither family has an S1 image here;
+//! the kernel's levelled universe and explicit lifts remain authored
+//! kernel-native. A bridged declaration is therefore level-**monomorphic**
+//! ([`gandr_kernel_core::LevelSignature::monomorphic`]); the level machinery
+//! is exercised only by the kernel-native goldens.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -217,9 +218,9 @@ pub enum BridgeRejection
     /// An identity eliminator `walk`.
     #[error("an identity eliminator has no S1 image (Path/identity arrives at B7)")]
     WalkEliminator,
-    /// The un-levelled code universe `Type`.
+    /// A classifier-bearing universe with no S1 image in this bridge.
     #[error(
-        "the un-levelled code universe has no S1 image (S1's levelled universe is kernel-native)"
+        "a classifier-bearing universe has no S1 image (the levelled universe is kernel-native)"
     )]
     UniverseType,
     /// A **dependent** function type `Π(x : A). B`.
@@ -654,7 +655,7 @@ fn lower_type<'core>(
                 | ValueType::Stk(..) => return Err(BridgeRejection::ReifiedStackType),
                 | ValueType::Path { .. } => return Err(BridgeRejection::PathType),
                 | ValueType::Data { .. } => return Err(BridgeRejection::DataType),
-                | ValueType::Universe => return Err(BridgeRejection::UniverseType),
+                | ValueType::Universe { .. } => return Err(BridgeRejection::UniverseType),
                 | ValueType::Family { .. } => {
                     return Err(BridgeRejection::TypeFamilyApplication);
                 },

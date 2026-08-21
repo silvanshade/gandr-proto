@@ -26,6 +26,7 @@ gandr-core-machine.workspace = true
 # The core CBPV vocabulary an item carries: `syntax::Term`, `types::Ty`,
 # `ctx::Ctx`, and `error::TypeError`.
 gandr-core-term.workspace = true
+gandr-kernel-strata.workspace = true
 # The order-maintenance substrate (`incremental-pipeline.md`
 # §"pipeline-decision-02", the Porter disposition): the resume splices the item
 # order onto it so a matched item keeps its stable identity across

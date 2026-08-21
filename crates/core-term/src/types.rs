@@ -10,6 +10,8 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::fmt;
 
+use gandr_kernel_strata::Level;
+
 use crate::boundary::BinderName;
 use crate::boundary::DataTypeName;
 use crate::boundary::GradualUnknownStatus;
@@ -17,6 +19,9 @@ use crate::boundary::SealComponentName;
 use crate::boundary::SealDeclarationName;
 use crate::boundary::TypeAtomName;
 use crate::boundary::TypeSerial;
+use crate::classifier::Classifier;
+use crate::classifier::GroundSort;
+use crate::classifier::SortExpr;
 use crate::effect::EffectRow;
 use crate::grade::Grade;
 use crate::syntax::Value;
@@ -435,32 +440,30 @@ pub enum ValueType
         /// The type arguments `ā` in `D(ā)` (empty for a parameterless `D`).
         args: Vec<Rc<Self>>,
     },
-    /// The predicative **code universe** `Type` — the levitation stage-1
-    /// universe bump (ADR-67 D7 feature 1; ADR-81, `proposal-levitation.md`
-    /// §6). The sort whose elements are the small value types the description
-    /// decoder (`gandr_desc::decode`) produces: `decode : Desc → Type`, so
-    /// `Universe` is the decoder's codomain and the classifier at which the
-    /// dependent [`Sigma`](ValueType::Sigma) former binds its head.
+    /// A **universe**: the type whose inhabitants are the types of one family
+    /// at one level, written `Type[s, l]` in the surface.
     ///
-    /// **One predicative bump, reconciled with ADR-78.** ADR-78 fixes the
-    /// judgmental level algebra `{0, +1, max}` with `U_l : U_m ⟺ l < m`, no
-    /// cumulativity, no `imax`, no constraints — living in the certified
-    /// `gandr-kernel-levels` crate. The stage-1 bill asks for exactly *one*
-    /// predicative bump (codes one level above the types they describe, "no
-    /// `Type : Type`"). That is the `{0, +1}` sub-fragment of ADR-78's algebra
-    /// (value types at level 0, `Universe` at level +1) using none of its
-    /// `max` / landmark / `imax` machinery — so the two are consistent, not in
-    /// conflict. The frozen interpreter core has **no** first-class
-    /// `Γ ⊢ A : U_l` type-formation judgment (that judgmental universe typing
-    /// is ADR-78's certified-kernel S2 job); it carries only the *former* — the
-    /// single bump — with predicativity holding **by construction of the
-    /// first-order fragment** (the decoder produces no type-valued field, so no
-    /// `Σ` ever binds a `Universe` head and `Universe : Universe` is never
-    /// ascribed). Subtyping is **reflexive only** (no cumulativity):
-    /// `Universe <: Universe`, and `Universe` relates to no other former.
+    /// `sort` names the family the universe collects — `Type[+, l]` collects
+    /// value types, `Type[-, l]` collects computation types — and `level`
+    /// places it in the one level algebra, which is
+    /// `gandr_kernel_strata::Level` and is never re-implemented here.
     ///
-    /// [`Sigma`]: ValueType::Sigma
-    Universe,
+    /// A universe is a **value** type at either sort, because its inhabitants
+    /// are static type descriptions. `Type[-, l]` being a value type does not
+    /// say that computations are values; it says that the description of a
+    /// computation type is a value.
+    ///
+    /// Formation puts `Type[s, l]` at `Type[+, suc l]` for both sorts, so
+    /// there is no `Type : Type`. Subtyping is reflexive: two universes relate
+    /// exactly when their sorts and levels are equal. Cumulativity is an
+    /// admissible lift recorded by formation, never a syntactic rewrite here.
+    Universe
+    {
+        /// The family this universe collects.
+        sort: SortExpr,
+        /// The level this universe sits at.
+        level: Level,
+    },
     /// The **dependent pair** type `Σ(x : A). B` — the levitation stage-1
     /// dependent value former (ADR-67 D7 feature 2; ADR-81,
     /// `proposal-levitation.md` §6). The dependent generalization of the eager
@@ -884,13 +887,27 @@ impl ValueType
         }
     }
 
-    /// The predicative code universe `Type` (ADR-81 feature 1;
-    /// [`ValueType::Universe`]).
+    /// The universe `Type[sort, level]` ([`ValueType::Universe`]).
+    ///
+    /// # Contract
+    /// - ensures: preserves `sort` and `level` exactly; two universes are equal
+    ///   iff both components are.
+    /// - provides: the one construction path for a classified universe, so a
+    ///   caller cannot build one without stating which family it collects.
+    /// - panics: none.
     #[inline]
     #[must_use]
-    pub const fn universe() -> Self
+    pub fn universe<S>(
+        sort: S,
+        level: Level,
+    ) -> Self
+    where
+        S: Into<SortExpr>,
     {
-        Self::Universe
+        Self::Universe {
+            sort: sort.into(),
+            level,
+        }
     }
 
     /// Builds a dependent pair type `Σ(binder : fst). snd` (ADR-81 feature 2;
@@ -1246,7 +1263,10 @@ impl Ty
                     | ValueType::Unknown => return GradualUnknownStatus::from(true),
                     | ValueType::Atom(_)
                     | ValueType::Unit
-                    | ValueType::Universe
+                    // A universe carries a sort and a level, neither of which
+                    // is a type, so it stays a leaf for this scan exactly as
+                    // it was before it was classified.
+                    | ValueType::Universe { .. }
                     | ValueType::Sealed(_)
                     // A family application carries children, unlike the leaves
                     // above, but its arguments are **terms** -- on the same
@@ -1309,5 +1329,205 @@ impl Ty
             }
         }
         GradualUnknownStatus::from(false)
+    }
+}
+
+/// The **variant census** of [`ValueType`]: one tag per constructor, and no
+/// payload.
+///
+/// # Why this exists
+///
+/// [`ValueType`] is `non_exhaustive`, so a match on it in any other crate is
+/// forced to carry a catch-all arm and the compiler can no longer prove that a
+/// judgement over types is total. That is a real cost paid for a real benefit,
+/// and this census is how the benefit is kept without the cost: the census is
+/// **not** `non_exhaustive`, so [`ValueType::tag`] is an exhaustive match
+/// inside this crate, and [`ValueTypeTag::ALL`] is a list a downstream total
+/// judgement can iterate and assert against.
+///
+/// The chain that makes it bite: adding a constructor to [`ValueType`] breaks
+/// [`ValueType::tag`] first, which forces a new tag, which forces a new entry
+/// in [`ValueTypeTag::ALL`], which breaks every downstream table keyed on it.
+/// A new type former therefore cannot reach a release with no formation rule.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ValueTypeTag
+{
+    /// [`ValueType::Atom`].
+    Atom,
+    /// [`ValueType::Unit`].
+    Unit,
+    /// [`ValueType::Prod`].
+    Prod,
+    /// [`ValueType::Sum`].
+    Sum,
+    /// [`ValueType::List`].
+    List,
+    /// [`ValueType::Record`].
+    Record,
+    /// [`ValueType::Thunk`].
+    Thunk,
+    /// [`ValueType::Stk`].
+    Stk,
+    /// [`ValueType::Path`].
+    Path,
+    /// [`ValueType::Data`].
+    Data,
+    /// [`ValueType::Universe`].
+    Universe,
+    /// [`ValueType::Sigma`].
+    Sigma,
+    /// [`ValueType::Family`].
+    Family,
+    /// [`ValueType::Sealed`].
+    Sealed,
+    /// [`ValueType::Package`].
+    Package,
+    /// [`ValueType::Unknown`].
+    Unknown,
+}
+
+impl ValueTypeTag
+{
+    /// Every value-type constructor, in declaration order.
+    pub const ALL: [Self; 16] = [
+        Self::Atom,
+        Self::Unit,
+        Self::Prod,
+        Self::Sum,
+        Self::List,
+        Self::Record,
+        Self::Thunk,
+        Self::Stk,
+        Self::Path,
+        Self::Data,
+        Self::Universe,
+        Self::Sigma,
+        Self::Family,
+        Self::Sealed,
+        Self::Package,
+        Self::Unknown,
+    ];
+}
+
+/// The **variant census** of [`CompType`], serving the same purpose as
+/// [`ValueTypeTag`] does for [`ValueType`].
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CompTypeTag
+{
+    /// [`CompType::F`].
+    F,
+    /// [`CompType::Arrow`].
+    Arrow,
+    /// [`CompType::With`].
+    With,
+    /// [`CompType::Unknown`].
+    Unknown,
+}
+
+impl CompTypeTag
+{
+    /// Every computation-type constructor, in declaration order.
+    pub const ALL: [Self; 4] = [Self::F, Self::Arrow, Self::With, Self::Unknown];
+}
+
+impl ValueType
+{
+    /// This type's constructor tag.
+    ///
+    /// # Contract
+    /// - ensures: returns the tag naming this value's own constructor, for
+    ///   every constructor, with no catch-all.
+    /// - provides: the census key a downstream total judgement is checked
+    ///   against.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub const fn tag(&self) -> ValueTypeTag
+    {
+        match *self {
+            | Self::Atom(_) => ValueTypeTag::Atom,
+            | Self::Unit => ValueTypeTag::Unit,
+            | Self::Prod(..) => ValueTypeTag::Prod,
+            | Self::Sum(..) => ValueTypeTag::Sum,
+            | Self::List(_) => ValueTypeTag::List,
+            | Self::Record(_) => ValueTypeTag::Record,
+            | Self::Thunk(..) => ValueTypeTag::Thunk,
+            | Self::Stk(..) => ValueTypeTag::Stk,
+            | Self::Path { .. } => ValueTypeTag::Path,
+            | Self::Data { .. } => ValueTypeTag::Data,
+            | Self::Universe { .. } => ValueTypeTag::Universe,
+            | Self::Sigma { .. } => ValueTypeTag::Sigma,
+            | Self::Family { .. } => ValueTypeTag::Family,
+            | Self::Sealed(_) => ValueTypeTag::Sealed,
+            | Self::Package { .. } => ValueTypeTag::Package,
+            | Self::Unknown => ValueTypeTag::Unknown,
+        }
+    }
+}
+
+impl CompType
+{
+    /// This type's constructor tag.
+    ///
+    /// # Contract
+    /// - ensures: returns the tag naming this type's own constructor, for every
+    ///   constructor, with no catch-all.
+    /// - provides: the census key a downstream total judgement is checked
+    ///   against.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub const fn tag(&self) -> CompTypeTag
+    {
+        match *self {
+            | Self::F(..) => CompTypeTag::F,
+            | Self::Arrow { .. } => CompTypeTag::Arrow,
+            | Self::With(..) => CompTypeTag::With,
+            | Self::Unknown => CompTypeTag::Unknown,
+        }
+    }
+}
+
+impl Ty
+{
+    /// The ground sort of this type, read structurally.
+    ///
+    /// This is the *carrier's* sort — which of the two ground ASTs the type
+    /// lives in — and it is total by construction, because the split is the
+    /// enum itself. It is not the sort of the type's own classifier: a
+    /// universe is a value type at either family, and asking a universe which
+    /// family it collects is [`ValueType::Universe`]'s `sort` field, not this.
+    ///
+    /// # Contract
+    /// - ensures: [`GroundSort::Value`] for [`Ty::Value`] and
+    ///   [`GroundSort::Computation`] for [`Ty::Comp`].
+    /// - provides: the sort-directed dispatch a shared judgement over both ASTs
+    ///   needs without flattening them into one enum.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub const fn ground_sort(&self) -> GroundSort
+    {
+        match *self {
+            | Self::Value(_) => GroundSort::Value,
+            | Self::Comp(_) => GroundSort::Computation,
+        }
+    }
+
+    /// The classifier this type would be formed at, if formation has already
+    /// answered for it.
+    ///
+    /// # Contract
+    /// - requires: `level` is the level formation derived for this type.
+    /// - ensures: pairs [`Self::ground_sort`] with `level`.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn classifier_at(
+        &self,
+        level: Level,
+    ) -> Classifier
+    {
+        Classifier::new(self.ground_sort(), level)
     }
 }
