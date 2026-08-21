@@ -174,6 +174,18 @@ where
             )?;
             Ok(GateOutcome::from_findings(findings))
         },
+        | Command::EmbeddedSyntax {
+            workspace_root,
+            changed_only,
+        } => {
+            let findings = if changed_only {
+                gandr_workflow_gates::embedded_syntax::run_changed(&workspace_root)?
+            }
+            else {
+                gandr_workflow_gates::embedded_syntax::run(&workspace_root)?
+            };
+            Ok(GateOutcome::from_findings(findings))
+        },
         | Command::DocsManifest { manifest_path } => {
             let findings = docs::manifest::run_manifest_drift(&manifest_path)?;
             Ok(GateOutcome::from_findings(findings))
@@ -314,6 +326,7 @@ where
         | Some("contracts") => parse_contracts(arguments),
         | Some("ci-contracts") => parse_ci_contracts(arguments),
         | Some("graph-boundary") => parse_graph_boundary(arguments),
+        | Some("embedded-syntax") => parse_embedded_syntax(arguments),
         | Some("docs-manifest") => parse_docs_manifest(arguments),
         | Some("docs-reference") => parse_docs_reference(arguments),
         | Some("page-balance") => parse_page_balance(arguments),
@@ -445,6 +458,43 @@ where
     Ok(Command::GraphBoundary {
         workspace_root,
         metadata_fixture,
+    })
+}
+/// Parse `embedded-syntax --workspace-root PATH`.
+fn parse_embedded_syntax<Arguments>(arguments: Arguments) -> Result<Command, GateError>
+where
+    Arguments: IntoIterator<Item = OsString>,
+{
+    let mut workspace_root = None;
+    let mut changed_only = false;
+    let mut arguments = arguments.into_iter().peekable();
+    while let Some(argument) = arguments.next() {
+        if argument == OsStr::new("--workspace-root") {
+            set_once(
+                &mut workspace_root,
+                "--workspace-root",
+                PathBuf::from(take_option_value("--workspace-root", &mut arguments)?),
+            )?;
+        }
+        else if argument == OsStr::new("--changed-only") {
+            if changed_only {
+                return Err(GateError::usage(
+                    "embedded-syntax received duplicate --changed-only",
+                ));
+            }
+            changed_only = true;
+        }
+        else {
+            return Err(unknown_argument(&argument));
+        }
+    }
+    let workspace_root = required_value(
+        workspace_root,
+        "embedded-syntax requires --workspace-root PATH",
+    )?;
+    Ok(Command::EmbeddedSyntax {
+        workspace_root,
+        changed_only,
     })
 }
 
@@ -1574,7 +1624,7 @@ fn default_manifest_path() -> PathBuf
 #[must_use]
 pub fn usage_text() -> impl Into<UsageTextText<'static>>
 {
-    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|parse|check|parity|gates]"
+    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, embedded-syntax, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|parse|check|parity|gates]"
 }
 
 /// Parsed supported CLI command.
@@ -1612,6 +1662,14 @@ pub enum Command
         workspace_root: PathBuf,
         /// Optional cargo metadata JSON fixture.
         metadata_fixture: Option<PathBuf>,
+    },
+    /// Embedded-syntax raw-string policy gate.
+    EmbeddedSyntax
+    {
+        /// Workspace root used to resolve the `crates/` source tree.
+        workspace_root: PathBuf,
+        /// Restrict analysis to files changed from `main`.
+        changed_only: bool,
     },
     /// Documentation-manifest drift gate.
     DocsManifest
@@ -2296,6 +2354,17 @@ mod tests
                 expected: ExpectedCommand::GraphBoundary,
             },
             ValidCommandCase {
+                label: "embedded-syntax",
+                args: &[
+                    "gandr-workflow-gates",
+                    "embedded-syntax",
+                    "--workspace-root",
+                    "workspace",
+                    "--changed-only",
+                ],
+                expected: ExpectedCommand::EmbeddedSyntax,
+            },
+            ValidCommandCase {
                 label: "docs-manifest-default",
                 args: &["gandr-workflow-gates", "docs-manifest"],
                 expected: ExpectedCommand::DocsManifestDefault,
@@ -2578,6 +2647,16 @@ mod tests
             ) => {
                 assert_eq!(workspace_root, PathBuf::from("workspace"));
                 assert_eq!(Some(PathBuf::from("metadata.json")), metadata_fixture);
+            },
+            | (
+                ExpectedCommand::EmbeddedSyntax,
+                Command::EmbeddedSyntax {
+                    workspace_root,
+                    changed_only,
+                },
+            ) => {
+                assert_eq!(workspace_root, PathBuf::from("workspace"));
+                assert!(changed_only);
             },
             | (ExpectedCommand::DocsManifestDefault, Command::DocsManifest { manifest_path }) => {
                 assert_eq!(manifest_path, default_manifest_path());
@@ -3402,6 +3481,8 @@ mod tests
         CiContracts,
         /// `graph-boundary`.
         GraphBoundary,
+        /// `embedded-syntax`.
+        EmbeddedSyntax,
         /// `docs-manifest` with the default manifest path.
         DocsManifestDefault,
         /// `docs-reference` with an explicit manifest path.

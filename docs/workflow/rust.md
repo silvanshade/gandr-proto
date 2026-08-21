@@ -74,6 +74,7 @@
   `arithmetic_side_effects` is denied workspace-wide.
 - **Embedded syntax is written raw.** A string literal carrying actual surface syntax — or any multi-line embedded content: fixtures, expected renderings, corpus snippets — is a raw string (`r#"…"#` style) with real newlines, never an escaped-`\n` literal split across backslash continuations.
   Escaped snippets are unreadable and undiffable, and rustfmt's continuation reflow moves the backslash breaks so the literal's visual shape drifts from its content.
+  `mise run cargo:embedded-syntax` scans changed Rust sources under `crates/` and fails on recognizable embedded syntax; existing baseline debt is handled incrementally, while `workflow-gates: allow-escaped-newline` is reserved for tests whose escape decoding or non-syntax payload is the subject.
   `crates/surface-engine/tests/desc_cells.rs` carries the worked form: the snippet reads exactly as the language writes it.
 
 ### Lints and enforcement

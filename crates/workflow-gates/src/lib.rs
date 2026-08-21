@@ -204,6 +204,8 @@ pub mod fuzzing
 }
 /// Documentation manifest, reference, page-balance, and rumdl gates.
 pub mod docs;
+/// Embedded-syntax raw-string policy gate for Rust tests.
+pub mod embedded_syntax;
 /// Graph dependency-boundary gate implementation.
 pub mod graph_boundary;
 /// Maintenance range planning and watermark publication.

@@ -1,6 +1,10 @@
 #:tombi toml-version = "v1.0.0"
 #:schema https://mise.jdx.dev/schema/mise-task.json
 
+["cargo:embedded-syntax"]
+description = "Require raw strings for embedded syntax in Rust tests"
+run = "cargo run --quiet -p gandr-workflow-gates -- embedded-syntax --workspace-root . --changed-only"
+
 ["cargo:build"]
 description = "Build the project"
 run = """

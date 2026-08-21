@@ -74,19 +74,34 @@ mod tests
         (
             "type-mismatch",
             "TypeMismatch",
-            "def x : Unit;\ndef x = 1;\n",
+            r#"def x : Unit;
+def x = 1;
+"#,
         ),
-        ("shape-arrow", "ShapeMismatch:an arrow type", "(ret 1)(2)\n"),
-        ("shape-thunk", "ShapeMismatch:a thunk type", "force(1)\n"),
+        (
+            "shape-arrow",
+            "ShapeMismatch:an arrow type",
+            r#"(ret 1)(2)
+"#,
+        ),
+        (
+            "shape-thunk",
+            "ShapeMismatch:a thunk type",
+            r#"force(1)
+"#,
+        ),
         (
             "shape-returner",
             "ShapeMismatch:a returner type",
-            "thunk { run x <- fn(y: Integer) { ret y }; ret x }\n",
+            r#"thunk { run x <- fn(y: Integer) { ret y }; ret x }
+"#,
         ),
         (
             "shape-sum",
             "ShapeMismatch:a sum type",
-            "def c : U[1] (F Integer);\ndef c = thunk { case 1 { Inl(x) => ret x, Inr(y) => ret 0 } };\n",
+            r#"def c : U[1] (F Integer);
+def c = thunk { case 1 { Inl(x) => ret x, Inr(y) => ret 0 } };
+"#,
         ),
         (
             // A motive-less split is check-only (rule Split⇓, dependent-split design), so the
@@ -96,54 +111,76 @@ mod tests
             // `stuck-split-motive`).
             "shape-prod",
             "ShapeMismatch:a product type",
-            "def c : U[1] (F Integer);\ndef c = thunk { val (x, y) = 1; ret x };\n",
+            r#"def c : U[1] (F Integer);
+def c = thunk { val (x, y) = 1; ret x };
+"#,
         ),
-        ("shape-with", "ShapeMismatch:a with-type", "(ret 1).fst\n"),
+        (
+            "shape-with",
+            "ShapeMismatch:a with-type",
+            r#"(ret 1).fst
+"#,
+        ),
         (
             "stuck-inject",
             "StuckExpr:annotate this injection",
-            "Inl(1)\n",
+            r#"Inl(1)
+"#,
         ),
         (
             "stuck-binder",
             "StuckExpr:annotate the binder or check against an arrow type",
-            "fn(x) { ret x }\n",
+            r#"fn(x) { ret x }
+"#,
         ),
         (
             "stuck-abs-arrow",
             "StuckExpr:an abstraction only checks against an arrow type",
-            "def g : U[1] (F Integer);\ndef g = thunk { fn(x) { ret x } };\n",
+            r#"def g : U[1] (F Integer);
+def g = thunk { fn(x) { ret x } };
+"#,
         ),
         (
             "stuck-case-infer",
             "StuckExpr:case only checks; annotate or supply an expected type",
-            "case (Inl(1) : Integer + Integer) { Inl(x) => ret x, Inr(y) => ret 0 }\n",
+            r#"case (Inl(1) : Integer + Integer) { Inl(x) => ret x, Inr(y) => ret 0 }
+"#,
         ),
         (
             "stuck-with-infer",
             "StuckExpr:a lazy pair only checks against a with-type",
-            "co { fst = ret 1, snd = ret 2 }\n",
+            r#"co { fst = ret 1, snd = ret 2 }
+"#,
         ),
         (
-            // A motive-less split in inference position is stuck (rule Split⇓ is
+            // A motive-less split in inference position is stuck (rule Split⇑ is
             // check-only; a split *infers* only with a dependent motive, rule
             // SplitMotive⇑; dependent-split design) — the lowerer emits motive-less splits, so
             // this fires whenever a `let (x, y) = …` is not in checking position.
             "stuck-split-motive",
             "StuckExpr:a motive-less split only checks; supply a dependent motive (z. M) to infer, or \
              an expected type",
-            "thunk { val (x, y) = (1, 2); ret x }\n",
+            r#"thunk { val (x, y) = (1, 2); ret x }
+"#,
         ),
-        ("unbound", "UnboundVariable", "nonesuch\n"),
+        (
+            "unbound",
+            "UnboundVariable",
+            r#"nonesuch
+"#,
+        ),
         (
             "grade-thunk",
             "GradeError",
-            "def t : U[ω] (F Integer);\ndef t = thunk[1] { ret 1 };\n",
+            r#"def t : U[ω] (F Integer);
+def t = thunk[1] { ret 1 };
+"#,
         ),
         (
             "grade-force",
             "GradeError",
-            "def f(z : U[0] (F Integer)) -> F Integer { force z }\n",
+            r#"def f(z : U[0] (F Integer)) -> F Integer { force z }
+"#,
         ),
     ];
 
@@ -152,15 +189,23 @@ mod tests
     const GOAL_CORPUS: &[(&str, &str)] = &[
         (
             "goals-expected",
-            "def k : U[1] (F Integer);\ndef k = thunk { ret 1; };\n",
+            r#"def k : U[1] (F Integer);
+def k = thunk { ret 1; };
+"#,
         ),
         (
             "goals-inferred",
-            "def f : U[1] (Integer -> F Integer);\ndef f(x: Integer) -> F Integer { leta y = x; ret x }\n",
+            r#"def f : U[1] (Integer -> F Integer);
+def f(x: Integer) -> F Integer { leta y = x; ret x }
+"#,
         ),
         (
             "goals-user-hole",
-            "def k : U[1] (F Integer);\ndef k = thunk { ? };\ndef g : U[1] (F Integer);\ndef g = thunk { ret ?seed };\n",
+            r#"def k : U[1] (F Integer);
+def k = thunk { ? };
+def g : U[1] (F Integer);
+def g = thunk { ret ?seed };
+"#,
         ),
     ];
 

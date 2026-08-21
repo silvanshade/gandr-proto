@@ -303,20 +303,45 @@ fn circuit_block_form_molds_zero_obligation() -> Result<(), Box<dyn Error>>
     let cases: &[&str] = &[
         // The congruence cell, verbatim from the ruling (members `;`-terminated,
         // gandr-ng9.14).
-        "sign Nat {\n  sort Nat : Type;\n  data Zero : Nat;\n  data Succ : Nat --> Nat;\n  oper add \
-         : (Nat, Nat) --> Nat;\n\n  rule cong2 : (\n    rule p : Nat ==> Nat,\n    rule q : Nat \
-         ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : Nat) {\n    node : p(x) ==> \
-         (x\u{2032});\n    node : q(y) ==> (y\u{2032});\n    node : add(x\u{2032}, y\u{2032}) --> \
-         (z);\n  };\n}\n",
+        r#"sign Nat {
+  sort Nat : Type;
+  data Zero : Nat;
+  data Succ : Nat --> Nat;
+  oper add : (Nat, Nat) --> Nat;
+
+  rule cong2 : (
+    rule p : Nat ==> Nat,
+    rule q : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : q(y) ==> (y′);
+    node : add(x′, y′) --> (z);
+  };
+}
+"#,
         // The first stateful wheel, verbatim from the ruling.
-        "oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {\n  node : \
-         zip(stream, state) --> (next, out2);\n  feed : (next) --> (state);\n}\n",
+        r#"oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);
+}
+"#,
         // The sugar ladder's named-port normal form, including `()` and `_`.
-        "sign N {\n  sort Nat : Type;\n  data Zero : () --> (_ : Nat);\n  data Succ : (_ : Nat) --> \
-         (_ : Nat);\n}\n",
+        r#"sign N {
+  sort Nat : Type;
+  data Zero : () --> (_ : Nat);
+  data Succ : (_ : Nat) --> (_ : Nat);
+}
+"#,
         // Occurrence labels and the pinned-endpoint binder.
-        "sign L {\n  rule twice : (rule p : x ==> x\u{2032}, data x : Nat) ==> (o : Nat) {\n    \
-         node w1 : p(x) ==> (m);\n    node w2 : step(m) --> (o);\n  };\n}\n",
+        r#"sign L {
+  rule twice : (rule p : x ==> x′, data x : Nat) ==> (o : Nat) {
+    node w1 : p(x) ==> (m);
+    node w2 : step(m) --> (o);
+  };
+}
+"#,
         // The invertible face, and the reserved reversible glyph.
         "sign I { rule involutive : (b : Bit) <=> (c : Bit); }",
         "sign R { oper negate : (b : Bit) <-> (c : Bit); }",
@@ -362,8 +387,7 @@ fn codata_oper_decline_region_molds_zero_obligation() -> Result<(), Box<dyn Erro
 #[test]
 fn sign_data_oper_decline_region_molds_zero_obligation() -> Result<(), Box<dyn Error>>
 {
-    let source = "sign Theory { sort Nat : Type; oper add(m : Nat, n : Nat) -> Nat; oper succ : \
-                  (n : Nat) --> Nat; }";
+    let source = r#"sign Theory { sort Nat : Type; oper add(m : Nat, n : Nat) -> Nat; oper succ : (n : Nat) --> Nat; }"#;
     let result = parse(built(), SourceSlice::from(source))?;
     assert!(
         bool::from(result.is_clean()),
@@ -440,8 +464,11 @@ fn a_top_level_circuit_declaration_keeps_its_whole_signature() -> Result<(), Box
     let whole: &[&str] = &[
         "oper f : (a : A) --> (b : B)",
         "rule step : (x : Nat) ==> (y : Nat)",
-        "oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {\n  node : \
-         zip(stream, state) --> (next, out2);\n  feed : (next) --> (state);\n}\n",
+        r#"oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);
+}
+"#,
     ];
     for &src in whole {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -574,15 +601,31 @@ fn a_repeated_port_name_application_molds_clean() -> Result<(), Box<dyn Error>>
     let pbg = built();
     let cases: &[&str] = &[
         // The headline shape: one wire consumed twice in a redex line.
-        "sign Copy {\n  sort Nat : Type;\n  oper add : (l : Nat, r : Nat) --> (s : Nat);\n  rule \
-         copy2 : (data x : Nat) ==> (z : Nat) {\n    node : add(x, x) --> (z);\n  };\n}\n",
+        r#"sign Copy {
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (s : Nat);
+  rule copy2 : (data x : Nat) ==> (z : Nat) {
+    node : add(x, x) --> (z);
+  };
+}
+"#,
         // The same reading with distinct names, and the sugar ladder's
         // unnamed-port rungs.
-        "sign Copy {\n  sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n  rule copy2 : (data x \
-         : Nat, data y : Nat) ==> (z : Nat) {\n    node : add(x, y) --> (z);\n  };\n}\n",
+        r#"sign Copy {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule copy2 : (data x : Nat, data y : Nat) ==> (z : Nat) {
+    node : add(x, y) --> (z);
+  };
+}
+"#,
         // A body-less rule member ahead of the closing brace.
-        "sign B {\n  sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n  rule copy2 : (data x : \
-         Nat) ==> (z : Nat);\n}\n",
+        r#"sign B {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule copy2 : (data x : Nat) ==> (z : Nat);
+}
+"#,
     ];
     for &src in cases {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -601,7 +644,13 @@ fn a_repeated_port_name_application_molds_clean() -> Result<(), Box<dyn Error>>
     // member's lead.
     let unterminated = parse(
         pbg,
-        SourceSlice::from("sign S {\n  sort Nat : Type\n  sort T : Type;\n}\n"),
+        SourceSlice::from(
+            r#"sign S {
+  sort Nat : Type
+  sort T : Type;
+}
+"#,
+        ),
     )?;
     assert!(
         !bool::from(unterminated.is_clean()),
@@ -619,11 +668,38 @@ fn a_blank_line_after_a_terminated_member_molds_clean() -> Result<(), Box<dyn Er
 {
     let pbg = built();
     let cases: &[&str] = &[
-        "sign S {\n  sort S : Type;\n\n}\n",
-        "sign S {\n  sort S : Type;\n\n  sort T : Type;\n}\n",
-        "sign S {\n  sort S : Type;\n\n  oper f : (S) --> S;\n\n  rule r : (data x : S) ==> (z : \
-         S) {\n    node : f(x) --> (z);\n  };\n}\n",
-        "sign S {\n\n  sort S : Type;\n\n  // a comment between members\n\n  sort T : Type;\n\n}\n\n",
+        r#"sign S {
+  sort S : Type;
+
+}
+"#,
+        r#"sign S {
+  sort S : Type;
+
+  sort T : Type;
+}
+"#,
+        r#"sign S {
+  sort S : Type;
+
+  oper f : (S) --> S;
+
+  rule r : (data x : S) ==> (z : S) {
+    node : f(x) --> (z);
+  };
+}
+"#,
+        r#"sign S {
+
+  sort S : Type;
+
+  // a comment between members
+
+  sort T : Type;
+
+}
+
+"#,
     ];
     for &src in cases {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -651,9 +727,18 @@ fn a_sign_block_may_be_named_with_a_primitive_type_spelling() -> Result<(), Box<
 {
     let pbg = built();
     let cases: &[&str] = &[
-        "sign Unknown {\n  sort Nat : Type;\n}\n",
-        "sign Boolean {\n  sort Bit : Type;\n}\n",
-        "sign Any {\n  sort Nat : Type;\n}\n",
+        r#"sign Unknown {
+  sort Nat : Type;
+}
+"#,
+        r#"sign Boolean {
+  sort Bit : Type;
+}
+"#,
+        r#"sign Any {
+  sort Nat : Type;
+}
+"#,
     ];
     for &src in cases {
         let result = parse(pbg, SourceSlice::from(src))?;

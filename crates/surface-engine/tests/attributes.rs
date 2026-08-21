@@ -33,8 +33,10 @@ mod tests
     #[test]
     fn clean_doc_and_deprecated_resolve_as_inert()
     {
-        let source = "@[doc(\"squares\")]\n@[deprecated(#{ since = \"0.2\", note = \"use \
-                      square_checked\" })]\ndef square(x: Integer) -> F Integer { ret x }\n";
+        let source = r###"@[doc("squares")]
+@[deprecated(#{ since = "0.2", note = "use square_checked" })]
+def square(x: Integer) -> F Integer { ret x }
+"###;
         let outcome = pass(source);
         assert!(
             outcome.findings.is_empty(),
@@ -54,7 +56,11 @@ mod tests
     #[test]
     fn unknown_attribute_suggests_a_registry_name()
     {
-        let outcome = pass("@[dco(\"x\")]\ndef f = 42;\n");
+        let outcome = pass(
+            r#"@[dco("x")]
+def f = 42;
+"#,
+        );
         assert!(
             outcome.resolved.is_empty(),
             "an unknown attribute is not projected"
@@ -80,7 +86,11 @@ mod tests
     {
         // `42` checks against `doc`'s `String` schema and fails: the ordinary
         // record/scalar type error, surfaced at the payload (§3.1).
-        let outcome = pass("@[doc(42)]\ndef f = 42;\n");
+        let outcome = pass(
+            r#"@[doc(42)]
+def f = 42;
+"#,
+        );
         assert_eq!(1, outcome.findings.len());
         assert!(matches!(
             outcome.findings[0],
@@ -95,7 +105,12 @@ mod tests
     #[test]
     fn single_valued_duplicate_is_reported_once()
     {
-        let outcome = pass("@[doc(\"a\")]\n@[doc(\"b\")]\ndef f = 42;\n");
+        let outcome = pass(
+            r#"@[doc("a")]
+@[doc("b")]
+def f = 42;
+"#,
+        );
         assert_eq!(
             1,
             outcome.resolved.len(),
@@ -111,7 +126,11 @@ mod tests
     #[test]
     fn bare_marker_missing_its_payload_is_reported()
     {
-        let outcome = pass("@[doc]\ndef f = 42;\n");
+        let outcome = pass(
+            r#"@[doc]
+def f = 42;
+"#,
+        );
         assert!(outcome.resolved.is_empty());
         assert!(matches!(
             outcome.findings.as_slice(),
@@ -123,7 +142,11 @@ mod tests
     {
         // `1 + 2` lowers to a computation (a forced operator application), not a
         // value — attribute purity is locality (§3.3).
-        let outcome = pass("@[doc(1 + 2)]\ndef f = 42;\n");
+        let outcome = pass(
+            r#"@[doc(1 + 2)]
+def f = 42;
+"#,
+        );
         assert!(outcome.resolved.is_empty());
         assert!(matches!(
             outcome.findings.as_slice(),
@@ -138,15 +161,14 @@ mod tests
         // single-valued `package` /
         // `toolchain` / `license` / `authors` (proposal-packages.md §7.3, §7.6
         // MVP column).
-        let source = "@[package(#{ name = \"acme/parser\", version = \"1.4.0\" })]\n\
-                      @[license(\"MIT\")]\n\
-                      @[authors([\"ada\", \"grace\"])]\n\
-                      @[dependency(#{ name = \"acme/lexer\", alias = \"lexer\", constraint = \
-                      \"^2.1\" })]\n\
-                      @[dependency(#{ name = \"acme/ast\", alias = \"ast\", constraint = \"^1.0\" \
-                      })]\n\
-                      @[toolchain(#{ gandr = \">=0.9\" })]\n\
-                      def parser_root = ();\n";
+        let source = r###"@[package(#{ name = "acme/parser", version = "1.4.0" })]
+@[license("MIT")]
+@[authors(["ada", "grace"])]
+@[dependency(#{ name = "acme/lexer", alias = "lexer", constraint = "^2.1" })]
+@[dependency(#{ name = "acme/ast", alias = "ast", constraint = "^1.0" })]
+@[toolchain(#{ gandr = ">=0.9" })]
+def parser_root = ();
+"###;
         let outcome = pass(source);
         assert!(
             outcome.findings.is_empty(),
@@ -172,8 +194,10 @@ mod tests
     fn manifest_single_valued_package_is_not_repeatable()
     {
         let outcome = pass(
-            "@[package(#{ name = \"a\", version = \"1\" })]\n@[package(#{ name = \"b\", version = \
-             \"2\" })]\ndef root = ();\n",
+            r###"@[package(#{ name = "a", version = "1" })]
+@[package(#{ name = "b", version = "2" })]
+def root = ();
+"###,
         );
         assert_eq!(1, outcome.resolved.len(), "package is single-valued");
         assert!(matches!(
@@ -196,8 +220,19 @@ mod tests
         // The inert default (§4.2): an inert attribute never
         // perturbs the entity's core-IR term. The item term is the
         // hash-neutrality proxy — the content-address is computed over it.
-        let plain = lower_source_total("def f = 42;\n".into()).unwrap();
-        let annotated = lower_source_total("@[doc(\"x\")]\ndef f = 42;\n".into()).unwrap();
+        let plain = lower_source_total(
+            r#"def f = 42;
+"#
+            .into(),
+        )
+        .unwrap();
+        let annotated = lower_source_total(
+            r###"@[doc("x")]
+def f = 42;
+"###
+            .into(),
+        )
+        .unwrap();
         assert_eq!(
             plain.items[0].term, annotated.items[0].term,
             "an inert attribute leaves the item's core-IR term identical"
@@ -213,7 +248,10 @@ mod tests
     #[test]
     fn report_projects_attributes_and_folds_diagnostics()
     {
-        let source = "@[doc(\"ok\")]\n@[bogus]\ndef f = 42;\n";
+        let source = r#"@[doc("ok")]
+@[bogus]
+def f = 42;
+"#;
         let lowered = lower_source_total(source.into()).unwrap();
         let built = report(&lowered, &prelude_ctx());
         // The well-formed `doc` is projected into `Report.attributes`.
@@ -248,7 +286,10 @@ mod tests
     #[test]
     fn report_json_is_deterministic_for_inspected_attributes()
     {
-        let source = "@[doc(\"a\")]\n@[license(\"MIT\")]\ndef f = 42;\n";
+        let source = r###"@[doc("a")]
+@[license("MIT")]
+def f = 42;
+"###;
         let lowered = lower_source_total(source.into()).unwrap();
         let first = report(&lowered, &prelude_ctx())
             .to_json()

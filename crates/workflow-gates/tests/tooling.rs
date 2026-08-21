@@ -77,6 +77,7 @@ const EXPECTED_COMMANDS: &[&str] = &[
     "contracts",
     "ci-contracts",
     "graph-boundary",
+    "embedded-syntax",
     "docs-manifest",
     "docs-reference",
     "page-balance",
