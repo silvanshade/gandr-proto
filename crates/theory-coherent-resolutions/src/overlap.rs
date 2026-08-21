@@ -365,10 +365,12 @@ impl<A: CellAlphabet> Overlap<A>
     ///
     /// A domain matcher may know a substitution that is not derivable from
     /// this alphabet's generic `unify_cmd` operation. The supplied source is
-    /// therefore the authority for the overlap's unifier; this constructor
-    /// records that evidence without re-running the generic matcher. The
-    /// completion entry point still validates the overlap kind and both store
-    /// addresses before it accepts the worklist.
+    /// therefore the authority for deriving the overlap's substitution; this
+    /// constructor records that evidence without re-running the generic
+    /// matcher. The completion entry point still validates the overlap kind,
+    /// both store addresses, and that the supplied substitution makes the
+    /// apart-renamed right left-hand side agree with the peak before it accepts
+    /// the worklist.
     ///
     /// # Contract
     /// - requires: `left` and `right` address cells in the store observed by
@@ -470,6 +472,20 @@ impl<A: CellAlphabet> Overlap<A>
     pub const fn right_renamed(&self) -> &Cell<A>
     {
         &self.right_renamed
+    }
+
+    /// Whether the supplied substitution makes the apart-renamed right
+    /// left-hand side meet the left peak.
+    ///
+    /// # Contract
+    /// - ensures: `true` exactly when both confluence legs apply to the same
+    ///   supplied peak under `self.unifier`.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub(crate) fn matches_peak(&self) -> bool
+    {
+        A::apply_subst(&self.unifier, &self.right_renamed.lhs) == self.peak
     }
 
     /// The composite of a **composition** overlap — apply the left cell at the

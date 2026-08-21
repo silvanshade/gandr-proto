@@ -120,6 +120,15 @@ pub enum SuppliedOverlapError
         /// The stale or foreign id.
         cell: CellId,
     },
+    /// The supplied substitution does not make the two confluence legs meet
+    /// at one peak.
+    NonUnifyingSubstitution
+    {
+        /// The zero-based batch containing the overlap.
+        batch: usize,
+        /// The zero-based overlap within that batch.
+        overlap: usize,
+    },
 }
 
 /// The outcome of [`complete`] — either a completed convergent slice or a
@@ -315,7 +324,9 @@ where
 ///
 /// # Contract
 /// - requires: every supplied overlap is a [`OverlapKind::Confluence`] whose
-///   `left` and `right` ids address cells in the supplied store.
+///   `left` and `right` ids address cells in the supplied store, and whose
+///   supplied substitution makes the apart-renamed right left-hand side agree
+///   with the peak.
 /// - ensures: valid input makes the completion loop process exactly the
 ///   supplied initial batches, then the generic confluence batches for cells it
 ///   derives, within the same step and cell budgets as [`complete`]. Invalid
@@ -354,8 +365,10 @@ where
 /// Validate a caller-supplied worklist before it reaches the completion loop.
 ///
 /// # Contract
-/// - ensures: `Ok(())` iff every item is confluence and both of its ids are in
-///   `store`; the first invalid item is reported in batch order.
+/// - ensures: `Ok(())` iff every item is a confluence, both of its ids are in
+///   `store`, and its supplied substitution makes the apart-renamed right
+///   left-hand side agree with the peak; the first invalid item is reported in
+///   batch order.
 /// - panics: none.
 #[inline]
 fn validate_supplied_batches<A>(
@@ -383,6 +396,9 @@ where
                     overlap,
                     cell: item.right,
                 });
+            }
+            if !item.matches_peak() {
+                return Err(SuppliedOverlapError::NonUnifyingSubstitution { batch, overlap });
             }
         }
     }

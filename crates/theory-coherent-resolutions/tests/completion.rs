@@ -25,6 +25,7 @@ mod tests
     use gandr_theory_cell_complexes::sequent::CellProvenance;
     use gandr_theory_cell_complexes::sequent::Orientation;
     use gandr_theory_cell_complexes::sequent::SequentAlphabet;
+    use gandr_theory_cell_complexes::subst::Subst;
     use gandr_theory_coherent_resolutions::completion::*;
     use gandr_theory_coherent_resolutions::overlap::Overlap;
     use gandr_theory_coherent_resolutions::overlap::OverlapKind;
@@ -124,6 +125,118 @@ mod tests
         };
         assert_eq!(0_usize, batch);
         assert_eq!(0_usize, overlap);
+    }
+    // These are separate witnesses because adding this error variant widens
+    // the invalid-supplied domain: initial validation, terminal resume, and
+    // budget-decline revalidation each need their own path.
+
+    #[test]
+    fn supplied_non_unifying_decline_is_typed()
+    {
+        let store = overlapping_rules();
+        let mut non_unifying = scheduled_confluence_batches(&store)
+            .into_iter()
+            .flatten()
+            .next()
+            .expect("the fixture supplies one confluence overlap");
+        non_unifying.unifier = Subst::new();
+        let expected = non_unifying.clone();
+        let outcome = complete_with_overlap_source(
+            store,
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![non_unifying]],
+        );
+        let CompletionOutcome::Declined {
+            reason:
+                DeclineReason::InvalidSuppliedOverlap(SuppliedOverlapError::NonUnifyingSubstitution {
+                    batch,
+                    overlap,
+                }),
+            derived,
+            certificates,
+            pending,
+            ..
+        } = outcome
+        else {
+            panic!("a supplied non-unifying substitution is a typed decline")
+        };
+        assert!(
+            derived.is_empty(),
+            "validation declines before derived work"
+        );
+        assert!(
+            certificates.is_empty(),
+            "validation declines before certificates are emitted"
+        );
+        assert_eq!(0_usize, batch);
+        assert_eq!(0_usize, overlap);
+        assert_eq!(expected, pending[0][0]);
+    }
+
+    #[test]
+    fn non_unifying_supplied_decline_is_terminal_on_resume()
+    {
+        let store = overlapping_rules();
+        let mut non_unifying = scheduled_confluence_batches(&store)
+            .into_iter()
+            .flatten()
+            .next()
+            .expect("the fixture supplies one confluence overlap");
+        non_unifying.unifier = Subst::new();
+        let outcome = complete_with_overlap_source(
+            store,
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![non_unifying]],
+        );
+        let resumed = outcome.clone().resume(CompletionBudget::new(
+            4_096_usize.into(),
+            4_096_usize.into(),
+            4_096_usize.into(),
+        ));
+        assert_eq!(
+            outcome, resumed,
+            "a non-unifying supplied decline remains a typed terminal refusal"
+        );
+    }
+
+    #[test]
+    fn budget_decline_revalidates_non_unifying_pending_overlap()
+    {
+        let store = overlapping_rules();
+        let mut non_unifying = scheduled_confluence_batches(&store)
+            .into_iter()
+            .flatten()
+            .next()
+            .expect("the fixture supplies one confluence overlap");
+        non_unifying.unifier = Subst::new();
+        let expected = non_unifying.clone();
+        let outcome = CompletionOutcome::Declined {
+            store,
+            derived: Vec::new(),
+            certificates: Vec::new(),
+            pending: alloc::vec![alloc::vec![non_unifying]],
+            reason: DeclineReason::StepBudget,
+        };
+        let resumed = outcome.resume(CompletionBudget::new(
+            4_096_usize.into(),
+            4_096_usize.into(),
+            4_096_usize.into(),
+        ));
+        let CompletionOutcome::Declined {
+            reason:
+                DeclineReason::InvalidSuppliedOverlap(SuppliedOverlapError::NonUnifyingSubstitution {
+                    batch,
+                    overlap,
+                }),
+            pending,
+            ..
+        } = resumed
+        else {
+            panic!("resume revalidates malformed pending work before completion")
+        };
+        assert_eq!(0_usize, batch);
+        assert_eq!(0_usize, overlap);
+        assert_eq!(expected, pending[0][0]);
     }
 
     #[test]

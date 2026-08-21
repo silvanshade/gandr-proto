@@ -41,6 +41,7 @@ mod tests
     use gandr_theory_coherent_resolutions::CompletionBudget;
     use gandr_theory_coherent_resolutions::CompletionOutcome;
     use gandr_theory_coherent_resolutions::DeclineReason;
+    use gandr_theory_coherent_resolutions::SuppliedOverlapError;
     use gandr_theory_coherent_resolutions::Tracelet;
     use gandr_theory_coherent_resolutions::enumerate_overlaps;
     use gandr_theory_coherent_resolutions::normalize;
@@ -754,6 +755,19 @@ sign Nat {
             "the circuit seam supplies an overlap despite empty generic enumeration"
         );
         assert!(supplied.embeddings[0].decline.is_none());
+        let CompletionOutcome::Declined { reason, .. } = &completion.outcome
+        else {
+            panic!("the malformed supplied overlap must decline");
+        };
+        assert!(
+            matches!(
+                reason,
+                DeclineReason::InvalidSuppliedOverlap(
+                    SuppliedOverlapError::NonUnifyingSubstitution { .. }
+                )
+            ),
+            "completion decline: {reason:?}"
+        );
     }
 
     #[test]
