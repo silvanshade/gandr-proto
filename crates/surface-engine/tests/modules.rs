@@ -26,6 +26,7 @@
 #[cfg(test)]
 mod tests
 {
+    use alloc::format;
     use alloc::string::String;
     use alloc::vec::Vec;
 
@@ -129,6 +130,83 @@ mod tests
                     .is_some_and(|note| !note.contains("module_declaration"))),
             "the report is the member's span rather than the whole declaration's, got {spans:?}"
         );
+    }
+
+    /// **The separating witness.** Module declarations reserve the
+    /// uppercase-initial name stratum. Single-word and multi-word uppercase
+    /// names lower with the same signature; their lowercase counterparts
+    /// decline at the declaration span with the attempted name in the goal.
+    #[test]
+    fn module_name_case_boundary_covers_single_and_multi_names()
+    {
+        for (name, readable) in [
+            ("M", true),
+            ("N", true),
+            ("Nat", true),
+            ("NatAdd", true),
+            ("m", false),
+            ("natAdd", false),
+            ("intadd", false),
+            ("monoid", false),
+        ] {
+            let source = format!(
+                "module {name} : #{{ type M = Integer, zero : M, add : U[ω] (M -> M -> F M) }} {{ def zero = 0; def add(x: Integer, y: Integer) -> F Integer {{ ret x + y }} }}"
+            );
+            let mut session = Session::new();
+            let submission = session
+                .submit(source.as_str())
+                .expect("module case witness must lower in total mode");
+            if readable {
+                assert!(
+                    matches!(
+                        submission.outcomes.as_slice(),
+                        [ItemOutcome::Definition {
+                            name: bound_name,
+                            bound: true,
+                            ..
+                        }] if bound_name == name
+                    ),
+                    "uppercase module `{name}` must bind one definition, got {:?}",
+                    submission.outcomes
+                );
+                let rendered_type = format!(
+                    "{:?}",
+                    submission
+                        .outcomes
+                        .first()
+                        .expect("the uppercase outcome assertion must pass")
+                );
+                assert!(
+                    rendered_type.contains("\"add\"") && rendered_type.contains("\"zero\""),
+                    "uppercase module `{name}` must preserve both signature members, got {rendered_type}"
+                );
+                assert!(
+                    submission.report.goals.is_empty(),
+                    "uppercase module `{name}` must not mint a refusal goal, got {:?}",
+                    submission.report.goals
+                );
+            }
+            else {
+                assert!(
+                    matches!(submission.outcomes.as_slice(), [ItemOutcome::Holey]),
+                    "lowercase module `{name}` must decline rather than bind empty, got {:?}",
+                    submission.outcomes
+                );
+                let located_note = submission
+                    .report
+                    .goals
+                    .iter()
+                    .find(|goal| goal.span.start == 0 && goal.span.end == source.len())
+                    .and_then(|goal| goal.note.as_deref());
+                assert!(
+                    located_note.is_some_and(|note| {
+                        note.contains("LowercaseModuleName") && note.contains(name)
+                    }),
+                    "lowercase module `{name}` must report its declaration span and name, got {:?}",
+                    submission.report.goals
+                );
+            }
+        }
     }
 
     // --- Helpers --------------------------------------------------------------

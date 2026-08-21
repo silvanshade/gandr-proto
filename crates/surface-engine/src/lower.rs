@@ -262,6 +262,19 @@ pub enum LowerError
         /// The construct's byte range.
         byte_range: SourceRange,
     },
+    /// A module name could not mold because module declarations reserve
+    /// uppercase-initial names for the module stratum.
+    #[error(
+        "module name `{name}` starts with lowercase; module declarations require an \
+         uppercase-initial name at bytes {byte_range:?}"
+    )]
+    LowercaseModuleName
+    {
+        /// The source spelling the declaration attempted to bind.
+        name: String,
+        /// The declaration's source range.
+        byte_range: SourceRange,
+    },
 
     /// A bare fix-bound name occurred inside its recursive scope.
     #[error(
@@ -6050,10 +6063,11 @@ impl Lowerer<'_>
     /// - ensures: a declaration whose subtree holds no repair region is
     ///   untouched, so a module the melder read completely lowers exactly as it
     ///   did before this check existed.
-    /// - fails: [`LowerError::Unsupported`] naming the declaration and its span
-    ///   when the repair region is outside every recognized member; total mode
-    ///   turns that into the item's hole, so the outcome is holey and a goal
-    ///   carries the span.
+    /// - fails: [`LowerError::LowercaseModuleName`] when the unread
+    ///   declaration's name starts lowercase; otherwise
+    ///   [`LowerError::Unsupported`] names the declaration and its span when
+    ///   the repair region is outside every recognized member. Total mode turns
+    ///   either refusal into the item's hole, so a goal carries the span.
     /// - panics: none.
     ///
     /// # Adequacy
@@ -6074,6 +6088,16 @@ impl Lowerer<'_>
         let members = node.children_by_field_name(node_kinds::FIELD_MEMBER);
         if members.iter().any(|member| bool::from(member.has_error())) {
             return Ok(());
+        }
+        if let Some(name) = node
+            .child_by_field_name(node_kinds::FIELD_NAME)
+            .map(|name| name.text().as_ref().to_owned())
+            .filter(|name| name.as_bytes().first().is_some_and(u8::is_ascii_lowercase))
+        {
+            return Err(LowerError::LowercaseModuleName {
+                name,
+                byte_range: node.byte_range(),
+            });
         }
         Err(LowerError::Unsupported {
             kind: node_kinds::MODULE_DECLARATION,
@@ -7672,6 +7696,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
     match *error {
         | LowerError::Syntax { ref byte_range }
         | LowerError::Unsupported { ref byte_range, .. }
+        | LowerError::LowercaseModuleName { ref byte_range, .. }
         | LowerError::UnmarkedRecursiveReference { ref byte_range, .. }
         | LowerError::MarkedReferenceOutsideRecursiveScope { ref byte_range, .. }
         | LowerError::ReservedNamedMeasure { ref byte_range, .. }
@@ -7723,6 +7748,9 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::Syntax { .. } => HoleNote::SyntaxError,
         | LowerError::Unsupported { kind, .. } | LowerError::TypeSortMismatch { kind, .. } => {
             HoleNote::UnsupportedForm { kind }
+        },
+        | LowerError::LowercaseModuleName { ref name, .. } => {
+            HoleNote::LowercaseModuleName { name: name.clone() }
         },
         | LowerError::UnmarkedRecursiveReference { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::IDENTIFIER,

@@ -358,6 +358,13 @@ pub enum HoleNote
         /// The elided construct's node kind.
         kind: SyntaxKind,
     },
+    /// A module declaration whose lowercase-initial name could not be molded
+    /// into the grammar's uppercase-only module-name tile.
+    LowercaseModuleName
+    {
+        /// The source spelling the declaration could not use.
+        name: String,
+    },
     /// A `case` arm the source does not supply; the hole *is* the missing
     /// arm's body.
     MissingCaseArm
