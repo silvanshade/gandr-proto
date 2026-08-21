@@ -3,6 +3,7 @@
 #[cfg(test)]
 mod tests
 {
+    use gandr_surface_diagnostics::RenderStyle;
     use gandr_surface_parser::CompletionStatus;
     use gandr_surface_render_remote::present::OutKind;
     use gandr_surface_repl::LoopEvent;
@@ -170,6 +171,29 @@ mod tests
     }
 
     #[test]
+    fn styled_session_diagnostics_reach_the_repl_transcript()
+    {
+        let mut session = SessionLoop::with_render_style(RenderStyle::Styled);
+        match session
+            .offer(SourceSlice::from("force(1)"))
+            .expect("the styled refusal must submit")
+        {
+            | LoopEvent::Submitted(block) => {
+                assert!(
+                    block.lines.iter().any(|pair| {
+                        pair.0 == OutKind::Diag
+                            && pair.1.contains("\u{1b}[")
+                            && pair.1.contains("while checking the forced value")
+                    }),
+                    "the selected styled facade output must reach the transcript: {:?}",
+                    block.lines
+                );
+            },
+            | event => panic!("expected a styled refusal, got {event:?}"),
+        }
+    }
+
+    #[test]
     fn quit_stops_the_loop()
     {
         let mut session = SessionLoop::new();
@@ -184,7 +208,7 @@ mod tests
     {
         let input = b"42\n";
         let mut output = Vec::new();
-        let status = run_batch(&input[..], &mut output);
+        let status = run_batch(&input[..], &mut output, RenderStyle::Plain);
         assert_eq!(i32::from(status), 0_i32, "a value batch completes");
         let text = String::from_utf8(output).expect("transcript is utf-8");
         assert!(text.contains('4'), "the transcript names the value: {text}");

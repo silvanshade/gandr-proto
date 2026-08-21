@@ -3,12 +3,13 @@
 The terminal diagnostic facade over the surface engine's merged verdict stream.
 
 The crate does not parse, lower, type, or decide outcomes.
-It projects report diagnostics and outcome-only type errors into plain Unicode source snippets through `annotate-snippets`.
+It projects report diagnostics and outcome-only type errors into Unicode source snippets through `annotate-snippets`, with deterministic plain and terminal-styled policies.
 
 ## Contract
 
 - `render_submission` preserves merged verdict order and returns one report for each warning, report diagnostic, and outcome-only type error.
 - `render_verdict` returns `None` for values, definitions, and hole goals.
+- `RenderStyle::Plain` is escape-free for snapshots and non-terminals; `RenderStyle::Styled` is the explicit color-forcing boundary.
 - Valid source spans become primary annotations; invalid spans degrade to a path-only origin rather than panicking.
 - Type mismatch labels name both the expected and actual types.
 - The facade keeps `annotate-snippets` behind its public API, so the script and REPL surfaces depend on a stable gandr report vocabulary.
@@ -16,10 +17,16 @@ It projects report diagnostics and outcome-only type errors into plain Unicode s
 ## Using it
 
 ```rust
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_diagnostics::render_submission;
 use gandr_surface_syntax::SourceSlice;
 
-let reports = render_submission(SourceSlice::from(source), Some(path), &submission);
+let reports = render_submission(
+    SourceSlice::from(source),
+    Some(path),
+    &submission,
+    RenderStyle::Plain,
+);
 ```
 
 The script runner prefixes the rendered refusal with `type checking failed:`.

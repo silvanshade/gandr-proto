@@ -3,6 +3,7 @@
 //! Cross-line definitions are carried by the landed session engine's
 //! checkpoint set. This module does not re-lower an accumulated prelude.
 
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_engine::lower::LowerError;
 use gandr_surface_engine::session::Session;
 use gandr_surface_render_remote::present::TranscriptBlock;
@@ -46,6 +47,8 @@ pub struct SessionLoop
     session: Session,
     /// Accumulated source waiting for parse completeness.
     pending: String,
+    /// Diagnostic style selected by the terminal face.
+    render_style: RenderStyle,
 }
 
 impl SessionLoop
@@ -59,9 +62,22 @@ impl SessionLoop
     #[must_use]
     pub fn new() -> Self
     {
+        Self::with_render_style(RenderStyle::Plain)
+    }
+
+    /// Open a fresh loop with an explicit diagnostic rendering policy.
+    ///
+    /// # Contract
+    /// - ensures: every diagnostic transcript uses `render_style`.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn with_render_style(render_style: RenderStyle) -> Self
+    {
         Self {
             session: Session::new(),
             pending: String::new(),
+            render_style,
         }
     }
 
@@ -116,7 +132,7 @@ impl SessionLoop
             return Ok(LoopEvent::Continue);
         }
         let submission = self.session.submit(self.pending.as_str())?;
-        let block = encode_submission(source, &submission);
+        let block = encode_submission(source, &submission, self.render_style);
         self.pending.clear();
         Ok(LoopEvent::Submitted(block))
     }

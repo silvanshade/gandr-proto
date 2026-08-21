@@ -2,6 +2,7 @@
 
 use std::io::Write;
 
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_syntax::SourceSlice;
 use reedline::DefaultPrompt;
 use reedline::Reedline;
@@ -14,19 +15,23 @@ use crate::session_loop::SessionLoop;
 /// Run the loop on a terminal line editor until quit or end-of-file.
 ///
 /// # Contract
-/// - ensures: each submitted buffer is written to `output`; `:q` and
-///   end-of-file leave with [`BatchStatus::COMPLETED`].
+/// - ensures: each submitted buffer is written to `output` using
+///   `render_style`; `:q` and end-of-file leave with
+///   [`BatchStatus::COMPLETED`].
 /// - provides: the interactive face.
 /// - fails: returns [`BatchStatus::FAILED`] when the editor or the loop fails.
 /// - panics: none.
 #[inline]
-pub fn run_interactive<Output>(output: &mut Output) -> BatchStatus
+pub fn run_interactive<Output>(
+    output: &mut Output,
+    render_style: RenderStyle,
+) -> BatchStatus
 where
     Output: Write,
 {
     let mut editor = Reedline::create();
     let prompt = DefaultPrompt::default();
-    let mut session = SessionLoop::new();
+    let mut session = SessionLoop::with_render_style(render_style);
     loop {
         match editor.read_line(&prompt) {
             | Ok(Signal::Success(buffer)) => {

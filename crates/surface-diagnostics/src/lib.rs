@@ -25,6 +25,33 @@ use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
 use gandr_surface_syntax::SourceSlice;
 
+/// Color policy selected by a terminal face without exposing renderer types.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum RenderStyle
+{
+    /// Deterministic text with no terminal escape sequences.
+    #[default]
+    Plain,
+    /// Annotate-snippets' styled terminal presentation.
+    Styled,
+}
+
+impl RenderStyle
+{
+    /// Selects styled output exactly when the destination supports a terminal.
+    #[inline]
+    #[must_use]
+    pub const fn for_terminal(is_terminal: bool) -> Self
+    {
+        if is_terminal {
+            Self::Styled
+        }
+        else {
+            Self::Plain
+        }
+    }
+}
+
 /// Shared render request passed to the report renderer.
 struct RenderReport<'text>
 {
@@ -32,6 +59,8 @@ struct RenderReport<'text>
     source: SourceSlice<'text>,
     /// Optional terminal path prefix for the report header.
     path: Option<&'text Path>,
+    /// Plain or styled backend policy selected by the terminal face.
+    style: RenderStyle,
     /// Severity from the surface engine's diagnostic stream.
     severity: Severity,
     /// Machine diagnostic code to show as the report id.
@@ -61,7 +90,7 @@ struct RenderAnnotation
 /// - requires: `source` is the exact source text used to produce `submission`;
 ///   `path`, when present, identifies that source for the terminal header.
 /// - ensures: returns one rendered report for every warning, report diagnostic,
-///   and outcome-only type error in merged verdict order.
+///   and outcome-only type error in merged verdict order, using `style`.
 /// - provides: terminal-facing diagnostic strings without exposing
 ///   `annotate-snippets` types in the public API.
 /// - panics: none.
@@ -76,11 +105,12 @@ pub fn render_submission(
     source: SourceSlice<'_>,
     path: Option<&Path>,
     submission: &Submission,
+    style: RenderStyle,
 ) -> Vec<String>
 {
     submission
         .verdicts()
-        .filter_map(|verdict| render_verdict(source, path, &verdict))
+        .filter_map(|verdict| render_verdict(source, path, &verdict, style))
         .collect()
 }
 
@@ -88,8 +118,9 @@ pub fn render_submission(
 ///
 /// # Contract
 /// - requires: `source` is the source that supplied every span in `verdict`.
-/// - ensures: returns a report for a report diagnostic or an outcome-only type
-///   error, and `None` for values, definitions, and hole goals.
+/// - ensures: returns a report using `style` for a report diagnostic or an
+///   outcome-only type error, and `None` for values, definitions, and hole
+///   goals.
 /// - provides: one terminal report with a stable code, source location when
 ///   available, and labels naming the diagnostic's operands.
 /// - panics: none.
@@ -99,13 +130,16 @@ pub fn render_verdict(
     source: SourceSlice<'_>,
     path: Option<&Path>,
     verdict: &Verdict<'_>,
+    style: RenderStyle,
 ) -> Option<String>
 {
     match *verdict {
         | Verdict::Outcome(&ItemOutcome::TypeError { ref error }) => {
-            Some(render_type_error(source, path, error))
+            Some(render_type_error(source, path, error, style))
         },
-        | Verdict::Diagnostic(diagnostic) => Some(render_diagnostic(source, path, diagnostic)),
+        | Verdict::Diagnostic(diagnostic) => {
+            Some(render_diagnostic(source, path, diagnostic, style))
+        },
         | Verdict::Outcome(_) | Verdict::Goal(_) => None,
     }
 }
@@ -115,6 +149,7 @@ fn render_diagnostic(
     source: SourceSlice<'_>,
     path: Option<&Path>,
     diagnostic: &Diagnostic,
+    style: RenderStyle,
 ) -> String
 {
     let mut annotations = diagnostic
@@ -145,6 +180,7 @@ fn render_diagnostic(
     render_report(RenderReport {
         source,
         path,
+        style,
         severity: diagnostic.severity,
         code: diagnostic.code.to_string(),
         title_text: diagnostic.message.to_string(),
@@ -158,11 +194,13 @@ fn render_type_error(
     source: SourceSlice<'_>,
     path: Option<&Path>,
     error: &TypeError,
+    style: RenderStyle,
 ) -> String
 {
     let message = message_of(error);
     render_report(RenderReport {
         source,
+        style,
         path,
         severity: Severity::Error,
         code: message.code().to_string(),
@@ -177,6 +215,7 @@ fn render_report(
     RenderReport {
         source,
         path,
+        style,
         severity,
         code,
         title_text,
@@ -219,9 +258,11 @@ fn render_report(
         group = group.element(Level::NOTE.message(note));
     }
     let groups = [group];
-    Renderer::plain()
-        .decor_style(DecorStyle::Unicode)
-        .render(&groups)
+    let renderer = match style {
+        | RenderStyle::Plain => Renderer::plain(),
+        | RenderStyle::Styled => Renderer::styled(),
+    };
+    renderer.decor_style(DecorStyle::Unicode).render(&groups)
 }
 
 /// Select a renderer level for the surface severity.

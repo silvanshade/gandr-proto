@@ -3,6 +3,7 @@
 use std::io::BufRead;
 use std::io::Write;
 
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_render_remote::present::OutKind;
 use gandr_surface_render_remote::present::TranscriptBlock;
 use gandr_surface_syntax::SourceSlice;
@@ -36,8 +37,8 @@ impl From<BatchStatus> for i32
 /// Run the loop over `input`, writing transcripts to `output`.
 ///
 /// # Contract
-/// - ensures: each complete submission is written once; incomplete source at
-///   end-of-file is submitted as-is if non-empty.
+/// - ensures: each complete submission is written once using `render_style`;
+///   incomplete source at end-of-file is submitted as-is if non-empty.
 /// - provides: the non-interactive smoke path.
 /// - fails: returns [`BatchStatus::FAILED`] after writing the error.
 /// - panics: none.
@@ -49,12 +50,13 @@ impl From<BatchStatus> for i32
 pub fn run_batch<Input, Output>(
     input: Input,
     output: &mut Output,
+    render_style: RenderStyle,
 ) -> BatchStatus
 where
     Input: BufRead,
     Output: Write,
 {
-    let mut session = SessionLoop::new();
+    let mut session = SessionLoop::with_render_style(render_style);
     for line in input.lines() {
         let Ok(line) = line
         else {

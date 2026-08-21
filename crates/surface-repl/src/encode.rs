@@ -4,6 +4,7 @@
 //! lower, type, or mark. Highlight spans stay empty: this crate consumes
 //! [`HlSpan`] and never produces one.
 
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
@@ -20,7 +21,7 @@ use gandr_surface_syntax::SourceSlice;
 ///
 /// # Contract
 /// - ensures: the block echoes `source` and one line per merged verdict, in
-///   stream order.
+///   stream order, with diagnostics using `render_style`.
 /// - provides: the presentation image every face draws.
 /// - panics: none.
 ///
@@ -35,11 +36,12 @@ use gandr_surface_syntax::SourceSlice;
 pub fn encode_submission(
     source: SourceSlice<'_>,
     submission: &Submission,
+    render_style: RenderStyle,
 ) -> TranscriptBlock
 {
     let mut lines = Vec::new();
     for verdict in submission.verdicts() {
-        encode_verdict(source, verdict, &mut lines);
+        encode_verdict(source, verdict, render_style, &mut lines);
     }
     TranscriptBlock::new(String::from(source.as_ref()), Vec::<HlSpan>::new(), lines)
 }
@@ -55,14 +57,15 @@ pub fn encode_submission(
 fn encode_verdict(
     source: SourceSlice<'_>,
     verdict: Verdict<'_>,
+    render_style: RenderStyle,
     lines: &mut Vec<(OutKind, String)>,
 )
 {
     match verdict {
-        | Verdict::Outcome(outcome) => encode_outcome(source, outcome, lines),
+        | Verdict::Outcome(outcome) => encode_outcome(source, outcome, render_style, lines),
         | Verdict::Diagnostic(diagnostic) => {
             let verdict = Verdict::Diagnostic(diagnostic);
-            push_diagnostic(source, &verdict, lines);
+            push_diagnostic(source, &verdict, render_style, lines);
         },
         | Verdict::Goal(goal) => {
             let expected = goal.expected.as_deref().unwrap_or("?");
@@ -75,10 +78,11 @@ fn encode_verdict(
 fn push_diagnostic(
     source: SourceSlice<'_>,
     verdict: &Verdict<'_>,
+    render_style: RenderStyle,
     lines: &mut Vec<(OutKind, String)>,
 )
 {
-    if let Some(rendered) = render_verdict(source, None, verdict) {
+    if let Some(rendered) = render_verdict(source, None, verdict, render_style) {
         lines.push((OutKind::Diag, rendered));
     }
 }
@@ -87,6 +91,7 @@ fn push_diagnostic(
 fn encode_outcome(
     source: SourceSlice<'_>,
     outcome: &ItemOutcome,
+    render_style: RenderStyle,
     lines: &mut Vec<(OutKind, String)>,
 )
 {
@@ -105,7 +110,7 @@ fn encode_outcome(
         },
         | &ItemOutcome::TypeError { .. } => {
             let verdict = Verdict::Outcome(outcome);
-            push_diagnostic(source, &verdict, lines);
+            push_diagnostic(source, &verdict, render_style, lines);
         },
         | &ItemOutcome::Holey => {
             lines.push((

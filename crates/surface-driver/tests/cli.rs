@@ -603,6 +603,10 @@ mod tests
             "the terminal refusal carries the stable type-mismatch code; got {stderr}"
         );
         assert!(
+            !stderr.contains('\u{1b}'),
+            "captured non-terminal diagnostics must remain plain; got {stderr}"
+        );
+        assert!(
             output.stdout.is_empty(),
             "a refused script routes no result; got {}",
             String::from_utf8_lossy(&output.stdout)

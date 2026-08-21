@@ -21,6 +21,7 @@ use gandr_core_term::outcome::Eval;
 use gandr_core_term::syntax::Comp;
 use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source;
+use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::session::ItemOutcome;
@@ -243,15 +244,18 @@ where
                 EXIT_FAILED
             },
         },
-        | Some(Request::Run(path)) => match run_script(std::path::Path::new(&path)) {
-            | Ok(outcome) => {
-                announce_result(&outcome);
-                classify(&outcome)
-            },
-            | Err(error) => {
-                report(&refusal(&error));
-                EXIT_REFUSED
-            },
+        | Some(Request::Run(path)) => {
+            let render_style = RenderStyle::for_terminal(std::io::stderr().is_terminal());
+            match run_script(std::path::Path::new(&path), render_style) {
+                | Ok(outcome) => {
+                    announce_result(&outcome);
+                    classify(&outcome)
+                },
+                | Err(error) => {
+                    report(&refusal(&error));
+                    EXIT_REFUSED
+                },
+            }
         },
         | None => {
             report(USAGE);
@@ -263,12 +267,14 @@ where
 /// Start the read-evaluate loop.
 fn serve_repl() -> ExitStatus
 {
+    let mut stdout = std::io::stdout();
+    let render_style = RenderStyle::for_terminal(stdout.is_terminal());
     let status = if std::io::stdin().is_terminal() {
-        run_interactive(&mut std::io::stdout())
+        run_interactive(&mut stdout, render_style)
     }
     else {
         let stdin = std::io::stdin();
-        run_batch(stdin.lock(), &mut std::io::stdout())
+        run_batch(stdin.lock(), &mut stdout, render_style)
     };
     batch_status(status)
 }
@@ -404,9 +410,9 @@ fn classify(outcome: &FfiShellOutcome) -> ExitStatus
 ///
 /// # Contract
 /// - requires: `path` names the source the caller asked to run.
-/// - ensures: warnings are rendered without changing success status, and a
-///   typing refusal from either report diagnostics or item outcomes is returned
-///   before the host runs.
+/// - ensures: warnings are rendered using `render_style` without changing
+///   success status, and a typing refusal from either report diagnostics or
+///   item outcomes is returned before the host runs.
 /// - provides: the script face's single source-check and execution seam.
 /// - fails: returns a rendered read, lowering, verdict, linking, or checking
 ///   failure.
@@ -418,7 +424,10 @@ fn classify(outcome: &FfiShellOutcome) -> ExitStatus
 /// - witness: `cli::tests::a_successful_script_reports_a_shadowing_warning`
 /// - witness: `cli::tests::an_ill_typed_script_is_refused_by_the_checker`
 /// - witness: `cli::tests::an_outcome_only_refusal_is_visible_in_a_script_run`
-fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
+fn run_script(
+    path: &std::path::Path,
+    render_style: RenderStyle,
+) -> Result<FfiShellOutcome, ScriptFailure>
 {
     let source = std::fs::read_to_string(path)
         .map_err(|error| ScriptFailure(format!("cannot read `{}`: {error}", path.display())))?;
@@ -428,13 +437,14 @@ fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
         .map_err(|error| ScriptFailure(format!("lowering failed: {error}")))?;
     let source_slice = SourceSlice::from(source.as_str());
     for verdict in submission.verdicts() {
-        if let Some(error) = verdict_failure(source_slice, Some(path), &verdict) {
+        if let Some(error) = verdict_failure(source_slice, Some(path), &verdict, render_style) {
             return Err(error);
         }
         if matches!(
             verdict,
             Verdict::Diagnostic(diagnostic) if diagnostic.severity == Severity::Warning
-        ) && let Some(rendered) = render_verdict(source_slice, Some(path), &verdict)
+        ) && let Some(rendered) =
+            render_verdict(source_slice, Some(path), &verdict, render_style)
         {
             report(&format!("{rendered}\n"));
         }
@@ -448,7 +458,7 @@ fn run_script(path: &std::path::Path) -> Result<FfiShellOutcome, ScriptFailure>
 /// - requires: `source` is the exact script text that produced `verdict`;
 ///   `path` names that source for the annotated report.
 /// - ensures: report diagnostics and outcome-only type errors become one `type
-///   checking failed:` refusal containing the facade's located snippet.
+///   checking failed:` refusal rendered using `render_style`.
 /// - provides: one shared terminal diagnostic path for the script face.
 /// - returns: `None` for warnings, values, definitions, and goals.
 /// - panics: none.
@@ -456,6 +466,7 @@ fn verdict_failure(
     source: SourceSlice<'_>,
     path: Option<&std::path::Path>,
     verdict: &Verdict<'_>,
+    render_style: RenderStyle,
 ) -> Option<ScriptFailure>
 {
     let fatal = match *verdict {
@@ -464,7 +475,7 @@ fn verdict_failure(
         | Verdict::Outcome(_) | Verdict::Goal(_) => false,
     };
     fatal
-        .then(|| render_verdict(source, path, verdict))
+        .then(|| render_verdict(source, path, verdict, render_style))
         .flatten()
         .map(|rendered| ScriptFailure(format!("type checking failed:\n{rendered}")))
 }
