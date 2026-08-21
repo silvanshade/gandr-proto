@@ -142,6 +142,11 @@ impl BuildMeter
     /// # Errors
     /// This constructor currently cannot fail because the limit record contains
     /// only finite scalar values.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — a new meter starts all four cumulative counters at
+    ///   zero and accepts the builder's singleton baseline.
+    /// - witness: `algebra::empty_emits_nothing_and_moves_no_column`.
     #[inline]
     #[must_use = "a build meter must be retained for the document build"]
     pub fn try_new(limits: BuildLimits) -> Result<Self, BuildError>
@@ -164,6 +169,11 @@ impl BuildMeter
     /// - ensures: the returned snapshot is a copy and does not reset usage.
     /// - provides: monotone node, byte, fragment, and step observations.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — usage snapshots are cumulative and do not reset the
+    ///   meter between observations.
+    /// - witness: `algebra::build_usage_is_monotone_across_a_whole_document`.
     #[inline]
     #[must_use]
     pub fn usage(&self) -> BuildUsage
@@ -184,6 +194,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` for counter overflow or `LimitExceeded` at
     /// the configured node ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the node preflight accepts the exact node boundary
+    ///   and leaves usage unchanged when the next charge is refused.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn check_doc_node(&self) -> Result<(), BuildError>
     {
@@ -205,6 +221,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` when the amount or counter is not
     /// representable, or `LimitExceeded` at the configured byte ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — text preflight accepts the exact byte boundary and
+    ///   leaves usage unchanged after refusal.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn check_text_bytes(
         &self,
@@ -231,6 +253,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` for cumulative overflow or `LimitExceeded`
     /// at the configured fragment ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — verbatim preflight counts the complete scan and
+    ///   refuses only the charge beyond its exact fragment ceiling.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
     #[inline]
     pub(crate) fn check_verbatim_lines(
         &self,
@@ -256,6 +284,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` for cumulative overflow or `LimitExceeded`
     /// at the configured step ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — step preflight accepts the exact work ceiling and
+    ///   refuses only the next checked operation.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::every_finalization_visit_edge_and_probe_charges_a_build_step`.
     #[inline]
     pub(crate) fn check_step(&self) -> Result<(), BuildError>
     {
@@ -279,6 +313,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
     /// not maintained.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a successful node preflight is consumed exactly once
+    ///   and a refused charge does not mutate usage.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_node`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn charge_doc_node(&mut self) -> Result<(), BuildError>
     {
@@ -303,6 +343,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
     /// not maintained.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a successful byte preflight consumes exactly the
+    ///   requested amount and a refusal preserves the previous usage.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_text_bytes`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn charge_text_bytes(
         &mut self,
@@ -330,6 +376,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
     /// not maintained.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a successful fragment preflight consumes exactly the
+    ///   scan count, including its final fragment.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn charge_verbatim_lines(
         &mut self,
@@ -357,6 +409,12 @@ impl BuildMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
     /// not maintained.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a successful step preflight consumes exactly one
+    ///   unit, including finalization work.
+    /// - witness: `algebra::every_finalization_visit_edge_and_probe_charges_a_build_step`.
+    /// - witness: `algebra::a_refused_charge_leaves_the_counter_unchanged`.
     #[inline]
     pub(crate) fn charge_step(&mut self) -> Result<(), BuildError>
     {

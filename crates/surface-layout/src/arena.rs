@@ -229,6 +229,21 @@ pub(crate) struct CheckedText
 impl CheckedText
 {
     /// Returns the nominal byte charge for this text identity.
+    ///
+    /// # Contract
+    /// - requires: the text was accepted as newline-free checked input.
+    /// - ensures: the byte count is converted without changing the stored text.
+    /// - provides: the text-byte usage consumed by build accounting.
+    /// - fails: returns `ArithmeticOverflow` when the byte length is not
+    ///   representable by the nominal usage type.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` when the byte length cannot be represented.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — a reused text identity contributes one byte charge.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_text_bytes`.
     #[inline]
     pub(crate) fn bytes_used(&self) -> Result<TextBytesUsed, BuildError>
     {
@@ -317,6 +332,22 @@ impl VerbatimLine
 impl VerbatimText
 {
     /// Returns the nominal byte charge for this identity.
+    ///
+    /// # Contract
+    /// - requires: the bytes were accepted by the verbatim scanner.
+    /// - ensures: the byte count reflects the exact stored opaque bytes.
+    /// - provides: the text-byte usage consumed by build accounting.
+    /// - fails: returns `ArithmeticOverflow` when the byte length is not
+    ///   representable by the nominal usage type.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` when the byte length cannot be represented.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — byte identity remains byte-for-byte stable through
+    ///   storage and projection.
+    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
     #[inline]
     pub(crate) fn bytes_used(&self) -> Result<TextBytesUsed, BuildError>
     {
@@ -324,6 +355,22 @@ impl VerbatimText
     }
 
     /// Returns the nominal physical-fragment charge for this identity.
+    ///
+    /// # Contract
+    /// - requires: the fragment records were produced by the verbatim scanner.
+    /// - ensures: the count includes the final fragment, even when it is empty.
+    /// - provides: the verbatim-line usage consumed by build accounting.
+    /// - fails: returns `ArithmeticOverflow` when the fragment count is not
+    ///   representable by the nominal usage type.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` when the fragment count cannot be
+    /// represented.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — a trailing ending creates one empty final fragment.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
     #[inline]
     pub(crate) fn lines_used(&self) -> Result<VerbatimLinesUsed, BuildError>
     {
@@ -371,6 +418,25 @@ impl<'source> TryFrom<TextSource<'source>> for CheckedText
 {
     type Error = BuildError;
 
+    /// Validates and owns one borrowed newline-free text identity.
+    ///
+    /// # Contract
+    /// - requires: `source` is UTF-8 text supplied by the caller.
+    /// - ensures: success stores the exact bytes and checked scalar width.
+    /// - provides: the borrowed text ingestion path.
+    /// - fails: returns `InvalidText`, `ArithmeticOverflow`, or
+    ///   `AllocationFailed` without returning partial text.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `InvalidText` for forbidden scalars, `ArithmeticOverflow` for
+    /// unrepresentable widths, or `AllocationFailed` for storage reservation.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — valid text preserves bytes and width while each
+    ///   forbidden scalar is rejected.
+    /// - witness: `algebra::text_emits_at_the_current_column`.
+    /// - witness: `algebra::text_rejects_a_carriage_return_a_line_feed_and_a_tab`.
     #[inline]
     fn try_from(source: TextSource<'source>) -> Result<Self, Self::Error>
     {
@@ -389,6 +455,24 @@ impl TryFrom<TextOwned> for CheckedText
 {
     type Error = BuildError;
 
+    /// Validates and adopts one owned newline-free text identity.
+    ///
+    /// # Contract
+    /// - requires: `source` owns UTF-8 text supplied by the caller.
+    /// - ensures: success preserves ownership, exact bytes, and scalar width.
+    /// - provides: the owned text ingestion path.
+    /// - fails: returns `InvalidText` or `ArithmeticOverflow` without returning
+    ///   a partial identity.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `InvalidText` for forbidden scalars or `ArithmeticOverflow` for
+    /// an unrepresentable width.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — owned text follows the same validation and width
+    ///   semantics as borrowed text.
+    /// - witness: `algebra::identities_are_dense_insertion_ordinals_and_text_bytes_never_move`.
     #[inline]
     fn try_from(source: TextOwned) -> Result<Self, Self::Error>
     {
@@ -402,6 +486,25 @@ impl<'source> TryFrom<VerbatimSource<'source>> for VerbatimText
 {
     type Error = BuildError;
 
+    /// Scans and owns one borrowed opaque multiline text identity.
+    ///
+    /// # Contract
+    /// - requires: `source` contains only LF or CRLF line endings.
+    /// - ensures: success preserves bytes and one record per physical fragment.
+    /// - provides: the borrowed verbatim ingestion path.
+    /// - fails: returns `InvalidVerbatimLineEnding`, `ArithmeticOverflow`, or
+    ///   `AllocationFailed` without returning partial text.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns the typed scan or storage error that prevents ingestion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L4 — mixed endings, trailing endings, and bare carriage
+    ///   returns are distinguished before storage.
+    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
+    /// - witness: `algebra::verbatim_rejects_a_bare_carriage_return`.
     #[inline]
     fn try_from(source: VerbatimSource<'source>) -> Result<Self, Self::Error>
     {
@@ -421,6 +524,22 @@ impl TryFrom<VerbatimOwned> for VerbatimText
 {
     type Error = BuildError;
 
+    /// Scans and adopts one owned opaque multiline text identity.
+    ///
+    /// # Contract
+    /// - requires: `source` owns text containing only LF or CRLF endings.
+    /// - ensures: success preserves ownership, bytes, and physical fragments.
+    /// - provides: the owned verbatim ingestion path.
+    /// - fails: returns `InvalidVerbatimLineEnding` or `ArithmeticOverflow`
+    ///   without returning a partial identity.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns the typed scan error that prevents ingestion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — owned verbatim follows the borrowed scan semantics.
+    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
     #[inline]
     fn try_from(source: VerbatimOwned) -> Result<Self, Self::Error>
     {
@@ -429,8 +548,25 @@ impl TryFrom<VerbatimOwned> for VerbatimText
         Ok(Self { bytes: text, lines })
     }
 }
-
 /// Validates newline-free text and returns its checked scalar width.
+///
+/// # Contract
+/// - requires: `source` is the complete candidate text.
+/// - ensures: success returns the exact scalar count and rejects forbidden
+///   carriage returns, line feeds, and tabs.
+/// - provides: the validation boundary shared by borrowed and owned text.
+/// - fails: returns `InvalidText` for forbidden scalars or `ArithmeticOverflow`
+///   for an unrepresentable scalar count.
+/// - panics: none.
+///
+/// # Errors
+/// Returns `InvalidText` or `ArithmeticOverflow`.
+///
+/// # Adequacy
+/// - hypothesis: L3 — valid text retains its width and each forbidden scalar is
+///   rejected before storage.
+/// - witness: `algebra::text_emits_at_the_current_column`.
+/// - witness: `algebra::text_rejects_a_carriage_return_a_line_feed_and_a_tab`.
 fn checked_text_width(source: TextSource<'_>) -> Result<ScalarWidth, BuildError>
 {
     if source
@@ -444,6 +580,25 @@ fn checked_text_width(source: TextSource<'_>) -> Result<ScalarWidth, BuildError>
 }
 
 /// Scans LF and CRLF text into nominal physical-fragment records.
+///
+/// # Contract
+/// - requires: `source` is the complete candidate verbatim text.
+/// - ensures: success returns one record per physical fragment, including the
+///   empty fragment after a trailing line ending.
+/// - provides: the byte-preserving line metrics used by the arena.
+/// - fails: returns `InvalidVerbatimLineEnding`, `ArithmeticOverflow`, or
+///   `AllocationFailed` without returning partial scan output.
+/// - panics: none.
+///
+/// # Errors
+/// Returns the typed scan or allocation error that prevents a complete scan.
+///
+/// # Adequacy
+/// - hypothesis: L4 — LF, CRLF, mixed endings, trailing endings, and bare
+///   carriage returns have distinct observable records or errors.
+/// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
+/// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
+/// - witness: `algebra::verbatim_rejects_a_bare_carriage_return`.
 fn scan_verbatim(source: VerbatimSource<'_>) -> Result<Vec<VerbatimLine>, BuildError>
 {
     let mut lines = Vec::new();
@@ -585,6 +740,10 @@ impl DocArena
     /// - ensures: the result equals the arena's dense node-store length.
     /// - provides: the public storage observation used by build accounting.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — finalized storage reports the exact node cardinality.
+    /// - witness: `algebra::finalization_appends_at_most_one_image_per_node`.
     #[inline]
     #[must_use]
     pub fn node_count(&self) -> DocNodesUsed
@@ -599,10 +758,19 @@ impl DocArena
     /// - requires: `doc` names a stored `Text` node in this arena.
     /// - ensures: the returned nominal value contains the exact stored bytes.
     /// - provides: a read-only semantic projection for tests and renderers.
-    /// # Errors
-    /// Returns `UnknownDoc` when the handle is foreign, invalid, or names a
-    /// non-text node.
+    /// - fails: returns `UnknownDoc` for foreign, invalid, or non-text handles,
+    ///   and `ArithmeticOverflow` for an unrepresentable internal index.
     /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `UnknownDoc` for a foreign, invalid, or non-text handle, or
+    /// `ArithmeticOverflow` for an unrepresentable index conversion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — text bytes survive ingestion and foreign handles
+    ///   cannot cross the arena boundary.
+    /// - witness: `algebra::text_emits_at_the_current_column`.
+    /// - witness: `algebra::a_handle_from_another_arena_is_refused_before_lookup`.
     #[inline]
     pub fn stored_text(
         &self,
@@ -634,9 +802,17 @@ impl DocArena
     /// - requires: `doc` names a stored `Text` node in this arena.
     /// - ensures: the result is the width computed during ingestion.
     /// - provides: a nominal width projection without exposing raw bytes.
-    /// # Errors
-    /// Returns `UnknownDoc` for a foreign, invalid, or non-text handle.
+    /// - fails: returns `UnknownDoc` for foreign, invalid, or non-text handles,
+    ///   and `ArithmeticOverflow` for an unrepresentable internal index.
     /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `UnknownDoc` for an invalid handle, or `ArithmeticOverflow` for
+    /// an unrepresentable index conversion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the width projection agrees with accepted text.
+    /// - witness: `algebra::text_emits_at_the_current_column`.
     #[inline]
     pub fn stored_text_width(
         &self,
@@ -668,10 +844,18 @@ impl DocArena
     /// - requires: `doc` names a stored `Verbatim` node in this arena.
     /// - ensures: the returned nominal value contains the exact stored bytes.
     /// - provides: a read-only byte-identity projection.
-    /// # Errors
-    /// Returns `UnknownDoc` when the handle is foreign, invalid, or names a
-    /// non-verbatim node.
+    /// - fails: returns `UnknownDoc` for foreign, invalid, or non-verbatim
+    ///   handles, and `ArithmeticOverflow` for an unrepresentable index.
     /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `UnknownDoc` for an invalid handle, or `ArithmeticOverflow` for
+    /// an unrepresentable index conversion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — opaque bytes survive ingestion and projection without
+    ///   newline normalization.
+    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
     #[inline]
     pub fn stored_verbatim(
         &self,
@@ -704,10 +888,19 @@ impl DocArena
     /// - requires: `doc` names a stored `Verbatim` node in this arena.
     /// - ensures: widths and endings are the records produced by ingestion.
     /// - provides: a read-only nominal metric projection.
-    /// # Errors
-    /// Returns `UnknownDoc` when the handle is foreign, invalid, or names a
-    /// non-verbatim node.
+    /// - fails: returns `UnknownDoc` for foreign, invalid, or non-verbatim
+    ///   handles, and `ArithmeticOverflow` for an unrepresentable index.
     /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `UnknownDoc` for an invalid handle, or `ArithmeticOverflow` for
+    /// an unrepresentable index conversion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L4 — physical widths and endings retain the complete
+    ///   mixed-ending scan, including the final fragment.
+    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
     #[inline]
     pub fn verbatim_lines(
         &self,
@@ -740,9 +933,19 @@ impl DocArena
     /// - requires: `doc` names any stored node in this arena.
     /// - ensures: the returned handle names the memoized flattened image.
     /// - provides: a read-only finalization projection for identity checks.
-    /// # Errors
-    /// Returns `UnknownDoc` when the handle is foreign or invalid.
+    /// - fails: returns `UnknownDoc` for foreign or invalid handles, and
+    ///   `ArithmeticOverflow` for an unrepresentable internal index.
     /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `UnknownDoc` for an invalid handle, or `ArithmeticOverflow` for
+    /// an unrepresentable index conversion.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — finalization returns a stable image for every valid
+    ///   handle and rejects foreign handles.
+    /// - witness: `algebra::flattening_is_idempotent`.
+    /// - witness: `algebra::a_handle_from_another_arena_is_refused_before_lookup`.
     #[inline]
     pub fn flattened_image(
         &self,
@@ -763,8 +966,22 @@ impl DocArena
 
     /// Validates a handle and returns its internal node identity.
     ///
+    /// # Contract
+    /// - requires: `doc` may be foreign, out of range, or valid.
+    /// - ensures: success returns only an identity present in this arena.
+    /// - provides: the shared validation boundary for every projection.
+    /// - fails: returns `UnknownDoc` before any store lookup for foreign or
+    ///   out-of-range handles.
+    /// - panics: none.
+    ///
     /// # Errors
     /// Returns `UnknownDoc` when the handle is foreign or out of range.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — foreign and out-of-range handles are rejected before
+    ///   projection lookup.
+    /// - witness: `algebra::a_handle_from_another_arena_is_refused_before_lookup`.
+    /// - witness: `algebra::an_out_of_range_handle_is_refused`.
     fn node_id_for(
         &self,
         doc: DocId,
@@ -786,6 +1003,12 @@ impl DocArena
     ///   lookup.
     /// - provides: a non-panicking identity check for callers and later phases.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — only handles with this arena key and an in-range node
+    ///   identity are present.
+    /// - witness: `algebra::a_handle_from_another_arena_is_refused_before_lookup`.
+    /// - witness: `algebra::an_out_of_range_handle_is_refused`.
     #[inline]
     #[must_use]
     pub fn contains(

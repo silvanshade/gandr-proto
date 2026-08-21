@@ -235,6 +235,22 @@ impl TryFrom<usize> for ScalarWidth
 {
     type Error = BuildError;
 
+    /// Converts a platform width into the checked scalar-width currency.
+    ///
+    /// # Contract
+    /// - requires: `width` is the source scalar count.
+    /// - ensures: success preserves the count exactly.
+    /// - provides: the narrowing conversion used by text ingestion.
+    /// - fails: returns `ArithmeticOverflow` when the count exceeds `u32`.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for an unrepresentable scalar count.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — accepted text widths remain exact at the nominal
+    ///   conversion boundary.
+    /// - witness: `algebra::text_emits_at_the_current_column`.
     #[inline]
     fn try_from(width: usize) -> Result<Self, Self::Error>
     {
@@ -451,6 +467,24 @@ impl TryFrom<usize> for TextBytesUsed
 {
     type Error = BuildError;
 
+    /// Converts a platform byte count into nominal text-byte usage.
+    ///
+    /// # Contract
+    /// - requires: `bytes` is the complete stored-byte count.
+    /// - ensures: success preserves the count exactly.
+    /// - provides: the usage currency for text-byte accounting.
+    /// - fails: returns `ArithmeticOverflow` when the count is not
+    ///   representable.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for an unrepresentable byte count.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — exact byte boundaries accept the final byte and
+    ///   reject the next charge.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_text_bytes`.
     #[inline]
     fn try_from(bytes: usize) -> Result<Self, Self::Error>
     {
@@ -465,6 +499,24 @@ impl TryFrom<usize> for VerbatimLinesUsed
 {
     type Error = BuildError;
 
+    /// Converts a platform fragment count into nominal verbatim-line usage.
+    ///
+    /// # Contract
+    /// - requires: `lines` is the complete scan count for one verbatim value.
+    /// - ensures: success preserves the count exactly.
+    /// - provides: the usage currency for physical-fragment accounting.
+    /// - fails: returns `ArithmeticOverflow` when the count is not
+    ///   representable.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for an unrepresentable fragment count.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — the exact fragment boundary accepts the final record
+    ///   and rejects the next one.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
     #[inline]
     fn try_from(lines: usize) -> Result<Self, Self::Error>
     {
@@ -474,10 +526,27 @@ impl TryFrom<usize> for VerbatimLinesUsed
         Ok(Self { lines })
     }
 }
-
 impl DocNodesUsed
 {
     /// Charges one node against the nominal node ceiling.
+    ///
+    /// # Contract
+    /// - requires: the current node count is charged against `limit`.
+    /// - ensures: success increments usage exactly once.
+    /// - provides: node accounting for original and flattened images.
+    /// - fails: returns `ArithmeticOverflow` or `LimitExceeded` without
+    ///   changing the current usage.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for counter overflow or `LimitExceeded` at
+    /// the configured node ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the exact node ceiling accepts its final node and
+    ///   refuses one additional charge.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_node`.
     #[inline]
     pub(crate) fn checked_charge(
         self,
@@ -503,6 +572,24 @@ impl DocNodesUsed
 impl TextBytesUsed
 {
     /// Charges nominal new bytes against the text-byte ceiling.
+    ///
+    /// # Contract
+    /// - requires: `amount` is the new stored-byte count.
+    /// - ensures: success increments usage exactly by `amount`.
+    /// - provides: text-byte accounting for unique identities.
+    /// - fails: returns `ArithmeticOverflow` or `LimitExceeded` without
+    ///   changing the current usage.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for counter or limit conversion overflow,
+    /// or `LimitExceeded` at the configured byte ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — shared identities charge once and the exact byte
+    ///   boundary rejects only the next charge.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::a_second_edge_to_a_shared_handle_charges_no_new_text_bytes`.
     #[inline]
     pub(crate) fn checked_charge(
         self,
@@ -533,6 +620,24 @@ impl TextBytesUsed
 impl VerbatimLinesUsed
 {
     /// Charges nominal new fragments against the verbatim-line ceiling.
+    ///
+    /// # Contract
+    /// - requires: `amount` is the complete new physical-fragment count.
+    /// - ensures: success increments usage exactly by `amount`.
+    /// - provides: verbatim-line accounting for opaque content.
+    /// - fails: returns `ArithmeticOverflow` or `LimitExceeded` without
+    ///   changing the current usage.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for counter overflow or `LimitExceeded` at
+    /// the configured fragment ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the trailing empty fragment is charged and the exact
+    ///   fragment boundary refuses only the next charge.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`.
     #[inline]
     pub(crate) fn checked_charge(
         self,
@@ -559,6 +664,24 @@ impl VerbatimLinesUsed
 impl BuildStepsUsed
 {
     /// Charges one nominal build step against the step ceiling.
+    ///
+    /// # Contract
+    /// - requires: the caller has identified one checked operation.
+    /// - ensures: success increments usage exactly once.
+    /// - provides: the work budget for construction and finalization.
+    /// - fails: returns `ArithmeticOverflow` or `LimitExceeded` without
+    ///   changing the current usage.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for counter overflow or `LimitExceeded` at
+    /// the configured step ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — finalization steps are charged and the exact step
+    ///   boundary refuses only the next step.
+    /// - witness: `algebra::each_build_ceiling_refuses_exactly_at_its_boundary`.
+    /// - witness: `algebra::every_finalization_visit_edge_and_probe_charges_a_build_step`.
     #[inline]
     pub(crate) fn checked_charge(
         self,
