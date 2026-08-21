@@ -1,5 +1,7 @@
 #include "gandr/compile_host/image.hpp"
 
+#include "gandr/compile_host/access.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -68,7 +70,7 @@ image_is_wellformed(Image const& image) noexcept -> bool
   }
   // The root is the terminal cut, and a cut is a terminator: it is the one
   // command shape the positive core ends in, and it nests nowhere.
-  if (image.nodes[image.root.value].kind != NodeKind::Cut) {
+  if (proved_at(image.nodes, image.root.value).kind != NodeKind::Cut) {
     return false;
   }
 
@@ -78,10 +80,10 @@ image_is_wellformed(Image const& image) noexcept -> bool
   // precedes its user.
   std::vector<std::uint32_t> depth(image.nodes.size(), 0);
   std::vector<bool> reached(image.nodes.size(), false);
-  reached[image.root.value] = true;
+  proved_at(reached, image.root.value) = true;
 
   for (std::size_t index = image.nodes.size(); index-- > 0;) {
-    Node const& node = image.nodes[index];
+    Node const& node = proved_at(image.nodes, index);
 
     std::optional<std::size_t> const required = fixed_operand_count(node.kind);
     std::size_t const expected = required.has_value() ? *required : std::size_t{ ctor_arity(node.tag) };
@@ -93,32 +95,32 @@ image_is_wellformed(Image const& image) noexcept -> bool
       return false;
     }
 
-    if (!reached[index]) {
+    if (!proved_at(reached, index)) {
       continue;
     }
 
     for (std::size_t slot = 0; slot < node.operands.size(); ++slot) {
-      NodeIndex const operand = node.operands[slot];
+      NodeIndex const operand = proved_at(node.operands, slot);
       if (operand.value >= index) {
         return false;
       }
-      if (reached[operand.value]) {
+      if (proved_at(reached, operand.value)) {
         // A shared operand would be evaluated once but named from two
         // scopes, and the emitter has no way to place it. Refusing
         // sharing here is what keeps the image a tree.
         return false;
       }
-      reached[operand.value] = true;
-      depth[operand.value] = depth[index] + operand_binder_offset(node.kind, slot);
+      proved_at(reached, operand.value) = true;
+      proved_at(depth, operand.value) = proved_at(depth, index) + operand_binder_offset(node.kind, slot);
     }
 
-    if (node.kind == NodeKind::Var && node.binder >= depth[index]) {
+    if (node.kind == NodeKind::Var && node.binder >= proved_at(depth, index)) {
       return false;
     }
   }
 
   for (std::size_t index = 0; index < image.nodes.size(); ++index) {
-    if (!reached[index]) {
+    if (!proved_at(reached, index)) {
       return false;
     }
   }

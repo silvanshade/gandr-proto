@@ -1,3 +1,4 @@
+#include "gandr/compile_host/access.hpp"
 #include "gandr/compile_host/image.hpp"
 
 #include <cstddef>
@@ -52,7 +53,8 @@ struct Cursor
     }
     std::uint64_t accumulated = 0;
     for (std::size_t byte_index = 0; byte_index < Width; ++byte_index) {
-      accumulated |= static_cast<std::uint64_t>(rest[byte_index]) << (8 * static_cast<std::uint64_t>(byte_index));
+      accumulated |= static_cast<std::uint64_t>(proved_at(rest, byte_index))
+                  << (8 * static_cast<std::uint64_t>(byte_index));
     }
     rest = rest.subspan(Width);
     return static_cast<T>(accumulated);

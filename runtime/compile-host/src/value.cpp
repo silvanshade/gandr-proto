@@ -1,5 +1,6 @@
 #include "gandr/compile_host/value.hpp"
 
+#include "gandr/compile_host/access.hpp"
 #include "gandr/compile_host/image.hpp"
 
 #include <cstddef>
@@ -42,7 +43,7 @@ read_word(std::span<std::int64_t const> heap, std::int64_t offset) noexcept -> s
   if (index >= heap.size()) {
     return std::nullopt;
   }
-  return heap[index];
+  return proved_at(heap, index);
 }
 
 } // namespace
@@ -53,10 +54,10 @@ reset_heap(std::span<std::int64_t> heap) noexcept
   if (heap.size() < HeapLayout::arena_base) {
     return;
   }
-  heap[HeapLayout::bump_cursor] = static_cast<std::int64_t>(HeapLayout::arena_base);
-  heap[HeapLayout::duplication_ledger] = 0;
-  heap[HeapLayout::discard_ledger] = 0;
-  heap[HeapLayout::exhaustion_flag] = 0;
+  proved_at(heap, HeapLayout::bump_cursor) = static_cast<std::int64_t>(HeapLayout::arena_base);
+  proved_at(heap, HeapLayout::duplication_ledger) = 0;
+  proved_at(heap, HeapLayout::discard_ledger) = 0;
+  proved_at(heap, HeapLayout::exhaustion_flag) = 0;
 }
 
 auto
@@ -66,8 +67,8 @@ read_ledger(std::span<std::int64_t const> heap) noexcept -> WorkLedger
     return WorkLedger{};
   }
   return WorkLedger{
-    .duplications = heap[HeapLayout::duplication_ledger],
-    .discards = heap[HeapLayout::discard_ledger],
+    .duplications = proved_at(heap, HeapLayout::duplication_ledger),
+    .discards = proved_at(heap, HeapLayout::discard_ledger),
   };
 }
 
@@ -77,7 +78,7 @@ heap_was_exhausted(std::span<std::int64_t const> heap) noexcept -> bool
   if (heap.size() < HeapLayout::arena_base) {
     return true;
   }
-  return heap[HeapLayout::exhaustion_flag] != 0;
+  return proved_at(heap, HeapLayout::exhaustion_flag) != 0;
 }
 
 auto
@@ -86,7 +87,7 @@ allocated_words(std::span<std::int64_t const> heap) noexcept -> std::size_t
   if (heap.size() < HeapLayout::arena_base) {
     return 0;
   }
-  std::int64_t const cursor = heap[HeapLayout::bump_cursor];
+  std::int64_t const cursor = proved_at(heap, HeapLayout::bump_cursor);
   if (cursor <= static_cast<std::int64_t>(HeapLayout::arena_base)) {
     return 0;
   }

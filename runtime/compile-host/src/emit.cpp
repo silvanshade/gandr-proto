@@ -1,5 +1,6 @@
 #include "gandr/compile_host/emit.hpp"
 
+#include "gandr/compile_host/access.hpp"
 #include "gandr/compile_host/dialect.hpp"
 #include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/status.hpp"
@@ -75,7 +76,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
     return host_error(ErrorKind::LimitExceeded, "image nests deeper than the host admits");
   }
 
-  Node const& node = state.image.nodes[node_index.value];
+  Node const& node = proved_at(state.image.nodes, node_index.value);
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
   mlir::Type const produced = value_type(*builder.getContext());
@@ -89,7 +90,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       if (node.binder >= state.environment.size()) {
         return host_error(ErrorKind::MalformedImage, "variable names no binder in scope");
       }
-      return state.environment[state.environment.size() - 1 - node.binder];
+      return proved_at(state.environment, state.environment.size() - 1 - node.binder);
     }
     case NodeKind::Ctor: {
       std::vector<mlir::Value> fields;
@@ -105,7 +106,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       return op.getResult();
     }
     case NodeKind::Dup: {
-      Expected<mlir::Value> const source = emit_node(state, node.operands[0], depth + 1);
+      Expected<mlir::Value> const source = emit_node(state, proved_at(node.operands, 0), depth + 1);
       if (!source.has_value()) {
         return source;
       }
@@ -113,7 +114,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       return op.getResult();
     }
     case NodeKind::Drop: {
-      Expected<mlir::Value> const source = emit_node(state, node.operands[0], depth + 1);
+      Expected<mlir::Value> const source = emit_node(state, proved_at(node.operands, 0), depth + 1);
       if (!source.has_value()) {
         return source;
       }
@@ -121,14 +122,14 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       return op.getResult();
     }
     case NodeKind::Bind: {
-      Expected<mlir::Value> const bound = emit_node(state, node.operands[0], depth + 1);
+      Expected<mlir::Value> const bound = emit_node(state, proved_at(node.operands, 0), depth + 1);
       if (!bound.has_value()) {
         return bound;
       }
       auto frame = dialect::BindOp::create(builder, location, produced, *bound);
       mlir::Block* body = builder.createBlock(&frame.getBody(), frame.getBody().end(), { produced }, { location });
       state.environment.push_back(body->getArgument(0));
-      Expected<mlir::Value> const answer = emit_node(state, node.operands[1], depth + 1);
+      Expected<mlir::Value> const answer = emit_node(state, proved_at(node.operands, 1), depth + 1);
       state.environment.pop_back();
       if (!answer.has_value()) {
         return answer;
@@ -138,7 +139,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       return frame.getResult();
     }
     case NodeKind::Case: {
-      Expected<mlir::Value> const scrutinee = emit_node(state, node.operands[0], depth + 1);
+      Expected<mlir::Value> const scrutinee = emit_node(state, proved_at(node.operands, 0), depth + 1);
       if (!scrutinee.has_value()) {
         return scrutinee;
       }
@@ -147,7 +148,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
         mlir::Region& arm = (arm_index == 0) ? dispatch.getLeftArm() : dispatch.getRightArm();
         mlir::Block* body = builder.createBlock(&arm, arm.end(), { produced }, { location });
         state.environment.push_back(body->getArgument(0));
-        Expected<mlir::Value> const answer = emit_node(state, node.operands[1 + arm_index], depth + 1);
+        Expected<mlir::Value> const answer = emit_node(state, proved_at(node.operands, 1 + arm_index), depth + 1);
         state.environment.pop_back();
         if (!answer.has_value()) {
           return answer;
@@ -158,7 +159,7 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
       return dispatch.getResult();
     }
     case NodeKind::Cut:
-      return emit_node(state, node.operands[0], depth + 1);
+      return emit_node(state, proved_at(node.operands, 0), depth + 1);
   }
   return host_error(ErrorKind::MalformedImage, "image holds a node of no declared kind");
 }

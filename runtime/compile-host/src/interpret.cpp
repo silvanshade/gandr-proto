@@ -1,5 +1,6 @@
 #include "gandr/compile_host/interpret.hpp"
 
+#include "gandr/compile_host/access.hpp"
 #include "gandr/compile_host/emit.hpp"
 #include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/jit.hpp"
@@ -27,7 +28,7 @@ struct Heap
   [[nodiscard]] auto
   allocate(std::size_t count) noexcept -> std::optional<std::int64_t>
   {
-    std::int64_t const cursor = words[HeapLayout::bump_cursor];
+    std::int64_t const cursor = proved_at(words, HeapLayout::bump_cursor);
     if (cursor < 0) {
       return std::nullopt;
     }
@@ -35,7 +36,7 @@ struct Heap
     if (base > words.size() || count > words.size() - base) {
       return std::nullopt;
     }
-    words[HeapLayout::bump_cursor] = cursor + static_cast<std::int64_t>(count);
+    proved_at(words, HeapLayout::bump_cursor) = cursor + static_cast<std::int64_t>(count);
     return cursor;
   }
 
@@ -45,7 +46,7 @@ struct Heap
   {
     auto const index = static_cast<std::size_t>(offset);
     if (index < words.size()) {
-      words[index] = value;
+      proved_at(words, index) = value;
     }
   }
 
@@ -60,7 +61,7 @@ struct Heap
     if (index >= words.size()) {
       return std::nullopt;
     }
-    return words[index];
+    return proved_at(words, index);
   }
 };
 
@@ -97,12 +98,12 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
   if (depth > max_emit_depth) {
     return host_error(ErrorKind::LimitExceeded, "image nests deeper than the host admits");
   }
-  Node const& node = image.nodes[node_index.value];
+  Node const& node = proved_at(image.nodes, node_index.value);
 
   auto const allocate_cell = [&heap](std::size_t words) -> Expected<std::int64_t> {
     std::optional<std::int64_t> const base = heap.allocate(words);
     if (!base.has_value()) {
-      heap.words[HeapLayout::exhaustion_flag] = 1;
+      proved_at(heap.words, HeapLayout::exhaustion_flag) = 1;
       return host_error(ErrorKind::LimitExceeded, "reference run refused an allocation that would not fit its heap");
     }
     return *base;
@@ -122,7 +123,7 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
       if (node.binder >= environment.size()) {
         return host_error(ErrorKind::MalformedImage, "variable names no binder in scope");
       }
-      return environment[environment.size() - 1 - node.binder];
+      return proved_at(environment, environment.size() - 1 - node.binder);
     }
     case NodeKind::Ctor: {
       std::vector<std::int64_t> fields;
@@ -140,12 +141,12 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
       }
       heap.store(*base, static_cast<std::int64_t>(cell_tag_of(node.tag)));
       for (std::size_t field_index = 0; field_index < fields.size(); ++field_index) {
-        heap.store(*base + 1 + static_cast<std::int64_t>(field_index), fields[field_index]);
+        heap.store(*base + 1 + static_cast<std::int64_t>(field_index), proved_at(fields, field_index));
       }
       return *base;
     }
     case NodeKind::Dup: {
-      Expected<std::int64_t> const source = evaluate(image, node.operands[0], environment, heap, depth + 1);
+      Expected<std::int64_t> const source = evaluate(image, proved_at(node.operands, 0), environment, heap, depth + 1);
       if (!source.has_value()) {
         return source;
       }
@@ -156,11 +157,11 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
       heap.store(*base, static_cast<std::int64_t>(CellTag::Pair));
       heap.store(*base + 1, *source);
       heap.store(*base + 2, *source);
-      heap.words[HeapLayout::duplication_ledger] += 1;
+      proved_at(heap.words, HeapLayout::duplication_ledger) += 1;
       return *base;
     }
     case NodeKind::Drop: {
-      Expected<std::int64_t> const source = evaluate(image, node.operands[0], environment, heap, depth + 1);
+      Expected<std::int64_t> const source = evaluate(image, proved_at(node.operands, 0), environment, heap, depth + 1);
       if (!source.has_value()) {
         return source;
       }
@@ -169,21 +170,22 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
         return base;
       }
       heap.store(*base, static_cast<std::int64_t>(CellTag::Unit));
-      heap.words[HeapLayout::discard_ledger] += 1;
+      proved_at(heap.words, HeapLayout::discard_ledger) += 1;
       return *base;
     }
     case NodeKind::Bind: {
-      Expected<std::int64_t> const bound = evaluate(image, node.operands[0], environment, heap, depth + 1);
+      Expected<std::int64_t> const bound = evaluate(image, proved_at(node.operands, 0), environment, heap, depth + 1);
       if (!bound.has_value()) {
         return bound;
       }
       environment.push_back(*bound);
-      Expected<std::int64_t> const body = evaluate(image, node.operands[1], environment, heap, depth + 1);
+      Expected<std::int64_t> const body = evaluate(image, proved_at(node.operands, 1), environment, heap, depth + 1);
       environment.pop_back();
       return body;
     }
     case NodeKind::Case: {
-      Expected<std::int64_t> const scrutinee = evaluate(image, node.operands[0], environment, heap, depth + 1);
+      Expected<std::int64_t> const scrutinee
+        = evaluate(image, proved_at(node.operands, 0), environment, heap, depth + 1);
       if (!scrutinee.has_value()) {
         return scrutinee;
       }
@@ -195,12 +197,12 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
       bool const takes_left = static_cast<CellTag>(*tag) == CellTag::Inl;
       environment.push_back(*payload);
       Expected<std::int64_t> const arm
-        = evaluate(image, node.operands[takes_left ? 1 : 2], environment, heap, depth + 1);
+        = evaluate(image, proved_at(node.operands, takes_left ? 1 : 2), environment, heap, depth + 1);
       environment.pop_back();
       return arm;
     }
     case NodeKind::Cut:
-      return evaluate(image, node.operands[0], environment, heap, depth + 1);
+      return evaluate(image, proved_at(node.operands, 0), environment, heap, depth + 1);
   }
   return host_error(ErrorKind::MalformedImage, "image holds a node of no declared kind");
 }

@@ -12,6 +12,7 @@
 // - panics: none; a failed check is a printed line and an exit status.
 
 #include "gandr/compile_host/abi.h"
+#include "gandr/compile_host/access.hpp"
 #include "gandr/compile_host/emit.hpp"
 #include "gandr/compile_host/image.hpp"
 #include "gandr/compile_host/interpret.hpp"
@@ -214,7 +215,7 @@ case_decoder_is_total_on_seed_corpus()
     for (std::size_t position = 0; position <= bytes.size(); ++position) {
       std::vector<std::uint8_t> mutated = bytes;
       if (position < mutated.size()) {
-        mutated[position] = static_cast<std::uint8_t>(mutated[position] ^ 0xA5U);
+        proved_at(mutated, position) = static_cast<std::uint8_t>(proved_at(mutated, position) ^ 0xA5U);
       }
       examined += 1;
       std::optional<Image> const decoded = decode_image(mutated);
@@ -492,7 +493,7 @@ case_a_refused_run_writes_nothing_past_its_heap()
 
     std::size_t disturbed = 0;
     for (std::size_t index = offered; index < buffer.size(); ++index) {
-      if (buffer[index] != sentinel) {
+      if (proved_at(buffer, index) != sentinel) {
         disturbed += 1;
       }
     }
