@@ -17,8 +17,8 @@ struct Builder
   Image image;
 
   /// Appends a node and returns its index.
-  NodeIndex
-  push(Node node)
+  auto
+  push(Node node) -> NodeIndex
   {
     auto const index = static_cast<std::uint32_t>(image.nodes.size());
     image.nodes.push_back(std::move(node));
@@ -26,36 +26,36 @@ struct Builder
   }
 
   /// Appends an integer literal.
-  NodeIndex
-  literal(std::int64_t value)
+  auto
+  literal(std::int64_t value) -> NodeIndex
   {
     return push(Node{ .kind = NodeKind::Lit, .tag = CtorTag::Unit, .binder = 0, .literal = value, .operands = {} });
   }
 
   /// Appends a reference to the binder `levels_up` scopes out.
-  NodeIndex
-  variable(std::uint32_t levels_up)
+  auto
+  variable(std::uint32_t levels_up) -> NodeIndex
   {
     return push(Node{ .kind = NodeKind::Var, .tag = CtorTag::Unit, .binder = levels_up, .literal = 0, .operands = {} });
   }
 
   /// Appends a constructor introduction.
-  NodeIndex
-  constructor(CtorTag tag, std::vector<NodeIndex> fields)
+  auto
+  constructor(CtorTag tag, std::vector<NodeIndex> fields) -> NodeIndex
   {
     return push(Node{ .kind = NodeKind::Ctor, .tag = tag, .binder = 0, .literal = 0, .operands = std::move(fields) });
   }
 
   /// Appends a duplication.
-  NodeIndex
-  duplicate(NodeIndex source)
+  auto
+  duplicate(NodeIndex source) -> NodeIndex
   {
     return push(Node{ .kind = NodeKind::Dup, .tag = CtorTag::Unit, .binder = 0, .literal = 0, .operands = { source } });
   }
 
   /// Appends a discard.
-  NodeIndex
-  discard(NodeIndex source)
+  auto
+  discard(NodeIndex source) -> NodeIndex
   {
     return push(
       Node{ .kind = NodeKind::Drop, .tag = CtorTag::Unit, .binder = 0, .literal = 0, .operands = { source } }
@@ -63,8 +63,8 @@ struct Builder
   }
 
   /// Appends a binder frame.
-  NodeIndex
-  bind(NodeIndex bound, NodeIndex body)
+  auto
+  bind(NodeIndex bound, NodeIndex body) -> NodeIndex
   {
     return push(
       Node{
@@ -78,8 +78,8 @@ struct Builder
   }
 
   /// Appends a dispatch.
-  NodeIndex
-  dispatch(NodeIndex scrutinee, NodeIndex left, NodeIndex right)
+  auto
+  dispatch(NodeIndex scrutinee, NodeIndex left, NodeIndex right) -> NodeIndex
   {
     return push(
       Node{
@@ -93,8 +93,8 @@ struct Builder
   }
 
   /// Closes the image with the terminal cut.
-  Image
-  finish(NodeIndex produced)
+  auto
+  finish(NodeIndex produced) -> Image
   {
     image.root
       = push(Node{ .kind = NodeKind::Cut, .tag = CtorTag::Unit, .binder = 0, .literal = 0, .operands = { produced } });
@@ -113,8 +113,8 @@ struct Generator
   std::uint64_t state = 0;
 
   /// Draws the next raw word.
-  [[nodiscard]] std::uint64_t
-  next() noexcept
+  [[nodiscard]] auto
+  next() noexcept -> std::uint64_t
   {
     state += 0x9E37'79B9'7F4A'7C15ULL;
     std::uint64_t mixed = state;
@@ -124,8 +124,8 @@ struct Generator
   }
 
   /// Draws a value below `bound`.
-  [[nodiscard]] std::uint32_t
-  below(std::uint32_t bound) noexcept
+  [[nodiscard]] auto
+  below(std::uint32_t bound) noexcept -> std::uint32_t
   {
     if (bound == 0) {
       return 0;
@@ -142,14 +142,14 @@ constexpr std::size_t generated_node_budget = 96;
 /// The generator is total and its recursion is bounded twice over: by
 /// `depth`, which never exceeds `max_generated_depth`, and by `budget`, which
 /// strictly decreases at every constructor.
-[[nodiscard]] NodeIndex
+[[nodiscard]] auto
 generate_expression(
   Builder& builder,
   Generator& generator,
   std::uint32_t depth,
   std::uint32_t scope,
   std::size_t& budget
-);
+) -> NodeIndex;
 
 /// Generates an expression that certainly evaluates to a sum injection.
 ///
@@ -157,28 +157,28 @@ generate_expression(
 /// would make dispatching on a non-injection mean anything. The generator
 /// therefore only builds dispatches whose scrutinee is syntactically an
 /// injection; the limitation is the slice's, not the generator's.
-[[nodiscard]] NodeIndex
+[[nodiscard]] auto
 generate_injection(
   Builder& builder,
   Generator& generator,
   std::uint32_t depth,
   std::uint32_t scope,
   std::size_t& budget
-)
+) -> NodeIndex
 {
   CtorTag const tag = (generator.below(2) == 0) ? CtorTag::Inl : CtorTag::Inr;
   NodeIndex const payload = generate_expression(builder, generator, depth, scope, budget);
   return builder.constructor(tag, { payload });
 }
 
-NodeIndex
+auto
 generate_expression(
   Builder& builder,
   Generator& generator,
   std::uint32_t depth,
   std::uint32_t scope,
   std::size_t& budget
-)
+) -> NodeIndex
 {
   bool const at_leaf = depth == 0 || budget < 8;
   if (budget > 0) {
@@ -229,8 +229,8 @@ generate_expression(
 
 } // namespace
 
-std::vector<Sample>
-canonical_samples()
+auto
+canonical_samples() -> std::vector<Sample>
 {
   std::vector<Sample> samples;
 
@@ -289,8 +289,8 @@ canonical_samples()
   return samples;
 }
 
-Sample
-accounted_work_sample()
+auto
+accounted_work_sample() -> Sample
 {
   Builder builder;
   NodeIndex const four = builder.literal(4);
@@ -303,8 +303,8 @@ accounted_work_sample()
   return Sample{ .name = "accounted-work", .image = builder.finish(outer) };
 }
 
-Image
-generate_image(std::uint64_t seed)
+auto
+generate_image(std::uint64_t seed) -> Image
 {
   Builder builder;
   Generator generator{ .state = seed };

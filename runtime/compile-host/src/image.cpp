@@ -13,8 +13,8 @@ namespace {
 /// - ensures: total; returns the fixed count for every kind but `Ctor`, whose
 ///   count is `ctor_arity` of its tag and is reported as absent here.
 /// - panics: none.
-[[nodiscard]] std::optional<std::size_t>
-fixed_operand_count(NodeKind kind) noexcept
+[[nodiscard]] auto
+fixed_operand_count(NodeKind kind) noexcept -> std::optional<std::size_t>
 {
   switch (kind) {
     case NodeKind::Lit:
@@ -36,8 +36,8 @@ fixed_operand_count(NodeKind kind) noexcept
 
 } // namespace
 
-std::uint32_t
-operand_binder_offset(NodeKind kind, std::size_t slot) noexcept
+auto
+operand_binder_offset(NodeKind kind, std::size_t slot) noexcept -> std::uint32_t
 {
   switch (kind) {
     case NodeKind::Bind:
@@ -55,8 +55,8 @@ operand_binder_offset(NodeKind kind, std::size_t slot) noexcept
   return 0U;
 }
 
-bool
-image_is_wellformed(Image const& image) noexcept
+auto
+image_is_wellformed(Image const& image) noexcept -> bool
 {
   if (image.nodes.empty() || image.nodes.size() > max_image_nodes) {
     return false;

@@ -32,8 +32,8 @@ struct NodeIndex
   /// The zero-based position in `Image::nodes`.
   std::uint32_t value = 0;
 
-  friend constexpr bool
-  operator==(NodeIndex, NodeIndex) = default;
+  friend constexpr auto
+  operator==(NodeIndex, NodeIndex) -> bool = default;
 };
 
 /// The positive-core node kinds.
@@ -87,8 +87,8 @@ enum class CtorTag : std::uint8_t
 /// - provides: the arity the operation verifier compares an emitted
 ///   constructor's operand count against.
 /// - panics: none.
-[[nodiscard]] constexpr std::uint32_t
-ctor_arity(CtorTag tag) noexcept
+[[nodiscard]] constexpr auto
+ctor_arity(CtorTag tag) noexcept -> std::uint32_t
 {
   switch (tag) {
     case CtorTag::Unit:
@@ -108,8 +108,8 @@ ctor_arity(CtorTag tag) noexcept
 /// - ensures: total, and the spelling matches the canonical value rendering
 ///   the agreement fixture uses.
 /// - panics: none.
-[[nodiscard]] constexpr std::string_view
-ctor_tag_name(CtorTag tag) noexcept
+[[nodiscard]] constexpr auto
+ctor_tag_name(CtorTag tag) noexcept -> std::string_view
 {
   switch (tag) {
     case CtorTag::Unit:
@@ -179,8 +179,8 @@ struct Image
 /// - fails: returns false; it never reports which clause failed, because the
 ///   only consumers are a boolean gate.
 /// - panics: none.
-[[nodiscard]] bool
-image_is_wellformed(Image const& image) noexcept;
+[[nodiscard]] auto
+image_is_wellformed(Image const& image) noexcept -> bool;
 
 /// The number of binders a node's operand at `slot` is evaluated under,
 /// relative to the node's own scope depth.
@@ -189,8 +189,8 @@ image_is_wellformed(Image const& image) noexcept;
 /// - ensures: total; returns one for a `Bind` body and for each `Case` arm
 ///   body, and zero everywhere else.
 /// - panics: none.
-[[nodiscard]] std::uint32_t
-operand_binder_offset(NodeKind kind, std::size_t slot) noexcept;
+[[nodiscard]] auto
+operand_binder_offset(NodeKind kind, std::size_t slot) noexcept -> std::uint32_t;
 
 /// Decodes a byte string into a program image.
 ///
@@ -204,8 +204,8 @@ operand_binder_offset(NodeKind kind, std::size_t slot) noexcept;
 /// - fails: returns `std::nullopt` for truncated, over-large, or structurally
 ///   invalid input.
 /// - panics: none.
-[[nodiscard]] std::optional<Image>
-decode_image(std::span<std::uint8_t const> bytes);
+[[nodiscard]] auto
+decode_image(std::span<std::uint8_t const> bytes) -> std::optional<Image>;
 
 /// Encodes a program image into the byte form `decode_image` accepts.
 ///
@@ -214,8 +214,8 @@ decode_image(std::span<std::uint8_t const> bytes);
 /// - ensures: `decode_image(encode_image(i))` yields an image equal to `i`.
 /// - provides: the fuzz corpus seeds, written from the canonical samples.
 /// - panics: none.
-[[nodiscard]] std::vector<std::uint8_t>
-encode_image(Image const& image);
+[[nodiscard]] auto
+encode_image(Image const& image) -> std::vector<std::uint8_t>;
 
 /// The largest node count the decoder admits.
 ///

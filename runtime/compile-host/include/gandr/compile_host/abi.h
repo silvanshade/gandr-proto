@@ -73,6 +73,12 @@ extern "C"
     char const* text;
   } GandrCompileHostOutcome;
 
+  /* A trailing return type is C++ syntax and this header is compiled as C by
+   * every foreign caller, so the four entry declarations below keep the
+   * leading form. The suppression ends with the extern "C" block.
+   */
+  /* NOLINTBEGIN(modernize-use-trailing-return-type) */
+
   /* The version of this boundary, as the built library implements it. */
   uint32_t
   gandr_compile_host_abi_version(void);
@@ -136,6 +142,8 @@ extern "C"
    */
   void
   gandr_compile_host_outcome_release(GandrCompileHostOutcome* outcome);
+
+  /* NOLINTEND(modernize-use-trailing-return-type) */
 
 #ifdef __cplusplus
 } /* extern "C" */

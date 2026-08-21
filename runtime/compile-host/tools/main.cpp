@@ -59,8 +59,8 @@ print_error(std::string_view name, HostError const& error)
 }
 
 /// Every program the host names, in a stable order.
-[[nodiscard]] std::vector<Sample>
-all_samples()
+[[nodiscard]] auto
+all_samples() -> std::vector<Sample>
 {
   std::vector<Sample> samples = canonical_samples();
   samples.push_back(accounted_work_sample());
@@ -68,8 +68,8 @@ all_samples()
 }
 
 /// Runs every named program through the compiled path.
-[[nodiscard]] int
-run_samples()
+[[nodiscard]] auto
+run_samples() -> int
 {
   int status = EXIT_SUCCESS;
   for (Sample const& sample : all_samples()) {
@@ -85,8 +85,8 @@ run_samples()
 }
 
 /// Runs every named program through the reference interpreter.
-[[nodiscard]] int
-interpret_samples()
+[[nodiscard]] auto
+interpret_samples() -> int
 {
   int status = EXIT_SUCCESS;
   for (Sample const& sample : all_samples()) {
@@ -102,8 +102,8 @@ interpret_samples()
 }
 
 /// Reports the compile and execute cost of every named program.
-[[nodiscard]] int
-report_timings()
+[[nodiscard]] auto
+report_timings() -> int
 {
   int status = EXIT_SUCCESS;
   for (Sample const& sample : all_samples()) {
@@ -125,8 +125,8 @@ report_timings()
 }
 
 /// Prints a named program's module at a chosen stage.
-[[nodiscard]] int
-dump_module(std::string_view name, bool lowered)
+[[nodiscard]] auto
+dump_module(std::string_view name, bool lowered) -> int
 {
   for (Sample const& sample : all_samples()) {
     if (sample.name != name) {
@@ -160,8 +160,8 @@ dump_module(std::string_view name, bool lowered)
 }
 
 /// Writes the encoded form of every named program into a directory.
-[[nodiscard]] int
-write_seeds(std::string_view directory)
+[[nodiscard]] auto
+write_seeds(std::string_view directory) -> int
 {
   std::error_code creation;
   std::filesystem::create_directories(std::filesystem::path(directory), creation);
@@ -200,8 +200,8 @@ print_usage()
 
 } // namespace
 
-int
-main(int argc, char** argv)
+auto
+main(int argc, char** argv) -> int
 {
   std::vector<std::string_view> const arguments(argv + 1, argv + argc);
   if (arguments.empty()) {

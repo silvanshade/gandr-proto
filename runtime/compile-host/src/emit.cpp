@@ -25,16 +25,16 @@ namespace gandr::compile_host {
 namespace {
 
 /// The dialect value type every producer in an emitted module carries.
-[[nodiscard]] mlir::Type
-value_type(mlir::MLIRContext& context)
+[[nodiscard]] auto
+value_type(mlir::MLIRContext& context) -> mlir::Type
 {
   return dialect::ValueType::get(&context);
 }
 
 /// The emitted entry point's signature: the caller's heap in, the produced
 /// value's heap offset out.
-[[nodiscard]] mlir::FunctionType
-entry_signature(mlir::MLIRContext& context)
+[[nodiscard]] auto
+entry_signature(mlir::MLIRContext& context) -> mlir::FunctionType
 {
   mlir::Builder builder(&context);
   mlir::Type const heap = mlir::MemRefType::get({ mlir::ShapedType::kDynamic }, builder.getI64Type());
@@ -58,8 +58,8 @@ struct EmitState
 /// The recursion is bounded by `max_emit_depth`, checked on entry: the emitter
 /// runs on generated and decoded images, so the bound is what makes it total
 /// rather than merely careful.
-[[nodiscard]] Expected<mlir::Value>
-emit_node(EmitState& state, NodeIndex node_index, std::size_t depth)
+[[nodiscard]] auto
+emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected<mlir::Value>
 {
   if (depth > max_emit_depth) {
     return host_error(ErrorKind::LimitExceeded, "image nests deeper than the host admits");
@@ -155,8 +155,8 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth)
 
 } // namespace
 
-std::unique_ptr<mlir::MLIRContext>
-make_context()
+auto
+make_context() -> std::unique_ptr<mlir::MLIRContext>
 {
   mlir::DialectRegistry registry;
   registry.insert<
@@ -185,8 +185,8 @@ make_context()
   return context;
 }
 
-Expected<mlir::OwningOpRef<mlir::ModuleOp>>
-emit_module(mlir::MLIRContext& context, Image const& image)
+auto
+emit_module(mlir::MLIRContext& context, Image const& image) -> Expected<mlir::OwningOpRef<mlir::ModuleOp>>
 {
   if (!image_is_wellformed(image)) {
     return host_error(ErrorKind::MalformedImage, "image failed the structural check");
@@ -212,8 +212,8 @@ emit_module(mlir::MLIRContext& context, Image const& image)
   return module;
 }
 
-mlir::OwningOpRef<mlir::ModuleOp>
-emit_malformed_arity_module(mlir::MLIRContext& context)
+auto
+emit_malformed_arity_module(mlir::MLIRContext& context) -> mlir::OwningOpRef<mlir::ModuleOp>
 {
   mlir::OpBuilder builder(&context);
   mlir::Location const location = builder.getUnknownLoc();
@@ -241,8 +241,8 @@ emit_malformed_arity_module(mlir::MLIRContext& context)
   return module;
 }
 
-mlir::OwningOpRef<mlir::ModuleOp>
-emit_accounted_work_witness_module(mlir::MLIRContext& context)
+auto
+emit_accounted_work_witness_module(mlir::MLIRContext& context) -> mlir::OwningOpRef<mlir::ModuleOp>
 {
   mlir::OpBuilder builder(&context);
   mlir::Location const location = builder.getUnknownLoc();
@@ -264,12 +264,12 @@ emit_accounted_work_witness_module(mlir::MLIRContext& context)
   return module;
 }
 
-std::size_t
-count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic)
+auto
+count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic) -> std::size_t
 {
   std::size_t total = 0;
   std::string const qualified = std::string("gandr.") + std::string(mnemonic);
-  module->walk([&total, &qualified](mlir::Operation* op) {
+  module->walk([&total, &qualified](mlir::Operation* op) -> void {
     if (op->getName().getStringRef() == qualified) {
       total += 1;
     }

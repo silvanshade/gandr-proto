@@ -78,8 +78,8 @@ struct WorkLedger
   /// How many discards executed.
   std::int64_t discards = 0;
 
-  friend constexpr bool
-  operator==(WorkLedger const&, WorkLedger const&) = default;
+  friend constexpr auto
+  operator==(WorkLedger const&, WorkLedger const&) -> bool = default;
 };
 
 /// Initializes a heap's reserved prefix for a fresh run.
@@ -99,8 +99,8 @@ reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - requires: `heap.size()` is at least `HeapLayout::arena_base`.
 /// - ensures: returns the two ledger words as executed counts.
 /// - panics: none.
-[[nodiscard]] WorkLedger
-read_ledger(std::span<std::int64_t const> heap) noexcept;
+[[nodiscard]] auto
+read_ledger(std::span<std::int64_t const> heap) noexcept -> WorkLedger;
 
 /// Whether a run stopped at an allocation that would not fit.
 ///
@@ -112,8 +112,8 @@ read_ledger(std::span<std::int64_t const> heap) noexcept;
 /// - provides: the one channel the compiled entry point has for reporting a
 ///   refusal, since its signature returns a single machine word.
 /// - panics: none.
-[[nodiscard]] bool
-heap_was_exhausted(std::span<std::int64_t const> heap) noexcept;
+[[nodiscard]] auto
+heap_was_exhausted(std::span<std::int64_t const> heap) noexcept -> bool;
 
 /// The number of arena words a run consumed, above the reserved prefix.
 ///
@@ -124,8 +124,8 @@ heap_was_exhausted(std::span<std::int64_t const> heap) noexcept;
 /// - provides: the measurement the exact-heap witnesses size their heaps by,
 ///   rather than trusting the static bound.
 /// - panics: none.
-[[nodiscard]] std::size_t
-allocated_words(std::span<std::int64_t const> heap) noexcept;
+[[nodiscard]] auto
+allocated_words(std::span<std::int64_t const> heap) noexcept -> std::size_t;
 
 /// Renders a heap value in the canonical form the agreement fixture uses.
 ///
@@ -141,8 +141,8 @@ allocated_words(std::span<std::int64_t const> heap) noexcept;
 /// - fails: returns `std::nullopt` when a cell is out of range, carries an
 ///   unknown tag, or nests deeper than `max_render_depth`.
 /// - panics: none.
-[[nodiscard]] std::optional<std::string>
-render_value(std::span<std::int64_t const> heap, std::int64_t root);
+[[nodiscard]] auto
+render_value(std::span<std::int64_t const> heap, std::int64_t root) -> std::optional<std::string>;
 
 /// The deepest value nesting the renderer walks before reporting failure.
 ///
@@ -172,8 +172,8 @@ inline constexpr std::size_t heap_headroom_words = 16;
 ///   interpreter use by default, so a heap difference can never be mistaken
 ///   for a disagreement between them.
 /// - panics: none.
-[[nodiscard]] std::size_t
-heap_words_for(Image const& image) noexcept;
+[[nodiscard]] auto
+heap_words_for(Image const& image) noexcept -> std::size_t;
 
 /// The number of heap words a node of the given kind allocates when it runs.
 ///
@@ -181,8 +181,8 @@ heap_words_for(Image const& image) noexcept;
 /// - ensures: total; the sum over an image's nodes bounds a run's allocation,
 ///   which is how the host sizes a heap for a generated program.
 /// - panics: none.
-[[nodiscard]] std::size_t
-node_allocation_words(NodeKind kind, CtorTag tag) noexcept;
+[[nodiscard]] auto
+node_allocation_words(NodeKind kind, CtorTag tag) noexcept -> std::size_t;
 
 } // namespace gandr::compile_host
 

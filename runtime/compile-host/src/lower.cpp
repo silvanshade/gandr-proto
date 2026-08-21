@@ -41,8 +41,8 @@ struct LowerState
 };
 
 /// Converts a machine-word offset into the index type memory operations take.
-[[nodiscard]] mlir::Value
-word_index(LowerState& state, mlir::Value offset)
+[[nodiscard]] auto
+word_index(LowerState& state, mlir::Value offset) -> mlir::Value
 {
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
@@ -50,8 +50,8 @@ word_index(LowerState& state, mlir::Value offset)
 }
 
 /// Materializes a machine-word constant.
-[[nodiscard]] mlir::Value
-word_constant(LowerState& state, std::int64_t value)
+[[nodiscard]] auto
+word_constant(LowerState& state, std::int64_t value) -> mlir::Value
 {
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
@@ -60,8 +60,8 @@ word_constant(LowerState& state, std::int64_t value)
 }
 
 /// Loads the heap word at `base + offset`.
-[[nodiscard]] mlir::Value
-load_word(LowerState& state, mlir::Value base, std::int64_t offset)
+[[nodiscard]] auto
+load_word(LowerState& state, mlir::Value base, std::int64_t offset) -> mlir::Value
 {
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
@@ -92,8 +92,8 @@ store_word(LowerState& state, mlir::Value base, std::int64_t offset, mlir::Value
 /// compiled code learns its own bound from its argument rather than from a
 /// number the host baked in at compile time. A heap sized by one caller and a
 /// program compiled for another therefore still checks correctly.
-[[nodiscard]] mlir::Value
-heap_word_count(LowerState& state)
+[[nodiscard]] auto
+heap_word_count(LowerState& state) -> mlir::Value
 {
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
@@ -109,8 +109,8 @@ heap_word_count(LowerState& state)
 /// distinguished from an answer in the return value alone, and a caller that
 /// read the word without reading the flag would read a heap offset that was
 /// never allocated.
-[[nodiscard]] mlir::Block*
-refusal_block(LowerState& state)
+[[nodiscard]] auto
+refusal_block(LowerState& state) -> mlir::Block*
 {
   if (state.refusal != nullptr) {
     return state.refusal;
@@ -142,8 +142,8 @@ refusal_block(LowerState& state)
 /// the function's refusal block; the reference interpreter refuses at the same
 /// point, which is what makes the short-heap differential a comparison rather
 /// than two independent conventions.
-[[nodiscard]] mlir::Value
-allocate_cell(LowerState& state, std::int64_t words)
+[[nodiscard]] auto
+allocate_cell(LowerState& state, std::int64_t words) -> mlir::Value
 {
   mlir::OpBuilder& builder = state.builder;
   mlir::Location const location = builder.getUnknownLoc();
@@ -186,8 +186,8 @@ record_work(LowerState& state, std::size_t ledger_word)
 }
 
 /// The cell tag a constructor tag builds.
-[[nodiscard]] std::int64_t
-cell_tag_word(CtorTag tag) noexcept
+[[nodiscard]] auto
+cell_tag_word(CtorTag tag) noexcept -> std::int64_t
 {
   switch (tag) {
     case CtorTag::Unit:
@@ -202,15 +202,15 @@ cell_tag_word(CtorTag tag) noexcept
   return static_cast<std::int64_t>(CellTag::Unit);
 }
 
-[[nodiscard]] Expected<mlir::Value>
-lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std::size_t depth);
+[[nodiscard]] auto
+lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std::size_t depth) -> Expected<mlir::Value>;
 
 /// Lowers the operations of one dialect block, in order.
 ///
 /// Returns the machine word the block's terminator produces: the yielded value
 /// for a consumer region, and the cut's produced value for the entry block.
-[[nodiscard]] Expected<mlir::Value>
-lower_operations(mlir::Block& block, LowerState& state, std::size_t depth)
+[[nodiscard]] auto
+lower_operations(mlir::Block& block, LowerState& state, std::size_t depth) -> Expected<mlir::Value>
 {
   if (depth > max_emit_depth) {
     return host_error(ErrorKind::LimitExceeded, "module nests deeper than the host lowers");
@@ -341,8 +341,8 @@ lower_operations(mlir::Block& block, LowerState& state, std::size_t depth)
   return host_error(ErrorKind::LoweringFailed, "block ends without a yield or a cut");
 }
 
-Expected<mlir::Value>
-lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std::size_t depth)
+auto
+lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std::size_t depth) -> Expected<mlir::Value>
 {
   if (region.empty()) {
     return host_error(ErrorKind::LoweringFailed, "consumer region holds no block");
@@ -357,8 +357,8 @@ lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std:
 
 } // namespace
 
-Expected<void>
-lower_dialect_operations(mlir::ModuleOp module)
+auto
+lower_dialect_operations(mlir::ModuleOp module) -> Expected<void>
 {
   auto staged = module.lookupSymbol<mlir::func::FuncOp>(std::string(entry_point_name));
   if (!staged) {

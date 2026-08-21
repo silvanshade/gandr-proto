@@ -27,6 +27,11 @@ namespace gandr::compile_host::dialect {
 void
 GandrDialect::initialize()
 {
+  // MLIR's own AbstractType::get returns a value holding lambdas built in its
+  // frame, which the static analyser reads as a stack-address escape. The
+  // report names an MLIR header this project cannot edit, and it is reached
+  // only through this one registration call.
+  // NOLINTNEXTLINE(clang-analyzer-core.StackAddressEscape)
   addTypes<
 #define GET_TYPEDEF_LIST
 #include "GandrOpsTypes.cpp.inc"
@@ -37,14 +42,14 @@ GandrDialect::initialize()
     >();
 }
 
-std::uint32_t
-tag_to_attribute(CtorTag tag) noexcept
+auto
+tag_to_attribute(CtorTag tag) noexcept -> std::uint32_t
 {
   return static_cast<std::uint32_t>(static_cast<std::uint8_t>(tag));
 }
 
-std::optional<CtorTag>
-tag_from_attribute(std::uint32_t value) noexcept
+auto
+tag_from_attribute(std::uint32_t value) noexcept -> std::optional<CtorTag>
 {
   switch (value) {
     case 0:
@@ -67,8 +72,8 @@ tag_from_attribute(std::uint32_t value) noexcept
 /// operation builds and only the verifier objects. The check therefore has to
 /// run, which is why the pipeline runs it before anything else touches the
 /// module.
-mlir::LogicalResult
-CtorOp::verify()
+auto
+CtorOp::verify() -> mlir::LogicalResult
 {
   std::optional<CtorTag> const tag = tag_from_attribute(getTag());
   if (!tag.has_value()) {
@@ -91,8 +96,8 @@ CtorOp::verify()
 
 /// Holds a binder frame's region to the one-block, one-binding shape the
 /// lowering assumes.
-mlir::LogicalResult
-BindOp::verify()
+auto
+BindOp::verify() -> mlir::LogicalResult
 {
   mlir::Region& body = getBody();
   if (body.getNumArguments() != 1) {
@@ -110,8 +115,8 @@ BindOp::verify()
 /// Holds a dispatch's two arms to the one-block, one-binding shape the
 /// lowering assumes, and to the yield terminator the lowering reads the arm's
 /// answer from.
-mlir::LogicalResult
-CaseOp::verify()
+auto
+CaseOp::verify() -> mlir::LogicalResult
 {
   for (mlir::Region* arm : { &getLeftArm(), &getRightArm() }) {
     if (arm->getNumArguments() != 1) {

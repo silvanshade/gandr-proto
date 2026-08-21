@@ -26,8 +26,8 @@ struct RenderStep
 };
 
 /// Reads one heap word, refusing an out-of-range offset.
-[[nodiscard]] std::optional<std::int64_t>
-read_word(std::span<std::int64_t const> heap, std::int64_t offset) noexcept
+[[nodiscard]] auto
+read_word(std::span<std::int64_t const> heap, std::int64_t offset) noexcept -> std::optional<std::int64_t>
 {
   if (offset < 0) {
     return std::nullopt;
@@ -53,8 +53,8 @@ reset_heap(std::span<std::int64_t> heap) noexcept
   heap[HeapLayout::exhaustion_flag] = 0;
 }
 
-WorkLedger
-read_ledger(std::span<std::int64_t const> heap) noexcept
+auto
+read_ledger(std::span<std::int64_t const> heap) noexcept -> WorkLedger
 {
   if (heap.size() < HeapLayout::arena_base) {
     return WorkLedger{};
@@ -65,8 +65,8 @@ read_ledger(std::span<std::int64_t const> heap) noexcept
   };
 }
 
-bool
-heap_was_exhausted(std::span<std::int64_t const> heap) noexcept
+auto
+heap_was_exhausted(std::span<std::int64_t const> heap) noexcept -> bool
 {
   if (heap.size() < HeapLayout::arena_base) {
     return true;
@@ -74,8 +74,8 @@ heap_was_exhausted(std::span<std::int64_t const> heap) noexcept
   return heap[HeapLayout::exhaustion_flag] != 0;
 }
 
-std::size_t
-allocated_words(std::span<std::int64_t const> heap) noexcept
+auto
+allocated_words(std::span<std::int64_t const> heap) noexcept -> std::size_t
 {
   if (heap.size() < HeapLayout::arena_base) {
     return 0;
@@ -87,8 +87,8 @@ allocated_words(std::span<std::int64_t const> heap) noexcept
   return static_cast<std::size_t>(cursor) - HeapLayout::arena_base;
 }
 
-std::optional<std::string>
-render_value(std::span<std::int64_t const> heap, std::int64_t root)
+auto
+render_value(std::span<std::int64_t const> heap, std::int64_t root) -> std::optional<std::string>
 {
   std::string rendered;
   std::vector<RenderStep> pending;
@@ -111,10 +111,10 @@ render_value(std::span<std::int64_t const> heap, std::int64_t root)
       return std::nullopt;
     }
 
-    auto const push_text = [&pending](std::string text) {
+    auto const push_text = [&pending](std::string text) -> void {
       pending.push_back(RenderStep{ .is_cell = false, .cell = 0, .depth = 0, .text = std::move(text) });
     };
-    auto const push_cell = [&pending, &step](std::int64_t offset) {
+    auto const push_cell = [&pending, &step](std::int64_t offset) -> void {
       pending.push_back(RenderStep{ .is_cell = true, .cell = offset, .depth = step.depth + 1, .text = {} });
     };
 
@@ -165,8 +165,8 @@ render_value(std::span<std::int64_t const> heap, std::int64_t root)
   return rendered;
 }
 
-std::size_t
-heap_words_for(Image const& image) noexcept
+auto
+heap_words_for(Image const& image) noexcept -> std::size_t
 {
   std::size_t words = HeapLayout::arena_base;
   for (Node const& node : image.nodes) {
@@ -175,8 +175,8 @@ heap_words_for(Image const& image) noexcept
   return words + heap_headroom_words;
 }
 
-std::size_t
-node_allocation_words(NodeKind kind, CtorTag tag) noexcept
+auto
+node_allocation_words(NodeKind kind, CtorTag tag) noexcept -> std::size_t
 {
   switch (kind) {
     case NodeKind::Lit:

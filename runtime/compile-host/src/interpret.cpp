@@ -18,8 +18,8 @@ struct Heap
   std::vector<std::int64_t> words;
 
   /// Allocates `count` words and returns the base offset.
-  [[nodiscard]] std::optional<std::int64_t>
-  allocate(std::size_t count) noexcept
+  [[nodiscard]] auto
+  allocate(std::size_t count) noexcept -> std::optional<std::int64_t>
   {
     std::int64_t const cursor = words[HeapLayout::bump_cursor];
     if (cursor < 0) {
@@ -44,8 +44,8 @@ struct Heap
   }
 
   /// Reads one word.
-  [[nodiscard]] std::optional<std::int64_t>
-  load(std::int64_t offset) const noexcept
+  [[nodiscard]] auto
+  load(std::int64_t offset) const noexcept -> std::optional<std::int64_t>
   {
     if (offset < 0) {
       return std::nullopt;
@@ -62,8 +62,8 @@ struct Heap
 using Environment = std::vector<std::int64_t>;
 
 /// The cell tag a constructor tag builds.
-[[nodiscard]] CellTag
-cell_tag_of(CtorTag tag) noexcept
+[[nodiscard]] auto
+cell_tag_of(CtorTag tag) noexcept -> CellTag
 {
   switch (tag) {
     case CtorTag::Unit:
@@ -84,8 +84,9 @@ cell_tag_of(CtorTag tag) noexcept
 /// `max_emit_depth`, which the caller enforces before the walk begins and this
 /// function rechecks on every descent — the interpreter runs on generated and
 /// fuzzed images, so the bound is load-bearing rather than defensive.
-[[nodiscard]] Expected<std::int64_t>
+[[nodiscard]] auto
 evaluate(Image const& image, NodeIndex node_index, Environment& environment, Heap& heap, std::size_t depth)
+  -> Expected<std::int64_t>
 {
   if (depth > max_emit_depth) {
     return host_error(ErrorKind::LimitExceeded, "image nests deeper than the host admits");
@@ -200,14 +201,14 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
 
 } // namespace
 
-Expected<RunOutcome>
-interpret_image(Image const& image)
+auto
+interpret_image(Image const& image) -> Expected<RunOutcome>
 {
   return interpret_image_with_heap(image, heap_words_for(image));
 }
 
-Expected<RunOutcome>
-interpret_image_with_heap(Image const& image, std::size_t heap_words)
+auto
+interpret_image_with_heap(Image const& image, std::size_t heap_words) -> Expected<RunOutcome>
 {
   if (!image_is_wellformed(image)) {
     return host_error(ErrorKind::MalformedImage, "image failed the structural check");

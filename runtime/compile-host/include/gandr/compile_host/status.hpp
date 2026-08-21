@@ -63,8 +63,8 @@ using Expected = std::expected<T, HostError>;
 /// - ensures: the returned value is an `std::unexpected` carrying `kind` and
 ///   `detail`.
 /// - panics: none.
-[[nodiscard]] inline std::unexpected<HostError>
-host_error(ErrorKind kind, std::string detail)
+[[nodiscard]] inline auto
+host_error(ErrorKind kind, std::string detail) -> std::unexpected<HostError>
 {
   return std::unexpected(HostError{ kind, std::move(detail) });
 }
@@ -75,8 +75,8 @@ host_error(ErrorKind kind, std::string detail)
 /// - ensures: total, and the spellings are the ones the CLI prints, so a
 ///   caller can match on them.
 /// - panics: none.
-[[nodiscard]] constexpr std::string_view
-error_kind_name(ErrorKind kind) noexcept
+[[nodiscard]] constexpr auto
+error_kind_name(ErrorKind kind) noexcept -> std::string_view
 {
   switch (kind) {
     case ErrorKind::MalformedImage:

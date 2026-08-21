@@ -52,8 +52,8 @@ namespace gandr::compile_host::dialect {
 /// - ensures: injective on `CtorTag`, and `tag_from_attribute` inverts it on
 ///   the image of this function.
 /// - panics: none.
-[[nodiscard]] std::uint32_t
-tag_to_attribute(CtorTag tag) noexcept;
+[[nodiscard]] auto
+tag_to_attribute(CtorTag tag) noexcept -> std::uint32_t;
 
 /// Recovers a constructor tag from the `gandr.ctor` attribute value.
 ///
@@ -62,8 +62,8 @@ tag_to_attribute(CtorTag tag) noexcept;
 /// - fails: returns `std::nullopt` for a value naming no declared tag, which
 ///   is what lets the verifier reject an invented tag rather than trusting it.
 /// - panics: none.
-[[nodiscard]] std::optional<CtorTag>
-tag_from_attribute(std::uint32_t value) noexcept;
+[[nodiscard]] auto
+tag_from_attribute(std::uint32_t value) noexcept -> std::optional<CtorTag>;
 
 } // namespace gandr::compile_host::dialect
 

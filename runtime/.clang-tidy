@@ -12,8 +12,8 @@ ImplementationFileExtensions:
   - cc
   - cpp
   - cxx
-HeaderFilterRegex: '.*'
-ExcludeHeaderFilterRegex: ''
+HeaderFilterRegex: '.*/runtime/.*'
+ExcludeHeaderFilterRegex: '.*\.inc$'
 FormatStyle:     none
 User:            silvanshade
 CheckOptions:

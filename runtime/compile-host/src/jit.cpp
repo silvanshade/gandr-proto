@@ -29,7 +29,7 @@ namespace {
 void
 ensure_native_target()
 {
-  static bool const initialized = [] {
+  static bool const initialized = [] -> bool {
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     return true;
@@ -39,15 +39,15 @@ ensure_native_target()
 
 } // namespace
 
-Expected<RunOutcome>
-run_lowered_module(mlir::ModuleOp module, std::size_t heap_words)
+auto
+run_lowered_module(mlir::ModuleOp module, std::size_t heap_words) -> Expected<RunOutcome>
 {
   std::vector<std::int64_t> heap(heap_words, 0);
   return run_lowered_module_on(module, heap);
 }
 
-Expected<RunOutcome>
-run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap)
+auto
+run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap) -> Expected<RunOutcome>
 {
   // The wall reaches execution as well as the passes: this entry is public,
   // so a caller could otherwise assemble the stages in an order that skips
@@ -117,8 +117,8 @@ run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap)
   };
 }
 
-Expected<RunOutcome>
-compile_and_run(Image const& image)
+auto
+compile_and_run(Image const& image) -> Expected<RunOutcome>
 {
   Expected<std::pair<RunOutcome, RunTiming>> const timed = compile_and_run_timed(image);
   if (!timed.has_value()) {
@@ -127,8 +127,8 @@ compile_and_run(Image const& image)
   return timed->first;
 }
 
-Expected<RunOutcome>
-compile_and_run_with_heap(Image const& image, std::size_t heap_words)
+auto
+compile_and_run_with_heap(Image const& image, std::size_t heap_words) -> Expected<RunOutcome>
 {
   std::unique_ptr<mlir::MLIRContext> const context = make_context();
   Expected<mlir::OwningOpRef<mlir::ModuleOp>> module = emit_module(*context, image);
@@ -142,8 +142,8 @@ compile_and_run_with_heap(Image const& image, std::size_t heap_words)
   return run_lowered_module(module->get(), heap_words);
 }
 
-Expected<std::pair<RunOutcome, RunTiming>>
-compile_and_run_timed(Image const& image)
+auto
+compile_and_run_timed(Image const& image) -> Expected<std::pair<RunOutcome, RunTiming>>
 {
   using Clock = std::chrono::steady_clock;
 

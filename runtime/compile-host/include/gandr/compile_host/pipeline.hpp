@@ -46,8 +46,8 @@ enum class Optimization : std::uint8_t
 /// - fails: `ErrorKind::VerifierRejected`, carrying the diagnostics the
 ///   verifier emitted.
 /// - panics: none.
-[[nodiscard]] Expected<void>
-verify_module(mlir::ModuleOp module);
+[[nodiscard]] auto
+verify_module(mlir::ModuleOp module) -> Expected<void>;
 
 /// Runs the optimization passes over a verified dialect module.
 ///
@@ -58,8 +58,8 @@ verify_module(mlir::ModuleOp module);
 /// - fails: `ErrorKind::VerifierRejected` before the passes;
 ///   `ErrorKind::ConversionFailed` if a pass fails.
 /// - panics: none.
-[[nodiscard]] Expected<void>
-optimize_module(mlir::ModuleOp module, Optimization optimization);
+[[nodiscard]] auto
+optimize_module(mlir::ModuleOp module, Optimization optimization) -> Expected<void>;
 
 /// Lowers a verified dialect module to the LLVM dialect.
 ///
@@ -74,8 +74,8 @@ optimize_module(mlir::ModuleOp module, Optimization optimization);
 /// - fails: `ErrorKind::VerifierRejected`, `ErrorKind::LoweringFailed`, or
 ///   `ErrorKind::ConversionFailed`, at whichever stage rejected.
 /// - panics: none.
-[[nodiscard]] Expected<void>
-lower_module(mlir::ModuleOp module, Optimization optimization);
+[[nodiscard]] auto
+lower_module(mlir::ModuleOp module, Optimization optimization) -> Expected<void>;
 
 /// Replaces every gandr operation in a module with its lowering.
 ///
@@ -89,8 +89,8 @@ lower_module(mlir::ModuleOp module, Optimization optimization);
 /// - fails: `ErrorKind::LoweringFailed` for an operation with no lowering, or
 ///   `ErrorKind::LimitExceeded` past `max_emit_depth` of consumer nesting.
 /// - panics: none.
-[[nodiscard]] Expected<void>
-lower_dialect_operations(mlir::ModuleOp module);
+[[nodiscard]] auto
+lower_dialect_operations(mlir::ModuleOp module) -> Expected<void>;
 
 } // namespace gandr::compile_host
 

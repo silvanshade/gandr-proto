@@ -35,8 +35,8 @@ namespace gandr::compile_host {
 ///   `ErrorKind::LimitExceeded` past `max_emit_depth` or when an allocation
 ///   would not fit the heap.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-interpret_image(Image const& image);
+[[nodiscard]] auto
+interpret_image(Image const& image) -> Expected<RunOutcome>;
 
 /// Evaluates a program image directly on a heap of the caller's size.
 ///
@@ -51,8 +51,8 @@ interpret_image(Image const& image);
 ///   against a rule stated once.
 /// - fails: as `interpret_image`, `ErrorKind::LimitExceeded` included.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-interpret_image_with_heap(Image const& image, std::size_t heap_words);
+[[nodiscard]] auto
+interpret_image_with_heap(Image const& image, std::size_t heap_words) -> Expected<RunOutcome>;
 
 } // namespace gandr::compile_host
 

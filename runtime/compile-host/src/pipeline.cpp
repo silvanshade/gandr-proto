@@ -25,7 +25,7 @@ public:
   explicit DiagnosticCollector(mlir::MLIRContext& context)
     : context_(context)
   {
-    handler_id_ = context_.getDiagEngine().registerHandler([this](mlir::Diagnostic& diagnostic) {
+    handler_id_ = context_.getDiagEngine().registerHandler([this](mlir::Diagnostic& diagnostic) -> mlir::LogicalResult {
       if (!collected_.empty()) {
         collected_ += "; ";
       }
@@ -36,16 +36,16 @@ public:
 
   DiagnosticCollector(DiagnosticCollector const&) = delete;
   DiagnosticCollector(DiagnosticCollector&&) = delete;
-  DiagnosticCollector&
-  operator=(DiagnosticCollector const&) = delete;
-  DiagnosticCollector&
-  operator=(DiagnosticCollector&&) = delete;
+  auto
+  operator=(DiagnosticCollector const&) -> DiagnosticCollector& = delete;
+  auto
+  operator=(DiagnosticCollector&&) -> DiagnosticCollector& = delete;
 
   ~DiagnosticCollector() { context_.getDiagEngine().eraseHandler(handler_id_); }
 
   /// What was collected, joined.
-  [[nodiscard]] std::string const&
-  collected() const noexcept
+  [[nodiscard]] auto
+  collected() const noexcept -> std::string const&
   {
     return collected_;
   }
@@ -61,8 +61,8 @@ private:
 
 } // namespace
 
-Expected<void>
-verify_module(mlir::ModuleOp module)
+auto
+verify_module(mlir::ModuleOp module) -> Expected<void>
 {
   DiagnosticCollector collector(*module.getContext());
   if (mlir::failed(mlir::verify(module))) {
@@ -74,8 +74,8 @@ verify_module(mlir::ModuleOp module)
   return Expected<void>{};
 }
 
-Expected<void>
-optimize_module(mlir::ModuleOp module, Optimization optimization)
+auto
+optimize_module(mlir::ModuleOp module, Optimization optimization) -> Expected<void>
 {
   // The wall opens the pipeline. A module that has not been verified is
   // never handed to a pass: canonicalization on a malformed module is
@@ -102,8 +102,8 @@ optimize_module(mlir::ModuleOp module, Optimization optimization)
   return Expected<void>{};
 }
 
-Expected<void>
-lower_module(mlir::ModuleOp module, Optimization optimization)
+auto
+lower_module(mlir::ModuleOp module, Optimization optimization) -> Expected<void>
 {
   Expected<void> const optimized = optimize_module(module, optimization);
   if (!optimized.has_value()) {

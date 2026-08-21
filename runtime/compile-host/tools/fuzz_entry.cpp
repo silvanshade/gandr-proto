@@ -64,8 +64,8 @@ exercise(std::span<std::uint8_t const> bytes)
 }
 
 /// Reads a whole file as bytes.
-[[nodiscard]] std::optional<std::vector<std::uint8_t>>
-read_file(std::string_view path)
+[[nodiscard]] auto
+read_file(std::string_view path) -> std::optional<std::vector<std::uint8_t>>
 {
   std::ifstream file(std::string(path), std::ios::binary);
   if (!file) {
@@ -85,8 +85,8 @@ constexpr std::size_t max_input_bytes = 1 << 20;
 
 } // namespace
 
-int
-main(int argc, char** argv)
+auto
+main(int argc, char** argv) -> int
 {
   std::vector<std::string_view> const arguments(argv + 1, argv + argc);
 

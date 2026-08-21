@@ -40,8 +40,8 @@ struct RunOutcome
   /// program. The differential asserts that ordering rather than equality.
   std::size_t allocated = 0;
 
-  friend bool
-  operator==(RunOutcome const&, RunOutcome const&) = default;
+  friend auto
+  operator==(RunOutcome const&, RunOutcome const&) -> bool = default;
 };
 
 /// Compiles and runs a lowered module on a fresh heap.
@@ -60,8 +60,8 @@ struct RunOutcome
 ///   point cannot be resolved; `ErrorKind::ResultUnreadable` when the produced
 ///   value does not render.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-run_lowered_module(mlir::ModuleOp module, std::size_t heap_words);
+[[nodiscard]] auto
+run_lowered_module(mlir::ModuleOp module, std::size_t heap_words) -> Expected<RunOutcome>;
 
 /// Compiles and runs a lowered module on a heap the caller owns.
 ///
@@ -79,8 +79,8 @@ run_lowered_module(mlir::ModuleOp module, std::size_t heap_words);
 ///   caller use.
 /// - fails: as `run_lowered_module`.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap);
+[[nodiscard]] auto
+run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap) -> Expected<RunOutcome>;
 
 /// Compiles a program image and runs it, end to end.
 ///
@@ -92,8 +92,8 @@ run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap);
 ///   so no caller can skip the wall by assembling the stages differently.
 /// - fails: the first stage's typed error.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-compile_and_run(Image const& image);
+[[nodiscard]] auto
+compile_and_run(Image const& image) -> Expected<RunOutcome>;
 
 /// Compiles a program image and runs it on a heap of the caller's size.
 ///
@@ -107,8 +107,8 @@ compile_and_run(Image const& image);
 /// - fails: the first stage's typed error, `ErrorKind::LimitExceeded`
 ///   included.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome>
-compile_and_run_with_heap(Image const& image, std::size_t heap_words);
+[[nodiscard]] auto
+compile_and_run_with_heap(Image const& image, std::size_t heap_words) -> Expected<RunOutcome>;
 
 /// The measured cost of one end-to-end compilation and run.
 struct RunTiming
@@ -129,8 +129,8 @@ struct RunTiming
 ///   command behind it.
 /// - fails: as `compile_and_run`.
 /// - panics: none.
-[[nodiscard]] Expected<std::pair<RunOutcome, RunTiming>>
-compile_and_run_timed(Image const& image);
+[[nodiscard]] auto
+compile_and_run_timed(Image const& image) -> Expected<std::pair<RunOutcome, RunTiming>>;
 
 } // namespace gandr::compile_host
 

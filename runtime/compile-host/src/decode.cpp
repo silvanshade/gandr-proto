@@ -23,8 +23,8 @@ struct Cursor
   std::span<std::uint8_t const> rest;
 
   /// Reads one byte.
-  [[nodiscard]] std::optional<std::uint8_t>
-  take_u8() noexcept
+  [[nodiscard]] auto
+  take_u8() noexcept -> std::optional<std::uint8_t>
   {
     if (rest.empty()) {
       return std::nullopt;
@@ -39,8 +39,8 @@ struct Cursor
   /// reinterpretation, so the wire form does not depend on the host's byte
   /// order.
   template<typename T, std::size_t Width>
-  [[nodiscard]] std::optional<T>
-  take_le() noexcept
+  [[nodiscard]] auto
+  take_le() noexcept -> std::optional<T>
   {
     if (rest.size() < Width) {
       return std::nullopt;
@@ -72,8 +72,8 @@ constexpr std::uint8_t max_wire_operands = 3;
 
 } // namespace
 
-std::optional<Image>
-decode_image(std::span<std::uint8_t const> bytes)
+auto
+decode_image(std::span<std::uint8_t const> bytes) -> std::optional<Image>
 {
   Cursor cursor{ bytes };
 
@@ -136,8 +136,8 @@ decode_image(std::span<std::uint8_t const> bytes)
   return image;
 }
 
-std::vector<std::uint8_t>
-encode_image(Image const& image)
+auto
+encode_image(Image const& image) -> std::vector<std::uint8_t>
 {
   std::vector<std::uint8_t> bytes;
   bytes.push_back(image_version);

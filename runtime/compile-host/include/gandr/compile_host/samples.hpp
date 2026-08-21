@@ -43,8 +43,8 @@ struct Sample
 /// - ensures: exactly seven samples, in a stable order, each well-formed.
 /// - provides: the agreement surface.
 /// - panics: none.
-[[nodiscard]] std::vector<Sample>
-canonical_samples();
+[[nodiscard]] auto
+canonical_samples() -> std::vector<Sample>;
 
 /// The accounted-work regression program: a duplication and a discard whose
 /// results are never observed.
@@ -59,8 +59,8 @@ canonical_samples();
 ///   and one discard.
 /// - provides: the regression witness's program.
 /// - panics: none.
-[[nodiscard]] Sample
-accounted_work_sample();
+[[nodiscard]] auto
+accounted_work_sample() -> Sample;
 
 /// The work a correct run of `accounted_work_sample` accounts for.
 inline constexpr WorkLedger accounted_work_expectation{ .duplications = 1, .discards = 1 };
@@ -77,8 +77,8 @@ inline constexpr WorkLedger accounted_work_expectation{ .duplications = 1, .disc
 ///   deeper than `max_generated_depth`.
 /// - provides: the property harness's inputs and the fuzz corpus seeds.
 /// - panics: none.
-[[nodiscard]] Image
-generate_image(std::uint64_t seed);
+[[nodiscard]] auto
+generate_image(std::uint64_t seed) -> Image;
 
 /// The deepest consumer nesting the generator produces.
 inline constexpr std::uint32_t max_generated_depth = 6;

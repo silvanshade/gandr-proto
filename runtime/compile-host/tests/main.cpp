@@ -69,15 +69,15 @@ check_equal(std::string_view actual, std::string_view expected, std::string_view
 }
 
 /// The fixtures directory CMake configured in.
-[[nodiscard]] std::filesystem::path
-fixtures_root()
+[[nodiscard]] auto
+fixtures_root() -> std::filesystem::path
 {
   return std::filesystem::path(GANDR_COMPILE_HOST_FIXTURES);
 }
 
 /// Reads the agreement fixture as name-to-value rows.
-[[nodiscard]] std::map<std::string, std::string>
-read_agreement_fixture()
+[[nodiscard]] auto
+read_agreement_fixture() -> std::map<std::string, std::string>
 {
   std::map<std::string, std::string> rows;
   std::ifstream file(fixtures_root() / "positive-core-samples.txt");
@@ -96,8 +96,8 @@ read_agreement_fixture()
 }
 
 /// Every named program, canonical set plus the accounted-work program.
-[[nodiscard]] std::vector<Sample>
-all_samples()
+[[nodiscard]] auto
+all_samples() -> std::vector<Sample>
 {
   std::vector<Sample> samples = canonical_samples();
   samples.push_back(accounted_work_sample());
@@ -160,7 +160,7 @@ case_canonicalization_preserves_accounted_work()
 
   // Neither operation's result is observed anywhere in the module, so a pure
   // operation here would be dead code.
-  module->walk([](mlir::Operation* op) {
+  module->walk([](mlir::Operation* op) -> void {
     llvm::StringRef const name = op->getName().getStringRef();
     if (name == "gandr.dup" || name == "gandr.drop") {
       check(op->use_empty(), "the accounted operation's result is unobserved");
@@ -609,7 +609,7 @@ case_lowering_leaves_no_dialect_operation_behind()
       continue;
     }
     std::size_t survivors = 0;
-    module->get()->walk([&survivors](mlir::Operation* op) {
+    module->get()->walk([&survivors](mlir::Operation* op) -> void {
       if (op->getName().getDialectNamespace() == "gandr") {
         survivors += 1;
       }
@@ -680,8 +680,8 @@ struct Case
 };
 
 /// Every case the suite knows.
-[[nodiscard]] std::vector<Case>
-registry()
+[[nodiscard]] auto
+registry() -> std::vector<Case>
 {
   return {
     Case{                 "a_refused_run_writes_nothing_past_its_heap",case_a_refused_run_writes_nothing_past_its_heap                                                                       },
@@ -704,8 +704,8 @@ registry()
 
 } // namespace
 
-int
-main(int argc, char** argv)
+auto
+main(int argc, char** argv) -> int
 {
   std::vector<std::string_view> const arguments(argv + 1, argv + argc);
   std::string_view selected;

@@ -42,8 +42,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 /// - provides: the only context construction the host uses, so no stage can
 ///   fail for a dialect nobody loaded.
 /// - panics: none.
-[[nodiscard]] std::unique_ptr<mlir::MLIRContext>
-make_context();
+[[nodiscard]] auto
+make_context() -> std::unique_ptr<mlir::MLIRContext>;
 
 /// Emits a program image as a module in the gandr dialect.
 ///
@@ -57,8 +57,8 @@ make_context();
 /// - fails: `ErrorKind::MalformedImage` for an image that does not verify
 ///   structurally; `ErrorKind::LimitExceeded` past `max_emit_depth`.
 /// - panics: none.
-[[nodiscard]] Expected<mlir::OwningOpRef<mlir::ModuleOp>>
-emit_module(mlir::MLIRContext& context, Image const& image);
+[[nodiscard]] auto
+emit_module(mlir::MLIRContext& context, Image const& image) -> Expected<mlir::OwningOpRef<mlir::ModuleOp>>;
 
 /// Emits a module whose single constructor is given the wrong operand count.
 ///
@@ -71,8 +71,8 @@ emit_module(mlir::MLIRContext& context, Image const& image);
 /// - ensures: the returned module builds, and `mlir::verify` rejects it.
 /// - provides: the malformed-arity fixture the verifier test drives.
 /// - panics: none.
-[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp>
-emit_malformed_arity_module(mlir::MLIRContext& context);
+[[nodiscard]] auto
+emit_malformed_arity_module(mlir::MLIRContext& context) -> mlir::OwningOpRef<mlir::ModuleOp>;
 
 /// Builds the accounted-work witness module directly.
 ///
@@ -88,8 +88,8 @@ emit_malformed_arity_module(mlir::MLIRContext& context);
 ///   discard, and two literals.
 /// - provides: the canonicalization witness's input.
 /// - panics: none.
-[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp>
-emit_accounted_work_witness_module(mlir::MLIRContext& context);
+[[nodiscard]] auto
+emit_accounted_work_witness_module(mlir::MLIRContext& context) -> mlir::OwningOpRef<mlir::ModuleOp>;
 
 /// Counts the operations of the gandr dialect in a module, by mnemonic.
 ///
@@ -98,8 +98,8 @@ emit_accounted_work_witness_module(mlir::MLIRContext& context);
 /// - provides: the observation the canonicalization witness compares before
 ///   and after the pass pipeline.
 /// - panics: none.
-[[nodiscard]] std::size_t
-count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic);
+[[nodiscard]] auto
+count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic) -> std::size_t;
 
 } // namespace gandr::compile_host
 
