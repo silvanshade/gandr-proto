@@ -17,6 +17,7 @@ mod tests
 {
     use gandr_core_sequent::il::Polarity;
     use gandr_surface_engine::boundary::MatchDecision;
+    use gandr_surface_engine::circuit::embed::CircuitAdapterBudget;
     use gandr_surface_engine::circuit::embed::CircuitEmbedError;
     use gandr_surface_engine::circuit::embed::CircuitOverlapDecline;
     use gandr_surface_engine::circuit::embed::CircuitRuleCell;
@@ -36,6 +37,7 @@ mod tests
     use gandr_theory_cell_complexes::sequent::CellProvenance;
     use gandr_theory_cell_complexes::sequent::Orientation;
     use gandr_theory_circuit_algebras::interface::EdgeCount;
+    use gandr_theory_circuit_algebras::interface::Wire;
     use gandr_theory_circuit_algebras::interface::WireCount;
     use gandr_theory_circuit_algebras::matching::MatchBudget;
     use gandr_theory_coherent_resolutions::CompletionBudget;
@@ -303,27 +305,27 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             })
             .expect("the real route retains a structured completion result");
         assert_eq!(
-            cells.stores[completion_index],
-            *completion.outcome.store(),
+            cells.circuit_completions[completion_index].outcome.store(),
+            completion.outcome.store(),
             "the route's store is the outcome projection, not its replacement"
         );
-        assert!(
-            !cells.circuit_sites.is_empty(),
-            "the route recorded occurrences rather than skipping the matcher"
-        );
-        let found = cells
-            .circuit_sites
+        let found = completion
+            .matches
             .iter()
-            .find(|site| site.pattern.as_ref() == "cong1" && site.target.as_ref() == "cong2")
+            .find(|matched| {
+                matched.pattern.as_ref() == "cong1" && matched.target.as_ref() == "cong2"
+            })
             .expect("the pair that stands in a containment has a record");
         assert!(
             found.admitted.0 > 0_usize,
             "and the record says the smaller rule occurs in the larger one"
         );
-        let absent = cells
-            .circuit_sites
+        let absent = completion
+            .matches
             .iter()
-            .find(|site| site.pattern.as_ref() == "cong2" && site.target.as_ref() == "cong1")
+            .find(|matched| {
+                matched.pattern.as_ref() == "cong2" && matched.target.as_ref() == "cong1"
+            })
             .expect("the reverse pair has a record too");
         assert_eq!(
             0_usize, absent.admitted.0,
@@ -333,8 +335,9 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
         // seam supplies matching; it does not take the engine's own work over,
         // and this is the half of that claim that runs.
         let store = cells
-            .stores
+            .circuit_completions
             .iter()
+            .map(|completion| completion.outcome.store())
             .find(|store| store.len() > gandr_theory_cell_complexes::CellCount::from(0_usize))
             .expect("the source's declarations put cells in a store");
         let peak = CmdPat::cut(
@@ -531,8 +534,8 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
         let target_cell = fixed_cell(
             &mut store,
             Polarity::Positive,
-            "target",
-            "target-rhs",
+            "pattern",
+            "pattern-rhs",
             CellProvenance::MuMuTilde,
         );
         let pattern_name: gandr_theory_levitation::Name = "w1-pattern".into();
@@ -554,6 +557,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             &rules,
             MatchBudget(4_096_usize),
             CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+            CircuitAdapterBudget(64_usize),
         );
         let forward = completion
             .matches
@@ -573,6 +577,31 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             }),
             "each embedding supplies one ordinary overlap"
         );
+        let mut seam_pairs = forward
+            .embeddings
+            .iter()
+            .map(|embedding| {
+                let input = embedding
+                    .origin
+                    .seam
+                    .inputs
+                    .image_of(Wire(0))
+                    .expect("the full origin seam keeps the pattern input pair");
+                let output = embedding
+                    .origin
+                    .seam
+                    .outputs
+                    .image_of(Wire(1))
+                    .expect("the full origin seam keeps the pattern output pair");
+                (input, output)
+            })
+            .collect::<alloc::vec::Vec<_>>();
+        seam_pairs.sort_unstable_by_key(|(input, output)| (input.0, output.0));
+        assert_eq!(
+            alloc::vec![(Wire(0), Wire(1)), (Wire(2), Wire(3))],
+            seam_pairs,
+            "the public origin retains every input/output seam pair"
+        );
         assert_eq!(2_usize, forward.overlap_count);
         let CompletionOutcome::Declined {
             ref pending,
@@ -589,13 +618,25 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             .filter(|overlap| overlap.left == pattern_cell && overlap.right == target_cell)
             .count();
         assert_eq!(
-            2_usize, supplied,
-            "both placements remain distinct supplied critical pairs"
+            1_usize, supplied,
+            "structurally identical ordinary work is supplied once"
+        );
+        let supplied_origins = completion
+            .replay_evidence
+            .iter()
+            .filter(|evidence| {
+                evidence.origin.pattern.name.as_ref() == "w1-pattern"
+                    && evidence.origin.target.name.as_ref() == "w1-target"
+            })
+            .count();
+        assert_eq!(
+            2_usize, supplied_origins,
+            "both circuit placements remain attached to replay evidence"
         );
     }
 
     #[test]
-    fn w2_embedding_supplies_a_non_unifying_sequent_pair()
+    fn w2_embedding_declines_a_non_unifying_sequent_pair()
     {
         let pattern_body = unary_body("left", "x", "y");
         let target_body = unary_body("left", "a", "b");
@@ -610,8 +651,8 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
         let target_cell = fixed_cell(
             &mut store,
             Polarity::Negative,
-            "target",
-            "target-rhs",
+            "pattern",
+            "pattern-rhs",
             CellProvenance::MuMuTilde,
         );
         assert!(
@@ -647,6 +688,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             &rules,
             MatchBudget(4_096_usize),
             CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+            CircuitAdapterBudget(64_usize),
         );
         let supplied = completion
             .matches
@@ -656,11 +698,16 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             })
             .expect("the ordered pair has a completion record");
         assert_eq!(1_usize, supplied.admitted.0);
-        assert_eq!(
-            1_usize, supplied.overlap_count,
-            "the circuit seam supplies an overlap despite empty generic enumeration"
+        assert_eq!(0_usize, supplied.overlap_count);
+        assert!(
+            matches!(
+                supplied.embeddings[0].decline,
+                Some(CircuitOverlapDecline::Unfaithful(
+                    UnfaithfulCircuitOverlap::NonUnifyingSubstitution
+                ))
+            ),
+            "the circuit seam records the non-unifying pair as a typed decline"
         );
-        assert!(supplied.embeddings[0].decline.is_none());
     }
 
     #[test]
@@ -693,7 +740,8 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             store,
             &rules,
             MatchBudget(4_096_usize),
-            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+            CompletionBudget::new(64_usize.into(), 64_usize.into(), 64_usize.into()),
+            CircuitAdapterBudget(64_usize),
         );
         let origins = completion
             .cell_origins
@@ -711,19 +759,30 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             .expect("the cross-declaration pair remains observable");
         assert_eq!(1_usize, pair.admitted.0);
         assert!(
-            matches!(
-                pair.embeddings[0].decline,
-                Some(CircuitOverlapDecline::Unfaithful(
-                    UnfaithfulCircuitOverlap::NoConfluenceOverlap
-                ))
-            ),
-            "structural self-deduplication is a typed no-overlap result"
+            pair.embeddings[0].decline.is_none(),
+            "the supplied overlap is faithful for the shared declaration cell"
         );
-        assert_eq!(0_usize, pair.overlap_count);
+        assert_eq!(1_usize, pair.overlap_count);
+        let replay = completion
+            .replay_evidence
+            .iter()
+            .find(|evidence| {
+                evidence.origin.pattern.name.as_ref() == "w3-first"
+                    && evidence.origin.target.name.as_ref() == "w3-second"
+            })
+            .expect("the shared overlap retains the cross-declaration origin");
+        assert!(
+            !replay.certificate_indices.is_empty(),
+            "a nonzero completion budget makes replay attribution observable"
+        );
+        assert!(
+            pair.certificates_replayed > 0_usize,
+            "the completion match records its replayed certificates"
+        );
     }
 
     #[test]
-    fn w4_unfaithful_wire_rendering_is_a_typed_decline()
+    fn w4_distinct_wire_renderings_keep_origin_seams()
     {
         let pattern_body = two_component_body(MatchDecision::from(false));
         let target_body = two_component_body(MatchDecision::from(true));
@@ -738,8 +797,8 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
         let target_cell = fixed_cell(
             &mut store,
             Polarity::Positive,
-            "target",
-            "target-rhs",
+            "pattern",
+            "pattern-rhs",
             CellProvenance::MuMuTilde,
         );
         let pattern_name: gandr_theory_levitation::Name = "w4-pattern".into();
@@ -761,6 +820,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             &rules,
             MatchBudget(4_096_usize),
             CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+            CircuitAdapterBudget(64_usize),
         );
         let pair = completion
             .matches
@@ -770,21 +830,37 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             })
             .expect("the ordered pair has a completion record");
         assert_eq!(2_usize, pair.admitted.0);
-        assert_eq!(1_usize, pair.overlap_count);
-        assert_eq!(
-            1_usize,
+        assert_eq!(2_usize, pair.overlap_count);
+        assert!(
             pair.embeddings
                 .iter()
-                .filter(|embedding| {
-                    matches!(
-                        embedding.decline,
-                        Some(CircuitOverlapDecline::Unfaithful(
-                            UnfaithfulCircuitOverlap::DuplicateRenderedOverlap
-                        ))
-                    )
-                })
-                .count(),
-            "the invisible wire distinction is declined rather than double-counted"
+                .all(|embedding| embedding.decline.is_none()),
+            "both placements render without collapsing their circuit origins"
+        );
+        let mut seam_pairs = pair
+            .embeddings
+            .iter()
+            .map(|embedding| {
+                let input = embedding
+                    .origin
+                    .seam
+                    .inputs
+                    .image_of(Wire(2))
+                    .expect("the origin retains the second component input");
+                let output = embedding
+                    .origin
+                    .seam
+                    .outputs
+                    .image_of(Wire(3))
+                    .expect("the origin retains the second component output");
+                (input, output)
+            })
+            .collect::<alloc::vec::Vec<_>>();
+        seam_pairs.sort_unstable_by_key(|(input, output)| (input.0, output.0));
+        assert_eq!(
+            alloc::vec![(Wire(2), Wire(3)), (Wire(4), Wire(5))],
+            seam_pairs,
+            "the full seam distinguishes the two target placements"
         );
     }
 
@@ -812,7 +888,10 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
         };
         assert_eq!(DeclineReason::StepBudget, reason);
         assert!(!pending.is_empty(), "the supplied overlap remains pending");
-        assert_eq!(cells.stores[index], *completion.outcome.store());
+        assert_eq!(
+            cells.circuit_completions[index].outcome.store(),
+            completion.outcome.store()
+        );
     }
 
     fn unary_body<N>(

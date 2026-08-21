@@ -548,11 +548,11 @@ struct RenderedCircuitOverlaps
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
 ///   `w1_two_embeddings_supply_two_critical_pairs`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
-///   `w2_embedding_supplies_a_non_unifying_sequent_pair`
+///   `w2_embedding_declines_a_non_unifying_sequent_pair`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
 ///   `w3_deduplicated_declarations_keep_replay_attribution`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
-///   `w4_unfaithful_wire_rendering_is_a_typed_decline`
+///   `w4_distinct_wire_renderings_keep_origin_seams`
 #[inline]
 #[must_use]
 pub fn complete_circuit_rules(
@@ -566,8 +566,8 @@ pub fn complete_circuit_rules(
     let mut adapter_remaining = adapter_budget.0;
     let mut adapter_decline = None;
     let mut seeds: Vec<CircuitOverlapSeed> = Vec::new();
-    let mut seed_indices = HashMap::new();
-    let mut rendered_indices = HashMap::new();
+    let mut seed_indices: HashMap<CircuitOverlapKey, usize> = HashMap::new();
+    let mut rendered_indices: HashMap<CircuitOriginOverlapKey, ()> = HashMap::new();
     let mut matches = Vec::new();
     let mut cell_origins = BTreeMap::new();
     for (pattern_index, pattern) in rules.iter().enumerate() {
@@ -1007,8 +1007,9 @@ fn circuit_wire_names(body: &CircuitBody) -> Result<Vec<Name>, CircuitOverlapDec
 /// Choose the only faithful ordinary-sequent seam for a circuit overlap.
 ///
 /// A circuit seam is a pair of wire bijections, not a command-tree path.
-/// Therefore the circuit seam stays on [`CircuitEmbeddingOrigin`], while the
-/// generic confluence overlap uses the root position required by its type.
+/// The full circuit seam therefore stays on [`CircuitEmbeddingOrigin`]. The
+/// generic overlap describes the supplied cut, whose only command position is
+/// the root; projecting any wire index into [`Pos`] would invent a false path.
 ///
 /// # Contract
 /// - ensures: returns the valid sequent root and performs no fabricated wire
