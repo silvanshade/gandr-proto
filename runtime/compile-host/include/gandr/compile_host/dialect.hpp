@@ -11,9 +11,7 @@
 #ifndef GANDR_COMPILE_HOST_DIALECT_HPP
 #define GANDR_COMPILE_HOST_DIALECT_HPP
 
-#include <cstdint>
-#include <optional>
-
+#include "gandr/compile_host/image.hpp"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
@@ -22,7 +20,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#include "gandr/compile_host/image.hpp"
+#include <cstdint>
+#include <optional>
 
 // The generated declarations are compiled inside this translation unit, so the
 // host's own warning wall reaches them. TableGen emits unused parameters in the
@@ -44,8 +43,7 @@
 
 #pragma clang diagnostic pop
 
-namespace gandr::compile_host::dialect
-{
+namespace gandr::compile_host::dialect {
 
 /// The integer encoding of a constructor tag as the `gandr.ctor` attribute
 /// carries it.
@@ -54,7 +52,8 @@ namespace gandr::compile_host::dialect
 /// - ensures: injective on `CtorTag`, and `tag_from_attribute` inverts it on
 ///   the image of this function.
 /// - panics: none.
-[[nodiscard]] std::uint32_t tag_to_attribute(CtorTag tag) noexcept;
+[[nodiscard]] std::uint32_t
+tag_to_attribute(CtorTag tag) noexcept;
 
 /// Recovers a constructor tag from the `gandr.ctor` attribute value.
 ///
@@ -63,7 +62,8 @@ namespace gandr::compile_host::dialect
 /// - fails: returns `std::nullopt` for a value naming no declared tag, which
 ///   is what lets the verifier reject an invented tag rather than trusting it.
 /// - panics: none.
-[[nodiscard]] std::optional<CtorTag> tag_from_attribute(std::uint32_t value) noexcept;
+[[nodiscard]] std::optional<CtorTag>
+tag_from_attribute(std::uint32_t value) noexcept;
 
 } // namespace gandr::compile_host::dialect
 

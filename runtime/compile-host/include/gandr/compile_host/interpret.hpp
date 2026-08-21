@@ -17,8 +17,7 @@
 #include "gandr/compile_host/jit.hpp"
 #include "gandr/compile_host/status.hpp"
 
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// Evaluates a program image directly.
 ///
@@ -36,7 +35,8 @@ namespace gandr::compile_host
 ///   `ErrorKind::LimitExceeded` past `max_emit_depth` or when an allocation
 ///   would not fit the heap.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> interpret_image(const Image& image);
+[[nodiscard]] Expected<RunOutcome>
+interpret_image(Image const& image);
 
 /// Evaluates a program image directly on a heap of the caller's size.
 ///
@@ -51,9 +51,8 @@ namespace gandr::compile_host
 ///   against a rule stated once.
 /// - fails: as `interpret_image`, `ErrorKind::LimitExceeded` included.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> interpret_image_with_heap(
-    const Image& image,
-    std::size_t heap_words);
+[[nodiscard]] Expected<RunOutcome>
+interpret_image_with_heap(Image const& image, std::size_t heap_words);
 
 } // namespace gandr::compile_host
 

@@ -12,14 +12,12 @@
 #ifndef GANDR_COMPILE_HOST_PIPELINE_HPP
 #define GANDR_COMPILE_HOST_PIPELINE_HPP
 
-#include <cstddef>
-
+#include "gandr/compile_host/status.hpp"
 #include "mlir/IR/BuiltinOps.h"
 
-#include "gandr/compile_host/status.hpp"
+#include <cstddef>
 
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// Whether the optimization passes run between the dialect and the lowering.
 ///
@@ -28,10 +26,10 @@ namespace gandr::compile_host
 /// declarations are what must make the two counts agree.
 enum class Optimization : std::uint8_t
 {
-    /// Lower the module as emitted.
-    None = 0,
-    /// Run canonicalization and common-subexpression elimination first.
-    CanonicalizeAndDeduplicate = 1,
+  /// Lower the module as emitted.
+  None = 0,
+  /// Run canonicalization and common-subexpression elimination first.
+  CanonicalizeAndDeduplicate = 1,
 };
 
 /// Runs the mandatory verifier wall over a module.
@@ -48,7 +46,8 @@ enum class Optimization : std::uint8_t
 /// - fails: `ErrorKind::VerifierRejected`, carrying the diagnostics the
 ///   verifier emitted.
 /// - panics: none.
-[[nodiscard]] Expected<void> verify_module(mlir::ModuleOp module);
+[[nodiscard]] Expected<void>
+verify_module(mlir::ModuleOp module);
 
 /// Runs the optimization passes over a verified dialect module.
 ///
@@ -59,7 +58,8 @@ enum class Optimization : std::uint8_t
 /// - fails: `ErrorKind::VerifierRejected` before the passes;
 ///   `ErrorKind::ConversionFailed` if a pass fails.
 /// - panics: none.
-[[nodiscard]] Expected<void> optimize_module(mlir::ModuleOp module, Optimization optimization);
+[[nodiscard]] Expected<void>
+optimize_module(mlir::ModuleOp module, Optimization optimization);
 
 /// Lowers a verified dialect module to the LLVM dialect.
 ///
@@ -74,7 +74,8 @@ enum class Optimization : std::uint8_t
 /// - fails: `ErrorKind::VerifierRejected`, `ErrorKind::LoweringFailed`, or
 ///   `ErrorKind::ConversionFailed`, at whichever stage rejected.
 /// - panics: none.
-[[nodiscard]] Expected<void> lower_module(mlir::ModuleOp module, Optimization optimization);
+[[nodiscard]] Expected<void>
+lower_module(mlir::ModuleOp module, Optimization optimization);
 
 /// Replaces every gandr operation in a module with its lowering.
 ///
@@ -88,7 +89,8 @@ enum class Optimization : std::uint8_t
 /// - fails: `ErrorKind::LoweringFailed` for an operation with no lowering, or
 ///   `ErrorKind::LimitExceeded` past `max_emit_depth` of consumer nesting.
 /// - panics: none.
-[[nodiscard]] Expected<void> lower_dialect_operations(mlir::ModuleOp module);
+[[nodiscard]] Expected<void>
+lower_dialect_operations(mlir::ModuleOp module);
 
 } // namespace gandr::compile_host
 

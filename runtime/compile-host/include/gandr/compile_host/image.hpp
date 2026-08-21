@@ -19,8 +19,7 @@
 #include <string_view>
 #include <vector>
 
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// A node's index in an `Image`'s flat arena.
 ///
@@ -30,10 +29,11 @@ namespace gandr::compile_host
 /// - panics: none.
 struct NodeIndex
 {
-    /// The zero-based position in `Image::nodes`.
-    std::uint32_t value = 0;
+  /// The zero-based position in `Image::nodes`.
+  std::uint32_t value = 0;
 
-    friend constexpr bool operator==(NodeIndex, NodeIndex) = default;
+  friend constexpr bool
+  operator==(NodeIndex, NodeIndex) = default;
 };
 
 /// The positive-core node kinds.
@@ -44,22 +44,22 @@ struct NodeIndex
 /// unconditional jump — has no representation here by construction.
 enum class NodeKind : std::uint8_t
 {
-    /// An integer literal producer.
-    Lit = 0,
-    /// A reference to a binder introduced by an enclosing `Bind` or `Case`.
-    Var = 1,
-    /// A positive constructor introduction.
-    Ctor = 2,
-    /// The grade structural duplication.
-    Dup = 3,
-    /// The grade structural discard.
-    Drop = 4,
-    /// A sequencing consumer: the `mu-tilde` binder frame.
-    Bind = 5,
-    /// A constructor dispatch consumer.
-    Case = 6,
-    /// The terminal cut against the top-level consumer.
-    Cut = 7,
+  /// An integer literal producer.
+  Lit = 0,
+  /// A reference to a binder introduced by an enclosing `Bind` or `Case`.
+  Var = 1,
+  /// A positive constructor introduction.
+  Ctor = 2,
+  /// The grade structural duplication.
+  Dup = 3,
+  /// The grade structural discard.
+  Drop = 4,
+  /// A sequencing consumer: the `mu-tilde` binder frame.
+  Bind = 5,
+  /// A constructor dispatch consumer.
+  Case = 6,
+  /// The terminal cut against the top-level consumer.
+  Cut = 7,
 };
 
 /// The constructor tags this slice admits.
@@ -69,14 +69,14 @@ enum class NodeKind : std::uint8_t
 /// machine's own constructor tags.
 enum class CtorTag : std::uint8_t
 {
-    /// The unit value; arity zero.
-    Unit = 0,
-    /// An eager pair; arity two.
-    Pair = 1,
-    /// The left sum injection; arity one.
-    Inl = 2,
-    /// The right sum injection; arity one.
-    Inr = 3,
+  /// The unit value; arity zero.
+  Unit = 0,
+  /// An eager pair; arity two.
+  Pair = 1,
+  /// The left sum injection; arity one.
+  Inl = 2,
+  /// The right sum injection; arity one.
+  Inr = 3,
 };
 
 /// The number of producer arguments a constructor tag declares.
@@ -87,18 +87,19 @@ enum class CtorTag : std::uint8_t
 /// - provides: the arity the operation verifier compares an emitted
 ///   constructor's operand count against.
 /// - panics: none.
-[[nodiscard]] constexpr std::uint32_t ctor_arity(CtorTag tag) noexcept
+[[nodiscard]] constexpr std::uint32_t
+ctor_arity(CtorTag tag) noexcept
 {
-    switch (tag) {
+  switch (tag) {
     case CtorTag::Unit:
-        return 0;
+      return 0;
     case CtorTag::Pair:
-        return 2;
+      return 2;
     case CtorTag::Inl:
     case CtorTag::Inr:
-        return 1;
-    }
-    return 0;
+      return 1;
+  }
+  return 0;
 }
 
 /// The printable name of a constructor tag.
@@ -107,19 +108,20 @@ enum class CtorTag : std::uint8_t
 /// - ensures: total, and the spelling matches the canonical value rendering
 ///   the agreement fixture uses.
 /// - panics: none.
-[[nodiscard]] constexpr std::string_view ctor_tag_name(CtorTag tag) noexcept
+[[nodiscard]] constexpr std::string_view
+ctor_tag_name(CtorTag tag) noexcept
 {
-    switch (tag) {
+  switch (tag) {
     case CtorTag::Unit:
-        return "unit";
+      return "unit";
     case CtorTag::Pair:
-        return "pair";
+      return "pair";
     case CtorTag::Inl:
-        return "inl";
+      return "inl";
     case CtorTag::Inr:
-        return "inr";
-    }
-    return "unit";
+      return "inr";
+  }
+  return "unit";
 }
 
 /// One node of a program image.
@@ -130,21 +132,21 @@ enum class CtorTag : std::uint8_t
 /// serialization.
 struct Node
 {
-    /// Which positive-core form this node is.
-    NodeKind kind = NodeKind::Lit;
-    /// The constructor tag, for `NodeKind::Ctor`.
-    CtorTag tag = CtorTag::Unit;
-    /// How many binders separate the reference from the one it names, for
-    /// `NodeKind::Var`. Zero is the innermost binder, so this is a de Bruijn
-    /// index counted inwards rather than a level counted outwards; the
-    /// evaluator reads it as `environment[size - 1 - binder]`.
-    std::uint32_t binder = 0;
-    /// The integer payload, for `NodeKind::Lit`.
-    std::int64_t literal = 0;
-    /// The operand list: constructor arguments; the duplicated or discarded
-    /// producer; the bound producer then the body for `Bind`; the scrutinee
-    /// then the two arm bodies for `Case`; the produced value for `Cut`.
-    std::vector<NodeIndex> operands;
+  /// Which positive-core form this node is.
+  NodeKind kind = NodeKind::Lit;
+  /// The constructor tag, for `NodeKind::Ctor`.
+  CtorTag tag = CtorTag::Unit;
+  /// How many binders separate the reference from the one it names, for
+  /// `NodeKind::Var`. Zero is the innermost binder, so this is a de Bruijn
+  /// index counted inwards rather than a level counted outwards; the
+  /// evaluator reads it as `environment[size - 1 - binder]`.
+  std::uint32_t binder = 0;
+  /// The integer payload, for `NodeKind::Lit`.
+  std::int64_t literal = 0;
+  /// The operand list: constructor arguments; the duplicated or discarded
+  /// producer; the bound producer then the body for `Bind`; the scrutinee
+  /// then the two arm bodies for `Case`; the produced value for `Cut`.
+  std::vector<NodeIndex> operands;
 };
 
 /// A complete program image: a flat node arena plus its root.
@@ -158,10 +160,10 @@ struct Node
 /// - panics: none.
 struct Image
 {
-    /// The node arena, in dependency order.
-    std::vector<Node> nodes;
-    /// The root node's index.
-    NodeIndex root;
+  /// The node arena, in dependency order.
+  std::vector<Node> nodes;
+  /// The root node's index.
+  NodeIndex root;
 };
 
 /// Whether an image satisfies the structural preconditions the emitter
@@ -177,7 +179,8 @@ struct Image
 /// - fails: returns false; it never reports which clause failed, because the
 ///   only consumers are a boolean gate.
 /// - panics: none.
-[[nodiscard]] bool image_is_wellformed(const Image& image) noexcept;
+[[nodiscard]] bool
+image_is_wellformed(Image const& image) noexcept;
 
 /// The number of binders a node's operand at `slot` is evaluated under,
 /// relative to the node's own scope depth.
@@ -186,7 +189,8 @@ struct Image
 /// - ensures: total; returns one for a `Bind` body and for each `Case` arm
 ///   body, and zero everywhere else.
 /// - panics: none.
-[[nodiscard]] std::uint32_t operand_binder_offset(NodeKind kind, std::size_t slot) noexcept;
+[[nodiscard]] std::uint32_t
+operand_binder_offset(NodeKind kind, std::size_t slot) noexcept;
 
 /// Decodes a byte string into a program image.
 ///
@@ -200,7 +204,8 @@ struct Image
 /// - fails: returns `std::nullopt` for truncated, over-large, or structurally
 ///   invalid input.
 /// - panics: none.
-[[nodiscard]] std::optional<Image> decode_image(std::span<const std::uint8_t> bytes);
+[[nodiscard]] std::optional<Image>
+decode_image(std::span<std::uint8_t const> bytes);
 
 /// Encodes a program image into the byte form `decode_image` accepts.
 ///
@@ -209,7 +214,8 @@ struct Image
 /// - ensures: `decode_image(encode_image(i))` yields an image equal to `i`.
 /// - provides: the fuzz corpus seeds, written from the canonical samples.
 /// - panics: none.
-[[nodiscard]] std::vector<std::uint8_t> encode_image(const Image& image);
+[[nodiscard]] std::vector<std::uint8_t>
+encode_image(Image const& image);
 
 /// The largest node count the decoder admits.
 ///

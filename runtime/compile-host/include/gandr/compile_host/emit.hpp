@@ -12,18 +12,16 @@
 #ifndef GANDR_COMPILE_HOST_EMIT_HPP
 #define GANDR_COMPILE_HOST_EMIT_HPP
 
-#include <cstddef>
-#include <string_view>
-
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/status.hpp"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 
-#include "gandr/compile_host/image.hpp"
-#include "gandr/compile_host/status.hpp"
+#include <cstddef>
+#include <string_view>
 
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// The name of the function every stage of the pipeline carries.
 inline constexpr std::string_view entry_point_name = "gandr_positive_core";
@@ -44,7 +42,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 /// - provides: the only context construction the host uses, so no stage can
 ///   fail for a dialect nobody loaded.
 /// - panics: none.
-[[nodiscard]] std::unique_ptr<mlir::MLIRContext> make_context();
+[[nodiscard]] std::unique_ptr<mlir::MLIRContext>
+make_context();
 
 /// Emits a program image as a module in the gandr dialect.
 ///
@@ -58,9 +57,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 /// - fails: `ErrorKind::MalformedImage` for an image that does not verify
 ///   structurally; `ErrorKind::LimitExceeded` past `max_emit_depth`.
 /// - panics: none.
-[[nodiscard]] Expected<mlir::OwningOpRef<mlir::ModuleOp>> emit_module(
-    mlir::MLIRContext& context,
-    const Image& image);
+[[nodiscard]] Expected<mlir::OwningOpRef<mlir::ModuleOp>>
+emit_module(mlir::MLIRContext& context, Image const& image);
 
 /// Emits a module whose single constructor is given the wrong operand count.
 ///
@@ -73,8 +71,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 /// - ensures: the returned module builds, and `mlir::verify` rejects it.
 /// - provides: the malformed-arity fixture the verifier test drives.
 /// - panics: none.
-[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp> emit_malformed_arity_module(
-    mlir::MLIRContext& context);
+[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp>
+emit_malformed_arity_module(mlir::MLIRContext& context);
 
 /// Builds the accounted-work witness module directly.
 ///
@@ -90,8 +88,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 ///   discard, and two literals.
 /// - provides: the canonicalization witness's input.
 /// - panics: none.
-[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp> emit_accounted_work_witness_module(
-    mlir::MLIRContext& context);
+[[nodiscard]] mlir::OwningOpRef<mlir::ModuleOp>
+emit_accounted_work_witness_module(mlir::MLIRContext& context);
 
 /// Counts the operations of the gandr dialect in a module, by mnemonic.
 ///
@@ -100,9 +98,8 @@ inline constexpr std::size_t max_emit_depth = 64;
 /// - provides: the observation the canonicalization witness compares before
 ///   and after the pass pipeline.
 /// - panics: none.
-[[nodiscard]] std::size_t count_dialect_operations(
-    mlir::ModuleOp module,
-    std::string_view mnemonic);
+[[nodiscard]] std::size_t
+count_dialect_operations(mlir::ModuleOp module, std::string_view mnemonic);
 
 } // namespace gandr::compile_host
 

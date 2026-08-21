@@ -20,6 +20,11 @@
 // - fails: a nonzero exit status only for a replay whose file cannot be read.
 // - panics: none.
 
+#include "gandr/compile_host/emit.hpp"
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/interpret.hpp"
+#include "gandr/compile_host/pipeline.hpp"
+
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -27,13 +32,7 @@
 #include <string_view>
 #include <vector>
 
-#include "gandr/compile_host/emit.hpp"
-#include "gandr/compile_host/image.hpp"
-#include "gandr/compile_host/interpret.hpp"
-#include "gandr/compile_host/pipeline.hpp"
-
-namespace
-{
+namespace {
 
 using namespace gandr::compile_host;
 
@@ -41,37 +40,43 @@ using namespace gandr::compile_host;
 ///
 /// A refused decode is a normal outcome, not a finding: the surface under test
 /// is that refusal and acceptance are the only two outcomes.
-void exercise(std::span<const std::uint8_t> bytes)
+void
+exercise(std::span<std::uint8_t const> bytes)
 {
-    const std::optional<Image> image = decode_image(bytes);
-    if (!image.has_value()) {
-        return;
-    }
-    const std::unique_ptr<mlir::MLIRContext> context = make_context();
-    const Expected<mlir::OwningOpRef<mlir::ModuleOp>> module = emit_module(*context, *image);
-    if (!module.has_value()) {
-        return;
-    }
-    const Expected<void> verified = verify_module(module->get());
-    if (!verified.has_value()) {
-        return;
-    }
-    // The reference run. Its outcome is not asserted on — a generated program
-    // may legitimately exhaust its heap or nest past the walk's bound — only
-    // that reaching one of the two outcomes is all it ever does.
-    const Expected<RunOutcome> outcome = interpret_image(*image);
-    (void)outcome;
+  std::optional<Image> const image = decode_image(bytes);
+  if (!image.has_value()) {
+    return;
+  }
+  std::unique_ptr<mlir::MLIRContext> const context = make_context();
+  Expected<mlir::OwningOpRef<mlir::ModuleOp>> const module = emit_module(*context, *image);
+  if (!module.has_value()) {
+    return;
+  }
+  Expected<void> const verified = verify_module(module->get());
+  if (!verified.has_value()) {
+    return;
+  }
+  // The reference run. Its outcome is not asserted on — a generated program
+  // may legitimately exhaust its heap or nest past the walk's bound — only
+  // that reaching one of the two outcomes is all it ever does.
+  Expected<RunOutcome> const outcome = interpret_image(*image);
+  (void)outcome;
 }
 
 /// Reads a whole file as bytes.
-[[nodiscard]] std::optional<std::vector<std::uint8_t>> read_file(std::string_view path)
+[[nodiscard]] std::optional<std::vector<std::uint8_t>>
+read_file(std::string_view path)
 {
-    std::ifstream file(std::string(path), std::ios::binary);
-    if (!file) {
-        return std::nullopt;
-    }
-    return std::vector<std::uint8_t>(
-        (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::ifstream file(std::string(path), std::ios::binary);
+  if (!file) {
+    return std::nullopt;
+  }
+  // Named iterators rather than a temporary pair: the inline form is a
+  // declaration under the most vexing parse, and the parenthesis that used
+  // to disambiguate it is not a parenthesis the format policy keeps.
+  std::istreambuf_iterator<char> const first{ file };
+  std::istreambuf_iterator<char> const last{};
+  return std::vector<std::uint8_t>(first, last);
 }
 
 /// The largest input the entry reads, so a hostile length cannot exhaust
@@ -80,30 +85,31 @@ constexpr std::size_t max_input_bytes = 1 << 20;
 
 } // namespace
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
-    const std::vector<std::string_view> arguments(argv + 1, argv + argc);
+  std::vector<std::string_view> const arguments(argv + 1, argv + argc);
 
-    if (!arguments.empty()) {
-        int status = EXIT_SUCCESS;
-        for (const std::string_view path : arguments) {
-            const std::optional<std::vector<std::uint8_t>> bytes = read_file(path);
-            if (!bytes.has_value()) {
-                std::fprintf(stderr, "could not read %.*s\n", static_cast<int>(path.size()), path.data());
-                status = EXIT_FAILURE;
-                continue;
-            }
-            exercise(*bytes);
-        }
-        return status;
+  if (!arguments.empty()) {
+    int status = EXIT_SUCCESS;
+    for (std::string_view const path : arguments) {
+      std::optional<std::vector<std::uint8_t>> const bytes = read_file(path);
+      if (!bytes.has_value()) {
+        std::fprintf(stderr, "could not read %.*s\n", static_cast<int>(path.size()), path.data());
+        status = EXIT_FAILURE;
+        continue;
+      }
+      exercise(*bytes);
     }
+    return status;
+  }
 
-    std::vector<std::uint8_t> input;
-    input.reserve(4096);
-    int byte = 0;
-    while ((byte = std::getchar()) != EOF && input.size() < max_input_bytes) {
-        input.push_back(static_cast<std::uint8_t>(byte));
-    }
-    exercise(input);
-    return EXIT_SUCCESS;
+  std::vector<std::uint8_t> input;
+  input.reserve(4096);
+  int byte = 0;
+  while ((byte = std::getchar()) != EOF && input.size() < max_input_bytes) {
+    input.push_back(static_cast<std::uint8_t>(byte));
+  }
+  exercise(input);
+  return EXIT_SUCCESS;
 }

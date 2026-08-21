@@ -15,16 +15,15 @@
 #ifndef GANDR_COMPILE_HOST_VALUE_HPP
 #define GANDR_COMPILE_HOST_VALUE_HPP
 
+#include "gandr/compile_host/image.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
 
-#include "gandr/compile_host/image.hpp"
-
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// The heap cell tag a runtime value carries in its first word.
 ///
@@ -34,16 +33,16 @@ namespace gandr::compile_host
 /// to be comparable at all.
 enum class CellTag : std::int64_t
 {
-    /// An integer cell: `[Int, n]`.
-    Int = 0,
-    /// The unit cell: `[Unit]`.
-    Unit = 1,
-    /// A pair cell: `[Pair, first, second]`.
-    Pair = 2,
-    /// A left injection cell: `[Inl, payload]`.
-    Inl = 3,
-    /// A right injection cell: `[Inr, payload]`.
-    Inr = 4,
+  /// An integer cell: `[Int, n]`.
+  Int = 0,
+  /// The unit cell: `[Unit]`.
+  Unit = 1,
+  /// A pair cell: `[Pair, first, second]`.
+  Pair = 2,
+  /// A left injection cell: `[Inl, payload]`.
+  Inl = 3,
+  /// A right injection cell: `[Inr, payload]`.
+  Inr = 4,
 };
 
 /// The fixed word offsets of the heap's reserved prefix.
@@ -55,31 +54,32 @@ enum class CellTag : std::int64_t
 /// allocate, since a function returning one machine word has no other channel.
 struct HeapLayout
 {
-    /// The word holding the bump-allocation cursor.
-    static constexpr std::size_t bump_cursor = 0;
-    /// The word counting executed duplications.
-    static constexpr std::size_t duplication_ledger = 1;
-    /// The word counting executed discards.
-    static constexpr std::size_t discard_ledger = 2;
-    /// The word a run sets when an allocation would not fit.
-    ///
-    /// Zero means every allocation the run attempted fitted. Any other value
-    /// means the run stopped at an allocation it refused, and its returned
-    /// word is not a value.
-    static constexpr std::size_t exhaustion_flag = 3;
-    /// The first word available to cell allocation.
-    static constexpr std::size_t arena_base = 4;
+  /// The word holding the bump-allocation cursor.
+  static constexpr std::size_t bump_cursor = 0;
+  /// The word counting executed duplications.
+  static constexpr std::size_t duplication_ledger = 1;
+  /// The word counting executed discards.
+  static constexpr std::size_t discard_ledger = 2;
+  /// The word a run sets when an allocation would not fit.
+  ///
+  /// Zero means every allocation the run attempted fitted. Any other value
+  /// means the run stopped at an allocation it refused, and its returned
+  /// word is not a value.
+  static constexpr std::size_t exhaustion_flag = 3;
+  /// The first word available to cell allocation.
+  static constexpr std::size_t arena_base = 4;
 };
 
 /// The work a run accounted for, read back from the heap's ledger words.
 struct WorkLedger
 {
-    /// How many duplications executed.
-    std::int64_t duplications = 0;
-    /// How many discards executed.
-    std::int64_t discards = 0;
+  /// How many duplications executed.
+  std::int64_t duplications = 0;
+  /// How many discards executed.
+  std::int64_t discards = 0;
 
-    friend constexpr bool operator==(const WorkLedger&, const WorkLedger&) = default;
+  friend constexpr bool
+  operator==(WorkLedger const&, WorkLedger const&) = default;
 };
 
 /// Initializes a heap's reserved prefix for a fresh run.
@@ -90,7 +90,8 @@ struct WorkLedger
 ///   words are zero, and the exhaustion flag is clear.
 /// - provides: the precondition the emitted entry point assumes.
 /// - panics: none.
-void reset_heap(std::span<std::int64_t> heap) noexcept;
+void
+reset_heap(std::span<std::int64_t> heap) noexcept;
 
 /// Reads the work ledger out of a heap after a run.
 ///
@@ -98,7 +99,8 @@ void reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - requires: `heap.size()` is at least `HeapLayout::arena_base`.
 /// - ensures: returns the two ledger words as executed counts.
 /// - panics: none.
-[[nodiscard]] WorkLedger read_ledger(std::span<const std::int64_t> heap) noexcept;
+[[nodiscard]] WorkLedger
+read_ledger(std::span<std::int64_t const> heap) noexcept;
 
 /// Whether a run stopped at an allocation that would not fit.
 ///
@@ -110,7 +112,8 @@ void reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - provides: the one channel the compiled entry point has for reporting a
 ///   refusal, since its signature returns a single machine word.
 /// - panics: none.
-[[nodiscard]] bool heap_was_exhausted(std::span<const std::int64_t> heap) noexcept;
+[[nodiscard]] bool
+heap_was_exhausted(std::span<std::int64_t const> heap) noexcept;
 
 /// The number of arena words a run consumed, above the reserved prefix.
 ///
@@ -121,7 +124,8 @@ void reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - provides: the measurement the exact-heap witnesses size their heaps by,
 ///   rather than trusting the static bound.
 /// - panics: none.
-[[nodiscard]] std::size_t allocated_words(std::span<const std::int64_t> heap) noexcept;
+[[nodiscard]] std::size_t
+allocated_words(std::span<std::int64_t const> heap) noexcept;
 
 /// Renders a heap value in the canonical form the agreement fixture uses.
 ///
@@ -137,9 +141,8 @@ void reset_heap(std::span<std::int64_t> heap) noexcept;
 /// - fails: returns `std::nullopt` when a cell is out of range, carries an
 ///   unknown tag, or nests deeper than `max_render_depth`.
 /// - panics: none.
-[[nodiscard]] std::optional<std::string> render_value(
-    std::span<const std::int64_t> heap,
-    std::int64_t root);
+[[nodiscard]] std::optional<std::string>
+render_value(std::span<std::int64_t const> heap, std::int64_t root);
 
 /// The deepest value nesting the renderer walks before reporting failure.
 ///
@@ -169,7 +172,8 @@ inline constexpr std::size_t heap_headroom_words = 16;
 ///   interpreter use by default, so a heap difference can never be mistaken
 ///   for a disagreement between them.
 /// - panics: none.
-[[nodiscard]] std::size_t heap_words_for(const Image& image) noexcept;
+[[nodiscard]] std::size_t
+heap_words_for(Image const& image) noexcept;
 
 /// The number of heap words a node of the given kind allocates when it runs.
 ///
@@ -177,7 +181,8 @@ inline constexpr std::size_t heap_headroom_words = 16;
 /// - ensures: total; the sum over an image's nodes bounds a run's allocation,
 ///   which is how the host sizes a heap for a generated program.
 /// - panics: none.
-[[nodiscard]] std::size_t node_allocation_words(NodeKind kind, CtorTag tag) noexcept;
+[[nodiscard]] std::size_t
+node_allocation_words(NodeKind kind, CtorTag tag) noexcept;
 
 } // namespace gandr::compile_host
 

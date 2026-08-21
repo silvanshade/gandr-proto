@@ -11,25 +11,24 @@
 #ifndef GANDR_COMPILE_HOST_SAMPLES_HPP
 #define GANDR_COMPILE_HOST_SAMPLES_HPP
 
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/value.hpp"
+
 #include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "gandr/compile_host/image.hpp"
-#include "gandr/compile_host/value.hpp"
-
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// One named program.
 struct Sample
 {
-    /// The name the fixture keys the expected value by.
-    std::string_view name;
-    /// The program.
-    Image image;
+  /// The name the fixture keys the expected value by.
+  std::string_view name;
+  /// The program.
+  Image image;
 };
 
 /// The canonical sample set: one program per positive-core transition, plus a
@@ -44,7 +43,8 @@ struct Sample
 /// - ensures: exactly seven samples, in a stable order, each well-formed.
 /// - provides: the agreement surface.
 /// - panics: none.
-[[nodiscard]] std::vector<Sample> canonical_samples();
+[[nodiscard]] std::vector<Sample>
+canonical_samples();
 
 /// The accounted-work regression program: a duplication and a discard whose
 /// results are never observed.
@@ -59,10 +59,11 @@ struct Sample
 ///   and one discard.
 /// - provides: the regression witness's program.
 /// - panics: none.
-[[nodiscard]] Sample accounted_work_sample();
+[[nodiscard]] Sample
+accounted_work_sample();
 
 /// The work a correct run of `accounted_work_sample` accounts for.
-inline constexpr WorkLedger accounted_work_expectation{.duplications = 1, .discards = 1};
+inline constexpr WorkLedger accounted_work_expectation{ .duplications = 1, .discards = 1 };
 
 /// Generates a well-formed program image pseudo-randomly.
 ///
@@ -76,7 +77,8 @@ inline constexpr WorkLedger accounted_work_expectation{.duplications = 1, .disca
 ///   deeper than `max_generated_depth`.
 /// - provides: the property harness's inputs and the fuzz corpus seeds.
 /// - panics: none.
-[[nodiscard]] Image generate_image(std::uint64_t seed);
+[[nodiscard]] Image
+generate_image(std::uint64_t seed);
 
 /// The deepest consumer nesting the generator produces.
 inline constexpr std::uint32_t max_generated_depth = 6;

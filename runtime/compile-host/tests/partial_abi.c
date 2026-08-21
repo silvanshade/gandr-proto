@@ -20,34 +20,33 @@
  * - panics: none.
  */
 
+#include "gandr/compile_host/abi.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
-#include "gandr/compile_host/abi.h"
-
-uint32_t gandr_compile_host_abi_version(void)
+uint32_t
+gandr_compile_host_abi_version(void)
 {
-    return GANDR_COMPILE_HOST_ABI_VERSION;
+  return GANDR_COMPILE_HOST_ABI_VERSION;
 }
 
-int32_t gandr_compile_host_run(
-    const uint8_t* bytes,
-    size_t length,
-    GandrCompileHostOutcome* outcome)
+int32_t
+gandr_compile_host_run(uint8_t const* bytes, size_t length, GandrCompileHostOutcome* outcome)
 {
-    (void)bytes;
-    (void)length;
-    if (outcome == NULL) {
-        return GANDR_COMPILE_HOST_STATUS_BAD_CALL;
-    }
-    /* A caller that reaches this has already failed the property under test:
-     * it invoked a run against a library whose release entry it had not
-     * resolved. The static text is owned by nobody, so nothing leaks even
-     * then, and the status says what happened. */
-    outcome->status = GANDR_COMPILE_HOST_STATUS_BAD_CALL;
-    outcome->duplications = 0;
-    outcome->discards = 0;
-    outcome->allocated_words = 0;
-    outcome->text = "this boundary exports no release entry";
-    return outcome->status;
+  (void)bytes;
+  (void)length;
+  if (outcome == NULL) {
+    return GANDR_COMPILE_HOST_STATUS_BAD_CALL;
+  }
+  /* A caller that reaches this has already failed the property under test:
+   * it invoked a run against a library whose release entry it had not
+   * resolved. The static text is owned by nobody, so nothing leaks even
+   * then, and the status says what happened. */
+  outcome->status = GANDR_COMPILE_HOST_STATUS_BAD_CALL;
+  outcome->duplications = 0;
+  outcome->discards = 0;
+  outcome->allocated_words = 0;
+  outcome->text = "this boundary exports no release entry";
+  return outcome->status;
 }

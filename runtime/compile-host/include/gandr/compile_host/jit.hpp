@@ -13,36 +13,35 @@
 #ifndef GANDR_COMPILE_HOST_JIT_HPP
 #define GANDR_COMPILE_HOST_JIT_HPP
 
+#include "gandr/compile_host/image.hpp"
+#include "gandr/compile_host/status.hpp"
+#include "gandr/compile_host/value.hpp"
+#include "mlir/IR/BuiltinOps.h"
+
 #include <cstdint>
 #include <span>
 #include <string>
 #include <vector>
 
-#include "mlir/IR/BuiltinOps.h"
-
-#include "gandr/compile_host/image.hpp"
-#include "gandr/compile_host/status.hpp"
-#include "gandr/compile_host/value.hpp"
-
-namespace gandr::compile_host
-{
+namespace gandr::compile_host {
 
 /// What one execution produced.
 struct RunOutcome
 {
-    /// The produced value, rendered canonically.
-    std::string value;
-    /// The work the run accounted for.
-    WorkLedger ledger;
-    /// The arena words the run consumed, above the reserved prefix.
-    ///
-    /// The two paths are compared on the value and the ledger and never on
-    /// this count: canonicalization folds pure producers, so the compiled path
-    /// may allocate strictly fewer words than the reference walk for the same
-    /// program. The differential asserts that ordering rather than equality.
-    std::size_t allocated = 0;
+  /// The produced value, rendered canonically.
+  std::string value;
+  /// The work the run accounted for.
+  WorkLedger ledger;
+  /// The arena words the run consumed, above the reserved prefix.
+  ///
+  /// The two paths are compared on the value and the ledger and never on
+  /// this count: canonicalization folds pure producers, so the compiled path
+  /// may allocate strictly fewer words than the reference walk for the same
+  /// program. The differential asserts that ordering rather than equality.
+  std::size_t allocated = 0;
 
-    friend bool operator==(const RunOutcome&, const RunOutcome&) = default;
+  friend bool
+  operator==(RunOutcome const&, RunOutcome const&) = default;
 };
 
 /// Compiles and runs a lowered module on a fresh heap.
@@ -61,9 +60,8 @@ struct RunOutcome
 ///   point cannot be resolved; `ErrorKind::ResultUnreadable` when the produced
 ///   value does not render.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> run_lowered_module(
-    mlir::ModuleOp module,
-    std::size_t heap_words);
+[[nodiscard]] Expected<RunOutcome>
+run_lowered_module(mlir::ModuleOp module, std::size_t heap_words);
 
 /// Compiles and runs a lowered module on a heap the caller owns.
 ///
@@ -81,9 +79,8 @@ struct RunOutcome
 ///   caller use.
 /// - fails: as `run_lowered_module`.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> run_lowered_module_on(
-    mlir::ModuleOp module,
-    std::span<std::int64_t> heap);
+[[nodiscard]] Expected<RunOutcome>
+run_lowered_module_on(mlir::ModuleOp module, std::span<std::int64_t> heap);
 
 /// Compiles a program image and runs it, end to end.
 ///
@@ -95,7 +92,8 @@ struct RunOutcome
 ///   so no caller can skip the wall by assembling the stages differently.
 /// - fails: the first stage's typed error.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> compile_and_run(const Image& image);
+[[nodiscard]] Expected<RunOutcome>
+compile_and_run(Image const& image);
 
 /// Compiles a program image and runs it on a heap of the caller's size.
 ///
@@ -109,17 +107,16 @@ struct RunOutcome
 /// - fails: the first stage's typed error, `ErrorKind::LimitExceeded`
 ///   included.
 /// - panics: none.
-[[nodiscard]] Expected<RunOutcome> compile_and_run_with_heap(
-    const Image& image,
-    std::size_t heap_words);
+[[nodiscard]] Expected<RunOutcome>
+compile_and_run_with_heap(Image const& image, std::size_t heap_words);
 
 /// The measured cost of one end-to-end compilation and run.
 struct RunTiming
 {
-    /// Microseconds from a fresh context to a lowered module.
-    std::int64_t compile_microseconds = 0;
-    /// Microseconds spent building the engine and calling the entry point.
-    std::int64_t execute_microseconds = 0;
+  /// Microseconds from a fresh context to a lowered module.
+  std::int64_t compile_microseconds = 0;
+  /// Microseconds spent building the engine and calling the entry point.
+  std::int64_t execute_microseconds = 0;
 };
 
 /// Compiles and runs a program image, reporting the stage timings beside the
@@ -132,7 +129,8 @@ struct RunTiming
 ///   command behind it.
 /// - fails: as `compile_and_run`.
 /// - panics: none.
-[[nodiscard]] Expected<std::pair<RunOutcome, RunTiming>> compile_and_run_timed(const Image& image);
+[[nodiscard]] Expected<std::pair<RunOutcome, RunTiming>>
+compile_and_run_timed(Image const& image);
 
 } // namespace gandr::compile_host
 
