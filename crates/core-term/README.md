@@ -2,7 +2,6 @@
 
 The core call-by-push-value term substrate: the vocabulary every gandr core judgement is stated over.
 
-Nothing here decides anything.
 Nothing here decides anything, and nothing here names a crate that does: this crate has no upward dependency, which is what makes it the common substrate.
 It carries the terms, the types that classify them, the services a judgement spends while walking them, and the shared wrapper and error vocabulary the answers come back in, so every crate that _does_ decide is stated over one vocabulary: `gandr-core-checker`'s recursive bidirectional judgement, `gandr-core-machine`'s defunctionalized realization of that same judgement, `gandr-core-nbe`'s conversion engine, `gandr-core-unify`'s solver, and `gandr-core-sequent`'s L machine.
 
@@ -12,7 +11,8 @@ What this crate buys is that none of them has to depend on another merely to nam
 ## Current provision
 
 - `syntax` — the values and computations of core CBPV as two distinct sorts over reference-counted children, plus the flat arena a total traversal interns into.
-- `types` — the value and computation types that classify them, split by the same polarity.
+- `types` — the value and computation types that classify them, split by the same polarity, each with the variant census that lets a judgement in another crate be checked for totality despite the non-exhaustive enums.
+- `classifier` — the `(sort, level)` pair a type is formed at: the two ground sorts, the sort expression a declaration may abstract over, and the classifier itself.
 - `ctx` — the two-zone typing context `Γ; Σ`.
 - `subst` — the iterative capture-avoiding substitution engine over terms, and the hole substitution a solver's certificate is re-checked through.
 - `identity` — the value-into-type substitution that instantiates a `Walk` motive; types carry no binders, so it is capture-free structural recursion delegating its one binder-bearing case to `subst`.
@@ -26,6 +26,14 @@ What this crate buys is that none of them has to depend on another merely to nam
 - `nominal` — gandr's sort tags over the shared atom substrate.
 
 Every walk here is total and iterative: substitution, interning, and arena construction run over explicit worklists rather than the host call stack, because a term's depth is caller-controlled.
+
+## The classifier model
+
+gandr classifies with one pair, `(sort, level)`, everywhere: surface syntax, formation, normalization, kernel export, and diagnostics all read the same classifier.
+There are two universe families, `Type[+, l]` over value types and `Type[-, l]` over computation types, sharing the one level algebra that `gandr-kernel-strata` owns and nothing else; there is no kind layer above them and no second level algebra beside them.
+The `+U` and `-F` bridges are the only crossings between the two term categories, and an elaborator writes one only at a designated checked site, as a recorded node — never through unification, conversion, or a coercion search.
+There is no dependent-elimination keyword: an effect-sequencing binder is opaque to the type layer.
+Only ground sorts cross into the certified kernel; a declaration abstract in its sort is specialized to ground before admission.
 
 ## Planned but absent
 

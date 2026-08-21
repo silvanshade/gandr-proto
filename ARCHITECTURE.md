@@ -57,7 +57,7 @@ Counting convention: a member is an active entry in the root `Cargo.toml` `works
 ```text
 tier 0   kernel-strata · storage-chunker · surface-syntax · surface-render-remote
          theory-graphs · theory-nominal-automata · theory-orders · theory-recursion
-tier 1   core-term → theory-nominal-automata
+tier 1   core-term → kernel-strata, theory-nominal-automata
          kernel-core → kernel-strata
          storage-prolly-trees → storage-chunker
          surface-grammar → surface-render-remote, surface-syntax, theory-graphs
@@ -67,7 +67,7 @@ tier 2   core-checker-tools → core-term
          storage-artifact → kernel-core, storage-chunker, storage-prolly-trees
          surface-parser → surface-grammar, surface-syntax
          theory-levitation → core-term
-tier 3   core-checker → core-nbe, core-term, kernel-core
+tier 3   core-checker → core-nbe, core-term, kernel-core, kernel-strata
          core-unify → core-nbe, core-term
          runtime-effects → core-sequent, core-term
          theory-cell-complexes → core-sequent

@@ -20,6 +20,15 @@ The conformance suite and the free generators that drive it are not here: they a
 - `judgements` — the recursive bidirectional judgement (`checker`); the direction and `Descend`/`Return` trace vocabulary both realizations speak (`control`), which is shared by construction because the recursive judgement emits the events the machine's registers are compared against; the stack-typing judgement a reified stack needs (`stack`); the discharge of a signature's abstract type components (`package`); and the nominal-atom minting opaque ascription needs with the table that makes freshness checkable (`seal`).
 - `discipline` — `subtype`, the consistent subsumption relation, reflexive but deliberately not transitive once `Unknown` participates; and `mark`, the total marking traversal that converts each abort site into a localized mark plus a matched-`Unknown` recovery.
 - `kernel_bridge` — the total, iterative worklist lowering from checked core forms into `gandr-kernel-core`'s closed S1 vocabulary, rejecting out-of-subset nodes structurally with a precise refusal.
+- `formation` — the type-formation judgement: what classifier each type is formed at, total over both type enums, with every level successor and join taken through the kernel's level algebra rather than computed here.
+
+## The classifier model
+
+gandr classifies with one pair, `(sort, level)`, and formation is where both components are decided rather than inferred by a caller from an enum name.
+There are two universe families, `Type[+, l]` over value types and `Type[-, l]` over computation types, sharing the one level algebra that `gandr-kernel-strata` owns; there is no kind layer above them and no second level algebra beside them.
+The `+U` and `-F` bridges are the only crossings between the two term categories, and this crate writes one only at a designated checked site, as a recorded node — never through unification, conversion, or a coercion search.
+There is no dependent-elimination keyword: an effect-sequencing binder is opaque to the type layer.
+Only ground sorts cross the kernel bridge; a declaration abstract in its sort is specialized to ground before export.
 
 ## Planned but absent
 
