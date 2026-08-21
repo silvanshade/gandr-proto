@@ -44,8 +44,7 @@ mod tests
 
     /// A payload-bearing pair of datatypes: the fixture for two arms at one
     /// head, which are told apart only by their arguments.
-    const NESTED: &str = "data Inner : Type { No : Inner; Yes : (n : Integer) --> Inner; } \
-                          data Outer : Type { None : Outer; Some : (i : Inner) --> Outer; }";
+    const NESTED: &str = r#"data Inner : Type { No : Inner; Yes : (n : Integer) --> Inner; } data Outer : Type { None : Outer; Some : (i : Inner) --> Outer; }"#;
 
     // --- The catch-all --------------------------------------------------------
 
@@ -76,8 +75,7 @@ mod tests
     fn a_catch_all_binder_names_the_scrutinee()
     {
         let program = alloc::format!(
-            "{COLOR} def which(c : Color) -> F Color {{ case c {{ Red => ret Green, x => ret x }} \
-             }} which(Blue)"
+            r#"{COLOR} def which(c : Color) -> F Color {{ case c {{ Red => ret Green, x => ret x }} }} which(Blue)"#
         );
         let outcome = run_source(program.as_str()).expect("the program must run");
         assert!(
@@ -96,8 +94,8 @@ mod tests
     #[test]
     fn a_catch_all_with_no_declared_constructor_stays_declined()
     {
-        let program = "def twice(n : Integer) -> F Integer { case n { x => ret (x + x) } } \
-                       twice(21)";
+        let program =
+            r#"def twice(n : Integer) -> F Integer { case n { x => ret (x + x) } } twice(21)"#;
         assert!(
             matches!(run_source(program), Err(RunError::Lower(_))),
             "no arm names a declared constructor, so the declared-data eliminator is not selected"
@@ -165,8 +163,8 @@ mod tests
     #[test]
     fn a_literal_column_is_still_declined_by_name()
     {
-        let program = "def pick(n : Integer) -> F Integer { case n { 0 => ret 1, _ => ret 2 } } \
-                       pick(0)";
+        let program =
+            r#"def pick(n : Integer) -> F Integer { case n { 0 => ret 1, _ => ret 2 } } pick(0)"#;
         assert!(
             matches!(run_source(program), Err(RunError::Lower(_))),
             "an integer column needs an equality test this eliminator does not have"
@@ -179,8 +177,7 @@ mod tests
     fn a_hole_still_shadows_the_catch_all_written_after_it()
     {
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, _ => \
-             ret 2 }} }} pick(Green)"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, _ => ret 2 }} }} pick(Green)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -188,8 +185,7 @@ mod tests
             "filling the hole could take the match, so the catch-all is not reached"
         );
         let settled = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, _ => \
-             ret 2 }} }} pick(Red)"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, _ => ret 2 }} }} pick(Red)"#
         );
         assert_eq!(
             Some(TestInteger(0)),
@@ -203,8 +199,7 @@ mod tests
     fn a_tag_no_arm_reaches_is_still_a_hole()
     {
         let program = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             Some(No) => ret 8 }} }} pick(None)"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), Some(No) => ret 8 }} }} pick(None)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -248,8 +243,7 @@ mod tests
         );
 
         let or_pattern = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red | Green => ret 7, Blue => \
-             ret 9 }} }}"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red | Green => ret 7, Blue => ret 9 }} }}"#
         );
         assert!(
             uncovered(TestText(or_pattern.as_str())).is_empty(),
@@ -257,8 +251,7 @@ mod tests
         );
 
         let shared_head = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             Some(No) => ret 8, None => ret 1 }} }}"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), Some(No) => ret 8, None => ret 1 }} }}"#
         );
         assert!(
             uncovered(TestText(shared_head.as_str())).is_empty(),
@@ -267,16 +260,14 @@ mod tests
 
         // The separating case: drop the arm that covers `None`.
         let missing = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             Some(No) => ret 8 }} }}"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), Some(No) => ret 8 }} }}"#
         );
         assert!(
             !uncovered(TestText(missing.as_str())).is_empty(),
             "the analysis names the tag no arm reaches"
         );
         let reached = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             Some(No) => ret 8 }} }} pick(None)"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), Some(No) => ret 8 }} }} pick(None)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -292,8 +283,7 @@ mod tests
     {
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} \
-             pick({scrutinee})"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }
@@ -324,8 +314,7 @@ mod tests
     {
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} \
-             pick({scrutinee})"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, _ => ret 1 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }
@@ -335,8 +324,7 @@ mod tests
     {
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red | Green => ret 7, Blue => \
-             ret 9 }} }} pick({scrutinee})"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red | Green => ret 7, Blue => ret 9 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }
@@ -350,8 +338,7 @@ mod tests
         let prelude = prelude.0;
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{NESTED} {prelude} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret \
-             (k + 1), Some(No) => ret 8, None => ret 1 }} }} pick({scrutinee})"
+            r#"{NESTED} {prelude} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), Some(No) => ret 8, None => ret 1 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }

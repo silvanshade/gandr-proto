@@ -53,8 +53,7 @@ mod tests
 
     /// A payload-bearing pair of datatypes, the fixture for questions that have
     /// to look inside a constructor.
-    const NESTED: &str = "data Inner : Type { No : Inner; Yes : (n : Integer) --> Inner; } \
-                          data Outer : Type { None : Outer; Some : (i : Inner) --> Outer; }";
+    const NESTED: &str = r#"data Inner : Type { No : Inner; Yes : (n : Integer) --> Inner; } data Outer : Type { None : Outer; Some : (i : Inner) --> Outer; }"#;
 
     // --- What the hole stops --------------------------------------------------
 
@@ -172,15 +171,13 @@ mod tests
             "the filled pattern settles the constructor it names"
         );
         let source = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 }} \
-             }}"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 }} }}"#
         );
         assert!(
             notes(TestText(source.as_str()))
                 .iter()
                 .any(|note| note.contains("MissingCaseArm")),
-            "and `Blue`, which the filled pattern does not name, is a missing arm rather than a \
-             stuck one"
+            r#"and `Blue`, which the filled pattern does not name, is a missing arm rather than a stuck one"#
         );
     }
 
@@ -209,8 +206,7 @@ mod tests
     {
         let mut edited = Session::new();
         let holed = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, Blue \
-             => ret 2 }} }}"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, Blue => ret 2 }} }}"#
         );
         let opening = edited
             .submit(holed.as_str())
@@ -232,8 +228,7 @@ mod tests
         );
 
         // The fill is an ordinary next submission against the retained state.
-        let fill = "def pick(c : Color) -> F Integer { case c { Red => ret 0, Green => ret 1, Blue \
-                    => ret 2 } }";
+        let fill = r#"def pick(c : Color) -> F Integer { case c { Red => ret 0, Green => ret 1, Blue => ret 2 } }"#;
         let filled = edited.submit(fill).expect("lowering must not fail");
         assert!(
             matches!(
@@ -296,8 +291,7 @@ mod tests
         );
 
         let filled = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 }} \
-             }}"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, Green => ret 1 }} }}"#
         );
         let after = notes(TestText(filled.as_str()));
         assert!(
@@ -324,9 +318,7 @@ mod tests
     #[test]
     fn a_hole_in_a_payload_stops_only_its_own_constructor()
     {
-        let source = "data Maybe : Type { Nothing : Maybe; Just : (x : Integer) --> Maybe; } \
-                      def pick(m : Maybe) -> F Integer { case m { Just(?) => ret 0, Nothing => ret \
-                      1 } }";
+        let source = r#"data Maybe : Type { Nothing : Maybe; Just : (x : Integer) --> Maybe; } def pick(m : Maybe) -> F Integer { case m { Just(?) => ret 0, Nothing => ret 1 } }"#;
         assert_eq!(
             Some(TestInteger(1)),
             returned_int(run_source(
@@ -354,8 +346,7 @@ mod tests
     fn a_doubly_nested_hole_is_reached_only_through_its_written_tests()
     {
         let program = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(?inner)) => ret 0, \
-             None => ret 1 }} }}"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(?inner)) => ret 0, None => ret 1 }} }}"#
         );
         assert_eq!(
             Some(TestInteger(1)),
@@ -383,8 +374,7 @@ mod tests
     fn a_nested_constructor_pattern_binds_and_runs()
     {
         let program = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), \
-             None => ret 1 }} }} def v = (Some((Yes(41) : Inner)) : Outer); pick(v)"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ Some(Yes(k)) => ret (k + 1), None => ret 1 }} }} def v = (Some((Yes(41) : Inner)) : Outer); pick(v)"#
         );
         assert_eq!(
             Some(TestInteger(42)),
@@ -399,8 +389,7 @@ mod tests
     fn an_as_binder_over_a_hole_does_not_settle_it()
     {
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 7, ? as whole => ret \
-             1 }} }} pick(Green)"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 7, ? as whole => ret 1 }} }} pick(Green)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -415,8 +404,7 @@ mod tests
     fn an_or_pattern_of_holes_is_indeterminate()
     {
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 7, ? | ?other => ret \
-             1 }} }} pick(Blue)"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 7, ? | ?other => ret 1 }} }} pick(Blue)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -456,15 +444,13 @@ mod tests
     #[test]
     fn the_sum_eliminator_stops_at_an_indeterminate_arm()
     {
-        let taken = "def pick() -> F Integer { case (Inl(41) : Integer + String) { Inl(x) => ret \
-                     (x + 1), ? => ret 0 } } pick()";
+        let taken = r#"def pick() -> F Integer { case (Inl(41) : Integer + String) { Inl(x) => ret (x + 1), ? => ret 0 } } pick()"#;
         assert_eq!(
             Some(TestInteger(42)),
             returned_int(run_source(taken)),
             "the settled injection takes its own arm"
         );
-        let stopped = "def pick() -> F Integer { case (Inr(\"s\") : Integer + String) { Inl(x) => \
-                       ret (x + 1), ? => ret 0 } } pick()";
+        let stopped = r#"def pick() -> F Integer { case (Inr("s") : Integer + String) { Inl(x) => ret (x + 1), ? => ret 0 } } pick()"#;
         assert_eq!(
             Some(Blame::Hole),
             blamed(run_source(stopped)),
@@ -476,15 +462,13 @@ mod tests
     #[test]
     fn the_list_eliminator_stops_at_an_indeterminate_arm()
     {
-        let taken = "def ys = ([] : List(Integer)); def pick() -> F Integer { case ys { Nil => ret \
-                     0, ? => ret 9 } } pick()";
+        let taken = r#"def ys = ([] : List(Integer)); def pick() -> F Integer { case ys { Nil => ret 0, ? => ret 9 } } pick()"#;
         assert_eq!(
             Some(TestInteger(0)),
             returned_int(run_source(taken)),
             "the empty list takes its own arm"
         );
-        let stopped = "def xs = ([1, 2] : List(Integer)); def pick() -> F Integer { case xs { Nil \
-                       => ret 0, ? => ret 9 } } pick()";
+        let stopped = r#"def xs = ([1, 2] : List(Integer)); def pick() -> F Integer { case xs { Nil => ret 0, ? => ret 9 } } pick()"#;
         assert_eq!(
             Some(Blame::Hole),
             blamed(run_source(stopped)),
@@ -500,21 +484,18 @@ mod tests
     #[test]
     fn an_uncompiled_arm_is_declined_and_a_hole_is_not()
     {
-        let declined = "def pick(n : Integer) -> F Integer { case n { 0 => ret 1, _ => ret 2 } } \
-                        pick(0)";
+        let declined =
+            r#"def pick(n : Integer) -> F Integer { case n { 0 => ret 1, _ => ret 2 } } pick(0)"#;
         assert!(
             matches!(run_source(declined), Err(RunError::Lower(_))),
-            "an integer column needs an equality test this eliminator does not switch on, and is \
-             declined by name rather than dropped"
+            r#"an integer column needs an equality test this eliminator does not switch on, and is declined by name rather than dropped"#
         );
         let hole = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} }} \
-             pick(Red)"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1 }} }} pick(Red)"#
         );
         assert!(
             run_source(hole.as_str()).is_ok(),
-            "a hole the user wrote lowers in strict mode too — it is a term, not a recovery \
-             artifact"
+            r#"a hole the user wrote lowers in strict mode too — it is a term, not a recovery artifact"#
         );
     }
 
@@ -529,8 +510,7 @@ mod tests
     fn a_hole_shadows_the_second_arm_at_one_head()
     {
         let program = alloc::format!(
-            "{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ ? => ret 0, Some(Yes(k)) => \
-             ret (k + 1), Some(No) => ret 8, None => ret 1 }} }} pick(None)"
+            r#"{NESTED} def pick(m : Outer) -> F Integer {{ case m {{ ? => ret 0, Some(Yes(k)) => ret (k + 1), Some(No) => ret 8, None => ret 1 }} }} pick(None)"#
         );
         assert_eq!(
             Some(Blame::Hole),
@@ -581,8 +561,7 @@ mod tests
     fn a_named_pattern_hole_carries_its_name()
     {
         let source = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ?branch => ret 1 \
-             }} }}"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ?branch => ret 1 }} }}"#
         );
         assert!(
             notes(TestText(source.as_str()))
@@ -606,8 +585,7 @@ mod tests
     fn every_arm_of_a_declared_data_case_is_addressable()
     {
         let source = alloc::format!(
-            "{COLOR} def c = (Red : Color); case c {{ Red => ret 0, Green => ret 1, Blue => ret 2 \
-             }}"
+            r#"{COLOR} def c = (Red : Color); case c {{ Red => ret 0, Green => ret 1, Blue => ret 2 }}"#
         );
         let lowered = lower_source_total(source.as_str().into())
             .expect("total lowering fails only when the parser is unavailable");
@@ -657,8 +635,7 @@ mod tests
     {
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, Blue \
-             => ret 2 }} }} pick({scrutinee})"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, ? => ret 1, Blue => ret 2 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }
@@ -672,8 +649,7 @@ mod tests
         let pattern = pattern.0;
         let scrutinee = scrutinee.0;
         let program = alloc::format!(
-            "{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, {pattern} => ret \
-             1, Blue => ret 2 }} }} pick({scrutinee})"
+            r#"{COLOR} def pick(c : Color) -> F Integer {{ case c {{ Red => ret 0, {pattern} => ret 1, Blue => ret 2 }} }} pick({scrutinee})"#
         );
         run_source(program.as_str())
     }

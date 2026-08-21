@@ -564,7 +564,12 @@ mod tests
         #[test]
         fn error_item_is_statement_local()
         {
-            let lowered = lower_total("def a = 1;\ndef b = @@@;\ndef c = 2;\n");
+            let lowered = lower_total(
+                r#"def a = 1;
+def b = @@@;
+def c = 2;
+"#,
+            );
             assert_eq!(3, lowered.items.len(), "both healthy defs survive");
             assert_eq!(Some("a"), lowered.items[0].name.as_deref());
             assert_eq!(Term::Value(Value::Int(1)), lowered.items[0].term);
@@ -618,8 +623,7 @@ mod tests
             assert_eq!(
                 2,
                 lowered.items.len(),
-                "recovery is declaration-local: the malformed declaration neither \
-                 consumes `good` nor collapses the file into one hole, got {:?}",
+                r#"recovery is declaration-local: the malformed declaration neither consumes `good` nor collapses the file into one hole, got {:?}"#,
                 lowered.items
             );
 
@@ -630,8 +634,7 @@ mod tests
             );
             assert!(
                 matches!(lowered.items[0].term, Term::Value(Value::Hole(_))),
-                "the malformed declaration is a hole, not the silently repaired `bad = 1` a \
-                 field-directed walk produces, got {:?}",
+                r#"the malformed declaration is a hole, not the silently repaired `bad = 1` a field-directed walk produces, got {:?}"#,
                 lowered.items[0].term
             );
 
@@ -708,7 +711,11 @@ mod tests
 
             // A backslash before an actual newline is a line continuation
             // (grammar `escape_sequence` = `\` + `\r?\n`): both are elided.
-            let continued = lower_total("def cont = \"a\\\nb\";\n");
+            let continued = lower_total(
+                r#"def cont = "a\
+b";
+"#,
+            );
             assert_eq!(
                 continued.items[0].term,
                 Term::Value(Value::Str("ab".to_owned())),
@@ -786,7 +793,10 @@ mod tests
         fn hole_identifiers_are_unique()
         {
             let lowered = lower_total(
-                "def a = 99999999999999999999;\ndef b : Sess;\nthunk { leta x = 1; ret 2 };\n",
+                r#"def a = 99999999999999999999;
+def b : Sess;
+thunk { leta x = 1; ret 2 };
+"#,
             );
             let goals = goals_report(&lowered, &prelude_ctx());
             let mut ids: Vec<u32> = goals.iter().map(|goal| goal.hole).collect();
@@ -874,9 +884,10 @@ mod tests
         #[test]
         fn constructed_goals_match_golden()
         {
-            let source = "def f : U[1] (Integer -> F Integer);\n\
-                          def f(x: Integer) -> F Integer { leta y = x; ret x }\n\
-                          def g : Boolean;\n";
+            let source = r#"def f : U[1] (Integer -> F Integer);
+def f(x: Integer) -> F Integer { leta y = x; ret x }
+def g : Boolean;
+"#;
             check_golden("constructed", source);
         }
 
@@ -934,8 +945,9 @@ mod tests
         fn inference_position_hole_reports_local_ctx_without_expectation()
         {
             let lowered = lower_total(
-                "def f : U[1] (Integer -> F Integer);\n\
-                 def f(x: Integer) -> F Integer { leta y = x; ret x }\n",
+                r#"def f : U[1] (Integer -> F Integer);
+def f(x: Integer) -> F Integer { leta y = x; ret x }
+"#,
             );
             let goals = goals_report(&lowered, &prelude_ctx());
             assert_eq!(1, goals.len(), "one goal (the leta), got {goals:?}");
@@ -971,7 +983,11 @@ mod tests
         #[test]
         fn checking_position_hole_reports_the_expectation()
         {
-            let lowered = lower_total("def k : U[1] (F Integer);\ndef k = thunk { ret 1; };\n");
+            let lowered = lower_total(
+                r#"def k : U[1] (F Integer);
+def k = thunk { ret 1; };
+"#,
+            );
             let goals = goals_report(&lowered, &prelude_ctx());
             assert_eq!(1, goals.len(), "one goal (the missing tail), got {goals:?}");
             let goal = &goals[0];
