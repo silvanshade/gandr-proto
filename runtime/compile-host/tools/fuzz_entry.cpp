@@ -38,6 +38,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <print>
 #include <span>
 #include <string>
 #include <string_view>
@@ -106,7 +107,7 @@ main(int argc, char** argv) -> int
     for (std::string_view const path : arguments) {
       std::optional<std::vector<std::uint8_t>> const bytes = read_file(path);
       if (!bytes.has_value()) {
-        std::fprintf(stderr, "could not read %.*s\n", static_cast<int>(path.size()), path.data());
+        std::println(stderr, "could not read {}", path);
         status = EXIT_FAILURE;
         continue;
       }

@@ -38,6 +38,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <print>
 #include <span>
 #include <string>
 #include <string_view>
@@ -56,7 +57,7 @@ check(bool holds, std::string_view what)
 {
   if (!holds) {
     failure_count += 1;
-    std::fprintf(stderr, "  FAILED: %.*s\n", static_cast<int>(what.size()), what.data());
+    std::println(stderr, "  FAILED: {}", what);
   }
 }
 
@@ -66,16 +67,7 @@ check_equal(std::string_view actual, std::string_view expected, std::string_view
 {
   if (actual != expected) {
     failure_count += 1;
-    std::fprintf(
-      stderr,
-      "  FAILED: %.*s\n    actual:   %.*s\n    expected: %.*s\n",
-      static_cast<int>(what.size()),
-      what.data(),
-      static_cast<int>(actual.size()),
-      actual.data(),
-      static_cast<int>(expected.size()),
-      expected.data()
-    );
+    std::println(stderr, "  FAILED: {}\n    actual:   {}\n    expected: {}", what, actual, expected);
   }
 }
 
@@ -290,7 +282,7 @@ case_jit_agrees_with_the_fixture_on_every_sample()
     Expected<RunOutcome> const outcome = compile_and_run(sample.image);
     check(outcome.has_value(), "the program compiles and runs");
     if (!outcome.has_value()) {
-      std::fprintf(stderr, "    %s\n", outcome.error().detail.c_str());
+      std::println(stderr, "    {}", outcome.error().detail);
       continue;
     }
     check_equal(outcome->value, row->second, "the compiled answer matches the L machine's");
@@ -319,15 +311,15 @@ case_jit_agrees_with_the_reference_interpreter_under_generation()
     Expected<RunOutcome> const compiled = compile_and_run(image);
     check(reference.has_value() == compiled.has_value(), "the two paths agree on whether the program runs");
     if (!reference.has_value() || !compiled.has_value()) {
-      std::fprintf(stderr, "    seed %llu\n", static_cast<unsigned long long>(seed));
+      std::println(stderr, "    seed {}", static_cast<unsigned long long>(seed));
       continue;
     }
     check_equal(compiled->value, reference->value, "the two paths agree on the answer");
     check(compiled->ledger == reference->ledger, "the two paths account for the same duplications and discards");
     if (compiled->ledger != reference->ledger) {
-      std::fprintf(
+      std::println(
         stderr,
-        "    seed %llu: compiled %lld/%lld, reference %lld/%lld\n",
+        "    seed {}: compiled {}/{}, reference {}/{}",
         static_cast<unsigned long long>(seed),
         static_cast<long long>(compiled->ledger.duplications),
         static_cast<long long>(compiled->ledger.discards),
@@ -352,7 +344,7 @@ case_ledger_records_every_executed_duplication_and_discard()
   Expected<RunOutcome> const outcome = compile_and_run(sample.image);
   check(outcome.has_value(), "the accounted-work program compiles and runs");
   if (!outcome.has_value()) {
-    std::fprintf(stderr, "    %s\n", outcome.error().detail.c_str());
+    std::println(stderr, "    {}", outcome.error().detail);
     return;
   }
   check_equal(outcome->value, "(int 0)", "the answer mentions neither accounted operation");
@@ -438,13 +430,7 @@ case_compiled_allocation_is_bounded_by_its_heap()
           "the compiled refusal names the limit, not another stage"
         );
       } else {
-        std::fprintf(
-          stderr,
-          "    %.*s answered %s on a heap one word short\n",
-          static_cast<int>(sample.name.size()),
-          sample.name.data(),
-          starved->value.c_str()
-        );
+        std::println(stderr, "    {} answered {} on a heap one word short", sample.name, starved->value);
       }
     }
 
@@ -616,7 +602,7 @@ case_lowering_leaves_no_dialect_operation_behind()
     Expected<void> const lowered = lower_module(module->get(), Optimization::CanonicalizeAndDeduplicate);
     check(lowered.has_value(), "the program lowers");
     if (!lowered.has_value()) {
-      std::fprintf(stderr, "    %s\n", lowered.error().detail.c_str());
+      std::println(stderr, "    {}", lowered.error().detail);
       continue;
     }
     std::size_t survivors = 0;
@@ -695,21 +681,27 @@ struct Case
 registry() -> std::vector<Case>
 {
   return {
-    Case{                 "a_refused_run_writes_nothing_past_its_heap",case_a_refused_run_writes_nothing_past_its_heap                                                                       },
-    Case{             "arity_verifier_rejects_a_malformed_constructor", case_arity_verifier_rejects_a_malformed_constructor },
-    Case{                  "canonicalization_preserves_accounted_work",      case_canonicalization_preserves_accounted_work },
-    Case{             "the_c_boundary_owns_and_releases_every_message", case_the_c_boundary_owns_and_releases_every_message },
-    Case{                 "compiled_allocation_is_bounded_by_its_heap",     case_compiled_allocation_is_bounded_by_its_heap },
-    Case{                            "decoder_is_total_on_seed_corpus",                case_decoder_is_total_on_seed_corpus },
-    Case{                     "encode_decode_round_trips_every_sample",         case_encode_decode_round_trips_every_sample },
-    Case{                "jit_agrees_with_the_fixture_on_every_sample",    case_jit_agrees_with_the_fixture_on_every_sample },
-    Case{ "jit_agrees_with_the_reference_interpreter_under_generation",
-         case_jit_agrees_with_the_reference_interpreter_under_generation                                                   },
-    Case{      "ledger_records_every_executed_duplication_and_discard",
-         case_ledger_records_every_executed_duplication_and_discard                                                        },
-    Case{                "lowering_leaves_no_dialect_operation_behind",    case_lowering_leaves_no_dialect_operation_behind },
-    Case{        "verifier_runs_before_canonicalization_and_execution",
-         case_verifier_runs_before_canonicalization_and_execution                                                          },
+    Case{                 .name = "a_refused_run_writes_nothing_past_its_heap",
+         .run = case_a_refused_run_writes_nothing_past_its_heap                                                                      },
+    Case{             .name = "arity_verifier_rejects_a_malformed_constructor",
+         .run = case_arity_verifier_rejects_a_malformed_constructor                                                                  },
+    Case{                  .name = "canonicalization_preserves_accounted_work", .run = case_canonicalization_preserves_accounted_work },
+    Case{             .name = "the_c_boundary_owns_and_releases_every_message",
+         .run = case_the_c_boundary_owns_and_releases_every_message                                                                  },
+    Case{                 .name = "compiled_allocation_is_bounded_by_its_heap",
+         .run = case_compiled_allocation_is_bounded_by_its_heap                                                                      },
+    Case{                            .name = "decoder_is_total_on_seed_corpus",           .run = case_decoder_is_total_on_seed_corpus },
+    Case{                     .name = "encode_decode_round_trips_every_sample",    .run = case_encode_decode_round_trips_every_sample },
+    Case{                .name = "jit_agrees_with_the_fixture_on_every_sample",
+         .run = case_jit_agrees_with_the_fixture_on_every_sample                                                                     },
+    Case{ .name = "jit_agrees_with_the_reference_interpreter_under_generation",
+         .run = case_jit_agrees_with_the_reference_interpreter_under_generation                                                      },
+    Case{      .name = "ledger_records_every_executed_duplication_and_discard",
+         .run = case_ledger_records_every_executed_duplication_and_discard                                                           },
+    Case{                .name = "lowering_leaves_no_dialect_operation_behind",
+         .run = case_lowering_leaves_no_dialect_operation_behind                                                                     },
+    Case{        .name = "verifier_runs_before_canonicalization_and_execution",
+         .run = case_verifier_runs_before_canonicalization_and_execution                                                             },
   };
 }
 
@@ -734,13 +726,13 @@ main(int argc, char** argv) -> int
     }
     matched = true;
     failure_count = 0;
-    std::fprintf(stderr, "case %.*s\n", static_cast<int>(registered.name.size()), registered.name.data());
+    std::println(stderr, "case {}", registered.name);
     registered.run();
     total_failures += failure_count;
   }
 
   if (!matched) {
-    std::fprintf(stderr, "no case named %.*s\n", static_cast<int>(selected.size()), selected.data());
+    std::println(stderr, "no case named {}", selected);
     return EXIT_FAILURE;
   }
   return total_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

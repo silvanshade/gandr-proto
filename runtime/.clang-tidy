@@ -1,5 +1,5 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,*,-abseil-*,-altera-*,-android-*,-boost-*,-fuchsia-*,-google-objc-*,-linuxkernel-*,-llvmlibc-*,-mpi-*,-objc-*,-openmp-*,-zircon-*,-bugprone-easily-swappable-parameters,-cert-err58-cpp,-cppcoreguidelines-avoid-magic-numbers,-readability-identifier-length,-readability-magic-numbers'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,*,-abseil-*,-altera-*,-android-*,-boost-*,-fuchsia-*,-google-objc-*,-linuxkernel-*,-llvmlibc-*,-mpi-*,-objc-*,-openmp-*,-zircon-*,-bugprone-easily-swappable-parameters,-cert-err58-cpp,-cppcoreguidelines-avoid-magic-numbers,-readability-identifier-length,-readability-magic-numbers,-llvm-prefer-static-over-anonymous-namespace'
 WarningsAsErrors: ''
 HeaderFileExtensions:
   - ''

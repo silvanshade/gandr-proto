@@ -66,7 +66,7 @@ using Expected = std::expected<T, HostError>;
 [[nodiscard]] inline auto
 host_error(ErrorKind kind, std::string detail) -> std::unexpected<HostError>
 {
-  return std::unexpected(HostError{ kind, std::move(detail) });
+  return std::unexpected(HostError{ .kind = kind, .detail = std::move(detail) });
 }
 
 /// The stable short name of an error kind.

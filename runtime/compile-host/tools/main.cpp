@@ -28,6 +28,7 @@
 #include <fstream>
 #include <ios>
 #include <memory>
+#include <print>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -42,11 +43,10 @@ using namespace gandr::compile_host;
 void
 print_outcome(std::string_view name, RunOutcome const& outcome)
 {
-  std::printf(
-    "%.*s\t%s\t%lld\t%lld\n",
-    static_cast<int>(name.size()),
-    name.data(),
-    outcome.value.c_str(),
+  std::println(
+    "{}\t{}\t{}\t{}",
+    name,
+    outcome.value,
     static_cast<long long>(outcome.ledger.duplications),
     static_cast<long long>(outcome.ledger.discards)
   );
@@ -56,15 +56,7 @@ print_outcome(std::string_view name, RunOutcome const& outcome)
 void
 print_error(std::string_view name, HostError const& error)
 {
-  std::fprintf(
-    stderr,
-    "%.*s: %.*s: %s\n",
-    static_cast<int>(name.size()),
-    name.data(),
-    static_cast<int>(error_kind_name(error.kind).size()),
-    error_kind_name(error.kind).data(),
-    error.detail.c_str()
-  );
+  std::println(stderr, "{}: {}: {}", name, error_kind_name(error.kind), error.detail);
 }
 
 /// Every program the host names, in a stable order.
@@ -122,10 +114,9 @@ report_timings() -> int
       status = EXIT_FAILURE;
       continue;
     }
-    std::printf(
-      "%.*s\t%lld\t%lld\n",
-      static_cast<int>(sample.name.size()),
-      sample.name.data(),
+    std::println(
+      "{}\t{}\t{}",
+      sample.name,
       static_cast<long long>(timed->second.compile_microseconds),
       static_cast<long long>(timed->second.execute_microseconds)
     );
@@ -164,7 +155,7 @@ dump_module(std::string_view name, bool lowered) -> int
     llvm::outs() << "\n";
     return EXIT_SUCCESS;
   }
-  std::fprintf(stderr, "no sample named %.*s\n", static_cast<int>(name.size()), name.data());
+  std::println(stderr, "no sample named {}", name);
   return EXIT_FAILURE;
 }
 
@@ -175,7 +166,7 @@ write_seeds(std::string_view directory) -> int
   std::error_code creation;
   std::filesystem::create_directories(std::filesystem::path(directory), creation);
   if (creation) {
-    std::fprintf(stderr, "could not create %.*s\n", static_cast<int>(directory.size()), directory.data());
+    std::println(stderr, "could not create {}", directory);
     return EXIT_FAILURE;
   }
   for (Sample const& sample : all_samples()) {
@@ -183,7 +174,7 @@ write_seeds(std::string_view directory) -> int
     std::filesystem::path const path = std::filesystem::path(directory) / (std::string(sample.name) + ".bin");
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out) {
-      std::fprintf(stderr, "could not write %s\n", path.string().c_str());
+      std::println(stderr, "could not write {}", path.string());
       return EXIT_FAILURE;
     }
     out.write(reinterpret_cast<char const*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
@@ -195,15 +186,13 @@ write_seeds(std::string_view directory) -> int
 void
 print_usage()
 {
-  std::fprintf(
+  std::println(
     stderr,
-    "usage: gandr-compile-host [MODE]\n"
-    "  --run-samples          compile and run every named program (default)\n"
-    "  --interpret-samples    evaluate every named program with the reference interpreter\n"
-    "  --timings              report per-program compile and execute microseconds\n"
-    "  --dump-dialect=NAME    print a program's verified dialect module\n"
-    "  --dump-lowered=NAME    print a program's lowered module\n"
-    "  --write-seeds=DIR      write every named program's encoded image into DIR\n"
+    "usage: gandr-compile-host [MODE]\n  --run-samples          compile and run every named program (default)\n  "
+    "--interpret-samples    evaluate every named program with the reference interpreter\n  --timings              "
+    "report per-program compile and execute microseconds\n  --dump-dialect=NAME    print a program's verified dialect "
+    "module\n  --dump-lowered=NAME    print a program's lowered module\n  --write-seeds=DIR      write every named "
+    "program's encoded image into DIR"
   );
 }
 
