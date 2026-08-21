@@ -74,8 +74,32 @@ mod tests
                                       : neg(x) ==> (z);\n  };\n}";
     /// A real description whose two admitted circuit cells have different
     /// spheres while the target body contains the pattern body.
-    const ADMITTED_COMPLETION_ROUTE: &str = "data Nat : Type {\n  Zero : Nat;\n}\n\nsign Nat {\n  \
-sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule p : Nat ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : Nat) {\n    node : p(x) ==> (x\u{2032});\n    node : add(x\u{2032}, y) --> (z);\n  };\n\n  rule second : (\n    rule p : Nat ==> Nat,\n    data a : Nat,\n    data b : Nat\n  ) ==> (z : Nat) {\n    node : p(a) ==> (a\u{2032});\n    node : add(a\u{2032}, b) --> (z);\n  };\n}";
+    const ADMITTED_COMPLETION_ROUTE: &str = r#"data Nat : Type {
+  Zero : Nat;
+}
+
+sign Nat {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+
+  rule first : (
+    rule p : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : add(x′, y) --> (z);
+  };
+
+  rule second : (
+    rule p : Nat ==> Nat,
+    data a : Nat,
+    data b : Nat
+  ) ==> (z : Nat) {
+    node : p(a) ==> (a′);
+    node : add(a′, b) --> (z);
+  };
+}"#;
 
     #[test]
     fn a_two_line_body_reads_as_a_diagram_with_one_internal_wire()
