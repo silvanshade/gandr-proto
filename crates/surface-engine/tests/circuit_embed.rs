@@ -739,7 +739,7 @@ sign Nat {
             store,
             &rules,
             MatchBudget(4_096_usize),
-            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+            CompletionBudget::new(64_usize.into(), 64_usize.into(), 64_usize.into()),
             CircuitAdapterBudget(64_usize),
         );
         let supplied = completion

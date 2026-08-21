@@ -745,6 +745,15 @@ pub fn complete_circuit_rules(
 /// - fails: a typed [`CircuitOverlapDecline`] for a missing cell or an
 ///   unfaithful substitution/wiring.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — a faithful embedding renders one ordinary overlap and
+///   preserves the declaration seam that supplied it, while an invalid supplied
+///   equation remains observable at the completion boundary.
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `w1_two_embeddings_supply_two_critical_pairs`
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `w2_embedding_supplies_a_non_unifying_sequent_pair`
 #[inline]
 fn render_embedding_overlaps(
     store: &mut CellStore,
@@ -836,6 +845,15 @@ fn render_embedding_overlaps(
 /// - fails: [`CircuitOverlapDecline::Unfaithful`] for a missing wire, unmapped
 ///   metavariable, or conflicting binding.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — wire images determine the induced metavariable
+///   substitution, and apart-renamed right variables remain distinct until they
+///   are bound to their target-wire representatives.
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `w1_two_embeddings_supply_two_critical_pairs`
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `w4_distinct_wire_renderings_keep_origin_seams`
 #[inline]
 fn induced_substitution(
     cell: &gandr_theory_computads::Cell,
