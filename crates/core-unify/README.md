@@ -9,6 +9,9 @@ Two commitments shape everything here.
 **Most general or nothing** — a solution less general than the problem admits is user-visible unreliability even when every answer is correct, because the difference surfaces later and somewhere else.
 **Postpone, never guess** — every place the solver stops has its own reason, so a caller reading one knows what would have to change and a test reading one pins the boundary rather than the absence of an answer.
 
+**Refutation and refusal stay distinct** — `Verdict::Refuted` carries evidence that no substitution can satisfy the constraint, while `Verdict::Refused` records only that the current conversion relation declined a metavariable-free constraint.
+A fuller environment or budget may decide a refusal.
+
 The equational theory is not this crate's.
 Every rule the solver applies is one `gandr-core-nbe` already decides, which is what makes the substitute-and-re-check evidence meaningful and what stops a second definitional equality growing here.
 
@@ -19,6 +22,7 @@ Every rule the solver applies is one `gandr-core-nbe` already decides, which is 
 - `meta` — the metavariable store and the substitution being built.
 - `solve` — the solver machine itself.
 - `certify` — certificate construction and the re-check that substitutes a solution and asks conversion.
+- `Verdict::Refuted` and `Verdict::Refused` are separate outcomes, so consumers that require evidence-stable refutations cannot accept a conversion refusal.
 - `scan` — occurrence scanning, private to the crate.
 
 ## Planned but absent

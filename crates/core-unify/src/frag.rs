@@ -144,6 +144,19 @@ pub enum Refutation
     Escape,
 }
 
+/// Why the current conversion relation declined to relate a metavariable-free
+/// constraint.
+///
+/// A refusal is weaker than a refutation: a fuller environment or a different
+/// conversion budget may relate the same terms.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
+pub enum Refusal
+{
+    /// Ordinary conversion reports distinct under the current environment.
+    Conversion,
+}
+
 /// What a metavariable's spine is, for the pattern discipline.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum SpineShape

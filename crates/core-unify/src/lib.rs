@@ -65,9 +65,12 @@
 //!   and a blocked elimination.
 //!
 //! Refuted, where the evidence is complete: a clash between two canonical forms
-//! with different constructors, an occurs with nothing left to prune, and an
+//! with different constructors, an occurs with nothing left to prune, or an
 //! escape with nothing left to prune.
 //!
+//! Refused, where the current conversion relation declines a metavariable-free
+//! constraint. A fuller environment or conversion budget may decide it.
+
 //! # Metavariables are nominated holes, and they are closed
 //!
 //! The solver adds no syntactic former. A metavariable is an existing
@@ -115,6 +118,7 @@ pub use crate::certify::Postponed;
 pub use crate::certify::Replay;
 pub use crate::certify::Verdict;
 pub use crate::frag::PostponeReason;
+pub use crate::frag::Refusal;
 pub use crate::frag::Refutation;
 pub use crate::meta::MetaContext;
 pub use crate::meta::MetaSort;
@@ -469,6 +473,31 @@ mod tests
         });
         let bare = thunk(Comp::ret(Value::var(NameRef::from("p"))));
         assert!(!bool::from(nbe.converts(&rebuilt, &bare)));
+    }
+
+    #[test]
+    fn a_metafree_value_mismatch_is_a_conversion_refusal()
+    {
+        let (mut nbe, solver, certificate) = run(context(&[]), vec![values(int(1), int(2))]);
+        assert_eq!(certificate.verdict(), Verdict::Refused(Refusal::Conversion));
+        assert_eq!(
+            certificate.validate(&mut nbe, solver.constraints()),
+            Replay::Unproven
+        );
+    }
+
+    #[test]
+    fn a_metafree_computation_mismatch_is_a_conversion_refusal()
+    {
+        let (mut nbe, solver, certificate) = run(context(&[]), vec![comps(
+            Comp::ret(Value::Int(1)),
+            Comp::ret(Value::Int(2)),
+        )]);
+        assert_eq!(certificate.verdict(), Verdict::Refused(Refusal::Conversion));
+        assert_eq!(
+            certificate.validate(&mut nbe, solver.constraints()),
+            Replay::Unproven
+        );
     }
 
     // ── solved rule classes, each replayed through ordinary conversion ──────
@@ -1048,8 +1077,9 @@ mod tests
     fn a_pack_witness_mismatch_is_a_clash_no_solution_can_justify()
     {
         // The witnesses are types and no substitution rewrites a type, so the
-        // mismatch decides the pair even with a metavariable still open — the
-        // solver's clash and conversion's refusal are the one verdict.
+        // mismatch is evidence-stable even with a metavariable still open. The
+        // structural clash remains a refutation; conversion's weaker refusal
+        // is not the solver's verdict.
         let left = packed(Value::Hole(0));
         let right = Rc::new(Value::pack([ValueType::Unit], Value::Hole(0)));
         let (mut nbe, _solver, certificate) =
@@ -1064,8 +1094,8 @@ mod tests
     fn matching_witnesses_with_mismatched_payloads_fail_in_solver_and_conversion()
     {
         // The open metavariable elsewhere keeps the solver on the walking
-        // path, so the payload clash is the solver's own verdict, reached
-        // through the pack congruence — and conversion refuses the same pair.
+        // path, so the payload clash is the solver's own stable refutation,
+        // reached through pack congruence; conversion's refusal is weaker.
         let left = Rc::new(Value::Pair(packed(Value::Int(1)), value_hole(0)));
         let right = Rc::new(Value::Pair(packed(Value::Int(2)), int(9)));
         let (mut nbe, _solver, certificate) =
@@ -1773,9 +1803,22 @@ mod tests
             let mut solver = Solver::new(MetaContext::new(HoleId::from(0)));
             solver.push(Constraint::Values(Rc::clone(&lhs), Rc::clone(&rhs)));
             let certificate = solver.run(&mut nbe).expect("the run must not fail");
-            let solved = matches!(certificate.verdict(), Verdict::Solved);
-            prop_assert_eq!(solved, expected);
+            let expected_verdict = if expected {
+                Verdict::Solved
+            }
+            else {
+                Verdict::Refused(Refusal::Conversion)
+            };
+            prop_assert_eq!(certificate.verdict(), expected_verdict);
             prop_assert!(certificate.residual().is_empty());
+            let replay = certificate.validate(&mut nbe, solver.constraints());
+            let expected_replay = if expected {
+                Replay::Validated
+            }
+            else {
+                Replay::Unproven
+            };
+            prop_assert_eq!(replay, expected_replay);
         }
 
         /// Whatever the solver claims to have solved, ordinary conversion

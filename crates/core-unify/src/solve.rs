@@ -74,6 +74,7 @@ use crate::certify::Certificate;
 use crate::certify::Postponed;
 use crate::certify::Verdict;
 use crate::frag::PostponeReason;
+use crate::frag::Refusal;
 use crate::frag::Refutation;
 use crate::frag::SpineShape;
 use crate::frag::classify_spine;
@@ -117,6 +118,8 @@ enum Step
     Postpone(PostponeReason, Vec<HoleId>),
     /// No substitution satisfies the goal.
     Refute(Refutation),
+    /// The current conversion relation declined the goal.
+    Refuse(Refusal),
 }
 
 /// A metavariable at the head of one side, with the spine it wears.
@@ -182,6 +185,8 @@ struct Machine
     residual: Vec<Postponed>,
     /// The refutation that stopped the run, when one did.
     refutation: Option<Refutation>,
+    /// The refusal that stopped the run, when one did.
+    refusal: Option<Refusal>,
     /// Steps spent.
     steps: SolverSteps,
     /// Steps allowed.
@@ -198,8 +203,9 @@ struct Machine
 ///   of the constraints it was derived from, closed, and free of the
 ///   metavariable it binds; every constraint the certificate does not discharge
 ///   appears in its residual with a named reason; a refutation is reported only
-///   where no substitution can satisfy the constraint. The semantic nodes the
-///   run built are truncated away before the certificate is returned.
+///   where no substitution can satisfy the constraint, while a refusal names a
+///   conversion decision that may change with the environment. The semantic
+///   nodes the run built are truncated away before the certificate is returned.
 /// - provides: the answer of the solver-machine service, as evidence a caller
 ///   re-checks rather than a verdict a caller trusts.
 /// - fails: [`SemError`] when the arena is exhausted or an id does not resolve;
@@ -216,8 +222,8 @@ struct Machine
 /// # Adequacy
 /// - hypothesis: L1 — the answer is a certificate, and the witnesses validate
 ///   it by substituting and asking ordinary conversion rather than by comparing
-///   against a predicted solution. L3 covers the three verdicts pointwise: a
-///   solved constraint, a postponed one, and a refuted one.
+///   against a predicted solution. L3 covers the four verdicts pointwise: a
+///   solved constraint, a postponed one, a refuted one, and a refused one.
 /// - witness: `unify::tests::a_pattern_solution_replays_through_ordinary_conversion`
 /// - witness: `unify::tests::a_prunable_occurrence_postpones_rather_than_refuting`
 /// - witness: `unify::tests::a_rigid_clash_is_refuted`
@@ -250,6 +256,7 @@ fn drive(
         goals: Vec::with_capacity(constraints.len()),
         residual: Vec::new(),
         refutation: None,
+        refusal: None,
         steps: SolverSteps::from(0_u32),
         budget,
     };
@@ -287,12 +294,22 @@ fn drive(
                 machine.goals.clear();
                 break;
             },
+            | Step::Refuse(refusal) => {
+                machine.refusal = Some(refusal);
+                machine.goals.clear();
+                break;
+            },
         }
     }
-    let verdict = match (machine.refutation, machine.residual.is_empty()) {
-        | (Some(refutation), _) => Verdict::Refuted(refutation),
-        | (None, false) => Verdict::Postponed,
-        | (None, true) => Verdict::Solved,
+    let verdict = match (
+        machine.refutation,
+        machine.refusal,
+        machine.residual.is_empty(),
+    ) {
+        | (Some(refutation), ..) => Verdict::Refuted(refutation),
+        | (_, Some(refusal), _) => Verdict::Refused(refusal),
+        | (None, None, false) => Verdict::Postponed,
+        | (None, None, true) => Verdict::Solved,
     };
     Ok(Certificate::new(
         verdict,
@@ -652,7 +669,7 @@ fn step_value(
             Step::Discharged
         }
         else {
-            Step::Refute(Refutation::Clash)
+            Step::Refuse(Refusal::Conversion)
         });
     }
     // Inside a constraint that does carry a metavariable, a settled subterm
@@ -959,7 +976,7 @@ fn step_comp(
             Step::Discharged
         }
         else {
-            Step::Refute(Refutation::Clash)
+            Step::Refuse(Refusal::Conversion)
         });
     }
     if bool::from(comp_pair_is_rigid(nbe, lhs, rhs)?)

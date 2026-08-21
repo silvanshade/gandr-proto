@@ -44,6 +44,7 @@ use gandr_core_term::syntax::Value;
 
 use crate::Constraint;
 use crate::frag::PostponeReason;
+use crate::frag::Refusal;
 use crate::frag::Refutation;
 use crate::scan;
 use crate::solve::lower_comp;
@@ -60,6 +61,8 @@ pub enum Verdict
     Postponed,
     /// No substitution satisfies the constraints.
     Refuted(Refutation),
+    /// The current conversion relation declined a metavariable-free constraint.
+    Refused(Refusal),
 }
 
 /// One constraint the solver did not decide, with the reason and the
@@ -357,7 +360,7 @@ impl Certificate
         constraints: &[Constraint],
     ) -> Replay
     {
-        if matches!(self.verdict, Verdict::Refuted(_)) {
+        if matches!(self.verdict, Verdict::Refuted(_) | Verdict::Refused(_)) {
             return Replay::Unproven;
         }
         let mut vacuous = bool::from(self.bindings_carry_holes);
