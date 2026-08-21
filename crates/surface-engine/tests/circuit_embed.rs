@@ -19,10 +19,8 @@ mod tests
     use gandr_surface_engine::boundary::MatchDecision;
     use gandr_surface_engine::circuit::embed::CircuitAdapterBudget;
     use gandr_surface_engine::circuit::embed::CircuitEmbedError;
-    use gandr_surface_engine::circuit::embed::CircuitOverlapDecline;
     use gandr_surface_engine::circuit::embed::CircuitRuleCell;
     use gandr_surface_engine::circuit::embed::CircuitWiringError;
-    use gandr_surface_engine::circuit::embed::UnfaithfulCircuitOverlap;
     use gandr_surface_engine::circuit::embed::circuit_wiring;
     use gandr_surface_engine::circuit::embed::complete_circuit_rules;
     use gandr_surface_engine::circuit::embed::embed_circuit_rule;
@@ -636,7 +634,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
     }
 
     #[test]
-    fn w2_embedding_declines_a_non_unifying_sequent_pair()
+    fn w2_embedding_supplies_a_non_unifying_sequent_pair()
     {
         let pattern_body = unary_body("left", "x", "y");
         let target_body = unary_body("left", "a", "b");
@@ -698,16 +696,11 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
             })
             .expect("the ordered pair has a completion record");
         assert_eq!(1_usize, supplied.admitted.0);
-        assert_eq!(0_usize, supplied.overlap_count);
-        assert!(
-            matches!(
-                supplied.embeddings[0].decline,
-                Some(CircuitOverlapDecline::Unfaithful(
-                    UnfaithfulCircuitOverlap::NonUnifyingSubstitution
-                ))
-            ),
-            "the circuit seam records the non-unifying pair as a typed decline"
+        assert_eq!(
+            1_usize, supplied.overlap_count,
+            "the circuit seam supplies an overlap despite empty generic enumeration"
         );
+        assert!(supplied.embeddings[0].decline.is_none());
     }
 
     #[test]

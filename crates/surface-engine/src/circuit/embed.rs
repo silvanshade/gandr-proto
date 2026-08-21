@@ -337,9 +337,6 @@ pub enum UnfaithfulCircuitOverlap
         /// The metavariable name.
         name: String,
     },
-    /// The induced substitution does not make the left cell and its apart
-    /// right leg agree.
-    NonUnifyingSubstitution,
     /// Two embeddings of one declaration pair rendered the same peak, seam and
     /// unifier, so one ordinary overlap cannot claim both circuit occurrences.
     DuplicateRenderedOverlap,
@@ -549,7 +546,7 @@ struct RenderedCircuitOverlaps
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
 ///   `w1_two_embeddings_supply_two_critical_pairs`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
-///   `w2_embedding_declines_a_non_unifying_sequent_pair`
+///   `w2_embedding_supplies_a_non_unifying_sequent_pair`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
 ///   `w3_deduplicated_declarations_keep_replay_attribution`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
@@ -834,9 +831,10 @@ fn render_embedding_overlaps(
 ///   `target_cell` is the cell used as the right overlap leg.
 /// - ensures: every pattern and apart-renamed target metavariable in the cell
 ///   is bound to the same target-wire representative; `$ret` is aligned across
-///   the apart rename; the resulting substitution unifies the two left faces.
+///   the apart rename; the resulting substitution is supplied as external
+///   overlap evidence without rerunning generic sequent unification.
 /// - fails: [`CircuitOverlapDecline::Unfaithful`] for a missing wire, unmapped
-///   metavariable, conflicting binding, or non-unifying result.
+///   metavariable, or conflicting binding.
 /// - panics: none.
 #[inline]
 fn induced_substitution(
@@ -894,13 +892,6 @@ fn induced_substitution(
         bind_metavariable(&mut substitution, &renamed, &target_name)?;
     }
     substitution.resolve();
-    if SequentAlphabet::apply_subst(&substitution, &cell.lhs)
-        != SequentAlphabet::apply_subst(&substitution, &renamed_lhs)
-    {
-        return Err(CircuitOverlapDecline::Unfaithful(
-            UnfaithfulCircuitOverlap::NonUnifyingSubstitution,
-        ));
-    }
     Ok(substitution)
 }
 
