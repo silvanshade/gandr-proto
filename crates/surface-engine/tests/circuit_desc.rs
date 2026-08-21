@@ -226,9 +226,13 @@ fn a_single_redex_block_reaches_the_cell_layer_behind_the_gate()
     );
     // Two frame-defining cells from the nested block's constructors (one
     // store) plus the sign block rule's own cell (the other).
-    let total: usize = cells.stores.iter().fold(0_usize, |count, store| {
-        count.saturating_add(usize::from(store.len()))
-    });
+    let total: usize = cells
+        .circuit_completions
+        .iter()
+        .map(|completion| completion.outcome.store().len())
+        .fold(0_usize, |count, store| {
+            count.saturating_add(usize::from(store))
+        });
     assert_eq!(
         3, total,
         "the rule's cell joins the constructors' frame cells across the two stores"
@@ -627,7 +631,12 @@ fn a_fillerless_rule_member_declines_to_the_higher_cells_lane()
         "a fillerless member is carried by no description member"
     );
     let cells = elaborate_desc_cells(&elab.descs);
-    let store = cells.stores.first().expect("one store per description");
+    let store = cells
+        .circuit_completions
+        .first()
+        .expect("one completion per description")
+        .outcome
+        .store();
     assert_eq!(
         gandr_theory_cell_complexes::CellCount::from(0_usize),
         store.len(),
