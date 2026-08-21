@@ -47,8 +47,7 @@ impl From<ExpressionEndpointPresence> for bool
 /// member is retired from `sign` blocks); the `sign` block presents the sort,
 /// the operation, and the rule.
 const CONG1: TestText<'static> = TestText(
-    "\
-data Nat : Type {
+    r#"data Nat : Type {
   Zero : Nat;
   Succ : (n : Nat) --> Nat;
 }
@@ -62,17 +61,16 @@ sign Nat {
     data x : Nat,
     data y : Nat
   ) ==> (z : Nat) {
-    node : p(x) ==> (x\u{2032});
-    node : add(x\u{2032}, y) --> (z);
+    node : p(x) ==> (x′);
+    node : add(x′, y) --> (z);
   };
 }
-",
+"#,
 );
 
 /// The two-redex congruence cell, verbatim from the ruling.
 const CONG2: TestText<'static> = TestText(
-    "\
-sign Nat {
+    r#"sign Nat {
   sort Nat : Type;
   oper add : (Nat, Nat) --> Nat;
 
@@ -82,12 +80,12 @@ sign Nat {
     data x : Nat,
     data y : Nat
   ) ==> (z : Nat) {
-    node : p(x) ==> (x\u{2032});
-    node : q(y) ==> (y\u{2032});
-    node : add(x\u{2032}, y\u{2032}) --> (z);
+    node : p(x) ==> (x′);
+    node : q(y) ==> (y′);
+    node : add(x′, y′) --> (z);
   };
 }
-",
+"#,
 );
 
 /// Every diagnostic message the description route reported, in order.
@@ -116,15 +114,14 @@ fn an_expression_kind_signature_endpoint_is_refused_by_the_description_route()
                 .any(|child| bool::from(has_expression_endpoint(child))),
         )
     }
-    let source = "\
-sign Wrong {
+    let source = r#"sign Wrong {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
   rule face : (f) ==> (z : Nat) {
     node : f(f) --> (z);
   };
 }
-";
+"#;
     let tree = SynTree::parse(source).expect("the ordinary parser commits this source");
     assert!(
         bool::from(has_expression_endpoint(tree.root())),
@@ -255,13 +252,12 @@ fn an_item_level_data_member_declines_with_the_nested_block_respelling()
     // generator block's respelling (the grammar keeps it admissible for
     // exactly this decline).
     let reported = messages(TestText(
-        "\
-sign Stale {
+        r#"sign Stale {
   sort Nat : Type;
   data Zero : Nat;
   oper add : (Nat, Nat) --> Nat;
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("the item-level `data Zero` member is retired"),
@@ -274,8 +270,7 @@ sign Stale {
 fn the_name_set_fold_reaches_the_description_route_as_a_production_check()
 {
     let shared = TestText(
-        "\
-sign Shared {
+        r#"sign Shared {
   sort Nat : Type;
   oper f : (a : Nat) --> (b : Nat);
   oper g : (a : Nat) --> (b : Nat);
@@ -285,7 +280,7 @@ sign Shared {
     node : f(x) --> (m);
   };
 }
-",
+"#,
     );
     let reported = messages(shared);
     assert_names(&reported, &[
