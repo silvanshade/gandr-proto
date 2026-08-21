@@ -57,12 +57,20 @@ impl AsRef<str> for Section<'_>
     }
 }
 
-/// A string with every run of whitespace collapsed to one space.
-fn collapse_whitespace(text: &str) -> alloc::string::String
+/// One line of source, or one expected declaration, before comparison.
+#[repr(transparent)]
+struct Spelling<'source>(&'source str);
+
+impl Spelling<'_>
 {
-    text.split_whitespace()
-        .collect::<alloc::vec::Vec<_>>()
-        .join(" ")
+    /// This spelling with every run of whitespace collapsed to one space.
+    fn collapsed(&self) -> alloc::string::String
+    {
+        self.0
+            .split_whitespace()
+            .collect::<alloc::vec::Vec<_>>()
+            .join(" ")
+    }
 }
 
 /// The host's root, relative to this crate's manifest.
@@ -98,11 +106,11 @@ impl HostSource
         what: &Subject,
     )
     {
-        let expected = collapse_whitespace(&declaration.0);
+        let expected = Spelling(&declaration.0).collapsed();
         let found = self
             .0
             .lines()
-            .any(|line| collapse_whitespace(line) == expected);
+            .any(|line| Spelling(line).collapsed() == expected);
         assert!(
             found,
             "the host no longer declares {}: expected `{expected}`",
