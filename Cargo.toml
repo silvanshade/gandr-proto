@@ -12,6 +12,7 @@ members = [
   "crates/core-sequent",
   "crates/core-term",
   "crates/core-unify",
+  "crates/kernel-conversion-trace",
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-compile-host",
@@ -249,6 +250,14 @@ path = "crates/core-term"
 # consumers: none yet — the elaborator seam that will drive it is unbuilt
 [workspace.dependencies.gandr-core-unify]
 path = "crates/core-unify"
+
+# The dependency-free decision vocabulary and statically dispatched sink shared
+# by the untrusted conversion engine and the certified kernel replay surface.
+# consumers:
+# - gandr-core-nbe
+# - gandr-kernel-core
+[workspace.dependencies.gandr-kernel-conversion-trace]
+path = "crates/kernel-conversion-trace"
 
 # The minimal certified kernel's S1 core (term/type language, environment, conversion).
 # consumers:

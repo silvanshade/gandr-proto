@@ -20,6 +20,9 @@ path = "tests/lib.rs"
 # crates and core/alloc. Dev-dependencies are exempt -- test code is not
 # shipped trust.
 [dependencies]
+# The dependency-free decision vocabulary shared with the untrusted conversion
+# engine; it carries no terms, storage, or replay policy.
+gandr-kernel-conversion-trace.workspace = true
 gandr-kernel-strata.workspace = true
 
 [dev-dependencies]

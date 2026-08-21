@@ -12,17 +12,16 @@ Callers come to it — the checker's subsumption relation decides its identity e
 - `defs` — the per-scope definitional environment, with definition heights and transparency.
 - `eval` — evaluation and the three force modes.
 - `quote` — readback, its three options, and the generated-binder naming convention with its inverse.
-- `conv` — the six-step definitional-equality pipeline: identity equality, cached-word guards, iterative structural comparison, lazy unfolding by height, smart unfolding gated on case progress, and three-state speculation.
-- `intern` — the per-face syntax interner, a deduplicator that takes no table into the trusted base.
+- `conv` — the six-step definitional-equality pipeline: identity equality, cached-word guards, iterative structural comparison, lazy unfolding by height, smart unfolding gated on case progress, and three-state speculation; `Normalizer::converts_with_sink` optionally emits the shared decision-grain trace.
+- `gandr-kernel-conversion-trace` — the dependency-free `ConversionDecision` vocabulary and statically dispatched `TraceSink`; `NullSink` is the default and the trace remains a session artifact rather than a wire format.
 - The `Normalizer` itself: one arena, one definitional environment, one interner, and the fresh-variable counter readback draws from, with a fuel bound that stops unfolding rather than diverging.
 
 Four anti-commitments are honoured as prohibitions rather than gaps: the engine never compares signatures by width or permutation, never memoizes across functor instantiations, makes no package eliminable by anything but its own elimination form, and takes no interning table into the trusted base.
 
-## Planned but absent
+## Trace boundary
 
-- Conversion never runs an effect, a handler, or a control operator: those formers evaluate to neutrals, so the equality offered on them is congruence and nothing stronger.
-- Five of the module layer's six holes remain neutrals; only structure projection reduces.
-- The trace a shared duplication strategy would have to be certified by is designed and unbuilt, so nothing here is shared across a duplication decision yet.
+The conversion sink records unfold, postpone, force, and shared-comparison decisions, never reduction sequences.
+A sink-on run returns the same verdict as the default path; the kernel owns replay and compares its own verdict and decision kinds without importing this arena or a strategy policy.
 
 ## Using it
 

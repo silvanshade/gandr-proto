@@ -8,12 +8,12 @@
 - `write_segmented` emits canonical bytes plus admission-ordered declaration framing.
 - `SegmentedArtifact::segment_spans` exposes header and declaration byte ranges as a reader byproduct for untrusted storage layers.
   Spans carry no hashes and declaration segments are not independently replayable because sharing may cross segment boundaries.
-- Decode rejects truncation, unknown or reserved vocabulary, structural violations, noncanonical encodings, and exceeded expanded-work budgets.
+- `convertible_values_with_sink` and `convertible_computations_with_sink` emit the shared decision vocabulary through a statically dispatched sink; `replay_values` and `replay_computations` re-execute the kernel worklist and compare decision kinds plus the claimed verdict.
 
-## Planned but absent
+## Trace boundary
 
-The kernel does not provide effects, handlers, general recursion, data declarations, identity types, holes, or a persistent storage backend.
-Cross-process sealing uniqueness and the O(1) strata variable-plus-offset constructor remain separate follow-ups.
+The kernel consumes the dependency-free `gandr-kernel-conversion-trace` seam with kernel-local arena identities.
+Replay is an in-process session check: it has no persistence format, identity translation layer, strategy policy, or term dependency on the untrusted engine.
 
 ## Using it
 

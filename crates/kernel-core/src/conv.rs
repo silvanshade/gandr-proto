@@ -44,6 +44,10 @@
 
 use alloc::vec::Vec;
 
+use gandr_kernel_conversion_trace::ConversionDecision;
+use gandr_kernel_conversion_trace::NullSink;
+use gandr_kernel_conversion_trace::TraceSink;
+
 use crate::arena::CompTypeId;
 use crate::arena::ComputationId;
 use crate::arena::TermArena;
@@ -56,6 +60,36 @@ use crate::term::Computation;
 use crate::term::Value;
 use crate::types::CompType;
 use crate::types::ValueType;
+
+/// The kernel-local identity carried by one conversion decision.
+///
+/// The decision vocabulary is shared with the untrusted engine; only the
+/// identities are consumer-owned, so the seam carries no term representation
+/// or wire format.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceId
+{
+    /// A value node in the kernel arena.
+    Value(ValueId),
+    /// A computation node in the kernel arena.
+    Comp(ComputationId),
+    /// A value-type node in the kernel arena.
+    ValueType(ValueTypeId),
+    /// A computation-type node in the kernel arena.
+    CompType(CompTypeId),
+}
+
+/// Whether a kernel-side decision replay accepted the trace and verdict.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReplayStatus
+{
+    /// The kernel reproduced the decision grain and claimed verdict.
+    Green,
+    /// The kernel's decision grain differed from the supplied trace.
+    TraceMismatch,
+    /// The kernel's verdict differed from the supplied verdict.
+    VerdictMismatch,
+}
 
 /// Whether two types or two terms are convertible (definitionally equal).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -176,7 +210,29 @@ pub fn convertible_values(
     right: ValueId,
 ) -> Convertibility
 {
-    converge_terms(arena, TermGoal::Value(left, right))
+    let mut sink = NullSink;
+    convertible_values_with_sink(arena, left, right, &mut sink)
+}
+
+/// Decide value convertibility while emitting decision-grain events to `sink`.
+///
+/// # Contract
+/// - ensures: returns the same verdict as [`convertible_values`].
+/// - provides: the kernel consumer of the shared conversion trace vocabulary.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn convertible_values_with_sink<S>(
+    arena: &TermArena,
+    left: ValueId,
+    right: ValueId,
+    sink: &mut S,
+) -> Convertibility
+where
+    S: TraceSink<TraceId>,
+{
+    converge_terms(arena, TermGoal::Value(left, right), sink)
 }
 
 /// Decide α-structural convertibility of two computations (the C5 fragment).
@@ -205,9 +261,30 @@ pub fn convertible_computations(
     right: ComputationId,
 ) -> Convertibility
 {
-    converge_terms(arena, TermGoal::Comp(left, right))
+    let mut sink = NullSink;
+    convertible_computations_with_sink(arena, left, right, &mut sink)
 }
 
+/// Decide computation convertibility while emitting decision-grain events.
+///
+/// # Contract
+/// - ensures: returns the same verdict as [`convertible_computations`].
+/// - provides: the kernel consumer of the shared conversion trace vocabulary.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn convertible_computations_with_sink<S>(
+    arena: &TermArena,
+    left: ComputationId,
+    right: ComputationId,
+    sink: &mut S,
+) -> Convertibility
+where
+    S: TraceSink<TraceId>,
+{
+    converge_terms(arena, TermGoal::Comp(left, right), sink)
+}
 /// Convert a synthesized value type against an expected one, building the
 /// mismatch error (a self-contained arena snapshot of both roots) on
 /// divergence.
@@ -405,21 +482,31 @@ fn converge_types(
 /// - fails: never (a dangling id ⇒ `Distinct`).
 /// - panics: none.
 #[inline]
-fn converge_terms(
+fn converge_terms<S>(
     arena: &TermArena,
     initial: TermGoal,
+    sink: &mut S,
 ) -> Convertibility
+where
+    S: TraceSink<TraceId>,
 {
     let mut stack: Vec<TermGoal> = Vec::new();
     stack.push(initial);
     while let Some(goal) = stack.pop() {
         match goal {
-            | TermGoal::Value(left, right) => {
-                if left == right {
+            | TermGoal::Value(left_id, right_id) => {
+                if left_id == right_id {
+                    sink.record(ConversionDecision::ComparedShared {
+                        left: TraceId::Value(left_id),
+                        right: TraceId::Value(right_id),
+                    });
                     continue;
                 }
-                let (Some(left), Some(right)) = (arena.value(left), arena.value(right))
+                let (Some(left), Some(right)) = (arena.value(left_id), arena.value(right_id))
                 else {
+                    sink.record(ConversionDecision::Postpone {
+                        constant: TraceId::Value(left_id),
+                    });
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
@@ -431,6 +518,9 @@ fn converge_terms(
                         // payload (leaves have no id children — the derived-
                         // equality caveat does not apply here).
                         if left != right {
+                            sink.record(ConversionDecision::Postpone {
+                                constant: TraceId::Value(left_id),
+                            });
                             return Convertibility::Distinct;
                         }
                     },
@@ -446,11 +536,20 @@ fn converge_terms(
                         &Value::Injection(ref other_side, ref other_body),
                     ) => {
                         if one_side != other_side {
+                            sink.record(ConversionDecision::Postpone {
+                                constant: TraceId::Value(left_id),
+                            });
                             return Convertibility::Distinct;
                         }
                         stack.push(TermGoal::Value(*one_body, *other_body));
                     },
                     | (&Value::Thunk(ref one_body), &Value::Thunk(ref other_body)) => {
+                        sink.record(ConversionDecision::Force {
+                            thunk: TraceId::Comp(*one_body),
+                        });
+                        sink.record(ConversionDecision::Force {
+                            thunk: TraceId::Comp(*other_body),
+                        });
                         stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
                     | (
@@ -464,19 +563,35 @@ fn converge_terms(
                         },
                     ) => {
                         if one_target != other_target {
+                            sink.record(ConversionDecision::Postpone {
+                                constant: TraceId::Value(left_id),
+                            });
                             return Convertibility::Distinct;
                         }
                         stack.push(TermGoal::Value(*one_body, *other_body));
                     },
-                    | _ => return Convertibility::Distinct,
+                    | _ => {
+                        sink.record(ConversionDecision::Postpone {
+                            constant: TraceId::Value(left_id),
+                        });
+                        return Convertibility::Distinct;
+                    },
                 }
             },
-            | TermGoal::Comp(left, right) => {
-                if left == right {
+            | TermGoal::Comp(left_id, right_id) => {
+                if left_id == right_id {
+                    sink.record(ConversionDecision::ComparedShared {
+                        left: TraceId::Comp(left_id),
+                        right: TraceId::Comp(right_id),
+                    });
                     continue;
                 }
-                let (Some(left), Some(right)) = (arena.computation(left), arena.computation(right))
+                let (Some(left), Some(right)) =
+                    (arena.computation(left_id), arena.computation(right_id))
                 else {
+                    sink.record(ConversionDecision::Postpone {
+                        constant: TraceId::Comp(left_id),
+                    });
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
@@ -493,8 +608,16 @@ fn converge_terms(
                         stack.push(TermGoal::Comp(*one_head, *other_head));
                         stack.push(TermGoal::Value(*one_arg, *other_arg));
                     },
-                    | (&Computation::Return(ref one), &Computation::Return(ref other))
+                    | (&Computation::Return(ref one), &Computation::Return(ref other)) => {
+                        stack.push(TermGoal::Value(*one, *other));
+                    },
                     | (&Computation::Force(ref one), &Computation::Force(ref other)) => {
+                        sink.record(ConversionDecision::Force {
+                            thunk: TraceId::Value(*one),
+                        });
+                        sink.record(ConversionDecision::Force {
+                            thunk: TraceId::Value(*other),
+                        });
                         stack.push(TermGoal::Value(*one, *other));
                     },
                     | (
@@ -520,12 +643,134 @@ fn converge_terms(
                         stack.push(TermGoal::Comp(*one_left, *other_left));
                         stack.push(TermGoal::Comp(*one_right, *other_right));
                     },
-                    | _ => return Convertibility::Distinct,
+                    | _ => {
+                        sink.record(ConversionDecision::Postpone {
+                            constant: TraceId::Comp(left_id),
+                        });
+                        return Convertibility::Distinct;
+                    },
                 }
             },
         }
     }
     Convertibility::Convertible
+}
+
+/// The allocation-backed sink used only while replaying a session trace.
+#[repr(transparent)]
+struct RecordingSink
+{
+    /// Decisions emitted by the replayed worklist.
+    decisions: Vec<ConversionDecision<TraceId>>,
+}
+
+impl RecordingSink
+{
+    /// Creates an empty recording sink.
+    fn new() -> Self
+    {
+        Self {
+            decisions: Vec::new(),
+        }
+    }
+}
+
+impl TraceSink<TraceId> for RecordingSink
+{
+    #[inline]
+    fn record(
+        &mut self,
+        decision: ConversionDecision<TraceId>,
+    )
+    {
+        self.decisions.push(decision);
+    }
+}
+
+/// Whether two decision kinds agree.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DecisionMatch
+{
+    /// The decision kinds agree.
+    Same,
+    /// The decision kinds differ.
+    Different,
+}
+/// Compares two traces by decision kind, ignoring consumer-owned identities.
+fn same_decision_kind<Id>(
+    expected: &ConversionDecision<Id>,
+    actual: &ConversionDecision<TraceId>,
+) -> DecisionMatch
+{
+    match (expected, actual) {
+        | (&ConversionDecision::Unfold { .. }, &ConversionDecision::Unfold { .. })
+        | (&ConversionDecision::Postpone { .. }, &ConversionDecision::Postpone { .. })
+        | (&ConversionDecision::Force { .. }, &ConversionDecision::Force { .. })
+        | (
+            &ConversionDecision::ComparedShared { .. },
+            &ConversionDecision::ComparedShared { .. },
+        ) => DecisionMatch::Same,
+        | _ => DecisionMatch::Different,
+    }
+}
+
+/// Replays a term-conversion worklist and checks its decision grain and
+/// verdict.
+fn replay_terms<Id>(
+    arena: &TermArena,
+    initial: TermGoal,
+    trace: &[ConversionDecision<Id>],
+    claimed: Convertibility,
+) -> ReplayStatus
+{
+    let mut sink = RecordingSink::new();
+    let actual = converge_terms(arena, initial, &mut sink);
+    let trace_matches = trace.len() == sink.decisions.len()
+        && trace
+            .iter()
+            .zip(sink.decisions.iter())
+            .all(|(expected, actual)| same_decision_kind(expected, actual) == DecisionMatch::Same);
+    if !trace_matches {
+        return ReplayStatus::TraceMismatch;
+    }
+    if actual != claimed {
+        return ReplayStatus::VerdictMismatch;
+    }
+    ReplayStatus::Green
+}
+
+/// Re-executes kernel value conversion and compares its decision grain and
+/// verdict with a supplied session trace.
+///
+/// Trace identities are intentionally compared by decision kind. The engine
+/// and kernel own different arenas, and this session seam has no wire format or
+/// identity translation layer.
+#[inline]
+#[must_use]
+pub fn replay_values<Id>(
+    arena: &TermArena,
+    left: ValueId,
+    right: ValueId,
+    trace: &[ConversionDecision<Id>],
+    claimed: Convertibility,
+) -> ReplayStatus
+{
+    replay_terms(arena, TermGoal::Value(left, right), trace, claimed)
+}
+
+/// Re-executes kernel computation conversion and compares its decision grain
+/// and verdict with a supplied session trace.
+#[inline]
+#[must_use]
+pub fn replay_computations<Id>(
+    arena: &TermArena,
+    left: ComputationId,
+    right: ComputationId,
+    trace: &[ConversionDecision<Id>],
+    claimed: Convertibility,
+) -> ReplayStatus
+{
+    replay_terms(arena, TermGoal::Comp(left, right), trace, claimed)
 }
 
 #[cfg(test)]
@@ -762,5 +1007,29 @@ mod tests
             convertible_computations(&arena, identity, different),
             "lambdas with distinct bodies do not convert"
         );
+    }
+    #[test]
+    fn conversion_trace_replays_decisions_and_verdict()
+    {
+        let mut arena = TermArena::new();
+        let value = arena.value_unit();
+        let mut sink = super::RecordingSink::new();
+        let verdict = super::convertible_values_with_sink(&arena, value, value, &mut sink);
+        assert_eq!(Convertibility::Convertible, verdict);
+        assert_eq!(
+            super::ReplayStatus::Green,
+            super::replay_values(&arena, value, value, &sink.decisions, verdict),
+        );
+        assert_eq!(
+            super::ReplayStatus::VerdictMismatch,
+            super::replay_values(
+                &arena,
+                value,
+                value,
+                &sink.decisions,
+                Convertibility::Distinct,
+            ),
+        );
+        assert_eq!(verdict, super::convertible_values(&arena, value, value));
     }
 }

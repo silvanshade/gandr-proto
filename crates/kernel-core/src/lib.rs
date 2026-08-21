@@ -7,9 +7,11 @@
 //!
 //! This is the second `gandr-kernel-*` subcrate — **trusted by the
 //! kernel-boundary naming rule** — and depends only on
-//! [`gandr_kernel_strata`] (the level oracle) and `core`/`alloc`: the sharpest
-//! form of the TCB dependency wall (no other workspace crate, no
-//! external runtime dependency).
+//! [`gandr_kernel_strata`] plus the dependency-free
+//! [`gandr_kernel_conversion_trace`] seam, and on `core`/`alloc`: the sharpest
+//! form of the TCB dependency wall (no other workspace crate, no external
+//! runtime dependency). The conversion trace is an in-process session artifact
+//! with consumer-owned identities, not a persistence or wire format.
 //!
 //! # The five boundary disciplines, as this crate holds them
 //!
@@ -87,10 +89,16 @@ pub use base::NumericLiteral;
 pub use base::Sign;
 pub use base::StringLiteral;
 pub use conv::Convertibility;
+pub use conv::ReplayStatus;
+pub use conv::TraceId as ConversionTraceId;
 pub use conv::convertible_comp_types;
 pub use conv::convertible_computations;
+pub use conv::convertible_computations_with_sink;
 pub use conv::convertible_value_types;
 pub use conv::convertible_values;
+pub use conv::convertible_values_with_sink;
+pub use conv::replay_computations;
+pub use conv::replay_values;
 pub use decl::Declaration;
 pub use decl::DeclarationBuilder;
 pub use decl::DeclarationContent;
@@ -140,6 +148,9 @@ pub use export::decode;
 pub use export::read;
 pub use export::write;
 pub use export::write_segmented;
+pub use gandr_kernel_conversion_trace::ConversionDecision;
+pub use gandr_kernel_conversion_trace::NullSink;
+pub use gandr_kernel_conversion_trace::TraceSink;
 pub use levels::LevelContext;
 pub use levels::LevelParamCount;
 pub use term::Computation;

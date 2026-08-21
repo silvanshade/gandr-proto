@@ -538,6 +538,24 @@ impl Normalizer
     {
         conv::converts(self, lhs, rhs)
     }
+    /// Decides definitional equality while emitting decision-grain events to
+    /// `sink`.
+    ///
+    /// The sink is statically dispatched and receives conversion choices, not
+    /// reduction steps. Its identity values are local to this normalizer run
+    /// and are not a persistence or wire-format contract.
+    #[inline]
+    pub fn converts_with_sink<S>(
+        &mut self,
+        lhs: &Rc<Value>,
+        rhs: &Rc<Value>,
+        sink: &mut S,
+    ) -> ValueEquality
+    where
+        S: conv::TraceSink<conv::TraceId>,
+    {
+        conv::converts_with_sink(self, lhs, rhs, sink)
+    }
 
     /// Decides definitional equality of two value types.
     ///
@@ -639,6 +657,25 @@ mod tests
     use gandr_core_term::types::ValueType;
 
     use super::*;
+    use crate::conv::ConversionDecision;
+    use crate::conv::NullSink;
+    use crate::conv::TraceId;
+    use crate::conv::TraceSink;
+
+    #[repr(transparent)]
+    struct RecordingSink(Vec<ConversionDecision<TraceId>>);
+
+    impl TraceSink<TraceId> for RecordingSink
+    {
+        fn record(
+            &mut self,
+            decision: ConversionDecision<TraceId>,
+        )
+        {
+            self.0.push(decision);
+        }
+    }
+
     use crate::defs::Transparency;
     use crate::eval::ForceMode;
     use crate::eval::eval_value;
@@ -3271,6 +3308,42 @@ mod tests
         let watermark = nbe.next_level();
         assert_eq!(nbe.fresh_level(), watermark);
         assert_ne!(nbe.next_level(), watermark);
+    }
+    #[test]
+    fn conversion_sink_preserves_verdict_and_emits_unfold()
+    {
+        let lhs = var(NameRef::from("one"));
+        let rhs = var(NameRef::from("also_one"));
+        let mut traced = Normalizer::new();
+        traced
+            .define(NameRef::from("one"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        traced
+            .define(NameRef::from("also_one"), &var(NameRef::from("one")))
+            .unwrap();
+        let mut sink = RecordingSink(Vec::new());
+        let traced_verdict = traced.converts_with_sink(&lhs, &rhs, &mut sink);
+        assert!(bool::from(traced_verdict));
+        assert!(
+            sink.0
+                .iter()
+                .any(|decision| matches!(decision, ConversionDecision::Unfold { .. })),
+            "the sink receives a decision-grain unfolding"
+        );
+
+        let mut defaulted = Normalizer::new();
+        defaulted
+            .define(NameRef::from("one"), &int(IntegerLiteral::from(1_i64)))
+            .unwrap();
+        defaulted
+            .define(NameRef::from("also_one"), &var(NameRef::from("one")))
+            .unwrap();
+        assert_eq!(traced_verdict, defaulted.converts(&lhs, &rhs));
+        let mut null = NullSink;
+        assert_eq!(
+            traced_verdict,
+            defaulted.converts_with_sink(&lhs, &rhs, &mut null),
+        );
     }
 
     #[test]

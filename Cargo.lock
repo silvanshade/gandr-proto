@@ -876,6 +876,7 @@ name = "gandr-core-nbe"
 version = "0.0.0"
 dependencies = [
  "gandr-core-term",
+ "gandr-kernel-conversion-trace",
 ]
 
 [[package]]
@@ -914,9 +915,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-kernel-conversion-trace"
+version = "0.0.0"
+
+[[package]]
 name = "gandr-kernel-core"
 version = "0.0.0"
 dependencies = [
+ "gandr-kernel-conversion-trace",
  "gandr-kernel-strata",
  "proptest",
 ]
