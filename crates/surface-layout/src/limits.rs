@@ -72,6 +72,8 @@ use crate::units::ResolverWorkEntriesUsed;
 use crate::units::TextBytesUsed;
 use crate::units::VerbatimLinesUsed;
 use crate::units::VmStepsUsed;
+#[path = "vm.rs"]
+pub mod vm;
 
 /// The ceilings a caller sets for one document build.
 ///
@@ -739,6 +741,39 @@ impl RenderMeter
             });
         }
         self.used.output_bytes = OutputBytesUsed::from(next);
+        Ok(())
+    }
+    /// Checks output bytes without changing the cumulative counter.
+    ///
+    /// # Contract
+    /// - requires: `amount` is the selected measure's exact output size.
+    /// - ensures: success proves the next append sequence fits its ceiling.
+    /// - provides: a preflight boundary before the one output reservation.
+    /// - fails: returns the output limit or checked arithmetic error.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` when the cumulative count cannot advance,
+    /// or `LimitExceeded` when the output ceiling would be crossed.
+    pub(crate) fn check_output_bytes(
+        &self,
+        amount: crate::units::OutputBytes,
+    ) -> Result<(), RenderError>
+    {
+        let current = u64::from(self.used.output_bytes);
+        let next =
+            current
+                .checked_add(u64::from(amount))
+                .ok_or(RenderError::ArithmeticOverflow {
+                    operation: crate::error::RenderArithmetic::OutputBytes,
+                })?;
+        let limit = u64::from(self.limits.max_output_bytes);
+        if next > limit {
+            return Err(RenderError::LimitExceeded {
+                kind: RenderLimitKind::OutputBytes,
+                limit: crate::units::LimitBound::from(limit),
+            });
+        }
         Ok(())
     }
 

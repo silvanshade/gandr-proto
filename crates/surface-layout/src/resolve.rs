@@ -73,6 +73,18 @@ impl Resolved
         let _ = self.plans.get(self.plan);
         self.plan
     }
+    /// Borrows the retained plan arena for the slice-three machine.
+    ///
+    /// # Contract
+    /// - requires: this result remains alive.
+    /// - ensures: every returned plan identity is validated against this arena.
+    /// - provides: read-only plan-node access without copying the arena.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn plan_arena(&self) -> &PlanArena
+    {
+        &self.plans
+    }
 
     /// Returns the winning lexicographic cost.
     ///
@@ -124,6 +136,15 @@ enum ResolutionMode
     Memoized,
     /// Evaluate the exact tainted context without memoization.
     Forced,
+}
+/// Selects the phase that charges the selected output bytes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OutputAccounting
+{
+    /// Charge the selected measure while resolving.
+    AtResolve,
+    /// Charge each concrete append while executing the VM.
+    AtAppend,
 }
 
 /// Strict Pareto dominance result.
@@ -1137,6 +1158,49 @@ pub fn resolve(
     meter: &mut RenderMeter,
 ) -> Result<Resolved, RenderError>
 {
+    resolve_with_output_accounting(arena, root, options, meter, OutputAccounting::AtResolve)
+}
+
+/// Resolves a root for the fused render machine.
+///
+/// # Contract
+/// - requires: `root` belongs to `arena`, and `options` has computation width
+///   at least as large as page width.
+/// - ensures: output bytes remain uncharged until the machine appends them.
+/// - provides: the selected plan, cost, taint status, and exact output count.
+/// - fails: returns the same checked resolution errors as [`resolve`].
+/// - panics: none.
+///
+/// # Errors
+/// Returns [`RenderError`] for invalid handles, widths, checked arithmetic,
+/// allocation failure, or a named render limit.
+pub(crate) fn resolve_for_render(
+    arena: &DocArena,
+    root: DocId,
+    options: LayoutOptions,
+    meter: &mut RenderMeter,
+) -> Result<Resolved, RenderError>
+{
+    resolve_with_output_accounting(arena, root, options, meter, OutputAccounting::AtAppend)
+}
+
+/// Resolves one root and applies the selected output-accounting phase.
+///
+/// # Contract
+/// - requires: `root` and `options` satisfy the public resolver preconditions.
+/// - ensures: the returned plan owns its retained plan arena.
+/// - provides: one shared implementation for standalone resolution and fused
+///   rendering.
+/// - fails: propagates checked resolution and accounting errors.
+/// - panics: none.
+fn resolve_with_output_accounting(
+    arena: &DocArena,
+    root: DocId,
+    options: LayoutOptions,
+    meter: &mut RenderMeter,
+    accounting: OutputAccounting,
+) -> Result<Resolved, RenderError>
+{
     if !matches!(arena.contains(root), crate::arena::DocHandleStatus::Present) {
         return Err(RenderError::UnknownDoc);
     }
@@ -1145,7 +1209,9 @@ pub fn resolve(
     }
     let root_node = root.node_id();
     let (measure, width_taint, plans) = Resolver::new(arena, options, meter).run(root_node)?;
-    meter.charge_output_bytes(measure.output_bytes)?;
+    if accounting == OutputAccounting::AtResolve {
+        meter.charge_output_bytes(measure.output_bytes)?;
+    }
     Ok(Resolved {
         plans,
         plan: measure.plan,

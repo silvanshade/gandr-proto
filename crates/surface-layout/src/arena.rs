@@ -257,6 +257,15 @@ impl CheckedText
         self.width
     }
 }
+impl AsRef<str> for CheckedText
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        &self.text
+    }
+}
+
 /// A physical line ending recorded inside verbatim text.
 ///
 /// # Contract
@@ -388,6 +397,14 @@ impl VerbatimText
     pub(crate) fn lines(&self) -> &[VerbatimLine]
     {
         &self.lines
+    }
+}
+impl AsRef<str> for VerbatimText
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        &self.bytes
     }
 }
 

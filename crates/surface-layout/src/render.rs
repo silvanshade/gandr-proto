@@ -1,115 +1,145 @@
 //! The render entry point and machine handoff.
 //!
-//! Slice two owns [`crate::limits::RenderLimits`],
-//! [`crate::limits::RenderMeter`], and [`crate::limits::RenderUsage`] because
-//! resolution spends those budgets. Slice three owns this module's render
-//! machine, rendered result, and tainted fallback execution.
-//! # The shapes
-//!
-//! ```text
-//! pub enum PhysicalLineEnding {
-//!     Lf,
-//!     CrLf,
-//! }
-//!
-//! pub struct RenderLimits {
-//!     pub max_memo_states: MaxMemoStates,
-//!     pub max_frontier_entries: MaxFrontierEntries,
-//!     pub max_plan_nodes_created: MaxPlanNodesCreated,
-//!     pub max_live_plan_nodes: MaxLivePlanNodes,
-//!     pub max_output_bytes: MaxOutputBytes,
-//!     pub max_layout_steps: MaxLayoutSteps,
-//!     pub max_resolver_work_entries: MaxResolverWorkEntries,
-//!     pub max_resolver_stack: MaxResolverStack,
-//!     pub max_vm_steps: MaxVmSteps,
-//!     pub max_vm_stack: MaxVmStack,
-//! }
-//!
-//! pub struct RenderUsage {
-//!     pub memo_states: MemoStatesUsed,
-//!     pub frontier_entries: FrontierEntriesUsed,
-//!     pub plan_nodes_created: PlanNodesCreated,
-//!     pub peak_live_plan_nodes: PeakLivePlanNodes,
-//!     pub output_bytes: OutputBytesUsed,
-//!     pub layout_steps: LayoutStepsUsed,
-//!     pub resolver_work_entries: ResolverWorkEntriesUsed,
-//!     pub peak_resolver_stack: PeakResolverStack,
-//!     pub vm_steps: VmStepsUsed,
-//!     pub peak_vm_stack: PeakVmStack,
-//! }
-//!
-//! pub struct RenderMeter {
-//!     limits: RenderLimits,
-//!     used: RenderUsage,
-//! }
-//!
-//! pub struct Rendered {
-//!     pub text: RenderedText,
-//!     pub cost: LayoutCost,
-//!     pub width_tainted: WidthTaint,
-//! }
-//!
-//! impl RenderMeter {
-//!     pub fn try_new(limits: RenderLimits) -> Result<Self, RenderError>;
-//!     pub fn usage(&self) -> RenderUsage;
-//! }
-//!
-//! pub fn render(
-//!     arena: &DocArena,
-//!     root: DocId,
-//!     options: &LayoutOptions,
-//!     meter: &mut RenderMeter,
-//! ) -> Result<Rendered, RenderError>;
-//! ```
-//!
-//! `WidthTaint` is a two-valued nominal enum rather than a `bool`.
-//!
-//! # The binding defaults
-//!
-//! | limit                                        | default                 |
-//! | -------------------------------------------- | ----------------------- |
-//! | handle, column, and indentation memo states  | 1,000,000               |
-//! | frontier entries retained across memo states | 4,000,000               |
-//! | plan nodes created, and peak live            | 16,000,000 / 8,000,000  |
-//! | output bytes                                 | 64 MiB                  |
-//! | layout transitions, edges, frontier steps    | 100,000,000             |
-//! | resolver work entries, and peak stack        | 100,000,000 / 1,000,000 |
-//! | render machine instructions                  | 100,000,000             |
-//! | render machine stack entries                 | 1,000,000               |
-//!
-//! # The render error space, closed
-//!
-//! `RenderLimitKind` is exactly memo states, frontier entries, plan nodes
-//! created, live plan nodes, output bytes, layout steps, resolver work entries,
-//! resolver stack, machine steps, and machine stack.
-//!
-//! `RenderAllocationSite` is exactly the memo table, the frontier, the plan
-//! arena, the resolver stack, the machine stack, and the output.
-//!
-//! `RenderArithmetic` is exactly column, indentation, squared overflow, line
-//! breaks, output bytes, the step counter, the resolver work counter, and the
-//! plan reference count.
-//!
-//! `RenderError` distinguishes an unknown handle, an invalid width, a checked
-//! arithmetic overflow naming its operation, an allocation failure naming its
-//! site, and a limit exceeded naming its kind and that ceiling. There is no
-//! generic step budget and no unreachable one.
-//!
-//! # Physical endings
-//!
-//! Line and hard-line nodes emit exactly the configured ending, which
-//! contributes one or two bytes to output accounting and zero columns. Verbatim
-//! text always emits its own stored endings, so a mixed or comment-internal
-//! ending is not rewritten by the caller's choice. There is no global
-//! post-processing pass that converts endings, because such a pass would have
-//! to reach inside verbatim bytes to work and must not.
-//!
-//! # Metering discipline
-//!
-//! Render meter fields are private, the meter is neither `Clone` nor `Default`,
-//! and nothing resets or decrements a cumulative counter. Each render call
-//! mutably borrows one meter. A standing client creates one build meter and one
-//! render meter per output; a segmented client reuses the same pair across
-//! every segment. Live-plan, resolver-stack, and machine-stack gauges fall as
-//! work is released, while their peak observations and every other counter stay
-//! monotone.
+//! Resolution produces a retained first-order plan. This module checks the
+//! selected output size, reserves the final buffer once, and delegates all
+//! plan execution to the explicit VM in [`crate::vm`]. Tainted results remain
+//! complete output; taint reports theorem scope rather than truncation.
+
+use crate::arena::DocArena;
+use crate::arena::DocId;
+use crate::error::RenderError;
+use crate::limits::RenderMeter;
+use crate::measure::LayoutCost;
+use crate::measure::LayoutOptions;
+use crate::measure::WidthTaint;
+use crate::resolve::resolve_for_render;
+use crate::vm;
+
+/// Complete rendered UTF-8 output.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct RenderedText(String);
+
+impl From<String> for RenderedText
+{
+    #[inline]
+    fn from(text: String) -> Self
+    {
+        Self(text)
+    }
+}
+
+impl AsRef<str> for RenderedText
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        &self.0
+    }
+}
+
+impl core::ops::Deref for RenderedText
+{
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target
+    {
+        self.0.as_str()
+    }
+}
+
+impl core::fmt::Display for RenderedText
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        f.write_str(self.0.as_str())
+    }
+}
+
+impl PartialEq<&str> for RenderedText
+{
+    #[inline]
+    fn eq(
+        &self,
+        other: &&str,
+    ) -> bool
+    {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<RenderedText> for &str
+{
+    #[inline]
+    fn eq(
+        &self,
+        other: &RenderedText,
+    ) -> bool
+    {
+        *self == other.0
+    }
+}
+
+/// A complete render result and its selected-layout metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Rendered
+{
+    /// The exact emitted bytes as UTF-8 text.
+    pub text: RenderedText,
+    /// The selected lexicographic layout cost.
+    pub cost: LayoutCost,
+    /// Whether the selected layout required width taint.
+    pub width_tainted: WidthTaint,
+}
+
+/// Resolves and renders one document without exposing partial output.
+///
+/// # Contract
+/// - requires: `root` belongs to `arena`, `options` has computation width at
+///   least as large as page width, and `meter` remains exclusively borrowed.
+/// - ensures: the selected output byte count is checked and reserved once,
+///   every VM append is metered before mutation, and success returns all bytes.
+/// - provides: exact rendered text, selected cost, and width-taint status.
+/// - fails: returns a typed render error without returning partial output.
+/// - panics: none.
+///
+/// # Errors
+/// Returns [`RenderError`] for invalid handles, invalid widths, checked
+/// arithmetic, allocation failure, or any named resolution/VM limit.
+///
+/// # Adequacy
+/// - hypothesis: L4 — exact output, taint completeness, append accounting,
+///   machine ceilings, and no-partial-output behavior distinguish the fused
+///   render path.
+/// - witness: `algebra::render_text_and_layout_metadata_are_exact`
+/// - witness: `algebra::render_preserves_verbatim_bytes_and_physical_endings`
+/// - witness: `algebra::render_limits_fail_without_partial_output`
+#[inline]
+pub fn render(
+    arena: &DocArena,
+    root: DocId,
+    options: &LayoutOptions,
+    meter: &mut RenderMeter,
+) -> Result<Rendered, RenderError>
+{
+    let resolved = resolve_for_render(arena, root, *options, meter)?;
+    let expected = resolved.output_bytes();
+    meter.check_output_bytes(expected)?;
+    let output = vm::execute(
+        arena,
+        resolved.plan_arena(),
+        resolved.plan(),
+        expected,
+        meter,
+    )?;
+    Ok(Rendered {
+        text: output.into_text(),
+        cost: resolved.cost(),
+        width_tainted: resolved.width_taint(),
+    })
+}
