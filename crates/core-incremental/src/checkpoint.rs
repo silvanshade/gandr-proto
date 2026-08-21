@@ -401,11 +401,15 @@ pub fn resume_with(
     base_ctx: &Ctx,
 ) -> Resume
 {
+    if let Some(resume) = resume_appended(base, edited, base_ctx) {
+        return resume;
+    }
     let edited_footprints: Vec<Footprint> = edited
         .items
         .iter()
         .map(|item| footprint_of(&item.term))
         .collect();
+
     let matches = align_by_name(&base.items, &edited.items);
     let edited_to_base = invert_matches(&matches, EditedItemCount(edited.items.len()));
     let matched_base: BTreeSet<BaseItemIndex> =
@@ -476,6 +480,68 @@ pub fn resume_with(
         },
         adopted,
     }
+}
+/// Resumes an append-only revision without aligning or re-scanning its prefix.
+///
+/// # Contract
+/// - requires: `base` was produced against `base_ctx`, and `edited` begins with
+///   the same item identities in the same order.
+/// - ensures: returns the base checkpoints adopted for the unchanged prefix and
+///   fresh checkpoints for every appended item.
+/// - provides: the production session's dirty-tail fast path.
+/// - fails: returns [`None`] when the revision is not an exact append.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: the prefix is observationally unchanged and the appended
+///   suffix is typed against the threaded prefix context; the append adoption
+///   witness and the differential gate distinguish this path from a stale
+///   prefix or an unthreaded suffix.
+#[inline]
+fn resume_appended(
+    base: &Checkpoints,
+    edited: &Program,
+    base_ctx: &Ctx,
+) -> Option<Resume>
+{
+    if edited.items.len() < base.items.len() {
+        return None;
+    }
+    let prefix = edited.items.get(.. base.items.len())?;
+    if !base
+        .items
+        .iter()
+        .zip(prefix)
+        .all(|(checkpoint, item)| bool::from(checkpoint_matches_item(checkpoint, item)))
+    {
+        return None;
+    }
+
+    let appended = edited.items.get(base.items.len() ..)?;
+    let mut ctx = base_ctx.clone();
+    for checkpoint in &base.items {
+        thread_binding(&mut ctx, &checkpoint.term, &checkpoint.typing);
+    }
+
+    let mut checkpoints = base.items.clone();
+    let mut adopted = alloc::vec![true; base.items.len()];
+    for item in appended {
+        let footprint = footprint_of(&item.term);
+        let typing = type_item(item, &ctx, footprint.has_hole.into());
+        thread_binding(&mut ctx, &item.term, &typing);
+        checkpoints.push(ItemCheckpoint {
+            name: item.name.clone(),
+            ascription: item.ascription.clone(),
+            term: item.term.clone(),
+            footprint,
+            typing,
+        });
+        adopted.push(false);
+    }
+    Some(Resume {
+        checkpoints: Checkpoints { items: checkpoints },
+        adopted,
+    })
 }
 
 /// Whether an edited item may adopt its base checkpoint: it must have a base

@@ -803,9 +803,8 @@ impl Session
         self.sources.push(RetainedSource::Records(record));
 
         let prior_item_count = self.program.items.len();
-        let mut edited = self.program.clone();
-        edited.items.extend(lowered.items.iter().cloned());
-        let resumed = resume_with(&self.checkpoints, &edited, &self.base_ctx);
+        self.program.items.extend(lowered.items.iter().cloned());
+        let resumed = resume_with(&self.checkpoints, &self.program, &self.base_ctx);
         // Whole-program liveness: this submission's analyses merged with every
         // earlier submission's, recomputed from the retained records rather
         // than accumulated, and keyed by origin so each recorded match
@@ -834,7 +833,6 @@ impl Session
             outcomes.len(),
             "every item's outcome is paired with exactly one kernel verdict"
         );
-        self.program = edited;
         self.checkpoints = resumed.into_checkpoints();
 
         // Declaration tables become visible only to later submissions, after

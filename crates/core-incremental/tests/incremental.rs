@@ -244,6 +244,26 @@ mod tests
                 "an identity edit reuses everything: {adopted:?}"
             );
         }
+        /// An append leaves every prior checkpoint adopted and types only the
+        /// new dirty tail against the accumulated prefix context.
+        #[test]
+        fn append_reuses_the_prefix_and_retypes_the_tail()
+        {
+            let base = [def("x", Body::Int(1)), def("y", Body::Ref("x".to_owned()))];
+            let edited = [
+                def("x", Body::Int(1)),
+                def("y", Body::Ref("x".to_owned())),
+                def("z", Body::Ref("y".to_owned())),
+            ];
+            let resumed = gate(&base, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
+
+            assert_eq!(
+                adopted,
+                vec![true, true, false],
+                "an append adopts the prefix and re-types only its dirty tail"
+            );
+        }
     }
 
     /// The re-typing a real dependency change forces.
