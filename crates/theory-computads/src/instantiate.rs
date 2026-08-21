@@ -617,7 +617,7 @@ mod tests
                 .get(source_id)
                 .expect("the source remains in the store"),
             instantiated,
-            "a changed substitution produces a distinct replayable cell"
+            "a changed substitution produces a distinct instantiated cell"
         );
     }
 
