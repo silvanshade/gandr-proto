@@ -377,6 +377,253 @@ pub const NODE_C_CASE: u8 = 0x16;
 /// is additive rather than a version bump. See the sealing decision record for
 /// why v1 held.
 pub const NODE_VT_ABSTRACT: u8 = 0x17;
+/// The two storage-boundary classifications recorded for one wire tag.
+///
+/// The alias criterion is the paper's conservative rule: a tag is an alias
+/// only when its payload has one constructor and a finite static token bound.
+/// The threshold alternative admits a bounded multi-constructor payload when
+/// its duplication bound fits the threshold chosen by a later storage rung.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NodeTagVerdict
+{
+    /// The constructor may be represented inline.
+    Alias,
+    /// The constructor is a content-defined boundary candidate.
+    Boundary,
+}
+
+/// The storage classification and first-order shape of one export tag.
+///
+/// `token_contribution` counts the tag's own token. `max_token_bound` is the
+/// finite total bound for the tag and its inline payload under the alias
+/// analysis; `None` records an unbounded or recursive payload. The threshold
+/// verdict is evaluated symbolically for a threshold at least as large as the
+/// finite bound, without selecting the deployment threshold.
+///
+/// # Contract
+/// - ensures: `tag` is one of [`NODE_TAG_TABLE`]'s frozen v1 node tags;
+///   `child_arity` is the number of subterm-table child references emitted by
+///   the writer; and the two verdicts record the two storage classifications.
+/// - fails: never — every field is an immutable description.
+/// - panics: none.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NodeTagDescription
+{
+    /// The frozen wire tag byte.
+    pub tag: u8,
+    /// The number of child references emitted after the tag payload.
+    pub child_arity: u8,
+    /// The tag's own token contribution.
+    pub token_contribution: u8,
+    /// The finite inline token bound, or `None` for an unbounded/recursive
+    /// payload.
+    pub max_token_bound: Option<u8>,
+    /// Verdict under the single-constructor-plus-finite-bound criterion.
+    pub alias_verdict: NodeTagVerdict,
+    /// Verdict under the future threshold-based criterion.
+    pub threshold_verdict: NodeTagVerdict,
+}
+
+/// The complete v1 node-tag vocabulary and its storage-boundary analysis.
+///
+/// This table is documentation and a protocol input for later storage work;
+/// it does not alter export bytes. The arities are pinned against the writer's
+/// existing match arms by `node_tag_table_matches_wire_arities`, while the
+/// existing export goldens continue to pin byte identity.
+pub const NODE_TAG_TABLE: [NodeTagDescription; 24] = [
+    NodeTagDescription {
+        tag: NODE_VT_BASE,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(2),
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_UNIT,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(1),
+        alias_verdict: NodeTagVerdict::Alias,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_UNIVERSE,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_PRODUCT,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_SUM,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_THUNK,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_LIFT,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_CT_RETURNER,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_CT_ARROW,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_V_VARIABLE,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(2),
+        alias_verdict: NodeTagVerdict::Alias,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+    NodeTagDescription {
+        tag: NODE_V_CONSTANT,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(2),
+        alias_verdict: NodeTagVerdict::Alias,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+    NodeTagDescription {
+        tag: NODE_V_UNIT,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(1),
+        alias_verdict: NodeTagVerdict::Alias,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+    NodeTagDescription {
+        tag: NODE_V_LITERAL,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_V_PAIR,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_V_INJECTION,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_V_THUNK,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_V_LIFT,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_LAMBDA,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_APPLICATION,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_RETURN,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_BIND,
+        child_arity: 2,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_FORCE,
+        child_arity: 1,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_C_CASE,
+        child_arity: 3,
+        token_contribution: 1,
+        max_token_bound: None,
+        alias_verdict: NodeTagVerdict::Boundary,
+        threshold_verdict: NodeTagVerdict::Boundary,
+    },
+    NodeTagDescription {
+        tag: NODE_VT_ABSTRACT,
+        child_arity: 0,
+        token_contribution: 1,
+        max_token_bound: Some(2),
+        alias_verdict: NodeTagVerdict::Alias,
+        threshold_verdict: NodeTagVerdict::Alias,
+    },
+];
 
 /// A declaration's admission mark as it rides in the artifact (E6): a single
 /// checked/unchecked bit, never a trust lattice (K3).
@@ -1419,6 +1666,55 @@ mod tests
             alloc::vec![0 .. 1],
             malformed.collect::<alloc::vec::Vec<_>>(),
         );
+    }
+
+    #[test]
+    fn node_tag_table_matches_wire_arities_and_verdicts()
+    {
+        let expected = [
+            (NODE_VT_BASE, 0),
+            (NODE_VT_UNIT, 0),
+            (NODE_VT_UNIVERSE, 0),
+            (NODE_VT_PRODUCT, 2),
+            (NODE_VT_SUM, 2),
+            (NODE_VT_THUNK, 1),
+            (NODE_VT_LIFT, 1),
+            (NODE_CT_RETURNER, 1),
+            (NODE_CT_ARROW, 2),
+            (NODE_V_VARIABLE, 0),
+            (NODE_V_CONSTANT, 0),
+            (NODE_V_UNIT, 0),
+            (NODE_V_LITERAL, 0),
+            (NODE_V_PAIR, 2),
+            (NODE_V_INJECTION, 1),
+            (NODE_V_THUNK, 1),
+            (NODE_V_LIFT, 1),
+            (NODE_C_LAMBDA, 1),
+            (NODE_C_APPLICATION, 2),
+            (NODE_C_RETURN, 1),
+            (NODE_C_BIND, 2),
+            (NODE_C_FORCE, 1),
+            (NODE_C_CASE, 3),
+            (NODE_VT_ABSTRACT, 0),
+        ];
+        assert_eq!(expected.len(), NODE_TAG_TABLE.len());
+        for (description, &(tag, child_arity)) in NODE_TAG_TABLE.iter().zip(expected.iter()) {
+            assert_eq!(tag, description.tag);
+            assert_eq!(child_arity, description.child_arity);
+            assert_eq!(1, description.token_contribution);
+            match description.max_token_bound {
+                | Some(bound) => {
+                    assert!(bound >= description.token_contribution);
+                    assert_eq!(NodeTagVerdict::Alias, description.threshold_verdict);
+                },
+                | None => {
+                    assert_eq!(NodeTagVerdict::Boundary, description.alias_verdict);
+                    assert_eq!(NodeTagVerdict::Boundary, description.threshold_verdict);
+                },
+            }
+        }
+        assert_eq!(NodeTagVerdict::Boundary, NODE_TAG_TABLE[0].alias_verdict);
+        assert_eq!(NodeTagVerdict::Alias, NODE_TAG_TABLE[0].threshold_verdict);
     }
 
     #[test]
