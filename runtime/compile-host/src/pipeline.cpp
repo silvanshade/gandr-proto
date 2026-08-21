@@ -65,7 +65,7 @@ private:
 auto
 verify_module(mlir::ModuleOp module) -> Expected<void>
 {
-  DiagnosticCollector collector(*module.getContext());
+  DiagnosticCollector const collector(*module.getContext());
   if (mlir::failed(mlir::verify(module))) {
     return host_error(
       ErrorKind::VerifierRejected,
@@ -90,7 +90,7 @@ optimize_module(mlir::ModuleOp module, Optimization optimization) -> Expected<vo
     return Expected<void>{};
   }
 
-  DiagnosticCollector collector(*module.getContext());
+  DiagnosticCollector const collector(*module.getContext());
   mlir::PassManager manager(module.getContext());
   manager.addPass(mlir::createCanonicalizerPass());
   manager.addPass(mlir::createCSEPass());
@@ -116,7 +116,7 @@ lower_module(mlir::ModuleOp module, Optimization optimization) -> Expected<void>
     return structural;
   }
 
-  DiagnosticCollector collector(*module.getContext());
+  DiagnosticCollector const collector(*module.getContext());
   if (mlir::failed(mlir::verify(module))) {
     return host_error(
       ErrorKind::LoweringFailed,

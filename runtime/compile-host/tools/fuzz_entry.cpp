@@ -93,14 +93,19 @@ read_file(std::string_view path) -> std::optional<std::vector<std::uint8_t>>
 
 /// The largest input the entry reads, so a hostile length cannot exhaust
 /// memory before the decoder's own bound applies.
-constexpr std::size_t max_input_bytes = 1 << 20;
+constexpr std::size_t max_input_bytes = std::size_t{ 1 } << 20U;
 
 } // namespace
 
 auto
 main(int argc, char** argv) -> int
 {
-  std::vector<std::string_view> const arguments(argv + 1, argv + argc);
+  // A span over the whole vector, then everything after the program name:
+  // argc is not guaranteed positive, so the tail is taken only when there
+  // is one.
+  std::span<char* const> const raw(argv, argc < 1 ? 0U : static_cast<std::size_t>(argc));
+  std::span<char* const> const tail = raw.empty() ? raw : raw.subspan(1);
+  std::vector<std::string_view> const arguments(tail.begin(), tail.end());
 
   if (!arguments.empty()) {
     int status = EXIT_SUCCESS;

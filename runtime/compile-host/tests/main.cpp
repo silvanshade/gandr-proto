@@ -118,7 +118,7 @@ void
 case_arity_verifier_rejects_a_malformed_constructor()
 {
   std::unique_ptr<mlir::MLIRContext> const context = make_context();
-  mlir::OwningOpRef<mlir::ModuleOp> module = emit_malformed_arity_module(*context);
+  mlir::OwningOpRef<mlir::ModuleOp> const module = emit_malformed_arity_module(*context);
   check(static_cast<bool>(module), "the malformed constructor builds at all");
   check(
     count_dialect_operations(module.get(), "ctor") == 1,
@@ -130,7 +130,7 @@ case_arity_verifier_rejects_a_malformed_constructor()
   if (!verdict.has_value()) {
     check(verdict.error().kind == ErrorKind::VerifierRejected, "the rejection is the verifier's, not another stage's");
     check(
-      verdict.error().detail.find("declares arity 2 but was given 1") != std::string::npos,
+      verdict.error().detail.contains("declares arity 2 but was given 1"),
       "the rejection names the declared arity and the supplied count"
     );
   }
@@ -312,7 +312,7 @@ case_jit_agrees_with_the_reference_interpreter_under_generation()
     Expected<RunOutcome> const compiled = compile_and_run(image);
     check(reference.has_value() == compiled.has_value(), "the two paths agree on whether the program runs");
     if (!reference.has_value() || !compiled.has_value()) {
-      std::println(stderr, "    seed {}", static_cast<unsigned long long>(seed));
+      std::println(stderr, "    seed {}", seed);
       continue;
     }
     check_equal(compiled->value, reference->value, "the two paths agree on the answer");
@@ -321,18 +321,16 @@ case_jit_agrees_with_the_reference_interpreter_under_generation()
       std::println(
         stderr,
         "    seed {}: compiled {}/{}, reference {}/{}",
-        static_cast<unsigned long long>(seed),
-        static_cast<long long>(compiled->ledger.duplications),
-        static_cast<long long>(compiled->ledger.discards),
-        static_cast<long long>(reference->ledger.duplications),
-        static_cast<long long>(reference->ledger.discards)
+        seed,
+        compiled->ledger.duplications,
+        compiled->ledger.discards,
+        reference->ledger.duplications,
+        reference->ledger.discards
       );
     }
   }
 
-  for (
-    std::uint8_t kind = static_cast<std::uint8_t>(NodeKind::Lit); kind <= static_cast<std::uint8_t>(NodeKind::Cut);
-    ++kind) {
+  for (auto kind = static_cast<std::uint8_t>(NodeKind::Lit); kind <= static_cast<std::uint8_t>(NodeKind::Cut); ++kind) {
     check(kinds_seen[kind] > 0, "the generated set exercised every positive-core node kind");
   }
 }
@@ -624,7 +622,7 @@ case_verifier_runs_before_canonicalization_and_execution()
   std::unique_ptr<mlir::MLIRContext> const context = make_context();
 
   {
-    mlir::OwningOpRef<mlir::ModuleOp> module = emit_malformed_arity_module(*context);
+    mlir::OwningOpRef<mlir::ModuleOp> const module = emit_malformed_arity_module(*context);
     Expected<void> const optimized = optimize_module(module.get(), Optimization::CanonicalizeAndDeduplicate);
     check(!optimized.has_value(), "optimization refuses a module the verifier rejects");
     if (!optimized.has_value()) {
@@ -640,7 +638,7 @@ case_verifier_runs_before_canonicalization_and_execution()
   }
 
   {
-    mlir::OwningOpRef<mlir::ModuleOp> module = emit_malformed_arity_module(*context);
+    mlir::OwningOpRef<mlir::ModuleOp> const module = emit_malformed_arity_module(*context);
     Expected<void> const lowered = lower_module(module.get(), Optimization::CanonicalizeAndDeduplicate);
     check(!lowered.has_value(), "lowering refuses a module the verifier rejects");
     if (!lowered.has_value()) {
@@ -711,7 +709,12 @@ registry() -> std::vector<Case>
 auto
 main(int argc, char** argv) -> int
 {
-  std::vector<std::string_view> const arguments(argv + 1, argv + argc);
+  // A span over the whole vector, then everything after the program name:
+  // argc is not guaranteed positive, so the tail is taken only when there
+  // is one.
+  std::span<char* const> const raw(argv, argc < 1 ? 0U : static_cast<std::size_t>(argc));
+  std::span<char* const> const tail = raw.empty() ? raw : raw.subspan(1);
+  std::vector<std::string_view> const arguments(tail.begin(), tail.end());
   std::string_view selected;
   for (std::string_view const argument : arguments) {
     if (argument.starts_with("--case=")) {

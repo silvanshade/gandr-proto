@@ -43,13 +43,7 @@ using namespace gandr::compile_host;
 void
 print_outcome(std::string_view name, RunOutcome const& outcome)
 {
-  std::println(
-    "{}\t{}\t{}\t{}",
-    name,
-    outcome.value,
-    static_cast<long long>(outcome.ledger.duplications),
-    static_cast<long long>(outcome.ledger.discards)
-  );
+  std::println("{}\t{}\t{}\t{}", name, outcome.value, outcome.ledger.duplications, outcome.ledger.discards);
 }
 
 /// Prints a typed failure to the error stream.
@@ -114,12 +108,7 @@ report_timings() -> int
       status = EXIT_FAILURE;
       continue;
     }
-    std::println(
-      "{}\t{}\t{}",
-      sample.name,
-      static_cast<long long>(timed->second.compile_microseconds),
-      static_cast<long long>(timed->second.execute_microseconds)
-    );
+    std::println("{}\t{}\t{}", sample.name, timed->second.compile_microseconds, timed->second.execute_microseconds);
   }
   return status;
 }
@@ -201,7 +190,12 @@ print_usage()
 auto
 main(int argc, char** argv) -> int
 {
-  std::vector<std::string_view> const arguments(argv + 1, argv + argc);
+  // A span over the whole vector, then everything after the program name:
+  // argc is not guaranteed positive, so the tail is taken only when there
+  // is one.
+  std::span<char* const> const raw(argv, argc < 1 ? 0U : static_cast<std::size_t>(argc));
+  std::span<char* const> const tail = raw.empty() ? raw : raw.subspan(1);
+  std::vector<std::string_view> const arguments(tail.begin(), tail.end());
   if (arguments.empty()) {
     return run_samples();
   }

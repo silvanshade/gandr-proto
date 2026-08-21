@@ -88,7 +88,7 @@ allocated_words(std::span<std::int64_t const> heap) noexcept -> std::size_t
     return 0;
   }
   std::int64_t const cursor = proved_at(heap, HeapLayout::bump_cursor);
-  if (cursor <= static_cast<std::int64_t>(HeapLayout::arena_base)) {
+  if (std::cmp_less_equal(cursor, HeapLayout::arena_base)) {
     return 0;
   }
   return static_cast<std::size_t>(cursor) - HeapLayout::arena_base;

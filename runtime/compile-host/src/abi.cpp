@@ -80,8 +80,9 @@ own_text(std::string_view text) noexcept -> char const*
   if (owned == nullptr) {
     return borrowed_empty_text();
   }
-  std::memcpy(owned, text.data(), text.size());
-  owned[text.size()] = '\0';
+  std::span<char> const buffer(owned, text.size() + 1);
+  std::memcpy(buffer.data(), text.data(), text.size());
+  buffer.back() = '\0';
   return owned;
 }
 

@@ -122,9 +122,9 @@ struct Generator
   {
     state += 0x9E37'79B9'7F4A'7C15ULL;
     std::uint64_t mixed = state;
-    mixed = (mixed ^ (mixed >> 30)) * 0xBF58'476D'1CE4'E5B9ULL;
-    mixed = (mixed ^ (mixed >> 27)) * 0x94D0'49BB'1331'11EBULL;
-    return mixed ^ (mixed >> 31);
+    mixed = (mixed ^ (mixed >> 30U)) * 0xBF58'476D'1CE4'E5B9ULL;
+    mixed = (mixed ^ (mixed >> 27U)) * 0x94D0'49BB'1331'11EBULL;
+    return mixed ^ (mixed >> 31U);
   }
 
   /// Draws a value below `bound`.
