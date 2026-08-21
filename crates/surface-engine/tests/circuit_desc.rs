@@ -82,6 +82,15 @@ fn messages(source: TestText<'_>) -> Vec<String>
 #[test]
 fn an_expression_kind_signature_endpoint_is_refused_by_the_description_route()
 {
+    fn has_expression_endpoint(node: SynNode<'_>) -> bool
+    {
+        if node.kind() == node_kinds::PARENTHESIZED_EXPRESSION && node.text().as_ref() == "(f)" {
+            return true;
+        }
+        node.named_children()
+            .into_iter()
+            .any(has_expression_endpoint)
+    }
     let source = "\
 sign Wrong {
   sort Nat : Type;
@@ -92,15 +101,6 @@ sign Wrong {
 }
 ";
     let tree = SynTree::parse(source).expect("the ordinary parser commits this source");
-    fn has_expression_endpoint(node: SynNode<'_>) -> bool
-    {
-        if node.kind() == node_kinds::PARENTHESIZED_EXPRESSION && node.text().as_ref() == "(f)" {
-            return true;
-        }
-        node.named_children()
-            .into_iter()
-            .any(has_expression_endpoint)
-    }
     assert!(
         has_expression_endpoint(tree.root()),
         "the rule's `(f)` endpoint must arrive as a normal expression-kind CST node"

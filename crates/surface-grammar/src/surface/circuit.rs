@@ -279,14 +279,16 @@ fn rule_parameter_group() -> Regex
     ])
 }
 
-/// Build the circuit rule-face arrow row: directed `==>` or invertible `<=>`.
+/// Build the circuit rule-face arrow row.
 ///
-/// The term-level `rule_face_arrow` intentionally has a narrower migration
-/// menu (`==>` plus retired `~>`); sign members carry the circuit's distinct
-/// invertible face former here rather than admitting every arrow-grid row.
+/// All four circuit arrows remain admissible here so arrow-kind confirmation
+/// can name a rule/oper row disagreement; the reversible `rule` case is a
+/// surface-check diagnostic, not a grammar rejection. The `-->` and `<->`
+/// forms likewise reach the existing named respell declines; narrowing this
+/// row would turn those diagnostics into syntax errors.
 fn circuit_rule_face_arrow() -> Regex
 {
-    alt([t(TileLabel("==>")), t(TileLabel("<=>"))])
+    arrow_grid()
 }
 
 /// Build the parenthesis-led data-block tail reserved for localized decline.

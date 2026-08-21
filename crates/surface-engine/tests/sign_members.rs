@@ -30,31 +30,30 @@ mod tests
 
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
 
-    /// **A terminated block whose member form the reader cannot read gets its
-    /// own message.** Every member here ends in `;`, so telling the reader the
-    /// members are unseparated would send them to add terminators that are
-    /// already present.
-    ///
-    /// **A verdict that is right with a reason that is wrong is worse than a
-    /// verdict with no reason**: silence sends nobody anywhere, and a
-    /// misaddressed message sends the reader to make a change already made.
+    /// **A terminated indexed member is read as written.** The direct circuit
+    /// signature keeps an indexed sort's parenthesized telescope in the member
+    /// shape, so the description route can present it without inventing a
+    /// missing-terminator diagnosis.
     #[test]
     fn a_terminated_block_is_not_told_it_lacks_terminators()
     {
-        let source = "sign S {\n  sort Ob : Type;\n  sort Hom(dom: Ob, cod: Ob) : Type;\n  oper \
-                      id : (a : Ob) --> Ob;\n}\n";
-        let reported = messages(&elaborate_data_descs(source).diagnostics);
-        assert!(
-            reported
-                .iter()
-                .any(|message| message.contains("reading stopped inside a member")),
-            "the message names what was observed, got {reported:?}"
+        let source = "sign S {\n  sort Ob : Type;\n  sort Hom(dom: Ob, cod: Ob) : Type;\n  oper id : \
+                      (a : Ob) --> Ob;\n}\n";
+        let elab = elaborate_data_descs(source);
+        let desc = elab.descs.first().expect("one description");
+        assert_eq!(
+            2,
+            desc.sorts.len(),
+            "both the base and indexed sorts are presented"
         );
+        assert_eq!(1, desc.opers.len(), "the operation is presented");
+        let reported = messages(&elab.diagnostics);
         assert!(
             !reported
                 .iter()
-                .any(|message| message.contains("were not separated")),
-            "and does not assert separation for a block that is separated, got {reported:?}"
+                .any(|message| message.contains("were not separated")
+                    || message.contains("reading stopped inside a member")),
+            "terminated members are not reported as unread, got {reported:?}"
         );
     }
 

@@ -1167,8 +1167,7 @@ impl<'pbg> Molder<'pbg>
             return false;
         }
         next_significant(tokens, first_index)
-            .map(|(_, colon)| AsRef::<str>::as_ref(&colon.text(source)) == ":")
-            .unwrap_or(false)
+            .is_some_and(|(_, colon)| AsRef::<str>::as_ref(&colon.text(source)) == ":")
     }
     /// Choose token `index`'s mold, breaking a shared-prefix tie by lookahead.
     ///

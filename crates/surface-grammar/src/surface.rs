@@ -226,6 +226,7 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     "continue_expression",
     "data_declaration",
     "for_expression",
+    "glob_expression",
     "import_declaration",
     "circuit_declaration",
     "loop_expression",

@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #9af91328e78b1db6 [DefFunctionSugar]
-[0, 0] => 0..53 #9af91328e78b1db6 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #2859aa506dab0f46 [BindHoist]
-[0, 0, 0, 0] => 45..50 #9658dcf0a998d61a [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #9658dcf0a998d61a [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #2e7787ea9ef742bd [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #2e7787ea9ef742bd [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #cf27d9ec7d5db2f3
-[0, 0, 0, 0, 1] => 49..50 #cf27d9ec7d5db2f3
-[0, 0, 0, 1] => 40..51 #2859aa506dab0f46
-[0, 0, 0, 1, 0] => 44..51 #6ee724701293d11b [BindHoist]
-[1] => 55..99 #542bc984f1620e74
-[1, 0] => 65..97 #d0701f39cc0ad986 [IfSugar]
-[1, 0, 0] => 68..72 #de10aabc47f305f7 [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #de10aabc47f305f7 [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #de10aabc47f305f7 [BoolLiteral]
-[1, 0, 1] => 75..80 #21944a50adf2394c
-[1, 0, 1, 0] => 79..80 #cf27d9ec7d5db2f3
-[1, 0, 2] => 90..95 #fd262dd805bc0a86
-[1, 0, 2, 0] => 94..95 #01b8ced924494e9f
+[0] => 0..53 #e6f2d98a65ccfb37 [DefFunctionSugar]
+[0, 0] => 0..53 #e6f2d98a65ccfb37 [DefFunctionSugar]
+[0, 0, 0] => 40..51 #bffee5ffcb4accc0 [BindHoist]
+[0, 0, 0, 0] => 45..50 #3d03efcfdb0ee34a [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #3d03efcfdb0ee34a [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #429dd0a6f4202fcc [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #429dd0a6f4202fcc [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #09e5d8648453818a
+[0, 0, 0, 0, 1] => 49..50 #09e5d8648453818a
+[0, 0, 0, 1] => 40..51 #bffee5ffcb4accc0
+[0, 0, 0, 1, 0] => 44..51 #837ba1269f7c571f [BindHoist]
+[1] => 55..99 #a89c903a22477f1f
+[1, 0] => 65..97 #0b6d0edd814173ca [IfSugar]
+[1, 0, 0] => 68..72 #1ed6508f8b3f55a8 [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #1ed6508f8b3f55a8 [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #1ed6508f8b3f55a8 [BoolLiteral]
+[1, 0, 1] => 75..80 #fa318db6a331a6a8
+[1, 0, 1, 0] => 79..80 #09e5d8648453818a
+[1, 0, 2] => 90..95 #e92f174e3292f83e
+[1, 0, 2, 0] => 94..95 #3c76bd512b3f0206

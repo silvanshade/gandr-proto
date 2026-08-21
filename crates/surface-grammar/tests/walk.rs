@@ -80,7 +80,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x7b7f_3e41_68e8_6da4);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xdeaf_6ed0_0f3e_7ad6);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -118,6 +118,11 @@ mod contracts
     /// migration adds four: the `data` and `codata` members' face arrow becomes
     /// a two-way alternation (`==>` ruled, `~>` retired-but-admissible), and
     /// each member family carries two copies of its arrow through `comma1`.
+    /// The direct circuit-rule signature path contributes eighty-two
+    /// occurrences for its parenthesized binder/result structure, typed binder
+    /// alternatives, and shared circuit-face arrow grid. That shape stays
+    /// separate from the recursive expression endpoint so the direct `(` is
+    /// available to circuit lowering without changing ordinary call arguments.
     /// The nested generator-block form adds fifty: the typed head-parameter
     /// binder (its `:` and Type hole, per `comma1` clone and per block kind),
     /// the head's `: Idx -> Type` annotation, the generator member's local
@@ -172,7 +177,7 @@ mod contracts
     // alternative in the module-signature field, and a signature field is
     // inlined at every site that admits a signature — so the arity is sites
     // rather than forms, exactly as the statement forms above are.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2188);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2270);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -191,33 +196,33 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 174),
-        (")", 177),
+        ("(", 175),
+        (")", 178),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 88),
+        (",", 89),
         ("-", 2),
-        ("-->", 20),
+        ("-->", 23),
         ("->", 15),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 207),
+        (":", 213),
         (":>", 2),
-        (";", 223),
+        (";", 224),
         ("<", 4),
         ("<&", 1),
         ("<-", 20),
-        ("<->", 18),
+        ("<->", 21),
         ("<=", 1),
-        ("<=>", 18),
+        ("<=>", 21),
         ("<>", 1),
-        ("=", 81),
+        ("=", 82),
         ("==", 1),
-        ("==>", 22),
+        ("==>", 25),
         ("=>", 8),
         (">", 3),
         (">&", 1),
@@ -255,7 +260,7 @@ mod contracts
         ("command_substitution_start", 1),
         ("constructor", 6),
         ("continue", 1),
-        ("data", 10),
+        ("data", 12),
         ("def", 5),
         ("double_string_fragment", 1),
         ("drop", 1),
@@ -276,6 +281,7 @@ mod contracts
         ("force", 1),
         ("fork", 40),
         ("from", 1),
+        ("glob", 1),
         ("hold", 1),
         // One mold — the `?` hole's optional-tail occurrence. The
         // former standalone `hole_name` Expression atom (a second, fresh-slot
@@ -284,7 +290,7 @@ mod contracts
         ("hole_name", 2),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 338),
+        ("identifier", 345),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -314,7 +320,7 @@ mod contracts
         ("recv", 20),
         ("release", 20),
         ("ret", 1),
-        ("rule", 14),
+        ("rule", 16),
         ("run", 20),
         ("select", 1),
         ("send", 1),
@@ -330,11 +336,12 @@ mod contracts
         ("subshell_close", 1),
         ("subshell_open", 1),
         ("tail", 1),
+        ("then", 1),
         ("thunk", 1),
         ("true", 3),
         ("type", 9),
-        ("type_identifier", 18),
-        ("type_variable", 9),
+        ("type_identifier", 40),
+        ("type_variable", 31),
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),
@@ -343,11 +350,11 @@ mod contracts
         ("variable_name", 5),
         ("while", 1),
         ("with", 1),
-        ("{", 34),
+        ("{", 35),
         ("|", 4),
         ("|&", 1),
         ("||", 2),
-        ("}", 48),
+        ("}", 49),
         ("~>", 4),
         ("ω", 16),
     ];
