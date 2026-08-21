@@ -209,6 +209,42 @@ mod tests
         );
     }
 
+    /// **The gandr-ly42 acceptance, at the law the flagship actually writes.**
+    /// The associativity law, quantified over four object variables and three
+    /// thunked arrows, with its carrier written bare and both endpoints nested
+    /// multi-argument composites.
+    ///
+    /// The monomorphic case above fixes the same defect at a smaller shape.
+    /// This one is pinned separately because it is the statement the bead
+    /// names, and because a repair could conceivably serve the small shape
+    /// without serving the dependent one.
+    #[test]
+    fn the_assoc_law_lowers_with_its_carrier_written_bare()
+    {
+        let declared = assoc_law_carrier(TestType("U(a -> F d)"))
+            .expect("the assoc law lowers with a bare thunked carrier");
+        let Ty::Value(ValueType::Path { ref ty, .. }) = declared
+        else {
+            panic!("the assoc law did not declare an identity type: {declared:?}");
+        };
+        let expected =
+            assoc_law_carrier(TestType("(U(a -> F d))")).expect("the bracketed spelling lowers");
+        let Ty::Value(ValueType::Path {
+            ty: ref bracketed, ..
+        }) = expected
+        else {
+            panic!("the bracketed spelling did not declare an identity type: {expected:?}");
+        };
+        assert_eq!(
+            ty, bracketed,
+            "the two spellings of the assoc carrier must agree"
+        );
+        assert!(
+            !bool::from(Ty::Value(ValueType::clone(ty)).mentions_unknown()),
+            "the assoc carrier degraded to the gradual unknown: {ty:?}"
+        );
+    }
+
     // --- Helpers --------------------------------------------------------------
 
     /// A borrowed type spelling at the test-helper boundary.
@@ -291,5 +327,55 @@ mod tests
             return None;
         };
         return Some(Ty::Value(ValueType::clone(payload)));
+    }
+
+    /// The identity type the associativity law declares, for a carrier
+    /// spelling under test.
+    ///
+    /// A parameter of function type is a thunk, because a bare arrow is a
+    /// computation type and a parameter position wants a value type.
+    fn assoc_law_carrier(carrier: TestType<'_>) -> Result<Ty, String>
+    {
+        let source = alloc::format!(
+            "def comp(a: Type, b: Type, c: Type, f: U[1] (a -> F b), g: U[1] (b -> F c), x: a) \
+             -> F c {{ run y <- f(x); g(y) }} \
+             def law(a: Type, b: Type, c: Type, d: Type, f: U[1] (a -> F b), \
+             g: U[1] (b -> F c), h: U[1] (c -> F d)) \
+             -> F(Path({carrier}, comp(a, c, d, comp(a, b, c, f, g), h), \
+             comp(a, b, d, f, comp(b, c, d, g, h)))) {{ ret here(f) }}",
+            carrier = carrier.0
+        );
+        let lowered =
+            lower_source(source.as_str().into()).map_err(|error| alloc::format!("{error}"))?;
+        let item = lowered
+            .items
+            .iter()
+            .find(|item| item.name.as_deref() == Some("law"))
+            .ok_or_else(|| String::from("the law definition did not lower to an item"))?;
+        let ascription = item
+            .ascription
+            .as_ref()
+            .ok_or_else(|| String::from("the law definition lowered without an ascription"))?;
+        return innermost_returner_payload(ascription)
+            .ok_or_else(|| alloc::format!("unexpected law ascription shape: {ascription:?}"));
+    }
+
+    /// The value type at the end of a curried definition's returner chain.
+    fn innermost_returner_payload(ascription: &Ty) -> Option<Ty>
+    {
+        let Ty::Value(ValueType::Thunk(_, ref arrow)) = *ascription
+        else {
+            return None;
+        };
+        let mut comp: &CompType = arrow;
+        loop {
+            match *comp {
+                | CompType::Arrow { ref res, .. } => comp = res,
+                | CompType::F(ref payload, _) => {
+                    return Some(Ty::Value(ValueType::clone(payload)));
+                },
+                | _ => return None,
+            }
+        }
     }
 }
