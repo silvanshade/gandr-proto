@@ -84,6 +84,42 @@ pub enum DeclineReason
     StepBudget,
     /// The cell ceiling ([`CompletionBudget::max_cells`]) was reached.
     CellBudget,
+    /// The supplied source violated the completion input contract.
+    InvalidSuppliedOverlap(SuppliedOverlapError),
+}
+
+/// The first invalid item in a caller-supplied overlap worklist.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum SuppliedOverlapError
+{
+    /// A batch supplied an overlap of the composition kind.
+    NonConfluence
+    {
+        /// The zero-based batch containing the overlap.
+        batch: usize,
+        /// The zero-based overlap within that batch.
+        overlap: usize,
+    },
+    /// The overlap's left id is not in the supplied store.
+    UnknownLeftCell
+    {
+        /// The zero-based batch containing the overlap.
+        batch: usize,
+        /// The zero-based overlap within that batch.
+        overlap: usize,
+        /// The stale or foreign id.
+        cell: CellId,
+    },
+    /// The overlap's right id is not in the supplied store.
+    UnknownRightCell
+    {
+        /// The zero-based batch containing the overlap.
+        batch: usize,
+        /// The zero-based overlap within that batch.
+        overlap: usize,
+        /// The stale or foreign id.
+        cell: CellId,
+    },
 }
 
 /// The outcome of [`complete`] — either a completed convergent slice or a
@@ -253,9 +289,14 @@ where
 /// crate's dependency graph.
 ///
 /// # Contract
-/// - ensures: the completion loop processes exactly the supplied initial
-///   batches, then the generic confluence batches for cells it derives, within
-///   the same step and cell budgets as [`complete`].
+/// - requires: every supplied overlap is a [`OverlapKind::Confluence`] whose
+///   `left` and `right` ids address cells in the supplied store.
+/// - ensures: valid input makes the completion loop process exactly the
+///   supplied initial batches, then the generic confluence batches for cells it
+///   derives, within the same step and cell budgets as [`complete`]. Invalid
+///   input returns [`CompletionOutcome::Declined`] with
+///   [`DeclineReason::InvalidSuppliedOverlap`] and the unprocessed supplied
+///   batches; no invalid item is silently skipped.
 /// - provides: a matcher-neutral supply point; the source sees the generic
 ///   [`CellStore`] and returns generic [`Overlap`] values.
 /// - panics: none.
@@ -270,8 +311,56 @@ where
     A: CellAlphabet,
     F: FnOnce(&CellStore<A>) -> Vec<Vec<Overlap<A>>>,
 {
-    let initial_worklist: VecDeque<Vec<Overlap<A>>> = source(&store).into();
+    let initial_batches = source(&store);
+    if let Err(error) = validate_supplied_batches(&store, &initial_batches) {
+        return CompletionOutcome::Declined {
+            store,
+            derived: Vec::new(),
+            certificates: Vec::new(),
+            pending: initial_batches,
+            reason: DeclineReason::InvalidSuppliedOverlap(error),
+        };
+    }
+    let initial_worklist: VecDeque<Vec<Overlap<A>>> = initial_batches.into();
     complete_with_worklist(store, budget, Vec::new(), Vec::new(), initial_worklist)
+}
+
+/// Validate a caller-supplied worklist before it reaches the completion loop.
+///
+/// # Contract
+/// - ensures: `Ok(())` iff every item is confluence and both of its ids are in
+///   `store`; the first invalid item is reported in batch order.
+/// - panics: none.
+#[inline]
+fn validate_supplied_batches<A>(
+    store: &CellStore<A>,
+    batches: &[Vec<Overlap<A>>],
+) -> Result<(), SuppliedOverlapError>
+where
+    A: CellAlphabet,
+{
+    for (batch, overlaps) in batches.iter().enumerate() {
+        for (overlap, item) in overlaps.iter().enumerate() {
+            if item.kind != OverlapKind::Confluence {
+                return Err(SuppliedOverlapError::NonConfluence { batch, overlap });
+            }
+            if store.get(item.left).is_none() {
+                return Err(SuppliedOverlapError::UnknownLeftCell {
+                    batch,
+                    overlap,
+                    cell: item.left,
+                });
+            }
+            if store.get(item.right).is_none() {
+                return Err(SuppliedOverlapError::UnknownRightCell {
+                    batch,
+                    overlap,
+                    cell: item.right,
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Run the completion loop from a given worklist and accumulated results.

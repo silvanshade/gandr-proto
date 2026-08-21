@@ -16,6 +16,7 @@ mod tests
     use gandr_core_sequent::il::Polarity;
     use gandr_theory_cell_complexes::alphabet::CellAlphabet as _;
     use gandr_theory_cell_complexes::cell::Cell;
+    use gandr_theory_cell_complexes::cell::CellId;
     use gandr_theory_cell_complexes::cell::CellStore;
     use gandr_theory_cell_complexes::pattern::CmdPat;
     use gandr_theory_cell_complexes::pattern::ConsPat;
@@ -26,6 +27,7 @@ mod tests
     use gandr_theory_cell_complexes::sequent::SequentAlphabet;
     use gandr_theory_coherent_resolutions::completion::*;
     use gandr_theory_coherent_resolutions::overlap::Overlap;
+    use gandr_theory_coherent_resolutions::overlap::OverlapKind;
 
     #[test]
     fn completion_processes_within_budget()
@@ -38,6 +40,63 @@ mod tests
             bool::from(outcome.is_completed()),
             "the small system completes within budget"
         );
+    }
+    #[test]
+    fn supplied_overlap_validation_returns_typed_declines()
+    {
+        let store = overlapping_rules();
+        let valid = scheduled_confluence_batches(&store)
+            .into_iter()
+            .flatten()
+            .next()
+            .expect("the fixture supplies one confluence overlap");
+        let mut unknown = valid.clone();
+        unknown.left = CellId(usize::MAX);
+        let expected_unknown = unknown.clone();
+        let unknown_outcome = complete_with_overlap_source(
+            store.clone(),
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![unknown]],
+        );
+        let CompletionOutcome::Declined {
+            reason:
+                DeclineReason::InvalidSuppliedOverlap(SuppliedOverlapError::UnknownLeftCell {
+                    batch,
+                    overlap,
+                    cell,
+                }),
+            pending,
+            ..
+        } = unknown_outcome
+        else {
+            panic!("a stale supplied left id is a typed decline")
+        };
+        assert_eq!(0_usize, batch);
+        assert_eq!(0_usize, overlap);
+        assert_eq!(CellId(usize::MAX), cell);
+        assert_eq!(1_usize, pending.len());
+        assert_eq!(expected_unknown, pending[0][0]);
+
+        let mut non_confluence = valid;
+        non_confluence.kind = OverlapKind::Composition;
+        let non_confluence_outcome = complete_with_overlap_source(
+            store,
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![non_confluence]],
+        );
+        let CompletionOutcome::Declined {
+            reason:
+                DeclineReason::InvalidSuppliedOverlap(SuppliedOverlapError::NonConfluence {
+                    batch,
+                    overlap,
+                }),
+            ..
+        } = non_confluence_outcome
+        else {
+            panic!("a supplied composition is a typed decline")
+        };
+        assert_eq!(0_usize, batch);
+        assert_eq!(0_usize, overlap);
     }
 
     #[test]

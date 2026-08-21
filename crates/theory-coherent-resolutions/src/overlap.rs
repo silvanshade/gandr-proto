@@ -360,6 +360,61 @@ pub struct Overlap<A: CellAlphabet = SequentAlphabet>
 
 impl<A: CellAlphabet> Overlap<A>
 {
+    /// Build a confluence overlap from evidence supplied by an external
+    /// matcher.
+    ///
+    /// A domain matcher may know a substitution that is not derivable from
+    /// this alphabet's generic `unify_cmd` operation. The supplied source is
+    /// therefore the authority for the overlap's unifier; this constructor
+    /// records that evidence without re-running the generic matcher. The
+    /// completion entry point still validates the overlap kind and both store
+    /// addresses before it accepts the worklist.
+    ///
+    /// # Contract
+    /// - requires: `left` and `right` address cells in the store observed by
+    ///   the caller, and `unifier`/`seam` are the external matcher's induced
+    ///   sequent evidence.
+    /// - ensures: the returned overlap is a confluence overlap carrying the
+    ///   supplied ids, unifier and seam; its peak is the supplied unifier
+    ///   applied to the left-hand side, and its right leg is renamed apart
+    ///   exactly as ordinary overlap enumeration does.
+    /// - provides: the matcher-neutral construction needed by
+    ///   `complete_with_overlap_source` without adding matcher vocabulary to
+    ///   this crate.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn from_supplied_confluence(
+        left: (CellId, &Cell<A>),
+        right: (CellId, &Cell<A>),
+        unifier: A::Subst,
+        seam: A::Pos,
+    ) -> Self
+    {
+        let (id_left, cell_left) = left;
+        let (id_right, cell_right) = right;
+        let (renamed_lhs, renamed_rhs) = A::rename_apart(
+            (&cell_left.lhs, &cell_left.rhs),
+            (&cell_right.lhs, &cell_right.rhs),
+        );
+        let right_renamed = Cell::new(
+            renamed_lhs,
+            renamed_rhs,
+            cell_right.orient,
+            cell_right.provenance,
+        );
+        let peak = A::apply_subst(&unifier, &cell_left.lhs);
+        Self {
+            left: id_left,
+            right: id_right,
+            kind: OverlapKind::Confluence,
+            unifier,
+            seam,
+            peak,
+            right_renamed,
+        }
+    }
+
     /// The left reduct — the peak contracted by the **left** cell at the root.
     ///
     /// # Contract

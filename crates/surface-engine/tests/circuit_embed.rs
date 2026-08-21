@@ -16,13 +16,17 @@
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
+    use gandr_surface_engine::boundary::MatchDecision;
     use gandr_surface_engine::circuit::embed::CircuitEmbedError;
+    use gandr_surface_engine::circuit::embed::CircuitOverlapDecline;
     use gandr_surface_engine::circuit::embed::CircuitRuleCell;
     use gandr_surface_engine::circuit::embed::CircuitWiringError;
+    use gandr_surface_engine::circuit::embed::UnfaithfulCircuitOverlap;
     use gandr_surface_engine::circuit::embed::circuit_wiring;
     use gandr_surface_engine::circuit::embed::complete_circuit_rules;
     use gandr_surface_engine::circuit::embed::embed_circuit_rule;
     use gandr_surface_engine::desc_cells::elaborate_desc_cells;
+    use gandr_surface_engine::desc_cells::elaborate_desc_cells_with_completion_budget;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
     use gandr_theory_cell_complexes::Cell;
     use gandr_theory_cell_complexes::CellStore;
@@ -35,9 +39,12 @@ mod tests
     use gandr_theory_circuit_algebras::interface::WireCount;
     use gandr_theory_circuit_algebras::matching::MatchBudget;
     use gandr_theory_coherent_resolutions::CompletionBudget;
+    use gandr_theory_coherent_resolutions::CompletionOutcome;
+    use gandr_theory_coherent_resolutions::DeclineReason;
     use gandr_theory_coherent_resolutions::Tracelet;
     use gandr_theory_coherent_resolutions::enumerate_overlaps;
     use gandr_theory_coherent_resolutions::normalize;
+    use gandr_theory_coherent_resolutions::overlaps_between;
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
@@ -65,6 +72,10 @@ mod tests
                                       (z);\n  };\n\n  rule viaRewrite : (\n    rule neg : Nat \
                                       ==> Nat,\n    data x : Nat\n  ) ==> (z : Nat) {\n    node \
                                       : neg(x) ==> (z);\n  };\n}";
+    /// A real description whose two admitted circuit cells have different
+    /// spheres while the target body contains the pattern body.
+    const ADMITTED_COMPLETION_ROUTE: &str = "data Nat : Type {\n  Zero : Nat;\n}\n\nsign Nat {\n  \
+sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule p : Nat ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : Nat) {\n    node : p(x) ==> (x\u{2032});\n    node : add(x\u{2032}, y) --> (z);\n  };\n\n  rule second : (\n    rule p : Nat ==> Nat,\n    data a : Nat,\n    data b : Nat\n  ) ==> (z : Nat) {\n    node : p(a) ==> (a\u{2032});\n    node : add(a\u{2032}, b) --> (z);\n  };\n}";
 
     #[test]
     fn a_two_line_body_reads_as_a_diagram_with_one_internal_wire()
@@ -280,6 +291,22 @@ mod tests
         // consumed on one source, and neither names the other.
         let descs = declared_descs(TestText(NESTED_CONGRUENCES));
         let cells = elaborate_desc_cells(&descs);
+        assert_eq!(descs.len(), cells.circuit_completions.len());
+        let (completion_index, completion) = cells
+            .circuit_completions
+            .iter()
+            .enumerate()
+            .find(|&(_, completion)| {
+                completion.matches.iter().any(|matched| {
+                    matched.pattern.as_ref() == "cong1" && matched.target.as_ref() == "cong2"
+                })
+            })
+            .expect("the real route retains a structured completion result");
+        assert_eq!(
+            cells.stores[completion_index],
+            *completion.outcome.store(),
+            "the route's store is the outcome projection, not its replacement"
+        );
         assert!(
             !cells.circuit_sites.is_empty(),
             "the route recorded occurrences rather than skipping the matcher"
@@ -427,7 +454,7 @@ mod tests
     }
 
     #[test]
-    fn the_description_route_runs_completion_through_the_matcher_seam()
+    fn the_multi_root_and_reconvergent_case_stays_matcher_only()
     {
         let multi_root = CircuitBody::new(
             [
@@ -474,83 +501,411 @@ mod tests
             ],
             "e",
         );
-        let mut store = CellStore::new();
-        let lhs = CmdPat::cut(
-            Polarity::Positive,
-            ProdPat::meta("input"),
-            ConsPat::frame("step", ConsPat::Top),
+        let forward = embed_circuit_rule(&multi_root, &reconvergent, MatchBudget(4_096_usize))
+            .expect("the matcher handles the multi-root/reconvergent pair");
+        assert!(
+            forward.admitted_count().0 > 0_usize,
+            "the matcher admits the multi-root embedding"
         );
-        let rhs = CmdPat::cut(Polarity::Positive, ProdPat::meta("input"), ConsPat::Top);
-        let multi_cell = store.insert(Cell::new(
-            lhs.clone(),
-            rhs.clone(),
-            Orientation::PolarityDerived,
+        let reverse = embed_circuit_rule(&reconvergent, &multi_root, MatchBudget(4_096_usize))
+            .expect("the reverse matcher search completes");
+        assert_eq!(
+            0_usize,
+            reverse.admitted_count().0,
+            "the reconvergent target does not fit in the multi-root pattern"
+        );
+    }
+    #[test]
+    fn w1_two_embeddings_supply_two_critical_pairs()
+    {
+        let pattern_body = unary_body("left", "x", "y");
+        let target_body = parallel_unary_body("left", ("a", "b"), ("c", "d"));
+        let mut store = CellStore::new();
+        let pattern_cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "pattern",
+            "pattern-rhs",
             CellProvenance::SurfaceRule,
-        ));
-        let reconvergent_cell = store.insert(Cell::new(
-            lhs,
-            rhs,
-            Orientation::PolarityDerived,
+        );
+        let target_cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "target",
+            "target-rhs",
             CellProvenance::MuMuTilde,
-        ));
-        let multi_name: gandr_theory_levitation::Name = "multi-root".into();
-        let reconvergent_name: gandr_theory_levitation::Name = "reconvergent".into();
+        );
+        let pattern_name: gandr_theory_levitation::Name = "w1-pattern".into();
+        let target_name: gandr_theory_levitation::Name = "w1-target".into();
         let rules = [
             CircuitRuleCell {
-                name: &multi_name,
-                body: &multi_root,
-                cell: Some(multi_cell),
+                name: &pattern_name,
+                body: &pattern_body,
+                cell: Some(pattern_cell),
             },
             CircuitRuleCell {
-                name: &reconvergent_name,
-                body: &reconvergent,
-                cell: Some(reconvergent_cell),
+                name: &target_name,
+                body: &target_body,
+                cell: Some(target_cell),
             },
         ];
         let completion = complete_circuit_rules(
             store,
             &rules,
             MatchBudget(4_096_usize),
-            CompletionBudget::new(64_usize.into(), 64_usize.into(), 64_usize.into()),
+            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
         );
         let forward = completion
             .matches
             .iter()
             .find(|matched| {
-                matched.pattern.as_ref() == "multi-root"
-                    && matched.target.as_ref() == "reconvergent"
+                matched.pattern.as_ref() == "w1-pattern" && matched.target.as_ref() == "w1-target"
             })
-            .expect("the multi-root pattern has a record in the reconvergent target");
+            .expect("the ordered pair has a completion record");
+        assert_eq!(
+            2_usize, forward.admitted.0,
+            "the one-line pattern has two admitted placements"
+        );
+        assert_eq!(2_usize, forward.embeddings.len());
         assert!(
-            forward.admitted.0 > 0_usize,
-            "the circuit matcher admits the multi-root embedding"
+            forward.embeddings.iter().all(|embedding| {
+                embedding.overlap_count == 1_usize && embedding.decline.is_none()
+            }),
+            "each embedding supplies one ordinary overlap"
+        );
+        assert_eq!(2_usize, forward.overlap_count);
+        let CompletionOutcome::Declined {
+            ref pending,
+            reason,
+            ..
+        } = completion.outcome
+        else {
+            panic!("the zero completion budget preserves supplied work")
+        };
+        assert_eq!(DeclineReason::StepBudget, reason);
+        let supplied = pending
+            .iter()
+            .flat_map(|batch| batch.iter())
+            .filter(|overlap| overlap.left == pattern_cell && overlap.right == target_cell)
+            .count();
+        assert_eq!(
+            2_usize, supplied,
+            "both placements remain distinct supplied critical pairs"
+        );
+    }
+
+    #[test]
+    fn w2_embedding_supplies_a_non_unifying_sequent_pair()
+    {
+        let pattern_body = unary_body("left", "x", "y");
+        let target_body = unary_body("left", "a", "b");
+        let mut store = CellStore::new();
+        let pattern_cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "pattern",
+            "pattern-rhs",
+            CellProvenance::SurfaceRule,
+        );
+        let target_cell = fixed_cell(
+            &mut store,
+            Polarity::Negative,
+            "target",
+            "target-rhs",
+            CellProvenance::MuMuTilde,
         );
         assert!(
-            forward.overlap_count > 0_usize,
-            "the admitted circuit pair supplies a generic overlap"
+            overlaps_between(
+                (
+                    pattern_cell,
+                    store.get(pattern_cell).expect("pattern cell is stored"),
+                ),
+                (
+                    target_cell,
+                    store.get(target_cell).expect("target cell is stored"),
+                ),
+            )
+            .is_empty(),
+            "the ordinary sequent matcher rejects the opposite-polarity pair"
         );
-        assert!(
-            forward.certificates_replayed > 0_usize,
-            "the generic certificate path replays the supplied overlap: {} overlaps, {} replays",
-            forward.overlap_count,
-            forward.certificates_replayed
+        let pattern_name: gandr_theory_levitation::Name = "w2-pattern".into();
+        let target_name: gandr_theory_levitation::Name = "w2-target".into();
+        let rules = [
+            CircuitRuleCell {
+                name: &pattern_name,
+                body: &pattern_body,
+                cell: Some(pattern_cell),
+            },
+            CircuitRuleCell {
+                name: &target_name,
+                body: &target_body,
+                cell: Some(target_cell),
+            },
+        ];
+        let completion = complete_circuit_rules(
+            store,
+            &rules,
+            MatchBudget(4_096_usize),
+            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
         );
-        let reverse = completion
+        let supplied = completion
             .matches
             .iter()
             .find(|matched| {
-                matched.pattern.as_ref() == "reconvergent"
-                    && matched.target.as_ref() == "multi-root"
+                matched.pattern.as_ref() == "w2-pattern" && matched.target.as_ref() == "w2-target"
             })
-            .expect("the reverse ordered pair remains observable");
+            .expect("the ordered pair has a completion record");
+        assert_eq!(1_usize, supplied.admitted.0);
         assert_eq!(
-            0_usize, reverse.admitted.0,
-            "the reconvergent target does not fit in the multi-root pattern"
+            1_usize, supplied.overlap_count,
+            "the circuit seam supplies an overlap despite empty generic enumeration"
         );
+        assert!(supplied.embeddings[0].decline.is_none());
+    }
+
+    #[test]
+    fn w3_deduplicated_declarations_keep_replay_attribution()
+    {
+        let body = unary_body("left", "x", "y");
+        let mut store = CellStore::new();
+        let cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "shared",
+            "shared-rhs",
+            CellProvenance::SurfaceRule,
+        );
+        let first_name: gandr_theory_levitation::Name = "w3-first".into();
+        let second_name: gandr_theory_levitation::Name = "w3-second".into();
+        let rules = [
+            CircuitRuleCell {
+                name: &first_name,
+                body: &body,
+                cell: Some(cell),
+            },
+            CircuitRuleCell {
+                name: &second_name,
+                body: &body,
+                cell: Some(cell),
+            },
+        ];
+        let completion = complete_circuit_rules(
+            store,
+            &rules,
+            MatchBudget(4_096_usize),
+            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+        );
+        let origins = completion
+            .cell_origins
+            .get(&cell)
+            .expect("the shared cell has a side-map entry");
+        assert_eq!(2_usize, origins.len());
+        assert_eq!("w3-first", origins[0].name.as_ref());
+        assert_eq!("w3-second", origins[1].name.as_ref());
+        let pair = completion
+            .matches
+            .iter()
+            .find(|matched| {
+                matched.pattern.as_ref() == "w3-first" && matched.target.as_ref() == "w3-second"
+            })
+            .expect("the cross-declaration pair remains observable");
+        assert_eq!(1_usize, pair.admitted.0);
+        assert!(
+            matches!(
+                pair.embeddings[0].decline,
+                Some(CircuitOverlapDecline::Unfaithful(
+                    UnfaithfulCircuitOverlap::NoConfluenceOverlap
+                ))
+            ),
+            "structural self-deduplication is a typed no-overlap result"
+        );
+        assert_eq!(0_usize, pair.overlap_count);
+    }
+
+    #[test]
+    fn w4_unfaithful_wire_rendering_is_a_typed_decline()
+    {
+        let pattern_body = two_component_body(MatchDecision::from(false));
+        let target_body = two_component_body(MatchDecision::from(true));
+        let mut store = CellStore::new();
+        let pattern_cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "pattern",
+            "pattern-rhs",
+            CellProvenance::SurfaceRule,
+        );
+        let target_cell = fixed_cell(
+            &mut store,
+            Polarity::Positive,
+            "target",
+            "target-rhs",
+            CellProvenance::MuMuTilde,
+        );
+        let pattern_name: gandr_theory_levitation::Name = "w4-pattern".into();
+        let target_name: gandr_theory_levitation::Name = "w4-target".into();
+        let rules = [
+            CircuitRuleCell {
+                name: &pattern_name,
+                body: &pattern_body,
+                cell: Some(pattern_cell),
+            },
+            CircuitRuleCell {
+                name: &target_name,
+                body: &target_body,
+                cell: Some(target_cell),
+            },
+        ];
+        let completion = complete_circuit_rules(
+            store,
+            &rules,
+            MatchBudget(4_096_usize),
+            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+        );
+        let pair = completion
+            .matches
+            .iter()
+            .find(|matched| {
+                matched.pattern.as_ref() == "w4-pattern" && matched.target.as_ref() == "w4-target"
+            })
+            .expect("the ordered pair has a completion record");
+        assert_eq!(2_usize, pair.admitted.0);
+        assert_eq!(1_usize, pair.overlap_count);
         assert_eq!(
-            0_usize, reverse.overlap_count,
-            "a refused circuit embedding cannot seed generic completion"
+            1_usize,
+            pair.embeddings
+                .iter()
+                .filter(|embedding| {
+                    matches!(
+                        embedding.decline,
+                        Some(CircuitOverlapDecline::Unfaithful(
+                            UnfaithfulCircuitOverlap::DuplicateRenderedOverlap
+                        ))
+                    )
+                })
+                .count(),
+            "the invisible wire distinction is declined rather than double-counted"
         );
+    }
+
+    #[test]
+    fn the_description_route_preserves_a_bounded_completion_decline()
+    {
+        let descs = declared_descs(TestText(ADMITTED_COMPLETION_ROUTE));
+        let cells = elaborate_desc_cells_with_completion_budget(
+            &descs,
+            MatchBudget(4_096_usize),
+            CompletionBudget::new(0_usize.into(), 64_usize.into(), 64_usize.into()),
+        );
+        assert_eq!(descs.len(), cells.circuit_completions.len());
+        let (index, completion) = cells
+            .circuit_completions
+            .iter()
+            .enumerate()
+            .find(|&(_, completion)| !completion.matches.is_empty())
+            .expect("the sign description has structured matcher evidence");
+        let CompletionOutcome::Declined {
+            reason, pending, ..
+        } = completion.outcome.clone()
+        else {
+            panic!("the zero budget is observable as a structured decline")
+        };
+        assert_eq!(DeclineReason::StepBudget, reason);
+        assert!(!pending.is_empty(), "the supplied overlap remains pending");
+        assert_eq!(cells.stores[index], *completion.outcome.store());
+    }
+
+    fn unary_body<N>(
+        head: N,
+        input: N,
+        output: N,
+    ) -> CircuitBody
+    where
+        N: Into<gandr_theory_levitation::Name>,
+    {
+        let head = head.into();
+        let input = input.into();
+        let output = output.into();
+        CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op(head),
+                [FreeTerm::var(input)],
+                output.clone(),
+            ))],
+            output,
+        )
+    }
+
+    fn parallel_unary_body<N>(
+        head: N,
+        first: (N, N),
+        second: (N, N),
+    ) -> CircuitBody
+    where
+        N: Into<gandr_theory_levitation::Name>,
+    {
+        let head = head.into();
+        let first_input = first.0.into();
+        let first_output = first.1.into();
+        let second_input = second.0.into();
+        let second_output = second.1.into();
+        CircuitBody::new(
+            [
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op(head.clone()),
+                    [FreeTerm::var(first_input)],
+                    first_output,
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op(head),
+                    [FreeTerm::var(second_input)],
+                    second_output.clone(),
+                )),
+            ],
+            second_output,
+        )
+    }
+
+    fn two_component_body(extra: MatchDecision) -> CircuitBody
+    {
+        let mut nodes = alloc::vec![
+            CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("left".into()),
+                [FreeTerm::var("x")],
+                "y",
+            )),
+            CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("right".into()),
+                [FreeTerm::var("z")],
+                "w",
+            )),
+        ];
+        if bool::from(extra) {
+            nodes.push(CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("right".into()),
+                [FreeTerm::var("q")],
+                "r",
+            )));
+        }
+        CircuitBody::new(nodes, "w")
+    }
+
+    fn fixed_cell<N>(
+        store: &mut CellStore,
+        polarity: Polarity,
+        lhs: N,
+        rhs: N,
+        provenance: CellProvenance,
+    ) -> gandr_theory_cell_complexes::CellId
+    where
+        N: Into<Box<str>>,
+    {
+        store.insert(Cell::new(
+            CmdPat::cut(polarity, ProdPat::ctor(lhs, []), ConsPat::Top),
+            CmdPat::cut(polarity, ProdPat::ctor(rhs, []), ConsPat::Top),
+            Orientation::PolarityDerived,
+            provenance,
+        ))
     }
 
     /// The one description of `descs` that declares circuit rules — the source

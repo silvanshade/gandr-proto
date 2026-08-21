@@ -80,6 +80,7 @@ use gandr_theory_cell_complexes::alphabet::CellAlphabet;
 use gandr_theory_cell_complexes::boundary::PositionStep;
 use gandr_theory_cell_complexes::boundary::RedexOccurrenceCount;
 use gandr_theory_cell_complexes::boundary::ShiftReplay;
+use gandr_theory_cell_complexes::cell::Cell;
 use gandr_theory_cell_complexes::cell::CellId;
 use gandr_theory_cell_complexes::cell::CellStore;
 use gandr_theory_cell_complexes::sequent::SequentAlphabet;
@@ -92,6 +93,105 @@ use gandr_theory_levitation::CircuitRule;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::RedexOccurrence;
 use gandr_theory_levitation::redex_occurrences;
+
+/// Why a stored cell could not be instantiated.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum CellInstantiationError
+{
+    /// The requested id is not an address in the supplied store.
+    UnknownCell
+    {
+        /// The stale or foreign cell id.
+        cell: CellId,
+    },
+}
+
+impl core::fmt::Display for CellInstantiationError
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        match *self {
+            | Self::UnknownCell { cell } => {
+                write!(f, "cell id {} is not present in the supplied store", cell.0)
+            },
+        }
+    }
+}
+
+impl core::error::Error for CellInstantiationError
+{
+}
+
+/// Instantiate one stored cell under a caller-supplied alphabet substitution.
+///
+/// The original cell remains in the store. The instantiated cell is inserted
+/// through [`CellStore::insert`], so structural deduplication remains the only
+/// identity rule and the returned id is valid for the same store.
+///
+/// # Contract
+/// - requires: `subst` is the induced substitution for the instantiation site.
+/// - ensures: the returned id addresses a cell whose two faces are
+///   `A::apply_subst(subst, source.lhs)` and `A::apply_subst(subst,
+///   source.rhs)`, with the source orientation and provenance; an equal cell
+///   reuses its existing id.
+/// - fails: [`CellInstantiationError::UnknownCell`] when `cell` is not in
+///   `store`.
+/// - panics: none.
+///
+/// # Errors
+/// Returns [`CellInstantiationError::UnknownCell`] when `cell` is not present
+/// in `store`.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the cell is inserted through the same structural store
+///   seam as an ordinary declaration, so applying an identity substitution
+///   reuses the source id while a changed substitution produces a replayable
+///   instantiated cell.
+/// - witness: `gandr-theory-computads`
+///   `instantiate::tests::instantiating_a_cell_preserves_store_identity`
+#[inline]
+pub fn instantiate_cell<A>(
+    store: &mut CellStore<A>,
+    cell: CellId,
+    subst: &A::Subst,
+) -> Result<CellId, CellInstantiationError>
+where
+    A: CellAlphabet,
+{
+    let Some(source) = store.get(cell).cloned()
+    else {
+        return Err(CellInstantiationError::UnknownCell { cell });
+    };
+    let instantiated = Cell::new(
+        A::apply_subst(subst, &source.lhs),
+        A::apply_subst(subst, &source.rhs),
+        source.orient,
+        source.provenance,
+    );
+    Ok(store.insert(instantiated))
+}
+
+/// Turn an occurrence path into the alphabet's position representation.
+///
+/// This is the generic instantiation hook used when a surface seam arrives as
+/// a path rather than as a position already owned by the cell alphabet.
+///
+/// # Contract
+/// - requires: `path` is ordered from the command root toward the seam.
+/// - ensures: the result is exactly `A::position_at_path(path)`.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn instantiate_position<A>(path: &[PositionStep]) -> A::Pos
+where
+    A: CellAlphabet,
+{
+    A::position_at_path(path)
+}
 
 /// One entry of a circuit rule's **instantiation**: the stored cell a
 /// rewrite-sorted port is applied at.
@@ -390,10 +490,12 @@ mod tests
     use gandr_theory_cell_complexes::cell::Cell;
     use gandr_theory_cell_complexes::pattern::CmdPat;
     use gandr_theory_cell_complexes::pattern::ConsPat;
+    use gandr_theory_cell_complexes::pattern::MetaVar;
     use gandr_theory_cell_complexes::pattern::Pos;
     use gandr_theory_cell_complexes::pattern::ProdPat;
     use gandr_theory_cell_complexes::sequent::CellProvenance;
     use gandr_theory_cell_complexes::sequent::Orientation;
+    use gandr_theory_cell_complexes::subst::Subst;
     use gandr_theory_levitation::CircuitBody;
     use gandr_theory_levitation::CircuitFrame;
     use gandr_theory_levitation::CircuitNode;
@@ -470,6 +572,41 @@ mod tests
             Orientation::PolarityDerived,
             CellProvenance::SurfaceRule,
         )
+    }
+    #[test]
+    fn instantiating_a_cell_preserves_store_identity()
+    {
+        let mut store: CellStore<SequentAlphabet> = CellStore::new();
+        let source = Cell::new(
+            CmdPat::cut(Polarity::Positive, ProdPat::meta("x"), ConsPat::Top),
+            CmdPat::cut(Polarity::Positive, ProdPat::meta("x"), ConsPat::Top),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        );
+        let source_id = store.insert(source);
+        let identity = Subst::new();
+        let identity_id = instantiate_cell(&mut store, source_id, &identity)
+            .expect("the source id addresses a stored cell");
+        assert_eq!(source_id, identity_id);
+        let mut substitution = Subst::new();
+        assert!(bool::from(
+            substitution.bind_prod(MetaVar::producer("x"), ProdPat::ctor("Zero", []),)
+        ));
+        let instantiated_id = instantiate_cell(&mut store, source_id, &substitution)
+            .expect("the induced substitution instantiates the source");
+        assert_ne!(source_id, instantiated_id);
+        let instantiated = store
+            .get(instantiated_id)
+            .expect("the instantiated id addresses the inserted cell");
+        assert_eq!(CellProvenance::SurfaceRule, instantiated.provenance);
+        assert_eq!(Orientation::PolarityDerived, instantiated.orient);
+        assert_ne!(
+            store
+                .get(source_id)
+                .expect("the source remains in the store"),
+            instantiated,
+            "a changed substitution produces a distinct cell without replacing its source"
+        );
     }
 
     #[test]

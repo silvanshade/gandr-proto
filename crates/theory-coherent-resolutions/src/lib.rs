@@ -40,6 +40,7 @@ pub mod tracelet;
 pub use crate::completion::CompletionBudget;
 pub use crate::completion::CompletionOutcome;
 pub use crate::completion::DeclineReason;
+pub use crate::completion::SuppliedOverlapError;
 pub use crate::completion::complete;
 pub use crate::completion::complete_with_overlap_source;
 pub use crate::overlap::Overlap;
