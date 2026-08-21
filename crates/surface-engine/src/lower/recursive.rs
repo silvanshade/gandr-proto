@@ -38,6 +38,7 @@ use super::entry;
 use super::node_kinds;
 use super::sole_inner_expression;
 use crate::boundary::NodeText;
+use crate::boundary::SourceOffset;
 use crate::boundary::SourceRange;
 use crate::origin::ElabKind;
 use crate::origin::OriginEntry;
@@ -312,10 +313,10 @@ impl<'tree> StatementCursor<'tree>
     fn end_byte(
         &self,
         tail: Option<SynNode<'tree>>,
-    ) -> Option<usize>
+    ) -> Option<SourceOffset>
     {
         tail.or_else(|| self.nodes.last().copied())
-            .map(|node| node.end_byte().0)
+            .map(SynNode::end_byte)
     }
 }
 
@@ -1026,7 +1027,7 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
             cst_node: first.cst_node(),
             cst_hash: first.cst_hash(),
             byte_range: SourceRange(
-                first.start_byte().0 .. chain_end.unwrap_or_else(|| first.end_byte().0),
+                first.start_byte().0 .. chain_end.unwrap_or_else(|| first.end_byte()).0,
             ),
             elaboration: None,
             note: None,

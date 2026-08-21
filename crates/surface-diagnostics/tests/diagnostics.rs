@@ -4,6 +4,7 @@ mod tests
     use std::path::Path;
 
     use gandr_surface_diagnostics::RenderStyle;
+    use gandr_surface_diagnostics::TerminalCapability;
     use gandr_surface_diagnostics::render_submission;
     use gandr_surface_engine::session::Session;
     use gandr_surface_syntax::SourceSlice;
@@ -101,8 +102,14 @@ mod tests
     #[test]
     fn render_style_follows_terminal_capability()
     {
-        assert_eq!(RenderStyle::Plain, RenderStyle::for_terminal(false));
-        assert_eq!(RenderStyle::Styled, RenderStyle::for_terminal(true));
+        assert_eq!(
+            RenderStyle::Plain,
+            RenderStyle::for_terminal(TerminalCapability::from(false))
+        );
+        assert_eq!(
+            RenderStyle::Styled,
+            RenderStyle::for_terminal(TerminalCapability::from(true))
+        );
     }
 
     #[test]

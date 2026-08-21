@@ -17,6 +17,7 @@ use gandr_core_term::error::TypeError;
 use gandr_surface_engine::diag::Diagnostic;
 use gandr_surface_engine::diag::DiagnosticAnnotation;
 use gandr_surface_engine::diag::DiagnosticAnnotationKind;
+use gandr_surface_engine::diag::DiagnosticContext;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::diag::Span;
 use gandr_surface_engine::diag::message_of;
@@ -24,6 +25,31 @@ use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
 use gandr_surface_syntax::SourceSlice;
+
+/// Whether an output destination is a terminal capable of styled rendering.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum TerminalCapability
+{
+    /// Captured, redirected, or otherwise non-terminal output.
+    #[default]
+    NonTerminal,
+    /// An interactive terminal output destination.
+    Terminal,
+}
+
+impl From<bool> for TerminalCapability
+{
+    #[inline]
+    fn from(is_terminal: bool) -> Self
+    {
+        if is_terminal {
+            Self::Terminal
+        }
+        else {
+            Self::NonTerminal
+        }
+    }
+}
 
 /// Color policy selected by a terminal face without exposing renderer types.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -41,13 +67,11 @@ impl RenderStyle
     /// Selects styled output exactly when the destination supports a terminal.
     #[inline]
     #[must_use]
-    pub const fn for_terminal(is_terminal: bool) -> Self
+    pub const fn for_terminal(capability: TerminalCapability) -> Self
     {
-        if is_terminal {
-            Self::Styled
-        }
-        else {
-            Self::Plain
+        match capability {
+            | TerminalCapability::NonTerminal => Self::Plain,
+            | TerminalCapability::Terminal => Self::Styled,
         }
     }
 }
@@ -170,10 +194,7 @@ fn render_diagnostic(
                 .map(|annotation| RenderAnnotation {
                     kind: annotation.kind,
                     span: annotation.span.clone(),
-                    label: Some(context_annotation_label(
-                        annotation.label.as_deref(),
-                        context.prose.as_str(),
-                    )),
+                    label: Some(context_annotation_label(annotation, context)),
                 }),
         );
     }
@@ -299,12 +320,12 @@ fn project_annotation(annotation: &DiagnosticAnnotation) -> RenderAnnotation
 
 /// Composes one locus-specific label with the cause that owns the annotation.
 fn context_annotation_label(
-    label: Option<&str>,
-    prose: &str,
+    annotation: &DiagnosticAnnotation,
+    context: &DiagnosticContext,
 ) -> String
 {
-    match label {
-        | Some(label) => format!("{label}; while {prose}"),
-        | None => format!("while {prose}"),
+    match annotation.label.as_deref() {
+        | Some(label) => format!("{label}; while {}", context.prose),
+        | None => format!("while {}", context.prose),
     }
 }

@@ -41,6 +41,7 @@ mod tests
     #[cfg(feature = "codecs")]
     use std::path::PathBuf;
 
+    use gandr_surface_engine::boundary::PipelineSource;
     use gandr_surface_engine::diag::Diagnostic;
     use gandr_surface_engine::diag::DiagnosticAnnotationKind;
     use gandr_surface_engine::diag::DiagnosticDetail;
@@ -261,7 +262,7 @@ mod tests
                     name, expected_name,
                     "the provenance table follows the corpus"
                 );
-                let diagnostic = first_diagnostic(source);
+                let diagnostic = first_diagnostic(PipelineSource::from(source));
                 let span = primary_span(&diagnostic);
                 assert_eq!(
                     Some(expected),
@@ -277,16 +278,15 @@ mod tests
         fn repeated_equal_subterms_point_to_the_failing_occurrence()
         {
             const SOURCE: &str = "def d = ((1, 1) : Integer * Unit);\n";
-            let diagnostic = first_diagnostic(SOURCE);
+            let diagnostic = first_diagnostic(PipelineSource::from(SOURCE));
             let span = primary_span(&diagnostic);
             assert_eq!(SOURCE.rfind('1'), Some(span.start));
             assert_eq!(Some("1"), SOURCE.get(span.start .. span.end));
         }
 
-        fn first_diagnostic(source: &str) -> Diagnostic
+        fn first_diagnostic(source: PipelineSource<'_>) -> Diagnostic
         {
-            let lowered =
-                lower_source_total(source.into()).expect("the provenance fixture must lower");
+            let lowered = lower_source_total(source).expect("the provenance fixture must lower");
             diagnostics(&lowered, &prelude_ctx())
                 .into_iter()
                 .next()

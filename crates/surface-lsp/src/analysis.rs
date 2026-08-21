@@ -6,7 +6,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_surface_engine::diag::DiagnosticAnnotation;
 use gandr_surface_engine::diag::DiagnosticAnnotationKind;
+use gandr_surface_engine::diag::DiagnosticContext;
 use gandr_surface_engine::diag::DiagnosticMessage;
 use gandr_surface_engine::diag::Report;
 use gandr_surface_engine::diag::Severity;
@@ -174,10 +176,7 @@ impl Analysis
                                 &index,
                                 encoding,
                                 &annotation.span,
-                                context_annotation_message(
-                                    annotation.label.as_deref(),
-                                    context.prose.as_str(),
-                                ),
+                                context_annotation_message(annotation, context),
                             )
                         }));
                     }
@@ -414,13 +413,13 @@ fn related(
 
 /// Composes one locus-specific label with the cause that owns the annotation.
 fn context_annotation_message(
-    label: Option<&str>,
-    prose: &str,
+    annotation: &DiagnosticAnnotation,
+    context: &DiagnosticContext,
 ) -> String
 {
-    match label {
-        | Some(label) => format!("{label}; while {prose}"),
-        | None => format!("while {prose}"),
+    match annotation.label.as_deref() {
+        | Some(label) => format!("{label}; while {}", context.prose),
+        | None => format!("while {}", context.prose),
     }
 }
 

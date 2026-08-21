@@ -22,6 +22,7 @@ use gandr_core_term::syntax::Comp;
 use gandr_runtime_ffi::FfiShellOutcome;
 use gandr_runtime_ffi::run_source;
 use gandr_surface_diagnostics::RenderStyle;
+use gandr_surface_diagnostics::TerminalCapability;
 use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::session::ItemOutcome;
@@ -245,7 +246,9 @@ where
             },
         },
         | Some(Request::Run(path)) => {
-            let render_style = RenderStyle::for_terminal(std::io::stderr().is_terminal());
+            let render_style = RenderStyle::for_terminal(TerminalCapability::from(
+                std::io::stderr().is_terminal(),
+            ));
             match run_script(std::path::Path::new(&path), render_style) {
                 | Ok(outcome) => {
                     announce_result(&outcome);
@@ -268,7 +271,7 @@ where
 fn serve_repl() -> ExitStatus
 {
     let mut stdout = std::io::stdout();
-    let render_style = RenderStyle::for_terminal(stdout.is_terminal());
+    let render_style = RenderStyle::for_terminal(TerminalCapability::from(stdout.is_terminal()));
     let status = if std::io::stdin().is_terminal() {
         run_interactive(&mut stdout, render_style)
     }

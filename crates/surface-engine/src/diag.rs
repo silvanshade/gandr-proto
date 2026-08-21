@@ -1094,8 +1094,9 @@ struct OriginLocus<'origin>
 ///
 /// # Contract
 /// - requires: `pending` is the item's core-term origin nodes in preorder.
-/// - ensures: [`Self::current`] is the exact active occurrence while the
-///   machine and origin preorder agree; any disagreement clears provenance.
+/// - ensures: [`Self::current_chain`] returns the exact active occurrence chain
+///   while the machine and origin preorder agree; any disagreement clears
+///   provenance.
 /// - provides: occurrence identity for both `Descend` and `Return` failures
 ///   without changing the core machine's parser-free interface.
 /// - panics: none.
