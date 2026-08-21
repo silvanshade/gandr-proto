@@ -101,7 +101,10 @@ Each clause compiles to a test obligation:
 - **`- panics: none.`** → testable under mutation with no dedicated test, provided boundary inputs actually run.
 - **`- intension:`** → one witness per declared property, only through the declared projection; when retuning an intension, revise these witnesses in the same change and confirm every extensional witness stays green.
 - **`- hypothesis:`** → this IS the test plan: L1 → write the validator test (validate evidence against the input, never a predicted answer; the validator itself gets L3 rigor); L2 → write or extend the differential/golden, confirm the oracle is external; L3 residue → enumerate the named boundary inputs exhaustively, pair each with the named observation.
-- **`- witness:`** → closing bookkeeping (G0-checked): each named witness must actually assert what the hypothesis says — the standard is a reviewer can apply the mutant by hand and watch the named witness fail.
+- **`- witness:`** → closing bookkeeping (G0-checked): each named path resolves to exactly one runnable nextest test across its package's library and integration targets; absent, renamed, ambiguous, and wrong-target paths fail the gate.
+  The standard is a reviewer can apply the mutant by hand and watch the named witness fail.
+- **`- declaration-only:`** → required-trait-method exemption only; give a reason when the declaration has no executable body.
+  Default trait methods and every non-trait owner still require an exact runnable witness.
 - **Authoring order.** Contract before implementation where practical; hypothesis before tests; witnesses last.
   A later survivor **falsifies** the hypothesis: classify, strengthen input or oracle or complete the missing projection, update contract+hypothesis+witnesses together.
 
@@ -109,8 +112,7 @@ Each clause compiles to a test obligation:
 
 cargo-mutants has no argument-swap or wrong-algorithm operator, so the score under-measures the fault model this discipline defends against (agent-authored code's characteristic faults) — judge the intensional face by the external-oracle rule, not the score.
 
-Gates, staged: **G0** — every `- witness:` path resolves and `# Adequacy` is present on nontrivial new/refactored items; **G1** — survivors joined span-to-item and classified (per-line hit data is ground truth for reachedness).
-Per-file floors are a further staged gate.
+Gates, staged: **G0** — every `- witness:` path resolves to exactly one nextest target across every workspace crate's library and integration targets, `# Adequacy` is present on nontrivial new/refactored items, and required trait methods either name a runnable implementation witness or carry an explicit `- declaration-only:` reason; absent, renamed, ambiguous, and wrong-target paths fail.
 
 Scope: mandatory for new or substantially refactored production Rust; existing survivor hotspots stay in the triage lane — no blanket retrofit.
 The adopted metric: at the first sweep after `gandr-graph` lands, new-crate survival < 5% (baseline 30.8%) with every survivor classified — else the reversal triggers fire.

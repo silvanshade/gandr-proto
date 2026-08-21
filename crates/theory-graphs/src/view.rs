@@ -52,10 +52,10 @@ use crate::NodePosition;
 ///   observations for dense node ids, edge sources/ids, directed edge rows, and
 ///   all-edge iterator exhaustion.
 /// - witness: `gandr_theory_graphs::contracts::view_adapter_contract`
-/// - witness: `tests::node_references_preserve_dense_ids`
-/// - witness: `tests::edge_references_preserve_endpoints_and_ids`
-/// - witness: `tests::directed_edge_iterators_preserve_requested_rows`
-/// - witness: `tests::all_edges_preserve_canonical_rows_and_exhaust`
+/// - witness: `view::tests::node_references_preserve_dense_ids`
+/// - witness: `view::tests::edge_references_preserve_endpoints_and_ids`
+/// - witness: `view::tests::directed_edge_iterators_preserve_requested_rows`
+/// - witness: `view::tests::all_edges_preserve_canonical_rows_and_exhaust`
 #[repr(transparent)]
 pub struct View<'graph, G: EdgeSource + ?Sized>
 {
@@ -83,10 +83,10 @@ impl<'graph, G: EdgeSource + ?Sized> View<'graph, G>
     ///   topological order and SCC singleton rows; adapter-unit witnesses pin
     ///   the dense node and edge rows exposed through petgraph visit traits.
     /// - witness: `gandr_theory_graphs::contracts::view_adapter_contract`
-    /// - witness: `tests::node_references_preserve_dense_ids`
-    /// - witness: `tests::edge_references_preserve_endpoints_and_ids`
-    /// - witness: `tests::directed_edge_iterators_preserve_requested_rows`
-    /// - witness: `tests::all_edges_preserve_canonical_rows_and_exhaust`
+    /// - witness: `view::tests::node_references_preserve_dense_ids`
+    /// - witness: `view::tests::edge_references_preserve_endpoints_and_ids`
+    /// - witness: `view::tests::directed_edge_iterators_preserve_requested_rows`
+    /// - witness: `view::tests::all_edges_preserve_canonical_rows_and_exhaust`
     #[inline]
     #[must_use]
     pub const fn new(graph: &'graph G) -> Self

@@ -3,9 +3,10 @@
 //! This module owns Rust syntax interpretation for `# Contract` and
 //! `# Adequacy` documentation groups. It parses complete Rust files with `syn`,
 //! groups `#[doc = "..."]` attributes by AST owner, and validates exact nextest
-//! witness bullets against exact aliases gathered from nextest JSON.
+//! witness bullets against aliases indexed by their owning test targets.
 
 extern crate alloc;
+use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
@@ -94,6 +95,86 @@ crate::semantic_optional_str!(pub struct OptionalPackageContextText);
 crate::semantic_optional_str!(pub struct OptionalCrateContextText);
 crate::semantic_optional_str!(pub struct OptionalStringFieldText);
 crate::semantic_copy!(pub struct HeadingLevelCount(usize));
+crate::semantic_copy!(pub struct TraitRequiredFlag(bool));
+/// One nextest target that owns a test alias.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct WitnessTarget
+{
+    /// Cargo package name, when nextest supplied it.
+    package: Option<String>,
+    /// Cargo test target or binary name, when nextest supplied it.
+    binary: Option<String>,
+}
+
+impl WitnessTarget
+{
+    /// Build the target identity carried by one nextest record.
+    fn new(
+        package: OptionalPackageContextText<'_>,
+        binary: OptionalCrateContextText<'_>,
+    ) -> Self
+    {
+        Self {
+            package: package.0.map(String::from),
+            binary: binary.0.map(String::from),
+        }
+    }
+
+    /// Render a stable target identity for findings.
+    fn label(&self) -> String
+    {
+        match (self.package.as_deref(), self.binary.as_deref()) {
+            | (Some(package), Some(binary)) => format!("{package}::{binary}"),
+            | (Some(package), None) => format!("{package}::<unknown-target>"),
+            | (None, Some(binary)) => format!("<unknown-package>::{binary}"),
+            | (None, None) => String::from("<unknown-target>"),
+        }
+    }
+}
+/// Catalog of exact nextest aliases and the targets exposing them.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[repr(transparent)]
+struct WitnessCatalog
+{
+    /// Alias to every distinct target exposing that test path.
+    aliases: BTreeMap<String, BTreeSet<WitnessTarget>>,
+}
+
+impl WitnessCatalog
+{
+    /// Build a non-ambiguous catalog for the public source-analysis helper.
+    fn from_aliases(aliases: &BTreeSet<String>) -> Self
+    {
+        let target = WitnessTarget::new(None.into(), Some("<source-analysis>").into());
+        let aliases = aliases
+            .iter()
+            .map(|alias| (alias.clone(), BTreeSet::from([target.clone()])))
+            .collect();
+        Self { aliases }
+    }
+
+    /// Insert every alias for one nextest test record.
+    fn insert_alias<'package, 'binary, Package, Binary>(
+        &mut self,
+        alias: String,
+        package: Package,
+        binary: Binary,
+    ) where
+        Package: Into<OptionalPackageContextText<'package>>,
+        Binary: Into<OptionalCrateContextText<'binary>>,
+    {
+        self.aliases
+            .entry(alias)
+            .or_default()
+            .insert(WitnessTarget::new(package.into(), binary.into()));
+    }
+
+    /// Return the aliases without target metadata for compatibility callers.
+    fn alias_set(&self) -> BTreeSet<String>
+    {
+        self.aliases.keys().cloned().collect()
+    }
+}
 
 /// Parsed markdown heading level and text.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -124,7 +205,8 @@ pub type AnalysisResult = Result<Vec<Finding>, GateError>;
 /// # Contract
 /// - requires: `scopes` is nonempty and every scope is readable.
 /// - ensures: returns findings sorted deterministically by path, declaration,
-///   kind, and detail.
+///   kind, and detail, and rejects aliases that resolve to multiple nextest
+///   library or integration targets.
 /// - provides: workspace-generic contract grammar findings for every discovered
 ///   Rust source.
 /// - fails: returns a gate error for empty scopes, unreadable paths, invalid
@@ -156,9 +238,9 @@ pub fn run(
         ));
     }
 
-    let witnesses = match nextest_list_fixture {
-        | Some(path) => read_fixture_witnesses(path)?,
-        | None => list_nextest_witnesses()?,
+    let catalog = match nextest_list_fixture {
+        | Some(path) => read_fixture_catalog(path)?,
+        | None => list_nextest_catalog()?,
     };
     let mut sources = Vec::new();
     for scope in scopes {
@@ -167,11 +249,16 @@ pub fn run(
     }
     sources.sort();
     sources.dedup();
-
     let mut findings = Vec::new();
     for path in sources {
         let source = crate::support::HOST_FILESYSTEM.read_to_string(&path)?;
-        let mut source_findings = analyze_source(&path, &source, &witnesses)?;
+        let source_package = source_package_for_path(&path)?;
+        let mut source_findings = analyze_source_with_catalog(
+            &path,
+            &source,
+            &catalog,
+            source_package.as_deref().into(),
+        )?;
         findings.append(&mut source_findings);
     }
     findings.sort_by(finding_order);
@@ -213,7 +300,26 @@ where
         path: path.to_path_buf(),
         source: error,
     })?;
-    return Ok(analyze_parsed_file(path, &parsed, witnesses));
+    let catalog = WitnessCatalog::from_aliases(witnesses);
+    return Ok(analyze_parsed_file(path, &parsed, &catalog, None.into()));
+}
+
+/// Analyze one complete Rust source against target-aware witness aliases.
+fn analyze_source_with_catalog<'semantic, 'package, Source>(
+    path: &Path,
+    source: Source,
+    catalog: &WitnessCatalog,
+    source_package: OptionalPackageContextText<'package>,
+) -> AnalysisResult
+where
+    Source: Into<SourceText<'semantic>>,
+{
+    let source = source.into().0;
+    let parsed = syn::parse_file(source).map_err(|error| GateError::RustParse {
+        path: path.to_path_buf(),
+        source: error,
+    })?;
+    return Ok(analyze_parsed_file(path, &parsed, catalog, source_package));
 }
 
 /// Parse nextest aggregate JSON or JSON-lines output into exact witness
@@ -254,11 +360,19 @@ pub fn parse_nextest_witnesses<'semantic, Source>(
 where
     Source: Into<SourceText<'semantic>>,
 {
+    return Ok(parse_nextest_catalog(source)?.alias_set());
+}
+
+/// Parse nextest output while preserving the owning target for each alias.
+fn parse_nextest_catalog<'semantic, Source>(source: Source) -> Result<WitnessCatalog, GateError>
+where
+    Source: Into<SourceText<'semantic>>,
+{
     let source = source.into().0;
     match serde_json::from_str::<serde_json::Value>(source) {
         | Ok(value) => return witnesses_from_supported_json(&value),
         | Err(error) => {
-            let mut witnesses = BTreeSet::new();
+            let mut catalog = WitnessCatalog::default();
             let mut saw_line = false;
             for (line_index, line) in source.lines().enumerate() {
                 let trimmed = line.trim();
@@ -273,16 +387,18 @@ where
                             source: json_error,
                         }
                     })?;
-                let line_witnesses = witnesses_from_per_test_record(&value).ok_or_else(|| {
+                let line_catalog = witnesses_from_per_test_record(&value).ok_or_else(|| {
                     GateError::operational(format!(
                         "unsupported nextest JSON-lines record at line {}: expected per-test record with test name and package/crate context",
                         line_index.saturating_add(1)
                     ))
                 })?;
-                witnesses.extend(line_witnesses);
+                for (alias, targets) in line_catalog.aliases {
+                    catalog.aliases.entry(alias).or_default().extend(targets);
+                }
             }
             if saw_line {
-                return Ok(witnesses);
+                return Ok(catalog);
             }
             return Err(GateError::Json {
                 source_name: String::from("nextest list"),
@@ -1258,11 +1374,11 @@ where
     ))
 }
 
-/// Read a fixture file and parse exact nextest aliases.
-fn read_fixture_witnesses(path: &Path) -> Result<BTreeSet<String>, GateError>
+/// Read a fixture file and preserve nextest target identities.
+fn read_fixture_catalog(path: &Path) -> Result<WitnessCatalog, GateError>
 {
     let source = crate::support::HOST_FILESYSTEM.read_to_string(path)?;
-    return parse_nextest_witnesses(&source);
+    return parse_nextest_catalog(&source);
 }
 
 /// Exact live-listing scope for the enabled workspace.
@@ -1278,8 +1394,8 @@ const NEXTEST_LIST_ARGS: &[&str] = &[
     "json",
 ];
 
-/// Run nextest in JSON mode and parse exact aliases from stdout.
-fn list_nextest_witnesses() -> Result<BTreeSet<String>, GateError>
+/// Run nextest in JSON mode and preserve target identities.
+fn list_nextest_catalog() -> Result<WitnessCatalog, GateError>
 {
     let output = Command::new("cargo")
         .args(NEXTEST_LIST_ARGS)
@@ -1296,7 +1412,7 @@ fn list_nextest_witnesses() -> Result<BTreeSet<String>, GateError>
         )));
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    return parse_nextest_witnesses(&*stdout);
+    return parse_nextest_catalog(&*stdout);
 }
 
 /// Walk scope iteratively and return sorted Rust source paths.
@@ -1345,18 +1461,63 @@ fn rust_sources(scope: &Path) -> Result<Vec<PathBuf>, GateError>
     return Ok(sources);
 }
 
+/// Resolve the Cargo package owning a Rust source path, when one is visible.
+///
+/// # Contract
+/// - requires: `path` is a source path under a Cargo workspace or an
+///   intentionally package-less fixture root.
+/// - ensures: returns the nearest manifest's package name and lets callers
+///   restrict witness aliases to that package's test targets.
+/// - provides: wrong-package witness rejection without changing fixture-backed
+///   analysis outside a Cargo package.
+/// - fails: returns an I/O or operational error for an unreadable or malformed
+///   package manifest.
+/// - panics: none.
+fn source_package_for_path(path: &Path) -> Result<Option<String>, GateError>
+{
+    let mut directory = path.parent();
+    while let Some(current) = directory {
+        let manifest_path = current.join("Cargo.toml");
+        if manifest_path.is_file() {
+            let source = crate::support::HOST_FILESYSTEM.read_to_string(&manifest_path)?;
+            let manifest = toml::from_str::<toml::Value>(&source).map_err(|error| {
+                GateError::operational(format!(
+                    "malformed Cargo manifest {}: {error}",
+                    manifest_path.display()
+                ))
+            })?;
+            if let Some(package) = manifest.get("package") {
+                let name = package
+                    .get("name")
+                    .and_then(toml::Value::as_str)
+                    .filter(|name| !name.is_empty())
+                    .ok_or_else(|| {
+                        GateError::operational(format!(
+                            "Cargo manifest {} has a package without a name",
+                            manifest_path.display()
+                        ))
+                    })?;
+                return Ok(Some(String::from(name)));
+            }
+        }
+        directory = current.parent();
+    }
+    Ok(None)
+}
+
 /// Analyze a parsed file for adequacy findings.
 fn analyze_parsed_file(
     path: &Path,
     parsed: &syn::File,
-    witnesses: &BTreeSet<String>,
+    catalog: &WitnessCatalog,
+    source_package: OptionalPackageContextText<'_>,
 ) -> Vec<Finding>
 {
     let mut collector = DocCollector::default();
     syn::visit::Visit::visit_file(&mut collector, parsed);
     let mut findings = Vec::new();
     for group in collector.groups {
-        if let Some(finding) = finding_for_group(path, &group, witnesses) {
+        if let Some(finding) = finding_for_group(path, &group, catalog, source_package) {
             findings.push(finding);
         }
     }
@@ -1382,7 +1543,8 @@ fn finding_order(
 fn finding_for_group(
     path: &Path,
     group: &DocGroup,
-    witnesses: &BTreeSet<String>,
+    catalog: &WitnessCatalog,
+    source_package: OptionalPackageContextText<'_>,
 ) -> Option<Finding>
 {
     if let Some(wrong) = wrong_level_fixed_heading(group) {
@@ -1462,30 +1624,61 @@ fn finding_for_group(
     }
 
     let adequacy_end = section_end(group, adequacy_position).into().0;
-    let exact_witnesses =
-        match validate_adequacy_section(path, group, adequacy_position, adequacy_end) {
-            | Ok(adequacy_witnesses) => adequacy_witnesses,
-            | Err(finding) => return Some(finding),
-        };
-    if exact_witnesses
-        .iter()
-        .any(|witness| witnesses.contains(witness.as_ref()))
-    {
+    let adequacy = match validate_adequacy_section(path, group, adequacy_position, adequacy_end) {
+        | Ok(adequacy) => adequacy,
+        | Err(finding) => return Some(finding),
+    };
+    if adequacy.declaration_only {
         return None;
     }
-    return Some(make_finding(
-        path,
-        group,
-        "stale-witness",
-        &format!(
-            "no witness matched nextest aliases: {}",
-            exact_witnesses
-                .iter()
-                .map(AsRef::as_ref)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-    ));
+    let exact_witnesses = adequacy.exact;
+    let mut ambiguous = Vec::new();
+    let mut stale = Vec::new();
+    for witness in &exact_witnesses {
+        let Some(targets) = catalog.aliases.get(witness.as_ref())
+        else {
+            stale.push(witness.as_ref());
+            continue;
+        };
+        let matching = targets
+            .iter()
+            .filter(|target| {
+                source_package.0.is_none() || target.package.as_deref() == source_package.0
+            })
+            .collect::<Vec<_>>();
+        match matching.len() {
+            | 0 => stale.push(witness.as_ref()),
+            | 1 => {},
+            | _ => {
+                let labels = matching
+                    .iter()
+                    .map(|target| target.label())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                ambiguous.push(format!("{} => {labels}", witness.as_ref()));
+            },
+        }
+    }
+    if !ambiguous.is_empty() {
+        let mut detail = format!(
+            "witness matched multiple nextest targets: {}",
+            ambiguous.join("; ")
+        );
+        if !stale.is_empty() {
+            detail.push_str("; no witness matched nextest aliases: ");
+            detail.push_str(&stale.join(", "));
+        }
+        return Some(make_finding(path, group, "ambiguous-witness", &detail));
+    }
+    if !stale.is_empty() {
+        return Some(make_finding(
+            path,
+            group,
+            "stale-witness",
+            &format!("no witness matched nextest aliases: {}", stale.join(", ")),
+        ));
+    }
+    None
 }
 
 /// Validate fixed `# Contract` clause grammar.
@@ -1589,13 +1782,23 @@ where
     return None;
 }
 
-/// Validate fixed `# Adequacy` hypothesis and witness grammar.
+/// Validated adequacy evidence for one documentation group.
+struct AdequacyWitnesses<'doc>
+{
+    /// Exact nextest witness paths, when the declaration is not exempt.
+    exact: Vec<ExactWitnessText<'doc>>,
+    /// Whether a required trait method uses the explicit exemption.
+    declaration_only: bool,
+}
+
+/// Validate fixed `# Adequacy` hypothesis, witness, and trait-exemption
+/// grammar.
 fn validate_adequacy_section<'doc, AdequacyPosition, AdequacyEnd>(
     path: &Path,
     group: &'doc DocGroup,
     adequacy_position: AdequacyPosition,
     adequacy_end: AdequacyEnd,
-) -> Result<Vec<ExactWitnessText<'doc>>, Finding>
+) -> Result<AdequacyWitnesses<'doc>, Finding>
 where
     AdequacyPosition: Into<AdequacyPositionIndex>,
     AdequacyEnd: Into<AdequacyEndCount>,
@@ -1604,6 +1807,7 @@ where
     let adequacy_position = adequacy_position.into().0;
     let mut saw_hypothesis = false;
     let mut saw_witness = false;
+    let mut saw_declaration_only = false;
     let mut exact_witnesses = Vec::new();
     for line in group
         .docs
@@ -1656,6 +1860,58 @@ where
                 &format!("malformed hypothesis line: {}", line.trim()),
             ));
         }
+        if let Some(reason) = declaration_only_reason(line).into().0 {
+            if !saw_hypothesis {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "late-hypothesis",
+                    "- hypothesis: must precede declaration-only bullets",
+                ));
+            }
+            if !group.trait_required.0 {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "declaration-only-exemption",
+                    "- declaration-only is valid only for required trait methods",
+                ));
+            }
+            if saw_declaration_only {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "declaration-only-exemption",
+                    "- declaration-only may appear only once",
+                ));
+            }
+            if saw_witness {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "declaration-only-exemption",
+                    "- declaration-only cannot be combined with witness bullets",
+                ));
+            }
+            if reason.is_empty() {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "declaration-only-exemption",
+                    "- declaration-only requires a reason",
+                ));
+            }
+            saw_declaration_only = true;
+            continue;
+        }
+        if line.trim().starts_with("- declaration-only") {
+            return Err(make_finding(
+                path,
+                group,
+                "declaration-only-exemption",
+                &format!("malformed declaration-only line: {}", line.trim()),
+            ));
+        }
         if let Some(witness) = exact_witness(line).into().0 {
             if !saw_hypothesis {
                 return Err(make_finding(
@@ -1663,6 +1919,14 @@ where
                     group,
                     "late-hypothesis",
                     "- hypothesis: must precede all witness bullets",
+                ));
+            }
+            if saw_declaration_only {
+                return Err(make_finding(
+                    path,
+                    group,
+                    "declaration-only-exemption",
+                    "- declaration-only cannot be combined with witness bullets",
                 ));
             }
             saw_witness = true;
@@ -1696,6 +1960,12 @@ where
         ));
     }
     if exact_witnesses.is_empty() {
+        if group.trait_required.0 && saw_declaration_only {
+            return Ok(AdequacyWitnesses {
+                exact: exact_witnesses,
+                declaration_only: true,
+            });
+        }
         return Err(make_finding(
             path,
             group,
@@ -1703,7 +1973,10 @@ where
             "# Adequacy section has no exact - witness: `path` bullet",
         ));
     }
-    return Ok(exact_witnesses);
+    return Ok(AdequacyWitnesses {
+        exact: exact_witnesses,
+        declaration_only: false,
+    });
 }
 
 /// Determine the exclusive end of a markdown section.
@@ -1924,6 +2197,17 @@ where
     }
     return Some(witness);
 }
+/// Extract a nonempty reason for a required-trait declaration exemption.
+fn declaration_only_reason<'semantic, Line>(
+    line: Line
+) -> impl Into<OptionalStringFieldText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
+{
+    let line = line.into().0;
+    let reason = line.trim().strip_prefix("- declaration-only:")?.trim();
+    return (!reason.is_empty()).then_some(reason);
+}
 
 /// Return whether a line is intended as a witness but is not exact syntax.
 fn looks_witness_like<'semantic, Line>(line: Line) -> impl Into<LooksWitnessLikeFlag>
@@ -1965,6 +2249,8 @@ struct DocGroup
     declaration: String,
     /// Raw doc attribute lines for the owner.
     docs: Vec<String>,
+    /// Whether this is a required method declared by a local trait.
+    trait_required: TraitRequiredFlag,
 }
 
 /// Collector for syn-visible doc owners.
@@ -1983,13 +2269,18 @@ impl DocCollector
         &mut self,
         declaration: String,
         attrs: &[syn::Attribute],
+        trait_required: TraitRequiredFlag,
     )
     {
         let docs = doc_lines(attrs);
         if docs.is_empty() {
             return;
         }
-        self.groups.push(DocGroup { declaration, docs });
+        self.groups.push(DocGroup {
+            declaration,
+            docs,
+            trait_required,
+        });
     }
 }
 
@@ -2000,7 +2291,7 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::File,
     )
     {
-        self.push(String::from("crate"), &i.attrs);
+        self.push(String::from("crate"), &i.attrs, false.into());
         syn::visit::visit_file(self, i);
     }
 
@@ -2009,7 +2300,7 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::Item,
     )
     {
-        self.push(item_declaration(i), item_attrs(i));
+        self.push(item_declaration(i), item_attrs(i), false.into());
         syn::visit::visit_item(self, i);
     }
 
@@ -2018,7 +2309,7 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::ImplItem,
     )
     {
-        self.push(impl_item_declaration(i), impl_item_attrs(i));
+        self.push(impl_item_declaration(i), impl_item_attrs(i), false.into());
         syn::visit::visit_impl_item(self, i);
     }
 
@@ -2027,16 +2318,27 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::TraitItem,
     )
     {
-        self.push(trait_item_declaration(i), trait_item_attrs(i));
+        let trait_required = matches!(
+            i,
+            | syn::TraitItem::Fn(item) if item.default.is_none()
+        );
+        self.push(
+            trait_item_declaration(i),
+            trait_item_attrs(i),
+            trait_required.into(),
+        );
         syn::visit::visit_trait_item(self, i);
     }
-
     fn visit_foreign_item(
         &mut self,
         i: &'ast syn::ForeignItem,
     )
     {
-        self.push(foreign_item_declaration(i), foreign_item_attrs(i));
+        self.push(
+            foreign_item_declaration(i),
+            foreign_item_attrs(i),
+            false.into(),
+        );
         syn::visit::visit_foreign_item(self, i);
     }
 
@@ -2045,7 +2347,7 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::Field,
     )
     {
-        self.push(field_declaration(i), &i.attrs);
+        self.push(field_declaration(i), &i.attrs, false.into());
         syn::visit::visit_field(self, i);
     }
 
@@ -2054,7 +2356,7 @@ impl<'ast> syn::visit::Visit<'ast> for DocCollector
         i: &'ast syn::Variant,
     )
     {
-        self.push(format!("variant {}", i.ident), &i.attrs);
+        self.push(format!("variant {}", i.ident), &i.attrs, false.into());
         syn::visit::visit_variant(self, i);
     }
 }
@@ -2199,7 +2501,7 @@ fn field_declaration(field: &syn::Field) -> String
 }
 
 /// Extract nextest witnesses from any supported JSON shape.
-fn witnesses_from_supported_json(value: &serde_json::Value) -> Result<BTreeSet<String>, GateError>
+fn witnesses_from_supported_json(value: &serde_json::Value) -> Result<WitnessCatalog, GateError>
 {
     if let Some(rust_suites) = rust_suites_value(value)? {
         return Ok(witnesses_from_value(rust_suites));
@@ -2407,7 +2709,7 @@ where
 }
 
 /// Extract aliases from one supported per-test JSON record.
-fn witnesses_from_per_test_record(value: &serde_json::Value) -> Option<BTreeSet<String>>
+fn witnesses_from_per_test_record(value: &serde_json::Value) -> Option<WitnessCatalog>
 {
     let name = supported_test_record_name(value).into().0?;
     let package = package_context(value).into().0;
@@ -2415,17 +2717,17 @@ fn witnesses_from_per_test_record(value: &serde_json::Value) -> Option<BTreeSet<
     if package.is_none() && crate_name.is_none() {
         return None;
     }
-    let mut witnesses = BTreeSet::new();
-    insert_aliases(&mut witnesses, name, package, crate_name);
-    return Some(witnesses);
+    let mut catalog = WitnessCatalog::default();
+    insert_aliases(&mut catalog, name, package, crate_name);
+    return Some(catalog);
 }
 
 /// Extract nextest witnesses from any supported aggregate payload.
-fn witnesses_from_value(value: &serde_json::Value) -> BTreeSet<String>
+fn witnesses_from_value(value: &serde_json::Value) -> WitnessCatalog
 {
-    let mut witnesses = BTreeSet::new();
-    collect_witnesses(value, None, None, false, &mut witnesses);
-    return witnesses;
+    let mut catalog = WitnessCatalog::default();
+    collect_witnesses(value, None, None, false, &mut catalog);
+    return catalog;
 }
 
 /// Walk nextest JSON with an explicit worklist while carrying package and crate
@@ -2435,7 +2737,7 @@ fn collect_witnesses<'semantic, Package, CrateName, IsTestcaseContext>(
     package: Package,
     crate_name: CrateName,
     is_testcase_context: IsTestcaseContext,
-    witnesses: &mut BTreeSet<String>,
+    catalog: &mut WitnessCatalog,
 ) where
     Package: Into<OptionalPackageText<'semantic>>,
     CrateName: Into<OptionalCrateNameText<'semantic>>,
@@ -2448,14 +2750,14 @@ fn collect_witnesses<'semantic, Package, CrateName, IsTestcaseContext>(
             crate_name: crate_name.into().0.map(str::to_owned),
             is_testcase_context: is_testcase_context.into(),
         },
-        witnesses,
+        catalog,
     );
 }
 
 /// Extract nextest witnesses using an explicit worklist.
 fn collect_witness_frames(
     initial: WitnessTraversalFrame<'_>,
-    witnesses: &mut BTreeSet<String>,
+    catalog: &mut WitnessCatalog,
 )
 {
     let mut frames = vec![initial];
@@ -2490,7 +2792,7 @@ fn collect_witness_frames(
                         .or(crate_name);
                     if let Some(name) = test_name(value, is_testcase_context).into().0 {
                         insert_aliases(
-                            witnesses,
+                            catalog,
                             name,
                             next_package.as_deref(),
                             next_crate.as_deref(),
@@ -2525,7 +2827,7 @@ fn collect_witness_frames(
                     value,
                     package.as_deref(),
                     crate_name.as_deref(),
-                    witnesses,
+                    catalog,
                     &mut frames,
                 );
             },
@@ -2538,7 +2840,7 @@ fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
     value: &'value serde_json::Value,
     package: Package,
     crate_name: CrateName,
-    witnesses: &mut BTreeSet<String>,
+    catalog: &mut WitnessCatalog,
     frames: &mut Vec<WitnessTraversalFrame<'value>>,
 ) where
     Package: Into<OptionalPackageText<'semantic>>,
@@ -2559,7 +2861,7 @@ fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
         },
         | serde_json::Value::Object(ref object) => {
             for (name, item) in object.iter().rev() {
-                insert_aliases(witnesses, name, package, crate_name);
+                insert_aliases(catalog, name, package, crate_name);
                 frames.push(WitnessTraversalFrame::Value {
                     value: item,
                     package: package.map(String::from),
@@ -2658,7 +2960,7 @@ fn crate_context(value: &serde_json::Value) -> impl Into<OptionalCrateContextTex
 /// - witness: `contracts::accepts_exact_raw_package_and_crate_aliases_from_nextest_shapes`
 /// - witness: `contracts::accepts_harness_module_stripped_aliases_from_consolidated_integration_suites`
 fn insert_aliases<'semantic, Name, Package, CrateName>(
-    witnesses: &mut BTreeSet<String>,
+    catalog: &mut WitnessCatalog,
     name: Name,
     package: Package,
     crate_name: CrateName,
@@ -2670,22 +2972,22 @@ fn insert_aliases<'semantic, Name, Package, CrateName>(
     let package = package.into().0;
     let crate_name = crate_name.into().0;
     let name = name.into().0;
-    witnesses.insert(String::from(name));
+    catalog.insert_alias(String::from(name), package, crate_name);
 
     let package_crate_alias = package.map(|package_name| package_name.replace('-', "_"));
     if let Some(package_name) = package {
-        witnesses.insert(format!("{package_name}::{name}"));
+        catalog.insert_alias(format!("{package_name}::{name}"), package, crate_name);
     }
     if let Some(package_alias) = package_crate_alias.as_deref() {
-        witnesses.insert(format!("{package_alias}::{name}"));
+        catalog.insert_alias(format!("{package_alias}::{name}"), package, crate_name);
     }
 
     let binary_crate_alias = crate_name.map(|crate_alias| crate_alias.replace('-', "_"));
     if let Some(crate_alias) = crate_name {
-        witnesses.insert(format!("{crate_alias}::{name}"));
+        catalog.insert_alias(format!("{crate_alias}::{name}"), package, crate_name);
     }
     if let Some(binary_alias) = binary_crate_alias.as_deref() {
-        witnesses.insert(format!("{binary_alias}::{name}"));
+        catalog.insert_alias(format!("{binary_alias}::{name}"), package, crate_name);
     }
 
     if let (Some(package_alias), Some(binary_alias)) = (
@@ -2701,7 +3003,11 @@ fn insert_aliases<'semantic, Name, Package, CrateName>(
             .and_then(|tail| tail.strip_prefix("::"))
             .unwrap_or(stripped_name);
         if !crate_relative_name.is_empty() {
-            witnesses.insert(format!("{package_alias}::{crate_relative_name}"));
+            catalog.insert_alias(
+                format!("{package_alias}::{crate_relative_name}"),
+                package,
+                crate_name,
+            );
         }
     }
 }
@@ -2771,7 +3077,7 @@ mod tests
             "empty contract scopes should be a usage error"
         );
 
-        let fixture_error = read_fixture_witnesses(Path::new("missing-nextest-fixture.json"))
+        let fixture_error = read_fixture_catalog(Path::new("missing-nextest-fixture.json"))
             .err()
             .ok_or_else(|| GateError::operational("missing fixture unexpectedly loaded"))?;
         assert!(

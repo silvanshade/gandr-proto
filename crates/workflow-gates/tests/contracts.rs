@@ -214,6 +214,43 @@ pub mod nested {
         "nested syn owners should be grouped independently"
     );
 }
+/// Required trait methods may use only the explicit declaration-only exemption;
+/// default methods remain required to name a runnable witness.
+#[test]
+fn required_trait_methods_enforce_declaration_only_exemption()
+{
+    let source = r#"
+pub trait Behavior {
+    /// # Contract
+    /// - ensures: an implementation supplies the behavior.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — abstract behavior is covered by shipped implementations elsewhere.
+    /// - declaration-only: this required method has no executable body at the declaration site.
+    fn act();
+
+    /// # Contract
+    /// - ensures: a default implementation remains executable.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — default behavior is directly exercised.
+    /// - declaration-only: defaults must not use the declaration-only exemption.
+    fn default_act() {}
+}
+"#;
+    let Some(findings) = ok_or_report(
+        analyze_source(Path::new("trait.rs"), source, &BTreeSet::new()),
+        "analyze trait declaration exemption",
+    )
+    else {
+        return;
+    };
+    assert_eq!(1, findings.len(), "only the default method should fail");
+    assert_eq!("declaration-only-exemption", findings[0].kind);
+    assert_eq!("trait fn default_act", findings[0].declaration);
+}
 
 /// Nextest object, array, record, and JSON-lines shapes all yield the exact
 /// raw, package-name, and binary-name witness aliases.
@@ -896,6 +933,174 @@ fn run_reports_findings_in_deterministic_path_order()
     let Some(()) = ok_or_report(
         gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(root),
         "remove temp root",
+    )
+    else {
+        return;
+    };
+}
+/// Target-qualified aliases cover library and integration suites, while
+/// duplicate, absent, renamed, and wrong-package paths fail closed.
+#[test]
+fn run_resolves_target_qualified_witnesses_and_rejects_invalid_paths()
+{
+    let root = unique_temp_root();
+    let fixture = root.join("nextest.json");
+    let package_root = root.join("fixture");
+    let package_source = package_root.join("src");
+    let Some(()) = ok_or_report(
+        gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&package_source),
+        "create fixture package source root",
+    )
+    else {
+        return;
+    };
+    let Some(()) = ok_or_report(
+        gandr_workflow_gates::support::HOST_FILESYSTEM.write(
+            package_root.join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+        ),
+        "write fixture package manifest",
+    )
+    else {
+        return;
+    };
+    let fixture_source = r#"{
+  "rust-suites": [
+    {
+      "package-name": "fixture",
+      "binary-name": "fixture_lib",
+      "testcases": {
+        "tests::in_crate": { "ignored": false },
+        "tests::renamed": { "ignored": false }
+      }
+    },
+    {
+      "package-name": "fixture",
+      "binary-name": "integration_target",
+      "testcases": {
+        "module::contracts::integration": { "ignored": false }
+      }
+    },
+    {
+      "package-name": "fixture",
+      "binary-name": "duplicate_a",
+      "testcases": {
+        "tests::duplicate": { "ignored": false }
+      }
+    },
+    {
+      "package-name": "fixture",
+      "binary-name": "duplicate_b",
+      "testcases": {
+        "tests::duplicate": { "ignored": false }
+      }
+    },
+    {
+      "package-name": "other",
+      "binary-name": "wrong_target",
+      "testcases": {
+        "tests::wrong_target": { "ignored": false }
+      }
+    }
+  ]
+}"#;
+    let Some(()) = ok_or_report(
+        gandr_workflow_gates::support::HOST_FILESYSTEM.write(&fixture, fixture_source),
+        "write nextest fixture",
+    )
+    else {
+        return;
+    };
+    let sources = [
+        ("a.rs", "fixture::tests::in_crate"),
+        ("b.rs", "fixture::contracts::integration"),
+        ("c.rs", "fixture::tests::duplicate"),
+        ("d.rs", "fixture::tests::nonexistent"),
+        ("e.rs", "fixture::tests::renamed_expected"),
+        ("f.rs", "other::tests::wrong_target"),
+    ];
+    for (name, witness) in sources {
+        let Some(()) = ok_or_report(
+            gandr_workflow_gates::support::HOST_FILESYSTEM
+                .write(package_source.join(name), contract_source(witness)),
+            "write contract source",
+        )
+        else {
+            return;
+        };
+    }
+    let mixed_source = "/// # Contract\n/// - ensures: one valid path does not mask another.\n/// - panics: none.\n///\n/// # Adequacy\n/// - hypothesis: L3 pointwise — every named path must resolve independently.\n/// - witness: `fixture::tests::in_crate`\n/// - witness: `fixture::tests::also_missing`\npub fn item() {}\n";
+    let Some(()) = ok_or_report(
+        gandr_workflow_gates::support::HOST_FILESYSTEM
+            .write(package_source.join("g.rs"), mixed_source),
+        "write mixed contract source",
+    )
+    else {
+        return;
+    };
+
+    let Some(findings) = ok_or_report(
+        run(core::slice::from_ref(&root), Some(&fixture)),
+        "run target-aware contracts",
+    )
+    else {
+        return;
+    };
+    assert_eq!(
+        5,
+        findings.len(),
+        "only invalid target paths should be findings"
+    );
+    assert_eq!(
+        1,
+        findings
+            .iter()
+            .filter(|finding| finding.kind == "ambiguous-witness")
+            .count(),
+        "duplicate aliases must fail as ambiguous rather than pass by set membership"
+    );
+    assert_eq!(
+        4,
+        findings
+            .iter()
+            .filter(|finding| finding.kind == "stale-witness")
+            .count(),
+        "nonexistent, renamed, wrong-package, and unmasked paths must fail as stale"
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detail.contains("fixture::tests::duplicate")),
+        "ambiguous finding should name the duplicate witness path"
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detail.contains("fixture::tests::nonexistent")),
+        "nonexistent witness should remain visible"
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detail.contains("fixture::tests::renamed_expected")),
+        "renamed witness should remain visible"
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detail.contains("other::tests::wrong_target")),
+        "wrong-package witness should remain visible"
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detail.contains("fixture::tests::also_missing")),
+        "a missing witness must not be masked by a valid sibling witness"
+    );
+
+    let Some(()) = ok_or_report(
+        gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(root),
+        "remove target-aware fixture root",
     )
     else {
         return;
