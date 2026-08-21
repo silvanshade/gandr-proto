@@ -397,7 +397,7 @@ where
                     cell: item.right,
                 });
             }
-            if !item.matches_peak() {
+            if !bool::from(item.matches_peak()) {
                 return Err(SuppliedOverlapError::NonUnifyingSubstitution { batch, overlap });
             }
         }

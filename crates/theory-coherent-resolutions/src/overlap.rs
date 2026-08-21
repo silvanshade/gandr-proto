@@ -38,6 +38,7 @@ use std::collections::HashSet;
 use gandr_theory_cell_complexes::alphabet::CellAlphabet;
 use gandr_theory_cell_complexes::boundary::CertificateIndex;
 use gandr_theory_cell_complexes::boundary::StepIndependence;
+use gandr_theory_cell_complexes::boundary::SubstitutionDecision;
 use gandr_theory_cell_complexes::cell::Cell;
 use gandr_theory_cell_complexes::cell::CellId;
 use gandr_theory_cell_complexes::cell::CellStore;
@@ -483,9 +484,11 @@ impl<A: CellAlphabet> Overlap<A>
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub(crate) fn matches_peak(&self) -> bool
+    pub(crate) fn matches_peak(&self) -> SubstitutionDecision
     {
-        A::apply_subst(&self.unifier, &self.right_renamed.lhs) == self.peak
+        SubstitutionDecision::from(
+            A::apply_subst(&self.unifier, &self.right_renamed.lhs) == self.peak,
+        )
     }
 
     /// The composite of a **composition** overlap — apply the left cell at the
