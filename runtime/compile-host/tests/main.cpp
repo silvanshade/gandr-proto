@@ -47,17 +47,50 @@
 
 namespace {
 
-using namespace gandr::compile_host;
+// The host's names this program uses, declared one by one: a using-directive
+// here would carry every future addition to the namespace with it.
+using gandr::compile_host::accounted_work_expectation;
+using gandr::compile_host::accounted_work_sample;
+using gandr::compile_host::canonical_samples;
+using gandr::compile_host::count_dialect_operations;
+using gandr::compile_host::CtorTag;
+using gandr::compile_host::decode_image;
+using gandr::compile_host::emit_accounted_work_witness_module;
+using gandr::compile_host::emit_malformed_arity_module;
+using gandr::compile_host::ErrorKind;
+using gandr::compile_host::Expected;
+using gandr::compile_host::generate_image;
+using gandr::compile_host::HeapLayout;
+using gandr::compile_host::Image;
+using gandr::compile_host::make_context;
+using gandr::compile_host::Node;
+using gandr::compile_host::NodeIndex;
+using gandr::compile_host::NodeKind;
+using gandr::compile_host::Optimization;
+using gandr::compile_host::proved_at;
+using gandr::compile_host::run_lowered_module_on;
+using gandr::compile_host::RunOutcome;
+using gandr::compile_host::Sample;
+using gandr::compile_host::verify_module;
 
 /// How many failures the running case has recorded.
-int failure_count = 0;
+///
+/// A function-local static rather than a namespace-scope variable: the counter
+/// is per-case state that `check` owns, and nothing else may assign to it by
+/// name.
+[[nodiscard]] auto
+failures() noexcept -> int&
+{
+  static int recorded = 0;
+  return recorded;
+}
 
 /// Records a failed check with its message.
 void
 check(bool holds, std::string_view what)
 {
   if (!holds) {
-    failure_count += 1;
+    failures() += 1;
     std::println(stderr, "  FAILED: {}", what);
   }
 }
@@ -67,7 +100,7 @@ void
 check_equal(std::string_view actual, std::string_view expected, std::string_view what)
 {
   if (actual != expected) {
-    failure_count += 1;
+    failures() += 1;
     std::println(stderr, "  FAILED: {}\n    actual:   {}\n    expected: {}", what, actual, expected);
   }
 }
@@ -76,7 +109,7 @@ check_equal(std::string_view actual, std::string_view expected, std::string_view
 [[nodiscard]] auto
 fixtures_root() -> std::filesystem::path
 {
-  return std::filesystem::path(GANDR_COMPILE_HOST_FIXTURES);
+  return { GANDR_COMPILE_HOST_FIXTURES };
 }
 
 /// Reads the agreement fixture as name-to-value rows.
@@ -729,10 +762,10 @@ main(int argc, char** argv) -> int
       continue;
     }
     matched = true;
-    failure_count = 0;
+    failures() = 0;
     std::println(stderr, "case {}", registered.name);
     registered.run();
-    total_failures += failure_count;
+    total_failures += failures();
   }
 
   if (!matched) {

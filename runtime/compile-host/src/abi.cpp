@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <exception>
 #include <new>
 #include <optional>
 #include <span>
@@ -57,8 +56,11 @@ status_of(ErrorKind kind) noexcept -> std::int32_t
 [[nodiscard]] auto
 borrowed_empty_text() noexcept -> char const*
 {
-  static char const empty[] = "";
-  return static_cast<char const*>(empty);
+  // One NUL with static storage: a valid empty C string, and an address the
+  // owned-buffer test can compare against. An array would be the same object
+  // with a C declaration form the conventions do not want.
+  static constexpr char empty = '\0';
+  return &empty;
 }
 
 /// Copies a message into a buffer the caller releases.
@@ -76,6 +78,10 @@ borrowed_empty_text() noexcept -> char const*
 [[nodiscard]] auto
 own_text(std::string_view text) noexcept -> char const*
 {
+  // The boundary hands a foreign caller a raw pointer it releases through
+  // gandr_compile_host_outcome_release; there is no smart pointer that
+  // survives a C ABI, and gsl is not a dependency this boundary takes.
+  // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
   char* owned = new (std::nothrow) char[text.size() + 1];
   if (owned == nullptr) {
     return borrowed_empty_text();
@@ -229,6 +235,9 @@ extern "C"
       return;
     }
     if (is_owned_text(outcome->text)) {
+      // `text` is `char const*` in the boundary struct so a caller cannot
+      // write through it, and releasing it is the one operation that must.
+      // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-pro-type-const-cast)
       delete[] const_cast<char*>(outcome->text);
     }
     outcome->text = nullptr;

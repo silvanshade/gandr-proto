@@ -53,6 +53,10 @@ entry_signature(mlir::MLIRContext& context) -> mlir::FunctionType
 }
 
 /// The emitter's per-walk state.
+// NOLINTBEGIN(cppcoreguidelines-avoid-const-or-ref-data-members):
+// A per-walk borrow rather than a value: the state exists for the duration of
+// one walk, is never copied, assigned, or stored, and the builder it holds is
+// the caller's. A pointer would say the same thing and admit null.
 struct EmitState
 {
   /// The builder, whose insertion point stays at the end of the block the
@@ -64,11 +68,26 @@ struct EmitState
   std::vector<mlir::Value> environment;
 };
 
+// NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
+
 /// Emits one image node, recursively over its operands.
 ///
-/// The recursion is bounded by `max_emit_depth`, checked on entry: the emitter
-/// runs on generated and decoded images, so the bound is what makes it total
-/// rather than merely careful.
+/// # Termination
+/// - reason: the image is a tree and the emission of a node is defined by the
+///   emission of its operands, so the walk has the shape of the data.
+/// - measure: `max_emit_depth - depth`, which strictly decreases on every
+///   recursive edge because each one passes `depth + 1`.
+/// - boundedness: `max_emit_depth` is a compile-time constant and the entry
+///   test refuses anything above it, so the stack is bounded by a constant
+///   rather than by the image.
+/// - input recursion: yes, over a decoded image whose depth an adversary
+///   chooses; the constant bound is what makes that safe, and the explicit
+///   worklist the conventions prefer is owed rather than present.
+// NOLINTBEGIN(misc-no-recursion,readability-function-cognitive-complexity):
+// The recursion carries a termination contract above, which is the obligation
+// the first check stands in for. The complexity is one switch over the node
+// kinds with a short arm each: splitting it scatters a tabular dispatch across
+// functions that would each have to re-establish the same state.
 [[nodiscard]] auto
 emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected<mlir::Value>
 {
@@ -163,6 +182,8 @@ emit_node(EmitState& state, NodeIndex node_index, std::size_t depth) -> Expected
   }
   return host_error(ErrorKind::MalformedImage, "image holds a node of no declared kind");
 }
+
+// NOLINTEND(misc-no-recursion,readability-function-cognitive-complexity)
 
 } // namespace
 

@@ -46,7 +46,14 @@
 
 namespace {
 
-using namespace gandr::compile_host;
+// The host's names this program uses, declared one by one: a using-directive
+// here would carry every future addition to the namespace with it.
+using gandr::compile_host::decode_image;
+using gandr::compile_host::Expected;
+using gandr::compile_host::Image;
+using gandr::compile_host::make_context;
+using gandr::compile_host::RunOutcome;
+using gandr::compile_host::verify_module;
 
 /// Drives one byte string through the decoder, the emitter, and the verifier.
 ///

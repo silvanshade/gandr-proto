@@ -87,10 +87,20 @@ cell_tag_of(CtorTag tag) noexcept -> CellTag
 
 /// Evaluates one node, recursively over its operands.
 ///
-/// The recursion tracks the image's consumer nesting and is bounded by
-/// `max_emit_depth`, which the caller enforces before the walk begins and this
-/// function rechecks on every descent — the interpreter runs on generated and
-/// fuzzed images, so the bound is load-bearing rather than defensive.
+/// # Termination
+/// - reason: the image is a tree and a node's value is defined by its
+///   operands' values, so the walk has the shape of the data.
+/// - measure: `max_emit_depth - depth`, which strictly decreases on every
+///   recursive edge because each one passes `depth + 1`.
+/// - boundedness: `max_emit_depth` is a compile-time constant, enforced by the
+///   caller before the walk begins and rechecked on every descent.
+/// - input recursion: yes, over a decoded image whose depth an adversary
+///   chooses; the constant bound is what makes that safe, and the explicit
+///   worklist the conventions prefer is owed rather than present.
+// NOLINTBEGIN(misc-no-recursion,readability-function-cognitive-complexity):
+// The recursion carries a termination contract above. The complexity is one
+// switch over the node kinds, and the arms are what the reference semantics
+// IS — separating them would put the semantics in more places than one.
 [[nodiscard]] auto
 evaluate(Image const& image, NodeIndex node_index, Environment& environment, Heap& heap, std::size_t depth)
   -> Expected<std::int64_t>
@@ -206,6 +216,8 @@ evaluate(Image const& image, NodeIndex node_index, Environment& environment, Hea
   }
   return host_error(ErrorKind::MalformedImage, "image holds a node of no declared kind");
 }
+
+// NOLINTEND(misc-no-recursion,readability-function-cognitive-complexity)
 
 } // namespace
 

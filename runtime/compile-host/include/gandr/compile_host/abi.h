@@ -41,6 +41,14 @@ extern "C"
 {
 #endif
 
+/* The boundary's numeric constants are macros, and stay macros. A C enum's
+ * underlying type is implementation-defined, while these values cross a
+ * dynamic boundary as a `uint32_t` version and an `int32_t` status; a macro is
+ * also what a caller in any language binds against. Both checks below want an
+ * enum instead, and neither is available in the C this header is compiled as.
+ */
+/* NOLINTBEGIN(cppcoreguidelines-macro-usage,modernize-macro-to-enum,cppcoreguidelines-macro-to-enum) */
+
 /* The version of this boundary.
  *
  * It changes whenever a field, an entry point, or a status meaning changes.
@@ -68,6 +76,8 @@ extern "C"
  * or an entry point met a condition it could not attribute to a stage. */
 #define GANDR_COMPILE_HOST_STATUS_BAD_CALL 100
 
+  /* NOLINTEND(cppcoreguidelines-macro-usage,modernize-macro-to-enum,cppcoreguidelines-macro-to-enum) */
+
   /* What one run produced.
    *
    * `text` is the rendered value on success and the failure detail otherwise. It
@@ -75,6 +85,8 @@ extern "C"
    * it is never null after a call that returned, so a caller always has a
    * message to report.
    */
+  /* A C header, so the alias is a typedef; `using` is C++ syntax. */
+  /* NOLINTNEXTLINE(modernize-use-using) */
   typedef struct GandrCompileHostOutcome
   {
     /* `GANDR_COMPILE_HOST_STATUS_OK` or one of the failure statuses. */

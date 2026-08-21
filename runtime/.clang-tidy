@@ -307,7 +307,7 @@ CheckOptions:
   misc-include-cleaner.IgnoreHeaders: ''
   misc-include-cleaner.MissingIncludes: 'true'
   misc-include-cleaner.UnusedIncludes: 'true'
-  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: 'false'
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: 'true'
   misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables: 'false'
   misc-override-with-different-visibility.CheckDestructors: 'false'
   misc-override-with-different-visibility.CheckOperators: 'false'

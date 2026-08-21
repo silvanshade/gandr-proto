@@ -36,6 +36,10 @@ constexpr std::string_view staged_entry_name = "gandr_positive_core_dialect";
 /// The insertion point moves as dispatches split the control flow, so the
 /// builder — rather than any block the caller remembers — is what says where
 /// the next operation belongs.
+// NOLINTBEGIN(cppcoreguidelines-avoid-const-or-ref-data-members):
+// A per-walk borrow rather than a value: the state exists for the duration of
+// one walk, is never copied, assigned, or stored, and the builder it holds is
+// the caller's. A pointer would say the same thing and admit null.
 struct LowerState
 {
   /// The builder for the replacement function.
@@ -50,6 +54,8 @@ struct LowerState
   /// The one block every refused allocation branches to, built on first use.
   mlir::Block* refusal = nullptr;
 };
+
+// NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
 
 /// Converts a machine-word offset into the index type memory operations take.
 [[nodiscard]] auto
@@ -220,6 +226,23 @@ lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std:
 ///
 /// Returns the machine word the block's terminator produces: the yielded value
 /// for a consumer region, and the cut's produced value for the entry block.
+///
+/// # Termination
+/// - reason: a dialect operation carries regions of dialect operations, so
+///   lowering a block is defined by lowering the blocks nested inside it; the
+///   mutual pair with `lower_region` mirrors that nesting.
+/// - measure: `max_emit_depth - depth`, which strictly decreases on every edge
+///   of the pair because each one passes `depth + 1`.
+/// - boundedness: `max_emit_depth` is a compile-time constant and the entry
+///   test refuses anything above it.
+/// - input recursion: yes, over a module built from a decoded image whose
+///   depth an adversary chooses; the constant bound is what makes that safe,
+///   and the explicit worklist the conventions prefer is owed rather than
+///   present.
+// NOLINTBEGIN(misc-no-recursion,readability-function-cognitive-complexity):
+// The recursion carries a termination contract above. The complexity is the
+// dialect-operation dispatch, one arm per operation, held together so the
+// lowering of a block reads in one place.
 [[nodiscard]] auto
 lower_operations(mlir::Block& block, LowerState& state, std::size_t depth) -> Expected<mlir::Value>
 {
@@ -243,7 +266,9 @@ lower_operations(mlir::Block& block, LowerState& state, std::size_t depth) -> Ex
       if (!tag.has_value()) {
         return host_error(ErrorKind::LoweringFailed, "constructor names no declared tag");
       }
-      auto const width = static_cast<std::int64_t>(1 + ctor_arity(*tag));
+      // Widen before adding: the sum of an arity and one is computed in the
+      // wide type rather than in the tag's own 32-bit one.
+      auto const width = 1 + static_cast<std::int64_t>(ctor_arity(*tag));
       mlir::Value const cell = allocate_cell(state, width);
       store_word(state, cell, 0, word_constant(state, cell_tag_word(*tag)));
       std::int64_t field_offset = 1;
@@ -352,6 +377,21 @@ lower_operations(mlir::Block& block, LowerState& state, std::size_t depth) -> Ex
   return host_error(ErrorKind::LoweringFailed, "block ends without a yield or a cut");
 }
 
+// NOLINTEND(misc-no-recursion,readability-function-cognitive-complexity)
+
+/// Lowers one region's entry block under an argument.
+///
+/// # Termination
+/// - reason: the other half of the mutual pair above; a region is lowered by
+///   lowering its entry block.
+/// - measure: `max_emit_depth - depth`, shared with `lower_operations` and
+///   strictly decreasing on every edge of the pair.
+/// - boundedness: `max_emit_depth` is a compile-time constant, tested by
+///   `lower_operations` on entry.
+/// - input recursion: yes, with the same bound and the same owed worklist as
+///   `lower_operations`.
+// NOLINTBEGIN(misc-no-recursion):
+// The other half of the mutual pair, under the same termination contract.
 auto
 lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std::size_t depth) -> Expected<mlir::Value>
 {
@@ -365,6 +405,8 @@ lower_region(mlir::Region& region, mlir::Value argument, LowerState& state, std:
   state.mapping.map(body.getArgument(0), argument);
   return lower_operations(body, state, depth);
 }
+
+// NOLINTEND(misc-no-recursion)
 
 } // namespace
 

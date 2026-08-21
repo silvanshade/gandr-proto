@@ -29,6 +29,7 @@
 #include <ios>
 #include <memory>
 #include <print>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -37,7 +38,18 @@
 
 namespace {
 
-using namespace gandr::compile_host;
+// The host's names this program uses, declared one by one: a using-directive
+// here would carry every future addition to the namespace with it.
+using gandr::compile_host::accounted_work_sample;
+using gandr::compile_host::canonical_samples;
+using gandr::compile_host::Expected;
+using gandr::compile_host::HostError;
+using gandr::compile_host::make_context;
+using gandr::compile_host::Optimization;
+using gandr::compile_host::RunOutcome;
+using gandr::compile_host::RunTiming;
+using gandr::compile_host::Sample;
+using gandr::compile_host::verify_module;
 
 /// Prints one outcome line in the fixture's format.
 void
@@ -166,6 +178,10 @@ write_seeds(std::string_view directory) -> int
       std::println(stderr, "could not write {}", path.string());
       return EXIT_FAILURE;
     }
+    // The aliasing rules permit reading any object through a `char` lvalue,
+    // which is exactly what a byte stream does; the cast is the sanctioned
+    // one rather than a reinterpretation of a value.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     out.write(reinterpret_cast<char const*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
   }
   return EXIT_SUCCESS;

@@ -31,6 +31,9 @@ namespace gandr::compile_host {
 /// emitted code and the reference interpreter both hard-code, because it is
 /// the one representation decision the two paths must share for their outputs
 /// to be comparable at all.
+// The tag is stored as a heap word and compared against one, so its base type
+// is the heap's word type rather than the smallest type its values need.
+// NOLINTNEXTLINE(performance-enum-size)
 enum class CellTag : std::int64_t
 {
   /// An integer cell: `[Int, n]`.

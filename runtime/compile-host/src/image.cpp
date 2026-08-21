@@ -59,6 +59,9 @@ operand_binder_offset(NodeKind kind, std::size_t slot) noexcept -> std::uint32_t
   return 0U;
 }
 
+// NOLINTBEGIN(readability-function-cognitive-complexity):
+// The complexity is the well-formedness conditions themselves, checked in one
+// forward pass so that each one is stated beside the walk that establishes it.
 auto
 image_is_wellformed(Image const& image) noexcept -> bool
 {
@@ -126,5 +129,7 @@ image_is_wellformed(Image const& image) noexcept -> bool
   }
   return true;
 }
+
+// NOLINTEND(readability-function-cognitive-complexity)
 
 } // namespace gandr::compile_host

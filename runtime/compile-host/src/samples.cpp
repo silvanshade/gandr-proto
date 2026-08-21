@@ -161,6 +161,20 @@ generate_expression(
 /// would make dispatching on a non-injection mean anything. The generator
 /// therefore only builds dispatches whose scrutinee is syntactically an
 /// injection; the limitation is the slice's, not the generator's.
+///
+/// # Termination
+/// - reason: an injection wraps an expression, so building one is defined by
+///   building that expression; the mutual pair with `generate_expression`
+///   mirrors the grammar.
+/// - measure: the pair `(depth, budget)` ordered lexicographically. Every edge
+///   out of `generate_expression` either decrements `depth` or reaches a leaf,
+///   and every call decrements `budget` while it is positive.
+/// - boundedness: the caller supplies a finite `depth` and a finite `budget`,
+///   and `depth == 0 || budget < 8` forces a leaf.
+/// - input recursion: no. Both bounds come from the generator's own caller,
+///   never from decoded input.
+// NOLINTBEGIN(misc-no-recursion):
+// The recursion carries a termination contract above.
 [[nodiscard]] auto
 generate_injection(
   Builder& builder,
@@ -175,6 +189,20 @@ generate_injection(
   return builder.constructor(tag, { payload });
 }
 
+// NOLINTEND(misc-no-recursion)
+
+/// Generates one expression of the positive core.
+///
+/// # Termination
+/// - reason: the other half of the mutual pair above; an expression is built
+///   from smaller expressions.
+/// - measure: the pair `(depth, budget)` ordered lexicographically, shared
+///   with `generate_injection`.
+/// - boundedness: every recursive edge passes `depth - 1`, and `depth == 0 ||
+///   budget < 8` returns a leaf before any edge is taken.
+/// - input recursion: no. Both bounds come from the generator's own caller.
+// NOLINTBEGIN(misc-no-recursion):
+// The recursion carries a termination contract above.
 auto
 generate_expression(
   Builder& builder,
@@ -231,6 +259,8 @@ generate_expression(
   }
 }
 
+// NOLINTEND(misc-no-recursion)
+
 } // namespace
 
 auto
@@ -246,8 +276,8 @@ canonical_samples() -> std::vector<Sample>
   {
     Builder builder;
     NodeIndex const seven = builder.literal(7);
-    NodeIndex const bound = builder.variable(0);
-    NodeIndex const frame = builder.bind(seven, bound);
+    NodeIndex const body = builder.variable(0);
+    NodeIndex const frame = builder.bind(seven, body);
     samples.push_back(Sample{ .name = "bind", .image = builder.finish(frame) });
   }
   {
