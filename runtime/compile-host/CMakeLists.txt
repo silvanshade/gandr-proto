@@ -103,6 +103,34 @@ target_include_directories(
 target_link_libraries(gandr-compile-host-core PUBLIC MLIR LLVM MLIRExecutionEngine)
 
 set(GANDR_COMPILE_HOST_WARNINGS -Wall -Wextra -Wconversion -Wsign-conversion -Werror)
+
+# Exceptions and RTTI follow the keg rather than a preference, because a
+# translation unit that disagrees with the MLIR it links is an ODR hazard whose
+# symptom appears far from its cause.
+#
+# The keg reports both. `LLVM_ENABLE_EH` is OFF on every LLVM this host is
+# built against, so `-fno-exceptions` is what matching it means and the C
+# boundary's promise is narrowed to say so: a recoverable host or validation
+# failure is a status, and process-fatal resource exhaustion aborts exactly as
+# it does inside LLVM's own fatal-error path.
+#
+# `LLVM_ENABLE_RTTI` is ON for the ordinary distribution kegs, and that is the
+# lawful departure `docs/workflow/cpp.md` records: the MLIR-facing targets keep
+# RTTI because the keg has it. It is recorded here, at the flag site, and it
+# never propagates above this layer because there is nothing above it that does
+# not link MLIR.
+if(LLVM_ENABLE_EH)
+  message(
+    FATAL_ERROR
+    "the discovered MLIR at ${MLIR_INSTALL_PREFIX} was built with exceptions enabled; this host is built -fno-exceptions to match a keg built without them"
+  )
+endif()
+set(GANDR_COMPILE_HOST_POSTURE -fno-exceptions)
+if(NOT LLVM_ENABLE_RTTI)
+  list(APPEND GANDR_COMPILE_HOST_POSTURE -fno-rtti)
+endif()
+list(APPEND GANDR_COMPILE_HOST_WARNINGS ${GANDR_COMPILE_HOST_POSTURE})
+message(STATUS "compile-host: posture ${GANDR_COMPILE_HOST_POSTURE} (keg RTTI=${LLVM_ENABLE_RTTI}, EH=${LLVM_ENABLE_EH})")
 target_compile_options(gandr-compile-host-core PRIVATE ${GANDR_COMPILE_HOST_WARNINGS})
 
 # The C boundary, built as a shared library so a foreign caller resolves it at

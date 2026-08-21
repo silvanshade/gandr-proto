@@ -57,6 +57,14 @@ impl AsRef<str> for Section<'_>
     }
 }
 
+/// A string with every run of whitespace collapsed to one space.
+fn collapse_whitespace(text: &str) -> alloc::string::String
+{
+    text.split_whitespace()
+        .collect::<alloc::vec::Vec<_>>()
+        .join(" ")
+}
+
 /// The host's root, relative to this crate's manifest.
 fn host_root() -> PathBuf
 {
@@ -77,15 +85,24 @@ fn host_source(relative: &Path) -> HostSource
 
 impl HostSource
 {
-    /// Asserts that some line of this file, trimmed, is exactly `declaration`.
+    /// Asserts that some line of this file declares `declaration`.
+    ///
+    /// Both sides are compared with runs of whitespace collapsed. The host's
+    /// sources are formatted by `runtime/.clang-format`, which aligns
+    /// consecutive macro definitions and may change the spacing inside a
+    /// declaration without changing what it declares; this gate is about the
+    /// contract, and the format policy has a lane of its own.
     fn assert_declares(
         &self,
         declaration: &Declaration,
         what: &Subject,
     )
     {
-        let expected = declaration.0.trim();
-        let found = self.0.lines().any(|line| line.trim() == expected);
+        let expected = collapse_whitespace(&declaration.0);
+        let found = self
+            .0
+            .lines()
+            .any(|line| collapse_whitespace(line) == expected);
         assert!(
             found,
             "the host no longer declares {}: expected `{expected}`",
@@ -193,7 +210,7 @@ fn the_wire_numbering_matches_this_crates_mirror()
 fn the_constructor_arities_match_this_crates_mirror()
 {
     let source = host_source(Path::new("include/gandr/compile_host/image.hpp"));
-    let section = source.after(&Marker(String::from("constexpr std::uint32_t ctor_arity")));
+    let section = source.after(&Marker(String::from("ctor_arity(CtorTag tag)")));
     let arities: &str = section.as_ref();
 
     // The arity table is a switch whose arms fall through for the two
@@ -303,7 +320,7 @@ fn the_boundary_struct_layout_is_unchanged()
             "int64_t duplications",
             "int64_t discards",
             "uint64_t allocated_words",
-            "const char* text",
+            "char const* text",
         ],
         "the boundary struct's fields changed; this crate's RawOutcome mirrors them positionally"
     );
@@ -320,7 +337,7 @@ fn the_verifier_still_opens_the_pipeline()
 {
     let source = host_source(Path::new("src/pipeline.cpp"));
 
-    let optimize_section = source.after(&Marker(String::from("Expected<void> optimize_module")));
+    let optimize_section = source.after(&Marker(String::from("optimize_module(mlir::ModuleOp")));
     let optimize: &str = optimize_section.as_ref();
     let verification = optimize
         .find("verify_module(module)")
@@ -331,7 +348,7 @@ fn the_verifier_still_opens_the_pipeline()
         "a pass now runs before the verifier in optimize_module"
     );
 
-    let lower_section = source.after(&Marker(String::from("Expected<void> lower_module")));
+    let lower_section = source.after(&Marker(String::from("lower_module(mlir::ModuleOp")));
     let lower: &str = lower_section.as_ref();
     let optimization = lower
         .find("optimize_module(module, optimization)")

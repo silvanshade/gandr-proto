@@ -5,13 +5,29 @@
  * caller that had to share a C++ ABI with it would have to share that
  * installation too. Everything crossing here is plain old data.
  *
+ * The host is built `-fno-exceptions`, matching the LLVM keg it links, so
+ * nothing crosses here as an exception and there is nothing for a caller to
+ * catch. What that costs is stated rather than hidden: an allocation the
+ * process cannot satisfy, and LLVM's own fatal-error path, abort. Neither is
+ * recoverable behind this boundary with or without exceptions enabled, because
+ * the linked LLVM aborts on them regardless of how this target is built.
+ *
+ * Everything that IS recoverable stays a status, and the list is exact: a null
+ * outcome, a null image with a nonzero length, an image that does not decode,
+ * a module the verifier rejects, a lowering or conversion that fails, an
+ * execution that fails, an unreadable result, and a run that exhausts the heap
+ * it was given. The message path itself allocates without throwing and falls
+ * back to a borrowed empty string, so a failure there loses the message and
+ * never the status.
+ *
  * # Contract
  * - requires: `gandr_compile_host_abi_version` agrees with the caller's
  *   expectation before any other entry is called.
- * - ensures: no C++ exception escapes an entry point, and no entry point
- *   aborts; every failure arrives as a status in the outcome.
+ * - ensures: every recoverable host or validation failure arrives as a status
+ *   in the outcome, with a non-null `text` beside it.
  * - provides: the image-in, answer-out boundary the Rust bridge drives.
- * - panics: none.
+ * - panics: process-fatal resource exhaustion and LLVM's fatal-error path
+ *   abort; no other path does.
  */
 
 #ifndef GANDR_COMPILE_HOST_ABI_H

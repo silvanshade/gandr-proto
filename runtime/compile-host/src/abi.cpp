@@ -130,13 +130,12 @@ refuse(GandrCompileHostOutcome& outcome, std::string_view detail) noexcept
 
 /// Decodes the caller's bytes, or reports the refusal into the outcome.
 ///
-/// Deliberately **not** `noexcept`: the decoder allocates an arena, so a
-/// failure there is an exception, and swallowing that into a `noexcept`
-/// function would call `std::terminate` rather than report. Every caller runs
-/// this inside its own try block, which is where such a failure becomes a
-/// status.
+/// `noexcept` because the target is built `-fno-exceptions`: the decoder's
+/// arena allocation cannot report a failure by throwing, so a caller has
+/// nothing to catch. A malformed image is still a status, which is the only
+/// failure of this function that is recoverable at all.
 [[nodiscard]] auto
-decode_or_refuse(std::uint8_t const* bytes, std::size_t length, GandrCompileHostOutcome& outcome)
+decode_or_refuse(std::uint8_t const* bytes, std::size_t length, GandrCompileHostOutcome& outcome) noexcept
   -> std::optional<Image>
 {
   std::span<std::uint8_t const> const input(bytes, length);
@@ -173,17 +172,11 @@ extern "C"
       refuse(*outcome, "the image pointer is null with a nonzero length");
       return outcome->status;
     }
-    try {
-      std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
-      if (!image.has_value()) {
-        return outcome->status;
-      }
-      fill(*outcome, gandr::compile_host::compile_and_run(*image));
-    } catch (std::exception const& raised) {
-      refuse(*outcome, raised.what());
-    } catch (...) {
-      refuse(*outcome, "the host raised a non-standard exception");
+    std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
+    if (!image.has_value()) {
+      return outcome->status;
     }
+    fill(*outcome, gandr::compile_host::compile_and_run(*image));
     return outcome->status;
   }
 
@@ -202,17 +195,11 @@ extern "C"
       refuse(*outcome, "the image pointer is null with a nonzero length");
       return outcome->status;
     }
-    try {
-      std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
-      if (!image.has_value()) {
-        return outcome->status;
-      }
-      fill(*outcome, gandr::compile_host::compile_and_run_with_heap(*image, static_cast<std::size_t>(heap_words)));
-    } catch (std::exception const& raised) {
-      refuse(*outcome, raised.what());
-    } catch (...) {
-      refuse(*outcome, "the host raised a non-standard exception");
+    std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
+    if (!image.has_value()) {
+      return outcome->status;
     }
+    fill(*outcome, gandr::compile_host::compile_and_run_with_heap(*image, static_cast<std::size_t>(heap_words)));
     return outcome->status;
   }
 
@@ -227,17 +214,11 @@ extern "C"
       refuse(*outcome, "the image pointer is null with a nonzero length");
       return outcome->status;
     }
-    try {
-      std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
-      if (!image.has_value()) {
-        return outcome->status;
-      }
-      fill(*outcome, gandr::compile_host::interpret_image(*image));
-    } catch (std::exception const& raised) {
-      refuse(*outcome, raised.what());
-    } catch (...) {
-      refuse(*outcome, "the host raised a non-standard exception");
+    std::optional<Image> const image = decode_or_refuse(bytes, length, *outcome);
+    if (!image.has_value()) {
+      return outcome->status;
     }
+    fill(*outcome, gandr::compile_host::interpret_image(*image));
     return outcome->status;
   }
 
