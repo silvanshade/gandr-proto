@@ -167,16 +167,27 @@ fn is_test_file(
 /// Stateful source scanner for ordinary Rust strings and test-item boundaries.
 struct Scanner<'source, 'lines>
 {
+    /// Source bytes being scanned.
     bytes: &'source [u8],
+    /// Source lines used for stable allow-marker lookup.
     lines: &'lines [&'lines str],
+    /// Workspace root used to make findings repository-relative.
     workspace_root: &'source Path,
+    /// Source path used in the finding.
     path: &'source Path,
+    /// Whether the path is conventionally test-only.
     test_file: bool,
+    /// Current byte offset in `bytes`.
     index: usize,
+    /// One-based current source line.
     line: usize,
+    /// Current brace nesting depth.
     brace_depth: usize,
+    /// Brace depths that enclose test modules or functions.
     test_contexts: Vec<usize>,
+    /// Whether the last attribute was test-related.
     pending_test_attribute: bool,
+    /// Findings accumulated during the scan.
     findings: Vec<Finding>,
 }
 
@@ -186,31 +197,31 @@ impl Scanner<'_, '_>
     /// strings.
     fn scan(&mut self)
     {
-        while self.index < self.bytes.len() {
+        while let Some(byte) = self.bytes.get(self.index).copied() {
             if self.starts_with(b"//") {
                 self.skip_line_comment();
             }
             else if self.starts_with(b"/*") {
                 self.skip_block_comment();
             }
-            else if self.bytes[self.index] == b'#'
-                && self.bytes.get(self.index + 1) == Some(&b'[')
-            {
+            else if byte == b'#' && self.bytes.get(self.index.saturating_add(1)) == Some(&b'[') {
                 self.scan_attribute();
             }
-            else if self.starts_with(b"br") && self.looks_like_raw_string(self.index + 2) {
-                self.skip_raw_string(self.index + 1);
+            else if self.starts_with(b"br")
+                && self.looks_like_raw_string(self.index.saturating_add(2))
+            {
+                self.skip_raw_string(self.index.saturating_add(1));
             }
-            else if self.bytes[self.index] == b'r' && self.looks_like_raw_string(self.index + 1) {
+            else if byte == b'r' && self.looks_like_raw_string(self.index.saturating_add(1)) {
                 self.skip_raw_string(self.index);
             }
             else if self.starts_with(b"b\"") {
-                self.scan_quoted(self.index + 1, true);
+                self.scan_quoted(self.index.saturating_add(1), true);
             }
-            else if self.bytes[self.index] == b'\"' {
+            else if byte == b'\"' {
                 self.scan_quoted(self.index, true);
             }
-            else if self.bytes[self.index] == b'\'' {
+            else if byte == b'\'' {
                 self.skip_char_literal();
             }
             else {
@@ -222,49 +233,60 @@ impl Scanner<'_, '_>
     /// Consume one normal code byte and maintain item-brace test context.
     fn scan_code_byte(&mut self)
     {
-        match self.bytes[self.index] {
+        let Some(byte) = self.bytes.get(self.index).copied()
+        else {
+            return;
+        };
+        match byte {
             | b'{' => {
-                self.brace_depth += 1;
+                self.brace_depth = self.brace_depth.saturating_add(1);
                 if self.pending_test_attribute {
                     self.test_contexts.push(self.brace_depth);
                     self.pending_test_attribute = false;
                 }
-                self.index += 1;
+                self.index = self.index.saturating_add(1);
             },
             | b'}' => {
                 self.brace_depth = self.brace_depth.saturating_sub(1);
                 self.test_contexts
                     .retain(|depth| *depth <= self.brace_depth);
-                self.index += 1;
+                self.index = self.index.saturating_add(1);
             },
             | b';' => {
                 self.pending_test_attribute = false;
-                self.index += 1;
+                self.index = self.index.saturating_add(1);
             },
             | b'\n' => {
-                self.line += 1;
-                self.index += 1;
+                self.line = self.line.saturating_add(1);
+                self.index = self.index.saturating_add(1);
             },
-            | _ => self.index += 1,
+            | _ => self.index = self.index.saturating_add(1),
         }
     }
 
     /// Recognize a test-related attribute and retain it until its item's body.
     fn scan_attribute(&mut self)
     {
-        let start = self.index + 2;
+        let start = self.index.saturating_add(2);
         let mut cursor = start;
         let mut nested = 1_usize;
         while cursor < self.bytes.len() && nested > 0 {
-            match self.bytes[cursor] {
-                | b'[' => nested += 1,
+            let Some(byte) = self.bytes.get(cursor).copied()
+            else {
+                break;
+            };
+            match byte {
+                | b'[' => nested = nested.saturating_add(1),
                 | b']' => nested = nested.saturating_sub(1),
-                | b'\n' => self.line += 1,
+                | b'\n' => self.line = self.line.saturating_add(1),
                 | _ => {},
             }
-            cursor += 1;
+            cursor = cursor.saturating_add(1);
         }
-        let attribute = &self.bytes[start .. cursor.saturating_sub(1)];
+        let attribute = self
+            .bytes
+            .get(start .. cursor.saturating_sub(1))
+            .unwrap_or(&[]);
         let text = String::from_utf8_lossy(attribute);
         self.pending_test_attribute = text.trim() == "test"
             || text.starts_with("test(")
@@ -275,31 +297,31 @@ impl Scanner<'_, '_>
     /// Consume a line comment, preserving the next line number.
     fn skip_line_comment(&mut self)
     {
-        self.index += 2;
-        while self.index < self.bytes.len() && self.bytes[self.index] != b'\n' {
-            self.index += 1;
+        self.index = self.index.saturating_add(2);
+        while self.index < self.bytes.len() && self.bytes.get(self.index) != Some(&b'\n') {
+            self.index = self.index.saturating_add(1);
         }
     }
 
     /// Consume a nested block comment.
     fn skip_block_comment(&mut self)
     {
-        self.index += 2;
+        self.index = self.index.saturating_add(2);
         let mut depth = 1_usize;
         while self.index < self.bytes.len() && depth > 0 {
             if self.starts_with(b"/*") {
-                depth += 1;
-                self.index += 2;
+                depth = depth.saturating_add(1);
+                self.index = self.index.saturating_add(2);
             }
             else if self.starts_with(b"*/") {
                 depth = depth.saturating_sub(1);
-                self.index += 2;
+                self.index = self.index.saturating_add(2);
             }
             else {
-                if self.bytes[self.index] == b'\n' {
-                    self.line += 1;
+                if self.bytes.get(self.index) == Some(&b'\n') {
+                    self.line = self.line.saturating_add(1);
                 }
-                self.index += 1;
+                self.index = self.index.saturating_add(1);
             }
         }
     }
@@ -308,19 +330,22 @@ impl Scanner<'_, '_>
     /// string.
     fn skip_char_literal(&mut self)
     {
-        let next = self.bytes.get(self.index + 1).copied();
+        let next = self.bytes.get(self.index.saturating_add(1)).copied();
         if next.is_none_or(|value| value.is_ascii_alphabetic()) {
-            self.index += 1;
+            self.index = self.index.saturating_add(1);
             return;
         }
-        self.index += 1;
+        self.index = self.index.saturating_add(1);
         let mut escaped = false;
         while self.index < self.bytes.len() {
-            let byte = self.bytes[self.index];
+            let Some(byte) = self.bytes.get(self.index).copied()
+            else {
+                break;
+            };
             if byte == b'\n' {
-                self.line += 1;
+                self.line = self.line.saturating_add(1);
             }
-            self.index += 1;
+            self.index = self.index.saturating_add(1);
             if escaped {
                 escaped = false;
             }
@@ -341,14 +366,17 @@ impl Scanner<'_, '_>
     )
     {
         let start_line = self.line;
-        let mut cursor = quote_index + 1;
+        let mut cursor = quote_index.saturating_add(1);
         let mut escaped = false;
         let mut escaped_newline_count = 0_usize;
         while cursor < self.bytes.len() {
-            let byte = self.bytes[cursor];
+            let Some(byte) = self.bytes.get(cursor).copied()
+            else {
+                break;
+            };
             if escaped {
                 if byte == b'n' {
-                    escaped_newline_count += 1;
+                    escaped_newline_count = escaped_newline_count.saturating_add(1);
                 }
                 escaped = false;
             }
@@ -356,17 +384,21 @@ impl Scanner<'_, '_>
                 escaped = true;
             }
             else if byte == b'\"' {
-                cursor += 1;
+                cursor = cursor.saturating_add(1);
                 break;
             }
             if byte == b'\n' {
-                self.line += 1;
+                self.line = self.line.saturating_add(1);
             }
-            cursor += 1;
+            cursor = cursor.saturating_add(1);
         }
+        let content = self
+            .bytes
+            .get(quote_index.saturating_add(1) .. cursor.saturating_sub(1))
+            .unwrap_or(&[]);
         if report
             && (escaped_newline_count >= 2 || self.line > start_line)
-            && looks_like_embedded_syntax(&self.bytes[quote_index + 1 .. cursor.saturating_sub(1)])
+            && looks_like_embedded_syntax(content)
             && self.in_test_context()
         {
             self.report(start_line);
@@ -382,32 +414,37 @@ impl Scanner<'_, '_>
     {
         let mut quote = prefix_start;
         if self.bytes.get(quote) == Some(&b'b') {
-            quote += 1;
+            quote = quote.saturating_add(1);
         }
         while self.bytes.get(quote) == Some(&b'r') {
-            quote += 1;
+            quote = quote.saturating_add(1);
         }
         let mut hashes = 0_usize;
-        while self.bytes.get(quote + hashes) == Some(&b'#') {
-            hashes += 1;
+        while self.bytes.get(quote.saturating_add(hashes)) == Some(&b'#') {
+            hashes = hashes.saturating_add(1);
         }
-        quote += hashes;
+        quote = quote.saturating_add(hashes);
         if self.bytes.get(quote) != Some(&b'\"') {
-            self.index += 1;
+            self.index = self.index.saturating_add(1);
             return;
         }
-        let mut cursor = quote + 1;
+        let mut cursor = quote.saturating_add(1);
         while cursor < self.bytes.len() {
-            if self.bytes[cursor] == b'\n' {
-                self.line += 1;
+            let Some(byte) = self.bytes.get(cursor).copied()
+            else {
+                break;
+            };
+            if byte == b'\n' {
+                self.line = self.line.saturating_add(1);
             }
-            if self.bytes[cursor] == b'\"'
-                && (1 ..= hashes).all(|offset| self.bytes.get(cursor + offset) == Some(&b'#'))
+            if byte == b'\"'
+                && (1 ..= hashes)
+                    .all(|offset| self.bytes.get(cursor.saturating_add(offset)) == Some(&b'#'))
             {
-                cursor += hashes + 1;
+                cursor = cursor.saturating_add(hashes).saturating_add(1);
                 break;
             }
-            cursor += 1;
+            cursor = cursor.saturating_add(1);
         }
         self.index = cursor;
     }
@@ -420,10 +457,10 @@ impl Scanner<'_, '_>
     {
         let mut cursor = index;
         while self.bytes.get(cursor) == Some(&b'r') {
-            cursor += 1;
+            cursor = cursor.saturating_add(1);
         }
         while self.bytes.get(cursor) == Some(&b'#') {
-            cursor += 1;
+            cursor = cursor.saturating_add(1);
         }
         self.bytes.get(cursor) == Some(&b'\"')
     }
