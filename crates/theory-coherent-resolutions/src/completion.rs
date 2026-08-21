@@ -138,8 +138,8 @@ pub enum CompletionOutcome<A: CellAlphabet = SequentAlphabet>
         /// The coherence certificates emitted for joinable critical pairs.
         certificates: Vec<Tracelet<A>>,
     },
-    /// Completion declined on a budget ceiling, carrying the pending overlap
-    /// batches in their deterministic first-appearance order.
+    /// Completion declined with either a budget ceiling or invalid supplied
+    /// input, carrying what remains unprocessed.
     Declined
     {
         /// The cell store as of the decline.
@@ -150,7 +150,7 @@ pub enum CompletionOutcome<A: CellAlphabet = SequentAlphabet>
         certificates: Vec<Tracelet<A>>,
         /// The independent overlap batches left unprocessed.
         pending: Vec<Vec<Overlap<A>>>,
-        /// Which ceiling was reached.
+        /// The budget ceiling or typed supplied-input refusal.
         reason: DeclineReason,
     },
 }
@@ -217,16 +217,23 @@ impl<A: CellAlphabet> CompletionOutcome<A>
         CompletionStatus::from(matches!(*self, Self::Completed { .. }))
     }
 
-    /// Resume a declined completion without rebuilding its pending partition.
+    /// Resume a budget-declined completion without rebuilding its pending
+    /// partition; invalid supplied-input declines are terminal.
     ///
     /// # Contract
-    /// - ensures: a declined result resumes exactly its pending FIFO batches; a
-    ///   completed result is returned unchanged.
-    /// - provides: transparent decline/resume semantics.
+    /// - ensures: a step- or cell-budget decline resumes exactly its pending
+    ///   FIFO batches; an invalid-supplied-input decline is returned unchanged;
+    ///   a completed result is returned unchanged.
+    /// - provides: transparent decline/resume semantics without allowing an
+    ///   invalid overlap to reach the confluence worklist.
     /// - panics: none.
     ///
     /// # Adequacy
+    /// - hypothesis: L1 — budget declines resume to the uninterrupted result,
+    ///   while every invalid supplied-input variant remains a typed terminal
+    ///   refusal under resume.
     /// - witness: `completion::tests::decline_resume_matches_uninterrupted_completion`.
+    /// - witness: `completion::tests::invalid_supplied_decline_is_terminal_on_resume`.
     #[inline]
     #[must_use]
     pub fn resume(
@@ -237,12 +244,27 @@ impl<A: CellAlphabet> CompletionOutcome<A>
         match self {
             | Self::Completed { .. } => self,
             | Self::Declined {
+                reason: DeclineReason::InvalidSuppliedOverlap(_),
+                ..
+            } => self,
+            | Self::Declined {
                 store,
                 derived,
                 certificates,
                 pending,
-                ..
-            } => complete_with_worklist(store, budget, derived, certificates, pending.into()),
+                reason: DeclineReason::StepBudget | DeclineReason::CellBudget,
+            } => {
+                if let Err(error) = validate_supplied_batches(&store, &pending) {
+                    return Self::Declined {
+                        store,
+                        derived,
+                        certificates,
+                        pending,
+                        reason: DeclineReason::InvalidSuppliedOverlap(error),
+                    };
+                }
+                complete_with_worklist(store, budget, derived, certificates, pending.into())
+            },
         }
     }
 }
@@ -295,8 +317,9 @@ where
 ///   supplied initial batches, then the generic confluence batches for cells it
 ///   derives, within the same step and cell budgets as [`complete`]. Invalid
 ///   input returns [`CompletionOutcome::Declined`] with
-///   [`DeclineReason::InvalidSuppliedOverlap`] and the unprocessed supplied
-///   batches; no invalid item is silently skipped.
+///   [`DeclineReason::InvalidSuppliedOverlap`], preserves the unprocessed
+///   supplied batches, and remains terminal under
+///   [`CompletionOutcome::resume`].
 /// - provides: a matcher-neutral supply point; the source sees the generic
 ///   [`CellStore`] and returns generic [`Overlap`] values.
 /// - panics: none.

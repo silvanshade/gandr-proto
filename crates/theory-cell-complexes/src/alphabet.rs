@@ -277,7 +277,7 @@ pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt
     type Pos: Clone + Eq + core::hash::Hash + core::fmt::Debug;
     /// The **ordered substitution map** — deterministic (a `BTreeMap`-backed
     /// carrier; hash-order iteration is denied workspace-wide).
-    type Subst: Clone + Default + Eq + core::fmt::Debug;
+    type Subst: Clone + Default + Eq + core::hash::Hash + core::fmt::Debug;
     /// How a cell's orientation was fixed (the alphabet's tag vocabulary).
     type Orientation: Copy + Eq + core::hash::Hash + core::fmt::Debug;
     /// Where a cell came from (the alphabet's tag vocabulary).

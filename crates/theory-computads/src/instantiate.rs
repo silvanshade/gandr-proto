@@ -130,11 +130,13 @@ impl core::error::Error for CellInstantiationError
 ///
 /// The original cell remains in the store. The instantiated cell is inserted
 /// through [`CellStore::insert`], so structural deduplication remains the only
-/// identity rule and the returned id is valid for the same store.
+/// identity rule and the returned id is valid for the same store. A caller can
+/// therefore hand that id to the alphabet's ordinary replay machinery without
+/// translating it through a second store.
 ///
 /// # Contract
 /// - requires: `subst` is the induced substitution for the instantiation site.
-/// - ensures: the returned id addresses a cell whose two faces are
+/// - ensures: the returned id addresses a cell whose two faces are exactly
 ///   `A::apply_subst(subst, source.lhs)` and `A::apply_subst(subst,
 ///   source.rhs)`, with the source orientation and provenance; an equal cell
 ///   reuses its existing id.
@@ -147,12 +149,13 @@ impl core::error::Error for CellInstantiationError
 /// in `store`.
 ///
 /// # Adequacy
-/// - hypothesis: L3 — the cell is inserted through the same structural store
-///   seam as an ordinary declaration, so applying an identity substitution
-///   reuses the source id while a changed substitution produces a replayable
-///   instantiated cell.
+/// - hypothesis: L3 — the exact substituted faces, structural identity reuse,
+///   typed unknown-id failure, and preserved metadata separate the
+///   instantiation contract's observable branches.
 /// - witness: `gandr-theory-computads`
 ///   `instantiate::tests::instantiating_a_cell_preserves_store_identity`
+/// - witness: `gandr-theory-computads`
+///   `instantiate::tests::instantiating_an_unknown_cell_returns_typed_error`
 #[inline]
 pub fn instantiate_cell<A>(
     store: &mut CellStore<A>,
@@ -162,17 +165,19 @@ pub fn instantiate_cell<A>(
 where
     A: CellAlphabet,
 {
-    let Some(source) = store.get(cell).cloned()
-    else {
-        return Err(CellInstantiationError::UnknownCell { cell });
+    let (lhs, rhs, orient, provenance) = {
+        let Some(source) = store.get(cell)
+        else {
+            return Err(CellInstantiationError::UnknownCell { cell });
+        };
+        (
+            A::apply_subst(subst, &source.lhs),
+            A::apply_subst(subst, &source.rhs),
+            source.orient,
+            source.provenance,
+        )
     };
-    let instantiated = Cell::new(
-        A::apply_subst(subst, &source.lhs),
-        A::apply_subst(subst, &source.rhs),
-        source.orient,
-        source.provenance,
-    );
-    Ok(store.insert(instantiated))
+    Ok(store.insert(Cell::new(lhs, rhs, orient, provenance)))
 }
 
 /// Turn an occurrence path into the alphabet's position representation.
@@ -598,6 +603,13 @@ mod tests
         let instantiated = store
             .get(instantiated_id)
             .expect("the instantiated id addresses the inserted cell");
+        let expected = Cell::new(
+            CmdPat::cut(Polarity::Positive, ProdPat::ctor("Zero", []), ConsPat::Top),
+            CmdPat::cut(Polarity::Positive, ProdPat::ctor("Zero", []), ConsPat::Top),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        );
+        assert_eq!(&expected, instantiated, "both substituted faces are exact");
         assert_eq!(CellProvenance::SurfaceRule, instantiated.provenance);
         assert_eq!(Orientation::PolarityDerived, instantiated.orient);
         assert_ne!(
@@ -605,8 +617,18 @@ mod tests
                 .get(source_id)
                 .expect("the source remains in the store"),
             instantiated,
-            "a changed substitution produces a distinct cell without replacing its source"
+            "a changed substitution produces a distinct replayable cell"
         );
+    }
+
+    #[test]
+    fn instantiating_an_unknown_cell_returns_typed_error()
+    {
+        let mut store: CellStore<SequentAlphabet> = CellStore::new();
+        let missing = CellId(usize::MAX);
+        let error = instantiate_cell(&mut store, missing, &Subst::new())
+            .expect_err("a foreign id cannot be instantiated");
+        assert_eq!(CellInstantiationError::UnknownCell { cell: missing }, error);
     }
 
     #[test]

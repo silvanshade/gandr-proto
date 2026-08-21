@@ -312,7 +312,7 @@ pub enum BijectionClash
 ///
 /// Injective by construction: [`PartialBijection::extend`] refuses a pair that
 /// would identify two sources, and the refusal is data.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct PartialBijection
 {
     /// Source wire to image wire.
@@ -457,7 +457,7 @@ impl PartialBijection
 /// addressed by how the pattern's interface lands on the target's wires, input
 /// half and output half kept apart because the two halves play different roles
 /// in the span.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Seam
 {
     /// The input half — the pattern's input ports to their images.

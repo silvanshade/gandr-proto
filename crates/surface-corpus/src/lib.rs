@@ -1644,9 +1644,12 @@ fn check_desc(
                 }
             },
             | Expect::DescStoreCells(expected) => {
-                let actual = cells.stores.iter().fold(0_usize, |total, store| {
-                    total.saturating_add(usize::from(store.len()))
-                });
+                let actual = cells
+                    .circuit_completions
+                    .iter()
+                    .fold(0_usize, |total, completion| {
+                        total.saturating_add(usize::from(completion.outcome.store().len()))
+                    });
                 if actual == expected {
                     None
                 }

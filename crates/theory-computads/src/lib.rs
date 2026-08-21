@@ -60,6 +60,7 @@ pub use gandr_theory_cell_complexes::cell::CellId;
 pub use gandr_theory_cell_complexes::cell::CellStore;
 pub use gandr_theory_cell_complexes::pattern::Cat;
 pub use gandr_theory_cell_complexes::pattern::ConsPat;
+pub use gandr_theory_cell_complexes::pattern::MetaVar;
 pub use gandr_theory_cell_complexes::pattern::Pos;
 pub use gandr_theory_cell_complexes::pattern::ProdPat;
 pub use gandr_theory_cell_complexes::pattern::collect_cmd_metavars;

@@ -37,6 +37,8 @@ pub mod overlap;
 pub mod rewrite;
 pub mod tracelet;
 
+pub use gandr_theory_cell_complexes::boundary::CertificateIndex;
+
 pub use crate::completion::CompletionBudget;
 pub use crate::completion::CompletionOutcome;
 pub use crate::completion::DeclineReason;

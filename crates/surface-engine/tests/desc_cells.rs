@@ -54,7 +54,12 @@ mod tests
             "nothing is declined at the cell layer: {:?}",
             cells.diagnostics
         );
-        let store = cells.stores.first().expect("one store per description");
+        let store = cells
+            .circuit_completions
+            .first()
+            .expect("one completion per description")
+            .outcome
+            .store();
         // Two constructor frame cells (Zero⁻, Succ⁻) plus the two rule cells.
         assert_eq!(
             CellCount::from(4_usize),
@@ -100,7 +105,12 @@ mod tests
             "the decline names the operation and the reason: {}",
             decline.message
         );
-        let store = cells.stores.first().expect("one store per description");
+        let store = cells
+            .circuit_completions
+            .first()
+            .expect("one completion per description")
+            .outcome
+            .store();
         assert_eq!(
             CellCount::from(1_usize),
             store.len(),
@@ -129,7 +139,12 @@ mod tests
             "the rule is declined for its operation, not elaborated: {:?}",
             cells.diagnostics
         );
-        let store = cells.stores.first().expect("one store per description");
+        let store = cells
+            .circuit_completions
+            .first()
+            .expect("one completion per description")
+            .outcome
+            .store();
         assert_eq!(
             CellCount::from(1_usize),
             store.len(),
@@ -141,7 +156,10 @@ mod tests
     fn a_source_with_no_declarations_elaborates_to_no_stores()
     {
         let cells = elaborate_desc_cells(&elaborate_data_descs("ret ()").descs);
-        assert!(cells.stores.is_empty(), "no declaration, no store");
+        assert!(
+            cells.circuit_completions.is_empty(),
+            "no declaration, no completion"
+        );
         assert!(cells.diagnostics.is_empty(), "and nothing to decline");
     }
 
@@ -150,10 +168,12 @@ mod tests
     fn identities(source: TestText<'_>) -> Vec<(CellId, String, String)>
     {
         elaborate_desc_cells(&elaborate_data_descs(source.0).descs)
-            .stores
+            .circuit_completions
             .iter()
-            .flat_map(|store| {
-                store
+            .flat_map(|completion| {
+                completion
+                    .outcome
+                    .store()
                     .iter()
                     .map(|(id, cell)| (id, format!("{:?}", cell.lhs), format!("{:?}", cell.rhs)))
             })
@@ -239,7 +259,12 @@ mod tests
             "a repeat is a duplicate, not a decline: {:?}",
             cells.diagnostics
         );
-        let store = cells.stores.first().expect("one store per description");
+        let store = cells
+            .circuit_completions
+            .first()
+            .expect("one completion per description")
+            .outcome
+            .store();
         assert_eq!(
             CellCount::from(2_usize),
             store.len(),

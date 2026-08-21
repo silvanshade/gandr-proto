@@ -77,6 +77,33 @@ mod tests
         assert_eq!(1_usize, pending.len());
         assert_eq!(expected_unknown, pending[0][0]);
 
+        let mut unknown_right = valid.clone();
+        unknown_right.right = CellId(usize::MAX);
+        let expected_unknown_right = unknown_right.clone();
+        let unknown_right_outcome = complete_with_overlap_source(
+            store.clone(),
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![unknown_right]],
+        );
+        let CompletionOutcome::Declined {
+            reason:
+                DeclineReason::InvalidSuppliedOverlap(SuppliedOverlapError::UnknownRightCell {
+                    batch,
+                    overlap,
+                    cell,
+                }),
+            pending,
+            ..
+        } = unknown_right_outcome
+        else {
+            panic!("a stale supplied right id is a typed decline")
+        };
+        assert_eq!(0_usize, batch);
+        assert_eq!(0_usize, overlap);
+        assert_eq!(CellId(usize::MAX), cell);
+        assert_eq!(1_usize, pending.len());
+        assert_eq!(expected_unknown_right, pending[0][0]);
+
         let mut non_confluence = valid;
         non_confluence.kind = OverlapKind::Composition;
         let non_confluence_outcome = complete_with_overlap_source(
@@ -97,6 +124,32 @@ mod tests
         };
         assert_eq!(0_usize, batch);
         assert_eq!(0_usize, overlap);
+    }
+
+    #[test]
+    fn invalid_supplied_decline_is_terminal_on_resume()
+    {
+        let store = overlapping_rules();
+        let mut unknown = scheduled_confluence_batches(&store)
+            .into_iter()
+            .flatten()
+            .next()
+            .expect("the fixture supplies one confluence overlap");
+        unknown.right = CellId(usize::MAX);
+        let outcome = complete_with_overlap_source(
+            store,
+            CompletionBudget::new(64_usize.into(), 16_usize.into(), 64_usize.into()),
+            move |_| alloc::vec![alloc::vec![unknown]],
+        );
+        let resumed = outcome.clone().resume(CompletionBudget::new(
+            4_096_usize.into(),
+            4_096_usize.into(),
+            4_096_usize.into(),
+        ));
+        assert_eq!(
+            outcome, resumed,
+            "invalid supplied input remains a typed terminal refusal"
+        );
     }
 
     #[test]

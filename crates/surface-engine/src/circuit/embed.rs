@@ -57,7 +57,9 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
+use std::collections::HashMap;
 
+use gandr_theory_cell_complexes::alphabet::CellAlphabet;
 use gandr_theory_circuit_algebras::interface::Generator;
 use gandr_theory_circuit_algebras::interface::GeneratorLabel;
 use gandr_theory_circuit_algebras::interface::GeneratorSort;
@@ -73,27 +75,26 @@ use gandr_theory_circuit_algebras::matching::MatchCount;
 use gandr_theory_circuit_algebras::matching::MatchObstruction;
 use gandr_theory_circuit_algebras::matching::Matching;
 use gandr_theory_circuit_algebras::matching::embeddings;
+use gandr_theory_coherent_resolutions::CertificateIndex;
 use gandr_theory_coherent_resolutions::CompletionBudget;
 use gandr_theory_coherent_resolutions::CompletionOutcome;
 use gandr_theory_coherent_resolutions::Overlap;
+use gandr_theory_coherent_resolutions::OverlapKind;
 use gandr_theory_coherent_resolutions::complete_with_overlap_source;
-use gandr_theory_computads::Cat;
 use gandr_theory_computads::CellId;
 use gandr_theory_computads::CellStore;
 use gandr_theory_computads::ConsPat;
-use gandr_theory_computads::PositionStep;
+use gandr_theory_computads::MetaVar;
+use gandr_theory_computads::Pos;
 use gandr_theory_computads::ProdPat;
 use gandr_theory_computads::SequentAlphabet;
 use gandr_theory_computads::Subst;
 use gandr_theory_computads::collect_cmd_metavars;
 use gandr_theory_computads::instantiate_cell;
-use gandr_theory_computads::instantiate_position;
 use gandr_theory_levitation::CircuitBody;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::FreeTerm;
-use gandr_theory_levitation::Name;
 
-use crate::boundary::MatchDecision;
 /// Why a declared circuit body is not a diagram.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CircuitWiringError
@@ -272,6 +273,15 @@ pub struct CircuitRuleCell<'rule>
     pub cell: Option<CellId>,
 }
 
+/// The bounded work the circuit-to-sequent adapter may perform.
+///
+/// Rendering an admitted embedding, indexing one emitted certificate, and
+/// attaching one origin-bearing replay record each consume one adapter unit.
+/// The matcher and generic completion budgets remain separate ceilings.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CircuitAdapterBudget(pub usize);
+
 /// The declaration identity kept beside a structurally deduplicated cell.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct CircuitDeclarationOrigin
@@ -324,10 +334,11 @@ pub enum UnfaithfulCircuitOverlap
         /// The metavariable name.
         name: String,
     },
-    /// The pattern and target cell ids are identical, so a generic self-overlap
-    /// is not supplied.
-    NoConfluenceOverlap,
-    /// Two embeddings rendered the same peak, seam and unifier.
+    /// The induced substitution does not make the left cell and its apart
+    /// right leg agree.
+    NonUnifyingSubstitution,
+    /// Two embeddings of one declaration pair rendered the same peak, seam and
+    /// unifier, so one ordinary overlap cannot claim both circuit occurrences.
     DuplicateRenderedOverlap,
 }
 
@@ -345,20 +356,41 @@ pub enum CircuitOverlapDecline
     },
     /// The circuit embedding has no faithful ordinary-sequent rendering.
     Unfaithful(UnfaithfulCircuitOverlap),
+    /// The adapter exhausted its own bounded rendering/indexing budget.
+    AdapterBudget
+    {
+        /// The ceiling that was reached.
+        budget: CircuitAdapterBudget,
+    },
 }
 
-/// One admitted embedding and its supplied overlap/replay evidence.
+/// One admitted embedding and its supplied-overlap evidence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CircuitEmbeddingMatch
 {
     /// The declaration pair and circuit seam that own this evidence.
     pub origin: CircuitEmbeddingOrigin,
+    /// The ordinary sequent overlaps supplied by this embedding. These records
+    /// remain attached to the origin even when structural completion work is
+    /// shared with another declaration.
+    pub overlaps: Vec<Overlap>,
     /// The number of ordinary sequent overlaps supplied by this embedding.
     pub overlap_count: usize,
-    /// The number of its certificates that replayed against the final store.
-    pub certificates_replayed: usize,
     /// A typed decline when the embedding could not be rendered faithfully.
     pub decline: Option<CircuitOverlapDecline>,
+}
+
+/// One origin-bearing replay record for an ordinary overlap.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CircuitReplayEvidence
+{
+    /// The declaration pair and circuit seam that own the replay.
+    pub origin: CircuitEmbeddingOrigin,
+    /// The ordinary overlap whose certificate family was replayed.
+    pub overlap: Overlap,
+    /// Indices into [`CompletionOutcome::certificates`] that replayed for this
+    /// origin and overlap.
+    pub certificate_indices: Vec<CertificateIndex>,
 }
 
 /// One ordered circuit-pattern pair and its embedding-level evidence.
@@ -396,18 +428,72 @@ pub struct CircuitCompletion
     pub matches: Vec<CircuitCompletionMatch>,
     /// Surface-owned declaration origins for each cell id in the final store.
     pub cell_origins: BTreeMap<CellId, Vec<CircuitDeclarationOrigin>>,
+    /// Origin-bearing replay records, including the full circuit seam.
+    pub replay_evidence: Vec<CircuitReplayEvidence>,
+    /// A circuit-adapter decline if rendering or replay indexing hit its
+    /// independent ceiling.
+    pub adapter_decline: Option<CircuitAdapterBudget>,
 }
 
-/// One ordinary overlap together with the declaration-origin record that owns
-/// it. Keeping these together prevents replay attribution from becoming a
-/// second vector keyed only by structurally deduplicated cell ids.
+/// One ordinary overlap and all circuit origins that supplied it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct CircuitOverlapSeed
 {
-    /// The declaration-origin and circuit seam that supplied the overlap.
-    origin: CircuitEmbeddingOrigin,
     /// The ordinary sequent overlap supplied to completion.
     overlap: Overlap,
+    /// Every declaration/seam origin that shares this structural work.
+    origins: Vec<CircuitEmbeddingOrigin>,
+}
+
+/// A stable lookup key for one ordinary overlap.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct CircuitOverlapKey<A: CellAlphabet = SequentAlphabet>
+{
+    /// The left cell address.
+    left: CellId,
+    /// The right cell address.
+    right: CellId,
+    /// The overlap kind.
+    kind: OverlapKind,
+    /// The supplied unifier.
+    unifier: A::Subst,
+    /// The ordinary sequent seam.
+    seam: A::Pos,
+    /// The supplied peak.
+    peak: A::Cmd,
+}
+
+impl<A> From<&Overlap<A>> for CircuitOverlapKey<A>
+where
+    A: CellAlphabet,
+{
+    #[inline]
+    fn from(overlap: &Overlap<A>) -> Self
+    {
+        Self {
+            left: overlap.left,
+            right: overlap.right,
+            kind: overlap.kind,
+            unifier: overlap.unifier.clone(),
+            seam: overlap.seam.clone(),
+            peak: overlap.peak.clone(),
+        }
+    }
+}
+
+/// One declaration-pair rendering identity, used to reject only duplicate
+/// circuit occurrences rather than globally deduplicating their origins.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct CircuitOriginOverlapKey
+{
+    /// The pattern declaration.
+    pattern_index: usize,
+    /// The target declaration.
+    target_index: usize,
+    /// The full circuit seam.
+    seam: Seam,
+    /// The ordinary overlap shape.
+    overlap: CircuitOverlapKey,
 }
 
 /// The instantiated cell and supplied ordinary overlap family for one
@@ -426,29 +512,37 @@ struct RenderedCircuitOverlaps
 ///
 /// Each embedding is rendered independently. Its wire map induces a sequent
 /// substitution, [`gandr_theory_computads::instantiate_cell`] applies that
-/// substitution to the pattern cell, and the embedding seam is mapped into a
-/// sequent position through [`gandr_theory_computads::instantiate_position`].
-/// The generic overlap type and cell provenance remain untouched. If two wire
-/// embeddings render the same peak, seam and unifier, the surface records a
-/// typed unfaithful decline instead of pretending the two occurrences are
-/// distinct.
+/// substitution to the pattern cell, and the full circuit seam remains on the
+/// origin-bearing evidence. The ordinary confluence seam is the valid sequent
+/// root; it never pretends that a circuit wire index is a command-tree path.
+/// Structural overlap work is deduplicated by a stable key, while every
+/// declaration/seam origin remains attached to its own replay record.
 ///
 /// # Contract
 /// - requires: `rules` use cell ids from `store`; `None` means the
 ///   corresponding circuit rule was declined before cell admission.
 /// - ensures: every matcher-admitted embedding has one evidence record; each
-///   faithful rendering contributes one supplied ordinary confluence overlap to
-///   the generic source, and every emitted certificate is replay-checked before
-///   attribution to its declaration pair and circuit seam.
+///   faithfully rendered embedding contributes one supplied ordinary confluence
+///   overlap, unless the same declaration pair and seam already rendered that
+///   overlap and earns a typed duplicate decline.
+/// - ensures: the adapter performs one bounded rendering/indexing pass,
+///   consuming at most `adapter_budget` units; a ceiling reached after partial
+///   work is exposed through `adapter_decline` rather than reported as
+///   complete.
+/// - ensures: every emitted certificate is replayed at most once, and complete
+///   replay indexing yields origin-bearing [`CircuitReplayEvidence`] records.
 /// - ensures: structural cell deduplication remains intact, while
 ///   `cell_origins` retains every declaration that shares a cell id.
 /// - provides: the supplied instantiation seam between circuit diagrams and
 ///   generic cell completion, above both theory crates.
+/// - fails: no Rust error; matcher, rendering, and adapter refusals are typed
+///   in `matches`, `replay_evidence`, and `adapter_decline`.
 /// - panics: none.
 ///
+/// # Adequacy
 /// - hypothesis: L2 — separate embeddings, a non-unifying uninstantiated
 ///   sequent pair, and structurally deduplicated declarations are distinguished
-///   by their origin-bearing evidence, pending batches and replay counts.
+///   by origin-bearing evidence rather than counts alone.
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
 ///   `w1_two_embeddings_supply_two_critical_pairs`
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
@@ -464,9 +558,14 @@ pub fn complete_circuit_rules(
     rules: &[CircuitRuleCell<'_>],
     match_budget: MatchBudget,
     completion_budget: CompletionBudget,
+    adapter_budget: CircuitAdapterBudget,
 ) -> CircuitCompletion
 {
+    let mut adapter_remaining = adapter_budget.0;
+    let mut adapter_decline = None;
     let mut seeds = Vec::new();
+    let mut seed_indices = HashMap::new();
+    let mut rendered_indices = HashMap::new();
     let mut matches = Vec::new();
     let mut cell_origins = BTreeMap::new();
     for (pattern_index, pattern) in rules.iter().enumerate() {
@@ -504,10 +603,26 @@ pub fn complete_circuit_rules(
                         };
                         let mut evidence = CircuitEmbeddingMatch {
                             origin: origin.clone(),
+                            overlaps: Vec::new(),
                             overlap_count: 0_usize,
-                            certificates_replayed: 0_usize,
                             decline: None,
                         };
+                        if adapter_decline.is_some() {
+                            evidence.decline = Some(CircuitOverlapDecline::AdapterBudget {
+                                budget: adapter_budget,
+                            });
+                            matched.embeddings.push(evidence);
+                            continue;
+                        }
+                        if adapter_remaining == 0_usize {
+                            adapter_decline = Some(adapter_budget);
+                            evidence.decline = Some(CircuitOverlapDecline::AdapterBudget {
+                                budget: adapter_budget,
+                            });
+                            matched.embeddings.push(evidence);
+                            continue;
+                        }
+                        adapter_remaining = adapter_remaining.saturating_sub(1);
                         match render_embedding_overlaps(&mut store, pattern, target, embedding) {
                             | Ok(rendered) => {
                                 register_cell_origin(
@@ -516,20 +631,36 @@ pub fn complete_circuit_rules(
                                     &pattern_origin,
                                 );
                                 for overlap in rendered.overlaps {
-                                    if seeds.iter().any(|seed: &CircuitOverlapSeed| {
-                                        bool::from(same_rendered_overlap(&seed.overlap, &overlap))
-                                    }) {
+                                    let overlap_key = CircuitOverlapKey::from(&overlap);
+                                    let origin_key = CircuitOriginOverlapKey {
+                                        pattern_index,
+                                        target_index,
+                                        seam: origin.seam.clone(),
+                                        overlap: overlap_key.clone(),
+                                    };
+                                    if rendered_indices.contains_key(&origin_key) {
                                         evidence.decline = Some(CircuitOverlapDecline::Unfaithful(
                                             UnfaithfulCircuitOverlap::DuplicateRenderedOverlap,
                                         ));
                                         continue;
                                     }
+                                    rendered_indices.insert(origin_key, ());
+                                    evidence.overlaps.push(overlap.clone());
                                     evidence.overlap_count =
                                         evidence.overlap_count.saturating_add(1);
-                                    seeds.push(CircuitOverlapSeed {
-                                        origin: origin.clone(),
-                                        overlap,
-                                    });
+                                    if let Some(seed_index) =
+                                        seed_indices.get(&overlap_key).copied()
+                                    {
+                                        seeds[seed_index].origins.push(origin.clone());
+                                    }
+                                    else {
+                                        let seed_index = seeds.len();
+                                        seed_indices.insert(overlap_key, seed_index);
+                                        seeds.push(CircuitOverlapSeed {
+                                            overlap,
+                                            origins: alloc::vec![origin.clone()],
+                                        });
+                                    }
                                 }
                             },
                             | Err(decline) => evidence.decline = Some(decline),
@@ -541,7 +672,6 @@ pub fn complete_circuit_rules(
                 },
                 | Err(error) => matched.matcher_decline = Some(error),
             }
-            matched.certificates_replayed = 0_usize;
             matches.push(matched);
         }
     }
@@ -550,30 +680,45 @@ pub fn complete_circuit_rules(
         .map(|seed| alloc::vec![seed.overlap.clone()])
         .collect();
     let outcome = complete_with_overlap_source(store, completion_budget, move |_| initial_batches);
-    for seed in &seeds {
-        let replayed = outcome
-            .certificates()
-            .iter()
-            .filter(|certificate| {
-                certificate.overlap == seed.overlap
-                    && bool::from(certificate.replay(outcome.store()))
-            })
-            .count();
-        if replayed == 0_usize {
+    let mut certificates_by_overlap = HashMap::new();
+    let mut replay_index_complete = true;
+    for (index, certificate) in outcome.certificates().iter().enumerate() {
+        if adapter_remaining == 0_usize {
+            adapter_decline = Some(adapter_budget);
+            replay_index_complete = false;
+            break;
+        }
+        adapter_remaining = adapter_remaining.saturating_sub(1);
+        if !bool::from(certificate.replay(outcome.store())) {
             continue;
         }
-        if let Some(matched) = matches.iter_mut().find(|matched| {
-            matched.pattern_index == seed.origin.pattern.index
-                && matched.target_index == seed.origin.target.index
-        }) {
-            if let Some(embedding) = matched
-                .embeddings
-                .iter_mut()
-                .find(|embedding| embedding.origin == seed.origin)
-            {
-                embedding.certificates_replayed =
-                    embedding.certificates_replayed.saturating_add(replayed);
+        certificates_by_overlap
+            .entry(CircuitOverlapKey::from(&certificate.overlap))
+            .or_insert_with(Vec::new)
+            .push(CertificateIndex::from(index));
+    }
+    let mut replay_evidence = Vec::new();
+    if replay_index_complete {
+        for seed in &seeds {
+            let certificate_indices = certificates_by_overlap
+                .get(&CircuitOverlapKey::from(&seed.overlap))
+                .cloned()
+                .unwrap_or_default();
+            for origin in &seed.origins {
+                replay_evidence.push(CircuitReplayEvidence {
+                    origin: origin.clone(),
+                    overlap: seed.overlap.clone(),
+                    certificate_indices: certificate_indices.clone(),
+                });
             }
+        }
+    }
+    for evidence in &replay_evidence {
+        let replayed = evidence.certificate_indices.len();
+        if let Some(matched) = matches.iter_mut().find(|matched| {
+            matched.pattern_index == evidence.origin.pattern.index
+                && matched.target_index == evidence.origin.target.index
+        }) {
             matched.certificates_replayed = matched.certificates_replayed.saturating_add(replayed);
         }
     }
@@ -581,10 +726,23 @@ pub fn complete_circuit_rules(
         outcome,
         matches,
         cell_origins,
+        replay_evidence,
+        adapter_decline,
     }
 }
 
 /// Render one admitted circuit embedding into ordinary sequent overlaps.
+///
+/// # Contract
+/// - requires: both declaration cells are present and `embedding` has passed
+///   the matcher certificate check.
+/// - ensures: the returned cell is the structurally deduplicated instantiation
+///   of the pattern cell; every returned overlap is confluence at the valid
+///   sequent root, while the full circuit placement remains on its caller's
+///   [`CircuitEmbeddingOrigin`].
+/// - fails: a typed [`CircuitOverlapDecline`] for a missing cell or an
+///   unfaithful substitution/wiring.
+/// - panics: none.
 #[inline]
 fn render_embedding_overlaps(
     store: &mut CellStore,
@@ -614,6 +772,12 @@ fn render_embedding_overlaps(
                 side: CircuitOverlapSide::Pattern,
                 cell: Some(pattern_cell),
             })?,
+        store
+            .get(target_cell)
+            .ok_or(CircuitOverlapDecline::MissingCell {
+                side: CircuitOverlapSide::Target,
+                cell: Some(target_cell),
+            })?,
         pattern.body,
         target.body,
         embedding,
@@ -627,12 +791,7 @@ fn render_embedding_overlaps(
             });
         },
     };
-    if pattern_cell == target_cell {
-        return Err(CircuitOverlapDecline::Unfaithful(
-            UnfaithfulCircuitOverlap::NoConfluenceOverlap,
-        ));
-    }
-    let seam = mapped_sequent_seam(embedding);
+    let seam = mapped_sequent_seam();
     let overlap = Overlap::from_supplied_confluence(
         (
             pattern_cell,
@@ -662,9 +821,22 @@ fn render_embedding_overlaps(
     })
 }
 
-/// Derive a sequent substitution from the embedding's wire map.
+/// Derive a sequent substitution from the embedding's wire map and the
+/// production elaborator's apart-renamed right leg.
+///
+/// # Contract
+/// - requires: `cell` is the production cell elaborated from the pattern rule;
+///   `target_cell` is the cell used as the right overlap leg.
+/// - ensures: every pattern and apart-renamed target metavariable in the cell
+///   is bound to the same target-wire representative; `$ret` is aligned across
+///   the apart rename; the resulting substitution unifies the two left faces.
+/// - fails: [`CircuitOverlapDecline::Unfaithful`] for a missing wire, unmapped
+///   metavariable, conflicting binding, or non-unifying result.
+/// - panics: none.
+#[inline]
 fn induced_substitution(
     cell: &gandr_theory_computads::Cell,
+    target_cell: &gandr_theory_computads::Cell,
     pattern: &CircuitBody,
     target: &CircuitBody,
     embedding: &Embedding,
@@ -686,47 +858,124 @@ fn induced_substitution(
                 UnfaithfulCircuitOverlap::MissingWireMapping { wire: Wire(index) },
             ));
         };
-        mapped.insert(
-            name.as_ref().to_owned().into_boxed_str(),
-            target_name.clone(),
-        );
+        mapped.insert(name.as_ref().to_owned(), target_name.clone());
     }
-    let mut variables = Vec::new();
-    collect_cmd_metavars(&cell.lhs, &mut variables);
-    collect_cmd_metavars(&cell.rhs, &mut variables);
+    let mut left_variables = Vec::new();
+    collect_cmd_metavars(&cell.lhs, &mut left_variables);
+    collect_cmd_metavars(&cell.rhs, &mut left_variables);
+    let mut right_variables = Vec::new();
+    collect_cmd_metavars(&target_cell.lhs, &mut right_variables);
+    collect_cmd_metavars(&target_cell.rhs, &mut right_variables);
+    let (renamed_lhs, renamed_rhs) =
+        SequentAlphabet::rename_apart((&cell.lhs, &cell.rhs), (&target_cell.lhs, &target_cell.rhs));
+    let mut renamed_variables = Vec::new();
+    collect_cmd_metavars(&renamed_lhs, &mut renamed_variables);
+    collect_cmd_metavars(&renamed_rhs, &mut renamed_variables);
     let mut seen = BTreeSet::new();
     let mut substitution = Subst::new();
-    for variable in variables {
+    for variable in left_variables {
         if !seen.insert(variable.clone()) {
             continue;
         }
-        let Some(target_name) = mapped.get(variable.name.as_ref())
-        else {
-            continue;
-        };
-        if target_name.as_ref() == variable.name.as_ref() {
+        let target_name = target_metavariable_name(&variable, &mapped)?;
+        bind_metavariable(&mut substitution, variable, target_name)?;
+    }
+    let mut seen_right = BTreeSet::new();
+    for (variable, renamed) in right_variables.into_iter().zip(renamed_variables) {
+        if !seen_right.insert(variable.clone()) {
             continue;
         }
-        let accepted = match variable.cat {
-            | Cat::Producer => {
-                substitution.bind_prod(variable, ProdPat::meta(target_name.as_ref()))
-            },
-            | Cat::Consumer => {
-                substitution.bind_cons(variable, ConsPat::meta(target_name.as_ref()))
-            },
-        };
-        if !bool::from(accepted) {
-            return Err(CircuitOverlapDecline::Unfaithful(
-                UnfaithfulCircuitOverlap::UnmappedMetavariable {
-                    name: target_name.as_ref().to_owned(),
-                },
-            ));
-        }
+        let target_name = target_metavariable_name_in_target(&variable, &target_wires)?;
+        bind_metavariable(&mut substitution, renamed, target_name)?;
+    }
+    substitution.resolve();
+    if SequentAlphabet::apply_subst(&substitution, &cell.lhs)
+        != SequentAlphabet::apply_subst(&substitution, &renamed_lhs)
+    {
+        return Err(CircuitOverlapDecline::Unfaithful(
+            UnfaithfulCircuitOverlap::NonUnifyingSubstitution,
+        ));
     }
     Ok(substitution)
 }
 
+/// Map one cell metavariable to its target-wire representative.
+#[inline]
+fn target_metavariable_name(
+    variable: &MetaVar,
+    mapped: &BTreeMap<String, Name>,
+) -> Result<Name, CircuitOverlapDecline>
+{
+    if variable.name.as_ref() == "$ret" {
+        return Ok(Name::from("$ret"));
+    }
+    mapped.get(variable.name.as_ref()).cloned().ok_or_else(|| {
+        CircuitOverlapDecline::Unfaithful(UnfaithfulCircuitOverlap::UnmappedMetavariable {
+            name: variable.name.as_ref().to_owned(),
+        })
+    })
+}
+
+/// Keep a target cell's own metavariable name when aligning its apart leg.
+#[inline]
+fn target_metavariable_name_in_target(
+    variable: &MetaVar,
+    target_wires: &[Name],
+) -> Result<Name, CircuitOverlapDecline>
+{
+    if variable.name.as_ref() == "$ret"
+        || target_wires
+            .iter()
+            .any(|name| name.as_ref() == variable.name.as_ref())
+    {
+        return Ok(Name::from(variable.name.as_ref()));
+    }
+    Err(CircuitOverlapDecline::Unfaithful(
+        UnfaithfulCircuitOverlap::UnmappedMetavariable {
+            name: variable.name.as_ref().to_owned(),
+        },
+    ))
+}
+/// Add one producer or consumer binding, preserving its category.
+#[inline]
+fn bind_metavariable(
+    substitution: &mut Subst,
+    variable: MetaVar,
+    target_name: Name,
+) -> Result<(), CircuitOverlapDecline>
+{
+    if variable.name.as_ref() == target_name.as_ref() {
+        return Ok(());
+    }
+    let accepted = match variable.cat {
+        | Cat::Producer => {
+            substitution.bind_prod(variable.clone(), ProdPat::meta(target_name.as_ref()))
+        },
+        | Cat::Consumer => {
+            substitution.bind_cons(variable.clone(), ConsPat::meta(target_name.as_ref()))
+        },
+    };
+    if bool::from(accepted) {
+        Ok(())
+    }
+    else {
+        Err(CircuitOverlapDecline::Unfaithful(
+            UnfaithfulCircuitOverlap::UnmappedMetavariable {
+                name: variable.name.as_ref().to_owned(),
+            },
+        ))
+    }
+}
+
 /// Repeat the circuit matcher seam's first-appearance wire numbering.
+///
+/// # Contract
+/// - requires: `body` is the source body given to the circuit matcher.
+/// - ensures: returns exactly the unique wire names in matcher numbering order;
+///   a non-wire term earns a typed ground-argument decline.
+/// - fails: [`CircuitOverlapDecline::Unfaithful`] with
+///   [`UnfaithfulCircuitOverlap::GroundArgument`].
+/// - panics: none.
 #[inline]
 fn circuit_wire_names(body: &CircuitBody) -> Result<Vec<Name>, CircuitOverlapDecline>
 {
@@ -753,23 +1002,20 @@ fn circuit_wire_names(body: &CircuitBody) -> Result<Vec<Name>, CircuitOverlapDec
     Ok(names)
 }
 
-/// Map the embedding's target seam into the sequent position representation.
+/// Choose the only faithful ordinary-sequent seam for a circuit overlap.
+///
+/// A circuit seam is a pair of wire bijections, not a command-tree path.
+/// Therefore the circuit seam stays on [`CircuitEmbeddingOrigin`], while the
+/// generic confluence overlap uses the root position required by its type.
+///
+/// # Contract
+/// - ensures: returns the valid sequent root and performs no fabricated wire
+///   index to child-path conversion.
+/// - panics: none.
 #[inline]
-fn mapped_sequent_seam(embedding: &Embedding) -> gandr_theory_computads::Pos
+fn mapped_sequent_seam() -> Pos
 {
-    let target_wire = embedding
-        .seam()
-        .inputs
-        .pairs()
-        .into_iter()
-        .chain(embedding.seam().outputs.pairs())
-        .map(|(_, image)| image)
-        .next()
-        .or_else(|| embedding.image().first().copied().map(|edge| Wire(edge.0)));
-    let path = target_wire
-        .map(|wire| alloc::vec![PositionStep::from(wire.0)])
-        .unwrap_or_default();
-    instantiate_position::<SequentAlphabet>(&path)
+    SequentAlphabet::root_position()
 }
 
 /// Register a declaration origin without losing another declaration that
@@ -789,21 +1035,6 @@ fn register_cell_origin(
     if !entries.contains(origin) {
         entries.push(origin.clone());
     }
-}
-
-/// Compare only the ordinary rendering, not its declaration identity.
-#[inline]
-fn same_rendered_overlap(
-    left: &Overlap,
-    right: &Overlap,
-) -> MatchDecision
-{
-    MatchDecision(
-        left.kind == right.kind
-            && left.unifier == right.unifier
-            && left.seam == right.seam
-            && left.peak == right.peak,
-    )
 }
 
 /// Why one circuit rule's diagram could not be matched into another's.

@@ -182,7 +182,7 @@ pub struct ToyPos(pub Box<[usize]>);
 
 /// A toy substitution — an ordered map from metavariables to terms.
 #[repr(transparent)]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ToySubst(BTreeMap<ToyVar, Toy>);
 
 /// The toy orientation tag.
