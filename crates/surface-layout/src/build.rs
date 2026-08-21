@@ -257,9 +257,9 @@ impl<'meter> DocBuilder<'meter>
     /// `LimitExceeded` as applicable.
     ///
     /// # Adequacy
-    /// - hypothesis: L2 — owned and borrowed construction share the same input
-    ///   rejection and accounting path.
-    /// - witness: `algebra::text_rejects_a_carriage_return_a_line_feed_and_a_tab`.
+    /// - hypothesis: L3 — owned text preserves bytes and checked width while
+    ///   rejecting each forbidden scalar through the borrowed validation path.
+    /// - witness: `algebra::owned_text_preserves_bytes_width_and_rejects_forbidden_scalars`.
     #[inline]
     #[must_use = "the text handle is the stored document leaf"]
     pub fn text_owned(
@@ -314,9 +314,9 @@ impl<'meter> DocBuilder<'meter>
     /// `ArithmeticOverflow`, or `LimitExceeded` as applicable.
     ///
     /// # Adequacy
-    /// - hypothesis: L2 — owned and borrowed verbatim paths preserve the same
-    ///   scan and accounting semantics.
-    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
+    /// - hypothesis: L3 — owned verbatim preserves an ending shape and rejects
+    ///   a bare carriage return through the shared scanner.
+    /// - witness: `algebra::owned_verbatim_preserves_an_ending_and_rejects_a_bare_carriage_return`.
     #[inline]
     #[must_use = "the verbatim handle is the stored document leaf"]
     pub fn verbatim_owned(

@@ -270,6 +270,30 @@ mod tests
         }
         Ok(())
     }
+    /// Owned text preserves bytes and width and rejects forbidden scalars.
+    #[test]
+    fn owned_text_preserves_bytes_width_and_rejects_forbidden_scalars() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let doc = builder.text_owned(TextOwned::from(String::from("owned")))?;
+        let arena = builder.finish()?;
+        assert_eq!(
+            arena.stored_text(doc)?,
+            TextOwned::from(String::from("owned"))
+        );
+        assert_eq!(arena.stored_text_width(doc)?, ScalarWidth::from(5u32));
+
+        for text in ["bad\r", "bad\n", "bad\t"] {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            assert_eq!(
+                builder.text_owned(TextOwned::from(String::from(text))),
+                Err(BuildError::InvalidText)
+            );
+        }
+        Ok(())
+    }
 
     /// Concatenation preserves both input handles through finalization.
     #[test]
@@ -511,6 +535,41 @@ mod tests
         let mut builder = DocBuilder::try_new(&mut meter)?;
         assert_eq!(
             builder.verbatim(VerbatimSource::from(payload)),
+            Err(BuildError::InvalidVerbatimLineEnding)
+        );
+        Ok(())
+    }
+    /// Owned verbatim preserves an ending shape and rejects bare carriage
+    /// return.
+    #[test]
+    fn owned_verbatim_preserves_an_ending_and_rejects_a_bare_carriage_return()
+    -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "owned\ntext";
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let doc = builder.verbatim_owned(VerbatimOwned::from(String::from(payload)))?;
+        let arena = builder.finish()?;
+        assert_eq!(
+            arena.stored_verbatim(doc)?,
+            VerbatimOwned::from(String::from("owned\ntext"))
+        );
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines.len(), 2usize);
+        assert_eq!(lines[0].scalar_width(), ScalarWidth::from(5u32));
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[1].scalar_width(), ScalarWidth::from(4u32));
+        assert_eq!(lines[1].ending(), None);
+
+        let invalid_payload =
+        // workflow-gates: allow-escaped-newline
+        "bad\rbad";
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        assert_eq!(
+            builder.verbatim_owned(VerbatimOwned::from(String::from(invalid_payload))),
             Err(BuildError::InvalidVerbatimLineEnding)
         );
         Ok(())

@@ -470,9 +470,9 @@ impl TryFrom<TextOwned> for CheckedText
     /// an unrepresentable width.
     ///
     /// # Adequacy
-    /// - hypothesis: L2 — owned text follows the same validation and width
-    ///   semantics as borrowed text.
-    /// - witness: `algebra::identities_are_dense_insertion_ordinals_and_text_bytes_never_move`.
+    /// - hypothesis: L3 — owned text preserves bytes and checked width while
+    ///   rejecting each forbidden scalar through the shared validation path.
+    /// - witness: `algebra::owned_text_preserves_bytes_width_and_rejects_forbidden_scalars`.
     #[inline]
     fn try_from(source: TextOwned) -> Result<Self, Self::Error>
     {
@@ -538,8 +538,9 @@ impl TryFrom<VerbatimOwned> for VerbatimText
     /// Returns the typed scan error that prevents ingestion.
     ///
     /// # Adequacy
-    /// - hypothesis: L2 — owned verbatim follows the borrowed scan semantics.
-    /// - witness: `algebra::verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`.
+    /// - hypothesis: L3 — owned verbatim preserves an ending shape and rejects
+    ///   a bare carriage return through the shared scanner.
+    /// - witness: `algebra::owned_verbatim_preserves_an_ending_and_rejects_a_bare_carriage_return`.
     #[inline]
     fn try_from(source: VerbatimOwned) -> Result<Self, Self::Error>
     {
