@@ -58,6 +58,7 @@ use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use gandr_theory_circuit_algebras::interface::Generator;
 use gandr_theory_circuit_algebras::interface::GeneratorLabel;
@@ -567,7 +568,7 @@ pub fn complete_circuit_rules(
     let mut adapter_decline = None;
     let mut seeds: Vec<CircuitOverlapSeed> = Vec::new();
     let mut seed_indices: HashMap<CircuitOverlapKey, usize> = HashMap::new();
-    let mut rendered_indices: HashMap<CircuitOriginOverlapKey, ()> = HashMap::new();
+    let mut rendered_indices: HashSet<CircuitOriginOverlapKey> = HashSet::new();
     let mut matches = Vec::new();
     let mut cell_origins = BTreeMap::new();
     for (pattern_index, pattern) in rules.iter().enumerate() {
@@ -640,20 +641,22 @@ pub fn complete_circuit_rules(
                                         seam: origin.seam.clone(),
                                         overlap: overlap_key.clone(),
                                     };
-                                    if rendered_indices.contains_key(&origin_key) {
+                                    if rendered_indices.contains(&origin_key) {
                                         evidence.decline = Some(CircuitOverlapDecline::Unfaithful(
                                             UnfaithfulCircuitOverlap::DuplicateRenderedOverlap,
                                         ));
                                         continue;
                                     }
-                                    rendered_indices.insert(origin_key, ());
+                                    rendered_indices.insert(origin_key);
                                     evidence.overlaps.push(overlap.clone());
                                     evidence.overlap_count =
                                         evidence.overlap_count.saturating_add(1);
-                                    if let Some(seed_index) =
-                                        seed_indices.get(&overlap_key).copied()
-                                    {
-                                        seeds[seed_index].origins.push(origin.clone());
+                                    let existing_seed = seed_indices
+                                        .get(&overlap_key)
+                                        .copied()
+                                        .and_then(|seed_index| seeds.get_mut(seed_index));
+                                    if let Some(seed) = existing_seed {
+                                        seed.origins.push(origin.clone());
                                     }
                                     else {
                                         let seed_index = seeds.len();
@@ -880,7 +883,7 @@ fn induced_substitution(
             continue;
         }
         let target_name = target_metavariable_name(&variable, &mapped)?;
-        bind_metavariable(&mut substitution, variable, target_name)?;
+        bind_metavariable(&mut substitution, &variable, &target_name)?;
     }
     let mut seen_right = BTreeSet::new();
     for (variable, renamed) in right_variables.into_iter().zip(renamed_variables) {
@@ -888,7 +891,7 @@ fn induced_substitution(
             continue;
         }
         let target_name = target_metavariable_name_in_target(&variable, &target_wires)?;
-        bind_metavariable(&mut substitution, renamed, target_name)?;
+        bind_metavariable(&mut substitution, &renamed, &target_name)?;
     }
     substitution.resolve();
     if SequentAlphabet::apply_subst(&substitution, &cell.lhs)
@@ -942,8 +945,8 @@ fn target_metavariable_name_in_target(
 #[inline]
 fn bind_metavariable(
     substitution: &mut Subst,
-    variable: MetaVar,
-    target_name: Name,
+    variable: &MetaVar,
+    target_name: &Name,
 ) -> Result<(), CircuitOverlapDecline>
 {
     if variable.name.as_ref() == target_name.as_ref() {

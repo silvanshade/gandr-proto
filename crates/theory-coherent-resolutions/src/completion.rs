@@ -242,7 +242,10 @@ impl<A: CellAlphabet> CompletionOutcome<A>
     ) -> Self
     {
         match self {
-            | Self::Completed { .. } => self,
+            // A completed outcome has nothing to resume, and an invalid-supply
+            // decline is terminal by contract: resuming it is the defect this
+            // repair closes.
+            | Self::Completed { .. }
             | Self::Declined {
                 reason: DeclineReason::InvalidSuppliedOverlap(_),
                 ..

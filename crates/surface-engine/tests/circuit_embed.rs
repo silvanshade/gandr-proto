@@ -596,7 +596,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
                 (input, output)
             })
             .collect::<alloc::vec::Vec<_>>();
-        seam_pairs.sort_unstable_by_key(|(input, output)| (input.0, output.0));
+        seam_pairs.sort_unstable_by_key(|&(input, output)| (input.0, output.0));
         assert_eq!(
             alloc::vec![(Wire(0), Wire(1)), (Wire(2), Wire(3))],
             seam_pairs,
@@ -856,7 +856,7 @@ sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n\n  rule first : (\n    rule
                 (input, output)
             })
             .collect::<alloc::vec::Vec<_>>();
-        seam_pairs.sort_unstable_by_key(|(input, output)| (input.0, output.0));
+        seam_pairs.sort_unstable_by_key(|&(input, output)| (input.0, output.0));
         assert_eq!(
             alloc::vec![(Wire(2), Wire(3)), (Wire(4), Wire(5))],
             seam_pairs,

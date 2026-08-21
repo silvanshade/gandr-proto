@@ -227,9 +227,10 @@ const CIRCUIT_ADAPTER_BUDGET: usize = 4_096_usize;
 /// retains the complete generic outcome, including the adapter's evidence.
 ///
 /// # Contract
-/// - ensures: one [`CircuitCompletionMatch`] per ordered pair of circuit rules,
-///   in declaration order, pattern-major; every admitted embedding is retained
-///   in structured completion evidence, including a typed rendering decline.
+/// - ensures: one [`crate::circuit::embed::CircuitCompletionMatch`] per ordered
+///   pair of circuit rules, in declaration order, pattern-major; every admitted
+///   embedding is retained in structured completion evidence, including a typed
+///   rendering decline.
 /// - ensures: the returned completion outcome retains its final or as-of-
 ///   decline store, derived cells, pending batches, decline reason and
 ///   certificates.
