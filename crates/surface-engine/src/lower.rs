@@ -8142,8 +8142,10 @@ mod tests
     #[test]
     fn extern_block_registers_a_foreign_module_and_no_runnable_item() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"m\" {\n  def cos(x: f64) -> f64;\n  def pow(base: \
-                      f64, exp: f64) -> f64;\n}";
+        let source = r#"extern "c" from "m" {
+  def cos(x: f64) -> f64;
+  def pow(base: f64, exp: f64) -> f64;
+}"#;
         let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
         assert!(
             lowered.items.is_empty(),
@@ -8179,8 +8181,10 @@ mod tests
     #[test]
     fn extern_block_alias_separates_namespace_from_library_path() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"./testlib\" as testlib {\n  def add(left: i32, \
-                     right: i32) -> i32;\n}\ntestlib.add(2, 3)";
+        let source = r#"extern "c" from "./testlib" as testlib {
+  def add(left: i32, right: i32) -> i32;
+}
+testlib.add(2, 3)"#;
         let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
         let module = lowered
             .foreign
@@ -8207,7 +8211,10 @@ mod tests
     #[test]
     fn foreign_call_elaborates_to_a_perform_against_the_library_signature() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"m\" {\n  def cos(x: f64) -> f64;\n}\nm.cos(2.0f64)";
+        let source = r#"extern "c" from "m" {
+  def cos(x: f64) -> f64;
+}
+m.cos(2.0f64)"#;
         let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
         assert_eq!(1, lowered.items.len(), "only the call is a runnable item");
         let item = lowered
@@ -8249,8 +8256,11 @@ mod tests
     #[test]
     fn cstr_and_opaque_handle_boundary_types_map_per_section_4() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"lib\" {\n  type Db;\n  def open(path: CStr) -> \
-                      Db;\n  def size(db: Db) -> i64;\n}";
+        let source = r#"extern "c" from "lib" {
+  type Db;
+  def open(path: CStr) -> Db;
+  def size(db: Db) -> i64;
+}"#;
         let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
         let module = lowered
             .foreign
@@ -8290,7 +8300,10 @@ mod tests
     #[test]
     fn foreign_call_to_an_unknown_member_is_unsupported() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"m\" {\n  def cos(x: f64) -> f64;\n}\nm.nope(1.0f64)";
+        let source = r#"extern "c" from "m" {
+  def cos(x: f64) -> f64;
+}
+m.nope(1.0f64)"#;
         let error = lower_source(source.into())
             .err()
             .ok_or_else(|| "an unknown foreign member must be rejected".to_owned())?;
@@ -8304,8 +8317,10 @@ mod tests
     #[test]
     fn foreign_call_arity_mismatch_is_unsupported() -> Result<(), String>
     {
-        let source = "extern \"c\" from \"m\" {\n  def pow(base: f64, exp: f64) -> \
-                      f64;\n}\nm.pow(2.0f64)";
+        let source = r#"extern "c" from "m" {
+  def pow(base: f64, exp: f64) -> f64;
+}
+m.pow(2.0f64)"#;
         let error = lower_source(source.into())
             .err()
             .ok_or_else(|| "an arity mismatch must be rejected".to_owned())?;
@@ -8536,7 +8551,10 @@ mod tests
         // A user `extern` declaration named `fs` claims the namespace: the
         // call takes the foreign path (record payload keyed by the declared
         // parameter), not the host path (bare payload).
-        let source = "extern \"c\" from \"fs\" {\n  def read(x: f64) -> f64;\n}\nfs.read(2.0f64)";
+        let source = r#"extern "c" from "fs" {
+  def read(x: f64) -> f64;
+}
+fs.read(2.0f64)"#;
         let lowered = lower_source(source.into()).map_err(|error| error.to_string())?;
         let item = lowered
             .items
@@ -8576,7 +8594,9 @@ mod tests
     {
         // `Integer` is not a boundary atom — the boundary demands a concrete
         // fixed-width atom (`spec:implementation/foreign-interface.md`).
-        let source = "extern \"c\" from \"m\" {\n  def f(x: Integer) -> f64;\n}";
+        let source = r#"extern "c" from "m" {
+  def f(x: Integer) -> f64;
+}"#;
         let error = lower_source(source.into())
             .err()
             .ok_or_else(|| "a non-boundary parameter type must be rejected".to_owned())?;

@@ -204,14 +204,10 @@ mod tests
     #[test]
     fn absurd_endpoint_index_assignment_is_refused()
     {
-        let source = concat!(
-            "def id(a: Type, x: a) -> F a { ret x }\n",
-            "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), \
-             g: U[\u{3c9}] (b -> F c), x: a) -> F c { run y <- f(x); g(y) }\n",
-            "def absurd(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> \
-             F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) \
-             { ret here(f) }\n",
-        );
+        let source = r#"def id(a: Type, x: a) -> F a { ret x }
+def comp(a: Type, b: Type, c: Type, f: U[ω] (a -> F b), g: U[ω] (b -> F c), x: a) -> F c { run y <- f(x); g(y) }
+def absurd(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) { ret here(f) }
+"#;
         let mut session = Session::new();
         let submission = session.submit(source).expect("lowering must be total");
         assert!(
@@ -226,12 +222,10 @@ mod tests
     #[test]
     fn associativity_witness_application_is_refused()
     {
-        let source = concat!(
-            "def unit = 0;\n",
-            "def mul(x: Integer, y: Integer) -> F Integer { ret x + y }\n",
-            "def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, \
-             mul(mul(x, y), z), mul(x, mul(y, z))) { ret here(mul(mul(x, y), z)) }\n",
-        );
+        let source = r#"def unit = 0;
+def mul(x: Integer, y: Integer) -> F Integer { ret x + y }
+def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), z), mul(x, mul(y, z))) { ret here(mul(mul(x, y), z)) }
+"#;
         let mut session = Session::new();
         let submission = session.submit(source).expect("lowering must be total");
         assert!(
