@@ -33,6 +33,9 @@
 //!   sealing;
 //! - [`discipline`] — the rules the checker applies beside the judgement:
 //!   subsumption and total error marking;
+//! - [`formation`] — the type-formation judgement: what classifier each type is
+//!   formed at, total over both type enums, with the level derived through the
+//!   one level algebra;
 //! - [`kernel_bridge`] — the lowering into the certified kernel's closed
 //!   subset, the one engine that stays beside the judgements because its subset
 //!   is defined by what they admit.
@@ -92,5 +95,6 @@
 extern crate alloc;
 
 pub mod discipline;
+pub mod formation;
 pub mod judgements;
 pub mod kernel_bridge;
