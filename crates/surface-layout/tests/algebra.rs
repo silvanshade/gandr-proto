@@ -30,6 +30,7 @@ mod tests
     use gandr_surface_layout::measure::LayoutOptions;
     use gandr_surface_layout::measure::PhysicalLineEnding;
     use gandr_surface_layout::measure::WidthTaint;
+    use gandr_surface_layout::render::render;
     use gandr_surface_layout::resolve::resolve;
     use gandr_surface_layout::units::BuildStepsUsed;
     use gandr_surface_layout::units::ComputationWidth;
@@ -311,6 +312,7 @@ mod tests
     #[test]
     fn text_rejects_a_carriage_return_a_line_feed_and_a_tab() -> Result<(), BuildError>
     {
+        // workflow-gates: allow-escaped-newline
         for text in ["bad\r", "bad\n", "bad\t"] {
             let mut meter = BuildMeter::try_new(generous_limits())?;
             let mut builder = DocBuilder::try_new(&mut meter)?;
@@ -335,6 +337,7 @@ mod tests
         );
         assert_eq!(arena.stored_text_width(doc)?, ScalarWidth::from(5u32));
 
+        // workflow-gates: allow-escaped-newline
         for text in ["bad\r", "bad\n", "bad\t"] {
             let mut meter = BuildMeter::try_new(generous_limits())?;
             let mut builder = DocBuilder::try_new(&mut meter)?;
@@ -1566,6 +1569,150 @@ mod tests
             })
         ));
 
+        Ok(())
+    }
+    /// The fused renderer emits exact text and selected metadata.
+    #[test]
+    fn render_text_and_layout_metadata_are_exact() -> Result<(), RenderError>
+    {
+        let (arena, root, _) =
+            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::default();
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        let rendered = render(&arena, root, &options, &mut meter)?;
+        assert_eq!(rendered.text, "abc");
+        assert_eq!(rendered.cost, LayoutCost {
+            squared_overflow: SquaredOverflow::from(0u64),
+            line_breaks: LineBreaks::from(0u64),
+        });
+        assert_eq!(rendered.width_tainted, WidthTaint::Untainted);
+        assert_eq!(u64::from(meter.usage().output_bytes), 3u64);
+        assert_eq!(u64::from(meter.usage().vm_steps), 1u64);
+        Ok(())
+    }
+
+    /// Verbatim bytes remain mixed while layout-owned endings use the option.
+    #[test]
+    fn render_preserves_verbatim_bytes_and_physical_endings() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let payload =
+            // workflow-gates: allow-escaped-newline
+            "a\r\nb\n";
+        let verbatim = builder
+            .verbatim(VerbatimSource::from(payload))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let hard_line = builder.hard_line();
+        let root = builder
+            .concat(verbatim, hard_line)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(8u32),
+            PhysicalLineEnding::CrLf,
+        )?;
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        let rendered = render(&arena, root, &options, &mut meter)?;
+        // workflow-gates: allow-escaped-newline
+        assert_eq!(rendered.text, "a\r\nb\n\r\n");
+        assert_eq!(u64::from(meter.usage().output_bytes), 7u64);
+        Ok(())
+    }
+
+    /// A tainted root still renders complete left-biased output.
+    #[test]
+    fn render_tainted_root_uses_complete_left_biased_output() -> Result<(), RenderError>
+    {
+        let mut build_meter =
+            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut builder =
+            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let short = builder
+            .text(TextSource::from("aaa"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let long = builder
+            .text(TextSource::from("aaaa"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let shared = builder
+            .text(TextSource::from("x"))
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let left = builder
+            .concat(short, shared)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let right = builder
+            .concat(long, shared)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let root = builder
+            .choice(left, right)
+            .map_err(|_error| RenderError::UnknownDoc)?;
+        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(2u32),
+            PhysicalLineEnding::Lf,
+        )?;
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        let rendered = render(&arena, root, &options, &mut meter)?;
+        assert_eq!(rendered.text, "aaax");
+        assert_eq!(rendered.width_tainted, WidthTaint::Tainted);
+        Ok(())
+    }
+
+    /// Output and machine ceilings fail before output can escape.
+    #[test]
+    fn render_limits_fail_without_partial_output() -> Result<(), RenderError>
+    {
+        let (arena, root, _) =
+            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::default();
+        let mut limits = generous_render_limits();
+        limits.max_output_bytes = MaxOutputBytes::from(2u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            render(&arena, root, &options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::OutputBytes,
+                ..
+            })
+        ));
+        assert_eq!(u64::from(meter.usage().output_bytes), 0u64);
+
+        let mut limits = generous_render_limits();
+        limits.max_vm_steps = MaxVmSteps::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            render(&arena, root, &options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::VmSteps,
+                ..
+            })
+        ));
+        assert_eq!(u64::from(meter.usage().output_bytes), 0u64);
+        Ok(())
+    }
+
+    /// The VM stack ceiling is checked before the initial plan identity enters.
+    #[test]
+    fn render_vm_stack_limit_is_checked_before_output() -> Result<(), RenderError>
+    {
+        let (arena, root, _) =
+            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let options = LayoutOptions::default();
+        let mut limits = generous_render_limits();
+        limits.max_vm_stack = MaxVmStack::from(0u64);
+        let mut meter = RenderMeter::try_new(limits)?;
+        assert!(matches!(
+            render(&arena, root, &options, &mut meter),
+            Err(RenderError::LimitExceeded {
+                kind: gandr_surface_layout::error::RenderLimitKind::VmStack,
+                ..
+            })
+        ));
+        assert_eq!(u64::from(meter.usage().output_bytes), 0u64);
         Ok(())
     }
 }
