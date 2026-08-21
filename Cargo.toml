@@ -26,6 +26,7 @@ members = [
   "crates/surface-driver",
   "crates/surface-engine",
   "crates/surface-grammar",
+  "crates/surface-layout",
   "crates/surface-lsp",
   "crates/surface-parser",
   "crates/surface-render-remote",
@@ -593,6 +594,7 @@ default-features = false
 # - gandr-kernel-strata (dev)
 # - gandr-storage-artifact (dev)
 # - gandr-surface-engine (dev)
+# - gandr-surface-layout (dev)
 # - gandr-surface-parser (dev)
 # - gandr-theory-computads (dev)
 # - gandr-theory-graphs (dev)
@@ -686,6 +688,7 @@ features = ["full", "parsing", "visit"]
 # - gandr-storage-artifact
 # - gandr-storage-prolly-trees
 # - gandr-surface-engine
+# - gandr-surface-layout
 # - gandr-surface-lsp
 # - gandr-surface-repl
 # - gandr-surface-tui
