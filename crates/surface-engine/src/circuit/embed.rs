@@ -87,19 +87,15 @@ use gandr_theory_computads::CellStore;
 use gandr_theory_computads::ConsPat;
 use gandr_theory_computads::MetaVar;
 use gandr_theory_computads::Pos;
-use gandr_theory_computads::PositionStep;
 use gandr_theory_computads::ProdPat;
 use gandr_theory_computads::SequentAlphabet;
 use gandr_theory_computads::Subst;
 use gandr_theory_computads::collect_cmd_metavars;
 use gandr_theory_computads::instantiate_cell;
-use gandr_theory_computads::instantiate_position;
 use gandr_theory_levitation::CircuitBody;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
-
-use crate::boundary::MatchDecision;
 
 /// Why a declared circuit body is not a diagram.
 #[derive(Clone, Debug, Eq, PartialEq)]
