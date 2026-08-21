@@ -59,7 +59,14 @@ mod tests
     #[test]
     fn an_unread_module_body_is_refused_not_emptied()
     {
-        let source = "module M : #{\n  val x : Integer\n} {\n  def x = 1;\n}\n\ndef after = 1;\n";
+        let source = r#"module M : #{
+  val x : Integer
+} {
+  def x = 1;
+}
+
+def after = 1;
+"#;
         let outcomes = outcomes(TestText(source));
         assert!(
             matches!(outcomes.as_slice(), [ItemOutcome::Holey]),
@@ -82,7 +89,12 @@ mod tests
     #[test]
     fn a_readable_module_keeps_its_members_and_its_successor()
     {
-        let source = "module M {\n  def y = 2;\n}\n\ndef after = 1;\n";
+        let source = r#"module M {
+  def y = 2;
+}
+
+def after = 1;
+"#;
         let outcomes = outcomes(TestText(source));
         assert_eq!(
             2,
@@ -103,7 +115,10 @@ mod tests
     #[test]
     fn an_empty_module_is_not_an_unread_one()
     {
-        let source = "module M {}\n\ndef after = 1;\n";
+        let source = r#"module M {}
+
+def after = 1;
+"#;
         let outcomes = outcomes(TestText(source));
         assert_eq!(
             2,
@@ -119,7 +134,12 @@ mod tests
     #[test]
     fn an_unread_member_keeps_its_own_report()
     {
-        let source = "module M {\n  type Hom = Type;\n}\n\ndef after = 1;\n";
+        let source = r#"module M {
+  type Hom = Type;
+}
+
+def after = 1;
+"#;
         let spans = goal_spans(TestText(source));
         assert!(
             spans.iter().any(|span| span.start > 0
