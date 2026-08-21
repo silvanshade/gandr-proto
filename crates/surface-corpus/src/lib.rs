@@ -1848,23 +1848,29 @@ mod tests
     }
 
     /// A shell program that returns the string `"present"` (model example 24).
-    const COND_SRC: &str = "{\n  run probe <- #!{ test -d /tmp; };\n  (if probe.exit_code == 0 \
-                            { ret \"present\" } else { ret \"absent\" } : F String)\n}";
+    const COND_SRC: &str = r#"{
+  run probe <- #!{ test -d /tmp; };
+  (if probe.exit_code == 0 { ret "present" } else { ret "absent" } : F String)
+}"#;
 
     /// A shell program that exits with code 3 (model example 26).
-    const EXIT_SRC: &str = "{\n  run missing <- \
-                            env.get(\"GANDR_CORPUS_UNSET_VARIABLE_ZZQ\");\n  run code <- (if \
-                            string.eq(missing, \"\") { ret 3 } else { ret 7 } : F Integer);\n  \
-                            proc.exit(code)\n}";
+    const EXIT_SRC: &str = r#"{
+  run missing <- env.get("GANDR_CORPUS_UNSET_VARIABLE_ZZQ");
+  run code <- (if string.eq(missing, "") { ret 3 } else { ret 7 } : F Integer);
+  proc.exit(code)
+}"#;
 
     /// A program declaring a foreign `sensor` module then calling it in a world
     /// with no handler installed: it blames `perform-no-handler` (example 22).
-    const SENSOR_SRC: &str =
-        "extern \"c\" from \"sensor\" {\n  def read(channel: i32) -> i64;\n}\n\nsensor.read(0i32)";
+    const SENSOR_SRC: &str = r#"extern "c" from "sensor" {
+  def read(channel: i32) -> i64;
+}
+
+sensor.read(0i32)"#;
 
     /// A program carrying a `package` attribute on its unit-root definition.
-    const META_SRC: &str = "@[package(#{ name = \"acme/parser\", version = \"1.4.0\" })]\ndef \
-                            parser_unit = ();";
+    const META_SRC: &str = r#"@[package(#{ name = "acme/parser", version = "1.4.0" })]
+def parser_unit = ();"#;
 
     #[test]
     fn parse_case_rejects_malformed_directives()
@@ -1963,8 +1969,8 @@ mod tests
         // licenses none and says which half is missing.
         assert!(
             check_case(concat!(
-                "data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; \
-                 rule unwrap(MkWrap(x)) ==> x; }\n",
+                r#"data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; rule unwrap(MkWrap(x)) ==> x; }
+"#,
                 "//",
                 "@ mode: desc\n",
                 "//",
@@ -1975,8 +1981,8 @@ mod tests
         );
         assert!(
             check_case(concat!(
-                "data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; \
-                 rule unwrap(MkWrap(x)) ==> x; }\n",
+                r#"data Wrap : Type { MkWrap : (n : Wrap) --> Wrap; oper unwrap(w : Wrap) -> Wrap; rule unwrap(MkWrap(x)) ==> x; }
+"#,
                 "//",
                 "@ mode: desc\n",
                 "//",
