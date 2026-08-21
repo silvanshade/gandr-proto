@@ -370,7 +370,11 @@ mod tests
         // Losslessness: the committed tree's tile + space leaves reconstruct the
         // exact source, including interleaved trivia.
         let pbg = built_in()?;
-        let src = "// a comment\ndef greeting = \"hi\";\n\nret greeting\n";
+        let src = r#"// a comment
+def greeting = "hi";
+
+ret greeting
+"#;
         let result = parse(&pbg, SourceSlice::from(src))?;
         let rebuilt = reconstruct(result.cst(), result.cst().root())?;
         assert_eq!(rebuilt, src, "the committed tree reconstructs the source");
