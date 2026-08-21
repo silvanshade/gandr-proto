@@ -2689,8 +2689,7 @@ mod tests
         ));
         assert!(
             !bool::from(nbe.converts(&erased, &bare)),
-            "a 0-graded thunk eta-expanded, manufacturing a force the grade \
-             discipline refuses"
+            r#"a 0-graded thunk eta-expanded, manufacturing a force the grade discipline refuses"#,
         );
         assert!(
             !bool::from(nbe.converts(&bare, &erased)),
@@ -2741,8 +2740,7 @@ mod tests
         let witnessed = Rc::new(var("f"));
         assert!(
             bool::from(nbe.converts(&stated, &witnessed)),
-            "a thunked five-argument application over a definition did not \
-             reduce to the variable it returns"
+            r#"a thunked five-argument application over a definition did not reduce to the variable it returns"#,
         );
 
         // The separating case: the same spine against a *different* variable
@@ -2846,9 +2844,7 @@ mod tests
         let bare = thunk(neutral());
         assert!(
             bool::from(nbe.converts(&piped, &bare)),
-            "a continuation that reduces to a return of its binder did not \
-             collapse — the canonicalization is reading the stored body rather \
-             than the normal form"
+            r#"a continuation that reduces to a return of its binder did not collapse — the canonicalization is reading the stored body rather than the normal form"#,
         );
         assert!(
             bool::from(nbe.converts(&bare, &piped)),
