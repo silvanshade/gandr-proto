@@ -1149,7 +1149,7 @@ fn dominates(
 ///   boundary witnesses distinguish the resolver's semantic decisions.
 /// - witness: `algebra::exhaustive_small_documents_match_the_direct_oracle`
 /// - witness: `algebra::shared_contexts_reuse_memo_states`
-/// - witness: `algebra::tainted_contexts_remain_distinct`
+/// - witness: `resolve::tests::tainted_promises_retain_distinct_contexts_and_forced_measures`
 #[inline]
 pub fn resolve(
     arena: &DocArena,
