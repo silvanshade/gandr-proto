@@ -201,6 +201,8 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 
 ## Rust, automation, and diagnostics
 
+- If a `mise` task exists for an operation, the task is the intended way to run it.
+  Check `mise tasks` before invoking any tool directly: tasks carry pinned toolchains and environment the bare binary does not (stable `rustfmt` silently ignores this repository's nightly-only options and reformats against the committed style), so a bare invocation can mutate the tree or report success against the wrong configuration.
 - Read [`docs/workflow/rust.md`](docs/workflow/rust.md) before writing or reviewing Rust.
   It owns the no-partial-functions policy, checked arithmetic, typed errors, contract documentation, and production-versus-test lint posture.
 - New automation or a new script starts behind a named `mise` task, which remains the stable entry point.
