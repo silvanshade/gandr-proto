@@ -58,20 +58,49 @@ mod tests
     /// A `sign` block declaring two circuit rules, the second of which contains
     /// the first's shape: `cong1` is one redex under one frame, and `cong2`
     /// puts a second frame on top of the same shape.
-    const NESTED_CONGRUENCES: &str = "data Nat : Type {\n  Zero : Nat;\n  Succ : (n : Nat) --> \
-                                      Nat;\n}\n\nsign Nat {\n  sort Nat : Type;\n  oper add : \
-                                      (Nat, Nat) --> Nat;\n  oper neg : (Nat) --> Nat;\n\n  rule cong1 : (\n    rule p : Nat \
-                                      ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : \
-                                      Nat) {\n    node : p(x) ==> (x\u{2032});\n    node : \
-                                      add(x\u{2032}, y) --> (z);\n  };\n\n  rule cong2 : (\n    \
-                                      rule p : Nat ==> Nat,\n    data x : Nat,\n    data y : Nat,\n    \
-                                      data w : Nat\n  ) ==> (v : Nat) {\n    node : p(x) ==> \
-                                      (x\u{2032});\n    node : add(x\u{2032}, y) --> (z);\n    \
-                                      node : add(z, w) --> (v);\n  };\n\n  rule viaOper : (\n    \
-                                      data x : Nat\n  ) ==> (z : Nat) {\n    node : neg(x) --> \
-                                      (z);\n  };\n\n  rule viaRewrite : (\n    rule neg : Nat \
-                                      ==> Nat,\n    data x : Nat\n  ) ==> (z : Nat) {\n    node \
-                                      : neg(x) ==> (z);\n  };\n}";
+    const NESTED_CONGRUENCES: &str = r#"data Nat : Type {
+  Zero : Nat;
+  Succ : (n : Nat) --> Nat;
+}
+
+sign Nat {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  oper neg : (Nat) --> Nat;
+
+  rule cong1 : (
+    rule p : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : add(x′, y) --> (z);
+  };
+
+  rule cong2 : (
+    rule p : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat,
+    data w : Nat
+  ) ==> (v : Nat) {
+    node : p(x) ==> (x′);
+    node : add(x′, y) --> (z);
+    node : add(z, w) --> (v);
+  };
+
+  rule viaOper : (
+    data x : Nat
+  ) ==> (z : Nat) {
+    node : neg(x) --> (z);
+  };
+
+  rule viaRewrite : (
+    rule neg : Nat ==> Nat,
+    data x : Nat
+  ) ==> (z : Nat) {
+    node : neg(x) ==> (z);
+  };
+}"#;
     /// A real description whose two admitted circuit cells have different
     /// spheres while the target body contains the pattern body.
     const ADMITTED_COMPLETION_ROUTE: &str = r#"data Nat : Type {
