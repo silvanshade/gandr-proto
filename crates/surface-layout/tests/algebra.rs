@@ -1640,6 +1640,10 @@ mod tests
         let mut meter = RenderMeter::try_new(generous_render_limits())?;
         let rendered = render(&arena, root, &options, &mut meter)?;
         assert_eq!(rendered.text, "aaax");
+        assert_eq!(rendered.cost, LayoutCost {
+            squared_overflow: SquaredOverflow::from(4u64),
+            line_breaks: LineBreaks::from(0u64),
+        });
         assert_eq!(rendered.width_tainted, WidthTaint::Tainted);
         Ok(())
     }
