@@ -116,6 +116,45 @@ fn module_declarations_mold_zero_obligation() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// Prefix type formers must keep their recursive operand inside the form.
+///
+/// The positive cases separate real operands from typed-hole operands and
+/// exercise both a comma-separated generic argument list and a declaration
+/// value. The negative cases keep a missing operand loud, including inside a
+/// comma-separated list.
+#[test]
+fn prefix_type_formers_group_required_operands() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let cases: [(&str, bool); 9] = [
+        ("F Integer", true),
+        ("U Integer", true),
+        ("F ?", true),
+        ("U ?", true),
+        ("def suspended : U ?;", true),
+        ("List(F Integer, U ?)", true),
+        ("Integer -> Integer", true),
+        ("F", false),
+        ("List(F, U)", false),
+    ];
+    for (src, expected_clean) in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert_eq!(
+            expected_clean,
+            bool::from(result.is_clean()),
+            "prefix-former source {src:?} cleanliness mismatch; obligations: {:?}",
+            result.obligations()
+        );
+        if !expected_clean {
+            assert!(
+                !result.obligations().is_empty(),
+                "missing prefix operand {src:?} must remain an explicit obligation"
+            );
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn nested_module_members_mold_zero_obligation() -> Result<(), Box<dyn Error>>
 {

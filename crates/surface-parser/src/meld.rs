@@ -999,6 +999,11 @@ impl<'pbg> MeldState<'pbg>
         // tile does not continue, so it stands as a complete operand and the
         // incoming tile is a flat sibling, not absorbed into the hole meld.
         self.settle_completable(tile.mold);
+        // A prefix form may have an optional tile-bearing branch followed by a
+        // required sort hole. It cannot close before that operand arrives, but
+        // once one matching operand is present it is a complete form even
+        // without a terminal tile.
+        self.settle_filled_required_tail();
         let span = self.append_source(SourceFragment::from(tile.text()));
         let tile_emit = self.emit_token(Material::Tile, MoldPayload::Tile(tile.mold), span);
         let cell = Cell {
@@ -1668,6 +1673,11 @@ impl<'pbg> MeldState<'pbg>
             if bool::from(self.adjacent(head_mold, incoming)) {
                 break;
             }
+            // A regex-LAST prefix with a required recursive-sort tail is not
+            // complete until its operand arrives.
+            if bool::from(self.pbg.mold_has_required_tail(head_mold)) {
+                break;
+            }
             // Only a completable frontier closes here; a form still awaiting a
             // required tile stays open for the force-close repair path.
             if !bool::from(FormTable::is_form_last(self.pbg, head_mold)) {
@@ -1675,6 +1685,45 @@ impl<'pbg> MeldState<'pbg>
             }
             self.close_form(StackIndex::from(frontier));
         }
+    }
+    /// Clean-close a required-tail form once its one trailing sort operand is
+    /// present. Unlike [`settle_completable`](Self::settle_completable), this
+    /// path is stateful: the form's LAST tile is not yet completable while its
+    /// required operand is absent.
+    fn settle_filled_required_tail(&mut self)
+    {
+        while let Some(frontier) = self.nearest_open_form() {
+            let Some(end) = self.required_tail_operand(frontier)
+            else {
+                break;
+            };
+            self.close_form(end);
+        }
+    }
+
+    /// Return the trailing operand index when an open required-tail form has
+    /// exactly one matching operand above its frontier.
+    fn required_tail_operand(
+        &self,
+        frontier: FrontierIndex,
+    ) -> Option<StackIndex>
+    {
+        let frontier_index = usize::from(frontier);
+        let Some(Role::FormTile { mold, .. }) =
+            self.stack.get(frontier_index).map(|cell| cell.role)
+        else {
+            return None;
+        };
+        if !bool::from(self.pbg.mold_has_required_tail(mold)) {
+            return None;
+        }
+        let expected = self.frontier_hole_sort(mold)?;
+        let content_index = frontier_index.checked_add(1)?;
+        let content = self.stack.get(content_index)?;
+        (self.stack.len() == content_index.saturating_add(1)
+            && matches!(content.role, Role::Operand)
+            && content.sort == expected)
+            .then_some(StackIndex::from(content_index))
     }
 
     /// Clean-close every topmost completable frontier the **upcoming** token —
@@ -1713,6 +1762,7 @@ impl<'pbg> MeldState<'pbg>
         labels: CandidateLabels<'_>,
     )
     {
+        self.settle_filled_required_tail();
         while let Some(frontier) = self.nearest_open_form() {
             let Some(Role::FormTile {
                 mold: head_mold, ..
@@ -1720,6 +1770,9 @@ impl<'pbg> MeldState<'pbg>
             else {
                 break;
             };
+            if bool::from(self.pbg.mold_has_required_tail(head_mold)) {
+                break;
+            }
             if !bool::from(FormTable::is_form_last(self.pbg, head_mold)) {
                 break;
             }
@@ -2355,12 +2408,31 @@ impl<'pbg> MeldState<'pbg>
     )
     {
         let frontier_index = usize::from(frontier);
+        // A required-tail form is complete once its trailing operand has
+        // arrived, even though no terminal tile advances the frontier.
+        if let Some(end) = self.required_tail_operand(frontier) {
+            self.close_form(end);
+            return;
+        }
+        // A regex-LAST prefix with a missing required tail must force-close,
+        // not take the ordinary clean LAST path below.
+        let required_tail = self
+            .stack
+            .get(frontier_index)
+            .and_then(|cell| match cell.role {
+                | Role::FormTile { mold, .. } => {
+                    Some(bool::from(self.pbg.mold_has_required_tail(mold)))
+                },
+                | Role::Operand | Role::Operator { .. } => None,
+            })
+            .unwrap_or(false);
         // A completable frontier (its mold in the grammar's LAST set) is already
         // a complete form: close it cleanly with no ghost end and no obligation
         // — a bare `?` hole at end of input is a whole hole, not an incomplete
         // form. Content above it stays a sibling.
-        if let Some(Role::FormTile { mold, .. }) =
-            self.stack.get(frontier_index).map(|cell| cell.role)
+        if !required_tail
+            && let Some(Role::FormTile { mold, .. }) =
+                self.stack.get(frontier_index).map(|cell| cell.role)
             && bool::from(FormTable::is_form_last(self.pbg, mold))
         {
             self.close_form(StackIndex::from(frontier));

@@ -384,6 +384,73 @@ mod tests
         Ok(())
     }
 
+    /// Prefix type formers are regex-LAST only because their recursive operand
+    /// is still required. Their closing class is empty: neither former opens a
+    /// delimiter, so force-close must never mint a paired closer; the empty
+    /// class and required tail are the same loud-incompleteness contract.
+    #[test]
+    fn prefix_formers_keep_required_type_tails_unclosed() -> Result<(), Box<dyn Error>>
+    {
+        let pbg = built_in()?;
+        for label in ["F", "U"] {
+            let type_starts: Vec<_> = pbg
+                .candidates(TileLabel(label))
+                .iter()
+                .copied()
+                .filter(|&mold| {
+                    pbg.mold(mold).is_ok_and(|def| {
+                        def.sort == Sort::Type && bool::from(pbg.mold_is_form_first(mold))
+                    })
+                })
+                .collect();
+            assert_eq!(
+                1,
+                type_starts.len(),
+                "reserved prefix {label} has one type-form start"
+            );
+            let mold = type_starts[0];
+            assert!(
+                !bool::from(pbg.mold_is_form_last(mold)),
+                "{label} cannot close before its type operand"
+            );
+            assert!(
+                bool::from(pbg.mold_has_required_tail(mold)),
+                "{label} carries a required recursive type tail"
+            );
+            assert_eq!(
+                None,
+                pbg.closing_class(mold),
+                "{label} opens no delimiter and must derive no closing class"
+            );
+        }
+        Ok(())
+    }
+
+    /// An infix type operator keeps the clean-completion path that requires
+    /// holes on both sides of the operator.
+    #[test]
+    fn infix_type_operator_keeps_clean_completion() -> Result<(), Box<dyn Error>>
+    {
+        let pbg = built_in()?;
+        let operators: Vec<_> = pbg
+            .candidates(TileLabel("->"))
+            .iter()
+            .copied()
+            .filter(|&mold| pbg.mold(mold).is_ok_and(|def| def.sort == Sort::Type))
+            .collect();
+        assert_eq!(1, operators.len(), "the type arrow has one grammar mold");
+        let arrow = operators[0];
+        assert!(
+            bool::from(pbg.mold_is_form_last(arrow)),
+            "the type arrow completes after its two required operands"
+        );
+        assert!(
+            !bool::from(pbg.mold_has_required_tail(arrow)),
+            "the type arrow's right required hole is covered by its left required head"
+        );
+        Ok(())
+    }
+
     /// The grammar build stays cheap enough for a process-per-test suite.
     ///
     /// Nextest runs every test in its own process, and each grammar-touching

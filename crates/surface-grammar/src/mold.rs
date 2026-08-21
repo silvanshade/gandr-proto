@@ -197,6 +197,29 @@ impl From<MoldHasSuccessor> for bool
         value.0
     }
 }
+/// Whether a form tile's completion depends on filling a trailing required
+/// recursive-sort hole.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MoldHasRequiredTail(bool);
+
+impl From<bool> for MoldHasRequiredTail
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<MoldHasRequiredTail> for bool
+{
+    #[inline]
+    fn from(value: MoldHasRequiredTail) -> Self
+    {
+        value.0
+    }
+}
 
 /// Whether a mold can be a form's first tile (its regex FIRST set).
 #[repr(transparent)]
@@ -280,14 +303,14 @@ pub struct MoldTable
     /// skipped), sorted and unique.
     form_first: Vec<MoldId>,
     /// Molds that can be a form's **last** tile (its regex LAST set, holes
-    /// skipped), sorted and unique — the dual of
-    /// [`form_first`](Self::form_first). A form-start / form-mid whose
-    /// remaining tail is nullable (e.g. `?` before an optional `hole_name`)
-    /// is in this set: the form is already complete at that tile, so the
-    /// melder closes it cleanly rather than force-closing with a ghost end
-    /// Not folded into the fingerprint (derived, like
-    /// `form_first`).
+    /// skipped), sorted and unique. A tile may still require a trailing
+    /// recursive-sort operand before the form can close; those tiles are
+    /// tracked separately in `required_tail`.
     form_last: Vec<MoldId>,
+    /// Form-last tiles whose remaining tail is free of required holes.
+    complete_last: Vec<MoldId>,
+    /// Form-last tiles whose completion depends on a trailing required hole.
+    required_tail: Vec<MoldId>,
     /// Each mold's **form-level closing class**, indexed by [`MoldId`].
     ///
     /// `Some(c)` when every completion path from that mold ends in a paired
@@ -340,15 +363,18 @@ impl MoldTable
         let mut candidates: BTreeMap<&'static str, Vec<MoldId>> = BTreeMap::new();
         let mut adjacent_keys: BTreeSet<(TileKey, TileKey)> = BTreeSet::new();
         let mut first_keys: BTreeSet<TileKey> = BTreeSet::new();
-        let mut last_keys: BTreeSet<TileKey> = BTreeSet::new();
+        let mut form_last_keys: BTreeSet<TileKey> = BTreeSet::new();
+        let mut complete_last_keys: BTreeSet<TileKey> = BTreeSet::new();
+        let mut required_tail_keys: BTreeSet<TileKey> = BTreeSet::new();
         let mut closing: Vec<Option<ClosingClass>> = Vec::new();
 
         for rule in rules {
             let mut occurrences = Vec::new();
             let facet = collect_occurrences(rule, &mut interner, &mut occurrences);
             first_keys.extend(facet.first.iter().copied());
-            last_keys.extend(facet.last.iter().copied());
-            // Derived per rule, before the adjacency set is drained into the
+            form_last_keys.extend(facet.last.iter().copied());
+            complete_last_keys.extend(facet.complete_last.iter().copied());
+            required_tail_keys.extend(facet.last.difference(&facet.complete_last).copied());
             // table-wide one: the class is a property of THIS form's completion
             // paths, and a table-wide walk would cross into other rules.
             closing.extend(closing_classes(&occurrences, &facet));
@@ -391,7 +417,9 @@ impl MoldTable
         let index = tile_index(&molds);
         let adjacencies = resolve_adjacencies(&index, &adjacent_keys);
         let form_first = resolve_keys(&index, &first_keys);
-        let form_last = resolve_keys(&index, &last_keys);
+        let form_last = resolve_keys(&index, &form_last_keys);
+        let complete_last = resolve_keys(&index, &complete_last_keys);
+        let required_tail = resolve_keys(&index, &required_tail_keys);
         // Dense per-mold flags: the fresh-menu filter probes each set once per
         // mold, and a tree set charges a comparison walk per probe. Both flag
         // vectors are stored on the table: the parser's form-membership
@@ -447,6 +475,8 @@ impl MoldTable
             has_succ,
             form_first,
             form_last,
+            complete_last,
+            required_tail,
             closing,
             fingerprint,
         })
@@ -644,8 +674,12 @@ impl MoldTable
         MoldIsFormFirst::from(self.form_first.binary_search(&mold).is_ok())
     }
 
-    /// Return whether `mold` can be a form's last tile: membership in the
-    /// sorted [`form_last`](Self::form_last) list by binary search.
+    /// Return whether `mold` can complete a form without an unfilled required
+    /// recursive-sort hole.
+    ///
+    /// Required-tail molds remain out of this set until their operand is
+    /// present; [`Self::has_required_tail`] identifies that separate closure
+    /// path.
     #[inline]
     #[must_use]
     pub(crate) fn is_form_last(
@@ -653,7 +687,17 @@ impl MoldTable
         mold: MoldId,
     ) -> MoldIsFormLast
     {
-        MoldIsFormLast::from(self.form_last.binary_search(&mold).is_ok())
+        MoldIsFormLast::from(self.complete_last.binary_search(&mold).is_ok())
+    }
+    /// Return whether `mold`'s completion depends on a trailing required hole.
+    #[inline]
+    #[must_use]
+    pub(crate) fn has_required_tail(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasRequiredTail
+    {
+        MoldHasRequiredTail::from(self.required_tail.binary_search(&mold).is_ok())
     }
     /// Return the molds that can be a form's first tile (its regex FIRST set,
     /// recursive-sort holes skipped), sorted and unique.
@@ -1208,7 +1252,8 @@ fn walk_regex(
                 right: node_right,
                 path: node_path,
             } => match *node {
-                | Regex::Empty | Regex::Sym(Sym::Sort(_)) => values.push(TileFacet::transparent()),
+                | Regex::Empty => values.push(TileFacet::empty()),
+                | Regex::Sym(Sym::Sort(_)) => values.push(TileFacet::required_hole()),
                 | Regex::Sym(Sym::Tile(tile)) => {
                     let data = context_data(&node_left, &node_right);
                     let rctx = interner.intern(node_path, data);
@@ -1336,18 +1381,21 @@ fn walk_regex(
                 values.push(acc);
             },
             | WalkFrame::FinishOptional => {
-                let mut child = values.pop().unwrap_or_else(TileFacet::transparent);
-                child.nullable = true;
+                let mut child = values.pop().unwrap_or_else(TileFacet::empty);
+                child.flags.set_nullable(FacetFlag::from(true));
+                child.flags.set_form_nullable(FacetFlag::from(true));
+                child.flags.set_required_first(FacetFlag::from(false));
+                child.flags.set_required_last(FacetFlag::from(false));
                 values.push(child);
             },
             | WalkFrame::FinishRepeat => {
-                let child = values.pop().unwrap_or_else(TileFacet::transparent);
+                let child = values.pop().unwrap_or_else(TileFacet::empty);
                 values.push(repeat_facet(&child));
             },
         }
     }
 
-    values.pop().unwrap_or_else(TileFacet::transparent)
+    values.pop().unwrap_or_else(TileFacet::empty)
 }
 
 /// Resolve a set of `(label, rctx)` tile keys to sorted, unique [`MoldId`]s —
@@ -1477,21 +1525,180 @@ struct RegexPath<'path>(&'path str);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct SortFacing(bool);
 
-/// Bottom-up tile-adjacency summary of a regex subtree.
+/// Semantic boolean marker used by packed tile-facet boundary flags.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct FacetFlag(bool);
+
+impl From<bool> for FacetFlag
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<FacetFlag> for bool
+{
+    #[inline]
+    fn from(value: FacetFlag) -> Self
+    {
+        value.0
+    }
+}
+
+/// Compact boolean summary flags for one [`TileFacet`].
 ///
-/// Recursive-sort holes are tile-transparent, so `first`/`last` are the tiles
-/// that can begin or end the subtree once holes are skipped, and `adjacent`
-/// records the consecutive tile pairs (across holes) that seed the `≐`
-/// relation.
+/// The four bits retain tile transparency, clean form completion, and the
+/// required-hole boundaries without expanding the build-only facet summary
+/// past the clippy excessive-bools threshold.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct FacetFlags(u8);
+
+impl FacetFlags
+{
+    /// Bit for tile transparency.
+    const NULLABLE: u8 = 1 << 0;
+    /// Bit for completion without a required hole.
+    const FORM_NULLABLE: u8 = 1 << 1;
+    /// Bit for a required hole at the transparent first edge.
+    const REQUIRED_FIRST: u8 = 1 << 2;
+    /// Bit for a required hole at the transparent last edge.
+    const REQUIRED_LAST: u8 = 1 << 3;
+
+    /// Construct the four facet flags in their semantic order.
+    #[inline]
+    fn from_parts(parts: [FacetFlag; 4]) -> Self
+    {
+        let [nullable, form_nullable, required_first, required_last] = parts;
+        let mut bits = 0;
+        if bool::from(nullable) {
+            bits |= Self::NULLABLE;
+        }
+        if bool::from(form_nullable) {
+            bits |= Self::FORM_NULLABLE;
+        }
+        if bool::from(required_first) {
+            bits |= Self::REQUIRED_FIRST;
+        }
+        if bool::from(required_last) {
+            bits |= Self::REQUIRED_LAST;
+        }
+        Self(bits)
+    }
+
+    /// Return whether the subtree is tile-transparent.
+    #[inline]
+    #[must_use]
+    fn nullable(self) -> FacetFlag
+    {
+        FacetFlag::from(self.0 & Self::NULLABLE != 0)
+    }
+
+    /// Return whether the subtree is form-completable.
+    #[inline]
+    #[must_use]
+    fn form_nullable(self) -> FacetFlag
+    {
+        FacetFlag::from(self.0 & Self::FORM_NULLABLE != 0)
+    }
+
+    /// Return whether a required hole reaches the transparent first edge.
+    #[inline]
+    #[must_use]
+    fn required_first(self) -> FacetFlag
+    {
+        FacetFlag::from(self.0 & Self::REQUIRED_FIRST != 0)
+    }
+
+    /// Return whether a required hole reaches the transparent last edge.
+    #[inline]
+    #[must_use]
+    fn required_last(self) -> FacetFlag
+    {
+        FacetFlag::from(self.0 & Self::REQUIRED_LAST != 0)
+    }
+
+    /// Set or clear the tile-transparency bit.
+    #[inline]
+    fn set_nullable(
+        &mut self,
+        value: FacetFlag,
+    )
+    {
+        if bool::from(value) {
+            self.0 |= Self::NULLABLE;
+        }
+        else {
+            self.0 &= !Self::NULLABLE;
+        }
+    }
+
+    /// Set or clear the form-completion bit.
+    #[inline]
+    fn set_form_nullable(
+        &mut self,
+        value: FacetFlag,
+    )
+    {
+        if bool::from(value) {
+            self.0 |= Self::FORM_NULLABLE;
+        }
+        else {
+            self.0 &= !Self::FORM_NULLABLE;
+        }
+    }
+
+    /// Set or clear the required-first bit.
+    #[inline]
+    fn set_required_first(
+        &mut self,
+        value: FacetFlag,
+    )
+    {
+        if bool::from(value) {
+            self.0 |= Self::REQUIRED_FIRST;
+        }
+        else {
+            self.0 &= !Self::REQUIRED_FIRST;
+        }
+    }
+
+    /// Set or clear the required-last bit.
+    #[inline]
+    fn set_required_last(
+        &mut self,
+        value: FacetFlag,
+    )
+    {
+        if bool::from(value) {
+            self.0 |= Self::REQUIRED_LAST;
+        }
+        else {
+            self.0 &= !Self::REQUIRED_LAST;
+        }
+    }
+}
+
+/// Bottom-up tile-adjacency summary of a regex subtree.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct TileFacet
 {
-    /// Whether the subtree can contribute no tiles (holes are transparent).
-    nullable: bool,
+    /// Nullable and required-hole boundary facts, packed to keep this
+    /// build-only summary compact and below the excessive-bools lint limit.
+    flags: FacetFlags,
     /// Tiles that can be the subtree's first tile.
     first: BTreeSet<TileKey>,
-    /// Tiles that can be the subtree's last tile.
+    /// Tiles that can be the subtree's last tile once transparent holes are
+    /// skipped.
     last: BTreeSet<TileKey>,
+    /// Tiles at which the form can complete without a required hole.
+    ///
+    /// This cannot be derived from `last`: an alternation may reach the same
+    /// terminal tile through one complete path and one required-tail path.
+    complete_last: BTreeSet<TileKey>,
     /// Consecutive tile pairs within the subtree.
     adjacent: BTreeSet<(TileKey, TileKey)>,
 }
@@ -1502,27 +1709,49 @@ impl TileFacet
     fn empty() -> Self
     {
         Self {
-            nullable: true,
+            flags: FacetFlags::from_parts([
+                FacetFlag::from(true),
+                FacetFlag::from(true),
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+            ]),
             first: BTreeSet::new(),
             last: BTreeSet::new(),
+            complete_last: BTreeSet::new(),
             adjacent: BTreeSet::new(),
         }
     }
 
-    /// A tile-transparent hole (`Empty` or a recursive sort): nullable, no
-    /// tiles.
-    fn transparent() -> Self
+    /// A required recursive-sort hole: tile-transparent, but not complete.
+    fn required_hole() -> Self
     {
-        Self::empty()
+        Self {
+            flags: FacetFlags::from_parts([
+                FacetFlag::from(true),
+                FacetFlag::from(false),
+                FacetFlag::from(true),
+                FacetFlag::from(true),
+            ]),
+            first: BTreeSet::new(),
+            last: BTreeSet::new(),
+            complete_last: BTreeSet::new(),
+            adjacent: BTreeSet::new(),
+        }
     }
 
     /// The identity element for alternation (matches nothing).
     fn void() -> Self
     {
         Self {
-            nullable: false,
+            flags: FacetFlags::from_parts([
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+            ]),
             first: BTreeSet::new(),
             last: BTreeSet::new(),
+            complete_last: BTreeSet::new(),
             adjacent: BTreeSet::new(),
         }
     }
@@ -1533,9 +1762,15 @@ impl TileFacet
         let mut set = BTreeSet::new();
         set.insert(key);
         Self {
-            nullable: false,
+            flags: FacetFlags::from_parts([
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+                FacetFlag::from(false),
+            ]),
             first: set.clone(),
-            last: set,
+            last: set.clone(),
+            complete_last: set,
             adjacent: BTreeSet::new(),
         }
     }
@@ -1762,17 +1997,45 @@ fn seq_facet(
         }
     }
     let mut first = left.first.clone();
-    if left.nullable {
+    if bool::from(left.flags.nullable()) {
         first.extend(right.first.iter().copied());
     }
     let mut last = right.last.clone();
-    if right.nullable {
+    if bool::from(right.flags.nullable()) {
         last.extend(left.last.iter().copied());
     }
+    // An infix form has required holes on both sides of its operator. When
+    // the right side is the required tail and the left side is a required
+    // head, the operator itself still completes the form; a prefix form such
+    // as `U` has no required head and therefore remains required-tail-only.
+    let mut complete_last = right.complete_last.clone();
+    if bool::from(right.flags.form_nullable())
+        || (bool::from(right.flags.required_last()) && bool::from(left.flags.required_first()))
+    {
+        complete_last.extend(left.complete_last.iter().copied());
+    }
     TileFacet {
-        nullable: left.nullable && right.nullable,
+        flags: FacetFlags::from_parts([
+            FacetFlag::from(
+                bool::from(left.flags.nullable()) && bool::from(right.flags.nullable()),
+            ),
+            FacetFlag::from(
+                bool::from(left.flags.form_nullable()) && bool::from(right.flags.form_nullable()),
+            ),
+            FacetFlag::from(
+                bool::from(left.flags.required_first())
+                    || (bool::from(left.flags.nullable())
+                        && bool::from(right.flags.required_first())),
+            ),
+            FacetFlag::from(
+                bool::from(right.flags.required_last())
+                    || (bool::from(right.flags.nullable())
+                        && bool::from(left.flags.required_last())),
+            ),
+        ]),
         first,
         last,
+        complete_last,
         adjacent,
     }
 }
@@ -1787,12 +2050,28 @@ fn alt_facet(
     first.extend(right.first.iter().copied());
     let mut last = left.last.clone();
     last.extend(right.last.iter().copied());
+    let mut complete_last = left.complete_last.clone();
+    complete_last.extend(right.complete_last.iter().copied());
     let mut adjacent = left.adjacent.clone();
     adjacent.extend(right.adjacent.iter().copied());
     TileFacet {
-        nullable: left.nullable || right.nullable,
+        flags: FacetFlags::from_parts([
+            FacetFlag::from(
+                bool::from(left.flags.nullable()) || bool::from(right.flags.nullable()),
+            ),
+            FacetFlag::from(
+                bool::from(left.flags.form_nullable()) || bool::from(right.flags.form_nullable()),
+            ),
+            FacetFlag::from(
+                bool::from(left.flags.required_first()) || bool::from(right.flags.required_first()),
+            ),
+            FacetFlag::from(
+                bool::from(left.flags.required_last()) || bool::from(right.flags.required_last()),
+            ),
+        ]),
         first,
         last,
+        complete_last,
         adjacent,
     }
 }
@@ -1802,7 +2081,10 @@ fn alt_facet(
 fn repeat_facet(inner: &TileFacet) -> TileFacet
 {
     let mut facet = inner.clone();
-    facet.nullable = true;
+    facet.flags.set_nullable(FacetFlag::from(true));
+    facet.flags.set_form_nullable(FacetFlag::from(true));
+    facet.flags.set_required_first(FacetFlag::from(false));
+    facet.flags.set_required_last(FacetFlag::from(false));
     for tail in &inner.last {
         for head in &inner.first {
             facet.adjacent.insert((*tail, *head));

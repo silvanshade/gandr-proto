@@ -98,6 +98,7 @@ use crate::check::validate_assumption_3;
 use crate::check::validate_operator_form;
 use crate::mold::MoldDef;
 use crate::mold::MoldHasPredecessor;
+use crate::mold::MoldHasRequiredTail;
 use crate::mold::MoldHasSuccessor;
 use crate::mold::MoldId;
 use crate::mold::MoldIsFormFirst;
@@ -1409,8 +1410,14 @@ impl Pbg
         self.molds.is_form_first(mold)
     }
 
-    /// Return whether `mold` can be a form's last tile: membership in
-    /// [`form_last`](Self::form_last).
+    /// Return whether `mold` can complete a form without an unfilled
+    /// required recursive-sort hole.
+    ///
+    /// This is the parser's clean-completion membership, derived from the
+    /// grammar LAST set after removing forms whose final tile still exposes a
+    /// required recursive-sort operand. Use
+    /// [`mold_has_required_tail`](Self::mold_has_required_tail) to identify
+    /// that separate operand-filling closure path.
     ///
     /// # Contract
     /// - requires: none.
@@ -1419,7 +1426,6 @@ impl Pbg
     /// - provides: the melder's form-completable test without a per-parse
     ///   derived table.
     /// - fails: never.
-    /// - panics: none.
     #[inline]
     #[must_use]
     pub fn mold_is_form_last(
@@ -1428,6 +1434,22 @@ impl Pbg
     ) -> MoldIsFormLast
     {
         self.molds.is_form_last(mold)
+    }
+
+    /// Return whether `mold`'s form completion depends on a trailing required
+    /// recursive-sort hole.
+    ///
+    /// A required-tail form must not close before its operand arrives. Once a
+    /// matching operand is present, the parser may close the form cleanly;
+    /// without one, the ordinary force-close path raises `MissingTile`.
+    #[inline]
+    #[must_use]
+    pub fn mold_has_required_tail(
+        &self,
+        mold: MoldId,
+    ) -> MoldHasRequiredTail
+    {
+        self.molds.has_required_tail(mold)
     }
 
     /// Return `mold`'s **form-level closing class**, if every completion path
