@@ -59,7 +59,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use std::collections::HashMap;
 
-use gandr_theory_cell_complexes::alphabet::CellAlphabet;
 use gandr_theory_circuit_algebras::interface::Generator;
 use gandr_theory_circuit_algebras::interface::GeneratorLabel;
 use gandr_theory_circuit_algebras::interface::GeneratorSort;
@@ -81,6 +80,7 @@ use gandr_theory_coherent_resolutions::CompletionOutcome;
 use gandr_theory_coherent_resolutions::Overlap;
 use gandr_theory_coherent_resolutions::OverlapKind;
 use gandr_theory_coherent_resolutions::complete_with_overlap_source;
+use gandr_theory_computads::CellAlphabet;
 use gandr_theory_computads::CellId;
 use gandr_theory_computads::CellStore;
 use gandr_theory_computads::ConsPat;
@@ -94,6 +94,7 @@ use gandr_theory_computads::instantiate_cell;
 use gandr_theory_levitation::CircuitBody;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::FreeTerm;
+use gandr_theory_levitation::Name;
 
 /// Why a declared circuit body is not a diagram.
 #[derive(Clone, Debug, Eq, PartialEq)]
