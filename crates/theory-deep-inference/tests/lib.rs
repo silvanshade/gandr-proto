@@ -5,6 +5,8 @@ mod adversarial_alphabet;
 #[cfg(test)]
 mod asynchronous_axioms;
 #[cfg(test)]
+mod causal_web;
+#[cfg(test)]
 mod content_faithfulness;
 #[cfg(test)]
 mod flow;

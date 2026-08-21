@@ -24,6 +24,10 @@
 //!   events, the dependence edges the guard decides, the causal precedence
 //!   order, the layering, and the exchange witness carrying one
 //!   sequentialization to another as licensed adjacent transpositions.
+//! - [`mod@causal_web`] — the conflict-free two-colour analysis surface over
+//!   one canonical event order: green precedence, white independence, licensed
+//!   slice-chain refinement witnesses, and named refusals at the
+//!   edge-strengthening and open h↓ frontiers.
 //! - [`normal_form`] — the certificate normal form: unique primitive
 //!   factorization by content address, integer-graded multiplicities, and a
 //!   causal canonical schedule, whose equality is a decidable **sound
@@ -44,6 +48,7 @@
 extern crate alloc;
 
 pub mod causal;
+pub mod causal_web;
 pub mod flow;
 pub mod footprint;
 pub mod normal_form;
@@ -56,6 +61,21 @@ pub use crate::causal::ExchangeObstruction;
 pub use crate::causal::ExchangeWitness;
 pub use crate::causal::KeyCollision;
 pub use crate::causal::Transposition;
+pub use crate::causal_web::CausalWeb;
+pub use crate::causal_web::DependenceBits;
+pub use crate::causal_web::HomomorphismFrontier;
+pub use crate::causal_web::RefinementCounterexample;
+pub use crate::causal_web::RefinementVerdict;
+pub use crate::causal_web::SliceChain;
+pub use crate::causal_web::SliceStep;
+pub use crate::causal_web::SliceStepCount;
+pub use crate::causal_web::WebIndependence;
+pub use crate::causal_web::WebPrecedence;
+pub use crate::causal_web::WebRelation;
+pub use crate::causal_web::WebVertex;
+pub use crate::causal_web::WebVertexCount;
+pub use crate::causal_web::causal_web;
+pub use crate::causal_web::refines;
 pub use crate::flow::Flow;
 pub use crate::flow::FlowEnd;
 pub use crate::flow::FlowObstruction;

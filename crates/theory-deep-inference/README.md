@@ -13,6 +13,7 @@ The causal order and the normal form are mutually dependent, and the crate bound
 - The earned shift-equivalence witness: two adjacent applications at disjoint positions with trivial overlap are one composite transformation, granted per pair against the decided guard and carrying the convexity conjunct's discharge as a certificate rather than a recomputed sweep.
   This is the crate's single independence relation.
 - The finite event partial order of a recorded derivation: its events, the dependence edges the guard decides, the causal precedence order, the layering, and the exchange witness carrying one sequentialization to another as licensed adjacent transpositions.
+- The `CausalWeb` analysis surface over one canonical event order: green transitive precedence, white independence, a `SliceChain` witness for licensed independence-to-order weakenings, and named refusal verdicts for malformed webs, edge-strengthening simulation, and the open h↓ homomorphism frontier.
 - The certificate normal form: unique primitive factorization by content address, integer-graded multiplicities, and a causal canonical schedule, whose equality is a decidable sound under-approximation of replay-equality.
   Normal-form-equal implies replay-equal; the converse is never claimed.
 - The deterministic `ReplayPlan` projection: antichain levels retain dependency order, expose critical-path fuel, and replay a level or a complete plan without flattening independent work into a serialized schedule.
@@ -24,7 +25,7 @@ Both say so at their own module heads, and neither replaces the guard.
 
 ## What is planned and absent
 
-- The trace seam and spinal duplication from the sharing programme.
+- A general graph correspondence or h↓ homomorphism consumer beyond the licensed identity-map slice-chain fragment.
 - Any consumer for the flow projection or the footprint test.
 
 ## Using it
