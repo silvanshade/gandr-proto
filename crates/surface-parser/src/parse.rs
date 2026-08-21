@@ -382,6 +382,40 @@ mod tests
         assert_eq!(result_hash, again_hash);
         Ok(())
     }
+
+    #[test]
+    fn declaration_prefix_round_trips_and_snapshots_model_state() -> Result<(), Box<dyn Error>>
+    {
+        let pbg = built_in()?;
+        let src = r#"def nth @[A : Type, i : Fin(length(xs))] (xs : List(A)) -> A {
+  ret xs
+}
+"#;
+        let result = parse(&pbg, SourceSlice::from(src))?;
+        assert!(
+            result.obligations().is_empty(),
+            "the declaration prefix has no parse recovery: {:?}",
+            result.obligations()
+        );
+        assert_eq!(
+            result.cst().grammar_fingerprint(),
+            pbg.fingerprint(),
+            "the CST records the grammar snapshot that produced it"
+        );
+        assert_eq!(
+            reconstruct(result.cst(), result.cst().root())?,
+            src,
+            "the surface model round-trips the raw multiline source"
+        );
+
+        let again = parse(&pbg, SourceSlice::from(src))?;
+        assert_eq!(
+            result.cst().hash(result.cst().root())?,
+            again.cst().hash(again.cst().root())?,
+            "the declaration-prefix model snapshot is deterministic"
+        );
+        Ok(())
+    }
     /// A committed leaf span with its source bytes.
     #[derive(Clone, Debug, Eq, PartialEq)]
     struct LeafText

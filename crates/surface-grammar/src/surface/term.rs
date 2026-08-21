@@ -2014,11 +2014,47 @@ fn module_definition_member() -> Regex
     ])
 }
 
+/// Build the declaration-level implicit telescope `@[binder, …]`.
+///
+/// This prefix follows the declaration name and precedes its explicit
+/// parameter list. Binders are kept in source order and their type holes are
+/// ordinary type syntax, so a binder may mention a later explicit parameter;
+/// dependency ordering is a later lowering concern. The optional body admits
+/// the empty `@[]` spelling without conflating this form with the ordinary
+/// attribute block, which remains before `def`.
+fn implicit_telescope() -> Regex
+{
+    seq([
+        t(TileLabel("@[")),
+        opt(comma1(implicit_param())),
+        t(TileLabel("]")),
+    ])
+}
+
+/// Build one typed declaration-level implicit binder.
+///
+/// Lowercase binders use the ordinary name classes; uppercase binders such as
+/// `A` are lexically offered as type identifiers by the labeler and remain
+/// valid binder names at this parse-only stage.
+fn implicit_param() -> Regex
+{
+    seq([
+        alt([
+            t(TileLabel("identifier")),
+            t(TileLabel("type_variable")),
+            t(TileLabel("type_identifier")),
+        ]),
+        t(TileLabel(":")),
+        h(Sort::Type),
+    ])
+}
+
 /// Build the non-recursive definition/signature tail after `def`.
 fn regular_def_tail() -> Regex
 {
     seq([
         t(TileLabel("identifier")),
+        opt(implicit_telescope()),
         alt([
             // signature tail: `: T ;`
             seq([t(TileLabel(":")), h(Sort::Type), t(TileLabel(";"))]),
@@ -2033,6 +2069,10 @@ fn regular_def_tail() -> Regex
         ]),
     ])
 }
+
+// The prefix telescope is intentionally absent from ordinary attribute blocks:
+// `@[doc("…")] def …` remains the declaration-level attribute spelling, while
+// `def name @[A : Type] …` is the typed implicit-parameter spelling.
 
 /// Build one lowercase nested module component.
 ///

@@ -119,6 +119,109 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// A declaration-local `@[...]` prefix is typed syntax, not an attribute.
+///
+/// The binder types stay in source order even when the first binder refers to
+/// the later explicit `xs` parameter. That dependency is intentionally left
+/// for lowering; the parse contract is the lossless ordered surface form.
+#[test]
+fn declaration_prefix_telescope_preserves_forward_reference_order() -> Result<(), Box<dyn Error>>
+{
+    let source = r#"def nth @[A : Type, i : Fin(length(xs))] (xs : List(A)) -> A {
+  ret xs
+}
+"#;
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "the typed declaration prefix molds cleanly: {:?}",
+        result.obligations()
+    );
+    let item = find_meld_with_tile(result.cst(), result.cst().root(), TileText::from("nth"))
+        .expect("the declaration remains one top-level meld");
+    let item_text = result.cst().node(item)?.text()?;
+    assert_eq!(source.trim_end(), AsRef::<str>::as_ref(&item_text));
+
+    let tiles = descendant_tiles(result.cst(), item);
+    let first_a = tiles
+        .iter()
+        .position(|tile| tile == "A")
+        .expect("the first implicit binder name is preserved");
+    let implicit_i = tiles
+        .iter()
+        .position(|tile| tile == "i")
+        .expect("the second implicit binder name is preserved");
+    let xs_positions: Vec<usize> = tiles
+        .iter()
+        .enumerate()
+        .filter_map(|(index, tile)| (tile == "xs").then_some(index))
+        .collect();
+    assert!(
+        xs_positions.len() >= 2,
+        "the forward reference and explicit binder both survive: {tiles:?}"
+    );
+    assert!(
+        first_a < implicit_i && implicit_i < xs_positions[0] && xs_positions[0] < xs_positions[1],
+        "prefix binders and the forward reference retain source order: {tiles:?}"
+    );
+    Ok(())
+}
+
+/// Empty typed prefixes and ordinary declaration attributes remain distinct.
+#[test]
+fn empty_prefix_does_not_change_ordinary_attribute_spelling() -> Result<(), Box<dyn Error>>
+{
+    let source = r#"@[doc("d")]
+def tagged @[] (x : Type) -> Type { ret x }
+"#;
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        bool::from(result.is_clean()),
+        "ordinary attributes plus an empty typed prefix mold cleanly: {:?}",
+        result.obligations()
+    );
+    let item = find_meld_with_tile(result.cst(), result.cst().root(), TileText::from("tagged"))
+        .expect("the attributed declaration remains one top-level meld");
+    let tiles = descendant_tiles(result.cst(), item);
+    assert_eq!(
+        2,
+        tiles.iter().filter(|tile| tile.as_str() == "@[").count(),
+        "one ordinary attribute and one empty typed prefix remain visible: {tiles:?}"
+    );
+    assert!(
+        tiles.iter().any(|tile| tile == "doc"),
+        "the ordinary attribute name remains visible: {tiles:?}"
+    );
+    assert!(
+        tiles.iter().any(|tile| tile == "tagged"),
+        "the declaration name remains visible: {tiles:?}"
+    );
+    Ok(())
+}
+
+/// A malformed prefix reports recovery without absorbing the next definition.
+#[test]
+fn malformed_prefix_recovers_at_the_next_declaration() -> Result<(), Box<dyn Error>>
+{
+    let source = r#"def bad @[A : Type, broken] (x : Type) -> Type { ret x }
+def good @[B : Type] (y : Type) -> Type { ret y }
+"#;
+    let result = parse(built(), SourceSlice::from(source))?;
+    assert!(
+        !bool::from(result.is_clean()),
+        "the malformed prefix retains a recovery obligation"
+    );
+    let good = find_meld_with_tile(result.cst(), result.cst().root(), TileText::from("good"))
+        .expect("the later valid definition survives prefix recovery");
+    let good_text = result.cst().node(good)?.text()?;
+    assert_eq!(
+        "def good @[B : Type] (y : Type) -> Type { ret y }",
+        AsRef::<str>::as_ref(&good_text),
+        "the surviving declaration is not absorbed by the malformed prefix"
+    );
+    Ok(())
+}
+
 #[test]
 fn command_substitution_molds_with_zero_obligations() -> Result<(), Box<dyn Error>>
 {
