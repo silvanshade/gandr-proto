@@ -28,6 +28,7 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 | [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
 | [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
 | [workflow/rust.md](workflow/rust.md)                             | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions                                                                        |
+| [workflow/debugging.md](workflow/debugging.md)                   | debugging workspace binaries with LLDB                                                                                                    |
 | [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
 | [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
 | [workflow/corpus.md](workflow/corpus.md)                         | surface-corpus examples, the feature landing rule                                                                                         |
