@@ -16,6 +16,7 @@ const CANONICAL_AGENT_TRAILERS: readonly string[] = [
   "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
   "Co-Authored-By: Kimi k3 (kimi-code) <noreply@moonshot.ai>",
   "Co-Authored-By: OpenAI Codex GPT-5.5 <noreply@openai.com>",
+  "Co-Authored-By: OpenAI Codex GPT-5.6 Luna <noreply@openai.com>",
   "Co-Authored-By: OpenAI Codex GPT-5.6 Sol <noreply@openai.com>",
   "Co-Authored-By: xAI Grok 4.6 <noreply@x.ai>",
 ];
