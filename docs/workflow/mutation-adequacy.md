@@ -7,6 +7,11 @@
 The vocabulary, first: a **mutant** is a program variant produced by one small mechanical change (cargo-mutants replaces a function body with a default value, deletes a unary operator, or swaps a binary operator).
 A test suite **kills** a mutant when at least one test fails on it; a mutant every test passes is a **survivor**.
 **Mutation adequacy** (the score) is the fraction of viable mutants killed — a direct measure of whether the tests can _notice_ the code being wrong, which line coverage alone cannot give (a line can be executed by a test that asserts nothing about it).
+A mutant that does not build is **unviable**: it was never run, so it is not evidence in either direction, and a score computed over unviable mutants is a fraction with nothing in its denominator.
+
+**A campaign with no viable mutants is an infrastructure failure, and the tasks fail on it.** Zero viable mutants is not a score of zero and not a score of one; it is the absence of a measurement, and it means every mutant died at the compiler for a reason the mutants themselves do not explain — a toolchain the sandbox lacks, a scope the campaign built at the wrong width, or a lint denial that killed the edit before a test saw it.
+A baseline that exercised no tests is refused on the same ground: every mutant would be reported as caught by a suite that never ran.
+Both refusals name the infrastructure and send a reader to the build logs, because a surviving mutant and an unbuildable one call for opposite work.
 
 Adopted from the 2026-07-09 baseline (69% mutation adequacy against 93.7% line coverage, every survivor hand-classified).
 Three moving parts: every nontrivial item documents a falsifiable **adequacy hypothesis** with named **witnesses** ([rust.md](rust.md)), the mutation campaigns are the standing experiment that falsifies hypotheses, and oracle strength is chosen by the **ladder**.

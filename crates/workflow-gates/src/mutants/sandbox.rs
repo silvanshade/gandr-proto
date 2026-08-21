@@ -47,7 +47,7 @@ crate::semantic_copy!(pub struct ArgSequenceFlag(bool));
 crate::semantic_copy!(pub struct ArgFlag(bool));
 
 /// Microsandbox executable name.
-const MSB_PROGRAM: &str = "msb";
+pub(super) const MSB_PROGRAM: &str = "msb";
 /// Reusable mutation-test snapshot name.
 const SNAPSHOT_NAME: &str = "gandr-mutants-base";
 /// Base image used to provision the reusable mutation-test snapshot.

@@ -8,6 +8,8 @@ The crate exposes the `mutants` facade for snapshot, changed-range, scheduled, s
 Package campaigns validate one exact name on the host, archive current `HEAD`, run the existing guest with `--package`, publish before reporting survivors, and clean temporary state.
 `mutants::record` defines deterministic, replayable mutation records with exact source edits, bounded base identities, and distinct killed, compile-error, timed-out, and survivor verdicts.
 Compile errors are never survivors; timeouts retain their outcome evidence and remain indeterminate; replay applies exact one-hunk edits, rejects base mismatches and ambiguous sites, and preserves multi-line patches as provenance.
+A campaign in which no mutant was viable, or whose baseline exercised no tests, is refused as an infrastructure failure rather than reported as a result, and every entry point reaches the same completion so the four of them agree about what a pass is.
+Package campaigns test the mutants under the package they name, which is the scope their baseline uses; workspace campaigns exclude the one member no stable toolchain can build.
 
 `embedded_syntax::run_changed` enforces the raw-string policy for changed Rust sources under `crates/`; it reports recognizable embedded syntax carried by escaped-newline literals and supports the documented `workflow-gates: allow-escaped-newline` marker only for intentional escape-decoding or non-syntax fixtures.
 

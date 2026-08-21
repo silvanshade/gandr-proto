@@ -389,6 +389,8 @@ impl MutantsHost for SupportMutantsHost
 const GIT_PROGRAM: &str = "git";
 /// Program name used for host `mise` bootstrap checks.
 const MISE_PROGRAM: &str = "mise";
+/// The pinned microsandbox tool, as mise names it.
+const MICROSANDBOX_TOOL: &str = "github:superradcompany/microsandbox";
 /// Program name used by the guest kernel containment probe.
 const UNAME_PROGRAM: &str = "uname";
 /// Git ref archived for snapshot and default diff-scoped campaigns.
@@ -974,9 +976,57 @@ where
     if infrastructure.msb_available().map(|value| value.into().0)? {
         return Ok(());
     }
-    Err(GateError::operational(
-        "mutants-vm: `msb` (microsandbox) not found. It is pinned in mise.toml; run `mise install` to provision it.",
-    ))
+    Err(GateError::operational(format!(
+        "mutants-vm: `msb` (microsandbox) will not run. {}",
+        msb_unavailable_detail()
+    )))
+}
+
+/// Say why `msb` will not run, distinguishing absent from present-and-inert.
+///
+/// The two need opposite repairs and the generic message sends a reader to the
+/// wrong one. A pinned install can land without its executable bit — 0.6.6 and
+/// 0.6.8 carried it and 0.6.10 did not — and `mise install` then reports that
+/// every tool is installed while the shim refuses to resolve, which is a dead
+/// end that costs a while to leave.
+fn msb_unavailable_detail() -> String
+{
+    // `mise where` and not `mise which`: the shim refuses to resolve a binary
+    // that will not execute, so the lookup that names a path is exactly the one
+    // that fails in the case this function exists to explain.
+    let located = support::run_output(
+        OsStr::new(MISE_PROGRAM),
+        &[OsString::from("where"), OsString::from(MICROSANDBOX_TOOL)],
+        None,
+        false,
+    );
+    let Ok(located) = located
+    else {
+        return String::from("It is pinned in mise.toml; run `mise install` to provision it.");
+    };
+    if !located.success().into().0 {
+        return String::from("It is pinned in mise.toml; run `mise install` to provision it.");
+    }
+    let directory = located.stdout_lossy().as_ref().trim().to_owned();
+    if directory.is_empty() {
+        return String::from("It is pinned in mise.toml; run `mise install` to provision it.");
+    }
+    let binary = Path::new(&directory).join(sandbox::MSB_PROGRAM);
+    match support::HOST_FILESYSTEM.try_exists(binary.as_path()) {
+        | Ok(exists) if bool::from(exists) => {
+            let binary = binary.display();
+            format!(
+                "The pinned install is there and will not execute: {binary}. The archive can \
+                 land without its executable bit, and `mise install` then reports every tool \
+                 installed while the shim refuses to resolve. Run `chmod +x {binary}`, or \
+                 reinstall with `mise install --force {MICROSANDBOX_TOOL}`."
+            )
+        },
+        | _ => format!(
+            "Nothing is installed at {directory}; it is pinned in mise.toml, so run `mise \
+             install` to provision it."
+        ),
+    }
 }
 
 /// Write the no-Rust report through the same campaign sink used by sandbox
@@ -2835,8 +2885,14 @@ mod tests
         .err()
         .ok_or_else(|| GateError::operational("clean unexpectedly ran without msb"))?;
 
+        // The message names the tool and says it will not run. What follows it
+        // is a diagnosis of WHY, which depends on the machine: an absent
+        // install and one that landed without its executable bit need opposite
+        // repairs, and the generic sentence sent a reader to the wrong one.
         assert!(
-            error.to_string().contains("`msb` (microsandbox) not found"),
+            error
+                .to_string()
+                .contains("`msb` (microsandbox) will not run"),
             "missing msb diagnostic should match snapshot and clean requirements"
         );
         assert!(
