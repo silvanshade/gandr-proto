@@ -43,6 +43,12 @@ impl OutputBuffer
     ///
     /// # Errors
     /// Returns a typed render allocation or arithmetic error.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — one selected output size gets one exact fallible
+    ///   reservation before any fragment append.
+    /// - witness: `algebra::render_text_and_layout_metadata_are_exact`
+    /// - witness: `algebra::render_limits_fail_without_partial_output`
     pub(crate) fn try_new(capacity: OutputBytes) -> Result<Self, RenderError>
     {
         let capacity = usize::try_from(u64::from(capacity)).map_err(|_error| {
@@ -87,6 +93,12 @@ impl OutputBuffer
 /// # Errors
 /// Returns `ArithmeticOverflow` if the local output counter cannot advance, or
 /// the named output limit when the meter refuses the append.
+///
+/// # Adequacy
+/// - hypothesis: L3 — every concrete fragment advances output accounting before
+///   its bytes become observable.
+/// - witness: `algebra::render_preserves_verbatim_bytes_and_physical_endings`
+/// - witness: `algebra::render_limits_fail_without_partial_output`
 fn append_fragment<T>(
     buffer: &mut OutputBuffer,
     meter: &mut RenderMeter,
@@ -127,6 +139,14 @@ where
 /// # Errors
 /// Returns [`RenderError`] at the first refused machine step, stack growth,
 /// output append, or counter/measure disagreement.
+///
+/// # Adequacy
+/// - hypothesis: L4 — iterative plan execution preserves left-first sequence
+///   order, taint completeness, stack ceilings, and exact output
+///   reconciliation.
+/// - witness: `algebra::render_tainted_root_preserves_promise_columns_and_indentation`
+/// - witness: `algebra::render_limits_fail_without_partial_output`
+/// - witness: `algebra::render_vm_stack_limit_is_checked_before_output`
 pub(crate) fn execute(
     arena: &DocArena,
     plans: &PlanArena,
@@ -225,6 +245,11 @@ impl RenderMeter
     /// Returns [`RenderError::LimitExceeded`] when the VM-step ceiling is
     /// reached, or [`RenderError::ArithmeticOverflow`] if the counter cannot
     /// advance.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — VM steps reject the first over-limit pop before usage
+    ///   changes.
+    /// - witness: `vm::tests::vm_step_limit_is_checked_before_usage_changes`
     #[inline]
     pub(crate) fn charge_vm_step(&mut self) -> Result<(), RenderError>
     {
@@ -257,6 +282,11 @@ impl RenderMeter
     /// # Errors
     /// Returns [`RenderError::LimitExceeded`] when `depth` exceeds the
     /// configured VM-stack ceiling.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — VM-stack peaks reject the first over-limit depth
+    ///   before the recorded peak changes.
+    /// - witness: `vm::tests::vm_stack_limit_is_checked_before_peak_changes`
     #[inline]
     pub(crate) fn observe_vm_stack(
         &mut self,

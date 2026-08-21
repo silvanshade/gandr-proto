@@ -1174,6 +1174,13 @@ pub fn resolve(
 /// # Errors
 /// Returns [`RenderError`] for invalid handles, widths, checked arithmetic,
 /// allocation failure, or a named render limit.
+///
+/// # Adequacy
+/// - hypothesis: L4 — the fused seam preserves selected taint, cost, output
+///   count, and deferred context without double-charging output bytes.
+/// - witness: `algebra::render_text_and_layout_metadata_are_exact`
+/// - witness: `algebra::render_tainted_root_preserves_promise_columns_and_indentation`
+/// - witness: `algebra::render_limits_fail_without_partial_output`
 pub(crate) fn resolve_for_render(
     arena: &DocArena,
     root: DocId,
@@ -1193,6 +1200,12 @@ pub(crate) fn resolve_for_render(
 ///   rendering.
 /// - fails: propagates checked resolution and accounting errors.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L4 — shared resolution validates handles and widths, retains
+///   one selected plan, and applies output accounting in the requested phase.
+/// - witness: `algebra::render_text_and_layout_metadata_are_exact`
+/// - witness: `algebra::render_limits_fail_without_partial_output`
 fn resolve_with_output_accounting(
     arena: &DocArena,
     root: DocId,
@@ -1219,4 +1232,119 @@ fn resolve_with_output_accounting(
         width_taint,
         output_bytes: measure.output_bytes,
     })
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use crate::arena::TextSource;
+    use crate::build::DocBuilder;
+    use crate::limits::BuildLimits;
+    use crate::limits::BuildMeter;
+    use crate::limits::RenderLimits;
+    use crate::measure::PhysicalLineEnding;
+    use crate::units::Column;
+    use crate::units::ComputationWidth;
+    use crate::units::Indentation;
+    use crate::units::PageWidth;
+
+    /// Tainted promises retain distinct contexts and forced measures.
+    #[test]
+    fn tainted_promises_retain_distinct_contexts_and_forced_measures()
+    {
+        let mut build_meter = BuildMeter::try_new(BuildLimits::default()).expect("build limits");
+        let mut builder = DocBuilder::try_new(&mut build_meter).expect("build builder");
+        let text = builder.text(TextSource::from("x")).expect("build text");
+        let arena = builder.finish().expect("finish build");
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(2u32),
+            PhysicalLineEnding::Lf,
+        )
+        .expect("valid widths");
+        let mut meter = RenderMeter::try_new(RenderLimits::default()).expect("render limits");
+        let mut resolver = Resolver::new(&arena, options, &mut meter);
+        let node = text.node_id();
+        let first = resolver
+            .begin_eval(
+                node,
+                Column::from(3u32),
+                Indentation::from(1u32),
+                ResolutionMode::Memoized,
+            )
+            .expect("first deferred context")
+            .expect("first set");
+        match first {
+            | MeasureSet::Tainted(TaintPromise::Deferred {
+                doc,
+                column,
+                indentation,
+            }) => {
+                assert_eq!(doc, node);
+                assert_eq!(column, Column::from(3u32));
+                assert_eq!(indentation, Indentation::from(1u32));
+            },
+            | other => panic!("expected deferred first promise, got {other:?}"),
+        }
+        let second = resolver
+            .begin_eval(
+                node,
+                Column::from(4u32),
+                Indentation::from(2u32),
+                ResolutionMode::Memoized,
+            )
+            .expect("second deferred context")
+            .expect("second set");
+        match second {
+            | MeasureSet::Tainted(TaintPromise::Deferred {
+                doc,
+                column,
+                indentation,
+            }) => {
+                assert_eq!(doc, node);
+                assert_eq!(column, Column::from(4u32));
+                assert_eq!(indentation, Indentation::from(2u32));
+            },
+            | other => panic!("expected deferred second promise, got {other:?}"),
+        }
+        let first_forced = resolver
+            .begin_eval(
+                node,
+                Column::from(3u32),
+                Indentation::from(1u32),
+                ResolutionMode::Forced,
+            )
+            .expect("force first context")
+            .expect("first forced set");
+        let first_measure = match first_forced {
+            | MeasureSet::Frontier(mut frontier) => frontier.pop().expect("first measure"),
+            | MeasureSet::Tainted(TaintPromise::Ready(measure)) => measure,
+            | other => panic!("expected first measure, got {other:?}"),
+        };
+        let second_forced = resolver
+            .begin_eval(
+                node,
+                Column::from(4u32),
+                Indentation::from(2u32),
+                ResolutionMode::Forced,
+            )
+            .expect("force second context")
+            .expect("second forced set");
+        let second_measure = match second_forced {
+            | MeasureSet::Frontier(mut frontier) => frontier.pop().expect("second measure"),
+            | MeasureSet::Tainted(TaintPromise::Ready(measure)) => measure,
+            | other => panic!("expected second measure, got {other:?}"),
+        };
+        assert_eq!(first_measure.last_column, Column::from(4u32));
+        assert_eq!(
+            first_measure.cost.squared_overflow,
+            crate::units::SquaredOverflow::from(3u64)
+        );
+        assert_eq!(second_measure.last_column, Column::from(5u32));
+        assert_eq!(
+            second_measure.cost.squared_overflow,
+            crate::units::SquaredOverflow::from(5u64)
+        );
+    }
 }

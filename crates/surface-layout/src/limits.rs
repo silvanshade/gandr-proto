@@ -755,6 +755,11 @@ impl RenderMeter
     /// # Errors
     /// Returns `ArithmeticOverflow` when the cumulative count cannot advance,
     /// or `LimitExceeded` when the output ceiling would be crossed.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the selected output preflight rejects an over-limit
+    ///   measure without mutating cumulative output usage.
+    /// - witness: `algebra::render_limits_fail_without_partial_output`
     pub(crate) fn check_output_bytes(
         &self,
         amount: crate::units::OutputBytes,

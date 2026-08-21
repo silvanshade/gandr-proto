@@ -87,6 +87,19 @@ mod tests
         }
     }
 
+    /// Turns a build fixture error into a concrete test failure.
+    ///
+    /// # Contract
+    /// - requires: `result` is one build operation used to construct a witness.
+    /// - ensures: successful values pass through unchanged.
+    /// - provides: test helpers that preserve the concrete [`BuildError`].
+    /// - fails: panics with the concrete build error when construction fails.
+    /// - panics: when `result` is an error.
+    fn expect_build<T>(result: Result<T, BuildError>) -> T
+    {
+        result.expect("build fixture failed")
+    }
+
     /// Resolve one finished root under generous render limits.
     fn resolve_root(
         arena: &DocArena,
@@ -1270,8 +1283,7 @@ mod tests
     #[test]
     fn resolver_returns_the_text_winner_summary() -> Result<(), RenderError>
     {
-        let (arena, root, _) =
-            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let (arena, root, _) = expect_build(build_text(TextSource::from("abc")));
         let resolved = resolve_root(&arena, root, LayoutOptions::default())?;
         assert_eq!(resolved.cost(), LayoutCost {
             squared_overflow: SquaredOverflow::from(0u64),
@@ -1286,14 +1298,10 @@ mod tests
     #[test]
     fn resolver_charges_line_break_and_indentation() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let root = builder
-            .nest(NestAmount::from(4u32), builder.line())
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let root = expect_build(builder.nest(NestAmount::from(4u32), builder.line()));
+        let arena = expect_build(builder.finish());
         let options = LayoutOptions::try_new(
             PageWidth::from(2u32),
             ComputationWidth::from(8u32),
@@ -1312,18 +1320,12 @@ mod tests
     #[test]
     fn resolver_choice_uses_squared_overflow_before_line_breaks() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let text = builder
-            .text(TextSource::from("abcdef"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let text = expect_build(builder.text(TextSource::from("abcdef")));
         let line = builder.line();
-        let root = builder
-            .choice(text, line)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let root = expect_build(builder.choice(text, line));
+        let arena = expect_build(builder.finish());
         let options = LayoutOptions::try_new(
             PageWidth::from(3u32),
             ComputationWidth::from(10u32),
@@ -1346,25 +1348,15 @@ mod tests
         for page in [2u32, 4u32] {
             for computation in [4u32, 8u32] {
                 for ending in [PhysicalLineEnding::Lf, PhysicalLineEnding::CrLf] {
-                    let mut build_meter = BuildMeter::try_new(generous_limits())
-                        .map_err(|_error| RenderError::UnknownDoc)?;
-                    let mut builder = DocBuilder::try_new(&mut build_meter)
-                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+                    let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
                     let empty = builder.empty();
-                    let text = builder
-                        .text(TextSource::from("abc"))
-                        .map_err(|_error| RenderError::UnknownDoc)?;
+                    let text = expect_build(builder.text(TextSource::from("abc")));
                     let line = builder.line();
-                    let left = builder
-                        .concat(text, line)
-                        .map_err(|_error| RenderError::UnknownDoc)?;
-                    let right = builder
-                        .concat(empty, text)
-                        .map_err(|_error| RenderError::UnknownDoc)?;
-                    let root = builder
-                        .choice(left, right)
-                        .map_err(|_error| RenderError::UnknownDoc)?;
-                    let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+                    let left = expect_build(builder.concat(text, line));
+                    let right = expect_build(builder.concat(empty, text));
+                    let root = expect_build(builder.choice(left, right));
+                    let arena = expect_build(builder.finish());
                     let options = LayoutOptions::try_new(
                         PageWidth::from(page),
                         ComputationWidth::from(computation),
@@ -1408,58 +1400,76 @@ mod tests
     #[test]
     fn shared_contexts_reuse_memo_states() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let text = builder
-            .text(TextSource::from("x"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let root = builder
-            .choice(text, text)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let text = expect_build(builder.text(TextSource::from("x")));
+        let root = expect_build(builder.choice(text, text));
+        let arena = expect_build(builder.finish());
         let mut meter = RenderMeter::try_new(generous_render_limits())?;
         let _resolved = resolve(&arena, root, LayoutOptions::default(), &mut meter)?;
         assert_eq!(u64::from(meter.usage().memo_states), 2u64);
         Ok(())
     }
 
-    /// Out-of-bound shared contexts retain distinct deferred promises.
+    /// Out-of-bound shared contexts retain taint and complete selected output.
     #[test]
-    fn tainted_contexts_remain_distinct() -> Result<(), RenderError>
+    fn tainted_contexts_preserve_taint_and_output() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let short = builder
-            .text(TextSource::from("aaa"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let long = builder
-            .text(TextSource::from("aaaa"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let shared = builder
-            .text(TextSource::from("x"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let left = builder
-            .concat(short, shared)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let right = builder
-            .concat(long, shared)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let root = builder
-            .choice(left, right)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let short = expect_build(builder.text(TextSource::from("aaa")));
+        let long = expect_build(builder.text(TextSource::from("aaaa")));
+        let shared = expect_build(builder.text(TextSource::from("x")));
+        let left = expect_build(builder.concat(short, shared));
+        let right = expect_build(builder.concat(long, shared));
+        let root = expect_build(builder.choice(left, right));
+        let arena = expect_build(builder.finish());
         let options = LayoutOptions::try_new(
             PageWidth::from(2u32),
             ComputationWidth::from(2u32),
             PhysicalLineEnding::Lf,
         )?;
         let resolved = resolve_root(&arena, root, options)?;
+        assert_eq!(resolved.cost(), LayoutCost {
+            squared_overflow: SquaredOverflow::from(4u64),
+            line_breaks: LineBreaks::from(0u64),
+        });
         assert_eq!(resolved.width_taint(), WidthTaint::Tainted);
         assert_eq!(resolved.output_bytes(), OutputBytes::from(4u64));
+        Ok(())
+    }
+
+    /// A tainted fallback preserves the retained promise's columns and
+    /// indentation.
+    #[test]
+    fn render_tainted_root_preserves_promise_columns_and_indentation() -> Result<(), RenderError>
+    {
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let short = expect_build(builder.text(TextSource::from("aaa")));
+        let long = expect_build(builder.text(TextSource::from("aaaa")));
+        let hard_line = builder.hard_line();
+        let nested_line = expect_build(builder.nest(NestAmount::from(1u32), hard_line));
+        let aligned_line = expect_build(builder.align(nested_line));
+        let left = expect_build(builder.concat(short, aligned_line));
+        let right = expect_build(builder.concat(long, aligned_line));
+        let root = expect_build(builder.choice(left, right));
+        let arena = expect_build(builder.finish());
+        let options = LayoutOptions::try_new(
+            PageWidth::from(2u32),
+            ComputationWidth::from(2u32),
+            PhysicalLineEnding::Lf,
+        )?;
+        let mut meter = RenderMeter::try_new(generous_render_limits())?;
+        let rendered = render(&arena, root, &options, &mut meter)?;
+        // workflow-gates: allow-escaped-newline
+        assert_eq!(rendered.text, "aaa\n    ");
+        assert_eq!(rendered.cost, LayoutCost {
+            squared_overflow: SquaredOverflow::from(5u64),
+            line_breaks: LineBreaks::from(1u64),
+        });
+        assert_eq!(rendered.width_tainted, WidthTaint::Tainted);
+        assert_eq!(u64::from(meter.usage().output_bytes), 8u64);
         Ok(())
     }
 
@@ -1467,8 +1477,7 @@ mod tests
     #[test]
     fn render_limits_fail_at_each_exact_boundary() -> Result<(), RenderError>
     {
-        let (arena, root, _) =
-            build_text(TextSource::from("x")).map_err(|_error| RenderError::UnknownDoc)?;
+        let (arena, root, _) = expect_build(build_text(TextSource::from("x")));
         let options = LayoutOptions::default();
         let mut limits = generous_render_limits();
         limits.max_memo_states = MaxMemoStates::from(0u64);
@@ -1503,17 +1512,11 @@ mod tests
             })
         ));
 
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let text = builder
-            .text(TextSource::from("x"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let choice = builder
-            .choice(text, text)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let choice_arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let text = expect_build(builder.text(TextSource::from("x")));
+        let choice = expect_build(builder.choice(text, text));
+        let choice_arena = expect_build(builder.finish());
         let mut limits = generous_render_limits();
         limits.max_frontier_entries = MaxFrontierEntries::from(0u64);
         let mut meter = RenderMeter::try_new(limits)?;
@@ -1575,8 +1578,7 @@ mod tests
     #[test]
     fn render_text_and_layout_metadata_are_exact() -> Result<(), RenderError>
     {
-        let (arena, root, _) =
-            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let (arena, root, _) = expect_build(build_text(TextSource::from("abc")));
         let options = LayoutOptions::default();
         let mut meter = RenderMeter::try_new(generous_render_limits())?;
         let rendered = render(&arena, root, &options, &mut meter)?;
@@ -1595,21 +1597,15 @@ mod tests
     #[test]
     fn render_preserves_verbatim_bytes_and_physical_endings() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
         let payload =
             // workflow-gates: allow-escaped-newline
             "a\r\nb\n";
-        let verbatim = builder
-            .verbatim(VerbatimSource::from(payload))
-            .map_err(|_error| RenderError::UnknownDoc)?;
+        let verbatim = expect_build(builder.verbatim(VerbatimSource::from(payload)));
         let hard_line = builder.hard_line();
-        let root = builder
-            .concat(verbatim, hard_line)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let root = expect_build(builder.concat(verbatim, hard_line));
+        let arena = expect_build(builder.finish());
         let options = LayoutOptions::try_new(
             PageWidth::from(2u32),
             ComputationWidth::from(8u32),
@@ -1627,29 +1623,15 @@ mod tests
     #[test]
     fn render_tainted_root_uses_complete_left_biased_output() -> Result<(), RenderError>
     {
-        let mut build_meter =
-            BuildMeter::try_new(generous_limits()).map_err(|_error| RenderError::UnknownDoc)?;
-        let mut builder =
-            DocBuilder::try_new(&mut build_meter).map_err(|_error| RenderError::UnknownDoc)?;
-        let short = builder
-            .text(TextSource::from("aaa"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let long = builder
-            .text(TextSource::from("aaaa"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let shared = builder
-            .text(TextSource::from("x"))
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let left = builder
-            .concat(short, shared)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let right = builder
-            .concat(long, shared)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let root = builder
-            .choice(left, right)
-            .map_err(|_error| RenderError::UnknownDoc)?;
-        let arena = builder.finish().map_err(|_error| RenderError::UnknownDoc)?;
+        let mut build_meter = expect_build(BuildMeter::try_new(generous_limits()));
+        let mut builder = expect_build(DocBuilder::try_new(&mut build_meter));
+        let short = expect_build(builder.text(TextSource::from("aaa")));
+        let long = expect_build(builder.text(TextSource::from("aaaa")));
+        let shared = expect_build(builder.text(TextSource::from("x")));
+        let left = expect_build(builder.concat(short, shared));
+        let right = expect_build(builder.concat(long, shared));
+        let root = expect_build(builder.choice(left, right));
+        let arena = expect_build(builder.finish());
         let options = LayoutOptions::try_new(
             PageWidth::from(2u32),
             ComputationWidth::from(2u32),
@@ -1666,8 +1648,7 @@ mod tests
     #[test]
     fn render_limits_fail_without_partial_output() -> Result<(), RenderError>
     {
-        let (arena, root, _) =
-            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let (arena, root, _) = expect_build(build_text(TextSource::from("abc")));
         let options = LayoutOptions::default();
         let mut limits = generous_render_limits();
         limits.max_output_bytes = MaxOutputBytes::from(2u64);
@@ -1699,8 +1680,7 @@ mod tests
     #[test]
     fn render_vm_stack_limit_is_checked_before_output() -> Result<(), RenderError>
     {
-        let (arena, root, _) =
-            build_text(TextSource::from("abc")).map_err(|_error| RenderError::UnknownDoc)?;
+        let (arena, root, _) = expect_build(build_text(TextSource::from("abc")));
         let options = LayoutOptions::default();
         let mut limits = generous_render_limits();
         limits.max_vm_stack = MaxVmStack::from(0u64);

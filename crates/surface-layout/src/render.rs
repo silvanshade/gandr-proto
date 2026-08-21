@@ -113,12 +113,15 @@ pub struct Rendered
 /// arithmetic, allocation failure, or any named resolution/VM limit.
 ///
 /// # Adequacy
-/// - hypothesis: L4 — exact output, taint completeness, append accounting,
-///   machine ceilings, and no-partial-output behavior distinguish the fused
-///   render path.
+/// - hypothesis: L4 — exact output, taint completeness, promise columns and
+///   indentation, append accounting, machine ceilings, and no-partial-output
+///   behavior distinguish the fused render path.
 /// - witness: `algebra::render_text_and_layout_metadata_are_exact`
 /// - witness: `algebra::render_preserves_verbatim_bytes_and_physical_endings`
+/// - witness: `algebra::render_tainted_root_uses_complete_left_biased_output`
+/// - witness: `algebra::render_tainted_root_preserves_promise_columns_and_indentation`
 /// - witness: `algebra::render_limits_fail_without_partial_output`
+/// - witness: `algebra::render_vm_stack_limit_is_checked_before_output`
 #[inline]
 pub fn render(
     arena: &DocArena,
