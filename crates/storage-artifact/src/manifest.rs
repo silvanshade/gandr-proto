@@ -2,8 +2,8 @@
 //! successor (the massive-term design record, §6).
 //!
 //! An artifact's identity is `BLAKE3` of a root **manifest** binding the
-//! chunker parameter commitment (the 85-byte fixed-order commitment), the
-//! record count, the root node hash, and the **inner** format version (the
+//! chunker parameter commitment (the 93-byte versioned fixed-order commitment),
+//! the record count, the root node hash, and the **inner** format version (the
 //! kernel export version the records were cut from). The manifest's own byte
 //! layout is pinned, canonical, and versioned — the E4/E5 discipline applied at
 //! the outer layer: a deterministic fixed-order big-endian encoding, refusal on
@@ -35,7 +35,8 @@ pub const MANIFEST_MAGIC: &[u8] = b"gandr:artifact-manifest:v1";
 pub const MANIFEST_FORMAT_VERSION_V1: u16 = 1;
 
 /// The fixed byte length of the chunker parameter commitment a manifest binds
-/// (the 85-byte fixed-order commitment; single source of truth in the chunker).
+/// (the 93-byte versioned fixed-order commitment; single source of truth in
+/// the chunker).
 pub const CHUNKER_COMMITMENT_LEN: usize = PARAMETER_COMMITMENT_LEN;
 
 /// The byte length of an [`ArtifactIdentity`] (a BLAKE3 digest).
@@ -324,7 +325,7 @@ pub struct ArtifactManifest
     manifest_version: ManifestFormatVersion,
     /// The inner kernel export format version the records were cut from.
     inner_format_version: InnerFormatVersion,
-    /// The 85-byte chunker parameter commitment.
+    /// The 93-byte versioned chunker parameter commitment.
     chunker_commitment: ChunkerCommitment,
     /// The number of declaration records the tree represents.
     record_count: ArtifactRecordCount,
@@ -608,7 +609,7 @@ mod tests
     use super::NodeHash;
     use crate::error::ManifestError;
 
-    /// The big-endian wire form of the 85-byte commitment length.
+    /// The big-endian wire form of the 93-byte commitment length.
     const COMMITMENT_LEN_WIRE: [u8; 2] = {
         let wide = CHUNKER_COMMITMENT_LEN.to_be_bytes();
         [wide[6], wide[7]]
@@ -628,7 +629,7 @@ mod tests
     }
 
     /// The canonical manifest byte layout is pinned (the E4/E5 golden): magic,
-    /// the manifest and inner version words, a length-prefixed 85-byte
+    /// the manifest and inner version words, a length-prefixed 93-byte
     /// commitment, the record count, and the root node hash, all big-endian.
     #[test]
     fn the_manifest_layout_is_golden()
@@ -640,7 +641,7 @@ mod tests
         expected.extend_from_slice(MANIFEST_MAGIC);
         expected.extend_from_slice(&[0x00, 0x01]); // manifest version 1
         expected.extend_from_slice(&[0x00, 0x01]); // inner format version 1
-        expected.extend_from_slice(&COMMITMENT_LEN_WIRE); // commitment length 85
+        expected.extend_from_slice(&COMMITMENT_LEN_WIRE); // commitment length 93
         expected.extend_from_slice(&[0_u8; CHUNKER_COMMITMENT_LEN]);
         expected.extend_from_slice(&[0_u8; 8]); // record count 0
         expected.extend_from_slice(&[0_u8; ARTIFACT_IDENTITY_LEN]); // root node hash
@@ -651,9 +652,9 @@ mod tests
             "the canonical manifest layout is pinned"
         );
         assert_eq!(
-            157,
+            165,
             encoded.len(),
-            "the fixed manifest is exactly 157 bytes"
+            "the fixed manifest is exactly 165 bytes"
         );
     }
 
@@ -806,10 +807,10 @@ mod tests
         // The commitment length word follows magic + two version words.
         let length_offset = MANIFEST_MAGIC.len().wrapping_add(4);
         bytes[length_offset] = COMMITMENT_LEN_WIRE[0];
-        bytes[length_offset.wrapping_add(1)] = COMMITMENT_LEN_WIRE[1].wrapping_sub(1); // 84, not 85
+        bytes[length_offset.wrapping_add(1)] = COMMITMENT_LEN_WIRE[1].wrapping_sub(1); // 92, not 93
         match ArtifactManifest::decode(bytes.as_ref().into()) {
             | Err(ManifestError::CommitmentLength { found, expected }) => {
-                assert_eq!(84, found);
+                assert_eq!(92, found);
                 assert_eq!(CHUNKER_COMMITMENT_LEN, expected);
             },
             | other => panic!("expected a commitment-length refusal, got {other:?}"),

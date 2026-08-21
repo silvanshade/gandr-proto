@@ -17,30 +17,38 @@
 //! This crate is `#![no_std]` with **zero runtime dependencies** (an empty
 //! `[dependencies]` table) — a deliberate property kept visible at the crate
 //! boundary so the chunker stays a minimal, self-contained substrate. Its
-//! 85-byte fixed-order [`ChunkerParams::commitment_bytes`] parameter commitment
+//! 93-byte fixed-order [`ChunkerParams::commitment_bytes`] parameter commitment
 //! ([`PARAMETER_COMMITMENT_LEN`], magic `MPBCHK01`, big-endian fields) is the
 //! primitive downstream layers bind so records cannot be replayed under
 //! incompatible chunking parameters.
 //!
 //! This crate owns only boundary detection over already-canonical ordered
-//! records. It does not serialize records, build Prolly-Bao trees, hash nodes
-//! with BLAKE3, store blocks, produce proofs, or talk to storage and transport
-//! adapters. Callers commit [`ChunkerParams::commitment_bytes`] into Prolly-Bao
-//! root or proof context so the same records cannot be replayed under
-//! incompatible chunking parameters. The only supported profile is the local,
-//! deterministic, FastCDC-2020-inspired Gear scanner identified by
-//! [`AlgorithmVersion::FASTCDC_2020`]; stronger adversarial boundary-grinding
-//! mitigations may add new algorithm profiles later, each behind an explicit
-//! committed profile value.
+//! records and typed canonical-token boundary events. It does not serialize
+//! records, build Prolly-Bao trees, hash nodes with BLAKE3, store blocks,
+//! produce proofs, or talk to storage and transport adapters. Callers commit
+//! [`ChunkerParams::commitment_bytes`] or
+//! [`TypedChunkerParams::commitment_bytes`] into Prolly-Bao root or proof
+//! context so the same records cannot be replayed under incompatible
+//! chunking parameters. The supported profiles are the local deterministic
+//! FastCDC-2020-inspired Gear scanner identified by
+//! [`AlgorithmVersion::FASTCDC_2020`] and the typed content-defined scanner
+//! identified by [`AlgorithmVersion::TYPED_CDC`].
+//!
+//! Typed content-defined scanning consumes boundary-constructor events rather
+//! than byte offsets. A cut occurs when the event residue is divisible by the
+//! committed kappa or when the committed token cap fires.
 
 extern crate alloc;
 
 use alloc::vec::Vec;
 use core::convert::TryFrom as _;
 use core::fmt;
+use core::num::NonZeroU32;
+use core::num::NonZeroU64;
 
-/// Length in bytes of [`ChunkerParams`] parameter commitments.
-pub const PARAMETER_COMMITMENT_LEN: usize = 0x55_usize;
+/// Length in bytes of [`ChunkerParams`] and [`TypedChunkerParams`] parameter
+/// commitments.
+pub const PARAMETER_COMMITMENT_LEN: usize = 0x5D_usize;
 
 /// Offset of the commitment-format version field.
 const COMMITMENT_FORMAT_VERSION_OFFSET: usize = 0x08_usize;
@@ -72,11 +80,20 @@ const COMMITMENT_TARGET_RECORDS_OFFSET: usize = 0x4D_usize;
 /// Offset of the maximum-record-limit field.
 const COMMITMENT_MAX_RECORDS_OFFSET: usize = 0x51_usize;
 
+/// Offset of the typed-profile kappa field.
+const COMMITMENT_TYPED_KAPPA_OFFSET: usize = 0x55_usize;
+
+/// Offset of the typed-profile token-cap field.
+const COMMITMENT_TYPED_CAP_OFFSET: usize = 0x59_usize;
+
 /// Version of the commitment byte layout implemented by this crate.
-const COMMITMENT_FORMAT_VERSION: u16 = 0x0001_u16;
+const COMMITMENT_FORMAT_VERSION: u16 = 0x0002_u16;
 
 /// Raw value for the supported FastCDC-2020-inspired algorithm profile.
 const ALGORITHM_FASTCDC_2020_RAW: u16 = 0x0001_u16;
+
+/// Raw value for the supported typed content-defined algorithm profile.
+const ALGORITHM_TYPED_CDC_RAW: u16 = 0x0002_u16;
 
 /// Raw value for the supported Gear table profile.
 const GEAR_TABLE_MACH_V1_RAW: u16 = 0x0001_u16;
@@ -420,6 +437,11 @@ semantic_integer! {
 }
 
 semantic_integer! {
+    /// A count of canonical tokens accumulated by the typed scanner.
+    pub struct TokenCount(u64);
+}
+
+semantic_integer! {
     /// A canonical byte-stream position.
     pub struct BytePosition(u64);
 }
@@ -491,7 +513,7 @@ semantic_integer! {
 
 semantic_integer! {
     /// A private decision returned by chunk-boundary predicates.
-    struct CutDecision(bool);
+    struct MinimumLimitsSatisfied(bool);
 }
 
 impl From<RecordCount> for RecordDistance
@@ -727,6 +749,11 @@ impl AlgorithmVersion
     pub const FASTCDC_2020: Self = Self {
         raw: ALGORITHM_FASTCDC_2020_RAW,
     };
+
+    /// Typed content-defined boundary-event scanner profile.
+    pub const TYPED_CDC: Self = Self {
+        raw: ALGORITHM_TYPED_CDC_RAW,
+    };
 }
 
 impl TryFrom<u16> for AlgorithmVersion
@@ -736,7 +763,7 @@ impl TryFrom<u16> for AlgorithmVersion
     #[inline]
     fn try_from(raw: u16) -> Result<Self, Self::Error>
     {
-        if raw == ALGORITHM_FASTCDC_2020_RAW {
+        if raw == ALGORITHM_FASTCDC_2020_RAW || raw == ALGORITHM_TYPED_CDC_RAW {
             return Ok(Self { raw });
         }
 
@@ -1164,20 +1191,25 @@ impl ChunkerParams
         limits: ChunkLimits,
     ) -> Result<Self, ChunkerError>
     {
+        if algorithm_version == AlgorithmVersion::TYPED_CDC {
+            return Err(ChunkerError::TypedProfileRequiresTypedParameters);
+        }
         if let SeedPolicyKind::Unsupported(kind) = seed_policy.kind {
             return Err(ChunkerError::UnsupportedSeedPolicy {
                 kind: u8::from(kind),
             });
         }
 
-        let commitment = build_parameter_commitment(
+        let commitment = build_parameter_commitment(CommitmentProfile {
             algorithm_version,
             gear_table_version,
-            &seed_policy,
+            seed_policy: &seed_policy,
             normalization_policy,
             record_boundary_rule,
-            &limits,
-        );
+            limits: Some(&limits),
+            typed_kappa: 0_u32,
+            typed_cap: 0_u32,
+        });
         let initial_state = derive_initial_state(&seed_policy);
         let cut_mask = cut_mask_for_target(limits.target_bytes());
 
@@ -1201,14 +1233,16 @@ impl ChunkerParams
     {
         let limits = ChunkLimits::default_fastcdc();
         let seed_policy = SeedPolicy::NONE;
-        let commitment = build_parameter_commitment(
-            AlgorithmVersion::FASTCDC_2020,
-            GearTableVersion::MACH_V1,
-            &seed_policy,
-            NormalizationPolicy::NONE,
-            RecordBoundaryRule::BETWEEN_RECORDS,
-            &limits,
-        );
+        let commitment = build_parameter_commitment(CommitmentProfile {
+            algorithm_version: AlgorithmVersion::FASTCDC_2020,
+            gear_table_version: GearTableVersion::MACH_V1,
+            seed_policy: &seed_policy,
+            normalization_policy: NormalizationPolicy::NONE,
+            record_boundary_rule: RecordBoundaryRule::BETWEEN_RECORDS,
+            limits: Some(&limits),
+            typed_kappa: 0_u32,
+            typed_cap: 0_u32,
+        });
         let initial_state = derive_initial_state(&seed_policy);
         let cut_mask = cut_mask_for_target(limits.target_bytes());
 
@@ -1438,7 +1472,7 @@ impl ChunkSpan
     }
 }
 
-/// Reason a record-safe chunk boundary was emitted.
+/// Reason a chunk boundary was emitted.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum BoundaryReason
 {
@@ -1448,8 +1482,150 @@ pub enum BoundaryReason
     MaxByteCap,
     /// The hard record-count cap forced a boundary after a complete record.
     MaxRecordCap,
+    /// The hard token cap forced a boundary after a typed event.
+    MaxTokenCap,
     /// End of input emitted a remaining non-empty chunk.
     FinalRemainder,
+}
+
+/// A potential chunk point emitted at a boundary-datatype constructor.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct BoundaryEvent
+{
+    /// Tokens emitted since the previous boundary event.
+    pub tokens_since: u64,
+    /// Rolling hash over the subtree rooted at this boundary.
+    pub residue: u64,
+}
+
+/// Validated constants for typed content-defined chunking.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypedChunkerParams
+{
+    /// Expected chunk spacing in boundary events.
+    pub kappa: NonZeroU32,
+    /// Hard per-chunk token cap.
+    pub cap: NonZeroU32,
+    /// Stable parameter commitment for the typed profile.
+    commitment: ParameterCommitment,
+}
+
+impl TypedChunkerParams
+{
+    /// Creates typed chunking parameters and their committed profile bytes.
+    #[inline]
+    #[must_use]
+    pub fn new<Kappa, Cap>(
+        kappa: Kappa,
+        cap: Cap,
+    ) -> Self
+    where
+        Kappa: Into<NonZeroU32>,
+        Cap: Into<NonZeroU32>,
+    {
+        let kappa: NonZeroU32 = kappa.into();
+        let cap: NonZeroU32 = cap.into();
+        let seed_policy = SeedPolicy::NONE;
+        let commitment = build_parameter_commitment(CommitmentProfile {
+            algorithm_version: AlgorithmVersion::TYPED_CDC,
+            gear_table_version: GearTableVersion::MACH_V1,
+            seed_policy: &seed_policy,
+            normalization_policy: NormalizationPolicy::NONE,
+            record_boundary_rule: RecordBoundaryRule::BETWEEN_RECORDS,
+            limits: None,
+            typed_kappa: kappa.get(),
+            typed_cap: cap.get(),
+        });
+        return Self {
+            kappa,
+            cap,
+            commitment,
+        };
+    }
+
+    /// Returns the stable typed-profile parameter commitment.
+    #[inline]
+    #[must_use]
+    pub const fn commitment_bytes(&self) -> &ParameterCommitment
+    {
+        return &self.commitment;
+    }
+}
+
+/// Stateful cut-decision engine for typed boundary events.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypedChunker
+{
+    /// Committed typed profile parameters.
+    params: TypedChunkerParams,
+    /// Number of tokens accumulated since the last cut.
+    tokens_since: u64,
+}
+
+impl TypedChunker
+{
+    /// Creates a typed scanner with an empty pending token suffix.
+    #[inline]
+    #[must_use]
+    pub const fn new(params: TypedChunkerParams) -> Self
+    {
+        return Self {
+            params,
+            tokens_since: 0_u64,
+        };
+    }
+
+    /// Consumes one boundary event and returns the committed cut decision.
+    ///
+    /// The hard token cap takes precedence when one event satisfies both the
+    /// cap and the rolling-hash predicate. Saturating accumulation makes the
+    /// cap fail closed even when a caller reports an overflowing token count.
+    #[inline]
+    pub fn on_boundary(
+        &mut self,
+        event: BoundaryEvent,
+    ) -> CutDecision
+    {
+        self.tokens_since = self.tokens_since.saturating_add(event.tokens_since);
+        if self.tokens_since >= u64::from(self.params.cap.get()) {
+            self.tokens_since = 0_u64;
+            return CutDecision::Cut(BoundaryReason::MaxTokenCap);
+        }
+
+        let kappa = NonZeroU64::from(self.params.kappa);
+        if event.residue.checked_rem(kappa.get()) == Some(0_u64) {
+            self.tokens_since = 0_u64;
+            return CutDecision::Cut(BoundaryReason::HashPredicate);
+        }
+
+        return CutDecision::Continue;
+    }
+
+    /// Returns the typed parameters used by this scanner.
+    #[inline]
+    #[must_use]
+    pub const fn params(&self) -> &TypedChunkerParams
+    {
+        return &self.params;
+    }
+
+    /// Returns the pending token count since the last cut.
+    #[inline]
+    #[must_use]
+    pub fn tokens_since(&self) -> TokenCount
+    {
+        return TokenCount::from(self.tokens_since);
+    }
+}
+
+/// Decision returned for one typed boundary-constructor event.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CutDecision
+{
+    /// Commit the pending token suffix as a chunk.
+    Cut(BoundaryReason),
+    /// Keep accumulating tokens in the current chunk.
+    Continue,
 }
 
 /// Invalid parameter condition detected during construction.
@@ -1568,6 +1744,8 @@ pub enum ChunkerError
         /// Raw unsupported algorithm version.
         raw: u16,
     },
+    /// The typed profile must be constructed with [`TypedChunkerParams`].
+    TypedProfileRequiresTypedParameters,
     /// Gear table version is not implemented by this crate.
     UnsupportedGearTableVersion
     {
@@ -1655,6 +1833,9 @@ impl fmt::Display for ChunkerError
             ),
             | Self::UnsupportedAlgorithmVersion { raw } => {
                 write!(f, "unsupported algorithm version {raw}")
+            },
+            | Self::TypedProfileRequiresTypedParameters => {
+                write!(f, "typed profile requires TypedChunkerParams")
             },
             | Self::UnsupportedGearTableVersion { raw } => {
                 write!(f, "unsupported Gear table version {raw}")
@@ -2042,9 +2223,9 @@ impl ChunkScan
 
     /// Returns whether the current chunk has satisfied minimum byte and record
     /// limits.
-    const fn chunk_satisfies_minimum_limits(&self) -> CutDecision
+    const fn chunk_satisfies_minimum_limits(&self) -> MinimumLimitsSatisfied
     {
-        return CutDecision(
+        return MinimumLimitsSatisfied(
             self.chunk_bytes.0 >= self.limits.min_bytes().0
                 && self.chunk_records.0 >= self.limits.min_records().0,
         );
@@ -2052,13 +2233,13 @@ impl ChunkScan
 
     /// Returns whether the current complete-record boundary satisfies the hash
     /// predicate.
-    const fn hash_predicate_allows_cut(&self) -> CutDecision
+    const fn hash_predicate_allows_cut(&self) -> MinimumLimitsSatisfied
     {
         if !self.chunk_satisfies_minimum_limits().0 {
-            return CutDecision(false);
+            return MinimumLimitsSatisfied(false);
         }
 
-        return CutDecision((self.state.0 & self.cut_mask.0) == 0_u64);
+        return MinimumLimitsSatisfied((self.state.0 & self.cut_mask.0) == 0_u64);
     }
 
     /// Emits a boundary for the current non-empty chunk and resets chunk-local
@@ -2157,28 +2338,34 @@ fn derive_initial_state(seed_policy: &SeedPolicy) -> GearState
     return GearState(state);
 }
 
-/// Builds the fixed-order parameter commitment bytes.
-fn build_parameter_commitment(
+/// All fields that participate in one fixed-order commitment.
+#[derive(Clone, Copy)]
+struct CommitmentProfile<'limits>
+{
+    /// Committed algorithm profile.
     algorithm_version: AlgorithmVersion,
+    /// Committed Gear table version.
     gear_table_version: GearTableVersion,
-    seed_policy: &SeedPolicy,
+    /// Committed seed policy.
+    seed_policy: &'limits SeedPolicy,
+    /// Committed input normalization policy.
     normalization_policy: NormalizationPolicy,
+    /// Committed record-boundary rule.
     record_boundary_rule: RecordBoundaryRule,
-    limits: &ChunkLimits,
-) -> ParameterCommitment
+    /// Record-safe limits, absent for typed profile commitments.
+    limits: Option<&'limits ChunkLimits>,
+    /// Typed profile kappa, or zero for record-safe commitments.
+    typed_kappa: u32,
+    /// Typed profile token cap, or zero for record-safe commitments.
+    typed_cap: u32,
+}
+
+/// Builds the fixed-order parameter commitment bytes.
+fn build_parameter_commitment(profile: CommitmentProfile<'_>) -> ParameterCommitment
 {
     return ParameterCommitment {
         bytes: core::array::from_fn(|index| {
-            return commitment_byte_at(
-                CommitmentIndex::from(index),
-                algorithm_version,
-                gear_table_version,
-                seed_policy,
-                normalization_policy,
-                record_boundary_rule,
-                limits,
-            )
-            .0;
+            return commitment_byte_at(CommitmentIndex::from(index), &profile).0;
         }),
     };
 }
@@ -2186,14 +2373,28 @@ fn build_parameter_commitment(
 /// Returns one byte from the parameter commitment by position.
 fn commitment_byte_at(
     index: CommitmentIndex,
-    algorithm_version: AlgorithmVersion,
-    gear_table_version: GearTableVersion,
-    seed_policy: &SeedPolicy,
-    normalization_policy: NormalizationPolicy,
-    record_boundary_rule: RecordBoundaryRule,
-    limits: &ChunkLimits,
+    profile: &CommitmentProfile<'_>,
 ) -> CommitmentByte
 {
+    let CommitmentProfile {
+        algorithm_version,
+        gear_table_version,
+        seed_policy,
+        normalization_policy,
+        record_boundary_rule,
+        limits,
+        typed_kappa,
+        typed_cap,
+    } = *profile;
+    let zero_bytes = ByteCount::from(0_u64);
+    let zero_records = RecordCount::from(0_u32);
+    let min_bytes = limits.map_or(zero_bytes, ChunkLimits::min_bytes);
+    let target_bytes = limits.map_or(zero_bytes, ChunkLimits::target_bytes);
+    let max_bytes = limits.map_or(zero_bytes, ChunkLimits::max_bytes);
+    let min_records = limits.map_or(zero_records, ChunkLimits::min_records);
+    let target_records = limits.map_or(zero_records, ChunkLimits::target_records);
+    let max_records = limits.map_or(zero_records, ChunkLimits::max_records);
+
     return match index.0 {
         | 0x00_usize ..= 0x07_usize => magic_byte(index),
         | 0x08_usize ..= 0x09_usize => u16_be_byte(
@@ -2219,34 +2420,42 @@ fn commitment_byte_at(
         | 0x2F_usize => CommitmentByte::from(u8::from(normalization_policy)),
         | 0x30_usize => CommitmentByte::from(u8::from(record_boundary_rule)),
         | 0x31_usize ..= 0x38_usize => u64_be_byte(
-            limits.min_bytes(),
+            min_bytes,
             relative_index(index, CommitmentOffset::from(COMMITMENT_MIN_BYTES_OFFSET)),
         ),
         | 0x39_usize ..= 0x40_usize => u64_be_byte(
-            limits.target_bytes(),
+            target_bytes,
             relative_index(
                 index,
                 CommitmentOffset::from(COMMITMENT_TARGET_BYTES_OFFSET),
             ),
         ),
         | 0x41_usize ..= 0x48_usize => u64_be_byte(
-            limits.max_bytes(),
+            max_bytes,
             relative_index(index, CommitmentOffset::from(COMMITMENT_MAX_BYTES_OFFSET)),
         ),
         | 0x49_usize ..= 0x4C_usize => u32_be_byte(
-            limits.min_records(),
+            min_records,
             relative_index(index, CommitmentOffset::from(COMMITMENT_MIN_RECORDS_OFFSET)),
         ),
         | 0x4D_usize ..= 0x50_usize => u32_be_byte(
-            limits.target_records(),
+            target_records,
             relative_index(
                 index,
                 CommitmentOffset::from(COMMITMENT_TARGET_RECORDS_OFFSET),
             ),
         ),
         | 0x51_usize ..= 0x54_usize => u32_be_byte(
-            limits.max_records(),
+            max_records,
             relative_index(index, CommitmentOffset::from(COMMITMENT_MAX_RECORDS_OFFSET)),
+        ),
+        | 0x55_usize ..= 0x58_usize => u32_be_byte(
+            RecordCount::from(typed_kappa),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_TYPED_KAPPA_OFFSET)),
+        ),
+        | 0x59_usize ..= 0x5C_usize => u32_be_byte(
+            RecordCount::from(typed_cap),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_TYPED_CAP_OFFSET)),
         ),
         | _other => CommitmentByte::from(0_u8),
     };

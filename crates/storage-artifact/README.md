@@ -14,13 +14,12 @@
 - `ArtifactRecordSet` extracts those records from a `SegmentedArtifact` (or directly from an `Environment`) using its header-plus-segment span reader, and reassembles the canonical artifact bytes from them.
   The spans are offsets only; they do not make declaration records independently replayable.
 - `build` flows the records through record-safe (declaration-granular) chunking into a `BlockStore`-backed prolly tree, storing every node, and mints the artifact identity.
-- `ArtifactManifest` is the canonical, versioned outer manifest binding the chunker parameter commitment (85 bytes), the record count, the root node hash, and the inner kernel export format version.
+- `ArtifactManifest` is the canonical, versioned outer manifest binding the chunker parameter commitment (93 bytes), the record count, the root node hash, and the inner kernel export format version.
   `ArtifactIdentity` is `BLAKE3` of the manifest — the b3sum-provenance successor.
 
 ## Relationship to the tiers below and beside it
 
-- **`gandr-kernel-core`** (trusted) — supplies the canonical v1 bytes and their declaration-segment framing (`write_segmented` → `SegmentedArtifact`); it gains **no** dependency and does **no** hashing.
-- **`gandr-storage-chunker`** — the record-safe boundary detector and its 85-byte parameter commitment.
+- **`gandr-storage-chunker`** — the record-safe boundary detector and its 93-byte versioned parameter commitment.
 - **`gandr-storage-prolly-trees`** — the generic ordered-record Merkle tree and its `BlockStore`; it carries **no** declaration semantics, and this crate is a consumer supplying the record model to its generic sorted-record interface.
 
 ## The two walls

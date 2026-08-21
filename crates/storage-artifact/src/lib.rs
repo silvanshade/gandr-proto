@@ -149,11 +149,11 @@ impl BuiltArtifact
 ///   `params` is a supported prolly-tree parameter set.
 /// - ensures: `Ok(built)` when the records chunk and build; every carried tree
 ///   node is inserted into `store` (verified on insert), the manifest binds the
-///   85-byte chunker commitment, the record count, the root node hash, and the
-///   record set's inner format version, and the identity is `BLAKE3` of the
-///   manifest. Building is a deterministic function of the sorted record set —
-///   history-independent (the outer wall only; validity is re-checked at replay
-///   from the canonical inner bytes, never here).
+///   93-byte versioned chunker commitment, the record count, the root node
+///   hash, and the record set's inner format version, and the identity is
+///   `BLAKE3` of the manifest. Building is a deterministic function of the
+///   sorted record set — history-independent (the outer wall only; validity is
+///   re-checked at replay from the canonical inner bytes, never here).
 /// - provides: the outer content-addressed identity and its stored tree.
 /// - fails: [`ArtifactError::Tree`] on a chunker/tree/store failure, or
 ///   [`ArtifactError::Manifest`] on an ill-formed commitment.

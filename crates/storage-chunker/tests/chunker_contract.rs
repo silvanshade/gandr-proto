@@ -4,7 +4,10 @@
 #[cfg(test)]
 mod tests
 {
+    use core::num::NonZeroU32;
+
     use gandr_storage_chunker::AlgorithmVersion;
+    use gandr_storage_chunker::BoundaryEvent;
     use gandr_storage_chunker::BoundaryReason;
     use gandr_storage_chunker::ByteCount;
     use gandr_storage_chunker::BytePosition;
@@ -14,6 +17,7 @@ mod tests
     use gandr_storage_chunker::ChunkLimits;
     use gandr_storage_chunker::ChunkerError;
     use gandr_storage_chunker::ChunkerParams;
+    use gandr_storage_chunker::CutDecision;
     use gandr_storage_chunker::GearTableVersion;
     use gandr_storage_chunker::InvalidParameterReason;
     use gandr_storage_chunker::NormalizationPolicy;
@@ -24,6 +28,8 @@ mod tests
     use gandr_storage_chunker::SeedKind;
     use gandr_storage_chunker::SeedPolicy;
     use gandr_storage_chunker::SeedSalt;
+    use gandr_storage_chunker::TypedChunker;
+    use gandr_storage_chunker::TypedChunkerParams;
     use gandr_storage_chunker::chunk_record_slices;
     use gandr_storage_chunker::chunk_spans;
 
@@ -183,6 +189,119 @@ mod tests
             changed_record_target.commitment_bytes(),
             "record target changes must alter the parameter commitment"
         );
+    }
+
+    /// Typed profile commitments pin the layout version and both constants.
+    #[test]
+    fn typed_profile_commitment_is_golden_pinned()
+    {
+        let typed_params = TypedChunkerParams::new(
+            NonZeroU32::new(7_u32).expect("non-zero kappa"),
+            NonZeroU32::new(64_u32).expect("non-zero token cap"),
+        );
+        let bytes = typed_params.commitment_bytes().as_ref();
+        assert!(bytes.len() > 0x5C_usize);
+
+        assert_eq!(
+            &bytes[0x00_usize .. 0x0E_usize],
+            b"MPBCHK01\0\x02\0\x02\0\x01",
+            "typed profile magic, layout version, algorithm, and table are stable"
+        );
+        assert!(
+            bytes[0x0E_usize .. 0x55_usize]
+                .iter()
+                .all(|byte| *byte == 0_u8),
+            "typed profile does not carry byte/record limits"
+        );
+        assert_eq!(
+            &bytes[0x55_usize .. 0x5D_usize],
+            &[0_u8, 0_u8, 0_u8, 7_u8, 0_u8, 0_u8, 0_u8, 64_u8],
+            "typed kappa and token cap are committed in big-endian form"
+        );
+        assert_eq!(
+            AlgorithmVersion::try_from(0x0002_u16).expect("typed profile is supported"),
+            AlgorithmVersion::TYPED_CDC
+        );
+    }
+
+    /// Typed boundary events cut on the rolling predicate or hard token cap.
+    #[test]
+    fn typed_boundary_events_apply_hash_and_cap_rules()
+    {
+        let typed_params = TypedChunkerParams::new(
+            NonZeroU32::new(4_u32).expect("non-zero kappa"),
+            NonZeroU32::new(10_u32).expect("non-zero token cap"),
+        );
+        let mut chunker = TypedChunker::new(typed_params);
+
+        assert_eq!(
+            chunker.on_boundary(BoundaryEvent {
+                tokens_since: 3_u64,
+                residue: 1_u64,
+            }),
+            CutDecision::Continue
+        );
+        assert_eq!(u64::from(chunker.tokens_since()), 3_u64);
+        assert_eq!(
+            chunker.on_boundary(BoundaryEvent {
+                tokens_since: 2_u64,
+                residue: 8_u64,
+            }),
+            CutDecision::Cut(BoundaryReason::HashPredicate)
+        );
+        assert_eq!(u64::from(chunker.tokens_since()), 0_u64);
+        assert_eq!(
+            chunker.on_boundary(BoundaryEvent {
+                tokens_since: 10_u64,
+                residue: 1_u64,
+            }),
+            CutDecision::Cut(BoundaryReason::MaxTokenCap)
+        );
+        assert_eq!(u64::from(chunker.tokens_since()), 0_u64);
+    }
+
+    /// One boundary event per record is the typed scanner's record-safe
+    /// degenerate instance.
+    #[test]
+    fn typed_record_events_agree_with_record_safe_degenerate_profile()
+    {
+        let records: [&[u8]; 4] = [b"one", b"two", b"three", b"four"];
+        let record_safe_params = params(limits(
+            ByteCount::from(1_u64),
+            ByteCount::from(1_u64),
+            ByteCount::from(64_u64),
+            RecordCount::from(1_u32),
+            RecordCount::from(16_u32),
+            RecordCount::from(16_u32),
+        ));
+        let record_safe_chunks = chunk_record_slices(
+            CanonicalRecords::from(records.as_slice()),
+            &record_safe_params,
+        )
+        .expect("record-safe degenerate fixture must chunk");
+        let typed_params = TypedChunkerParams::new(
+            NonZeroU32::new(1_u32).expect("non-zero kappa"),
+            NonZeroU32::new(u32::MAX).expect("non-zero token cap"),
+        );
+        let mut typed_chunker = TypedChunker::new(typed_params);
+        let mut typed_cuts = 0_usize;
+
+        for _record in records {
+            if typed_chunker.on_boundary(BoundaryEvent {
+                tokens_since: 1_u64,
+                residue: 0_u64,
+            }) == CutDecision::Cut(BoundaryReason::HashPredicate)
+            {
+                typed_cuts += 1_usize;
+            }
+        }
+
+        assert_eq!(
+            record_safe_chunks.len(),
+            records.len(),
+            "record-safe degenerate profile cuts at every record event"
+        );
+        assert_eq!(typed_cuts, record_safe_chunks.len());
     }
 
     /// Public salt policy must be deterministic and explicitly committed.
@@ -396,6 +515,27 @@ mod tests
                 Err(ChunkerError::UnsupportedRecordBoundaryRule { raw: 0x7E_u8 })
             ),
             "unsupported record-boundary rules must be rejected explicitly"
+        );
+        assert!(
+            matches!(
+                ChunkerParams::new(
+                    AlgorithmVersion::TYPED_CDC,
+                    GearTableVersion::MACH_V1,
+                    SeedPolicy::NONE,
+                    NormalizationPolicy::NONE,
+                    RecordBoundaryRule::BETWEEN_RECORDS,
+                    limits(
+                        4_u64.into(),
+                        16_u64.into(),
+                        64_u64.into(),
+                        1_u32.into(),
+                        4_u32.into(),
+                        16_u32.into()
+                    ),
+                ),
+                Err(ChunkerError::TypedProfileRequiresTypedParameters)
+            ),
+            "typed profiles must use TypedChunkerParams"
         );
         assert!(
             matches!(
