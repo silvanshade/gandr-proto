@@ -103,7 +103,13 @@ beads-pull = "bd dolt pull"
 #     (config.yaml, metadata.json, README.md) and so is always enumerated
 #     child-by-child; ".beads/" is what keeps the guard standing if that ever
 #     stops being true.
-#   fuzz/artifacts/  —  AFL++ crash artifacts. A crash the source worktree
+#   runtime/compile-host/build/  —  the CMake build tree caches absolute source
+#     paths. Copying it into a fresh worktree leaves compile-host:configure
+#     bound to the source worktree, so it must be rebuilt in the new lane.
+#     Both forms are required for the same collapsed-entry/child enumeration
+#     split described above.
+
+# fuzz/artifacts/  —  AFL++ crash artifacts. A crash the source worktree
 #     found is noise in a branch that never produced it; the seed corpora that
 #     DO belong to every worktree are tracked, so this step never sees them.
 #   coverage/  —  llvm-cov output, and the exclusion is about the REPORT, not
@@ -127,9 +133,9 @@ beads-pull = "bd dolt pull"
 #   EXCLUSIONS EXIST FOR TWO REASONS, and each entry above or below names one:
 #     cross-session state a fresh worktree must not inherit (.beads and the
 #     session briefs), and artifacts that BREAK when copied — the class of
-#     environments that bake absolute paths at creation time and resolve to the
-#     source worktree afterwards. Nothing in this tree is in that second class
-#     today; the entry exists so the next one is recognized.
+#     environments that bake absolute paths at creation time and resolve to
+#     the source worktree afterwards. The compile-host build tree is the
+#     current instance of that second class.
 #
 # Deliberately NOT excluded, so the reflink copy happens:
 #
@@ -161,6 +167,8 @@ beads-pull = "bd dolt pull"
 exclude = [
   ".beads/",
   ".beads/**",
+  "runtime/compile-host/build/",
+  "runtime/compile-host/build/**",
   "coverage/",
   "coverage/**",
   "fuzz/artifacts/",
