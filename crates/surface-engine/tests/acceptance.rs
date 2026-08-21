@@ -353,8 +353,7 @@ mod tests
                     kind: node_kinds::TYPE_APPLICATION,
                     ..
                 }),
-                "a non-List type application must fail with a structured type_application error, \
-                 got: {non_list}"
+                r#"a non-List type application must fail with a structured type_application error, got: {non_list}"#
             );
         }
 
@@ -498,10 +497,10 @@ mod tests
         fn module_ascription_resolves_declared_data_types()
         {
             let lowered = lower_source(
-                "data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }\n\
-             module M : #{ value: Maybe(Integer) } {\n\
-               def value = (Some(1) : Maybe(Integer));\n\
-             }"
+                r#"data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }
+module M : #{ value: Maybe(Integer) } {
+def value = (Some(1) : Maybe(Integer));
+}"#
                 .into(),
             )
             .expect("declared-data module source must lower");
@@ -1134,9 +1133,8 @@ mod tests
             );
 
             let effectful = lower_ok(
-                "extern \"c\" from \"sensor\" { def read(channel: i32) -> i64; }\n\
-                 module M : #{ reading: i64, ok: Integer } { \
-                 def reading = sensor.read(0i32); def ok = 1; }",
+                r#"extern "c" from "sensor" { def read(channel: i32) -> i64; }
+module M : #{ reading: i64, ok: Integer } { def reading = sensor.read(0i32); def ok = 1; }"#,
             );
             let effect_item = effectful
                 .items
@@ -1163,8 +1161,7 @@ mod tests
         fn module_signature_repacking_hides_extra_members()
         {
             let item = sole_item(
-                "module M : #{ visible: Integer } { \
-                 def hidden = 1; def visible = 2; }",
+                r#"module M : #{ visible: Integer } { def hidden = 1; def visible = 2; }"#,
             );
             let expected = ValueType::record([("visible".to_owned(), ValueType::integer())]);
             let Term::Comp(Comp::Bind(_, ref hidden, ref after_hidden)) = item.term
@@ -1213,13 +1210,7 @@ mod tests
         fn nested_modules_lower_as_parent_members_and_project()
         {
             let lowered = lower_ok(
-                "module Outer : #{ inner: #{ answer: Integer } } { \
-                 def outer_hidden = 1; \
-                 module inner : #{ answer: Integer } { \
-                 def inner_hidden = 2; def answer = 42; \
-                 } \
-                 } \
-                 def use_answer = Outer.inner.answer;",
+                r#"module Outer : #{ inner: #{ answer: Integer } } { def outer_hidden = 1; module inner : #{ answer: Integer } { def inner_hidden = 2; def answer = 42; } } def use_answer = Outer.inner.answer;"#,
             );
             let outer = lowered
                 .items
@@ -1281,8 +1272,7 @@ mod tests
         fn a_reordered_signature_matches_and_canonicalizes()
         {
             let item = sole_item(
-                "module M : #{ second: Integer, first: Integer } { \
-                 def first = 1; def second = 2; }",
+                r#"module M : #{ second: Integer, first: Integer } { def first = 1; def second = 2; }"#,
             );
             let Term::Comp(Comp::Bind(_, ref first, ref after_first)) = item.term
             else {
@@ -1331,8 +1321,8 @@ mod tests
         #[test]
         fn a_missing_signature_component_is_rejected_at_the_signature()
         {
-            let source = "module M : #{ x: Integer, y: Integer, z: Integer } { \
-                          def x = 1; def y = 2; }";
+            let source =
+                r#"module M : #{ x: Integer, y: Integer, z: Integer } { def x = 1; def y = 2; }"#;
             let error = lower_source(source.into()).expect_err("a missing component is rejected");
             assert!(
                 matches!(error, LowerError::MissingModuleComponent { ref name, .. } if name == "z"),
@@ -1371,8 +1361,8 @@ mod tests
         fn a_manifest_type_component_expands_in_later_components()
         {
             let lowered = lower_ok(
-                "module M : #{ type T = Integer, value: T } { def value = 1; }\n\
-                 def used = M.value;",
+                r#"module M : #{ type T = Integer, value: T } { def value = 1; }
+def used = M.value;"#,
             );
             let module = lowered
                 .items
@@ -1432,8 +1422,8 @@ mod tests
         fn a_manifest_type_component_is_not_captured_by_an_ambient_datatype()
         {
             let captured = lower_source_total(
-                "data Thing : Type { Only : Thing; }\n\
-                 module M : #{ value: Thing } { def value : Thing; }"
+                r#"data Thing : Type { Only : Thing; }
+module M : #{ value: Thing } { def value : Thing; }"#
                     .into(),
             )
             .expect("total lowering");
@@ -1456,8 +1446,8 @@ mod tests
             );
 
             let lowered = lower_ok(
-                "data Thing : Type { Only : Thing; }\n\
-                 module M : #{ type Thing = Integer, value: Thing } { def value = 1; }",
+                r#"data Thing : Type { Only : Thing; }
+module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             );
             let module = lowered
                 .items
@@ -1610,9 +1600,7 @@ mod tests
         #[test]
         fn a_module_path_is_governed_through_lowering_not_merely_registered()
         {
-            const DECLARATION: &str = "module Facts : #{ total: Integer } { \
-                                       def hidden = 1; def total = 2; \
-                                       module inner { def answer = 3; } }";
+            const DECLARATION: &str = r#"module Facts : #{ total: Integer } { def hidden = 1; def total = 2; module inner { def answer = 3; } }"#;
 
             let lowered = lower_ok(&format!("{DECLARATION}\ndef used = Facts.total;"));
             assert!(
@@ -1661,8 +1649,8 @@ mod tests
         #[test]
         fn a_deep_module_path_is_governed_at_the_depth_that_binds_it()
         {
-            const DECLARATION: &str = "module Facts { \
-                                       module inner { module core { def answer = 3; } } }";
+            const DECLARATION: &str =
+                r#"module Facts { module inner { module core { def answer = 3; } } }"#;
 
             let lowered = lower_ok(&format!(
                 "{DECLARATION}\ndef used = Facts.inner.core.answer;"
@@ -1700,10 +1688,7 @@ mod tests
         fn nested_member_signature_constrains_the_parent_binding()
         {
             let item = sole_item(
-                "module Outer { \
-                 def inner : #{ answer: Integer }; \
-                 module inner : #{ answer: String } { def answer = \"wrong\"; } \
-                 }",
+                r#"module Outer { def inner : #{ answer: Integer }; module inner : #{ answer: String } { def answer = "wrong"; } }"#,
             );
             let Term::Comp(Comp::Bind(ref inner_bound, ref binder, _)) = item.term
             else {
@@ -1764,8 +1749,7 @@ mod tests
         fn member_signature_attaches_and_wins_over_derived_function_type()
         {
             let item = sole_item(
-                "module M { def f : U[1] (Integer -> F Integer); \
-                 def f(x: Integer) -> F Integer { ret x } }",
+                r#"module M { def f : U[1] (Integer -> F Integer); def f(x: Integer) -> F Integer { ret x } }"#,
             );
             let Term::Comp(Comp::Bind(ref bound, ref binder, _)) = item.term
             else {
@@ -1810,8 +1794,10 @@ mod tests
         fn signatures_attach_to_their_defs()
         {
             let lowered = lower_ok(
-                "def answer : Integer;\ndef answer = 42;\n\
-                 def f : U[1] (Integer -> F Integer);\ndef f(x: Integer) -> F Integer { ret x }",
+                r#"def answer : Integer;
+def answer = 42;
+def f : U[1] (Integer -> F Integer);
+def f(x: Integer) -> F Integer { ret x }"#,
             );
             let answer = lowered
                 .items
@@ -2065,7 +2051,10 @@ mod tests
             use gandr_surface_syntax::Material;
             use gandr_surface_syntax::NodeKind;
 
-            let source = "module M { def bad = ( 1 ; def good = 2; }\ndef good = 7;\ngood\n";
+            let source = r#"module M { def bad = ( 1 ; def good = 2; }
+def good = 7;
+good
+"#;
 
             // Exactly one Paren minted, no Brace, and no stray closer left at
             // the root — the module was repaired from the inside.

@@ -1271,8 +1271,7 @@ mod split_motive
                 Err(TypeError::StuckExpr { hint, .. })
                     if hint == gandr_core_term::error::text::SPLIT_NEEDS_MOTIVE
             ),
-            "a motive-less split cannot infer — the binder-escape hazard is \
-             closed at the rule (ADR-82); got {result:?}"
+            r#"a motive-less split cannot infer — the binder-escape hazard is closed at the rule (ADR-82); got {result:?}"#
         );
     }
 
@@ -2352,8 +2351,7 @@ mod subtype_rows
         );
         assert!(
             !bool::from(value_subtype(&Ctx::new(), &int_rec, &str_rec)),
-            "an Integer-field record is NOT a subtype of a String-field record \
-             (per-field consistency does not compose)"
+            r#"an Integer-field record is NOT a subtype of a String-field record (per-field consistency does not compose)"#
         );
     }
 
@@ -6487,8 +6485,7 @@ fn var_of_integer_does_not_widen_to_sized_atom()
     let (var_checked, _) = checker::run_value(ctx, Value::var("x"), Dir::Check(u32_ty.clone()));
     assert!(
         var_checked.is_err(),
-        "a variable of type Integer must not widen to u32 (widening is literal-only): \
-         {var_checked:?}"
+        r#"a variable of type Integer must not widen to u32 (widening is literal-only): {var_checked:?}"#
     );
     // A bare integer literal representable in u32 DOES check against u32 (ADR-39
     // D4).
@@ -6940,8 +6937,7 @@ proptest! {
         let violation = comp_coherence_violation(&comp, candidate);
         prop_assert!(
             violation.is_none(),
-            "subsumption-coherence violated: {violation:?} — a check against B succeeded \
-             yet the inferred B' is not a consistent subtype of B"
+            r#"subsumption-coherence violated: {violation:?} — a check against B succeeded yet the inferred B' is not a consistent subtype of B"#
         );
     }
 
@@ -6965,8 +6961,7 @@ proptest! {
         let violation = comp_coherence_violation(&comp, candidate);
         prop_assert!(
             violation.is_none(),
-            "effect-row coherence violated: {violation:?} — a check-mode rule let an \
-             accumulated effect row escape into a smaller checked answer"
+            r#"effect-row coherence violated: {violation:?} — a check-mode rule let an accumulated effect row escape into a smaller checked answer"#
         );
     }
 
@@ -6989,8 +6984,7 @@ proptest! {
         let violation = value_coherence_violation(&value, candidate);
         prop_assert!(
             violation.is_none(),
-            "subsumption-coherence violated: {violation:?} — a check against A succeeded \
-             yet the inferred A' is not a consistent subtype of A"
+            r#"subsumption-coherence violated: {violation:?} — a check against A succeeded yet the inferred A' is not a consistent subtype of A"#
         );
     }
 
