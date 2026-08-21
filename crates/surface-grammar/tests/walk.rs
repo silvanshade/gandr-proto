@@ -80,7 +80,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xdeaf_6ed0_0f3e_7ad6);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xf459_d9c6_2d80_e0bd);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -177,7 +177,11 @@ mod contracts
     // alternative in the module-signature field, and a signature field is
     // inlined at every site that admits a signature — so the arity is sites
     // rather than forms, exactly as the statement forms above are.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2270);
+    /// The declaration-local implicit telescope adds thirty-three molds: each
+    /// `@[name : Type]` occurrence contributes its brackets, comma, colon, and
+    /// three name-class alternatives, with the type hole carried by the shared
+    /// type form.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2303);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -202,7 +206,7 @@ mod contracts
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 89),
+        (",", 92),
         ("-", 2),
         ("-->", 23),
         ("->", 15),
@@ -210,7 +214,7 @@ mod contracts
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 213),
+        (":", 219),
         (":>", 2),
         (";", 224),
         ("<", 4),
@@ -229,7 +233,7 @@ mod contracts
         (">=", 1),
         (">>", 1),
         ("?", 4),
-        ("@[", 4),
+        ("@[", 7),
         ("Any", 1),
         ("Boolean", 1),
         ("Char", 1),
@@ -244,7 +248,7 @@ mod contracts
         ("Unknown", 1),
         ("Void", 1),
         ("[", 13),
-        ("]", 17),
+        ("]", 20),
         ("_", 43),
         ("acquire", 20),
         ("as", 83),
@@ -290,7 +294,7 @@ mod contracts
         ("hole_name", 2),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 345),
+        ("identifier", 351),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -340,8 +344,8 @@ mod contracts
         ("thunk", 1),
         ("true", 3),
         ("type", 9),
-        ("type_identifier", 40),
-        ("type_variable", 31),
+        ("type_identifier", 46),
+        ("type_variable", 37),
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),
