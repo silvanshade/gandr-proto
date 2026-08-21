@@ -443,8 +443,6 @@ path = "crates/theory-circuit-algebras"
 # - gandr-theory-deep-inference
 # - gandr-theory-virtual-doctrines
 # - gandr-surface-engine
-# surface-engine consumes the generic completion engine at its supplied circuit
-# matcher instantiation seam.
 [workspace.dependencies.gandr-theory-coherent-resolutions]
 path = "crates/theory-coherent-resolutions"
 
