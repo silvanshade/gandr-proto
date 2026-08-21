@@ -77,6 +77,8 @@ fn messages(source: TestText<'_>) -> Vec<String>
         .collect()
 }
 
+/// Reverting the refusal exposes the misleading fallback diagnostic
+/// `names no output port`, rather than naming the expression-kind mismatch.
 #[test]
 fn an_expression_kind_signature_endpoint_is_refused_by_the_description_route()
 {
