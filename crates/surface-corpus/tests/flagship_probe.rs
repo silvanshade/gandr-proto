@@ -35,15 +35,11 @@ mod tests
     /// declaration.** The left unit law is `comp(a, a, b, id(a), f)`, because
     /// `id(a) : a -> F a` fixes the middle index; the right is
     /// `comp(a, b, b, f, id(b))`.
-    const FLAGSHIP: &str = concat!(
-        "def id(a: Type, x: a) -> F a { ret x }\n",
-        "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), g: U[\u{3c9}] (b -> F c), \
-         x: a) -> F c { run y <- f(x); g(y) }\n",
-        "def unitL(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> F(Path((U(a -> F b)), thunk { \
-         comp(a, a, b, thunk { id(a) }, f) }, f)) { ret here(f) }\n",
-        "def unitR(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> F(Path((U(a -> F b)), thunk { \
-         comp(a, b, b, f, thunk { id(b) }) }, f)) { ret here(f) }\n",
-    );
+    const FLAGSHIP: &str = r#"def id(a: Type, x: a) -> F a { ret x }
+def comp(a: Type, b: Type, c: Type, f: U[ω] (a -> F b), g: U[ω] (b -> F c), x: a) -> F c { run y <- f(x); g(y) }
+def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, a, b, thunk { id(a) }, f) }, f)) { ret here(f) }
+def unitR(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, f, thunk { id(b) }) }, f)) { ret here(f) }
+"#;
 
     /// Elaborates `path` and returns each definition's name beside the debug
     /// rendering of its type, printing the whole submission for diagnosis.
@@ -93,12 +89,10 @@ mod tests
     #[test]
     fn probe_the_returner_right_unit()
     {
-        let source = concat!(
-            "def piped(a: Type, f: U[\u{3c9}] (a -> F a), x: a) -> F a { run y <- f(x); ret y }\n",
-            "def direct(a: Type, f: U[\u{3c9}] (a -> F a), x: a) -> F a { f(x) }\n",
-            "def same(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), thunk { piped(a, \
-             f) }, thunk { direct(a, f) })) { ret here(thunk { direct(a, f) }) }\n",
-        );
+        let source = r#"def piped(a: Type, f: U[ω] (a -> F a), x: a) -> F a { run y <- f(x); ret y }
+def direct(a: Type, f: U[ω] (a -> F a), x: a) -> F a { f(x) }
+def same(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), thunk { piped(a, f) }, thunk { direct(a, f) })) { ret here(thunk { direct(a, f) }) }
+"#;
         let mut session = Session::new();
         let submission = session.submit(source).expect("lowering must be total");
         println!("=== returner right unit ===");
@@ -119,11 +113,9 @@ mod tests
     {
         // Split the composition: a SATURATED definition returning the binder
         // exercises delta, beta and the embedding with no eta at all.
-        let saturated = concat!(
-            "def pick(a: Type, f: U[\u{3c9}] (a -> F a)) -> F (U(a -> F a)) { ret f }\n",
-            "def law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) \
-             { ret here(f) }\n",
-        );
+        let saturated = r#"def pick(a: Type, f: U[ω] (a -> F a)) -> F (U(a -> F a)) { ret f }
+def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) { ret here(f) }
+"#;
         let mut split = Session::new();
         let split_submission = split.submit(saturated).expect("lowering must be total");
         // Same two definitions, submitted SEPARATELY rather than as one source.
@@ -132,10 +124,7 @@ mod tests
             .submit("def pick(a: Type, f: U[\u{3c9}] (a -> F a)) -> F (U(a -> F a)) { ret f }")
             .expect("lowering must be total");
         let second = staged
-            .submit(
-                "def law(a: Type, f: U[\u{3c9}] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), \
-                 f)) { ret here(f) }",
-            )
+            .submit(r#"def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) { ret here(f) }"#)
             .expect("lowering must be total");
         println!("=== staged, one item per submission ===");
         for outcome in first.outcomes.iter().chain(second.outcomes.iter()) {
@@ -156,13 +145,10 @@ mod tests
             }
         }
 
-        let source = concat!(
-            "def id(a: Type, x: a) -> F a { ret x }\n",
-            "def comp(a: Type, b: Type, c: Type, f: U[\u{3c9}] (a -> F b), g: U[\u{3c9}] (b -> F c), \
-             x: a) -> F c { run y <- f(x); g(y) }\n",
-            "def unitL(a: Type, b: Type, f: U[\u{3c9}] (a -> F b)) -> F(Path((U(a -> F b)), thunk { \
-             comp(a, b, b, thunk { id(a) }, f) }, f)) { ret here(f) }\n",
-        );
+        let source = r#"def id(a: Type, x: a) -> F a { ret x }
+def comp(a: Type, b: Type, c: Type, f: U[ω] (a -> F b), g: U[ω] (b -> F c), x: a) -> F c { run y <- f(x); g(y) }
+def unitL(a: Type, b: Type, f: U[ω] (a -> F b)) -> F(Path((U(a -> F b)), thunk { comp(a, b, b, thunk { id(a) }, f) }, f)) { ret here(f) }
+"#;
         let mut session = Session::new();
         let submission = session.submit(source).expect("lowering must be total");
         println!("=== standalone ===");
@@ -245,8 +231,7 @@ def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), 
         for law in ["unitL", "unitR"] {
             assert!(
                 bound.iter().any(|name| name == law),
-                "the unit law `{law}` must be a bound definition rather than a type error; bound: \
-                 {bound:?}"
+                r#"the unit law `{law}` must be a bound definition rather than a type error; bound: {bound:?}"#,
             );
         }
     }
@@ -263,8 +248,7 @@ def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), 
         for (name, rendered) in elaborated_definitions() {
             assert!(
                 !rendered.contains("Unknown"),
-                "`{name}` must elaborate with no gradual unknown, because anything checked at a \
-                 type mentioning one is consistent with everything; got {rendered}"
+                r#"`{name}` must elaborate with no gradual unknown, because anything checked at a type mentioning one is consistent with everything; got {rendered}"#,
             );
         }
     }
@@ -278,9 +262,7 @@ def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), 
             }
             assert!(
                 !rendered.contains("Unknown"),
-                "the operation `{name}` must elaborate with no gradual unknown, because a law \
-                 proved about it would otherwise rest on a type its own source does not state; \
-                 got {rendered}"
+                r#"the operation `{name}` must elaborate with no gradual unknown, because a law proved about it would otherwise rest on a type its own source does not state; got {rendered}"#,
             );
         }
     }
