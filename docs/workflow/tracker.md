@@ -86,7 +86,7 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   The bead type remains structured metadata and is not repeated in the title.
   Keep ordinary words lower-case, preserving case only inside a backtick-delimited literal whose spelling is case-sensitive.
   The subject is action-oriented and names the outcome, decision, or question—not implementation steps, status, dates, branch names, bead IDs, or provenance unless one is essential to distinguish the work.
-  Titles have no trailing period, must fit the commitlint 100-character ceiling, and should usually fit within 72 characters.
+- Titles have no trailing period and must fit the 72-character commitlint header ceiling.
 - **Choose the precise work type.** Use `decision` for an explicit choice or ratified architecture record; `spike` for a timeboxed investigation that reduces uncertainty before commitment; `story` for a user-perspective capability; and `milestone` only for a zero-work completion marker over related issues.
   Use `epic`, `feature`, `bug`, `task`, or `chore` when their ordinary meanings fit better; do not force an underused type onto mismatched work.
 - **Choose metadata before filing.** Before every `bd create`, run `bd label list-all` and `bd types list-all`, then select the most appropriate existing labels and work type.

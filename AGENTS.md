@@ -165,7 +165,7 @@ Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritati
 
 - Use `<type>(<scope>): <subject>`, with required lower-case type and scope.
 - Choose the scope from the closed `GANDR_SCOPES` vocabulary.
-- Keep the header and every body line at or below 100 characters.
+- Keep the header at or below 72 characters and every body line at or below 100.
   Separate header, body, and footer with blank lines; omit a trailing period from the subject.
 - Agent co-author trailers must match the canonical registry byte-for-byte.
   Session trailers are prohibited.

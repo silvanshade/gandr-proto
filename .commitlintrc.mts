@@ -165,8 +165,8 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
     extends: ["@commitlint/config-conventional"],
     plugins: [agenticDevPlugin],
     rules: {
-      // Header: a single standalone subject line, ≤ 100 chars, trimmed.
-      "header-max-length": [RuleConfigSeverity.Error, "always", 100],
+      // Header: a single standalone subject line, ≤ 72 chars, trimmed.
+      "header-max-length": [RuleConfigSeverity.Error, "always", 72],
       "header-trim": [RuleConfigSeverity.Error, "always"],
 
       // Subject: required, no trailing period. `subject-case` is INHERITED from
