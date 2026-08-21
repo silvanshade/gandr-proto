@@ -18,11 +18,11 @@
 //!   `type_identifier` molds), the menu widens to the class's generic labels
 //!   (`Molder::gather_reserved_fallback`).
 //! * **Candidate pre-filter (§5.2).** [`MeldState::admits_at`] discards every
-//!   structurally-inadmissible candidate against a once-per-token
-//!   [`Frontier`](crate::Frontier) — a form-continuation tile with no matching
-//!   open frontier, an operator with no left operand — before any dry-run. Most
-//!   tokens collapse to a lone admissible candidate, taken with no dry-run at
-//!   all (the batch-budget fast path).
+//!   structurally-inadmissible candidate against a once-per-token [`Frontier`]
+//!   — a form-continuation tile with no matching open frontier, an operator
+//!   with no left operand — before any dry-run. Most tokens collapse to a lone
+//!   admissible candidate, taken with no dry-run at all (the batch-budget fast
+//!   path).
 //! * **Local key.** When several candidates survive, each is dry-run inside a
 //!   [`mark`](crate::MeldState::mark) /
 //!   [`rollback_to`](crate::MeldState::rollback_to) transaction and ranked by
@@ -61,6 +61,7 @@ use crate::meld::CandidateLabels;
 use crate::meld::Mark;
 use crate::meld::SpaceText;
 use crate::meld::TileText;
+use crate::meld::primitive_copy_wrapper;
 use crate::oblig::Delta;
 
 /// The most candidate labels a single lexeme can map to (a lowercase word: its
@@ -169,6 +170,11 @@ impl<'label> From<CandidateLabel<'label>> for &'label str
         value.0
     }
 }
+
+primitive_copy_wrapper!(
+    /// Whether direct circuit-rule binder reading is admitted at its opener.
+    struct DirectRuleBinderAdmission(bool);
+);
 
 /// Dense token-stream position used by bounded lookahead.
 #[repr(transparent)]
@@ -1122,24 +1128,24 @@ impl<'pbg> Molder<'pbg>
         tokens: &[Token],
         index: TokenIndex,
         source: &SourceSlice<'_>,
-    ) -> bool
+    ) -> DirectRuleBinderAdmission
     {
         if !bool::from(state.admits_at(mold, frontier)) {
-            return false;
+            return DirectRuleBinderAdmission::from(false);
         }
         if frontier.expected != Sort::Expression || bool::from(frontier.head_operand) {
-            return true;
+            return DirectRuleBinderAdmission::from(true);
         }
         let Some(def) = self.pbg.mold(mold).ok()
         else {
-            return false;
+            return DirectRuleBinderAdmission::from(false);
         };
         if def.label != "(" || def.sort != Sort::Item {
-            return true;
+            return DirectRuleBinderAdmission::from(true);
         }
         let Some(steps) = self.pbg.step(def.rctx, Dir::Right).ok()
         else {
-            return false;
+            return DirectRuleBinderAdmission::from(false);
         };
         let direct_prefix = [
             StepSym::Tile("data"),
@@ -1153,21 +1159,23 @@ impl<'pbg> Molder<'pbg>
                 .iter()
                 .all(|&step| steps.iter().any(|candidate| candidate.crossed == step))
         {
-            return true;
+            return DirectRuleBinderAdmission::from(true);
         }
         let Some((first_index, first)) = next_significant(tokens, index)
         else {
-            return false;
+            return DirectRuleBinderAdmission::from(false);
         };
         let first_text = first.text(source);
         if matches!(AsRef::<str>::as_ref(&first_text), "rule" | "data") {
-            return true;
+            return DirectRuleBinderAdmission::from(true);
         }
         if !matches!(first.lexeme, Lexeme::LowerWord) {
-            return false;
+            return DirectRuleBinderAdmission::from(false);
         }
-        next_significant(tokens, first_index)
-            .is_some_and(|(_, colon)| AsRef::<str>::as_ref(&colon.text(source)) == ":")
+        DirectRuleBinderAdmission::from(
+            next_significant(tokens, first_index)
+                .is_some_and(|(_, colon)| AsRef::<str>::as_ref(&colon.text(source)) == ":"),
+        )
     }
     /// Choose token `index`'s mold, breaking a shared-prefix tie by lookahead.
     ///
@@ -1207,7 +1215,9 @@ impl<'pbg> Molder<'pbg>
         let mut sole: Option<MoldId> = None;
         let mut admissible = 0_usize;
         for &mold in &self.candidates {
-            if self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source) {
+            if bool::from(
+                self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source),
+            ) {
                 admissible = admissible.saturating_add(1);
                 sole = Some(mold);
             }
@@ -1226,7 +1236,9 @@ impl<'pbg> Molder<'pbg>
                 break;
             };
             if filter
-                && !self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source)
+                && !bool::from(
+                    self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source),
+                )
             {
                 continue;
             }

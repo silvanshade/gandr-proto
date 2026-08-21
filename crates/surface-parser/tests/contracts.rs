@@ -87,10 +87,10 @@ fn module_declarations_mold_zero_obligation() -> Result<(), Box<dyn Error>>
     let pbg = built();
     let cases = [
         "module M { def x = 1; def y : Integer; }",
-        "module M : #{ x: Integer, f: F Integer } { \
-         def x = 1; \
-         def f(a: Integer) -> F Integer { ret a } \
-         }",
+        r#"module M : #{ x: Integer, f: F Integer } {
+  def x = 1;
+  def f(a: Integer) -> F Integer { ret a }
+}"#,
     ];
     for src in cases {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -159,11 +159,11 @@ fn prefix_type_formers_group_required_operands() -> Result<(), Box<dyn Error>>
 fn nested_module_members_mold_zero_obligation() -> Result<(), Box<dyn Error>>
 {
     let pbg = built_in()?;
-    let src = "module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } { \
-               def before = 0; \
-               module inner : #{ answer: Integer } { def answer = 42; } \
-               def after = inner.answer; \
-               }";
+    let src = r#"module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } {
+  def before = 0;
+  module inner : #{ answer: Integer } { def answer = 42; }
+  def after = inner.answer;
+}"#;
     let result = parse(&pbg, SourceSlice::from(src))?;
     assert!(
         bool::from(result.is_clean()),

@@ -62,8 +62,8 @@ mod tests
     use gandr_surface_engine::lower::lower_source_total;
 
     /// Two declared functions, so an endpoint can be a call of either arity.
-    const PRELUDE: &str = "def two(x: Integer, y: Integer) -> F Integer { ret x } \
-                           def one(x: Integer) -> F Integer { ret x } ";
+    const PRELUDE: &str = r#"def two(x: Integer, y: Integer) -> F Integer { ret x }
+def one(x: Integer) -> F Integer { ret x }"#;
 
     // --- gandr-gd4r: the thunked list ----------------------------------------
 
@@ -337,12 +337,11 @@ mod tests
     fn assoc_law_carrier(carrier: TestType<'_>) -> Result<Ty, String>
     {
         let source = alloc::format!(
-            "def comp(a: Type, b: Type, c: Type, f: U[1] (a -> F b), g: U[1] (b -> F c), x: a) \
-             -> F c {{ run y <- f(x); g(y) }} \
-             def law(a: Type, b: Type, c: Type, d: Type, f: U[1] (a -> F b), \
-             g: U[1] (b -> F c), h: U[1] (c -> F d)) \
-             -> F(Path({carrier}, comp(a, c, d, comp(a, b, c, f, g), h), \
-             comp(a, b, d, f, comp(b, c, d, g, h)))) {{ ret here(f) }}",
+            r#"def comp(a: Type, b: Type, c: Type, f: U[1] (a -> F b), g: U[1] (b -> F c), x: a)
+-> F c {{ run y <- f(x); g(y) }}
+def law(a: Type, b: Type, c: Type, d: Type, f: U[1] (a -> F b), g: U[1] (b -> F c), h: U[1] (c -> F d))
+-> F(Path({carrier}, comp(a, c, d, comp(a, b, c, f, g), h),
+comp(a, b, d, f, comp(b, c, d, g, h)))) {{ ret here(f) }}"#,
             carrier = carrier.0
         );
         let lowered =

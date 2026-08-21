@@ -17,6 +17,29 @@ use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::PortFace;
 
 use crate::common::TestText;
+// Keep this wrapper local because `semantic_copy!` is library-internal.
+// Exporting it for an integration test would grow the public API.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct ExpressionEndpointPresence(bool);
+
+impl From<bool> for ExpressionEndpointPresence
+{
+    #[inline]
+    fn from(value: bool) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl From<ExpressionEndpointPresence> for bool
+{
+    #[inline]
+    fn from(value: ExpressionEndpointPresence) -> Self
+    {
+        value.0
+    }
+}
 
 /// The congruence cell of the ruling, minus one redex: the single-redex block
 /// this rung graduates, whose composite is one whiskering. The family is
@@ -82,14 +105,16 @@ fn messages(source: TestText<'_>) -> Vec<String>
 #[test]
 fn an_expression_kind_signature_endpoint_is_refused_by_the_description_route()
 {
-    fn has_expression_endpoint(node: SynNode<'_>) -> bool
+    fn has_expression_endpoint(node: SynNode<'_>) -> ExpressionEndpointPresence
     {
         if node.kind() == node_kinds::PARENTHESIZED_EXPRESSION && node.text().as_ref() == "(f)" {
-            return true;
+            return ExpressionEndpointPresence::from(true);
         }
-        node.named_children()
-            .into_iter()
-            .any(has_expression_endpoint)
+        ExpressionEndpointPresence::from(
+            node.named_children()
+                .into_iter()
+                .any(|child| bool::from(has_expression_endpoint(child))),
+        )
     }
     let source = "\
 sign Wrong {
@@ -102,7 +127,7 @@ sign Wrong {
 ";
     let tree = SynTree::parse(source).expect("the ordinary parser commits this source");
     assert!(
-        has_expression_endpoint(tree.root()),
+        bool::from(has_expression_endpoint(tree.root())),
         "the rule's `(f)` endpoint must arrive as a normal expression-kind CST node"
     );
     let elab = elaborate_data_descs(source);
@@ -578,12 +603,11 @@ fn a_fillerless_rule_member_declines_to_the_higher_cells_lane()
     // member nor a diagnostic, which reads to its author exactly like
     // acceptance.
     let reported = messages(TestText(
-        "\
-sign Bits {
+        r#"sign Bits {
   sort Bit : Type;
   rule involutive : (b : Bit) <=> (c : Bit);
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("rule `involutive`"),
@@ -594,12 +618,11 @@ sign Bits {
     // Declining is not carrying: no circuit rule reached the description, and
     // therefore no cell reached the store.
     let elab = elaborate_data_descs(
-        "\
-sign Bits {
+        r#"sign Bits {
   sort Bit : Type;
   rule involutive : (b : Bit) <=> (c : Bit);
 }
-",
+"#,
     );
     let desc = elab
         .descs
@@ -626,13 +649,12 @@ fn a_written_face_in_a_sign_block_declines_naming_the_block_form_that_holds_it()
     // reads no sphere from it — and now says which block form does hold it,
     // instead of dropping the member with no diagnostic at all.
     let reported = messages(TestText(
-        "\
-sign Adder {
+        r#"sign Adder {
   sort Nat : Type;
   oper add : (Nat, Nat) --> Nat;
   rule unit ==> add;
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("rule `unit`"),
@@ -650,12 +672,11 @@ fn a_member_with_no_judgment_head_declines_rather_than_vanishing()
     // name, and naming it is what separates a member the route could not read
     // from a member the source never wrote.
     let reported = messages(TestText(
-        "\
-sign Broken {
+        r#"sign Broken {
   sort Nat : Type;
   rule ;
 }
-",
+"#,
     ));
     assert_names(&reported, &[
         TestText("the `rule` member declares no name"),
@@ -666,13 +687,12 @@ sign Broken {
 #[test]
 fn a_data_spelled_sign_oper_declines_before_no_output_can_be_fabricated()
 {
-    let source = "\
-sign Theory {
+    let source = r#"sign Theory {
   sort Nat : Type;
   oper add(m : Nat, n : Nat) -> Nat;
   oper succ : (n : Nat) --> Nat;
 }
-";
+"#;
     let elab = elaborate_data_descs(source);
     let desc = elab
         .descs

@@ -98,6 +98,7 @@ macro_rules! primitive_copy_wrapper {
         }
     };
 }
+pub(crate) use primitive_copy_wrapper;
 
 /// Define a transparent newtype over borrowed source text.
 ///

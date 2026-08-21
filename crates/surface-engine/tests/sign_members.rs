@@ -37,8 +37,12 @@ mod tests
     #[test]
     fn a_terminated_block_is_not_told_it_lacks_terminators()
     {
-        let source = "sign S {\n  sort Ob : Type;\n  sort Hom(dom: Ob, cod: Ob) : Type;\n  oper id : \
-                      (a : Ob) --> Ob;\n}\n";
+        let source = r#"sign S {
+  sort Ob : Type;
+  sort Hom(dom: Ob, cod: Ob) : Type;
+  oper id : (a : Ob) --> Ob;
+}
+"#;
         let elab = elaborate_data_descs(source);
         let desc = elab.descs.first().expect("one description");
         assert_eq!(
@@ -70,7 +74,11 @@ mod tests
         // Separation is the ONLY defect here: two plain sorts, neither
         // terminated. A fixture carrying a second cause would be told the
         // observational message instead, which is the point of the sibling test.
-        let source = "sign S {\n  sort Ob : Type\n  sort Ar : Type\n}\n";
+        let source = r#"sign S {
+  sort Ob : Type
+  sort Ar : Type
+}
+"#;
         let elab = elaborate_data_descs(source);
         assert!(
             elab.descs.is_empty(),
@@ -92,8 +100,12 @@ mod tests
     #[test]
     fn terminated_members_are_all_presented()
     {
-        let source = "sign S {\n  sort Ob : Type;\n  sort Ar : Type;\n  oper f : (a : Ob) --> \
-                      Ob;\n}\n";
+        let source = r#"sign S {
+  sort Ob : Type;
+  sort Ar : Type;
+  oper f : (a : Ob) --> Ob;
+}
+"#;
         let elab = elaborate_data_descs(source);
         let desc = elab.descs.first().expect("one description");
         assert_eq!(2, desc.sorts.len(), "both sorts are presented");
@@ -113,7 +125,10 @@ mod tests
     #[test]
     fn a_single_member_needs_no_terminator()
     {
-        let source = "sign S {\n  oper f : (a : Ob) --> Ob\n}\n";
+        let source = r#"sign S {
+  oper f : (a : Ob) --> Ob
+}
+"#;
         let elab = elaborate_data_descs(source);
         let desc = elab.descs.first().expect("one description");
         assert_eq!(1, desc.opers.len(), "the sole member is read");
@@ -133,8 +148,12 @@ mod tests
     #[test]
     fn an_unreadable_member_keeps_its_own_report()
     {
-        let source = "sign Adder {\n  sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n  rule \
-                      unit ==> add;\n}\n";
+        let source = r#"sign Adder {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule unit ==> add;
+}
+"#;
         let elab = elaborate_data_descs(source);
         let reported = messages(&elab.diagnostics);
         assert!(
