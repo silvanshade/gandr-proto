@@ -374,7 +374,7 @@ impl<'source> TryFrom<TextSource<'source>> for CheckedText
     #[inline]
     fn try_from(source: TextSource<'source>) -> Result<Self, Self::Error>
     {
-        let width = checked_text_width(source.text)?;
+        let width = checked_text_width(source)?;
         let mut text = String::new();
         text.try_reserve(source.text.len())
             .map_err(|_error| BuildError::AllocationFailed {
@@ -393,7 +393,7 @@ impl TryFrom<TextOwned> for CheckedText
     fn try_from(source: TextOwned) -> Result<Self, Self::Error>
     {
         let TextOwned { text } = source;
-        let width = checked_text_width(&text)?;
+        let width = checked_text_width(TextSource::from(text.as_str()))?;
         Ok(Self { text, width })
     }
 }
@@ -405,7 +405,7 @@ impl<'source> TryFrom<VerbatimSource<'source>> for VerbatimText
     #[inline]
     fn try_from(source: VerbatimSource<'source>) -> Result<Self, Self::Error>
     {
-        let lines = scan_verbatim(source.text)?;
+        let lines = scan_verbatim(source)?;
         let mut bytes = String::new();
         bytes
             .try_reserve(source.text.len())
@@ -425,28 +425,29 @@ impl TryFrom<VerbatimOwned> for VerbatimText
     fn try_from(source: VerbatimOwned) -> Result<Self, Self::Error>
     {
         let VerbatimOwned { text } = source;
-        let lines = scan_verbatim(&text)?;
+        let lines = scan_verbatim(VerbatimSource::from(text.as_str()))?;
         Ok(Self { bytes: text, lines })
     }
 }
 
 /// Validates newline-free text and returns its checked scalar width.
-fn checked_text_width(text: &str) -> Result<ScalarWidth, BuildError>
+fn checked_text_width(source: TextSource<'_>) -> Result<ScalarWidth, BuildError>
 {
-    if text
+    if source
+        .text
         .chars()
         .any(|character| matches!(character, '\r' | '\n' | '\t'))
     {
         return Err(BuildError::InvalidText);
     }
-    ScalarWidth::try_from(text.chars().count())
+    ScalarWidth::try_from(source.text.chars().count())
 }
 
 /// Scans LF and CRLF text into nominal physical-fragment records.
-fn scan_verbatim(text: &str) -> Result<Vec<VerbatimLine>, BuildError>
+fn scan_verbatim(source: VerbatimSource<'_>) -> Result<Vec<VerbatimLine>, BuildError>
 {
     let mut lines = Vec::new();
-    let mut chars = text.chars();
+    let mut chars = source.text.chars();
     let mut width = 0u32;
     while let Some(character) = chars.next() {
         let ending = match character {
