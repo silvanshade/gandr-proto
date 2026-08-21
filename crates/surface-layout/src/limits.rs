@@ -40,6 +40,7 @@
 //! segments reuses the same meter across every segment, which is what stops a
 //! long run from resetting its own accounting between pieces.
 
+use crate::error::BuildError;
 use crate::units::BuildStepsUsed;
 use crate::units::DocNodesUsed;
 use crate::units::MaxBuildSteps;
@@ -91,7 +92,7 @@ pub struct BuildUsage
     pub build_steps: BuildStepsUsed,
 }
 
-/// The build-phase meter: the ceilings, and what has been spent against them.
+/// The build-phase meter: ceilings and cumulative usage for one document.
 ///
 /// One builder borrows one meter exclusively for its whole life, so there is
 /// exactly one place a build charge can be recorded.
@@ -104,14 +105,265 @@ pub struct BuildUsage
 /// - provides: the enforcement point for every build limit in the crate.
 /// - panics: none.
 #[derive(Debug)]
-#[expect(
-    dead_code,
-    reason = "slice one reads these; the expectation fails as soon as it does"
-)]
 pub struct BuildMeter
 {
     /// The ceilings this meter enforces.
     limits: BuildLimits,
     /// What has been spent against them.
     used: BuildUsage,
+}
+
+impl Default for BuildLimits
+{
+    #[inline]
+    fn default() -> Self
+    {
+        Self {
+            max_doc_nodes: MaxDocNodes::from(1_000_000u32),
+            max_text_bytes: MaxTextBytes::from(0x0400_0000_usize),
+            max_verbatim_lines: MaxVerbatimLines::from(1_000_000u32),
+            max_build_steps: MaxBuildSteps::from(20_000_000u64),
+        }
+    }
+}
+
+impl BuildMeter
+{
+    /// Creates a meter with zero usage under `limits`.
+    ///
+    /// # Contract
+    /// - requires: `limits` contains the caller's four build ceilings.
+    /// - ensures: all usage counters start at zero and remain cumulative.
+    /// - provides: an exclusive accounting authority for one document build.
+    /// - fails: this operation has no fallible path; the result type keeps the
+    ///   constructor symmetric with the render-phase meter.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// This constructor currently cannot fail because the limit record contains
+    /// only finite scalar values.
+    #[inline]
+    #[must_use = "a build meter must be retained for the document build"]
+    pub fn try_new(limits: BuildLimits) -> Result<Self, BuildError>
+    {
+        Ok(Self {
+            limits,
+            used: BuildUsage {
+                doc_nodes: DocNodesUsed::from(0u64),
+                text_bytes: TextBytesUsed::from(0u64),
+                verbatim_lines: VerbatimLinesUsed::from(0u64),
+                build_steps: BuildStepsUsed::from(0u64),
+            },
+        })
+    }
+
+    /// Returns the cumulative usage observed by this meter.
+    ///
+    /// # Contract
+    /// - requires: the meter remains alive and exclusively owned by its build.
+    /// - ensures: the returned snapshot is a copy and does not reset usage.
+    /// - provides: monotone node, byte, fragment, and step observations.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn usage(&self) -> BuildUsage
+    {
+        self.used
+    }
+
+    /// Checks whether one document node can be charged without changing usage.
+    ///
+    /// # Contract
+    /// - requires: the caller is about to store one document node.
+    /// - ensures: success proves the next node charge fits its counter and
+    ///   ceiling.
+    /// - provides: an atomic preflight for compound builder operations.
+    /// - fails: reports counter overflow or the node ceiling.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for counter overflow or `LimitExceeded` at
+    /// the configured node ceiling.
+    #[inline]
+    pub(crate) fn check_doc_node(&self) -> Result<(), BuildError>
+    {
+        self.used
+            .doc_nodes
+            .checked_charge(self.limits.max_doc_nodes)
+            .map(|_| ())
+    }
+
+    /// Checks whether new text bytes can be charged without changing usage.
+    ///
+    /// # Contract
+    /// - requires: `amount` is the byte count of a new stored identity.
+    /// - ensures: success proves the byte charge fits its counter and ceiling.
+    /// - provides: an atomic preflight for text and verbatim insertion.
+    /// - fails: reports conversion, counter, or configured-limit overflow.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` when the amount or counter is not
+    /// representable, or `LimitExceeded` at the configured byte ceiling.
+    #[inline]
+    pub(crate) fn check_text_bytes(
+        &self,
+        amount: TextBytesUsed,
+    ) -> Result<(), BuildError>
+    {
+        self.used
+            .text_bytes
+            .checked_charge(amount, self.limits.max_text_bytes)
+            .map(|_| ())
+    }
+
+    /// Checks whether new verbatim fragments can be charged without changing
+    /// usage.
+    ///
+    /// # Contract
+    /// - requires: `amount` is the complete scan count for one new verbatim.
+    /// - ensures: success proves the fragment charge fits its counter and
+    ///   ceiling.
+    /// - provides: an atomic preflight for verbatim insertion.
+    /// - fails: reports counter overflow or the configured fragment ceiling.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for cumulative overflow or `LimitExceeded`
+    /// at the configured fragment ceiling.
+    #[inline]
+    pub(crate) fn check_verbatim_lines(
+        &self,
+        amount: VerbatimLinesUsed,
+    ) -> Result<(), BuildError>
+    {
+        self.used
+            .verbatim_lines
+            .checked_charge(amount, self.limits.max_verbatim_lines)
+            .map(|_| ())
+    }
+
+    /// Checks whether one build step can be charged without changing usage.
+    ///
+    /// # Contract
+    /// - requires: the caller has identified one checked constructor or
+    ///   finalization operation.
+    /// - ensures: success proves the next step fits its counter and ceiling.
+    /// - provides: an atomic preflight for compound builder operations.
+    /// - fails: reports counter overflow or the configured step ceiling.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` for cumulative overflow or `LimitExceeded`
+    /// at the configured step ceiling.
+    #[inline]
+    pub(crate) fn check_step(&self) -> Result<(), BuildError>
+    {
+        self.used
+            .build_steps
+            .checked_charge(self.limits.max_build_steps)
+            .map(|_| ())
+    }
+
+    /// Charges one stored document node after a successful preflight.
+    ///
+    /// # Contract
+    /// - requires: [`Self::check_doc_node`] succeeded without an intervening
+    ///   charge.
+    /// - ensures: usage increases exactly once.
+    /// - provides: node-limit accounting for original and flattened images.
+    /// - fails: reports the same typed errors as the preflight if state
+    ///   changed.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
+    /// not maintained.
+    #[inline]
+    pub(crate) fn charge_doc_node(&mut self) -> Result<(), BuildError>
+    {
+        self.used.doc_nodes = self
+            .used
+            .doc_nodes
+            .checked_charge(self.limits.max_doc_nodes)?;
+        Ok(())
+    }
+
+    /// Charges new text and verbatim bytes after a successful preflight.
+    ///
+    /// # Contract
+    /// - requires: [`Self::check_text_bytes`] succeeded without an intervening
+    ///   charge.
+    /// - ensures: usage increases exactly by `amount`.
+    /// - provides: cumulative byte accounting.
+    /// - fails: reports the same typed errors as the preflight if state
+    ///   changed.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
+    /// not maintained.
+    #[inline]
+    pub(crate) fn charge_text_bytes(
+        &mut self,
+        amount: TextBytesUsed,
+    ) -> Result<(), BuildError>
+    {
+        self.used.text_bytes = self
+            .used
+            .text_bytes
+            .checked_charge(amount, self.limits.max_text_bytes)?;
+        Ok(())
+    }
+
+    /// Charges scanned verbatim fragments after a successful preflight.
+    ///
+    /// # Contract
+    /// - requires: [`Self::check_verbatim_lines`] succeeded without an
+    ///   intervening charge.
+    /// - ensures: usage increases exactly by `amount`.
+    /// - provides: cumulative physical-fragment accounting.
+    /// - fails: reports the same typed errors as the preflight if state
+    ///   changed.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
+    /// not maintained.
+    #[inline]
+    pub(crate) fn charge_verbatim_lines(
+        &mut self,
+        amount: VerbatimLinesUsed,
+    ) -> Result<(), BuildError>
+    {
+        self.used.verbatim_lines = self
+            .used
+            .verbatim_lines
+            .checked_charge(amount, self.limits.max_verbatim_lines)?;
+        Ok(())
+    }
+
+    /// Charges one checked constructor or finalization step after preflight.
+    ///
+    /// # Contract
+    /// - requires: [`Self::check_step`] succeeded without an intervening
+    ///   charge.
+    /// - ensures: usage increases exactly once.
+    /// - provides: cumulative build-work accounting.
+    /// - fails: reports the same typed errors as the preflight if state
+    ///   changed.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// Returns `ArithmeticOverflow` or `LimitExceeded` if the precondition was
+    /// not maintained.
+    #[inline]
+    pub(crate) fn charge_step(&mut self) -> Result<(), BuildError>
+    {
+        self.used.build_steps = self
+            .used
+            .build_steps
+            .checked_charge(self.limits.max_build_steps)?;
+        Ok(())
+    }
 }
