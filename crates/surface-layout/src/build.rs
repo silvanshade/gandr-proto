@@ -153,8 +153,8 @@ pub struct DocBuilder<'meter>
     hard_line: NodeId,
     /// Flattened images for original nodes in insertion order.
     flattened: Vec<NodeId>,
-    /// Insertion-ordered structural interner for flattened images.
-    flatten_memo: Vec<(DocNode, NodeId)>,
+    /// Deterministic structural interner for flattened images.
+    flatten_memo: std::collections::HashMap<DocNode, NodeId>,
     /// The shared text identity used by flattened soft lines.
     space_text: Option<TextId>,
 }
@@ -195,7 +195,7 @@ impl<'meter> DocBuilder<'meter>
             line: NodeId::from(0u32),
             hard_line: NodeId::from(0u32),
             flattened: Vec::new(),
-            flatten_memo: Vec::new(),
+            flatten_memo: std::collections::HashMap::new(),
             space_text: None,
         };
         let empty = builder.insert_node(DocNode::Empty)?;
@@ -713,12 +713,6 @@ impl<'meter> DocBuilder<'meter>
                 });
             }
             self.flattened.push(image);
-            if self.flatten_memo.try_reserve(1usize).is_err() {
-                return Err(BuildError::AllocationFailed {
-                    site: BuildAllocationSite::FlattenMemo,
-                });
-            }
-            self.flatten_memo.push((candidate, image));
             index = index.saturating_add(1usize);
         }
         while self.flattened.len() < self.nodes.len() {
@@ -1021,20 +1015,10 @@ impl<'meter> DocBuilder<'meter>
         candidate: DocNode,
     ) -> Result<Option<NodeId>, BuildError>
     {
-        let mut index = 0usize;
-        while index < self.flatten_memo.len() {
-            self.meter.check_step()?;
-            let Some((memo_node, memo_id)) = self.flatten_memo.get(index).copied()
-            else {
-                return Ok(None);
-            };
-            self.meter.charge_step()?;
-            if memo_node == candidate {
-                return Ok(Some(memo_id));
-            }
-            index = index.saturating_add(1usize);
-        }
-        Ok(None)
+        self.meter.check_step()?;
+        let image = self.flatten_memo.get(&candidate).copied();
+        self.meter.charge_step()?;
+        Ok(image)
     }
 
     /// Inserts one distinct flattened image into the node and memo stores.
@@ -1065,14 +1049,21 @@ impl<'meter> DocBuilder<'meter>
             return Err(BuildError::NodeIdExhausted);
         };
         self.meter.check_doc_node()?;
+        if self.flatten_memo.try_reserve(1usize).is_err() {
+            return Err(BuildError::AllocationFailed {
+                site: BuildAllocationSite::FlattenMemo,
+            });
+        }
         if self.nodes.try_reserve(1usize).is_err() {
             return Err(BuildError::AllocationFailed {
                 site: BuildAllocationSite::NodeArena,
             });
         }
         self.meter.charge_doc_node()?;
+        let node = NodeId::from(index);
         self.nodes.push(candidate);
-        Ok(NodeId::from(index))
+        self.flatten_memo.insert(candidate, node);
+        Ok(node)
     }
 
     /// Returns or creates the text identity used to flatten a soft line.

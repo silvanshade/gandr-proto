@@ -65,6 +65,15 @@ mod tests
         /// Group the last two leaves.
         Right,
     }
+    /// The two interner candidate orders used by the determinism witness.
+    #[derive(Clone, Copy)]
+    enum InternerOrder
+    {
+        /// Alternate left and right candidates beginning with the left one.
+        Forward,
+        /// Alternate left and right candidates beginning with the right one.
+        Reverse,
+    }
 
     /// Construct one arena containing a newline-free text leaf.
     fn build_text(text: TextSource<'_>) -> Result<(DocArena, DocId, BuildUsage), BuildError>
@@ -117,6 +126,84 @@ mod tests
             let _arena = builder.finish()?;
         }
         Ok(meter.usage())
+    }
+    /// Run one totality witness on a deliberately small native stack.
+    fn run_on_small_stack(
+        work: impl FnOnce() -> Result<(), BuildError> + Send + 'static
+    ) -> Result<(), BuildError>
+    {
+        let handle = std::thread::Builder::new()
+            .name(String::from("surface-layout-stress"))
+            .stack_size(0x0001_0000_usize)
+            .spawn(work)
+            .map_err(|_error| BuildError::AllocationFailed {
+                site: BuildAllocationSite::FinalizeStack,
+            })?;
+        let joined = handle.join();
+        assert!(
+            joined.is_ok(),
+            "the iterative witness must not overflow its stack"
+        );
+        match joined {
+            | Ok(result) => result,
+            | Err(_panic) => Err(BuildError::AllocationFailed {
+                site: BuildAllocationSite::FinalizeStack,
+            }),
+        }
+    }
+
+    const HEAP_STACK_DEPTH: u32 = 200_000u32;
+    /// Build many equivalent interner candidates in one of two orders.
+    fn build_interner_order(
+        order: InternerOrder
+    ) -> Result<(DocArena, DocId, DocId, DocId, DocId, DocId), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let leaf = builder.text(TextSource::from("deterministic"))?;
+        let line = builder.line();
+        let left = builder.choice(leaf, line)?;
+        let right = builder.choice(line, leaf)?;
+        let mut groups = Vec::new();
+        let mut left_next = matches!(order, InternerOrder::Forward);
+        let mut first_left = None;
+        let mut second_left = None;
+        let mut first_right = None;
+        let mut second_right = None;
+        for _ in 0u32 .. 256u32 {
+            let candidate = if left_next { left } else { right };
+            let group = builder.group(candidate)?;
+            if left_next {
+                if first_left.is_none() {
+                    first_left = Some(group);
+                }
+                else if second_left.is_none() {
+                    second_left = Some(group);
+                }
+            }
+            else if first_right.is_none() {
+                first_right = Some(group);
+            }
+            else if second_right.is_none() {
+                second_right = Some(group);
+            }
+            groups.push(group);
+            left_next = !left_next;
+        }
+        let root = builder.concat_all(groups)?;
+        let first_left = first_left.ok_or(BuildError::UnknownDoc)?;
+        let second_left = second_left.ok_or(BuildError::UnknownDoc)?;
+        let first_right = first_right.ok_or(BuildError::UnknownDoc)?;
+        let second_right = second_right.ok_or(BuildError::UnknownDoc)?;
+        let arena = builder.finish()?;
+        Ok((
+            arena,
+            root,
+            first_left,
+            second_left,
+            first_right,
+            second_right,
+        ))
     }
 
     /// Assert that a usage record is componentwise no smaller than another.
@@ -533,7 +620,7 @@ mod tests
         let line = builder.line();
         let root = builder.concat(text, line)?;
         let arena = builder.finish()?;
-        assert!(arena.node_count() <= DocNodesUsed::from(10u64));
+        assert_eq!(arena.node_count(), DocNodesUsed::from(7u64));
         assert_eq!(arena.flattened_image(text)?, text);
         assert_ne!(arena.flattened_image(line)?, line);
         assert_eq!(arena.contains(root), DocHandleStatus::Present);
@@ -567,20 +654,31 @@ mod tests
         Ok(())
     }
 
-    /// Equal construction sequences produce equal observable arena metrics.
+    /// Equivalent interner candidates retain identical image identities when
+    /// construction order changes.
     #[test]
     fn finalization_is_deterministic_across_runs() -> Result<(), BuildError>
     {
-        let first = build_text(TextSource::from("deterministic"))?;
-        let second = build_text(TextSource::from("deterministic"))?;
-        assert_eq!(first.0.node_count(), second.0.node_count());
+        let forward = build_interner_order(InternerOrder::Forward)?;
+        let reverse = build_interner_order(InternerOrder::Reverse)?;
+        assert_eq!(forward.0.node_count(), reverse.0.node_count());
+        assert_eq!(forward.0.contains(forward.1), DocHandleStatus::Present);
+        assert_eq!(reverse.0.contains(reverse.1), DocHandleStatus::Present);
         assert_eq!(
-            first.0.stored_text(first.1)?,
-            second.0.stored_text(second.1)?
+            forward.0.flattened_image(forward.2)?,
+            forward.0.flattened_image(forward.3)?
         );
         assert_eq!(
-            first.0.stored_text_width(first.1)?,
-            second.0.stored_text_width(second.1)?
+            forward.0.flattened_image(forward.4)?,
+            forward.0.flattened_image(forward.5)?
+        );
+        assert_eq!(
+            reverse.0.flattened_image(reverse.2)?,
+            reverse.0.flattened_image(reverse.3)?
+        );
+        assert_eq!(
+            reverse.0.flattened_image(reverse.4)?,
+            reverse.0.flattened_image(reverse.5)?
         );
         Ok(())
     }
@@ -612,6 +710,8 @@ mod tests
     {
         let shared = concat_usage(ConcatShape::Shared)?;
         let distinct = concat_usage(ConcatShape::Distinct)?;
+        assert_eq!(shared.doc_nodes, DocNodesUsed::from(6u64));
+        assert_eq!(distinct.doc_nodes, DocNodesUsed::from(7u64));
         assert!(shared.doc_nodes < distinct.doc_nodes);
         Ok(())
     }
@@ -641,17 +741,37 @@ mod tests
         Ok(())
     }
 
-    /// Each storage ceiling rejects exactly when its nominal charge crosses it.
+    /// Each build ceiling accepts its exact boundary and refuses one charge
+    /// beyond it.
     #[test]
     fn each_build_ceiling_refuses_exactly_at_its_boundary() -> Result<(), BuildError>
     {
+        {
+            let limits = BuildLimits {
+                max_doc_nodes: MaxDocNodes::from(4u32),
+                ..generous_limits()
+            };
+            let mut meter = BuildMeter::try_new(limits)?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let _text = builder.text(TextSource::from("x"))?;
+            let error = builder.text(TextSource::from("y"));
+            assert!(matches!(
+                error,
+                Err(BuildError::LimitExceeded {
+                    kind: BuildLimitKind::DocNodes,
+                    ..
+                })
+            ));
+        };
+
         let text_limits = BuildLimits {
-            max_text_bytes: MaxTextBytes::from(2usize),
+            max_text_bytes: MaxTextBytes::from(3usize),
             ..generous_limits()
         };
         let mut text_meter = BuildMeter::try_new(text_limits)?;
         let mut text_builder = DocBuilder::try_new(&mut text_meter)?;
-        let text_error = text_builder.text(TextSource::from("abc"));
+        let _text = text_builder.text(TextSource::from("abc"))?;
+        let text_error = text_builder.text(TextSource::from("d"));
         assert!(matches!(
             text_error,
             Err(BuildError::LimitExceeded {
@@ -661,7 +781,7 @@ mod tests
         ));
 
         let verbatim_limits = BuildLimits {
-            max_verbatim_lines: MaxVerbatimLines::from(1u32),
+            max_verbatim_lines: MaxVerbatimLines::from(2u32),
             ..generous_limits()
         };
         let mut verbatim_meter = BuildMeter::try_new(verbatim_limits)?;
@@ -669,11 +789,50 @@ mod tests
         let payload =
         // workflow-gates: allow-escaped-newline
         "a\n";
-        let verbatim_error = verbatim_builder.verbatim(VerbatimSource::from(payload));
+        let _verbatim = verbatim_builder.verbatim(VerbatimSource::from(payload))?;
+        let verbatim_error = verbatim_builder.verbatim(VerbatimSource::from("b"));
         assert!(matches!(
             verbatim_error,
             Err(BuildError::LimitExceeded {
                 kind: BuildLimitKind::VerbatimLines,
+                ..
+            })
+        ));
+
+        let usage = {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let _text = builder.text(TextSource::from("steps"))?;
+            let _arena = builder.finish()?;
+            meter.usage()
+        };
+        let exact_step_limit = MaxBuildSteps::from(u64::from(usage.build_steps));
+        let exact_limits = BuildLimits {
+            max_build_steps: exact_step_limit,
+            ..generous_limits()
+        };
+        let mut exact_meter = BuildMeter::try_new(exact_limits)?;
+        let mut exact_builder = DocBuilder::try_new(&mut exact_meter)?;
+        let _text = exact_builder.text(TextSource::from("steps"))?;
+        let _arena = exact_builder.finish()?;
+
+        let one_before = u64::from(usage.build_steps).checked_sub(1u64).ok_or(
+            BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::BuildSteps,
+            },
+        )?;
+        let below_limits = BuildLimits {
+            max_build_steps: MaxBuildSteps::from(one_before),
+            ..generous_limits()
+        };
+        let mut below_meter = BuildMeter::try_new(below_limits)?;
+        let mut below_builder = DocBuilder::try_new(&mut below_meter)?;
+        let _text = below_builder.text(TextSource::from("steps"))?;
+        let below_error = below_builder.finish();
+        assert!(matches!(
+            below_error,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::BuildSteps,
                 ..
             })
         ));
@@ -726,49 +885,55 @@ mod tests
     #[test]
     fn deep_left_spine_construction_uses_a_heap_work_stack() -> Result<(), BuildError>
     {
-        let mut meter = BuildMeter::try_new(generous_limits())?;
-        let mut builder = DocBuilder::try_new(&mut meter)?;
-        let mut root = builder.empty();
-        for _ in 0 .. 1024u32 {
-            let leaf = builder.text(TextSource::from("x"))?;
-            root = builder.concat(root, leaf)?;
-        }
-        let arena = builder.finish()?;
-        assert_eq!(arena.contains(root), DocHandleStatus::Present);
-        Ok(())
+        run_on_small_stack(|| {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let mut root = builder.empty();
+            for _ in 0u32 .. HEAP_STACK_DEPTH {
+                let leaf = builder.text(TextSource::from("x"))?;
+                root = builder.concat(root, leaf)?;
+            }
+            let arena = builder.finish()?;
+            assert_eq!(arena.contains(root), DocHandleStatus::Present);
+            Ok(())
+        })
     }
 
     /// A deep right spine finalizes through the builder's heap work stack.
     #[test]
     fn deep_right_spine_construction_uses_a_heap_work_stack() -> Result<(), BuildError>
     {
-        let mut meter = BuildMeter::try_new(generous_limits())?;
-        let mut builder = DocBuilder::try_new(&mut meter)?;
-        let mut root = builder.empty();
-        for _ in 0 .. 1024u32 {
-            let leaf = builder.text(TextSource::from("x"))?;
-            root = builder.concat(leaf, root)?;
-        }
-        let arena = builder.finish()?;
-        assert_eq!(arena.contains(root), DocHandleStatus::Present);
-        Ok(())
+        run_on_small_stack(|| {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let mut root = builder.empty();
+            for _ in 0u32 .. HEAP_STACK_DEPTH {
+                let leaf = builder.text(TextSource::from("x"))?;
+                root = builder.concat(leaf, root)?;
+            }
+            let arena = builder.finish()?;
+            assert_eq!(arena.contains(root), DocHandleStatus::Present);
+            Ok(())
+        })
     }
 
     /// A wide graph sharing one leaf finalizes without recursive traversal.
     #[test]
     fn a_wide_shared_graph_finalizes_without_native_stack_growth() -> Result<(), BuildError>
     {
-        let mut meter = BuildMeter::try_new(generous_limits())?;
-        let mut builder = DocBuilder::try_new(&mut meter)?;
-        let leaf = builder.text(TextSource::from("shared"))?;
-        let mut choices = Vec::new();
-        for _ in 0 .. 256u32 {
-            choices.push(builder.choice(leaf, leaf)?);
-        }
-        let root = builder.concat_all(choices)?;
-        let arena = builder.finish()?;
-        assert_eq!(arena.contains(root), DocHandleStatus::Present);
-        Ok(())
+        run_on_small_stack(|| {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let leaf = builder.text(TextSource::from("shared"))?;
+            let mut choices = Vec::new();
+            for _ in 0u32 .. HEAP_STACK_DEPTH {
+                choices.push(builder.choice(leaf, leaf)?);
+            }
+            let root = builder.concat_all(choices)?;
+            let arena = builder.finish()?;
+            assert_eq!(arena.contains(root), DocHandleStatus::Present);
+            Ok(())
+        })
     }
 
     /// The typed arithmetic error preserves the operation at each named site.

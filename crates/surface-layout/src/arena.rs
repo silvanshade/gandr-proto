@@ -499,7 +499,7 @@ fn scan_verbatim(source: VerbatimSource<'_>) -> Result<Vec<VerbatimLine>, BuildE
 /// - provides: the complete document algebra, including arbitrary choice and
 ///   unaligned concatenation.
 /// - panics: none.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum DocNode
 {
     /// Emits nothing.
@@ -610,12 +610,18 @@ impl DocArena
     ) -> Result<TextOwned, BuildError>
     {
         let node = self.node_id_for(doc)?;
-        let index = usize::try_from(u32::from(node)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(node)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         let Some(DocNode::Text(text)) = self.nodes.get(index).copied()
         else {
             return Err(BuildError::UnknownDoc);
         };
-        let index = usize::try_from(u32::from(text)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(text)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         self.texts
             .get(index)
             .map(|text| TextOwned::from(text.text.clone()))
@@ -638,12 +644,18 @@ impl DocArena
     ) -> Result<ScalarWidth, BuildError>
     {
         let node = self.node_id_for(doc)?;
-        let index = usize::try_from(u32::from(node)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(node)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         let Some(DocNode::Text(text)) = self.nodes.get(index).copied()
         else {
             return Err(BuildError::UnknownDoc);
         };
-        let index = usize::try_from(u32::from(text)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(text)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         self.texts
             .get(index)
             .map(CheckedText::width)
@@ -667,13 +679,19 @@ impl DocArena
     ) -> Result<VerbatimOwned, BuildError>
     {
         let node = self.node_id_for(doc)?;
-        let index = usize::try_from(u32::from(node)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(node)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         let Some(DocNode::Verbatim(verbatim)) = self.nodes.get(index).copied()
         else {
             return Err(BuildError::UnknownDoc);
         };
-        let index =
-            usize::try_from(u32::from(verbatim)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index = usize::try_from(u32::from(verbatim)).map_err(|_error| {
+            BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            }
+        })?;
         self.verbatim
             .get(index)
             .map(|verbatim| VerbatimOwned::from(verbatim.bytes.clone()))
@@ -697,13 +715,19 @@ impl DocArena
     ) -> Result<Vec<VerbatimLine>, BuildError>
     {
         let node = self.node_id_for(doc)?;
-        let index = usize::try_from(u32::from(node)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(node)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         let Some(DocNode::Verbatim(verbatim)) = self.nodes.get(index).copied()
         else {
             return Err(BuildError::UnknownDoc);
         };
-        let index =
-            usize::try_from(u32::from(verbatim)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index = usize::try_from(u32::from(verbatim)).map_err(|_error| {
+            BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            }
+        })?;
         self.verbatim
             .get(index)
             .map(|verbatim| verbatim.lines.clone())
@@ -726,7 +750,10 @@ impl DocArena
     ) -> Result<DocId, BuildError>
     {
         let node = self.node_id_for(doc)?;
-        let index = usize::try_from(u32::from(node)).map_err(|_error| BuildError::UnknownDoc)?;
+        let index =
+            usize::try_from(u32::from(node)).map_err(|_error| BuildError::ArithmeticOverflow {
+                operation: BuildArithmetic::IdConversion,
+            })?;
         self.flattened
             .get(index)
             .copied()
