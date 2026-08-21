@@ -247,11 +247,31 @@ pub(super) fn cargo_mutants_plan(
         OsString::from(request.jobs.value().0.to_string()),
     ];
 
+    // Scope, and then the scope the MUTANTS are tested under, which is not the
+    // same knob and was the campaign's central defect. cargo-mutants scopes the
+    // baseline by `--package` and defaults the mutant runs to the whole
+    // workspace, so a package campaign built its baseline against one package
+    // and every mutant against all of them. In this workspace that difference
+    // is fatal rather than merely slow: `gandr-workflow-dylint` links
+    // rustc-private crates and compiles only under the pinned nightly, which is
+    // why the stable lanes exclude it by name — so every mutant failed to build
+    // and was recorded as unviable, and a campaign that measured nothing exited
+    // zero.
     match request.scope {
-        | CargoMutantsScope::Workspace => args.push(OsString::from("--workspace")),
+        | CargoMutantsScope::Workspace => {
+            args.push(OsString::from("--workspace"));
+            // A workspace campaign keeps its breadth and drops the one member
+            // no stable toolchain can build, exactly as `cargo:build` does.
+            args.push(OsString::from("--cargo-arg"));
+            args.push(OsString::from("--exclude=gandr-workflow-dylint"));
+        },
         | CargoMutantsScope::Package { ref name } => {
             args.push(OsString::from("--package"));
             args.push(OsString::from(name));
+            // The mutants are tested under the package the campaign named, so
+            // the mutant runs and the baseline ask the same question.
+            args.push(OsString::from("--test-workspace"));
+            args.push(OsString::from("false"));
         },
     }
 
@@ -589,9 +609,12 @@ mod tests
                 String::from("--jobs"),
                 String::from("1"),
                 String::from("--workspace"),
+                String::from("--cargo-arg"),
+                String::from("--exclude=gandr-workflow-dylint"),
             ],
             arg_text(workspace_plan.args()),
-            "workspace argv must be exact and sequential"
+            "workspace argv must be exact, sequential, and exclude the crate no stable toolchain \
+             can build"
         );
 
         let diff_path = Path::new("changed.diff");
@@ -611,11 +634,14 @@ mod tests
                 String::from("1"),
                 String::from("--package"),
                 String::from("gandr-core"),
+                String::from("--test-workspace"),
+                String::from("false"),
                 String::from("--in-diff"),
                 String::from("changed.diff"),
             ],
             arg_text(package_plan.args()),
-            "package argv must include package scope and diff filter exactly"
+            "package argv must scope the mutant runs to the same package as the baseline, which \
+             is the defect that made every mutant unviable"
         );
         assert!(
             CargoMutantsScope::package(" gandr-core").is_err(),

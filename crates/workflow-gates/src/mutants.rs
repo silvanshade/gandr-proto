@@ -14,6 +14,7 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
 
+mod adequacy;
 mod containment;
 pub mod range;
 pub mod record;
@@ -1050,12 +1051,7 @@ where
         &request,
         "",
     )?;
-    publish_campaign_result(host, options, CampaignPublicationKind::MutationBearing)?;
-    cleanup_success_workspace(host, options)?;
-    if summary.succeeded().into().0 {
-        return Ok(());
-    }
-    Err(campaign_failure())
+    finish_campaign(host, options, &summary)
 }
 /// Verify the selected package exists in current Cargo metadata.
 fn validate_package_in_workspace<'semantic, Host, P>(
@@ -1806,16 +1802,86 @@ where
     );
     let summary =
         sandbox::execute_campaign_request(runner, sink, &config, &request, campaign.diff_source)?;
-    publish_campaign_result(
-        host,
-        campaign.options,
-        CampaignPublicationKind::MutationBearing,
-    )?;
-    cleanup_success_workspace(host, campaign.options)?;
-    if summary.succeeded().into().0 {
+
+    finish_campaign(host, campaign.options, &summary)
+}
+
+/// Publish a finished campaign and decide what its result means.
+///
+/// **One completion for every campaign path.** The package campaign and the
+/// contained sweep and diff campaigns each carried their own copy of this
+/// sequence, and the copies diverged: the adequacy check reached the second and
+/// not the first, so `mutants:package` kept passing on a campaign that measured
+/// nothing while the others had stopped. Two copies of a completion rule is one
+/// copy too many, and this is the one.
+///
+/// # Contract
+/// - requires: `summary` is the campaign's own outcome and `options` names the
+///   report it wrote.
+/// - ensures: the report is published and the workspace cleaned whatever the
+///   verdict, so the evidence for a refusal survives the refusal.
+/// - provides: the single place the four entry points agree about what a pass
+///   is.
+/// - fails: with the inadequacy when a passing campaign measured nothing, and
+///   with the campaign failure when the campaign itself failed.
+/// - panics: none.
+///
+/// # Errors
+/// The two failures above.
+fn finish_campaign<Host>(
+    host: &mut Host,
+    options: &MutantsOptions,
+    summary: &sandbox::CampaignSummary,
+) -> Result<(), GateError>
+where
+    Host: MutantsHost,
+{
+    // Adequacy answers a question only a PASSING campaign raises: it measured
+    // nothing, so what does its success mean? A campaign that already failed
+    // has an answer, and asking a second one would only bury it. The verdict is
+    // taken before publication and acted on after, because the evidence a
+    // reader needs in order to act on an inadequate campaign is the campaign's
+    // own report — publishing it is not a reward for passing.
+    let succeeded = summary.succeeded().into().0;
+    let adequacy = if succeeded {
+        assess_campaign(options)
+    }
+    else {
+        Ok(())
+    };
+
+    publish_campaign_result(host, options, CampaignPublicationKind::MutationBearing)?;
+    cleanup_success_workspace(host, options)?;
+
+    if let Err(inadequate) = adequacy {
+        return Err(GateError::operational(format!("mutants-vm: {inadequate}")));
+    }
+    if succeeded {
         return Ok(());
     }
     Err(campaign_failure())
+}
+
+/// Judge whether a finished campaign measured anything.
+///
+/// A campaign exits zero when every mutant is unviable, so the exit status is
+/// not evidence that the suite was asked anything. This reads the campaign's
+/// own record and refuses the two shapes that prove nothing: no mutant ran, and
+/// the baseline ran no tests.
+///
+/// A record that is absent is refused for the same reason an unreadable one is:
+/// a campaign whose adequacy cannot be established has not been shown to have
+/// one.
+fn assess_campaign(options: &MutantsOptions) -> Result<(), adequacy::Inadequacy>
+{
+    let outcomes = std::fs::read_to_string(options.working_report.join("outcomes.json"));
+    let baseline = std::fs::read_to_string(options.working_report.join("log/baseline.log"));
+    let outcomes = outcomes.unwrap_or_default();
+    let baseline = baseline.unwrap_or_default();
+    adequacy::assess(
+        &adequacy::OutcomesJson::new(&outcomes),
+        &adequacy::BaselineLog::new(&baseline),
+    )
 }
 
 /// Build a unique temporary tar path for snapshot provisioning.
@@ -2537,6 +2603,13 @@ mod tests
         support::HOST_FILESYSTEM.create_dir_all(&options.working_report)?;
         std::fs::write(options.working_report.join("mutants.json"), "[]")?;
         std::fs::write(options.working_report.join("mutation-records.json"), "[]")?;
+        // A campaign that selected no mutants, which the adequacy check admits:
+        // this case is about publication order under failure, not about
+        // measuring anything.
+        std::fs::write(
+            options.working_report.join("outcomes.json"),
+            r#"{"total_mutants":0,"caught":0,"missed":0,"timeout":0,"unviable":0}"#,
+        )?;
         let mut sink = report_sink();
 
         run_with_environment(
@@ -2609,6 +2682,13 @@ mod tests
         support::HOST_FILESYSTEM.create_dir_all(&options.working_report)?;
         std::fs::write(options.working_report.join("mutants.json"), "[]")?;
         std::fs::write(options.working_report.join("mutation-records.json"), "[]")?;
+        // A campaign that selected no mutants, which the adequacy check admits:
+        // this case is about publication order under failure, not about
+        // measuring anything.
+        std::fs::write(
+            options.working_report.join("outcomes.json"),
+            r#"{"total_mutants":0,"caught":0,"missed":0,"timeout":0,"unviable":0}"#,
+        )?;
         let mut sink = report_sink();
 
         let error = run_contained_campaign(&mut host, &mut runner, &mut sink, &ContainedCampaign {
@@ -2905,6 +2985,13 @@ mod tests
                 summary.to_nuon().as_bytes(),
             )?;
             support::write_atomic(&report_dir.join("mutants.json"), b"[]")?;
+            // A double that claims a campaign finished owes the record that
+            // claim rests on. This one selected no mutants, which is the shape
+            // these cases actually simulate.
+            support::write_atomic(
+                &report_dir.join("outcomes.json"),
+                br#"{"total_mutants":0,"caught":0,"missed":0,"timeout":0,"unviable":0}"#,
+            )?;
             support::write_atomic(&report_dir.join("mutation-records.json"), b"[]")
         }
     }
@@ -2912,6 +2999,101 @@ mod tests
     fn report_sink() -> TestCampaignReportSink
     {
         TestCampaignReportSink
+    }
+
+    /// An all-unviable campaign fails, and fails as infrastructure.
+    ///
+    /// This is the defect the adequacy check exists for, exercised through the
+    /// campaign runner rather than through the pure function, because what was
+    /// broken was a runner reading an exit status. Every entry point —
+    /// `package`, `merge`, `changed-vs-main` and the `scheduled` run behind
+    /// `maintenance:weekly` — now reaches one completion, [`finish_campaign`],
+    /// so proving it here is what makes the four of them fail closed together.
+    /// They did not before: the package campaign carried its own copy of the
+    /// completion, and a check added to the other copy left it untouched.
+    #[test]
+    fn an_all_unviable_campaign_fails_closed_through_the_runner() -> TestResult
+    {
+        let fixture = TestWorkspace::create("all-unviable")?;
+        let options = test_options(fixture.path(), &fixture.path().join("scratch"));
+        let mut host = FakeHost::new(
+            vec![host_stdout("base-001\n")],
+            vec![host_success()],
+            Vec::new(),
+        );
+        let mut runner = FakeMsbAdapter::new(Vec::new(), vec![
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+            msb_success(),
+        ]);
+        // A campaign that generated mutants, ran none of them, and exited
+        // zero — the exact shape the archived kernel-core report carried.
+        let mut sink = AllUnviableReportSink;
+
+        let campaign = ContainedCampaign {
+            options: &options,
+            mode: sandbox::CampaignMode::Sweep,
+            archive_ref: "HEAD",
+            diff_path: None,
+            diff_source: "",
+        };
+        let refused = run_contained_campaign(&mut host, &mut runner, &mut sink, &campaign)
+            .expect_err("a campaign that ran no mutants proves nothing");
+        let rendered = refused.to_string();
+        assert!(rendered.contains("measured nothing"), "{rendered}");
+        assert!(
+            rendered.contains("infrastructure failure rather than a mutation result"),
+            "{rendered}"
+        );
+        assert!(
+            !rendered.contains("cargo-mutants failed"),
+            "an inadequate campaign must not be reported as a mutation failure: {rendered}"
+        );
+        Ok(())
+    }
+
+    /// A sink whose campaign generated mutants and ran none of them.
+    #[derive(Clone, Copy, Debug)]
+    struct AllUnviableReportSink;
+
+    impl sandbox::CampaignReportSink for AllUnviableReportSink
+    {
+        fn create_empty_report(
+            &mut self,
+            report_dir: &Path,
+        ) -> Result<(), GateError>
+        {
+            support::HOST_FILESYSTEM.create_dir_all(report_dir)
+        }
+
+        fn write_campaign(
+            &mut self,
+            report_dir: &Path,
+            summary: &sandbox::CampaignSummary,
+        ) -> Result<(), GateError>
+        {
+            support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
+            support::write_atomic(
+                &report_dir.join("campaign.nuon"),
+                summary.to_nuon().as_bytes(),
+            )?;
+            support::write_atomic(&report_dir.join("mutants.json"), b"[]")?;
+            support::write_atomic(&report_dir.join("mutation-records.json"), b"[]")?;
+            support::HOST_FILESYSTEM.create_dir_all(report_dir.join("log").as_path())?;
+            support::write_atomic(
+                &report_dir.join("log/baseline.log"),
+                b"     Summary [   6.7s] 141 tests run: 141 passed\n",
+            )?;
+            support::write_atomic(
+                &report_dir.join("outcomes.json"),
+                br#"{"total_mutants":93,"caught":0,"missed":0,"timeout":0,"unviable":93}"#,
+            )
+        }
     }
 
     /// Host Git helpers ignore injected Git repository override variables.

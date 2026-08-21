@@ -283,13 +283,12 @@ fn a_boundary_symbol_that_drifts_fails_at_link_time()
         // compiler CMake recorded is a C++ driver, and an unqualified
         // declaration would be mangled into a different symbol entirely.
         let source = scratch.join(alloc::format!("{name}.cpp"));
-        std::fs::write(
-            &source,
-            alloc::format!(
-                "extern \"C\" unsigned int {symbol}(void);\nint main() {{ return static_cast<int>({symbol}()); }}\n"
-            ),
-        )
-        .expect("the witness source is writable");
+        let program = alloc::format!(
+            r#"extern "C" unsigned int {symbol}(void);
+int main() {{ return static_cast<int>({symbol}()); }}
+"#
+        );
+        std::fs::write(&source, program).expect("the witness source is writable");
 
         let mut command = std::process::Command::new(&clang);
         command
