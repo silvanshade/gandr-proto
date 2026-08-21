@@ -755,19 +755,12 @@ sign Nat {
             "the circuit seam supplies an overlap despite empty generic enumeration"
         );
         assert!(supplied.embeddings[0].decline.is_none());
-        let &CompletionOutcome::Declined { ref reason, .. } = &completion.outcome
-        else {
-            panic!("the malformed supplied overlap must decline");
-        };
-        assert!(
-            matches!(
-                reason,
-                DeclineReason::InvalidSuppliedOverlap(
-                    SuppliedOverlapError::NonUnifyingSubstitution { .. }
-                )
+        assert!(matches!(completion.outcome, CompletionOutcome::Declined {
+            reason: DeclineReason::InvalidSuppliedOverlap(
+                SuppliedOverlapError::NonUnifyingSubstitution { .. }
             ),
-            "completion decline: {reason:?}"
-        );
+            ..
+        }));
     }
 
     #[test]
