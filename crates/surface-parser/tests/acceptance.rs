@@ -927,9 +927,9 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     assert_eq!(
         136, base_count,
         "the model + pathological trees are 136 files (61 model + 75 pathological, including the \
-         two description-member fixtures and the three higher-cells flagship programs — the \
-         category shape in its model form, the infinity-graph consumer, and the setoids \
-         instance)"
+         two description-member fixtures and the two higher-cells flagship programs the molder \
+         now reaches — the category shape in its model form and the infinity-graph consumer; the \
+         setoids instance is held out, and its return is `gandr-f8yr`)"
     );
     assert_eq!(
         136, base_clean,
