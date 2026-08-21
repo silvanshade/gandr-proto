@@ -213,7 +213,7 @@ fn circuit_judgment() -> Regex
         seq([
             t(TileLabel("rule")),
             t(TileLabel("identifier")),
-            circuit_judgment_tail(),
+            rule_judgment_tail(),
         ]),
     ])
 }
@@ -222,6 +222,71 @@ fn circuit_judgment() -> Regex
 fn circuit_judgment_tail() -> Regex
 {
     seq([t(TileLabel(":")), signature(), opt(body())])
+}
+
+/// Build an expression-endpoint rewrite judgment, using the shared
+/// parenthesized-expression family for the legacy binder endpoint.
+fn rule_judgment_tail() -> Regex
+{
+    seq([t(TileLabel(":")), rule_signature(), opt(body())])
+}
+
+/// Build a rewrite rule signature from expression endpoints.
+fn rule_signature() -> Regex
+{
+    alt([
+        seq([
+            rule_parameter_group(),
+            circuit_rule_face_arrow(),
+            result_group(),
+        ]),
+        seq([
+            h(Sort::Expression),
+            circuit_rule_face_arrow(),
+            h(Sort::Expression),
+        ]),
+    ])
+}
+
+/// Build the direct circuit telescope shape for a ruled signature.
+///
+/// The entry menu is deliberately narrow: a circuit binder is a `rule`/`data`
+/// declaration or a typed port. This keeps the direct `(` / `)` tiles consumed
+/// by circuit lowering while ordinary call arguments remain recursive
+/// expressions.
+fn rule_parameter_group() -> Regex
+{
+    seq([
+        t(TileLabel("(")),
+        comma1(alt([
+            seq([
+                t(TileLabel("rule")),
+                t(TileLabel("identifier")),
+                t(TileLabel(":")),
+                h(Sort::Type),
+                arrow_grid(),
+                h(Sort::Type),
+            ]),
+            seq([
+                t(TileLabel("data")),
+                t(TileLabel("identifier")),
+                t(TileLabel(":")),
+                h(Sort::Type),
+            ]),
+            seq([t(TileLabel("identifier")), t(TileLabel(":")), h(Sort::Type)]),
+        ])),
+        t(TileLabel(")")),
+    ])
+}
+
+/// Build the circuit rule-face arrow row: directed `==>` or invertible `<=>`.
+///
+/// The term-level `rule_face_arrow` intentionally has a narrower migration
+/// menu (`==>` plus retired `~>`); sign members carry the circuit's distinct
+/// invertible face former here rather than admitting every arrow-grid row.
+fn circuit_rule_face_arrow() -> Regex
+{
+    alt([t(TileLabel("==>")), t(TileLabel("<=>"))])
 }
 
 /// Build the parenthesis-led data-block tail reserved for localized decline.
@@ -274,10 +339,12 @@ fn sign_member() -> Regex
 {
     alt([
         // `sort Nat : Type` — a colour declaration; its right-hand side is an
-        // ordinary type (the universe), not a circuit signature.
+        // ordinary type (the universe), not a circuit signature. An indexed
+        // sort carries its parameter telescope before the colon.
         seq([
             t(TileLabel("sort")),
             t(TileLabel("type_identifier")),
+            opt(parameter_group()),
             t(TileLabel(":")),
             h(Sort::Type),
         ]),

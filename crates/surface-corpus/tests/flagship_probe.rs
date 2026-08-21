@@ -26,10 +26,11 @@ mod tests
     /// The category of discrete setoids: an object is a type, a hom is a
     /// function, and equality is `Path`.
     ///
-    /// The source is carried here rather than read from the corpus because the
-    /// corpus gate admits only programs the molder can mold, and these forms
-    /// are not among them. The verification does not depend on where the text
-    /// lives.
+    /// The setoids program is held out of the corpus because its claim that
+    /// `unitL` binds within its module is not expressible in the current
+    /// expectation vocabulary. This probe therefore carries the only copy in
+    /// the tree and the only assertion about its elaborated result; the
+    /// constraint is tracked at `gandr-f8yr`.
     ///
     /// **The index arguments are checked against `comp`'s dependent
     /// declaration.** The left unit law is `comp(a, a, b, id(a), f)`, because

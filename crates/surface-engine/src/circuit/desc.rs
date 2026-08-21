@@ -100,6 +100,7 @@
 //!   language spells `ρ then ρ′` and has no former for yet
 //!   ([`gandr_theory_levitation::CircuitElaborationError::ManyRedexOccurrences`]).
 
+use gandr_surface_grammar::Sort;
 use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::CircuitBody;
@@ -535,6 +536,22 @@ fn rule_member(
         ));
         return None;
     };
+    let arrow = shape.find_arrow_at_top_level(signature);
+    if shape
+        .parameter_group_sort(signature, arrow.map(|found| found.index))
+        .is_some_and(|sort| sort != Sort::Item)
+    {
+        diagnostics.push(ElabDiagnostic::new(
+            format!(
+                "rule `{name}`'s parameter side is a parenthesized expression, not a direct \
+                 circuit binder; the description route refuses this expression-kind signature \
+                 rather than rendering it as a circuit rule",
+                name = name.0
+            ),
+            span,
+        ));
+        return None;
+    }
     let ports = telescope(shape, signature);
     let out = match declared_output(shape, signature) {
         | Ok(out) => out,

@@ -1419,6 +1419,20 @@ impl<'pbg> MeldState<'pbg>
             // filtered, so the molder always has a last resort.
             return MoldAdmissibility::from(true);
         }
+        // An item-form `(` is a declaration/telescope opener, never a
+        // continuation of an expression operand. Keeping Item forms exempt
+        // from sort filtering at a fresh slot is necessary for top-level
+        // declarations, but that exemption must not steal a call's argument
+        // opener after an expression head.
+        if bool::from(frontier.head_operand)
+            && frontier.expected == Sort::Expression
+            && self
+                .pbg
+                .mold(mold)
+                .is_ok_and(|def| def.sort == Sort::Item && def.label == "(")
+        {
+            return MoldAdmissibility::from(false);
+        }
         let admissible = match self.classify(mold) {
             | Kind::FormEnd => frontier
                 .open

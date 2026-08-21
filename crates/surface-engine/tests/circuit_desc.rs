@@ -10,6 +10,9 @@ use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::circuit::check_circuit_surface;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
 use gandr_surface_engine::desc_elab::elaborate_data_descs;
+use gandr_surface_engine::lower::node_kinds;
+use gandr_surface_engine::synnode::SynNode;
+use gandr_surface_engine::synnode::SynTree;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::PortFace;
 
@@ -72,6 +75,52 @@ fn messages(source: TestText<'_>) -> Vec<String>
         .into_iter()
         .map(|diagnostic| diagnostic.message)
         .collect()
+}
+
+#[test]
+fn an_expression_kind_signature_endpoint_is_refused_by_the_description_route()
+{
+    let source = "\
+sign Wrong {
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  rule face : (f) ==> (z : Nat) {
+    node : f(f) --> (z);
+  };
+}
+";
+    let tree = SynTree::parse(source).expect("the ordinary parser commits this source");
+    fn has_expression_endpoint(node: SynNode<'_>) -> bool
+    {
+        if node.kind() == node_kinds::PARENTHESIZED_EXPRESSION && node.text().as_ref() == "(f)" {
+            return true;
+        }
+        node.named_children()
+            .into_iter()
+            .any(has_expression_endpoint)
+    }
+    assert!(
+        has_expression_endpoint(tree.root()),
+        "the rule's `(f)` endpoint must arrive as a normal expression-kind CST node"
+    );
+    let elab = elaborate_data_descs(source);
+    assert!(
+        elab.diagnostics.iter().any(|diagnostic| {
+            diagnostic.message.contains("parenthesized expression")
+                && diagnostic.message.contains("direct circuit binder")
+        }),
+        "the description route must refuse the expression-kind endpoint: {:?}",
+        elab.diagnostics
+    );
+    let desc = elab
+        .descs
+        .iter()
+        .find(|desc| desc.id.name.as_ref() == "Wrong")
+        .expect("the sign still yields a description shell");
+    assert!(
+        desc.circuits.is_empty(),
+        "a refused signature must not render as a circuit rule"
+    );
 }
 
 /// Assert that some message contains every fragment, and return it.

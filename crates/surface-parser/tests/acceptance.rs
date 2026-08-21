@@ -101,6 +101,7 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
         "- x",
         "ret -y",
         "def id = x;",
+        "def nested = comp(id(a), f);",
     ];
     for &src in clean {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -114,6 +115,7 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
                 .collect::<Vec<_>>()
         );
     }
+
     Ok(())
 }
 

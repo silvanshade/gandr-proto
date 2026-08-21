@@ -19,6 +19,7 @@
 //! consuming pass's, and each adds its own inherent methods to [`Reader`].
 
 use gandr_surface_grammar::Pbg;
+use gandr_surface_grammar::Sort;
 use gandr_surface_syntax::Cst;
 use gandr_surface_syntax::Material;
 use gandr_surface_syntax::MoldPayload;
@@ -129,6 +130,34 @@ impl<'tree> Reader<'tree>
             | MoldPayload::Grout { .. } | MoldPayload::GhostClose { .. } | MoldPayload::Space => {
                 None
             },
+        }
+    }
+
+    /// The grammar sort carried by `id`, or [`None`] for layout.
+    ///
+    /// # Contract
+    /// - requires: `id` belongs to this reader's CST.
+    /// - ensures: returns the tile's producing sort or the grout's recorded
+    ///   sort; layout and missing nodes return `None`.
+    /// - provides: the sort distinction shared by the circuit shape consumers.
+    /// - fails: never; malformed compact sort tags return `None`.
+    /// - panics: none.
+    pub fn sort(
+        &self,
+        id: NodeId,
+    ) -> Option<Sort>
+    {
+        match {
+            let present = self.cst.node(id).ok()?;
+            core::convert::identity(present)
+        }
+        .payload()
+        {
+            | MoldPayload::Tile(mold) => self.pbg.mold(mold).ok().map(|def| def.sort),
+            | MoldPayload::Grout { sort, .. } | MoldPayload::GhostClose { sort, .. } => {
+                Sort::try_from_tag(sort).ok()
+            },
+            | MoldPayload::Space => None,
         }
     }
 

@@ -13,6 +13,7 @@
 //! This module knows tiles, runs, and the member grammar. It knows nothing
 //! about diagnostics or about descriptions; each consumer supplies its own.
 
+use gandr_surface_grammar::Sort;
 use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::SurfaceSpan;
 
@@ -339,6 +340,39 @@ impl<'tree> Shape<'_, 'tree>
             .get(brace.0.saturating_add(1) .. tail.len().saturating_sub(1))
             .unwrap_or(&[]);
         (signature, Some(interior))
+    }
+
+    /// The grammar sort of the first parenthesized parameter group before the
+    /// signature arrow, or `None` when the side is bare or the group is after
+    /// the arrow.
+    ///
+    /// # Contract
+    /// - requires: `signature` is one declaration's signature run.
+    /// - ensures: returns the opener's grammar sort without descending into the
+    ///   group.
+    /// - provides: the distinction between a circuit binder group (`Item`) and
+    ///   a shared expression group (`Expression`).
+    /// - fails: never; a missing node yields `None`.
+    /// - panics: none.
+    pub fn parameter_group_sort(
+        self,
+        signature: &[NodeId],
+        before: Option<RunIndex>,
+    ) -> Option<Sort>
+    {
+        for (index, &id) in signature.iter().enumerate() {
+            let index = RunIndex(index);
+            if before.is_some_and(|arrow| index.0 >= arrow.0) {
+                break;
+            }
+            if self.reader.label(id) == Some(TileSpelling("(")) {
+                return self.reader.sort(id);
+            }
+            if self.reader.is_meld(id).0 && self.reader.sort(id) == Some(Sort::Expression) {
+                return Some(Sort::Expression);
+            }
+        }
+        None
     }
 
     /// The interior of the signature's parameter list — the first top-level

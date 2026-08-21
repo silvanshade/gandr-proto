@@ -385,14 +385,13 @@ fn module_signature() -> Regex
     ])
 }
 
-/// Build one field of a module signature.
-///
-/// A value component `ℓ : T`, or a **type component** — `type T = τ` when the
+/// A value component `ℓ : T` or a parameterized value component
+/// `ℓ : (a : T) -> U`, or a **type component** — `type T = τ` when the
 /// component is *manifest*, `type T` when it is abstract. The value and type
 /// forms are first-token-discriminated by the `type` keyword — already a tile
 /// in this grammar, from the `extern` block's inline type members — so
-/// admitting them in one comma list costs no lookahead, and the manifest tail
-/// is one optional `=`.
+/// admitting them in one semicolon- or comma-separated list costs no lookahead,
+/// and the manifest tail is one optional `=`.
 ///
 /// **All three type forms parse and they mean different things.** A manifest
 /// component `type T = τ` names the type it equals, so it introduces no
@@ -584,7 +583,7 @@ fn generator_telescope() -> Regex
 /// respelling; admitting it here keeps the member's shape whole so the stage-0
 /// elaborator declines it by name and points at `==>`
 /// (`gandr_surface_engine::desc_elab`).
-fn rule_face_arrow() -> Regex
+pub(super) fn rule_face_arrow() -> Regex
 {
     alt([t(TileLabel("==>")), t(TileLabel("~>"))])
 }
@@ -1149,6 +1148,13 @@ fn expressions(
     );
     binary(
         out,
+        RuleName("binary_expression.then"),
+        TileLabel("then"),
+        s,
+        p.cmp,
+    );
+    binary(
+        out,
         RuleName("binary_expression.add.concat"),
         TileLabel("++"),
         s,
@@ -1461,11 +1467,15 @@ fn attr_inline() -> Regex
     ])
 }
 
-/// Build an inline parameter.
+/// Build an inline parameter, including uppercase type-variable binders.
 fn param() -> Regex
 {
     seq([
-        t(TileLabel("identifier")),
+        alt([
+            t(TileLabel("identifier")),
+            t(TileLabel("type_variable")),
+            t(TileLabel("type_identifier")),
+        ]),
         opt(seq([t(TileLabel(":")), h(Sort::Type)])),
     ])
 }
@@ -2316,6 +2326,22 @@ fn primary_expressions(
         AdaptationReason("folded into co_expression: the `id = E` field is inlined, not a standalone form-first identifier competing with a bare variable"),
     ));
     out.push(co);
+    // A glob copattern block is an expression-level consumer form. Its
+    // semicolon-terminated fields are deliberately separate from the comma
+    // record family: `glob { cells = A; hom(x, y) = e; }` is a sequence of
+    // observations whose names and values remain ordinary expression slots.
+    out.push(r(
+        RuleName("glob_expression"),
+        Provenance("glob_expression"),
+        s,
+        p,
+        seq([
+            t(TileLabel("glob")),
+            t(TileLabel("{")),
+            repeat(seq([co_field(), t(TileLabel(";"))])),
+            t(TileLabel("}")),
+        ]),
+    ));
     // The `#{`-opened expression forms — the empty/populated record literal
     // `#{ }` / `#{ id = E, … }` and the record update `#{ E | id = E, … }` —
     // share the `#{` prefix and diverge only at the tile after the first

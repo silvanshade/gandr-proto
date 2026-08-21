@@ -44,12 +44,15 @@
 use alloc::vec::Vec;
 
 pub use gandr_surface_grammar::CandidateCount;
+use gandr_surface_grammar::Dir;
 use gandr_surface_grammar::Pbg;
 use gandr_surface_grammar::Sort;
+use gandr_surface_grammar::StepSym;
 use gandr_surface_grammar::TileLabel;
 use gandr_surface_syntax::MoldId;
 use gandr_surface_syntax::SourceSlice;
 
+use crate::Frontier;
 use crate::MeldState;
 use crate::MoldedTile;
 use crate::label::Lexeme;
@@ -393,6 +396,30 @@ const UPPER_KEYWORDS: &[&str] = &[
     "Any", "Unknown", "Never", "Boolean", "Integer", "Char", "String", "Symbol", "Unit", "Void",
     "F", "U", "Path",
 ];
+
+/// Return the next non-space token after `index`.
+///
+/// # Contract
+/// - requires: `index` indexes the same token stream as `tokens`.
+/// - ensures: returns the next significant token and its index, or `None` at
+///   the end of the stream.
+/// - provides: bounded lexical lookahead for shared-prefix mold choices.
+/// - fails: never.
+/// - panics: none.
+fn next_significant(
+    tokens: &[Token],
+    index: TokenIndex,
+) -> Option<(TokenIndex, Token)>
+{
+    let mut next = usize::from(index).saturating_add(1);
+    while let Some(&token) = tokens.get(next) {
+        if !matches!(token.lexeme, Lexeme::Space) {
+            return Some((TokenIndex::from(next), token));
+        }
+        next = next.saturating_add(1);
+    }
+    None
+}
 
 /// The obligation-minimizing mold selector over a checked PBG.
 ///
@@ -1068,6 +1095,81 @@ impl<'pbg> Molder<'pbg>
         best.map(|(_, mold)| mold).or(best_mold)
     }
 
+    /// Return whether a direct circuit-rule binder opener has a binder-shaped
+    /// next token in the batch stream.
+    ///
+    /// The circuit grammar deliberately keeps the binder's direct `(` / `)`
+    /// shape so the description route can read its telescope. At the same
+    /// lexical position, the shared expression family owns parenthesized
+    /// endpoints. The opener alone cannot distinguish those forms; the first
+    /// token inside the group does. A `rule` / `data` binder or an identifier
+    /// followed by `:` is the direct form, while an expression head such as
+    /// `assoc(` must remain in the shared family.
+    ///
+    /// # Contract
+    /// - requires: `tokens` is the labeler output for `source`; `index` names
+    ///   the current `(` token.
+    /// - ensures: returns `true` only for the direct circuit binder opener when
+    ///   the next significant tokens have its binder prefix.
+    /// - provides: batch-only disambiguation for the direct circuit binder.
+    /// - fails: never; missing lookahead rejects the direct reading.
+    /// - panics: none.
+    fn direct_rule_binder_admits(
+        &self,
+        state: &MeldState<'_>,
+        mold: MoldId,
+        frontier: &Frontier,
+        tokens: &[Token],
+        index: TokenIndex,
+        source: &SourceSlice<'_>,
+    ) -> bool
+    {
+        if !bool::from(state.admits_at(mold, frontier)) {
+            return false;
+        }
+        if frontier.expected != Sort::Expression || bool::from(frontier.head_operand) {
+            return true;
+        }
+        let Some(def) = self.pbg.mold(mold).ok()
+        else {
+            return false;
+        };
+        if def.label != "(" || def.sort != Sort::Item {
+            return true;
+        }
+        let Some(steps) = self.pbg.step(def.rctx, Dir::Right).ok()
+        else {
+            return false;
+        };
+        let direct_prefix = [
+            StepSym::Tile("data"),
+            StepSym::Tile("identifier"),
+            StepSym::Tile("rule"),
+        ];
+        // Both readings begin with the same `(` prefix; only the first
+        // interior token separates the direct binder from an expression endpoint.
+        if steps.len() != direct_prefix.len()
+            || !direct_prefix
+                .iter()
+                .all(|&step| steps.iter().any(|candidate| candidate.crossed == step))
+        {
+            return true;
+        }
+        let Some((first_index, first)) = next_significant(tokens, index)
+        else {
+            return false;
+        };
+        let first_text = first.text(source);
+        if matches!(AsRef::<str>::as_ref(&first_text), "rule" | "data") {
+            return true;
+        }
+        if !matches!(first.lexeme, Lexeme::LowerWord) {
+            return false;
+        }
+        next_significant(tokens, first_index)
+            .map(|(_, colon)| AsRef::<str>::as_ref(&colon.text(source)) == ":")
+            .unwrap_or(false)
+    }
     /// Choose token `index`'s mold, breaking a shared-prefix tie by lookahead.
     ///
     /// The admissibility-filtered local [`key`](Self::key) settles every
@@ -1106,7 +1208,7 @@ impl<'pbg> Molder<'pbg>
         let mut sole: Option<MoldId> = None;
         let mut admissible = 0_usize;
         for &mold in &self.candidates {
-            if bool::from(state.admits_at(mold, &frontier)) {
+            if self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source) {
                 admissible = admissible.saturating_add(1);
                 sole = Some(mold);
             }
@@ -1124,7 +1226,9 @@ impl<'pbg> Molder<'pbg>
             else {
                 break;
             };
-            if filter && !bool::from(state.admits_at(mold, &frontier)) {
+            if filter
+                && !self.direct_rule_binder_admits(state, mold, &frontier, tokens, index, source)
+            {
                 continue;
             }
             scored.push((self.key(state, mold, text, expected), mold));
