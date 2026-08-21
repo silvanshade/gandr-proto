@@ -6,11 +6,12 @@
 //! The stage is the seam category of the tracelet-algebra component: objects
 //! are command patterns, tight morphisms are substitutions, loose arrows are
 //! cells, and 2-cells are derivations. Every row runs over the **real**
-//! `gandr-theory-computads` structures — the overlap enumerator, matching and
-//! unification, rewriting and normalization, and the tracelet certificates —
-//! never a second engine. Axioms are Behr–Harmer–Krivine Def 3.2
-//! (arXiv:2204.07175); the virtual-side line items are Thompson–Carlson
-//! (arXiv:2605.20586, Thm 5.11 / Thm 4.14 / Def 7.2).
+//! `gandr-theory-computads` cell elaboration and
+//! `gandr-theory-coherent-resolutions` completion structures — generic overlap
+//! enumeration, matching and unification, rewriting and normalization, and the
+//! tracelet certificates — never a second engine. Axioms are
+//! Behr–Harmer–Krivine Def 3.2 (arXiv:2204.07175); the virtual-side line items
+//! are Thompson–Carlson (arXiv:2605.20586, Thm 5.11 / Thm 4.14 / Def 7.2).
 //!
 //! # Verdict note (the suite's deliverable; the associativity ledger gandr-5lf.6 consumes)
 //!

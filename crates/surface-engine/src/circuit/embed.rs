@@ -3,7 +3,8 @@
 //!
 //! `gandr-theory-circuit-algebras` owns interface bookkeeping, embedding-based
 //! matching with its convexity check, and diagram normal form.
-//! `gandr-theory-computads` owns the cell store, the overlap enumerator, the
+//! `gandr-theory-computads` owns cell elaboration and the cell store.
+//! `gandr-theory-coherent-resolutions` owns generic overlap enumeration, the
 //! completion loop and the tracelet certificates. The crate boundary between
 //! them carries one consequence, recorded when the matcher landed: if the
 //! engine ever consumes embedding-based matching, it does so through **a
@@ -18,7 +19,9 @@
 //!
 //! * [`circuit_wiring`] reads a declared circuit body as a diagram;
 //! * [`embed_circuit_rule`] answers where one rule's diagram sits inside
-//!   another's.
+//!   another's;
+//! * [`complete_circuit_rules`] uses those admitted embeddings to seed the
+//!   generic completion loop and replays every certificate it emits.
 //!
 //! # Why a circuit body already is a diagram
 //!
@@ -45,11 +48,10 @@
 //!
 //! # What this seam is not
 //!
-//! It does not put matching **into** the engine. The engine keeps its own
-//! one-sided matcher over command patterns, which is what cell application and
-//! replay use; what this supplies is the *circuit* reading, for the question a
-//! command pattern cannot pose — where a many-in, many-out, possibly
-//! disconnected diagram sits inside another one.
+//! It does not put circuit vocabulary into the generic engine. The engine
+//! keeps its own command-pattern matcher, cell alphabet, and certificate
+//! representation; this module supplies the initial overlap family at the
+//! instantiation site and lets the generic completion loop process it.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -65,14 +67,22 @@ use gandr_theory_circuit_algebras::interface::WireCount;
 use gandr_theory_circuit_algebras::interface::Wiring;
 use gandr_theory_circuit_algebras::interface::WiringObstruction;
 use gandr_theory_circuit_algebras::matching::MatchBudget;
+use gandr_theory_circuit_algebras::matching::MatchCount;
 use gandr_theory_circuit_algebras::matching::MatchObstruction;
 use gandr_theory_circuit_algebras::matching::Matching;
 use gandr_theory_circuit_algebras::matching::embeddings;
+use gandr_theory_coherent_resolutions::CompletionBudget;
+use gandr_theory_coherent_resolutions::CompletionOutcome;
+use gandr_theory_coherent_resolutions::OverlapKind;
+use gandr_theory_coherent_resolutions::OverlapSupport;
+use gandr_theory_coherent_resolutions::complete_with_overlap_source;
+use gandr_theory_coherent_resolutions::overlaps_between;
+use gandr_theory_computads::CellId;
+use gandr_theory_computads::CellStore;
 use gandr_theory_levitation::CircuitBody;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
-
 /// Why a declared circuit body is not a diagram.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CircuitWiringError
@@ -234,6 +244,145 @@ pub fn embed_circuit_rule(
     let pattern = circuit_wiring(pattern).map_err(CircuitEmbedError::Wiring)?;
     let target = circuit_wiring(target).map_err(CircuitEmbedError::Wiring)?;
     embeddings(&pattern, &target, budget).map_err(CircuitEmbedError::Matching)
+}
+
+/// A circuit rule body paired with the cell its declaration admitted.
+///
+/// A declined circuit rule keeps `cell` as `None`, so the seam can preserve
+/// the description route's complete matcher record without inventing an
+/// engine overlap for a cell that does not exist.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CircuitRuleCell<'rule>
+{
+    /// The declared rule name.
+    pub name: &'rule Name,
+    /// The rule body supplied to the embedding matcher.
+    pub body: &'rule CircuitBody,
+    /// The corresponding generic cell, when the cell layer admitted it.
+    pub cell: Option<CellId>,
+}
+
+/// One ordered circuit-pattern pair and the generic overlaps it supplied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CircuitCompletionMatch
+{
+    /// The pattern rule name.
+    pub pattern: Name,
+    /// The target rule name.
+    pub target: Name,
+    /// The number of embedding certificates admitted for the pair.
+    pub admitted: MatchCount,
+    /// The number of generic confluence overlaps supplied for the pair.
+    pub overlap_count: usize,
+    /// The number of supplied certificates that replayed successfully.
+    pub certificates_replayed: usize,
+}
+
+/// The generic completion result at the circuit instantiation seam.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CircuitCompletion
+{
+    /// The generic completion outcome, including its replayable certificates.
+    pub outcome: CompletionOutcome,
+    /// The matcher records and certificate replay counts, in pair order.
+    pub matches: Vec<CircuitCompletionMatch>,
+}
+
+/// Enumerate circuit-pattern overlaps through generic completion and replay
+/// the certificates that generic completion emits.
+///
+/// The embedding matcher decides which ordered circuit-rule pairs seed the
+/// worklist. For each admitted pair, the generic cell alphabet constructs the
+/// confluence overlap family with [`overlaps_between`], and the generic
+/// completion engine consumes those values. Derived cells then use the
+/// engine's ordinary overlap scheduler; no circuit-specific dependency enters
+/// the theory stack.
+///
+/// # Contract
+/// - requires: `rules` use cell ids from `store`; `None` means the
+///   corresponding circuit rule was declined before cell admission.
+/// - ensures: every matcher-admitted pair contributes its generic confluence
+///   overlap family once; every emitted certificate is checked with
+///   [`gandr_theory_coherent_resolutions::Tracelet::replay`] against the
+///   completion store before its pair's replay count is reported.
+/// - provides: the supplied instantiation seam between circuit diagrams and
+///   generic cell completion.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — multi-root and reconvergent circuit embeddings both
+///   produce nonempty pair records, while a non-embedding direction produces no
+///   supplied overlap; the replay count separates a real certificate from a
+///   matcher-only admission.
+/// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
+///   `the_description_route_runs_completion_through_the_matcher_seam`
+#[inline]
+#[must_use]
+pub fn complete_circuit_rules(
+    store: CellStore,
+    rules: &[CircuitRuleCell<'_>],
+    match_budget: MatchBudget,
+    completion_budget: CompletionBudget,
+) -> CircuitCompletion
+{
+    let mut initial_overlaps = Vec::new();
+    let mut pair_ids = Vec::new();
+    let mut matches = Vec::new();
+    for pattern in rules {
+        for target in rules {
+            let Ok(matching) = embed_circuit_rule(pattern.body, target.body, match_budget)
+            else {
+                continue;
+            };
+            let admitted = matching.admitted_count();
+            let mut overlaps = if admitted.0 > 0_usize {
+                match (pattern.cell, target.cell) {
+                    | (Some(left), Some(right)) => match (store.get(left), store.get(right)) {
+                        | (Some(left_cell), Some(right_cell)) => {
+                            overlaps_between((left, left_cell), (right, right_cell))
+                        },
+                        | _ => Vec::new(),
+                    },
+                    | _ => Vec::new(),
+                }
+            }
+            else {
+                Vec::new()
+            };
+            overlaps.retain(|overlap| overlap.kind == OverlapKind::Confluence);
+            let overlap_count = overlaps.len();
+            initial_overlaps.extend(overlaps);
+            pair_ids.push((pattern.cell, target.cell));
+            matches.push(CircuitCompletionMatch {
+                pattern: pattern.name.clone(),
+                target: target.name.clone(),
+                admitted,
+                overlap_count,
+                certificates_replayed: 0_usize,
+            });
+        }
+    }
+    let initial_batches = OverlapSupport::from_store(&store).batches(&initial_overlaps);
+    let outcome = complete_with_overlap_source(store, completion_budget, move |_| initial_batches);
+    let replayed_pairs: Vec<(CellId, CellId)> = outcome
+        .certificates()
+        .iter()
+        .filter(|certificate| bool::from(certificate.replay(outcome.store())))
+        .map(|certificate| (certificate.overlap.left, certificate.overlap.right))
+        .collect();
+    for (index, &(left, right)) in pair_ids.iter().enumerate() {
+        let Some((left, right)) = left.zip(right)
+        else {
+            continue;
+        };
+        if let Some(matched) = matches.get_mut(index) {
+            matched.certificates_replayed = replayed_pairs
+                .iter()
+                .filter(|pair| **pair == (left, right))
+                .count();
+        }
+    }
+    CircuitCompletion { outcome, matches }
 }
 
 /// Why one circuit rule's diagram could not be matched into another's.

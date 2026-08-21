@@ -41,6 +41,7 @@ pub use crate::completion::CompletionBudget;
 pub use crate::completion::CompletionOutcome;
 pub use crate::completion::DeclineReason;
 pub use crate::completion::complete;
+pub use crate::completion::complete_with_overlap_source;
 pub use crate::overlap::Overlap;
 pub use crate::overlap::OverlapKind;
 pub use crate::overlap::OverlapSupport;

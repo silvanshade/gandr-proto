@@ -2,13 +2,14 @@
 //! diagrams, matched by the embedding matcher, over real declared source.
 //!
 //! `gandr-theory-circuit-algebras` owns embedding-based matching and
-//! `gandr-theory-computads` owns the cell engine; neither names the other, and
-//! the seam that lets one consume the other is supplied here, above both. These
-//! tests drive that seam from written `sign` blocks rather than from
-//! hand-built diagrams, so every redex occurrence they report is derived from
-//! source a user could write. The two hand-built fixtures are refusals rather
-//! than occurrences: a body the surface would never produce, kept so the
-//! reading's own refusal arms are separated.
+//! `gandr-theory-computads` owns the cell engine; generic overlaps, completion
+//! and certificates belong to `gandr-theory-coherent-resolutions`. None of
+//! those lower crates names another; the seam that lets one consume the other
+//! is supplied here, above both. These tests drive that seam from written
+//! `sign` blocks rather than from hand-built diagrams, so source-authored
+//! occurrences stay observable. The refusal arms and the hand-built
+//! multi-root/reconvergent witness keep matcher rejection and certificate
+//! replay observable as well.
 
 /// Circuit matcher-seam tests.
 #[cfg(test)]
@@ -16,17 +17,24 @@ mod tests
 {
     use gandr_core_sequent::il::Polarity;
     use gandr_surface_engine::circuit::embed::CircuitEmbedError;
+    use gandr_surface_engine::circuit::embed::CircuitRuleCell;
     use gandr_surface_engine::circuit::embed::CircuitWiringError;
     use gandr_surface_engine::circuit::embed::circuit_wiring;
+    use gandr_surface_engine::circuit::embed::complete_circuit_rules;
     use gandr_surface_engine::circuit::embed::embed_circuit_rule;
     use gandr_surface_engine::desc_cells::elaborate_desc_cells;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
+    use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellStore;
     use gandr_theory_cell_complexes::CmdPat;
     use gandr_theory_cell_complexes::ConsPat;
     use gandr_theory_cell_complexes::ProdPat;
+    use gandr_theory_cell_complexes::sequent::CellProvenance;
+    use gandr_theory_cell_complexes::sequent::Orientation;
     use gandr_theory_circuit_algebras::interface::EdgeCount;
     use gandr_theory_circuit_algebras::interface::WireCount;
     use gandr_theory_circuit_algebras::matching::MatchBudget;
+    use gandr_theory_coherent_resolutions::CompletionBudget;
     use gandr_theory_coherent_resolutions::Tracelet;
     use gandr_theory_coherent_resolutions::enumerate_overlaps;
     use gandr_theory_coherent_resolutions::normalize;
@@ -415,6 +423,133 @@ mod tests
         assert!(
             alloc::format!("{exhausted}").contains("larger budget"),
             "and a search decline says what to do about it"
+        );
+    }
+
+    #[test]
+    fn the_description_route_runs_completion_through_the_matcher_seam()
+    {
+        let multi_root = CircuitBody::new(
+            [
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("left".into()),
+                    [FreeTerm::var("x")],
+                    "y",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("right".into()),
+                    [FreeTerm::var("z")],
+                    "w",
+                )),
+            ],
+            "w",
+        );
+        let reconvergent = CircuitBody::new(
+            [
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("left".into()),
+                    [FreeTerm::var("x")],
+                    "y",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("right".into()),
+                    [FreeTerm::var("z")],
+                    "w",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("branch-left".into()),
+                    [FreeTerm::var("a")],
+                    "b",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("branch-right".into()),
+                    [FreeTerm::var("c")],
+                    "d",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("join".into()),
+                    [FreeTerm::var("b"), FreeTerm::var("d")],
+                    "e",
+                )),
+            ],
+            "e",
+        );
+        let mut store = CellStore::new();
+        let lhs = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::meta("input"),
+            ConsPat::frame("step", ConsPat::Top),
+        );
+        let rhs = CmdPat::cut(Polarity::Positive, ProdPat::meta("input"), ConsPat::Top);
+        let multi_cell = store.insert(Cell::new(
+            lhs.clone(),
+            rhs.clone(),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        ));
+        let reconvergent_cell = store.insert(Cell::new(
+            lhs,
+            rhs,
+            Orientation::PolarityDerived,
+            CellProvenance::MuMuTilde,
+        ));
+        let multi_name: gandr_theory_levitation::Name = "multi-root".into();
+        let reconvergent_name: gandr_theory_levitation::Name = "reconvergent".into();
+        let rules = [
+            CircuitRuleCell {
+                name: &multi_name,
+                body: &multi_root,
+                cell: Some(multi_cell),
+            },
+            CircuitRuleCell {
+                name: &reconvergent_name,
+                body: &reconvergent,
+                cell: Some(reconvergent_cell),
+            },
+        ];
+        let completion = complete_circuit_rules(
+            store,
+            &rules,
+            MatchBudget(4_096_usize),
+            CompletionBudget::new(64_usize.into(), 64_usize.into(), 64_usize.into()),
+        );
+        let forward = completion
+            .matches
+            .iter()
+            .find(|matched| {
+                matched.pattern.as_ref() == "multi-root"
+                    && matched.target.as_ref() == "reconvergent"
+            })
+            .expect("the multi-root pattern has a record in the reconvergent target");
+        assert!(
+            forward.admitted.0 > 0_usize,
+            "the circuit matcher admits the multi-root embedding"
+        );
+        assert!(
+            forward.overlap_count > 0_usize,
+            "the admitted circuit pair supplies a generic overlap"
+        );
+        assert!(
+            forward.certificates_replayed > 0_usize,
+            "the generic certificate path replays the supplied overlap: {} overlaps, {} replays",
+            forward.overlap_count,
+            forward.certificates_replayed
+        );
+        let reverse = completion
+            .matches
+            .iter()
+            .find(|matched| {
+                matched.pattern.as_ref() == "reconvergent"
+                    && matched.target.as_ref() == "multi-root"
+            })
+            .expect("the reverse ordered pair remains observable");
+        assert_eq!(
+            0_usize, reverse.admitted.0,
+            "the reconvergent target does not fit in the multi-root pattern"
+        );
+        assert_eq!(
+            0_usize, reverse.overlap_count,
+            "a refused circuit embedding cannot seed generic completion"
         );
     }
 

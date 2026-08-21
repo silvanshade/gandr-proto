@@ -219,6 +219,9 @@ pub struct DescElaboration
     /// declaration order — the boundary-language object the member's filler
     /// stands for, beside the cell its derived pair became.
     pub composites: Vec<WhiskeredCell>,
+    /// The cell id corresponding to each `desc.circuits` entry, in declaration
+    /// order. `None` marks a circuit rule declined before it entered the store.
+    pub circuit_cell_ids: Vec<Option<CellId>>,
     /// Each declined circuit rule, by index into `desc.circuits`, with its
     /// reason.
     pub declined_circuits: Vec<(DeclinedCircuitIndex, ElaborateError)>,
@@ -354,12 +357,19 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
     // linearity admission — with one condition ahead of it: a circuit rule's
     // cell is licensed by the composite its wiring denotes, so a body that
     // denotes none is declined before its derived pair is offered anywhere.
+    let mut circuit_cell_ids = Vec::with_capacity(desc.circuits.len());
     let mut composites = Vec::new();
     let mut declined_circuits = Vec::new();
     for (index, rule) in desc.circuits.iter().enumerate() {
         match admit_circuit_rule(&mut store, rule, &unrepresentable) {
-            | Ok(composite) => composites.push(composite),
-            | Err(error) => declined_circuits.push((DeclinedCircuitIndex::from(index), error)),
+            | Ok((cell_id, composite)) => {
+                circuit_cell_ids.push(Some(cell_id));
+                composites.push(composite);
+            },
+            | Err(error) => {
+                circuit_cell_ids.push(None);
+                declined_circuits.push((DeclinedCircuitIndex::from(index), error));
+            },
         }
     }
     // The η cells the declaration licenses. They enter through the same
@@ -372,6 +382,7 @@ pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
         declined_opers,
         declined_faces,
         composites,
+        circuit_cell_ids,
         declined_circuits,
         eta,
         declined_eta,
@@ -601,9 +612,9 @@ fn eta_cell(
 /// a written face passes.
 ///
 /// # Contract
-/// - ensures: `Ok(composite)` with the rule's derived pair inserted as a cell
-///   when the body denotes one whiskered composite, the pair mentions no
-///   declined operation, the pair elaborates, and the cell's left-hand side
+/// - ensures: `Ok((cell_id, composite))` with the rule's derived pair inserted
+///   as a cell when the body denotes one whiskered composite, the pair mentions
+///   no declined operation, the pair elaborates, and the cell's left-hand side
 ///   copies no hole; otherwise `store` is left untouched.
 /// - provides: the ruled circuit block form's acceptance target — the
 ///   boundary-language composite beside the store cell its boundaries became.
@@ -627,15 +638,15 @@ fn admit_circuit_rule(
     store: &mut CellStore,
     rule: &CircuitRule,
     unrepresentable: &[&Name],
-) -> Result<WhiskeredCell, ElaborateError>
+) -> Result<(CellId, WhiskeredCell), ElaborateError>
 {
     let composite = elaborate_body(&rule.body).map_err(ElaborateError::NoCircuitComposite)?;
     if let Some(error) = declined_operation(&rule.sphere, unrepresentable) {
         return Err(error);
     }
     let cell = elaborate_rule(&rule.sphere)?;
-    admit_cell(store, cell)?;
-    Ok(composite)
+    let cell_id = admit_cell(store, cell)?;
+    Ok((cell_id, composite))
 }
 
 /// Admit one declared operation into the cell layer's operation alphabet.

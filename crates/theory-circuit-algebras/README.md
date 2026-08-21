@@ -19,7 +19,8 @@ The placement is forced rather than chosen — this crate depends on `gandr-theo
 
 The crate does not provide a user-facing circuit-term former, rewrite execution, boundary-complement construction, or storage interning.
 Those require the circuit-algebra surface and consumer rungs that are outside this crate.
-Completion does not consume the matcher yet: `gandr-theory-computads` still enumerates overlaps through its one-sided command-pattern matcher, which is right for command patterns and is not what a circuit pattern needs.
+The generic engine's default `gandr-theory-coherent-resolutions::complete` path enumerates command-pattern overlaps.
+Circuit-pattern completion is supplied by `gandr-surface-engine`, which passes matcher-admitted overlap families through `gandr-theory-coherent-resolutions::complete_with_overlap_source` and replays its certificates.
 
 ## Using it
 

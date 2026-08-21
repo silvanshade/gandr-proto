@@ -15,17 +15,19 @@
 //! > interface bookkeeping, embedding-based matching with its convexity check,
 //! > and diagram normal form — not the representation, which is the carrier's
 //! > port bijection and was already not new work, and not the engines:
-//! > `theory-computads` continues to own cells, overlaps, completion, and
-//! > tracelets over whatever alphabet it is given.
+//! > `theory-computads` continues to own boundary-language cell elaboration,
+//! > while `theory-coherent-resolutions` owns generic overlaps, completion, and
+//! > tracelets over whatever [`CellAlphabet`] it is given.
 //!
 //! Two facts about that sentence decide everything else here. It is a boundary
 //! **over** the [`CellAlphabet`] seam, not an inhabitant **of** it — with
 //! `circuit-terms-question-01` ruled grow-in-place, no second alphabet stands
-//! beside the landed one, and this crate must never mint one. And it names the
-//! engines as somebody else's: the cell store, the overlap enumerator, the
-//! completion loop, and the tracelet certificates stay in
-//! [`gandr_theory_cell_complexes`], over whatever alphabet that crate is
-//! handed.
+//! beside the landed one, and this crate must never mint one. The engines
+//! remain elsewhere: cell storage and alphabet primitives belong to
+//! [`gandr_theory_cell_complexes`], boundary-language elaboration belongs to
+//! `gandr-theory-computads`, and generic overlap enumeration, completion, and
+//! tracelet certificates belong to `gandr-theory-coherent-resolutions`, over
+//! whatever alphabet they are handed.
 //!
 //! # The three faces
 //!
@@ -52,9 +54,11 @@
 //!   representation is a port bijection and the metatheory carrier already is
 //!   one, so the representation half was never new work. Nothing here mints a
 //!   second diagram carrier.
-//! - **Not the engines.** Cells, overlaps, completion, and tracelets are
-//!   [`gandr_theory_cell_complexes`]'s, over whatever alphabet it is given;
-//!   this crate never forks them and never grows a private copy of one.
+//! - **Not the engines.** Cell storage and alphabet primitives live in
+//!   [`gandr_theory_cell_complexes`]; boundary-language elaboration lives in
+//!   `gandr-theory-computads`; generic overlaps, completion, and tracelet
+//!   certificates live in `gandr-theory-coherent-resolutions`. This crate never
+//!   forks them and never grows a private copy of one.
 //! - **Not a second [`CellAlphabet`] inhabitant.** The alphabet grows in place
 //!   (`circuit-terms-question-01`), which is what keeps the pattern grammar's
 //!   compile-visible tripwire pointed at every match site.

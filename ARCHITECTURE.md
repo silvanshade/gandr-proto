@@ -87,7 +87,8 @@ tier 7   theory-virtual-doctrines → theory-cell-complexes, theory-coherent-res
 tier 8   surface-engine → core-checker, core-incremental, core-machine, core-sequent, core-term,
          kernel-core, runtime-effects, storage-artifact, storage-prolly-trees, surface-grammar,
          surface-parser, surface-render-remote, surface-syntax, theory-circuit-algebras,
-         theory-computads, theory-levitation, theory-nominal-automata, theory-recursion
+         theory-coherent-resolutions, theory-computads, theory-levitation,
+         theory-nominal-automata, theory-recursion
 tier 9   runtime-ffi → core-sequent, core-term, runtime-effects, surface-engine
          surface-diagnostics → core-term, surface-engine, surface-syntax
          surface-lsp → surface-engine, surface-grammar, surface-parser, surface-render-remote,

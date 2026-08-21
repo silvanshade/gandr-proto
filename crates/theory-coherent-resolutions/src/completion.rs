@@ -240,7 +240,37 @@ pub fn complete<A>(
 where
     A: CellAlphabet,
 {
-    let initial_worklist: VecDeque<Vec<Overlap<A>>> = scheduled_confluence_batches(&store).into();
+    complete_with_overlap_source(store, budget, |store| scheduled_confluence_batches(store))
+}
+
+/// Run completion with a caller-supplied initial overlap source.
+///
+/// The source is invoked once, before the generic completion loop starts. Its
+/// batches seed the same worklist that [`complete`] uses; any cells derived by
+/// the loop are scheduled through the generic [`scheduled_confluence_batches`]
+/// relation. This is the instantiation seam for a consumer whose pattern
+/// matcher supplies the initial critical-pair family without entering this
+/// crate's dependency graph.
+///
+/// # Contract
+/// - ensures: the completion loop processes exactly the supplied initial
+///   batches, then the generic confluence batches for cells it derives, within
+///   the same step and cell budgets as [`complete`].
+/// - provides: a matcher-neutral supply point; the source sees the generic
+///   [`CellStore`] and returns generic [`Overlap`] values.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn complete_with_overlap_source<A, F>(
+    store: CellStore<A>,
+    budget: CompletionBudget,
+    source: F,
+) -> CompletionOutcome<A>
+where
+    A: CellAlphabet,
+    F: FnOnce(&CellStore<A>) -> Vec<Vec<Overlap<A>>>,
+{
+    let initial_worklist: VecDeque<Vec<Overlap<A>>> = source(&store).into();
     complete_with_worklist(store, budget, Vec::new(), Vec::new(), initial_worklist)
 }
 

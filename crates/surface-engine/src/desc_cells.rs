@@ -33,6 +33,8 @@
 
 use gandr_theory_circuit_algebras::matching::MatchBudget;
 use gandr_theory_circuit_algebras::matching::MatchCount;
+use gandr_theory_coherent_resolutions::CompletionBudget;
+use gandr_theory_coherent_resolutions::CompletionOutcome;
 use gandr_theory_computads::CellId;
 use gandr_theory_computads::CellStore;
 use gandr_theory_computads::DeclinedCircuitIndex;
@@ -49,7 +51,8 @@ use gandr_theory_levitation::TermPositionIndex;
 use gandr_theory_levitation::WhiskeredCell;
 
 use crate::boundary::DeclineReason;
-use crate::circuit::embed::embed_circuit_rule;
+use crate::circuit::embed::CircuitRuleCell;
+use crate::circuit::embed::complete_circuit_rules;
 use crate::cst_read::empty_surface_span;
 use crate::desc_elab::ElabDiagnostic;
 
@@ -58,7 +61,8 @@ use crate::desc_elab::ElabDiagnostic;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DescCells
 {
-    /// The elaborated cell store of each description, in declaration order.
+    /// The final (or as-of-decline) cell store of each description, in
+    /// declaration order, including cells derived by generic completion.
     pub stores: Vec<CellStore>,
     /// The **whiskered composite** each admitted circuit rule denotes, in
     /// description order — the boundary-language object a ruled circuit block
@@ -72,7 +76,8 @@ pub struct DescCells
     pub eta: Vec<Vec<CellId>>,
     /// Where each circuit rule's diagram sits inside each circuit rule of its
     /// own description, in description order — the **redex-occurrence records**
-    /// the embedding matcher computes.
+    /// the embedding matcher computes, plus the generic overlap and replay
+    /// evidence supplied to completion.
     pub circuit_sites: Vec<CircuitSite>,
     /// Why a description licensed no η cell, in description order, one entry
     /// per description that licensed none.
@@ -95,7 +100,8 @@ pub struct DescCells
 ///   the cell layer's question).
 /// - ensures: one [`CellStore`] per description, in the given order, each
 ///   holding a frame-defining cell per declared constructor, every admitted
-///   `rule` cell, and the η cell the declaration licenses; one diagnostic per
+///   `rule` cell, the η cell the declaration licenses, and any cells derived
+///   from admitted circuit overlaps by generic completion; one diagnostic per
 ///   declined `op` member and per declined `rule` face, in description order
 ///   and within a description, operations before faces.
 /// - ensures: `eta` addresses the η cells of each description's store, and
@@ -103,13 +109,14 @@ pub struct DescCells
 ///   reported rather than diagnosed, because licensing no η law is the ordinary
 ///   case.
 /// - ensures: **the cell identities are a function of the source alone.** A
-///   [`gandr_theory_computads::CellId`] is an insertion-order address and the
-///   insertion order is the declaration order this pass walks — constructors,
-///   then written faces, then circuit rules, each in the order the block wrote
-///   them — so the same descriptions always lower to the same ids, and
-///   reordering two faces reorders exactly their two cells. A face declared
-///   twice is one cell: [`CellStore::insert`] deduplicates on structural
-///   identity, so the store's length counts distinct cells.
+///   [`gandr_theory_computads::CellId`] is an insertion-order address. The
+///   declaration phase inserts constructors, written faces, circuit rules, and
+///   η cells in declaration order; generic completion then appends derived
+///   cells in its deterministic overlap schedule. The same descriptions
+///   therefore always lower to the same ids, and reordering two faces reorders
+///   exactly their two declaration-phase cells. A face declared twice is one
+///   cell: [`CellStore::insert`] deduplicates on structural identity, so the
+///   store's length counts distinct cells.
 /// - provides: the seam between the description layer and the fusion engines —
 ///   the first consumer of `gandr-theory-computads` outside that crate's own
 ///   tests.
@@ -165,7 +172,8 @@ pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
                 .diagnostics
                 .push(circuit_decline_diagnostic(desc, index, error));
         }
-        cells.circuit_sites.extend(circuit_sites(desc));
+        let (sites, store) = circuit_sites(desc, elaborated.store, &elaborated.circuit_cell_ids);
+        cells.circuit_sites.extend(sites);
         if let Some(ref declined) = elaborated.declined_eta {
             cells
                 .eta_declines
@@ -173,14 +181,16 @@ pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
         }
         cells.eta.push(elaborated.eta);
         cells.composites.extend(elaborated.composites);
-        cells.stores.push(elaborated.store);
+        cells.stores.push(store);
     }
     cells
 }
 
-/// **Where one circuit rule's diagram sits inside another's** — one record per
-/// ordered pair of a description's circuit rules whose bodies both read as
-/// diagrams.
+/// **Where one circuit rule's diagram sits inside another's.**
+///
+/// One record per ordered pair of a description's circuit rules whose bodies
+/// both read as diagrams, with the generic completion evidence for the
+/// corresponding cell pair.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CircuitSite
 {
@@ -190,6 +200,10 @@ pub struct CircuitSite
     pub target: Name,
     /// How many embeddings the matcher admitted.
     pub admitted: MatchCount,
+    /// How many generic confluence overlaps the pair supplied.
+    pub overlap_count: usize,
+    /// How many certificates for the pair replayed successfully.
+    pub certificates_replayed: usize,
 }
 
 /// The **matching budget** the description route runs the embedding search
@@ -202,52 +216,71 @@ pub struct CircuitSite
 /// redex-occurrence record is not a reason to refuse a description.
 const CIRCUIT_MATCH_BUDGET: usize = 4_096_usize;
 
-/// Every redex-occurrence record a description's circuit rules yield.
+/// The **matching and completion seam** the description route runs for one
+/// declaration.
 ///
-/// This is the **matcher seam in production**: the embedding matcher lives in
-/// `gandr-theory-circuit-algebras`, the cell engine in
-/// `gandr-theory-computads`, and neither names the other. This crate sits above
-/// both and supplies the first to a question the second cannot pose — where a
-/// many-in, many-out, possibly disconnected diagram occurs inside another one.
+/// It first asks the circuit matcher for every ordered body pair, then supplies
+/// the admitted pairs and their generic cell ids to the coherent-resolution
+/// completion API. The returned store is the completion store, so derived
+/// cells and replayable certificates remain part of the route's artifact.
 ///
 /// # Contract
-/// - ensures: one record per ordered pair of circuit rules of `desc` whose
-///   bodies both read as diagrams, in declaration order, pattern-major; a pair
-///   whose search declines on its budget, or either of whose bodies is not a
-///   diagram, contributes no record.
-/// - provides: the circuit-algebra crate's shipping consumer — the record is
-///   computed on the descriptions a source actually declares.
+/// - ensures: one record per ordered pair of circuit rules whose bodies both
+///   read as diagrams, in declaration order, pattern-major; a pair whose search
+///   declines, or either of whose bodies is not a diagram, contributes no
+///   record. Each record carries the generic confluence-overlap count and the
+///   count of its emitted certificates that replayed against the final
+///   completion store.
+/// - provides: the circuit-algebra crate's shipping consumer and the generic
+///   completion instantiation site, above both theory crates.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L2 — a description whose two circuit rules stand in a
-///   containment separates a found occurrence from the reflexive one every rule
-///   has in itself, and a body that is not a diagram separates the dropped
-///   record from a zero-count one.
+/// - hypothesis: L2 — a description whose multi-root and reconvergent circuit
+///   bodies embed separates matcher admissions from the reverse non-embedding
+///   direction, and a replay count separates a completion certificate from a
+///   matcher-only record.
 /// - witness: `gandr-surface-engine` `tests/circuit_embed.rs`
-///   `the_description_route_records_where_one_rule_occurs_in_another`
+///   `the_description_route_runs_completion_through_the_matcher_seam`
 #[inline]
-fn circuit_sites(desc: &SignDesc) -> Vec<CircuitSite>
+fn circuit_sites(
+    desc: &SignDesc,
+    store: CellStore,
+    circuit_cell_ids: &[Option<CellId>],
+) -> (Vec<CircuitSite>, CellStore)
 {
-    let mut sites = Vec::new();
-    for pattern in &desc.circuits {
-        for target in &desc.circuits {
-            let Ok(matching) = embed_circuit_rule(
-                &pattern.body,
-                &target.body,
-                MatchBudget(CIRCUIT_MATCH_BUDGET),
-            )
-            else {
-                continue;
-            };
-            sites.push(CircuitSite {
-                pattern: pattern.name.clone(),
-                target: target.name.clone(),
-                admitted: matching.admitted_count(),
-            });
-        }
-    }
-    sites
+    let rules: Vec<CircuitRuleCell<'_>> = desc
+        .circuits
+        .iter()
+        .zip(circuit_cell_ids.iter().copied())
+        .map(|(rule, cell)| CircuitRuleCell {
+            name: &rule.name,
+            body: &rule.body,
+            cell,
+        })
+        .collect();
+    let completion = complete_circuit_rules(
+        store,
+        &rules,
+        MatchBudget(CIRCUIT_MATCH_BUDGET),
+        CompletionBudget::new(4_096_usize.into(), 4_096_usize.into(), 4_096_usize.into()),
+    );
+    let sites = completion
+        .matches
+        .into_iter()
+        .map(|matched| CircuitSite {
+            pattern: matched.pattern,
+            target: matched.target,
+            admitted: matched.admitted,
+            overlap_count: matched.overlap_count,
+            certificates_replayed: matched.certificates_replayed,
+        })
+        .collect();
+    let store = match completion.outcome {
+        | CompletionOutcome::Completed { store, .. }
+        | CompletionOutcome::Declined { store, .. } => store,
+    };
+    (sites, store)
 }
 
 /// The human-readable reason an operation earned its cell-layer decline.
