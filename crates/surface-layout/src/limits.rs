@@ -706,7 +706,7 @@ impl RenderMeter
     /// - provides: peak-versus-live plan accounting.
     /// - panics: none.
     #[inline]
-    pub fn release_plan_node(&mut self)
+    pub(crate) fn release_plan_node(&mut self)
     {
         self.live_plan_nodes = self.live_plan_nodes.saturating_sub(1u64);
     }
@@ -823,8 +823,12 @@ impl RenderMeter
     /// Returns [`RenderError::LimitExceeded`] when the VM-step ceiling is
     /// reached, or [`RenderError::ArithmeticOverflow`] if the counter cannot
     /// advance.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "slice three owns the VM caller")
+    )]
     #[inline]
-    pub fn charge_vm_step(&mut self) -> Result<(), RenderError>
+    pub(crate) fn charge_vm_step(&mut self) -> Result<(), RenderError>
     {
         let current = u64::from(self.used.vm_steps);
         let next = current
@@ -855,8 +859,12 @@ impl RenderMeter
     /// # Errors
     /// Returns [`RenderError::LimitExceeded`] when `depth` exceeds the
     /// configured VM-stack ceiling.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "slice three owns the VM caller")
+    )]
     #[inline]
-    pub fn observe_vm_stack(
+    pub(crate) fn observe_vm_stack(
         &mut self,
         depth: crate::units::PeakVmStack,
     ) -> Result<(), RenderError>
@@ -873,5 +881,53 @@ impl RenderMeter
             self.used.peak_vm_stack = PeakVmStack::from(value);
         }
         Ok(())
+    }
+}
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use crate::error::RenderLimitKind;
+    use crate::units::MaxVmStack;
+    use crate::units::MaxVmSteps;
+    use crate::units::PeakVmStack;
+    use crate::units::VmStepsUsed;
+
+    /// VM-step spending is private and refuses the first over-limit step.
+    #[test]
+    fn vm_step_limit_is_checked_before_usage_changes()
+    {
+        let limits = RenderLimits {
+            max_vm_steps: MaxVmSteps::from(0u64),
+            ..RenderLimits::default()
+        };
+        let mut meter = RenderMeter::try_new(limits).expect("valid limits");
+        assert!(matches!(
+            meter.charge_vm_step(),
+            Err(RenderError::LimitExceeded {
+                kind: RenderLimitKind::VmSteps,
+                ..
+            })
+        ));
+        assert_eq!(meter.usage().vm_steps, VmStepsUsed::from(0u64));
+    }
+
+    /// VM-stack spending is private and refuses the first over-limit depth.
+    #[test]
+    fn vm_stack_limit_is_checked_before_peak_changes()
+    {
+        let limits = RenderLimits {
+            max_vm_stack: MaxVmStack::from(0u64),
+            ..RenderLimits::default()
+        };
+        let mut meter = RenderMeter::try_new(limits).expect("valid limits");
+        assert!(matches!(
+            meter.observe_vm_stack(PeakVmStack::from(1u64)),
+            Err(RenderError::LimitExceeded {
+                kind: RenderLimitKind::VmStack,
+                ..
+            })
+        ));
+        assert_eq!(meter.usage().peak_vm_stack, PeakVmStack::from(0u64));
     }
 }

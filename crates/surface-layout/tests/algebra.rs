@@ -1566,28 +1566,6 @@ mod tests
             })
         ));
 
-        let mut meter = RenderMeter::try_new(RenderLimits {
-            max_vm_steps: MaxVmSteps::from(0u64),
-            ..generous_render_limits()
-        })?;
-        assert!(matches!(
-            meter.charge_vm_step(),
-            Err(RenderError::LimitExceeded {
-                kind: gandr_surface_layout::error::RenderLimitKind::VmSteps,
-                ..
-            })
-        ));
-        let mut meter = RenderMeter::try_new(RenderLimits {
-            max_vm_stack: MaxVmStack::from(0u64),
-            ..generous_render_limits()
-        })?;
-        assert!(matches!(
-            meter.observe_vm_stack(gandr_surface_layout::units::PeakVmStack::from(1u64)),
-            Err(RenderError::LimitExceeded {
-                kind: gandr_surface_layout::error::RenderLimitKind::VmStack,
-                ..
-            })
-        ));
         Ok(())
     }
 }

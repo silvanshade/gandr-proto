@@ -290,11 +290,6 @@ impl<'arena, 'meter> Resolver<'arena, 'meter>
         item: WorkItem,
     ) -> Result<(), RenderError>
     {
-        self.work
-            .try_reserve(1usize)
-            .map_err(|_error| RenderError::AllocationFailed {
-                site: crate::error::RenderAllocationSite::ResolverStack,
-            })?;
         let depth = u64::try_from(self.work.len())
             .map_err(|_error| RenderError::ArithmeticOverflow {
                 operation: RenderArithmetic::ResolverWorkCounter,
@@ -305,6 +300,11 @@ impl<'arena, 'meter> Resolver<'arena, 'meter>
             })?;
         self.meter
             .push_resolver_work(crate::units::PeakResolverStack::from(depth))?;
+        self.work
+            .try_reserve(1usize)
+            .map_err(|_error| RenderError::AllocationFailed {
+                site: crate::error::RenderAllocationSite::ResolverStack,
+            })?;
         self.work.push(item);
         Ok(())
     }
