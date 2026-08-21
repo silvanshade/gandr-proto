@@ -1,11 +1,11 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 243
-; corpus-fixtures-b3sum: 405b2b317a00761deda0b094898daad8665db3e5cba32fcdd621613883172604
+; items: 244
+; corpus-fixtures-b3sum: ef74d37a536f712c3af9e8159d87f827a6f1470995990f0c3f3e66039093a944
 ; class declared-data: 23
 ; class effects-control: 11
 ; class eligible: 23
-; class hole-unknown: 16
+; class hole-unknown: 17
 ; class identity: 12
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
@@ -137,6 +137,7 @@ model/higher-cells/cat-shape-bicartesian.gandr	2	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	3	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	4	declared-data
 model/higher-cells/cat-shape-bicartesian.gandr	5	open-free-name
+model/higher-cells/cat-shape-glob.gandr	0	hole-unknown
 model/higher-cells/cat-shape-probes.gandr	0	identity
 model/higher-cells/cat-shape-probes.gandr	1	identity
 model/higher-cells/cat-shape-probes.gandr	2	open-free-name
