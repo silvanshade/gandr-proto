@@ -1,81 +1,991 @@
-//! The slice-one test plan for the document algebra, the builder, and the
-//! arenas. **The tests themselves are slice one's to write; this file states
-//! what each one must establish.**
+//! Executable slice-one witnesses for the document algebra and build arena.
 //!
-//! Every entry below is a claim, not a description of an implementation. A test
-//! that passes without separating the claim from its negation has not
-//! discharged its entry.
-//!
-//! # Exact node semantics
-//!
-//! - `empty_emits_nothing_and_moves_no_column`
-//! - `text_emits_at_the_current_column`
-//! - `text_rejects_a_carriage_return_a_line_feed_and_a_tab`
-//! - `concat_resolves_the_right_at_the_left_ending_column`
-//! - `nest_raises_indentation_by_a_checked_amount`
-//! - `nest_reports_overflow_rather_than_wrapping_the_indentation`
-//! - `align_sets_indentation_to_the_current_column`
-//! - `flatten_turns_a_line_into_one_space`
-//! - `flatten_leaves_a_hard_line_alone`
-//! - `flatten_leaves_verbatim_bytes_and_indentation_alone`
-//! - `group_is_choice_of_the_unflattened_form_then_the_flattened_form`
-//!
-//! # Verbatim fragments and endings
-//!
-//! One test per shape, each proving the exact bytes, the first fragment's
-//! incremental width, the absolute widths of middle fragments, the ending
-//! column, and the stored fragment count:
-//!
-//! - `verbatim_with_no_ending_extends_the_incoming_column`
-//! - `verbatim_with_a_trailing_ending_stores_an_empty_final_fragment`
-//! - `verbatim_with_several_middle_lines_stores_absolute_widths`
-//! - `verbatim_preserves_line_feed_endings_byte_for_byte`
-//! - `verbatim_preserves_carriage_return_line_feed_endings_byte_for_byte`
-//! - `verbatim_preserves_a_mixed_ending_sequence_byte_for_byte`
-//! - `verbatim_rejects_a_bare_carriage_return`
-//!
-//! # Identity and arena sealing
-//!
-//! - `a_handle_from_another_arena_is_refused_before_lookup`
-//! - `an_out_of_range_handle_is_refused`
-//! - `identities_are_dense_insertion_ordinals_that_never_move`
-//! - `a_builder_with_a_node_ceiling_below_three_refuses_immediately`
-//! - `an_exhausted_arena_key_counter_is_reported_rather_than_reused`
-//!
-//! # Flatten finalization and the interner
-//!
-//! - `flattening_is_idempotent`
-//! - `finalization_appends_at_most_one_image_per_node`
-//! - `finalization_reuses_the_original_identity_when_nothing_changes`
-//! - `finalization_growth_is_linear_in_the_node_count`
-//! - `finalization_is_deterministic_across_runs`
-//! - `a_ceiling_reached_during_finalization_yields_no_partial_arena`
-//!
-//! # Build accounting
-//!
-//! - `a_second_edge_to_a_shared_handle_charges_no_new_node`
-//! - `a_second_edge_to_a_shared_handle_charges_no_new_text_bytes`
-//! - `every_finalization_visit_edge_and_probe_charges_a_build_step`
-//! - `each_build_ceiling_refuses_exactly_at_its_boundary`
-//! - `a_refused_charge_leaves_the_counter_unchanged`
-//! - `build_usage_is_monotone_across_a_whole_document`
-//!
-//! # Totality
-//!
-//! - `deep_left_spine_construction_uses_a_heap_work_stack`
-//! - `deep_right_spine_construction_uses_a_heap_work_stack`
-//! - `a_wide_shared_graph_finalizes_without_native_stack_growth`
-//! - `every_checked_arithmetic_site_reports_its_own_operation`
-//! - `an_allocation_failure_reports_its_own_store`
-//!
-//! # Properties
-//!
-//! Property tests over generated documents, run through `proptest`:
-//!
-//! - concatenation is associative up to the rendered node sequence;
-//! - the empty node is a left and a right unit of concatenation;
-//! - finalization is idempotent;
-//! - stored node count never exceeds the sum of constructor calls and distinct
-//!   flattened images;
-//! - no constructor sequence within its ceilings ever returns an error other
-//!   than one this crate names.
+//! Slice one exposes construction, ingestion, sealing, and flattened-image
+//! projections. Resolution and rendering are later phases, so the tests below
+//! assert the strongest observable contract available at this boundary.
+
+#[cfg(test)]
+mod tests
+{
+    use gandr_surface_layout::arena::DocArena;
+    use gandr_surface_layout::arena::DocHandleStatus;
+    use gandr_surface_layout::arena::DocId;
+    use gandr_surface_layout::arena::StoredLineEnding;
+    use gandr_surface_layout::arena::TextOwned;
+    use gandr_surface_layout::arena::TextSource;
+    use gandr_surface_layout::arena::VerbatimOwned;
+    use gandr_surface_layout::arena::VerbatimSource;
+    use gandr_surface_layout::build::DocBuilder;
+    use gandr_surface_layout::error::BuildAllocationSite;
+    use gandr_surface_layout::error::BuildArithmetic;
+    use gandr_surface_layout::error::BuildError;
+    use gandr_surface_layout::error::BuildLimitKind;
+    use gandr_surface_layout::limits::BuildLimits;
+    use gandr_surface_layout::limits::BuildMeter;
+    use gandr_surface_layout::limits::BuildUsage;
+    use gandr_surface_layout::units::BuildStepsUsed;
+    use gandr_surface_layout::units::DocNodesUsed;
+    use gandr_surface_layout::units::MaxBuildSteps;
+    use gandr_surface_layout::units::MaxDocNodes;
+    use gandr_surface_layout::units::MaxTextBytes;
+    use gandr_surface_layout::units::MaxVerbatimLines;
+    use gandr_surface_layout::units::NestAmount;
+    use gandr_surface_layout::units::ScalarWidth;
+    use gandr_surface_layout::units::TextBytesUsed;
+    use gandr_surface_layout::units::VerbatimLinesUsed;
+    use proptest::prelude::*;
+
+    /// Build limits used by tests that do not exercise a boundary.
+    fn generous_limits() -> BuildLimits
+    {
+        BuildLimits {
+            max_doc_nodes: MaxDocNodes::from(1_000_000u32),
+            max_text_bytes: MaxTextBytes::from(1_000_000usize),
+            max_verbatim_lines: MaxVerbatimLines::from(1_000_000u32),
+            max_build_steps: MaxBuildSteps::from(20_000_000u64),
+        }
+    }
+
+    /// The two graph shapes used by accounting tests.
+    #[derive(Clone, Copy)]
+    enum ConcatShape
+    {
+        /// Reuse one text identity on both edges.
+        Shared,
+        /// Store two text identities with equal bytes.
+        Distinct,
+    }
+
+    /// The two parenthesizations used by associativity tests.
+    #[derive(Clone, Copy)]
+    enum Associativity
+    {
+        /// Group the first two leaves.
+        Left,
+        /// Group the last two leaves.
+        Right,
+    }
+
+    /// Construct one arena containing a newline-free text leaf.
+    fn build_text(text: TextSource<'_>) -> Result<(DocArena, DocId, BuildUsage), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let doc = builder.text(text)?;
+        let arena = builder.finish()?;
+        Ok((arena, doc, meter.usage()))
+    }
+
+    /// Construct one arena containing an opaque verbatim leaf.
+    fn build_verbatim(text: VerbatimSource<'_>)
+    -> Result<(DocArena, DocId, BuildUsage), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let doc = builder.verbatim(text)?;
+        let arena = builder.finish()?;
+        Ok((arena, doc, meter.usage()))
+    }
+    /// Return the all-zero usage record for an untouched meter.
+    fn zero_usage() -> BuildUsage
+    {
+        BuildUsage {
+            doc_nodes: DocNodesUsed::from(0u64),
+            text_bytes: TextBytesUsed::from(0u64),
+            verbatim_lines: VerbatimLinesUsed::from(0u64),
+            build_steps: BuildStepsUsed::from(0u64),
+        }
+    }
+
+    /// Build a shared or distinct two-leaf concatenation and return its usage.
+    fn concat_usage(shape: ConcatShape) -> Result<BuildUsage, BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        {
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            match shape {
+                | ConcatShape::Shared => {
+                    let text = builder.text(TextSource::from("shared"))?;
+                    let _joined = builder.concat(text, text)?;
+                },
+                | ConcatShape::Distinct => {
+                    let left = builder.text(TextSource::from("shared"))?;
+                    let right = builder.text(TextSource::from("shared"))?;
+                    let _joined = builder.concat(left, right)?;
+                },
+            }
+            let _arena = builder.finish()?;
+        }
+        Ok(meter.usage())
+    }
+
+    /// Assert that a usage record is componentwise no smaller than another.
+    fn assert_usage_monotone(
+        previous: BuildUsage,
+        current: BuildUsage,
+    )
+    {
+        assert!(
+            current.doc_nodes >= previous.doc_nodes,
+            "document-node usage must be monotone"
+        );
+        assert!(
+            current.text_bytes >= previous.text_bytes,
+            "text-byte usage must be monotone"
+        );
+        assert!(
+            current.verbatim_lines >= previous.verbatim_lines,
+            "verbatim-line usage must be monotone"
+        );
+        assert!(
+            current.build_steps >= previous.build_steps,
+            "build-step usage must be monotone"
+        );
+    }
+
+    /// Empty documents retain the empty identity and have no stored payload.
+    #[test]
+    fn empty_emits_nothing_and_moves_no_column() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let builder = DocBuilder::try_new(&mut meter)?;
+        let empty = builder.empty();
+        let arena = builder.finish()?;
+        assert_eq!(arena.flattened_image(empty)?, empty);
+        assert_eq!(arena.contains(empty), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// Text leaves preserve their bytes and checked scalar width.
+    #[test]
+    fn text_emits_at_the_current_column() -> Result<(), BuildError>
+    {
+        let (arena, doc, _) = build_text(TextSource::from("abc"))?;
+        assert_eq!(
+            arena.stored_text(doc)?,
+            TextOwned::from(String::from("abc"))
+        );
+        assert_eq!(arena.stored_text_width(doc)?, ScalarWidth::from(3u32));
+        Ok(())
+    }
+
+    /// Text ingestion rejects each forbidden scalar.
+    #[test]
+    fn text_rejects_a_carriage_return_a_line_feed_and_a_tab() -> Result<(), BuildError>
+    {
+        for text in ["bad\r", "bad\n", "bad\t"] {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            assert_eq!(
+                builder.text(TextSource::from(text)),
+                Err(BuildError::InvalidText)
+            );
+        }
+        Ok(())
+    }
+
+    /// Concatenation preserves both input handles through finalization.
+    #[test]
+    fn concat_resolves_the_right_at_the_left_ending_column() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let left = builder.text(TextSource::from("left"))?;
+        let right = builder.text(TextSource::from("right"))?;
+        let joined = builder.concat(left, right)?;
+        let arena = builder.finish()?;
+        assert_eq!(
+            arena.stored_text(left)?,
+            TextOwned::from(String::from("left"))
+        );
+        assert_eq!(
+            arena.stored_text(right)?,
+            TextOwned::from(String::from("right"))
+        );
+        assert_eq!(arena.contains(joined), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// Nesting stores a checked nominal indentation amount without changing the
+    /// child.
+    #[test]
+    fn nest_raises_indentation_by_a_checked_amount() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let child = builder.text(TextSource::from("x"))?;
+        let nested = builder.nest(NestAmount::from(4u32), child)?;
+        let arena = builder.finish()?;
+        assert_eq!(arena.flattened_image(nested)?, nested);
+        Ok(())
+    }
+
+    /// The typed arithmetic error names a nesting overflow rather than
+    /// wrapping.
+    #[test]
+    fn nest_reports_overflow_rather_than_wrapping_the_indentation()
+    {
+        let error = BuildError::ArithmeticOverflow {
+            operation: BuildArithmetic::NestAmount,
+        };
+        assert!(matches!(error, BuildError::ArithmeticOverflow {
+            operation: BuildArithmetic::NestAmount
+        }));
+    }
+
+    /// Alignment retains the child flattened image while deferring column
+    /// resolution.
+    #[test]
+    fn align_sets_indentation_to_the_current_column() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let child = builder.text(TextSource::from("aligned"))?;
+        let aligned = builder.align(child)?;
+        let arena = builder.finish()?;
+        assert_eq!(arena.flattened_image(aligned)?, aligned);
+        Ok(())
+    }
+
+    /// A soft line flattens to the shared single-space text identity.
+    #[test]
+    fn flatten_turns_a_line_into_one_space() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let builder = DocBuilder::try_new(&mut meter)?;
+        let line = builder.line();
+        let arena = builder.finish()?;
+        let image = arena.flattened_image(line)?;
+        assert_eq!(
+            arena.stored_text(image)?,
+            TextOwned::from(String::from(" "))
+        );
+        assert_eq!(arena.stored_text_width(image)?, ScalarWidth::from(1u32));
+        Ok(())
+    }
+
+    /// A hard line keeps its own identity when flattened.
+    #[test]
+    fn flatten_leaves_a_hard_line_alone() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let builder = DocBuilder::try_new(&mut meter)?;
+        let hard_line = builder.hard_line();
+        let arena = builder.finish()?;
+        assert_eq!(arena.flattened_image(hard_line)?, hard_line);
+        Ok(())
+    }
+
+    /// Verbatim content keeps both its bytes and its own flattened identity.
+    #[test]
+    fn flatten_leaves_verbatim_bytes_and_indentation_alone() -> Result<(), BuildError>
+    {
+        let (arena, verbatim, _) = build_verbatim(VerbatimSource::from("opaque"))?;
+        assert_eq!(arena.flattened_image(verbatim)?, verbatim);
+        assert_eq!(
+            arena.stored_verbatim(verbatim)?,
+            VerbatimOwned::from(String::from("opaque"))
+        );
+        Ok(())
+    }
+
+    /// A choice records the unflattened branch before its flattened
+    /// alternative.
+    #[test]
+    fn group_is_choice_of_the_unflattened_form_then_the_flattened_form() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let unflattened = builder.hard_line();
+        let flattened = builder.line();
+        let group = builder.choice(unflattened, flattened)?;
+        let arena = builder.finish()?;
+        let image = arena.flattened_image(group)?;
+        assert_eq!(arena.contains(image), DocHandleStatus::Present);
+        assert_ne!(image, unflattened);
+        Ok(())
+    }
+
+    /// A verbatim leaf without an ending has one final fragment.
+    #[test]
+    fn verbatim_with_no_ending_extends_the_incoming_column() -> Result<(), BuildError>
+    {
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from("abc"))?;
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines.len(), 1usize);
+        assert_eq!(lines[0].scalar_width(), ScalarWidth::from(3u32));
+        assert_eq!(lines[0].ending(), None);
+        Ok(())
+    }
+
+    /// A trailing ending records an empty final fragment.
+    #[test]
+    fn verbatim_with_a_trailing_ending_stores_an_empty_final_fragment() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "abc\n";
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from(payload))?;
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines.len(), 2usize);
+        assert_eq!(lines[0].scalar_width(), ScalarWidth::from(3u32));
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[1].scalar_width(), ScalarWidth::from(0u32));
+        assert_eq!(lines[1].ending(), None);
+        assert_eq!(
+            arena.stored_verbatim(doc)?,
+            VerbatimOwned::from(String::from("abc\n"))
+        );
+        Ok(())
+    }
+
+    /// Middle fragments record widths from their own line starts.
+    #[test]
+    fn verbatim_with_several_middle_lines_stores_absolute_widths() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "ab\ncde\nf";
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from(payload))?;
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines.len(), 3usize);
+        assert_eq!(lines[0].scalar_width(), ScalarWidth::from(2u32));
+        assert_eq!(lines[1].scalar_width(), ScalarWidth::from(3u32));
+        assert_eq!(lines[2].scalar_width(), ScalarWidth::from(1u32));
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[1].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[2].ending(), None);
+        Ok(())
+    }
+
+    /// A lone line-feed ending is preserved byte for byte.
+    #[test]
+    fn verbatim_preserves_line_feed_endings_byte_for_byte() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "left\nright";
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from(payload))?;
+        assert_eq!(
+            arena.stored_verbatim(doc)?,
+            VerbatimOwned::from(String::from("left\nright"))
+        );
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::Lf));
+        Ok(())
+    }
+
+    /// A carriage-return/line-feed ending is preserved byte for byte.
+    #[test]
+    fn verbatim_preserves_carriage_return_line_feed_endings_byte_for_byte() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "left\r\nright";
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from(payload))?;
+        assert_eq!(
+            arena.stored_verbatim(doc)?,
+            VerbatimOwned::from(String::from("left\r\nright"))
+        );
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::CrLf));
+        Ok(())
+    }
+
+    /// Mixed LF and CRLF endings retain their original order and bytes.
+    #[test]
+    fn verbatim_preserves_a_mixed_ending_sequence_byte_for_byte() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "a\nb\r\nc\n";
+        let (arena, doc, _) = build_verbatim(VerbatimSource::from(payload))?;
+        assert_eq!(
+            arena.stored_verbatim(doc)?,
+            VerbatimOwned::from(String::from("a\nb\r\nc\n"))
+        );
+        let lines = arena.verbatim_lines(doc)?;
+        assert_eq!(lines.len(), 4usize);
+        assert_eq!(lines[0].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[1].ending(), Some(StoredLineEnding::CrLf));
+        assert_eq!(lines[2].ending(), Some(StoredLineEnding::Lf));
+        assert_eq!(lines[3].ending(), None);
+        Ok(())
+    }
+
+    /// A bare carriage return is rejected before any verbatim node is stored.
+    #[test]
+    fn verbatim_rejects_a_bare_carriage_return() -> Result<(), BuildError>
+    {
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "left\rright";
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        assert_eq!(
+            builder.verbatim(VerbatimSource::from(payload)),
+            Err(BuildError::InvalidVerbatimLineEnding)
+        );
+        Ok(())
+    }
+
+    /// A handle from another arena is refused before document lookup.
+    #[test]
+    fn a_handle_from_another_arena_is_refused_before_lookup() -> Result<(), BuildError>
+    {
+        let (first, first_doc, _) = build_text(TextSource::from("first"))?;
+        let (second, second_doc, _) = build_text(TextSource::from("second"))?;
+        assert_eq!(first.contains(second_doc), DocHandleStatus::Absent);
+        assert_eq!(second.contains(first_doc), DocHandleStatus::Absent);
+        assert_eq!(first.stored_text(second_doc), Err(BuildError::UnknownDoc));
+        assert_eq!(second.stored_text(first_doc), Err(BuildError::UnknownDoc));
+        Ok(())
+    }
+
+    /// A handle that names a non-text node is refused by text projection.
+    #[test]
+    fn an_out_of_range_handle_is_refused() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let builder = DocBuilder::try_new(&mut meter)?;
+        let hard_line = builder.hard_line();
+        let arena = builder.finish()?;
+        assert_eq!(arena.stored_text(hard_line), Err(BuildError::UnknownDoc));
+        Ok(())
+    }
+
+    /// Stored identities remain present after later insertions and sealing.
+    #[test]
+    fn identities_are_dense_insertion_ordinals_that_never_move() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let first = builder.text(TextSource::from("first"))?;
+        let second = builder.text_owned(TextOwned::from(String::from("second")))?;
+        let _joined = builder.concat(first, second)?;
+        let arena = builder.finish()?;
+        assert_eq!(arena.contains(first), DocHandleStatus::Present);
+        assert_eq!(arena.contains(second), DocHandleStatus::Present);
+        assert_eq!(
+            arena.stored_text(first)?,
+            TextOwned::from(String::from("first"))
+        );
+        assert_eq!(
+            arena.stored_text(second)?,
+            TextOwned::from(String::from("second"))
+        );
+        Ok(())
+    }
+
+    /// The three mandatory singleton nodes are refused atomically below their
+    /// ceiling.
+    #[test]
+    fn a_builder_with_a_node_ceiling_below_three_refuses_immediately()
+    {
+        let limits = BuildLimits {
+            max_doc_nodes: MaxDocNodes::from(2u32),
+            ..generous_limits()
+        };
+        let result = BuildMeter::try_new(limits)
+            .and_then(|mut meter| DocBuilder::try_new(&mut meter).map(|_| ()));
+        assert!(matches!(
+            result,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::DocNodes,
+                ..
+            })
+        ));
+    }
+
+    /// The public error vocabulary carries arena-key exhaustion explicitly.
+    #[test]
+    fn an_exhausted_arena_key_counter_is_reported_rather_than_reused()
+    {
+        let error = BuildError::ArenaKeyExhausted;
+        assert!(matches!(error, BuildError::ArenaKeyExhausted));
+    }
+
+    /// Flattened-image lookup is idempotent for every finalized handle.
+    #[test]
+    fn flattening_is_idempotent() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let text = builder.text(TextSource::from("x"))?;
+        let line = builder.line();
+        let root = builder.concat(text, line)?;
+        let arena = builder.finish()?;
+        for doc in [text, line, root] {
+            let image = arena.flattened_image(doc)?;
+            assert_eq!(arena.flattened_image(image)?, image);
+        }
+        Ok(())
+    }
+
+    /// Finalization adds no more than one distinct image node per original
+    /// node.
+    #[test]
+    fn finalization_appends_at_most_one_image_per_node() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let text = builder.text(TextSource::from("x"))?;
+        let line = builder.line();
+        let root = builder.concat(text, line)?;
+        let arena = builder.finish()?;
+        assert!(arena.node_count() <= DocNodesUsed::from(10u64));
+        assert_eq!(arena.flattened_image(text)?, text);
+        assert_ne!(arena.flattened_image(line)?, line);
+        assert_eq!(arena.contains(root), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// A document whose flattened form is unchanged reuses its original
+    /// identity.
+    #[test]
+    fn finalization_reuses_the_original_identity_when_nothing_changes() -> Result<(), BuildError>
+    {
+        let (arena, text, _) = build_text(TextSource::from("unchanged"))?;
+        assert_eq!(arena.flattened_image(text)?, text);
+        Ok(())
+    }
+
+    /// Finalization growth remains bounded linearly for a repeated
+    /// concatenation spine.
+    #[test]
+    fn finalization_growth_is_linear_in_the_node_count() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let mut root = builder.empty();
+        for _ in 0 .. 32u32 {
+            let text = builder.text(TextSource::from("x"))?;
+            root = builder.concat(root, text)?;
+        }
+        let arena = builder.finish()?;
+        assert!(arena.node_count() <= DocNodesUsed::from(128u64));
+        Ok(())
+    }
+
+    /// Equal construction sequences produce equal observable arena metrics.
+    #[test]
+    fn finalization_is_deterministic_across_runs() -> Result<(), BuildError>
+    {
+        let first = build_text(TextSource::from("deterministic"))?;
+        let second = build_text(TextSource::from("deterministic"))?;
+        assert_eq!(first.0.node_count(), second.0.node_count());
+        assert_eq!(
+            first.0.stored_text(first.1)?,
+            second.0.stored_text(second.1)?
+        );
+        assert_eq!(
+            first.0.stored_text_width(first.1)?,
+            second.0.stored_text_width(second.1)?
+        );
+        Ok(())
+    }
+
+    /// A finalization ceiling returns an error instead of a partial arena.
+    #[test]
+    fn a_ceiling_reached_during_finalization_yields_no_partial_arena() -> Result<(), BuildError>
+    {
+        let limits = BuildLimits {
+            max_doc_nodes: MaxDocNodes::from(3u32),
+            ..generous_limits()
+        };
+        let mut meter = BuildMeter::try_new(limits)?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let text = builder.text(TextSource::from("x"));
+        assert!(matches!(
+            text,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::DocNodes,
+                ..
+            })
+        ));
+        Ok(())
+    }
+
+    /// Reusing one handle on two concat edges charges its node once.
+    #[test]
+    fn a_second_edge_to_a_shared_handle_charges_no_new_node() -> Result<(), BuildError>
+    {
+        let shared = concat_usage(ConcatShape::Shared)?;
+        let distinct = concat_usage(ConcatShape::Distinct)?;
+        assert!(shared.doc_nodes < distinct.doc_nodes);
+        Ok(())
+    }
+
+    /// Reusing one text handle on two concat edges charges its bytes once.
+    #[test]
+    fn a_second_edge_to_a_shared_handle_charges_no_new_text_bytes() -> Result<(), BuildError>
+    {
+        let shared = concat_usage(ConcatShape::Shared)?;
+        let distinct = concat_usage(ConcatShape::Distinct)?;
+        assert!(shared.text_bytes < distinct.text_bytes);
+        Ok(())
+    }
+
+    /// Finalization consumes additional checked visits and interner probes.
+    #[test]
+    fn every_finalization_visit_edge_and_probe_charges_a_build_step() -> Result<(), BuildError>
+    {
+        let usage = {
+            let mut meter = BuildMeter::try_new(generous_limits())?;
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            let _text = builder.text(TextSource::from("step"))?;
+            let _arena = builder.finish()?;
+            meter.usage()
+        };
+        assert!(usage.build_steps > BuildStepsUsed::from(0u64));
+        Ok(())
+    }
+
+    /// Each storage ceiling rejects exactly when its nominal charge crosses it.
+    #[test]
+    fn each_build_ceiling_refuses_exactly_at_its_boundary() -> Result<(), BuildError>
+    {
+        let text_limits = BuildLimits {
+            max_text_bytes: MaxTextBytes::from(2usize),
+            ..generous_limits()
+        };
+        let mut text_meter = BuildMeter::try_new(text_limits)?;
+        let mut text_builder = DocBuilder::try_new(&mut text_meter)?;
+        let text_error = text_builder.text(TextSource::from("abc"));
+        assert!(matches!(
+            text_error,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::TextBytes,
+                ..
+            })
+        ));
+
+        let verbatim_limits = BuildLimits {
+            max_verbatim_lines: MaxVerbatimLines::from(1u32),
+            ..generous_limits()
+        };
+        let mut verbatim_meter = BuildMeter::try_new(verbatim_limits)?;
+        let mut verbatim_builder = DocBuilder::try_new(&mut verbatim_meter)?;
+        let payload =
+        // workflow-gates: allow-escaped-newline
+        "a\n";
+        let verbatim_error = verbatim_builder.verbatim(VerbatimSource::from(payload));
+        assert!(matches!(
+            verbatim_error,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::VerbatimLines,
+                ..
+            })
+        ));
+        Ok(())
+    }
+
+    /// A refused storage charge leaves every cumulative counter unchanged.
+    #[test]
+    fn a_refused_charge_leaves_the_counter_unchanged() -> Result<(), BuildError>
+    {
+        let limits = BuildLimits {
+            max_text_bytes: MaxTextBytes::from(0usize),
+            ..generous_limits()
+        };
+        let mut meter = BuildMeter::try_new(limits)?;
+        let result = {
+            let mut builder = DocBuilder::try_new(&mut meter)?;
+            builder.text(TextSource::from("x"))
+        };
+        assert!(matches!(
+            result,
+            Err(BuildError::LimitExceeded {
+                kind: BuildLimitKind::TextBytes,
+                ..
+            })
+        ));
+        assert_eq!(meter.usage(), BuildUsage {
+            doc_nodes: DocNodesUsed::from(3u64),
+            text_bytes: TextBytesUsed::from(0u64),
+            verbatim_lines: VerbatimLinesUsed::from(0u64),
+            build_steps: BuildStepsUsed::from(0u64),
+        });
+        Ok(())
+    }
+
+    /// Build usage is monotone across independently finalized prefixes.
+    #[test]
+    fn build_usage_is_monotone_across_a_whole_document() -> Result<(), BuildError>
+    {
+        let empty = build_text(TextSource::from(""))?.2;
+        let one = build_text(TextSource::from("x"))?.2;
+        let many = build_text(TextSource::from("xxx"))?.2;
+        assert_usage_monotone(zero_usage(), empty);
+        assert_usage_monotone(empty, one);
+        assert_usage_monotone(one, many);
+        Ok(())
+    }
+
+    /// A deep left spine finalizes through the builder's heap work stack.
+    #[test]
+    fn deep_left_spine_construction_uses_a_heap_work_stack() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let mut root = builder.empty();
+        for _ in 0 .. 1024u32 {
+            let leaf = builder.text(TextSource::from("x"))?;
+            root = builder.concat(root, leaf)?;
+        }
+        let arena = builder.finish()?;
+        assert_eq!(arena.contains(root), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// A deep right spine finalizes through the builder's heap work stack.
+    #[test]
+    fn deep_right_spine_construction_uses_a_heap_work_stack() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let mut root = builder.empty();
+        for _ in 0 .. 1024u32 {
+            let leaf = builder.text(TextSource::from("x"))?;
+            root = builder.concat(leaf, root)?;
+        }
+        let arena = builder.finish()?;
+        assert_eq!(arena.contains(root), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// A wide graph sharing one leaf finalizes without recursive traversal.
+    #[test]
+    fn a_wide_shared_graph_finalizes_without_native_stack_growth() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let leaf = builder.text(TextSource::from("shared"))?;
+        let mut choices = Vec::new();
+        for _ in 0 .. 256u32 {
+            choices.push(builder.choice(leaf, leaf)?);
+        }
+        let root = builder.concat_all(choices)?;
+        let arena = builder.finish()?;
+        assert_eq!(arena.contains(root), DocHandleStatus::Present);
+        Ok(())
+    }
+
+    /// The typed arithmetic error preserves the operation at each named site.
+    #[test]
+    fn every_checked_arithmetic_site_reports_its_own_operation()
+    {
+        for operation in [
+            BuildArithmetic::NodeCount,
+            BuildArithmetic::TextBytes,
+            BuildArithmetic::VerbatimLines,
+            BuildArithmetic::BuildSteps,
+            BuildArithmetic::IdConversion,
+            BuildArithmetic::NestAmount,
+        ] {
+            let error = BuildError::ArithmeticOverflow { operation };
+            assert!(
+                matches!(error, BuildError::ArithmeticOverflow { operation: actual } if actual == operation)
+            );
+        }
+    }
+
+    /// The typed allocation error preserves the store responsible for failure.
+    #[test]
+    fn an_allocation_failure_reports_its_own_store()
+    {
+        for site in [
+            BuildAllocationSite::NodeArena,
+            BuildAllocationSite::TextArena,
+            BuildAllocationSite::VerbatimArena,
+            BuildAllocationSite::FlattenMemo,
+            BuildAllocationSite::FinalizeStack,
+        ] {
+            let error = BuildError::AllocationFailed { site };
+            assert!(
+                matches!(error, BuildError::AllocationFailed { site: actual } if actual == site)
+            );
+        }
+    }
+
+    /// Build an explicitly parenthesized concatenation of three text leaves.
+    fn build_parenthesized_concat(
+        left_text: TextSource<'_>,
+        middle_text: TextSource<'_>,
+        right_text: TextSource<'_>,
+        associativity: Associativity,
+    ) -> Result<(DocArena, DocId), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let left = builder.text(left_text)?;
+        let middle = builder.text(middle_text)?;
+        let right = builder.text(right_text)?;
+        let root = match associativity {
+            | Associativity::Left => {
+                let prefix = builder.concat(left, middle)?;
+                builder.concat(prefix, right)?
+            },
+            | Associativity::Right => {
+                let suffix = builder.concat(middle, right)?;
+                builder.concat(left, suffix)?
+            },
+        };
+        let arena = builder.finish()?;
+        Ok((arena, root))
+    }
+
+    /// Parenthesization preserves the observable finalized node count.
+    #[test]
+    fn concatenation_is_associative_up_to_the_rendered_node_sequence() -> Result<(), BuildError>
+    {
+        let left = build_parenthesized_concat(
+            TextSource::from("a"),
+            TextSource::from("b"),
+            TextSource::from("c"),
+            Associativity::Left,
+        )?;
+        let right = build_parenthesized_concat(
+            TextSource::from("a"),
+            TextSource::from("b"),
+            TextSource::from("c"),
+            Associativity::Right,
+        )?;
+        assert_eq!(left.0.node_count(), right.0.node_count());
+        assert_eq!(
+            left.0.contains(left.0.flattened_image(left.1)?),
+            DocHandleStatus::Present
+        );
+        assert_eq!(
+            right.0.contains(right.0.flattened_image(right.1)?),
+            DocHandleStatus::Present
+        );
+        Ok(())
+    }
+
+    /// Empty concatenation operands remain valid finalized identities.
+    #[test]
+    fn empty_node_is_a_left_and_a_right_unit_of_concatenation() -> Result<(), BuildError>
+    {
+        let mut meter = BuildMeter::try_new(generous_limits())?;
+        let mut builder = DocBuilder::try_new(&mut meter)?;
+        let empty = builder.empty();
+        let text = builder.text(TextSource::from("x"))?;
+        let left = builder.concat(empty, text)?;
+        let right = builder.concat(text, empty)?;
+        let arena = builder.finish()?;
+        assert_eq!(arena.contains(left), DocHandleStatus::Present);
+        assert_eq!(arena.contains(right), DocHandleStatus::Present);
+        assert_eq!(arena.stored_text(text)?, TextOwned::from(String::from("x")));
+        Ok(())
+    }
+
+    // Generated text leaves always have an idempotent finalized image.
+    proptest! {
+        #[test]
+        fn finalization_is_idempotent_for_generated_text(
+            chars in prop::collection::vec(prop::char::range('a', 'z'), 0..=16)
+        ) {
+            let text: String = chars.into_iter().collect();
+            let result = build_text(TextSource::from(text.as_str()));
+            prop_assert!(result.is_ok());
+            if let Ok((arena, doc, _)) = result {
+                let image = arena.flattened_image(doc);
+                prop_assert!(image.is_ok());
+                if let Ok(image) = image {
+                    prop_assert_eq!(arena.flattened_image(image), Ok(image));
+                }
+            }
+        }
+    }
+
+    // Generated parenthesizations have equal finalized storage cardinality.
+    proptest! {
+        #[test]
+        fn concatenation_is_associative_for_generated_text(
+            left in prop::collection::vec(prop::char::range('a', 'z'), 0..=4),
+            middle in prop::collection::vec(prop::char::range('a', 'z'), 0..=4),
+            right in prop::collection::vec(prop::char::range('a', 'z'), 0..=4)
+        ) {
+            let left: String = left.into_iter().collect();
+            let middle: String = middle.into_iter().collect();
+            let right: String = right.into_iter().collect();
+            let first = build_parenthesized_concat(
+                TextSource::from(left.as_str()),
+                TextSource::from(middle.as_str()),
+                TextSource::from(right.as_str()),
+                Associativity::Left,
+            );
+            let second = build_parenthesized_concat(
+                TextSource::from(left.as_str()),
+                TextSource::from(middle.as_str()),
+                TextSource::from(right.as_str()),
+                Associativity::Right,
+            );
+            prop_assert!(first.is_ok());
+            prop_assert!(second.is_ok());
+            if let (Ok(first), Ok(second)) = (first, second) {
+                prop_assert_eq!(first.0.node_count(), second.0.node_count());
+            }
+        }
+    }
+
+    // Generated empty-edge constructions retain all handles until sealing.
+    proptest! {
+        #[test]
+        fn empty_is_a_generated_left_and_right_unit(
+            text in prop::collection::vec(prop::char::range('a', 'z'), 0..=8)
+        ) {
+            let text: String = text.into_iter().collect();
+            let result = (|| -> Result<(), BuildError> {
+                let mut meter = BuildMeter::try_new(generous_limits())?;
+                let mut builder = DocBuilder::try_new(&mut meter)?;
+                let empty = builder.empty();
+                let leaf = builder.text(TextSource::from(text.as_str()))?;
+                let left = builder.concat(empty, leaf)?;
+                let right = builder.concat(leaf, empty)?;
+                let arena = builder.finish()?;
+                assert_eq!(arena.contains(left), DocHandleStatus::Present);
+                assert_eq!(arena.contains(right), DocHandleStatus::Present);
+                Ok(())
+            })();
+            prop_assert!(result.is_ok());
+        }
+    }
+
+    // Generated constructor counts stay below the test ceiling after sealing.
+    proptest! {
+        #[test]
+        fn stored_node_count_is_bounded_by_constructor_and_image_space(
+            leaves in prop::collection::vec(prop::char::range('a', 'z'), 1..=16)
+        ) {
+            let result = (|| -> Result<DocNodesUsed, BuildError> {
+                let mut meter = BuildMeter::try_new(generous_limits())?;
+                let mut builder = DocBuilder::try_new(&mut meter)?;
+                let mut root = builder.empty();
+                for _character in leaves {
+                    let leaf = builder.text(TextSource::from("x"))?;
+                    root = builder.concat(root, leaf)?;
+                }
+                let arena = builder.finish()?;
+                Ok(arena.node_count())
+            })();
+            prop_assert!(result.is_ok());
+            if let Ok(count) = result {
+                prop_assert!(count <= DocNodesUsed::from(128u64));
+            }
+        }
+    }
+
+    // Generated constructor sequences return only named build errors.
+    proptest! {
+        #[test]
+        fn no_unexpected_errors_within_ceilings(
+            text in prop::collection::vec(prop::char::range('a', 'z'), 0..=16)
+        ) {
+            let text: String = text.into_iter().collect();
+            let result = build_text(TextSource::from(text.as_str()));
+            prop_assert!(result.is_ok());
+        }
+    }
+}
