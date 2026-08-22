@@ -24,7 +24,9 @@ For governance docs already on `main`, reviewers stay read-only and the orchestr
 
 Documentation is the one artifact class with **no natural adversary for omission**: a dropped function fails to compile and a dropped case fails a test, but a dropped paragraph fails nothing — `docs:check` validates structure (IDs, terms, cites), so a component that silently sheds half its source's implementation-grade content passes every gate.
 Omission is invisible in the artifact itself; it is only visible in a diff against the sources.
-Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `spec:` gets a two-axis adversarial review**, not just substantial ones:
+Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every documentation change that absorbs, migrates, or rewrites load-bearing content gets a two-axis adversarial review**, not just substantial ones.
+The decision was taken over `spec:` changes, and the corpus has since left; what it was protecting did not leave with it, so the trigger is the change class rather than the tree.
+In this repository that is a workflow document restated around a subject that moved, a crate doc rewritten on contact, a decision record absorbing reasoning from elsewhere, and any change whose sources sit outside the diff:
 
 1. **Correctness axis** — the standard lenses above: are the claims that appear accurate, cited, current?
 2. **Fidelity axis** — the reviewer receives the change's **declared source set** (the wyrd files, research sweep, ledger entries, or session decisions it draws from) and adversarially hunts for what was dropped, compressed, or de-linked, stanced as "prove that load-bearing detail was lost."
@@ -49,8 +51,7 @@ The rules below are what a migration owes beyond the corpus's per-document autho
   An item that vanishes without a disposition is a defect; omission is invisible in the artifact and only visible against the source.
 - **A refutation needs the same sign-off in a migration as anywhere else.** A settlement claim for something the source left open ("its consumers no longer spend it") is a refutation; it binds only with owner sign-off, and until then it is recorded as declined with its reversal condition.
   The test is the standing one: is the reason a fact about the machinery, or a fact about us?
-- **Registration is part of authoring.** An unregistered corpus document is a fatal drift-gate finding, so "whether to register" is not a decision the author may leave open.
-  When authoring directly on `main`, run the docs gates before committing — the pre-commit hook does not watch documentation paths.
+- **Registration is part of authoring, where a registry exists.** The corpus registry and its `docs:manifest-drift` gate retired with the corpus, so nothing in this tree is registered any more and the rule survives only as its residue: when authoring directly on `main`, run the docs gates before committing — the pre-commit hook does not watch documentation paths.
 - **References are payload.** Every literature claim carries a key at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
   An unnamed work ("a published mechanization", "the leading implementation") is named, or the claim is marked locator-pending at the claim.
 - **As-built claims are verified against the tree at write time**, with the module or symbol named.

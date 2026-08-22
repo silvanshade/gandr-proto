@@ -10,7 +10,7 @@
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
 The standing posture: **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
 Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (`gandr-fid.0`; the fidelity audits measured a first absorption pass at ~50-70% retention because this scoping was implicit).
-Every `spec:` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
+Every documentation change that absorbs, migrates, or rewrites load-bearing content carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
 - **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
 - **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
@@ -44,9 +44,9 @@ A crate doc or comment found stale, historical, or stateful — narrating what t
 
 ## Specification corpus and the doc tool
 
-The **live design corpus is Markdown** under `spec:` — four tracks with their sub-documents and roadmaps, cited against its `spec:bibliography.yml` register (its authoring discipline moved with it).
-It is held outside this repository and cited by the alias.
-It is the authority; nothing else describes the design normatively.
+**The design authority is the specification corpus, and it is not in this tree.** It is held in the maintainer's research workspace, cited from here by the `spec:` alias, and authoritative over every document in this repository that touches design.
+Its format, structure, register, and authoring discipline govern there; nothing about them binds an author here, and this section says so rather than describing them, because a description of another tree is a claim that rots without anyone here being able to check it.
+What this repository receives from a design is a thin decision record stating the outcome and what it binds.
 
 Beside it sits the **prose document-class tool**, `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — the crate is parked out of `workspace.members`, and its rescope to user-facing documentation tooling (a future manual, for one) together with the name ratification is tracked at `gandr-5ikn`), which validates three XML classes (`gandr-712`).
 They share one minimal block/inline substrate (`section`, `prose`, `list`, `table`, `code`; `inline-code`, `label`/`ref` coined anchors, `cite` bibliography keys) and one parse-is-validate discipline (banner presence, status presence, label define-once, label/cite resolution, per-class schema):
@@ -62,7 +62,7 @@ The status lifecycle is the shared five-value vocabulary (`built | partial | ado
 Until it returns, the tracked `.xml` document — `docs/workflow/beads-graph-sweep.xml` — is unformatted and unvalidated by any gate — treat that as the reason to keep the Markdown tail rather than as licence to author more XML by hand.
 
 **Authoring policy (`gandr-712`).** A class with an XML home takes new documents as **XML**, not Markdown; Markdown is the legacy tail there (workflow docs), migrating opportunistically when touched, never in a mass sweep.
-The design corpus is the exception and is not on that path: it authors as Markdown under `spec:`.
+The design corpus is not on that path and is not an exception to it either: it is governed where it lives.
 CHANGELOG has no XML class and is retired below the root: do not create a per-crate one in either format; dated changes go to the root `CHANGELOG.md` plus beads and git history.
 `.md` and `.xml` coexist until those tails are gone.
 The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail and for the design corpus — they are the workarounds for Markdown's lack of first-class math.
@@ -123,7 +123,8 @@ The convention (authored docs are clean by construction):
   A backtick code span is the fallback for code-like identifiers.
   Wrap the _whole_ expression containing the `*`.
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
-- **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`spec:README.md`).
+- **Display math** — `$$…$$`.
+  The convention was inherited from the corpus and stands on its own here: a balanced block is inert to the reflow, which is the property that matters.
   A balanced block is inert to the reflow wherever it sits: its own paragraph, tight against prose, inside a list item or a blockquote, all on one line, or carrying sentence-looking periods in its body.
   An **unbalanced** `$$` is the live hazard — with no closing delimiter the block stops being recognised, the reflow absorbs it into the surrounding prose line, and `rumdl check` reports success on the result.
 - **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.

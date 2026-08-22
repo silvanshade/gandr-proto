@@ -60,7 +60,7 @@ The design corpus and its BLAKE3 registry have left this repository, so registra
 - **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
 - **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; keep surveys and session context out of the tree ([workflow/docs.md](workflow/docs.md)).
   Economy governs **which documents exist**, never the fidelity of load-bearing content: spreading out, explaining, and linking is the sanctioned response to density — dropping is not (`gandr-fid.0`).
-- **Documentation authoring gets a mandatory fidelity review**: every `spec:` change is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
+- **Documentation authoring gets a mandatory fidelity review**: every change that absorbs, migrates, or rewrites load-bearing content is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
 
 ## Where things are decided
 
