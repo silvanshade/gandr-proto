@@ -1019,23 +1019,25 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // type whose endpoints are applications, which used to degrade its whole
     // declared type to the gradual unknown, and the one whose endpoint applies
     // a name defined nowhere, which used to be accepted outright.
-    // The higher-cells rung adds two under `higher-cells/`: the bicartesian
-    // structure of CAT as further CatShape instances, and the isolated probes
-    // for the CatShape neighbourhood, where each form is its own item so a
-    // swallow or a silent gradual unknown cannot hide behind a sibling. The
-    // rung's remaining programs — the shape presentation, its surface twin, the
-    // glob instance, and the setoid instance — are held out of the corpus while
-    // the molder does not reach sign blocks, indexed sorts, and `Path` types.
+    // The higher-cells rung adds three under `higher-cells/`: the bicartesian
+    // structure of CAT as further CatShape instances, the isolated probes for
+    // the CatShape neighbourhood, where each form is its own item so a swallow
+    // or a silent gradual unknown cannot hide behind a sibling, and the
+    // **setoids instance**, which now states its claim at the member level and
+    // therefore has a corpus form at all. The rung's remaining programs — the
+    // shape presentation, its surface twin, and the glob instance — stay out
+    // while the molder does not reach sign blocks and indexed sorts.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        136, base_count,
-        "136 files: 61 model, 75 pathological; higher-cells CatShape + infinity-graph; setoids held out at gandr-f8yr"
+        137, base_count,
+        "137 files: 62 model, 75 pathological; higher-cells CatShape + infinity-graph + the \
+         setoids instance, which joins the corpus now that a member-level claim can be stated"
     );
     assert_eq!(
-        136, base_clean,
-        "all 136 model + pathological files mold clean"
+        137, base_clean,
+        "all 137 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

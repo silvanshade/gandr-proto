@@ -1,0 +1,65 @@
+// The higher-cells flagship's instance: the category of discrete setoids,
+// written as a module whose law fields are typed members.
+//
+// An object is a type, a hom is a function, and equality is `Path`. Naming the
+// discreteness, because it is the part a later reader would otherwise have to
+// rediscover: a discrete setoid's equivalence IS `Path`, so "respects the
+// relation" is congruence and every function satisfies it. A setoid with a
+// CHOSEN equivalence needs `El : Setoid -> Type`, a large elimination the
+// surface has no path to, and that is why this instance is the discrete one.
+//
+// WHAT THIS WITNESSES. The operations and both unit laws check, and the law
+// endpoints name the module's OWN operations -- `comp(p, p, q, id(p), f)`,
+// not a private helper. That distinction is the whole point: a law about a
+// helper is a different theorem under the same name, and the staged design
+// says a rule's endpoint composite is definable precisely because the
+// operations are named fields.
+//
+// WHAT IT DOES NOT WITNESS. The module carries no `Model(CatShape)` ascription,
+// because that signature cannot be written: its operation clause binds every
+// free sort variable as a dependent parameter, and the surface type grammar has
+// no dependent function type (gandr-3jus). So this checks the instance, and not
+// the instance against the stated signature. Associativity is absent for a
+// second reason: its two composites do not converge until bind associativity
+// reaches the normal form (gandr-ew9o).
+//
+// The type variables are named `t u v` and `p q` rather than `a b c` because
+// type substitution is not capture-avoiding (gandr-ijdw), and a category's laws
+// written the obvious way collide with all three of the composition's binders.
+
+module SetoidCat {
+  def ident(t : Type, x : t) -> F t { ret x }
+
+  def compose(t : Type, u : Type, v : Type, f : U[ω] (t -> F u), g : U[ω] (u -> F v), x : t) -> F v {
+    run y <- f(x);
+    g(y)
+  }
+
+  def id(t : Type) -> F (U[ω] (t -> F t)) { ret thunk { ident(t) } }
+
+  def comp(t : Type, u : Type, v : Type, f : U[ω] (t -> F u), g : U[ω] (u -> F v)) -> F (U[ω] (t -> F v)) {
+    ret thunk { compose(t, u, v, f, g) }
+  }
+
+  def unitL(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, p, q, id(p), f), f) {
+    ret here(f)
+  }
+
+  def unitR(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, q, q, f, id(q)), f) {
+    ret here(f)
+  }
+}
+
+// The harness checks. The two law fields are present as MEMBERS, which is the
+// claim the corpus could not previously state, and neither elaborated at a type
+// mentioning the gradual unknown -- a law accepted at such a type is inhabited
+// trivially rather than proved.
+//@ expect: clean
+//@ expect-member: SetoidCat.id
+//@ expect-member: SetoidCat.comp
+//@ expect-member: SetoidCat.unitL
+//@ expect-member: SetoidCat.unitR
+//@ expect-member-type-without-unknown: SetoidCat.id
+//@ expect-member-type-without-unknown: SetoidCat.comp
+//@ expect-member-type-without-unknown: SetoidCat.unitL
+//@ expect-member-type-without-unknown: SetoidCat.unitR

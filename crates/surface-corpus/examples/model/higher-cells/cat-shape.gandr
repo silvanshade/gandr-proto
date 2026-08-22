@@ -6,8 +6,9 @@
 // It is written this way because Model(CatShape) needs type Hom : Ob -> Ob ->
 // Type, and that family is what this block presents. Large by default. No
 // level annotations. Universe is Russell-style. The generated Model is not
-// this file; the hand-written signature and the setoids instance are
-// cat-shape-setoids.gandr.
+// this file; the setoids instance is cat-shape-setoids.gandr, which checks its
+// operations and both unit laws as module members with model-faithful
+// endpoints.
 
 sign CatShape {
   sort Ob : Type;
