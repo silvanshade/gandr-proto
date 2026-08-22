@@ -29,3 +29,10 @@ def visible = Metrics.base + Metrics.double + Metrics.scale;
 // The harness checks:
 //@ expect: clean
 //@ expect-last-value: #{visible = 14}
+// The `expect-member` directives assert component presence against the
+// elaborated signature itself -- matching could drop or repack a component,
+// and consuming an expression would not say which happened.
+
+//@ expect-member: Metrics.base
+//@ expect-member: Metrics.double
+//@ expect-member: Metrics.scale

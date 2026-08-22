@@ -32,3 +32,14 @@ def soft_limit = Config.limits.soft;
 // The harness checks:
 //@ expect: clean
 //@ expect-last-value: #{hard = 100, note = "the innermost component", soft = 10}
+// The `expect-member-type-without-unknown` directives go further than
+// presence. This module carries no signature, so each component's reported
+// type is whatever inference gave its body -- and an unannotated value
+// definition infers the gradual unknown wherever it sits, so a component
+// whose body degraded would be caught here rather than hidden.
+
+//@ expect-member: Config.limits.soft
+//@ expect-member: Config.limits.hard.detail.note
+//@ expect-member-type-without-unknown: Config.name
+//@ expect-member-type-without-unknown: Config.limits.hard.value
+//@ expect-member-type-without-unknown: Config.limits.hard.detail.note

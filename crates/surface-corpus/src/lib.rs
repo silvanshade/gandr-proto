@@ -1081,18 +1081,17 @@ impl Resolved<'_>
             | Self::Field(value_ty) => Ty::Value(value_ty.clone()).mentions_unknown(),
         }
     }
-}
 
-impl core::fmt::Display for Resolved<'_>
-{
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result
+    /// The step's type as it reads in a failure message.
+    ///
+    /// Types are quoted through their structural `Debug` rendering, the same
+    /// notation the whole-run expectation uses; this is message text, never a
+    /// printer.
+    fn rendered(&self) -> String
     {
         match *self {
-            | Self::Head(ty) => write!(f, "{ty:?}"),
-            | Self::Field(value_ty) => write!(f, "{value_ty:?}"),
+            | Self::Head(ty) => format!("{ty:?}"),
+            | Self::Field(value_ty) => format!("{value_ty:?}"),
         }
     }
 }
@@ -1143,7 +1142,7 @@ fn member_failure(
             name: ref defined,
             ref ty,
             bound,
-        } if defined == head && bool::from(bound) => Some(ty),
+        } if defined == head && bound => Some(ty),
         | _ => None,
     });
     let mut resolved = Resolved::Head(match head_ty {
@@ -1178,28 +1177,25 @@ fn member_failure(
     // every depth: a nested module is an ordinary record field whose type is
     // the nested record.
     for (offset, segment) in segments.enumerate() {
-        let position = offset + 2;
+        let position = offset.saturating_add(2);
         let fields = match resolved {
             | Resolved::Head(ty) => match *ty {
-                | Ty::Value(ValueType::Record(ref fields)) => fields,
-                | _ => {
-                    return Some(format!(
-                        "member path `{path}` stops at segment {position} \
-                         (`{segment}`): the type it was resolved against, {resolved}, is \
-                         not a record and carries no components to resolve into"
-                    ));
-                },
+                | Ty::Value(ValueType::Record(ref fields)) => Some(fields),
+                | _ => None,
             },
             | Resolved::Field(value_ty) => match *value_ty {
-                | ValueType::Record(ref fields) => fields,
-                | _ => {
-                    return Some(format!(
-                        "member path `{path}` stops at segment {position} \
-                         (`{segment}`): the type it was resolved against, {resolved}, is \
-                         not a record and carries no components to resolve into"
-                    ));
-                },
+                | ValueType::Record(ref fields) => Some(fields),
+                | _ => None,
             },
+        };
+        let Some(fields) = fields
+        else {
+            let against = resolved.rendered();
+            return Some(format!(
+                "member path `{path}` stops at segment {position} \
+                 (`{segment}`): the type it was resolved against, {against}, is \
+                 not a record and carries no components to resolve into"
+            ));
         };
         let Some(field) = fields.get(segment)
         else {
@@ -1214,17 +1210,19 @@ fn member_failure(
                     .join(", ");
                 format!("components {labels}")
             };
+            let against = resolved.rendered();
             return Some(format!(
-                "member path `{path}` stops at segment {position} (`{segment}`): the type \
-                 it was resolved against, {resolved}, carries {carried}"
+                "member path `{path}` stops at segment {position} (`{segment}`): \
+                 the type it was resolved against, {against}, carries {carried}"
             ));
         };
         resolved = Resolved::Field(field);
     }
     if scrutiny == UnknownScrutiny::Required && bool::from(resolved.mentions_unknown()) {
+        let against = resolved.rendered();
         return Some(format!(
             "expected the type of `{path}` to mention no gradual unknown, but it \
-             elaborated to {resolved} — a type carrying an unknown accepts terms the \
+             elaborated to {against} — a type carrying an unknown accepts terms the \
              written type would refuse, so an acceptance against it is not evidence"
         ));
     }
@@ -2920,6 +2918,22 @@ def parser_unit = ();"#;
             failure.contains("not a record"),
             "says the type carries no components: {failure}"
         );
+        // The same trigger fires through the corpus directive path: an
+        // example whose member expectation names a component the module does
+        // not carry fails with the segment-naming message.
+        let failures = check_case(concat!(
+            "module Metrics {\n",
+            "  def base = 7;\n",
+            "  def scale = 2;\n",
+            "}\n",
+            "//",
+            "@ expect-member: Metrics.missing\n"
+        ));
+        let failure = failures.first().expect("the corpus run reports the miss");
+        assert!(
+            failure.contains("segment 2 (`missing`)"),
+            "names which segment stopped: {failure}"
+        );
     }
 
     /// A component whose type mentions a gradual unknown fails the scrutiny
@@ -2953,6 +2967,23 @@ def parser_unit = ();"#;
         assert!(
             failure.contains("accepts terms the written type would refuse"),
             "says why the acceptance is not evidence: {failure}"
+        );
+        // The trigger fires through the corpus directive path as well: an
+        // example asserting the scrutiny on the degraded component is
+        // refused by the run.
+        let failures = check_case(concat!(
+            "module Deg {\n",
+            "  def total = 1 + 2;\n",
+            "}\n",
+            "//",
+            "@ expect-member-type-without-unknown: Deg.total\n"
+        ));
+        let failure = failures
+            .first()
+            .expect("the corpus run refuses the degraded component");
+        assert!(
+            failure.contains("elaborated to Unknown"),
+            "names the degraded type: {failure}"
         );
     }
 
