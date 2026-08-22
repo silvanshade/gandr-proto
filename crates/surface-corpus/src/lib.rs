@@ -111,6 +111,7 @@ use core::fmt::Write as _;
 use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
+use gandr_core_term::boundary::GradualUnknownStatus;
 use gandr_core_term::effect::host::FIELD_STDOUT;
 use gandr_core_term::outcome::Blame;
 use gandr_core_term::outcome::Eval;
@@ -119,6 +120,8 @@ use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::NumLit;
 use gandr_core_term::syntax::Side;
 use gandr_core_term::syntax::Value;
+use gandr_core_term::types::Ty;
+use gandr_core_term::types::ValueType;
 use gandr_runtime_effects::ShellOutcome;
 #[cfg(feature = "ffi")]
 use gandr_runtime_ffi::FfiShellOutcome;
@@ -1050,6 +1053,50 @@ enum UnknownScrutiny
     Required,
 }
 
+/// One resolved step of a member path: the head's full type, or a later
+/// segment's component type inside its parent record.
+///
+/// The head segment's type is a full [`Ty`]; every later component's type is a
+/// [`ValueType`] recorded in its parent's fields, so the walk carries both
+/// shapes rather than rebuilding an owned `Ty` at every step.
+enum Resolved<'run>
+{
+    /// The head segment's type.
+    Head(&'run Ty),
+    /// A later segment's type, as recorded in its parent's record fields.
+    Field(&'run ValueType),
+}
+
+impl Resolved<'_>
+{
+    /// Whether this step's type mentions the gradual unknown.
+    ///
+    /// A field's type is scanned as exactly what it is — the value type the
+    /// record carries — so a component and the same type written at top level
+    /// answer identically.
+    fn mentions_unknown(&self) -> GradualUnknownStatus
+    {
+        match *self {
+            | Self::Head(ty) => ty.mentions_unknown(),
+            | Self::Field(value_ty) => Ty::Value(value_ty.clone()).mentions_unknown(),
+        }
+    }
+}
+
+impl core::fmt::Display for Resolved<'_>
+{
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        match *self {
+            | Self::Head(ty) => write!(f, "{ty:?}"),
+            | Self::Field(value_ty) => write!(f, "{value_ty:?}"),
+        }
+    }
+}
+
 /// The failure message for a member expectation, or [`None`] when it holds.
 ///
 /// # Contract
@@ -1080,12 +1127,108 @@ enum UnknownScrutiny
 ///   `a_member_whose_type_carries_an_unknown_fails_the_scrutiny`, and
 ///   `a_member_expectation_does_not_resolve_an_unbound_definition`.
 fn member_failure(
-    _run: &SessionRun,
-    _path: MemberPath<'_>,
-    _scrutiny: UnknownScrutiny,
+    run: &SessionRun,
+    path: MemberPath<'_>,
+    scrutiny: UnknownScrutiny,
 ) -> Option<String>
 {
-    todo!("gandr-f8yr: resolve the dotted component path and apply the scrutiny")
+    let MemberPath(path) = path;
+    let mut segments = path.split('.');
+    let head = segments.next().unwrap_or_default();
+    // The head must name a **bound** top-level definition. An item reported as
+    // a definition but not bound never entered scope, so walking into it would
+    // resolve a component the program cannot reach.
+    let head_ty = run.outcomes.iter().find_map(|outcome| match *outcome {
+        | ItemOutcome::Definition {
+            name: ref defined,
+            ref ty,
+            bound,
+        } if defined == head && bool::from(bound) => Some(ty),
+        | _ => None,
+    });
+    let mut resolved = Resolved::Head(match head_ty {
+        | Some(ty) => ty,
+        | None => {
+            let unbound = run.outcomes.iter().any(|outcome| {
+                matches!(
+                    *outcome,
+                    ItemOutcome::Definition {
+                        name: ref defined,
+                        bound: false,
+                        ..
+                    } if defined == head
+                )
+            });
+            return Some(if unbound {
+                format!(
+                    "member path `{path}` stops at its head segment `{head}`: a definition \
+                     of that name was reported but is not bound, so it names no scope to \
+                     walk into"
+                )
+            }
+            else {
+                format!(
+                    "member path `{path}` stops at its head segment `{head}`: no top-level \
+                     definition of that name"
+                )
+            });
+        },
+    });
+    // One dotted walk over record types reaches every module component at
+    // every depth: a nested module is an ordinary record field whose type is
+    // the nested record.
+    for (offset, segment) in segments.enumerate() {
+        let position = offset + 2;
+        let fields = match resolved {
+            | Resolved::Head(ty) => match *ty {
+                | Ty::Value(ValueType::Record(ref fields)) => fields,
+                | _ => {
+                    return Some(format!(
+                        "member path `{path}` stops at segment {position} \
+                         (`{segment}`): the type it was resolved against, {resolved}, is \
+                         not a record and carries no components to resolve into"
+                    ));
+                },
+            },
+            | Resolved::Field(value_ty) => match *value_ty {
+                | ValueType::Record(ref fields) => fields,
+                | _ => {
+                    return Some(format!(
+                        "member path `{path}` stops at segment {position} \
+                         (`{segment}`): the type it was resolved against, {resolved}, is \
+                         not a record and carries no components to resolve into"
+                    ));
+                },
+            },
+        };
+        let Some(field) = fields.get(segment)
+        else {
+            let carried = if fields.is_empty() {
+                "no components".to_owned()
+            }
+            else {
+                let labels = fields
+                    .keys()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("components {labels}")
+            };
+            return Some(format!(
+                "member path `{path}` stops at segment {position} (`{segment}`): the type \
+                 it was resolved against, {resolved}, carries {carried}"
+            ));
+        };
+        resolved = Resolved::Field(field);
+    }
+    if scrutiny == UnknownScrutiny::Required && bool::from(resolved.mentions_unknown()) {
+        return Some(format!(
+            "expected the type of `{path}` to mention no gradual unknown, but it \
+             elaborated to {resolved} — a type carrying an unknown accepts terms the \
+             written type would refuse, so an acceptance against it is not evidence"
+        ));
+    }
+    None
 }
 
 /// Which side of the kernel's admission boundary an expectation names.
@@ -2710,7 +2853,30 @@ def parser_unit = ();"#;
     #[test]
     fn a_member_expectation_resolves_a_nested_module_component()
     {
-        todo!("gandr-f8yr")
+        let run = session_run(&[r#"module Outer {
+  def base = 7;
+  module inner {
+    def deep = 3;
+  }
+}"#]);
+        assert_pass(session_failure(
+            &run,
+            &Expect::Member("Outer.base".to_owned()),
+        ));
+        // The walk descends through the parent's record field whose type is
+        // the nested record itself — one lookup per segment, no stratum.
+        assert_pass(session_failure(
+            &run,
+            &Expect::Member("Outer.inner".to_owned()),
+        ));
+        assert_pass(session_failure(
+            &run,
+            &Expect::Member("Outer.inner.deep".to_owned()),
+        ));
+        assert_pass(session_failure(
+            &run,
+            &Expect::MemberTypeWithoutUnknown("Outer.inner.deep".to_owned()),
+        ));
     }
 
     /// A path that stops resolving names **which** segment stopped, the type it
@@ -2723,7 +2889,37 @@ def parser_unit = ();"#;
     #[test]
     fn a_member_expectation_names_the_segment_that_did_not_resolve()
     {
-        todo!("gandr-f8yr")
+        let run = session_run(&[r#"module Metrics {
+  def base = 7;
+  def scale = 2;
+}"#]);
+        // The misspelling: the failure names the segment, the record it was
+        // resolved against, and that record's actual components.
+        let failure = session_failure(&run, &Expect::Member("Metrics.bass".to_owned()))
+            .expect("a misspelled member fails");
+        assert!(
+            failure.contains("segment 2 (`bass`)"),
+            "names which segment stopped: {failure}"
+        );
+        assert!(
+            failure.contains("Value(Record"),
+            "shows the type resolved against: {failure}"
+        );
+        assert!(
+            failure.contains("base, scale"),
+            "lists the components that type does carry: {failure}"
+        );
+        // A segment that stops inside a non-record names the same facts.
+        let failure = session_failure(&run, &Expect::Member("Metrics.base.x".to_owned()))
+            .expect("a projection off a non-record fails");
+        assert!(
+            failure.contains("`x`"),
+            "names which segment stopped: {failure}"
+        );
+        assert!(
+            failure.contains("not a record"),
+            "says the type carries no components: {failure}"
+        );
     }
 
     /// A component whose type mentions a gradual unknown fails the scrutiny
@@ -2737,7 +2933,27 @@ def parser_unit = ();"#;
     #[test]
     fn a_member_whose_type_carries_an_unknown_fails_the_scrutiny()
     {
-        todo!("gandr-f8yr")
+        let run = session_run(&[r#"module Deg {
+  def total = 1 + 2;
+}"#]);
+        // Presence alone holds — the scrutiny is what refuses.
+        assert_pass(session_failure(
+            &run,
+            &Expect::Member("Deg.total".to_owned()),
+        ));
+        let failure = session_failure(
+            &run,
+            &Expect::MemberTypeWithoutUnknown("Deg.total".to_owned()),
+        )
+        .expect("an unknown-carrying member fails the scrutiny");
+        assert!(
+            failure.contains("elaborated to Unknown"),
+            "names the degraded type: {failure}"
+        );
+        assert!(
+            failure.contains("accepts terms the written type would refuse"),
+            "says why the acceptance is not evidence: {failure}"
+        );
     }
 
     /// An item reported as a definition but **not bound** does not satisfy a
@@ -2750,7 +2966,45 @@ def parser_unit = ();"#;
     #[test]
     fn a_member_expectation_does_not_resolve_an_unbound_definition()
     {
-        todo!("gandr-f8yr")
+        // The outcome shape itself is the fixture: the engine reports a
+        // bare-computation-typed definition exactly this way, while the
+        // surface forms that produce it are the ones the session path
+        // declines, so the rule under test is how head resolution reads the
+        // flag. The same path against a bound head resolves and fails one
+        // segment later instead — the flag, not the spelling, decided.
+        let outcomes = |bound| {
+            vec![ItemOutcome::Definition {
+                name: String::from("c"),
+                ty: Ty::Value(ValueType::Unit),
+                bound,
+            }]
+        };
+        let unbound = SessionRun {
+            diagnostics: Vec::new(),
+            goals: 0,
+            outcomes: outcomes(false),
+            attributes: Vec::new(),
+            kernel: Vec::new(),
+        };
+        assert_fail(
+            session_failure(&unbound, &Expect::Member("c".to_owned())),
+            "not bound",
+        );
+        assert_fail(
+            session_failure(&unbound, &Expect::Member("c.nothing".to_owned())),
+            "not bound",
+        );
+        let bound = SessionRun {
+            diagnostics: Vec::new(),
+            goals: 0,
+            outcomes: outcomes(true),
+            attributes: Vec::new(),
+            kernel: Vec::new(),
+        };
+        assert_fail(
+            session_failure(&bound, &Expect::Member("c.nothing".to_owned())),
+            "not a record",
+        );
     }
 
     #[test]
