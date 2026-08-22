@@ -30,7 +30,7 @@
 //! - [`static_term`] — the erased static dependent core: the type-level
 //!   calculus whose normal forms reify into the two ground type enums;
 //! - [`ctx`] — the two-zone typing context `Γ; Σ`;
-//! - [`subst`] — the iterative capture-avoiding substitution engine over terms,
+//! - [`subst`] — the iterative shadowing-aware substitution engine over terms,
 //!   and the hole substitution the elaborator plugs;
 //! - [`identity`] — the value-into-type substitution the `Walk` motive is
 //!   instantiated by; types carry no binders, so it is capture-free structural

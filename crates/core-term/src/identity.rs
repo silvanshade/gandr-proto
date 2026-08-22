@@ -105,11 +105,19 @@ use crate::types::ValueType;
 /// # Contract
 /// - ensures: returns `ty` with every free `name` in a `Path` endpoint (at any
 ///   depth) replaced by `repl`, leaving occurrences under a `Σ` tail or `Π`
-///   codomain that rebinds `name` untouched; identical to `ty` when `name` does
-///   not occur free.
-/// - ensures: **no free variable of `repl` is captured** by a binder the
-///   substitution descends under; such a binder is renamed apart first, so the
-///   result is alpha-equivalent to the capture-avoiding specification.
+///   codomain that rebinds `name` untouched; **alpha-equivalent** to `ty` when
+///   `name` does not occur free — not identical, because a binder spelled like
+///   a free name of `repl` is renamed apart whether or not the substitution
+///   changes anything beneath it. Both clauses of this contract are therefore
+///   stated up to alpha, and neither is a syntactic guarantee.
+/// - ensures: **no free variable of `repl` is captured by a TYPE binder** the
+///   substitution descends under — a `Σ` tail or `Π` codomain binder that
+///   rebinds a free name of `repl` is renamed apart first, so the result is
+///   alpha-equivalent to the capture-avoiding specification **at the type
+///   sort**. Value binders reached through a `Path` endpoint or a `Family`
+///   argument are substituted by [`crate::subst::subst_value`], which
+///   implements **shadowing only and does not rename**; capture at the value
+///   sort is `gandr-j078`.
 /// - panics: none.
 ///
 /// # Adequacy
@@ -121,9 +129,18 @@ use crate::types::ValueType;
 #[inline]
 #[must_use]
 /// # Termination
-/// - reason: substitution rebuilds finite type trees from an explicit worklist.
-/// - measure: pending type tasks and result frames.
-/// - boundedness: source types are finite Rust values.
+/// - reason: each pass rebuilds finite type trees from an explicit worklist;
+///   the pass restarts only to add an alias, and each restart inserts a binder
+///   name the plan did not already hold.
+/// - measure: **lexicographic** — first the aliases still owed, then the
+///   pending type tasks and result frames within a pass. A pass's own measure
+///   resets to full on a restart, so it bounds nothing across them.
+/// - boundedness: source types are finite Rust values; every plan key is a free
+///   name of `repl`, because the `mentions_free` guard precedes the only `Err`
+///   return in [`open_binder`]; `repl` does not change across restarts; and
+///   [`fresh_alias`] never returns a name free in `repl`, so no alias can cause
+///   a later request. Restarts are therefore bounded by the number of free
+///   names of `repl`.
 /// - input recursion: none.
 pub fn subst_valuetype<'source, N>(
     ty: &ValueType,
@@ -160,12 +177,19 @@ where
 /// # Contract
 /// - ensures: returns `ty` with every free `name` in a nested `Path` endpoint
 ///   replaced by `repl`, leaving occurrences under a `Σ` tail or `Π` codomain
-///   that rebinds `name` untouched; identical to `ty` when `name` does not
-///   occur free.
-/// - ensures: **no free variable of `repl` is captured** by a binder the
-///   substitution descends under; a binder that would capture one is renamed
-///   apart first, so the result is alpha-equivalent to the capture-avoiding
-///   specification.
+///   that rebinds `name` untouched; **alpha-equivalent** to `ty` when `name`
+///   does not occur free — not identical, because a binder spelled like a free
+///   name of `repl` is renamed apart whether or not the substitution changes
+///   anything beneath it. Both clauses of this contract are therefore stated up
+///   to alpha, and neither is a syntactic guarantee.
+/// - ensures: **no free variable of `repl` is captured by a TYPE binder** the
+///   substitution descends under — a `Σ` tail or `Π` codomain binder that
+///   rebinds a free name of `repl` is renamed apart first, so the result is
+///   alpha-equivalent to the capture-avoiding specification **at the type
+///   sort**. Value binders reached through a `Path` endpoint or a `Family`
+///   argument are substituted by [`crate::subst::subst_value`], which
+///   implements **shadowing only and does not rename**; capture at the value
+///   sort is `gandr-j078`.
 /// - panics: none.
 ///
 /// # Adequacy
@@ -177,9 +201,18 @@ where
 #[inline]
 #[must_use]
 /// # Termination
-/// - reason: substitution rebuilds finite type trees from an explicit worklist.
-/// - measure: pending type tasks and result frames.
-/// - boundedness: source types are finite Rust values.
+/// - reason: each pass rebuilds finite type trees from an explicit worklist;
+///   the pass restarts only to add an alias, and each restart inserts a binder
+///   name the plan did not already hold.
+/// - measure: **lexicographic** — first the aliases still owed, then the
+///   pending type tasks and result frames within a pass. A pass's own measure
+///   resets to full on a restart, so it bounds nothing across them.
+/// - boundedness: source types are finite Rust values; every plan key is a free
+///   name of `repl`, because the `mentions_free` guard precedes the only `Err`
+///   return in [`open_binder`]; `repl` does not change across restarts; and
+///   [`fresh_alias`] never returns a name free in `repl`, so no alias can cause
+///   a later request. Restarts are therefore bounded by the number of free
+///   names of `repl`.
 /// - input recursion: none.
 pub fn subst_comptype<'source, N>(
     ty: &CompType,
@@ -832,8 +865,11 @@ fn open_binder(
 
 /// Applies the aliases in force to a value reached inside a type.
 ///
-/// Every alias source is a distinct name and every target is fresh, so the
-/// order the scope is walked in cannot change the answer.
+/// **Every target is fresh, so no step can feed another** — that, and not the
+/// sources being distinct, is why the order the scope is walked in cannot
+/// change the answer. Sources are *not* distinct when two nested binders share
+/// a spelling: the scope then carries the same name twice and the second
+/// application finds nothing left to rewrite.
 fn alias_value(
     value: &Rc<Value>,
     scope: &Rc<AliasScope>,
@@ -996,6 +1032,7 @@ fn pop_comp_type(comps: &mut Vec<CompType>) -> CompType
 mod tests
 {
     use super::*;
+    use crate::syntax::Comp;
 
     /// Substituting a value whose free variable a binder below would rebind
     /// renames that binder apart rather than capturing.
@@ -1043,22 +1080,41 @@ mod tests
         );
     }
 
-    /// The **wrong-acceptance** direction: two types that must not agree, which
-    /// capturing substitution makes coincide.
+    /// A bare type atom.
+    fn atom(name: NameRef<'_>) -> ValueType
+    {
+        ValueType::Atom(String::from(name.as_ref()))
+    }
+
+    /// The returner over an atom.
+    fn returns(name: NameRef<'_>) -> CompType
+    {
+        CompType::F(Rc::new(atom(name)), EffectRow::EMPTY)
+    }
+
+    /// A thunked function type `U[ω] (from -> F to)`.
+    fn thunked(
+        from: NameRef<'_>,
+        to: NameRef<'_>,
+    ) -> ValueType
+    {
+        ValueType::Thunk(
+            Grade::OMEGA,
+            Rc::new(CompType::Arrow {
+                binder: None,
+                arg: Rc::new(atom(from)),
+                res: Rc::new(returns(to)),
+            }),
+        )
+    }
+
+    /// The separating construction, shared by the two capture witnesses.
     ///
-    /// This is the witness that matters. A repair verified only against the
-    /// program capture broke proves the capture stopped rejecting something
-    /// correct; it says nothing about whether capture was also *accepting*
-    /// something wrong, and capture can make two distinct types agree exactly
-    /// as easily as it makes two equal ones diverge.
-    ///
-    /// The separating source, in surface spelling: applying
-    /// `comp(a, b, c, f, g, x)` at indices `(a, c, d)` should demand `g` at
-    /// `U[ω] (c -> F d)`. Capturing substitution rewrites that expectation to
-    /// `U[ω] (d -> F d)`, so an argument written at the captured type is
-    /// accepted. The fixed engine must refuse it.
-    #[test]
-    fn a_captured_expectation_does_not_accept_the_wrong_argument()
+    /// Returns the instantiated `comp` type and the `thunked` builder, so each
+    /// witness asserts on its own argument position and **fails for its own
+    /// reason** — a single test asserting both would report only whichever
+    /// assertion it reached first.
+    fn captured_composition() -> CompType
     {
         /// Peels one `Π` and instantiates it at a type variable, which is what
         /// applying a dependent spine does one argument at a time.
@@ -1082,18 +1138,6 @@ mod tests
                 &Value::Var(String::from(arg.as_ref())),
             )
         }
-        let atom = |name: &str| ValueType::Atom(String::from(name));
-        let returns = |name: &str| CompType::F(Rc::new(atom(name)), EffectRow::EMPTY);
-        let thunked = |from: &str, to: &str| {
-            ValueType::Thunk(
-                Grade::OMEGA,
-                Rc::new(CompType::Arrow {
-                    binder: None,
-                    arg: Rc::new(atom(from)),
-                    res: Rc::new(returns(to)),
-                }),
-            )
-        };
         let arrow = |arg: ValueType, res: CompType| CompType::Arrow {
             binder: None,
             arg: Rc::new(arg),
@@ -1111,8 +1155,11 @@ mod tests
                     "c",
                     ValueType::Unit,
                     arrow(
-                        thunked("a", "b"),
-                        arrow(thunked("b", "c"), arrow(atom("a"), returns("c"))),
+                        thunked(NameRef::from("a"), NameRef::from("b")),
+                        arrow(
+                            thunked(NameRef::from("b"), NameRef::from("c")),
+                            arrow(atom(NameRef::from("a")), returns(NameRef::from("c"))),
+                        ),
                     ),
                 ),
             ),
@@ -1120,10 +1167,31 @@ mod tests
         // Applied at `(a, c, d)` — the caller spells its own indices with names
         // the callee also binds, which is what every category law written the
         // obvious way does.
-        let applied = instantiate(
+        instantiate(
             &instantiate(&instantiate(&comp, NameRef::from("a")), NameRef::from("c")),
             NameRef::from("d"),
-        );
+        )
+    }
+
+    /// The **second** function's expectation, `g` — the **wrong-acceptance**
+    /// direction: two types that must not agree, which capturing substitution
+    /// makes coincide.
+    ///
+    /// This is the witness that matters. A repair verified only against the
+    /// program capture broke proves the capture stopped rejecting something
+    /// correct; it says nothing about whether capture was also *accepting*
+    /// something wrong, and capture can make two distinct types agree exactly
+    /// as easily as it makes two equal ones diverge.
+    ///
+    /// The separating source, in surface spelling: applying
+    /// `comp(a, b, c, f, g, x)` at indices `(a, c, d)` should demand `g` at
+    /// `U[ω] (c -> F d)`. Capturing substitution rewrites that expectation to
+    /// `U[ω] (d -> F d)`, so an argument written at the captured type is
+    /// accepted. The fixed engine must refuse it.
+    #[test]
+    fn a_captured_expectation_does_not_accept_the_wrong_argument()
+    {
+        let applied = captured_composition();
         let CompType::Arrow { res: ref rest, .. } = applied
         else {
             panic!("the instantiated type lost its first argument");
@@ -1134,20 +1202,51 @@ mod tests
         else {
             panic!("the instantiated type lost its second argument");
         };
+
         // The wrong-acceptance direction FIRST, because it is the reason this
-        // witness exists. Sequential instantiation without capture avoidance
-        // rewrites `b -> F c` to `c -> F c` and then to `d -> F d`, and an
-        // argument written at THAT type is accepted where it must be refused.
+        // witness exists. A repair verified only against the refused program
+        // proves capture stopped rejecting something correct and says nothing
+        // about what it was accepting.
         assert_ne!(
             **second,
-            thunked("d", "d"),
+            thunked(NameRef::from("d"), NameRef::from("d")),
             "the expectation collapsed to the captured type, so an argument \
              written at it would be accepted"
         );
         assert_eq!(
             **second,
-            thunked("c", "d"),
+            thunked(NameRef::from("c"), NameRef::from("d")),
             "the expectation for the second function is not the one the caller wrote"
+        );
+    }
+
+    /// The **first** function's expectation, `f` — the other expectation the
+    /// unfixed engine captured, and the one this sibling test exists to keep
+    /// reportable.
+    ///
+    /// Sequential instantiation rewrites `f`'s expectation too: `a -> F b`
+    /// becomes `a -> F c` and then `a -> F d`. `gandr-ijdw`'s prose explains
+    /// the second function's capture while its pasted diagnostic shows this
+    /// one; both are real, and a witness keyed only to the second leaves this
+    /// one resting on a single corpus file.
+    #[test]
+    fn the_first_functions_expectation_is_not_captured_either()
+    {
+        let applied = captured_composition();
+        let CompType::Arrow { arg: ref first, .. } = applied
+        else {
+            panic!("the instantiated type lost its first argument");
+        };
+
+        assert_ne!(
+            **first,
+            thunked(NameRef::from("a"), NameRef::from("d")),
+            "the first function's expectation collapsed to the captured type"
+        );
+        assert_eq!(
+            **first,
+            thunked(NameRef::from("a"), NameRef::from("c")),
+            "the expectation for the first function is not the one the caller wrote"
         );
     }
 
@@ -1221,6 +1320,126 @@ mod tests
         assert_eq!(
             subst_valuetype(&atom, NameRef::from("a"), &Value::Var(String::from("b"))),
             ValueType::Atom(String::from("b"))
+        );
+    }
+
+    /// A binder that **cannot** capture is renamed apart anyway, so the result
+    /// is alpha-equivalent to the source rather than identical to it.
+    ///
+    /// [`open_binder`] decides to rename on `mentions_free(repl, binder)`
+    /// alone. That test consults the replacement and the binder spelling and
+    /// **never asks whether the substituted name occurs beneath that binder**,
+    /// and the walk reaches every binder unconditionally. So a substitution
+    /// that changes nothing still moves a binder spelled like a free name of
+    /// the replacement.
+    ///
+    /// The rename therefore fires on a **superset** of the binders that could
+    /// capture — exact for collision, wider than necessary for effect. That is
+    /// why this module's first `ensures` clause promises alpha-equivalence
+    /// rather than identity: identity-when-absent is the kind of property
+    /// callers build fast paths on, and it is not true here.
+    ///
+    /// `crates/core-nbe/src/conv.rs` is the caller that would notice, because
+    /// it alpha-renames one side's binder to match the other and then compares
+    /// structurally. It does not break:
+    /// `tests::a_spurious_rename_does_not_refuse_a_convertible_pair` measures
+    /// the exact shape conv produces.
+    #[test]
+    fn a_binder_that_cannot_capture_is_renamed_apart_anyway()
+    {
+        // `Π(d : 1). F z` — `x` occurs nowhere in it, so substituting for `x`
+        // is a no-op by the first clause.
+        let source = CompType::pi(
+            "d",
+            ValueType::Unit,
+            CompType::F(
+                Rc::new(ValueType::Atom(String::from("z"))),
+                EffectRow::EMPTY,
+            ),
+        );
+
+        let substituted =
+            subst_comptype(&source, NameRef::from("x"), &Value::Var(String::from("d")));
+
+        // **The clause-level claim first, the mechanism second.** An assertion
+        // that can only fire in cases the one above it also catches has no
+        // voice: it never reports. Non-identity can fail for reasons other than
+        // the binder moving, and the binder can stay put while the type changes
+        // for another reason, so each of these two can be the one that speaks.
+        assert_ne!(
+            substituted, source,
+            "the result is identical to the source, so the weakened clause is             weaker than it needs to be"
+        );
+        let CompType::Arrow { ref binder, .. } = substituted
+        else {
+            panic!("substituting a Pi rebuilt something else");
+        };
+        let bound = binder.as_deref().expect("the Pi keeps a binder");
+        assert_ne!(
+            bound, "d",
+            "the type changed but the binder did not, so this witness no longer             names the mechanism it was written for"
+        );
+    }
+
+    /// A **value** binder inside a `Path` endpoint captures the replacement.
+    ///
+    /// The rename this module added is a type-sort repair. Values inside an
+    /// endpoint are substituted by [`crate::subst::subst_value`], which decides
+    /// every binder by shadowing alone — it blocks the descent when the binder
+    /// rebinds the substituted NAME, and never asks whether the binder rebinds
+    /// a name the substituted VALUE mentions. That is the same distinction one
+    /// sort down, and it is `gandr-j078`.
+    ///
+    /// **This test pins the current behaviour rather than the intended one**,
+    /// so the bead carries a measured counterexample instead of a read one.
+    /// When the value sort renames, both assertions below flip and this becomes
+    /// that repair's witness.
+    #[test]
+    fn a_value_binder_inside_an_endpoint_captures_the_replacement()
+    {
+        // `Path(1, thunk_ω (λd. ret x), ())` — the endpoint's binder is `d`
+        // and its body mentions `x` free.
+        let endpoint = Value::Thunk(
+            Grade::OMEGA,
+            Rc::new(Comp::Abs(
+                String::from("d"),
+                None,
+                Rc::new(Comp::Ret(Rc::new(Value::Var(String::from("x"))))),
+            )),
+        );
+        let source = ValueType::Path {
+            ty: Rc::new(ValueType::Unit),
+            lhs: Rc::new(endpoint),
+            rhs: Rc::new(Value::Unit),
+        };
+
+        // Substituting `x := d` writes a `d` into the body, where `λd` binds
+        // it. The capture-avoiding specification renames the `λ` apart and
+        // leaves the substituted `d` free.
+        let substituted =
+            subst_valuetype(&source, NameRef::from("x"), &Value::Var(String::from("d")));
+
+        let ValueType::Path { ref lhs, .. } = substituted
+        else {
+            panic!("substituting a Path rebuilt something else");
+        };
+        let Value::Thunk(_, ref produced) = **lhs
+        else {
+            panic!("the endpoint stopped being a thunk");
+        };
+        let Comp::Abs(ref binder, _, ref inner) = **produced
+        else {
+            panic!("the thunk stopped holding an abstraction");
+        };
+
+        assert_eq!(
+            binder, "d",
+            "gandr-j078: the value binder is NOT renamed apart, which is the             defect this test pins"
+        );
+        assert_eq!(
+            **inner,
+            Comp::Ret(Rc::new(Value::Var(String::from("d")))),
+            "gandr-j078: the caller's `d` is now bound by the callee's `λd` —             that is capture, and it is what the type-sort rename does not reach"
         );
     }
 }

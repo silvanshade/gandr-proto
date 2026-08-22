@@ -1,5 +1,10 @@
-//! Capture-avoiding substitution (ADR-47 T1) — the iterative worklist engine
+//! Shadowing-aware substitution (ADR-47 T1) — the iterative worklist engine
 //! shared by motive instantiation and by hole substitution.
+//!
+//! **Shadowing, not capture.** Every binder here asks whether it rebinds the
+//! substituted `name`. None asks whether it rebinds a free name of the
+//! substituted value, so a thunk binder spelled like one still captures it.
+//! `gandr-j078`.
 //!
 //! One traversal, two rules. [`subst_value`] replaces a free value variable
 //! inside a source value, respecting binder shadowing; it is what the identity
@@ -36,7 +41,7 @@ use crate::syntax::Stack;
 use crate::syntax::Value;
 use crate::syntax::WalkBase;
 
-/// Capture-avoiding substitution of `repl` for the free value variable `name`
+/// Shadowing-aware substitution of `repl` for the free value variable `name`
 /// inside a **value**.
 ///
 /// The value-into-value entry of the iterative [`Subst`] engine (the ADR-47
@@ -46,8 +51,10 @@ use crate::syntax::WalkBase;
 /// This is the substitution the identity former's motive instantiation drives
 /// ([`crate::identity`] calls it at each [`crate::types::ValueType::Path`]
 /// endpoint), and the one a solver's certificate is re-checked through. It is
-/// public precisely so every caller shares one proven substitution rather than
-/// reimplementing capture-avoidance.
+/// public precisely so every caller shares one substitution engine rather than
+/// reimplementing the descent. **It avoids shadowing, not capture**: a binder
+/// blocks the descent when it rebinds the substituted `name`, and nothing here
+/// asks whether it rebinds a free name of `repl`. `gandr-j078`.
 ///
 /// # Contract
 /// - ensures: returns `value` with every free `name` replaced by `repl`,
@@ -269,7 +276,7 @@ enum Task<'src>
     CombineStack(&'src Stack),
 }
 
-/// The iterative capture-avoiding substitution engine (ADR-47 T1): the driver
+/// The iterative shadowing-aware substitution engine (ADR-47 T1): the driver
 /// behind [`subst_value`] (and the computation / stack sub-substitutions it
 /// inlines to reach thunk bodies and reified stacks). It owns an explicit LIFO
 /// work stack and one result stack per syntactic sort, so substitution depth

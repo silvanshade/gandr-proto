@@ -27,9 +27,14 @@
 // nest one operation's application inside another's argument at thunk type, one
 // level deeper than the embedding resolution reaches (gandr-rson).
 //
-// The type variables are named `t u v` and `p q` rather than `a b c` because
-// type substitution is not capture-avoiding (gandr-ijdw), and a category's laws
-// written the obvious way collide with all three of the composition's binders.
+// The type variables are named `t u v` and `p q` rather than `a b c`. Type
+// substitution renames a capturing type binder apart (gandr-ijdw), so the
+// design's own spelling is admissible here; the spelling is retained because
+// restoring it witnesses nothing in THIS program, measured by ablation rather
+// than assumed. The walker is live over this file -- renaming a law member
+// turns it red -- and a corpus witness written for the capture path does
+// separate the two sides. These two spellings of this module do not, which is
+// a fact about the program and not about the surface.
 
 module SetoidCat {
   def ident(t : Type, x : t) -> F t { ret x }

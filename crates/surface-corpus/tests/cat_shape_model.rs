@@ -180,14 +180,24 @@ pub mod tests
     /// conversion to see — so this is transparent ascription, and opacity
     /// is sealing's question rather than this instance's.
     ///
-    /// **The type variables are named `t u v` and `p q` rather than `a b c`,
-    /// and that is a workaround rather than a style.** Type substitution is not
-    /// capture-avoiding, so a caller whose variables collide with an
-    /// operation's own binders is instantiated wrongly; the composition's
-    /// binders are `a b c`, and a category's laws written the obvious way
-    /// collide with all three. `gandr-ijdw`. When it lands, the names here
-    /// should go back to the design's spelling, and the fact that they *can* is
-    /// part of that repair's witness.
+    /// **The type variables are named `t u v` and `p q` rather than `a b c`.**
+    /// Type substitution now renames a capturing type binder apart
+    /// (`gandr-ijdw`), so the design's own spelling is admissible here.
+    ///
+    /// **The spelling is retained because restoring it would witness nothing
+    /// *here*, and that was measured rather than assumed.** Rewriting this
+    /// module and the corpus entry to `a b c` and running them against an
+    /// `identity.rs` with the rename ablated leaves both green, bracketed
+    /// baseline / ablated / restored under one run.
+    ///
+    /// **The instrument is not blind; this program does not exercise the
+    /// path.** The same bracket's positive control — renaming a law member —
+    /// turns the corpus walker red on this very file, so the walker is live
+    /// over it. And a corpus witness written *for* the capture path does
+    /// separate the two sides: refused without the repair, accepted with it.
+    /// The claim here is only that **these two spellings of this module** are
+    /// indistinguishable, which is a fact about the program rather than about
+    /// the surface.
     pub const SETOID_CAT_SIGNATURE: &str = r#"#{
   type Ob = Type,
   type Hom(a : Ob, b : Ob) = U[ω] (a -> F b),
@@ -224,14 +234,24 @@ pub mod tests
     /// unsigned module's reported record type is exactly what its bodies
     /// elaborated to. `gandr-64oy` carries what would replace the twin.
     ///
-    /// **The type variables are named `t u v` and `p q` rather than `a b c`,
-    /// and that is a workaround rather than a style.** Type substitution is not
-    /// capture-avoiding, so a caller whose variables collide with an
-    /// operation's own binders is instantiated wrongly; the composition's
-    /// binders are `a b c`, and a category's laws written the obvious way
-    /// collide with all three. `gandr-ijdw`. When it lands, the names here
-    /// should go back to the design's spelling, and the fact that they *can* is
-    /// part of that repair's witness.
+    /// **The type variables are named `t u v` and `p q` rather than `a b c`.**
+    /// Type substitution now renames a capturing type binder apart
+    /// (`gandr-ijdw`), so the design's own spelling is admissible here.
+    ///
+    /// **The spelling is retained because restoring it would witness nothing
+    /// *here*, and that was measured rather than assumed.** Rewriting this
+    /// module and the corpus entry to `a b c` and running them against an
+    /// `identity.rs` with the rename ablated leaves both green, bracketed
+    /// baseline / ablated / restored under one run.
+    ///
+    /// **The instrument is not blind; this program does not exercise the
+    /// path.** The same bracket's positive control — renaming a law member —
+    /// turns the corpus walker red on this very file, so the walker is live
+    /// over it. And a corpus witness written *for* the capture path does
+    /// separate the two sides: refused without the repair, accepted with it.
+    /// The claim here is only that **these two spellings of this module** are
+    /// indistinguishable, which is a fact about the program rather than about
+    /// the surface.
     pub const SETOID_CAT_BODY: &str = r#"
   def ident(t : Type, x : t) -> F t { ret x }
 

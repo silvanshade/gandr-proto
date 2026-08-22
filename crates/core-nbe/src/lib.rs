@@ -3675,4 +3675,49 @@ mod tests
             &int(IntegerLiteral::from(5_i64))
         )));
     }
+
+    /// A binder the type-substitution renames apart **spuriously** does not
+    /// make a convertible pair refuse.
+    ///
+    /// Comparing two `Π`s with different binder names substitutes one name for
+    /// the other into the right body. `gandr_core_term::identity` renames any
+    /// binder spelled like a free name of the replacement, **whether or not the
+    /// substituted name occurs beneath it** — so the right body comes back with
+    /// an inner binder moved that the left body still spells the original way.
+    ///
+    /// This is the caller that would turn that into a live defect: a fix for a
+    /// wrong refusal producing a wrong refusal of its own. It does not, because
+    /// the comparison re-aligns binders at every level rather than comparing
+    /// them syntactically. The shape below is the one this module's own
+    /// `Π`-alignment produces, not a constructed corner.
+    #[test]
+    fn a_spurious_rename_does_not_refuse_a_convertible_pair()
+    {
+        use gandr_core_term::effect::EffectRow;
+        use gandr_core_term::types::CompType;
+        use gandr_core_term::types::ValueType;
+
+        // `Π(a : 1). Π(a : 1). F a`  against  `Π(c : 1). Π(a : 1). F a`.
+        // Substituting `c := a` into the right body renames its inner `a` to a
+        // fresh spelling, though `c` occurs nowhere beneath it.
+        let inner = || {
+            CompType::pi(
+                "a",
+                ValueType::Unit,
+                CompType::F(
+                    Rc::new(ValueType::Atom(String::from("a"))),
+                    EffectRow::EMPTY,
+                ),
+            )
+        };
+        let left = CompType::pi("a", ValueType::Unit, inner());
+        let right = CompType::pi("c", ValueType::Unit, inner());
+
+        let mut nbe = Normalizer::new();
+
+        assert!(
+            bool::from(crate::conv::comp_type_converts(&mut nbe, &left, &right)),
+            "a spurious rename produced a false non-convertibility"
+        );
+    }
 }
