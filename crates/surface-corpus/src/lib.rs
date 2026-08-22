@@ -3216,6 +3216,29 @@ def parser_unit = ();"#;
   ret thunk { comp(p, r, s, u, h) }
 }";
 
+    /// A rendered elaborated type, as the substitution comparison reads it.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct RenderedType<'rendered>(&'rendered str);
+
+    impl<'rendered> From<&'rendered str> for RenderedType<'rendered>
+    {
+        #[inline]
+        fn from(value: &'rendered str) -> Self
+        {
+            Self(value)
+        }
+    }
+
+    impl AsRef<str> for RenderedType<'_>
+    {
+        #[inline]
+        fn as_ref(&self) -> &str
+        {
+            self.0
+        }
+    }
+
     /// Applies the renaming that DEFINES the separating pair — `a b c d` to
     /// `p q r s` — to a rendered type.
     ///
@@ -3224,9 +3247,9 @@ def parser_unit = ();"#;
     /// occurrence inside the body. Renaming only the occurrences leaves the
     /// labels behind and the comparison fails on binder spelling alone, which
     /// is a precondition rather than the claim.
-    fn rename_apart(rendered: &str) -> String
+    fn rename_apart(rendered: RenderedType<'_>) -> String
     {
-        let mut out = String::from(rendered);
+        let mut out = String::from(rendered.as_ref());
         for (from, to) in [("a", "p"), ("b", "q"), ("c", "r"), ("d", "s")] {
             out = out
                 .replace(&format!("Atom(\"{from}\")"), &format!("Atom(\"{to}\")"))
@@ -3237,7 +3260,7 @@ def parser_unit = ();"#;
     /// The elaborated type of the definition `name` bound by `run`, rendered.
     fn definition_type(
         run: &SessionRun,
-        name: &str,
+        name: DefinedName<'_>,
     ) -> String
     {
         run.outcomes
@@ -3248,10 +3271,10 @@ def parser_unit = ();"#;
                     ref ty,
                     bound: true,
                     ..
-                } if bound == name => Some(format!("{ty:?}")),
+                } if bound == name.0 => Some(format!("{ty:?}")),
                 | _ => None,
             })
-            .unwrap_or_else(|| panic!("`{name}` did not bind, so it has no type to compare"))
+            .unwrap_or_else(|| panic!("`{}` did not bind, so it has no type to compare", name.0))
     }
 
     /// The colliding and renamed callers instantiate to the SAME type, which
@@ -3287,9 +3310,9 @@ def parser_unit = ();"#;
     fn colliding_and_renamed_callers_instantiate_to_the_same_type()
     {
         let run = session_run([CAPTURE_COMP, CAPTURE_COLLIDE, CAPTURE_CLEAN]);
-        let collide = definition_type(&run, "collide");
-        let clean = definition_type(&run, "clean");
-        let renamed = rename_apart(&collide);
+        let collide = definition_type(&run, DefinedName("collide"));
+        let clean = definition_type(&run, DefinedName("clean"));
+        let renamed = rename_apart(RenderedType::from(collide.as_str()));
         assert_eq!(
             renamed, clean,
             "the colliding and renamed callers must instantiate to the same type.\n\
