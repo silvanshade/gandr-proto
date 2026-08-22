@@ -1,27 +1,31 @@
 //! Encode a session submission as a presentation transcript.
 //!
-//! The encoder reads the submission's merged verdict stream. It does not parse,
-//! lower, type, or mark. Highlight spans stay empty: this crate consumes
-//! [`HlSpan`] and never produces one.
+//! The encoder reads the submission's merged verdict stream. It does not
+//! lower, type, or mark. It classifies the echoed source through the grammar's
+//! normative highlighter ([`crate::highlight::highlight_source`]) so the
+//! terminal painter has spans to paint; that classification is a read of the
+//! committed CST, not a second parser and not a second role vocabulary.
 
 use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_diagnostics::render_verdict;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
-use gandr_surface_render_remote::present::HlSpan;
 use gandr_surface_render_remote::present::OutKind;
 use gandr_surface_render_remote::present::TranscriptBlock;
 use gandr_surface_syntax::SourceSlice;
 
 /// Encode `submission` of `source` as a transcript block.
 ///
-/// Highlight spans are empty. Semantic tokens come from the language-server
-/// face; this encoder does not invent a second role set.
+/// Highlight spans come from [`crate::highlight::highlight_source`], the same
+/// producer the language-server face reads. This encoder does not invent a
+/// second role set, and it passes the producer's spans through verbatim so
+/// every face over this seam sees one span sequence.
 ///
 /// # Contract
-/// - ensures: the block echoes `source` and one line per merged verdict, in
-///   stream order, with diagnostics using `render_style`.
+/// - ensures: the block echoes `source` with its highlight spans, and one line
+///   per merged verdict, in stream order, with diagnostics using
+///   `render_style`.
 /// - provides: the presentation image every face draws.
 /// - panics: none.
 ///
@@ -31,6 +35,9 @@ use gandr_surface_syntax::SourceSlice;
 /// - witness: `loop::tests::a_value_encodes_as_type_and_value_lines`
 /// - witness: `loop::tests::a_definition_encodes_as_a_type_line`
 /// - witness: `loop::tests::a_hole_encodes_as_a_goal_line`
+/// - hypothesis: L3 — the echoed source arrives classified, so the terminal
+///   painter's styled path is reachable from the shipping loop.
+/// - witness: `loop::tests::a_submission_carries_highlight_spans`
 #[inline]
 #[must_use]
 pub fn encode_submission(
@@ -43,7 +50,11 @@ pub fn encode_submission(
     for verdict in submission.verdicts() {
         encode_verdict(source, verdict, render_style, &mut lines);
     }
-    TranscriptBlock::new(String::from(source.as_ref()), Vec::<HlSpan>::new(), lines)
+    TranscriptBlock::new(
+        String::from(source.as_ref()),
+        crate::highlight::highlight_source(source),
+        lines,
+    )
 }
 
 /// Append the lines one merged verdict contributes.

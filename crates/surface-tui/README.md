@@ -10,15 +10,15 @@ This crate does not parse, lower, type, or mark.
 
 - A full-screen face on `gandr tui`.
 - A smoke face on `gandr tui --smoke` that draws one frame on a test backend and prints a launch note.
+- Syntax highlighting: the transcript pane paints each classified span in its role colour.
 - A `HlRole` style map whose grouping matches the language-server face's `token_of_role`.
-  An empty `source_hl` draws plain text.
-  There is no indicator that highlighting is unwired.
+  The map is read directly; this crate does not depend on the language-server crate and does not speak its integer token legend.
+  Text carrying no classified span draws in the terminal default.
 
 ## Planned but absent
 
-- Report-carried highlight spans.
-  The view styles `HlRole` and does not speak the LSP integer legend.
 - Goal-directed completion.
+- Command history in the terminal face.
 - PTY job panes.
 
 ## Using it

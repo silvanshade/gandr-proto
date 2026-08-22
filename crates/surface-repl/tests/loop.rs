@@ -5,6 +5,7 @@ mod tests
 {
     use gandr_surface_diagnostics::RenderStyle;
     use gandr_surface_parser::CompletionStatus;
+    use gandr_surface_render_remote::present::HlRole;
     use gandr_surface_render_remote::present::OutKind;
     use gandr_surface_repl::LoopEvent;
     use gandr_surface_repl::SessionLoop;
@@ -212,6 +213,72 @@ mod tests
         assert_eq!(i32::from(status), 0_i32, "a value batch completes");
         let text = String::from_utf8(output).expect("transcript is utf-8");
         assert!(text.contains('4'), "the transcript names the value: {text}");
+    }
+
+    /// The transcript block the shipping loop produces carries classified
+    /// spans. Before the highlighter was wired, every block was built with an
+    /// empty span vector unconditionally, so the terminal painter's styled
+    /// path could not be reached from any production caller — a correct
+    /// mechanism whose trigger condition was never met.
+    ///
+    /// This is the separating witness for that wiring: it goes red when the
+    /// encoder stops asking the highlighter, and it names the mechanism it
+    /// asserts, because an empty span set is exactly the ablated behaviour.
+    #[test]
+    fn a_submission_carries_highlight_spans()
+    {
+        let mut session = SessionLoop::new();
+        match session
+            .offer(SourceSlice::from("def one() -> F Integer { ret 1 }"))
+            .expect("submit must run")
+        {
+            | LoopEvent::Submitted(block) => {
+                assert!(
+                    !block.source_hl.is_empty(),
+                    "the echoed source arrives classified: {block:?}"
+                );
+                assert!(
+                    block
+                        .source_hl
+                        .iter()
+                        .any(|span| span.role == HlRole::Keyword),
+                    "the def keyword is classified as a keyword: {:?}",
+                    block.source_hl
+                );
+            },
+            | other => panic!("a complete def submits: {other:?}"),
+        }
+    }
+
+    /// The spans reaching the transcript are sorted and pairwise disjoint.
+    ///
+    /// The producing crate states this in its contract and witnesses it
+    /// nowhere, and a witness written inside the producer's own picture could
+    /// not refute the producer. This asserts it from the consuming side: a
+    /// violation is a silently dropped span in the terminal painter and an
+    /// LSP protocol violation on the sibling face.
+    #[test]
+    fn transcript_spans_are_sorted_and_disjoint()
+    {
+        let mut session = SessionLoop::new();
+        match session
+            .offer(SourceSlice::from("def one() -> F Integer { ret 1 }"))
+            .expect("submit must run")
+        {
+            | LoopEvent::Submitted(block) => {
+                assert!(!block.source_hl.is_empty(), "the fixture classifies");
+                let mut cursor = 0_usize;
+                for span in &block.source_hl {
+                    assert!(
+                        usize::from(span.range.start) >= cursor,
+                        "sorted and disjoint at {span:?}, cursor {cursor}: {:?}",
+                        block.source_hl
+                    );
+                    cursor = usize::from(span.range.end);
+                }
+            },
+            | other => panic!("a complete def submits: {other:?}"),
+        }
     }
 
     #[test]

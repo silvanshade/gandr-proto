@@ -7,20 +7,21 @@ On submit the validator asks the parser whether the buffer is parse-complete.
 Holes are typeable, so a hole is not incompleteness.
 A complete buffer is handed to `Session::submit`, which already carries typed context across lines through its checkpoint set.
 This crate encodes the resulting report and outcomes into a transcript.
-It does not parse, lower, type, or mark.
+It implements no parser, lowering, typing, or marker of its own; it invokes the landed parser for parse-completeness and for highlight classification, as the language-server face does.
 
 ## Current provision
 
 - Parse-completeness via the parser's public `expected` query.
 - Session submit and transcript encoding for definitions, expressions, located `annotate-snippets` diagnostics with stable codes, and goals.
+- Highlight spans over the echoed source, taken verbatim from the grammar's normative highlighter, so every face over this seam sees one span sequence.
 - A batch face over standard input for non-interactive transcripts.
 - An interactive face on a line editor for a terminal.
 
 ## Planned but absent
 
 - Goal-directed completion (a synthetic hole at the cursor).
-- Highlight spans: this crate consumes `HlSpan` and does not produce one.
-  Semantic tokens come from the language-server face.
+- A presentation printer for types and values.
+  Transcript type and value lines carry the debug rendering of the checked term.
 - Persistent content-addressed history.
   The interactive face keeps history in memory.
 
