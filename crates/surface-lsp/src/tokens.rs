@@ -298,7 +298,9 @@ mod tests
     use gandr_surface_render_remote::present::HlSpan;
     use gandr_surface_render_remote::present::SourceText;
 
+    use super::TOKEN_MODIFIERS;
     use super::TOKEN_TYPES;
+    use super::TokenModifierSet;
     use super::encode;
     use super::token_of_role;
     use crate::position::LineIndex;
@@ -346,6 +348,142 @@ mod tests
                 modifiers.0
             );
         }
+        assert_eq!(None, token_of_role(HlRole::Other));
+    }
+
+    /// The LSP standard token type and modifiers each highlight role *means*,
+    /// stated independently of [`TOKEN_TYPES`]'s index order and of the numeric
+    /// literals [`token_of_role`] returns.
+    ///
+    /// This is deliberately a second statement of the same contract rather than
+    /// a derivation from either side. The legend is a wire contract: a client
+    /// indexes into it by integer, so the pair (index a role emits, string that
+    /// index names) is the thing a client observes, and neither
+    /// [`TOKEN_TYPES`] nor [`token_of_role`] states it alone.
+    ///
+    /// Exhaustiveness is compiler-enforced: adding an [`HlRole`] variant fails
+    /// to compile here until its LSP meaning is stated.
+    fn lsp_meaning_of_role(role: HlRole) -> Option<(LegendName, &'static [ModifierName])>
+    {
+        const DECLARED: &[ModifierName] = &[ModifierName("declaration")];
+        const BUILTIN: &[ModifierName] = &[ModifierName("defaultLibrary")];
+        const PLAIN: &[ModifierName] = &[];
+        match role {
+            | HlRole::Keyword | HlRole::Boolean => Some((LegendName("keyword"), PLAIN)),
+            | HlRole::Operator => Some((LegendName("operator"), PLAIN)),
+            | HlRole::FunctionDef => Some((LegendName("function"), DECLARED)),
+            | HlRole::FunctionCall => Some((LegendName("function"), PLAIN)),
+            | HlRole::VariableDef => Some((LegendName("variable"), DECLARED)),
+            | HlRole::Variable => Some((LegendName("variable"), PLAIN)),
+            | HlRole::VariableParam => Some((LegendName("parameter"), PLAIN)),
+            | HlRole::Member => Some((LegendName("property"), PLAIN)),
+            | HlRole::Constructor => Some((LegendName("enumMember"), PLAIN)),
+            | HlRole::Type => Some((LegendName("type"), PLAIN)),
+            | HlRole::TypeBuiltin => Some((LegendName("type"), BUILTIN)),
+            | HlRole::TypeVariable => Some((LegendName("typeParameter"), PLAIN)),
+            | HlRole::Number => Some((LegendName("number"), PLAIN)),
+            | HlRole::StringLit | HlRole::Character | HlRole::Escape | HlRole::Path => {
+                Some((LegendName("string"), PLAIN))
+            },
+            | HlRole::Comment => Some((LegendName("comment"), PLAIN)),
+            | HlRole::Hole | HlRole::Directive => Some((LegendName("macro"), PLAIN)),
+            | HlRole::Label => Some((LegendName("label"), PLAIN)),
+            | HlRole::Other => None,
+        }
+    }
+
+    /// An LSP standard token-type name as it appears in the advertised legend.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct LegendName(&'static str);
+
+    /// A modifier name as it appears in [`TOKEN_MODIFIERS`].
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct ModifierName(&'static str);
+
+    /// Modifier names a bitset selects out of [`TOKEN_MODIFIERS`], in bit
+    /// order.
+    fn modifier_names(bits: TokenModifierSet) -> Vec<ModifierName>
+    {
+        let mut names = Vec::new();
+        for (bit, name) in TOKEN_MODIFIERS.iter().enumerate() {
+            let Ok(shift) = u32::try_from(bit)
+            else {
+                continue;
+            };
+            if bits.0 & (1_u32 << shift) != 0 {
+                names.push(ModifierName(name));
+            }
+        }
+        names
+    }
+
+    /// The index a role emits must name that role's meaning in the legend.
+    ///
+    /// Ablation (2026-08-22): swapping the `number` and `string` entries of
+    /// [`TOKEN_TYPES`] leaves every other witness in this crate, the
+    /// `capabilities` integration witness, and the driver's smoke witness green
+    /// while the server advertises every numeric literal as a string. The
+    /// ablation was verified to reach the shipping artifact — `gandr lsp
+    /// --capabilities` printed the permuted legend — so the green was a gap in
+    /// the witness set rather than an ineffective ablation. This test is the
+    /// assertion that gap owed; it goes red under exactly that permutation.
+    #[test]
+    fn the_legend_index_a_role_emits_names_what_that_role_means()
+    {
+        let roles = [
+            HlRole::Keyword,
+            HlRole::Operator,
+            HlRole::FunctionDef,
+            HlRole::FunctionCall,
+            HlRole::VariableDef,
+            HlRole::VariableParam,
+            HlRole::Member,
+            HlRole::Variable,
+            HlRole::Constructor,
+            HlRole::Type,
+            HlRole::TypeBuiltin,
+            HlRole::TypeVariable,
+            HlRole::Number,
+            HlRole::Boolean,
+            HlRole::Character,
+            HlRole::StringLit,
+            HlRole::Escape,
+            HlRole::Comment,
+            HlRole::Hole,
+            HlRole::Label,
+            HlRole::Path,
+            HlRole::Directive,
+        ];
+        for role in roles {
+            let Some((expected_type, expected_modifiers)) = lsp_meaning_of_role(role)
+            else {
+                panic!("{role:?} is classified, so it must have an LSP meaning");
+            };
+            let (index, modifiers) =
+                token_of_role(role).unwrap_or_else(|| panic!("{role:?} must map"));
+            let slot = usize::try_from(index.0).unwrap_or(usize::MAX);
+            let named = LegendName(
+                TOKEN_TYPES
+                    .get(slot)
+                    .copied()
+                    .unwrap_or_else(|| panic!("{role:?} index {} is outside the legend", index.0)),
+            );
+            assert_eq!(
+                expected_type, named,
+                "{role:?} emits legend index {}, which names {} rather than {}: a client \
+                 would render it as {}",
+                index.0, named.0, expected_type.0, named.0
+            );
+            assert_eq!(
+                expected_modifiers.to_vec(),
+                modifier_names(modifiers),
+                "{role:?} modifier bitset {:#b} does not name {expected_modifiers:?}",
+                modifiers.0
+            );
+        }
+        assert_eq!(None, lsp_meaning_of_role(HlRole::Other));
         assert_eq!(None, token_of_role(HlRole::Other));
     }
 

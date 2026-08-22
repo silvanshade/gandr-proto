@@ -589,10 +589,34 @@ mod tests
                 u32::from(serde_json::from_value::<TokenUnit>(value.clone()).expect("unit"))
             })
             .collect();
+        // The WHOLE stream, not just its first token. `def f = 42;` classifies
+        // three things, and asserting only the keyword left the other two
+        // unwitnessed while they sat in `units` already decoded.
+        //
+        // What this assertion does and does not separate, measured by ablation
+        // (2026-08-22) rather than argued. It covers the ENCODER: which role
+        // reaches which legend index, at which position, with which modifiers.
+        // Dropping the `declaration` modifier from `HlRole::VariableDef` turns
+        // it red on the second token — a token the previous first-five-integers
+        // form could not have seen at all.
+        //
+        // It does NOT cover the legend's MEANING, and cannot: permuting the
+        // `number` and `string` entries of `TOKEN_TYPES` leaves this stream
+        // byte-identical, because a number still emits index 9 and only what
+        // index 9 *names* has changed. That contract is a different claim with
+        // its own witness — `tokens::tests::the_legend_index_a_role_emits_
+        // names_what_that_role_means`, which is the one that goes red there.
         assert_eq!(
-            [0_u32, 0_u32, 3_u32, 0_u32, 0_u32],
-            units[0 .. 5],
-            "the first token is `def` as a keyword at line 0 column 0"
+            [
+                // `def`, a keyword, line 0 column 0, no modifiers.
+                0_u32, 0_u32, 3_u32, 0_u32, 0_u32,
+                // `f`, a variable declaration, four columns on.
+                0_u32, 4_u32, 1_u32, 3_u32, 1_u32,
+                // `42`, a number, four further columns on, no modifiers.
+                0_u32, 4_u32, 2_u32, 9_u32, 0_u32,
+            ],
+            units.as_slice(),
+            "the token stream for `def f = 42;` is keyword, declared variable, number"
         );
         let hover = server.handle_payload(FramePayload::from(
             br#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#.as_slice(),
