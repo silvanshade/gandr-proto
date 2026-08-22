@@ -55,6 +55,8 @@
 //! | `expect-last-value` | rendered value | the last expression item returns this value |
 //! | `expect-def` | name | a definition of `name` entered scope |
 //! | `expect-type-without-unknown` | name | the definition of `name` elaborated to a type mentioning no gradual unknown |
+//! | `expect-member` | dotted path | a module component at `Outer.inner.name` is present in the module's elaborated signature |
+//! | `expect-member-type-without-unknown` | dotted path | the component at that path elaborated to a type mentioning no gradual unknown |
 //! | `expect-kernel-admitted` | name | the definition of `name` crossed the certified kernel's choke point |
 //! | `expect-kernel-outside-s1` | name | the definition of `name` has no image in the kernel's closed S1 vocabulary |
 //! | `expect-diagnostic` | substring | some diagnostic message contains it |
@@ -335,6 +337,52 @@ pub enum Expect
         /// The defined name.
         String,
     ),
+    /// `expect-member: Outer.inner.name` — the module component at that dotted
+    /// path is present in the enclosing module's elaborated type.
+    ///
+    /// # Why the vocabulary needed a member-level form
+    ///
+    /// [`Expect::Def`] resolves against **top-level submission items** only. A
+    /// program whose claim lives inside a module — the higher-cells flagship's
+    /// law fields are the motivating case — therefore had no way to state that
+    /// claim: `expect-def` on a member passed only while a parse defect leaked
+    /// module members to top level, so it witnessed the leak rather than the
+    /// source, and the landed module examples assert members indirectly through
+    /// an expression that consumes them. Consumption is a weaker witness: it
+    /// says a value came out, never that the component elaborated at the type
+    /// its signature gave it. `gandr-f8yr`.
+    ///
+    /// # What resolves the path
+    ///
+    /// The head segment names a **bound top-level definition**; every later
+    /// segment names a field of the record type the preceding segment
+    /// elaborated to. A module lowers to a record with signature ascription
+    /// (`Lowerer::module_declaration`), and nested modules are ordinary
+    /// components of the enclosing record, so one dotted walk reaches every
+    /// depth with no special case for nesting.
+    Member(
+        /// The dotted component path, as written.
+        String,
+    ),
+    /// `expect-member-type-without-unknown: Outer.inner.name` — the component
+    /// at that dotted path elaborated to a type mentioning no gradual unknown.
+    ///
+    /// The member-level counterpart of [`Expect::TypeWithoutUnknown`], and the
+    /// reason it is a separate directive rather than a flag: a law field whose
+    /// carrier or endpoints degraded to `Unknown` is **inhabited trivially**
+    /// rather than proved, because the unknown is consistent with everything.
+    /// A flagship claim standing on such a field demonstrates nothing, which is
+    /// exactly the failure `gandr-it68` records against the coproduct program.
+    /// So the corpus must be able to say, per member, that the claim path is
+    /// unknown-free.
+    ///
+    /// Implies [`Expect::Member`]: an absent component fails this directive
+    /// too, because a member that does not exist has no type to be honest
+    /// about.
+    MemberTypeWithoutUnknown(
+        /// The dotted component path, as written.
+        String,
+    ),
     /// `expect-diagnostic: s` — some diagnostic message contains `s`.
     Diagnostic(
         /// The required message substring.
@@ -602,6 +650,10 @@ where
             | "expect-def" => expects.push(Expect::Def(value.to_owned())),
             | "expect-type-without-unknown" => {
                 expects.push(Expect::TypeWithoutUnknown(value.to_owned()));
+            },
+            | "expect-member" => expects.push(Expect::Member(value.to_owned())),
+            | "expect-member-type-without-unknown" => {
+                expects.push(Expect::MemberTypeWithoutUnknown(value.to_owned()));
             },
             | "expect-kernel-admitted" => {
                 expects.push(Expect::KernelAdmitted(value.to_owned()));
@@ -880,6 +932,12 @@ fn session_failure(
                 )),
             }
         },
+        | Expect::Member(ref path) => {
+            member_failure(run, MemberPath(path), UnknownScrutiny::Absent)
+        },
+        | Expect::MemberTypeWithoutUnknown(ref path) => {
+            member_failure(run, MemberPath(path), UnknownScrutiny::Required)
+        },
         | Expect::KernelAdmitted(ref name) => {
             kernel_verdict_failure(run, DefinedName(name), KernelExpectation::Admitted)
         },
@@ -976,6 +1034,59 @@ fn session_failure(
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct DefinedName<'name>(&'name str);
+
+/// A dotted module-component path an expectation names, exactly as written.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct MemberPath<'path>(&'path str);
+
+/// How hard a member expectation looks at the component's type.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum UnknownScrutiny
+{
+    /// Presence only: the component resolves.
+    Absent,
+    /// Presence, and the resolved type mentions no gradual unknown.
+    Required,
+}
+
+/// The failure message for a member expectation, or [`None`] when it holds.
+///
+/// # Contract
+/// - requires: `path` is a non-empty dotted path whose head names a top-level
+///   item of `run`.
+/// - ensures: the head segment resolves against a **bound**
+///   [`ItemOutcome::Definition`], and each later segment against a field of the
+///   record type the preceding segment resolved to; a module lowers to a record
+///   with signature ascription, so nesting needs no separate case.
+/// - ensures: under [`UnknownScrutiny::Required`] a resolved component whose
+///   type mentions a gradual unknown fails, and the message says why an
+///   unknown-bearing type makes an acceptance worthless rather than merely
+///   naming the type.
+/// - fails: a message naming the first segment that did not resolve, the type
+///   it was resolved against, and the components that type does carry — a
+///   member expectation that fails is usually a spelling or a signature that
+///   dropped the component, and both are told apart by seeing the neighbours.
+/// - panics: never.
+///
+/// # Adequacy
+/// - hypothesis: one dotted walk over record types reaches every module
+///   component at every depth, so the directive needs no module-stratum access.
+/// - mutants: resolve only the head; ignore `bound`; report presence without
+///   checking the unknown scrutiny; walk the record fields of the *first*
+///   segment for every later segment.
+/// - witnesses: `a_member_expectation_resolves_a_nested_module_component`,
+///   `a_member_expectation_names_the_segment_that_did_not_resolve`,
+///   `a_member_whose_type_carries_an_unknown_fails_the_scrutiny`, and
+///   `a_member_expectation_does_not_resolve_an_unbound_definition`.
+fn member_failure(
+    _run: &SessionRun,
+    _path: MemberPath<'_>,
+    _scrutiny: UnknownScrutiny,
+) -> Option<String>
+{
+    todo!("gandr-f8yr: resolve the dotted component path and apply the scrutiny")
+}
 
 /// Which side of the kernel's admission boundary an expectation names.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2586,6 +2697,56 @@ def parser_unit = ();"#;
             kernel: Vec::new(),
         };
         assert_fail(clean_failure(&synthetic), "holey");
+    }
+
+    /// A component nested two modules deep resolves through one dotted walk,
+    /// because a nested module is an ordinary record component of its parent.
+    ///
+    /// The claim under test is the walk, not the module layer: if this needed a
+    /// module-stratum lookup rather than a record-field lookup, the directive
+    /// would be resolving a name the type does not carry, and a signature that
+    /// dropped the component would still report it present.
+    #[test]
+    fn a_member_expectation_resolves_a_nested_module_component()
+    {
+        todo!("gandr-f8yr")
+    }
+
+    /// A path that stops resolving names **which** segment stopped, the type it
+    /// was resolved against, and that type's actual components.
+    ///
+    /// A member expectation fails for two reasons that look identical from the
+    /// outside — the path is misspelled, or the signature dropped the component
+    /// — and only the neighbour list tells them apart.
+    #[test]
+    fn a_member_expectation_names_the_segment_that_did_not_resolve()
+    {
+        todo!("gandr-f8yr")
+    }
+
+    /// A component whose type mentions a gradual unknown fails the scrutiny
+    /// even though the component is present.
+    ///
+    /// This is the directive's whole reason for existing: the unknown is
+    /// consistent with everything, so a law field carrying one is inhabited
+    /// trivially rather than proved, and a flagship claim resting on it
+    /// demonstrates nothing (`gandr-it68`).
+    #[test]
+    fn a_member_whose_type_carries_an_unknown_fails_the_scrutiny()
+    {
+        todo!("gandr-f8yr")
+    }
+
+    /// An item reported as a definition but **not bound** does not satisfy a
+    /// member expectation at its head segment.
+    ///
+    /// A bare-computation-typed definition is reported and not bound; treating
+    /// it as a resolvable head would let an expectation walk into a scope the
+    /// program never entered.
+    #[test]
+    fn a_member_expectation_does_not_resolve_an_unbound_definition()
+    {
+        todo!("gandr-f8yr")
     }
 
     #[test]
