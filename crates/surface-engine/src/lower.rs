@@ -8471,6 +8471,9 @@ fn binary_operator(node: SynNode<'_>) -> LowerResult<(SynNode<'_>, OperatorText<
 }
 
 #[cfg(test)]
+mod unknown_audit;
+
+#[cfg(test)]
 mod tests
 {
     use super::*;
