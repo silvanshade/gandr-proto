@@ -3201,13 +3201,20 @@ def parser_unit = ();"#;
     }
 
     /// The callee whose dependent signature instantiation must not capture.
-    const CAPTURE_COMP: &str = "def comp(a : Type, b : Type, c : Type, f : U[\u{3c9}] (a -> F b), g : U[\u{3c9}] (b -> F c), x : a) -> F c {\n  run y <- f(x);\n  g(y)\n}";
+    const CAPTURE_COMP: &str = r"def comp(a : Type, b : Type, c : Type, f : U[ω] (a -> F b), g : U[ω] (b -> F c), x : a) -> F c {
+  run y <- f(x);
+  g(y)
+}";
 
     /// The caller whose own binders collide with the callee's.
-    const CAPTURE_COLLIDE: &str = "def collide(a : Type, b : Type, c : Type, d : Type, u : U[\u{3c9}] (a -> F c), h : U[\u{3c9}] (c -> F d)) -> F (U[\u{3c9}] (a -> F d)) {\n  ret thunk { comp(a, c, d, u, h) }\n}";
+    const CAPTURE_COLLIDE: &str = r"def collide(a : Type, b : Type, c : Type, d : Type, u : U[ω] (a -> F c), h : U[ω] (c -> F d)) -> F (U[ω] (a -> F d)) {
+  ret thunk { comp(a, c, d, u, h) }
+}";
 
     /// The same caller with every binder renamed apart from the callee's.
-    const CAPTURE_CLEAN: &str = "def clean(p : Type, q : Type, r : Type, s : Type, u : U[\u{3c9}] (p -> F r), h : U[\u{3c9}] (r -> F s)) -> F (U[\u{3c9}] (p -> F s)) {\n  ret thunk { comp(p, r, s, u, h) }\n}";
+    const CAPTURE_CLEAN: &str = r"def clean(p : Type, q : Type, r : Type, s : Type, u : U[ω] (p -> F r), h : U[ω] (r -> F s)) -> F (U[ω] (p -> F s)) {
+  ret thunk { comp(p, r, s, u, h) }
+}";
 
     /// Applies the renaming that DEFINES the separating pair — `a b c d` to
     /// `p q r s` — to a rendered type.
