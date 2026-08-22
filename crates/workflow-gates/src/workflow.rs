@@ -56,6 +56,7 @@ struct CommandOutputBytes(Vec<u8>);
 const MERGE_TASKS: &[Task] = &[
     Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
+    Task::new(NameText("test:dep-graph")),
     Task::new(NameText("cargo:embedded-syntax")),
     Task::new(NameText("cargo:build")),
     Task::new(NameText("cargo:clippy")),
@@ -79,6 +80,7 @@ const MERGE_TASKS: &[Task] = &[
 const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
+    Task::new(NameText("test:dep-graph")),
     Task::new(NameText("cargo:embedded-syntax")),
     Task::new(NameText("cargo:build")),
     Task::new(NameText("cargo:clippy")),
@@ -95,7 +97,6 @@ const PUSH_TASKS: &[Task] = &[
     Task::new(NameText("test:doc-gates")),
     Task::new(NameText("test:page-balance")),
     Task::new(NameText("test:graph-gates")),
-    // Task::new(NameText("test:dep-graph")),
     // coverage:check stays out of the push tier while the failed-refactor
     // remediation leaves rewritten crates below their recorded floors; the
     // coverage restoration pass re-enables it.
@@ -1779,6 +1780,7 @@ mod tests
             &[
                 "toolchain:pin-check",
                 "docs:conflict-markers",
+                "test:dep-graph",
                 "cargo:embedded-syntax",
                 "cargo:build",
                 "cargo:clippy",
@@ -1800,6 +1802,7 @@ mod tests
             &[
                 "toolchain:pin-check",
                 "docs:conflict-markers",
+                "test:dep-graph",
                 "cargo:embedded-syntax",
                 "cargo:build",
                 "cargo:clippy",
@@ -1816,7 +1819,6 @@ mod tests
                 "test:doc-gates",
                 "test:page-balance",
                 "test:graph-gates",
-                // "test:dep-graph",
                 // Disabled while the failed-refactor coverage remediation is pending.
                 // "coverage:check",
                 "cargo:no-panic",

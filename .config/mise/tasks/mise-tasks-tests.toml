@@ -16,11 +16,11 @@ run = """
 cargo nextest run -p gandr-workflow-gates
 """
 
-# ["test:dep-graph"]
-# description = "Assert the default -e normal,build workspace graph stays tree-sitter-free (dependency gate)"
-# run = """
-# cargo run --quiet -p gandr-workflow-gates -- default-graph --workspace-root .
-# """
+["test:dep-graph"]
+description = "Assert no tree-sitter package can enter the default normal,build workspace graph, making the owner retirement enforceable"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- default-graph --workspace-root .
+"""
 
 # SCAFFOLD, gandr-swqz: the companion to cargo:doc-check, which reads library
 # targets and nothing else.
@@ -116,12 +116,3 @@ description = "Verify every free-generator coherence oracle in the conformance s
 run = """
 cargo run --quiet -p gandr-workflow-gates -- soundness-oracles --workspace-root .
 """
-
-# Parked: the tree-sitter reference crate is not in the repo yet (it returns as
-# crates/tree-sitter with the surface-grammar/tree-sitter port; the path below is
-# pre-retargeted to that name); restore this task with it.
-# ["test:tree-sitter-ref"]
-# description = "Run the excluded tree-sitter reference-crate tests (its own independent workspace, kept in the gate wall though --workspace no longer sees them)"
-# run = """
-# cargo nextest run --all-targets --manifest-path crates/tree-sitter/Cargo.toml
-# """
