@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/dependent-instantiation-capture-accepts.gandr
+; source-b3sum: 1e03a084ea1582870a473f3394303ecf8b88369e05a10a415cc7b31edf271a69
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y")))))))))))
+Ret(Thunk(Omega, Abs("a", None, Abs("b", None, Abs("c", None, Abs("d", None, Abs("u", None, Abs("h", None, Ret(Thunk(Omega, App(App(App(App(App(Force(Var("comp")), Var("a")), Var("c")), Var("d")), Var("u")), Var("h"))))))))))))
