@@ -1536,6 +1536,90 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             );
         }
 
+        /// A kinded component `type Ob : Type` elaborates as an **abstract**
+        /// type member rather than declining.
+        ///
+        /// This is the nullary end of the indexed sort. It is not the bare
+        /// `type Ob`: a bare component states no kind at all and belongs to
+        /// sealing, while a kinded one states its arity and its result
+        /// classifier, so the two decline and elaborate for different reasons
+        /// and must not be collapsed.
+        #[test]
+        fn a_kinded_type_component_declares_an_abstract_member()
+        {
+            todo!("gandr-wvd.6.2")
+        }
+
+        /// A kinded component whose kind is an arrow spine declares a
+        /// **family** of the spine's arity: `type Hom : Ob -> Ob ->
+        /// Type` is arity two.
+        ///
+        /// The staged higher-cells design spells `Model(CatShape)`'s indexed
+        /// sort exactly this way, so this is the form the flagship signature
+        /// stands on. Reading the spine as a single function type instead would
+        /// bind `Hom` to a type its source does not state, which is the one
+        /// thing degradation may never do.
+        #[test]
+        fn a_kinded_type_component_spine_declares_its_arity()
+        {
+            todo!("gandr-wvd.6.2")
+        }
+
+        /// A parameterized manifest component `type Hom(a : Ob, b : Ob) = τ`
+        /// elaborates, and its two-parameter spelling parses.
+        ///
+        /// The two-parameter case is the separating one: a member splitter that
+        /// does not track bracket depth cuts the binder list at its own comma,
+        /// and the failure surfaces as a syntax error at the component's
+        /// *name*, which points at the wrong thing entirely.
+        #[test]
+        fn a_manifest_family_component_binds_two_parameters()
+        {
+            todo!("gandr-wvd.6.2")
+        }
+
+        /// An occurrence `Hom(x, y)` of a manifest family expands to the body
+        /// with the arguments substituted, and the expansion beats an ambient
+        /// datatype of the same name.
+        ///
+        /// The precedence is the same one the nullary manifest component
+        /// already has and it is load-bearing for the same reason: a signature
+        /// component that an enclosing declaration could capture is not a
+        /// component of that signature.
+        #[test]
+        fn a_manifest_family_occurrence_expands_before_the_ambient_resolver()
+        {
+            todo!("gandr-wvd.6.2")
+        }
+
+        /// A manifest family named with no arguments, and a nullary manifest
+        /// component applied to arguments, are both refused by name.
+        ///
+        /// Neither may fall through to the ambient resolver. Falling through
+        /// would bind the signature's own component name to an ambient atom, so
+        /// the signature would elaborate to a type it does not state —
+        /// silently, and with no unknown to find afterwards.
+        #[test]
+        fn a_type_component_arity_mismatch_is_refused_by_name()
+        {
+            todo!("gandr-wvd.6.2")
+        }
+
+        /// The flagship shape, end to end at the lowering layer: a signature
+        /// carrying `type Ob : Type` and `type Hom : Ob -> Ob -> Type` beside
+        /// the five `Model(CatShape)` value members elaborates, and no member's
+        /// type carries a gradual unknown.
+        ///
+        /// The unknown check is part of the claim rather than a separate
+        /// hygiene test: a field elaborated at a type mentioning an unknown is
+        /// consistent with everything, so a signature carrying one states less
+        /// than it appears to.
+        #[test]
+        fn the_cat_shape_model_signature_elaborates_without_an_unknown()
+        {
+            todo!("gandr-0ika")
+        }
+
         /// Nesting is a property of the source, not of the lowerer: modules
         /// lower and register at every depth, with each component reachable by
         /// its own path.

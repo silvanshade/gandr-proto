@@ -411,6 +411,22 @@ fn module_signature() -> Regex
 /// The kind is an ordinary type, because that is what a kind looks like in this
 /// grammar: an arrow spine ending in `Type`. Reusing `Sort::Type` for it costs
 /// no new production and keeps one parser for one syntax.
+///
+/// **A type component may bind parameters**, reusing [`head_params`] verbatim
+/// so a family's binder list is spelled exactly as a `data` head spells one:
+/// `type Hom(a : Ob, b : Ob) = U[ω] (a -> F b)`. That is the *manifest* family
+/// — the form an instance supplies a kinded component with — and it is a
+/// declaration rather than a type-level lambda, which is why it needs no
+/// expression-level binder and no new sort. Without it the kinded component
+/// declares a family nothing can satisfy: a signature could state `type Hom :
+/// Ob → Ob → Type` and no module could ever match it, because every way of
+/// writing the answer down is a type-level function the grammar has no term
+/// for.
+///
+/// The parameter list is where the comma matters. A member list is split on
+/// commas, so a parameter list carrying its own commas must be respected by
+/// whatever does the splitting; `type Hom(a : Ob, b : Ob) = τ` parses here and
+/// is the case a depth-blind splitter silently cuts in half. `gandr-wvd.6.2`.
 fn module_signature_field() -> Regex
 {
     alt([
@@ -418,6 +434,7 @@ fn module_signature_field() -> Regex
         seq([
             t(TileLabel("type")),
             t(TileLabel("type_identifier")),
+            opt(head_params()),
             opt(alt([
                 seq([t(TileLabel("=")), h(Sort::Type)]),
                 seq([t(TileLabel(":")), h(Sort::Type)]),

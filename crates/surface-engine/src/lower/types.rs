@@ -104,16 +104,109 @@ pub fn lower_value_ty(
 /// what makes the expansion **manifest rather than ambient**: an enclosing
 /// datatype also called `T` cannot capture the component, because the name
 /// never reaches the ambient resolver at all.
-pub type ManifestTypes<'manifest> = &'manifest dyn Fn(TypeName<'_>) -> Option<ValueType>;
+pub type ManifestTypes<'manifest> = &'manifest dyn Fn(TypeName<'_>) -> Option<ManifestAnswer>;
 
 /// The manifest environment everywhere outside a module signature: no
 /// component is in scope, so every type name resolves ambiently as it always
 /// did.
 #[inline]
 #[must_use]
-pub fn no_manifest_types(_name: TypeName<'_>) -> Option<ValueType>
+pub fn no_manifest_types(_name: TypeName<'_>) -> Option<ManifestAnswer>
 {
     None
+}
+
+/// One parameter of a type component's binder list — `a : Ob` in `type Hom(a :
+/// Ob, b : Ob) = τ`.
+///
+/// The binder list is spelled exactly as a `data` head spells one, and lowers
+/// the same way, because a manifest family **is** a declaration rather than a
+/// type-level lambda. That is the whole reason the surface needs no new binder
+/// form to satisfy a kinded component.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeParameter
+{
+    /// The binder's name, in scope in the component's body.
+    pub name: String,
+    /// The type the binder ranges over, already elaborated.
+    pub ty: ValueType,
+}
+
+/// A **manifest type family** component `type T(x : A, …) = τ`, elaborated
+/// once where the signature is written.
+///
+/// The body is elaborated with each parameter standing as a type atom of its
+/// own name, and an application substitutes the argument types for those atoms.
+/// Elaborating once and substituting — rather than re-lowering the body per
+/// application — is what makes the expansion independent of where it is
+/// applied, which is the same property the nullary manifest component already
+/// has.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ManifestFamily
+{
+    /// The bound parameters, in declaration order.
+    pub params: Vec<TypeParameter>,
+    /// The body, elaborated with the parameters standing as atoms.
+    pub body: ValueType,
+}
+
+/// What a manifest environment answers a type name with.
+///
+/// The two cases are separated in the *answer* rather than in two environments
+/// because the two consumption sites are exactly the two spellings — a bare
+/// name and an application — and each one has a wrong answer that must become a
+/// diagnostic rather than a silent success. A family named without arguments is
+/// under-applied; a nullary component applied to arguments is over-applied. A
+/// single environment returning a bare type could report neither: it would
+/// answer the bare-name site and fall through the application site to the
+/// ambient resolver, where the name is not declared, and the component would
+/// read as an unknown atom.
+#[allow(
+    dead_code,
+    reason = "gandr-wvd.6.2 scaffold: the family case is constructed by the manifest-family               elaboration that lands with this rung's bodies"
+)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ManifestAnswer
+{
+    /// A nullary manifest component `type T = τ`.
+    Type(ValueType),
+    /// A manifest family component `type T(x : A, …) = τ`.
+    Family(ManifestFamily),
+}
+
+/// Instantiate a manifest family at `arguments`.
+///
+/// # Contract
+/// - requires: `arguments` are already-elaborated value types, in the order the
+///   application wrote them.
+/// - ensures: the result is `family.body` with each parameter's standing atom
+///   replaced by the matching argument, simultaneously rather than in sequence,
+///   so a parameter whose argument mentions a later parameter's name is not
+///   captured.
+/// - fails: [`LowerError::ManifestFamilyArity`] when the argument count differs
+///   from the parameter count; nothing else can fail, because the body was
+///   elaborated when the component was written.
+/// - panics: never.
+///
+/// # Adequacy
+/// - hypothesis: simultaneous atom substitution over an already-elaborated body
+///   realizes application without a type-level binder in the core.
+/// - mutants: substitute sequentially; ignore surplus arguments; substitute the
+///   parameter *types* rather than the standing atoms.
+/// - witnesses: `a_manifest_family_expands_at_its_arguments`,
+///   `a_manifest_family_refuses_a_wrong_argument_count`, and
+///   `a_manifest_family_expansion_does_not_capture_a_later_parameter`.
+#[allow(
+    dead_code,
+    reason = "gandr-wvd.6.2 scaffold: called by the type-application expansion that lands with               this rung's bodies"
+)]
+pub fn instantiate_manifest_family(
+    _family: &ManifestFamily,
+    _arguments: Vec<ValueType>,
+    _byte_range: crate::boundary::SourceRange,
+) -> LowerResult<ValueType>
+{
+    todo!("gandr-wvd.6.2: simultaneous atom substitution over the elaborated body")
 }
 
 /// Lowers a primitive type name.
@@ -446,12 +539,21 @@ fn lower_type_tree(
                             // The manifest environment answers first, so a
                             // signature's `type T = τ` expands to `τ` even where
                             // an ambient datatype of the same name exists.
-                            Ty::Value(manifest(TypeName(name.0)).unwrap_or_else(|| {
-                                resolve(name.0).map_or_else(
+                            match manifest(TypeName(name.0)) {
+                                | Some(ManifestAnswer::Type(expanded)) => Ty::Value(expanded),
+                                // A family named with no arguments is
+                                // under-applied. Falling through to the ambient
+                                // resolver here would bind the component's name
+                                // to an atom, which is a type the signature does
+                                // not state.
+                                | Some(ManifestAnswer::Family(_)) => {
+                                    todo!("gandr-wvd.6.2: LowerError::ManifestFamilyUnapplied")
+                                },
+                                | None => Ty::Value(resolve(name.0).map_or_else(
                                     || ValueType::atom(name.0),
                                     |id| ValueType::data(id, Vec::new()),
-                                )
-                            }))
+                                )),
+                            }
                         }));
                     },
                     // The identity type in a type position, whose two
@@ -596,6 +698,7 @@ fn lower_type_tree(
                             source,
                             node,
                             resolve,
+                            manifest,
                             &mut pending,
                             &mut results,
                         );
@@ -623,10 +726,34 @@ fn lower_type_tree(
 }
 
 /// Schedules one type application or emits its immediate error.
+///
+/// # The manifest environment answers before the ambient one, here too
+///
+/// A signature's `type Hom(a : Ob, b : Ob) = τ` is in scope over the components
+/// that follow it, and `Hom(x, y)` there means that component rather than any
+/// ambient declaration of the same name — the same precedence the bare-name
+/// site already gives a nullary manifest component, for the same reason: an
+/// enclosing datatype must not capture a signature component.
+///
+/// The head therefore resolves in three steps, and the order is the contract:
+/// the manifest environment, then the declared-data resolver, then the reserved
+/// names `List` and `Path`. A manifest **family** expands at its arguments; a
+/// manifest **nullary** component applied to arguments is over-applied and is a
+/// diagnostic rather than a fallthrough.
+///
+/// # The declaration-directed rule this shares with data indices
+///
+/// `buildout-standing-08` fixes that parameter-versus-index is decided by the
+/// *declaration*, never by the argument's syntax and never by trying the type
+/// grammar first. A manifest family is a second declaration kind arriving at
+/// this same scheduler, so its telescope is consulted the same way the decl
+/// table's is — which is why the manifest lookup sits beside `resolve` rather
+/// than inside the fallthrough.
 fn schedule_type_application<'tree>(
     source: PipelineSource<'_>,
     node: SynNode<'tree>,
     resolve: DataResolver<'_>,
+    manifest: ManifestTypes<'_>,
     pending: &mut Vec<TypeTask<'tree>>,
     results: &mut Vec<LowerResult<Ty>>,
 )
@@ -646,6 +773,20 @@ fn schedule_type_application<'tree>(
             return;
         },
     };
+    match manifest(TypeName(head.0)) {
+        | Some(ManifestAnswer::Family(_family)) => {
+            let _ = (&_family, &arguments);
+            todo!("gandr-wvd.6.2: schedule the arguments, then TypeFrame::ManifestFamily to expand")
+        },
+        // A nullary manifest component applied to arguments. The signature
+        // wrote `type T = τ` and the occurrence wrote `T(…)`, so the arity is
+        // wrong in the source; falling through would reach the ambient resolver
+        // and bind a name the signature already owns.
+        | Some(ManifestAnswer::Type(_)) => {
+            todo!("gandr-wvd.6.2: LowerError::ManifestTypeApplied")
+        },
+        | None => {},
+    }
     if let Some(id) = resolve(head.0) {
         pending.push(TypeTask::Build(TypeFrame::Data {
             id,

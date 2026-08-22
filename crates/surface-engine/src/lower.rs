@@ -194,6 +194,8 @@ use crate::ffi::ForeignFn;
 use crate::ffi::ForeignModule;
 use crate::ffi::ForeignParam;
 use crate::live_match;
+use crate::lower::types::ManifestAnswer;
+use crate::lower::types::TypeParameter;
 use crate::namespace::Binding;
 use crate::namespace::Collision;
 use crate::namespace::EventKind;
@@ -878,8 +880,43 @@ pub struct TypeComponent
 {
     /// The component's name, as written in the signature.
     pub name: String,
-    /// The type the component is manifestly equal to, already elaborated.
+    /// The parameters the component binds, in declaration order; empty for the
+    /// nullary form `type T = τ`.
+    ///
+    /// A parameterized component is the form an instance supplies a **kinded**
+    /// component with: `type Hom(a : Ob, b : Ob) = U[ω] (a -> F b)` answers
+    /// `type Hom : Ob -> Ob -> Type`. It is a declaration, not a type-level
+    /// lambda, which is why the surface needs no expression-level binder for
+    /// it.
+    pub params: Vec<TypeParameter>,
+    /// The type the component is manifestly equal to, already elaborated. Under
+    /// a non-empty [`TypeComponent::params`] the parameters stand in it as type
+    /// atoms of their own names, and an application substitutes for them.
     pub definition: ValueType,
+}
+
+/// One **kinded** type component `type T : κ` — an abstract type family
+/// declared by its telescope, with no definition.
+///
+/// This is what makes `Model(CatShape)` a signature at all: the indexed sort
+/// `Hom(dom, cod)` becomes `type Hom : Ob -> Ob -> Type`, and an abstract
+/// declaration is exactly what an instance is then obliged to supply. The
+/// nullary case `type Ob : Type` is the same form with an empty telescope, and
+/// it is *not* the bare `type Ob`: a bare component states no kind at all and
+/// belongs to sealing, while a kinded one states its arity and its result
+/// classifier.
+///
+/// The result classifier is not carried, because at this rung a kind's spine
+/// ends in `Type` and nothing else parses; when the classifier arc's sorts and
+/// levels reach the surface signature grammar, this is where they land.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct KindedComponent
+{
+    /// The component's name, as written in the signature.
+    pub name: String,
+    /// The parameters the kind's arrow spine declares, in order; empty for
+    /// `type T : Type`.
+    pub params: Vec<TypeParameter>,
 }
 
 /// One module-stratum item: what a `module` declaration *is*, beside the term
@@ -1718,6 +1755,19 @@ struct ModuleAscription
     /// T;` signature declares none, because it writes a type rather than a
     /// signature.
     types: Vec<TypeComponent>,
+    /// The **kinded** type components, in signature order — the abstract
+    /// families the signature declares and a module must supply.
+    #[allow(
+        dead_code,
+        reason = "gandr-wvd.6.2 scaffold: the kinded components are declared here and read by                   signature matching, which lands with the elaboration bodies"
+    )]
+    /// Held separately from [`ModuleAscription::types`] rather than as an
+    /// optional definition on one shape, because the two answer different
+    /// questions and a consumer entitled to only one must not reach the other
+    /// by construction: a manifest component **expands**, a kinded one is
+    /// **matched against**. Collapsing them would let an expansion site read a
+    /// declaration with no definition and reach for a default.
+    kinded: Vec<KindedComponent>,
 }
 
 /// One value component of an inline structural signature.
@@ -6324,6 +6374,7 @@ impl Lowerer<'_>
                 ty: Some(ty),
                 coercion,
                 types: Vec::new(),
+                kinded: Vec::new(),
             }));
         }
         match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
@@ -6385,8 +6436,9 @@ impl Lowerer<'_>
         node: SynNode<'_>,
     ) -> LowerResult<ModuleAscription>
     {
-        let mut manifest: BTreeMap<String, ValueType> = BTreeMap::new();
+        let mut manifest: BTreeMap<String, ManifestAnswer> = BTreeMap::new();
         let mut types: Vec<TypeComponent> = Vec::new();
+        let kinded: Vec<KindedComponent> = Vec::new();
         let mut values: Vec<SignatureComponent> = Vec::new();
         for component in node.named_children() {
             let name_node = required_field(component, node_kinds::FIELD_NAME)?;
@@ -6404,19 +6456,31 @@ impl Lowerer<'_>
                 });
             }
             if component.kind() == node_kinds::TYPE_COMPONENT {
+                // The component's binder list, empty for both nullary forms.
+                // Read before the classification below, because the parameters
+                // scope over the kind *and* over the definition: `type Hom(a :
+                // Ob, b : Ob) = U[ω] (a -> F b)` mentions both binders in its
+                // body, and `type Hom : Ob -> Ob -> Type` states their types in
+                // its spine.
+                let params = self.type_component_parameters(component, &manifest)?;
                 // `type T : κ` and `type T = τ` both carry a type in the same
                 // field, so the separating tile is what tells them apart. Ask
                 // before reading the field, never after: reading first and
                 // classifying later is how a kind gets bound as a definition.
                 if bool::from(component.has_top_level_tile(Self::KIND_ASCRIPTION)) {
-                    let error = LowerError::KindedTypeComponent {
-                        name,
-                        byte_range: component.byte_range(),
-                    };
-                    if bool::from(self.total()) {
-                        continue;
-                    }
-                    return Err(error);
+                    // A **kinded** component declares an abstract family. Its
+                    // parameters come from the kind's arrow spine rather than
+                    // from a binder list, because `type Hom : Ob -> Ob -> Type`
+                    // is how the higher-cells design spells the indexed sort;
+                    // the binder-list spelling is the manifest form's.
+                    //
+                    // It contributes no manifest entry: an abstract component
+                    // does not expand, so a later component naming it must
+                    // reach it as a declaration rather than as a substitution.
+                    let _ = (&params, &kinded);
+                    todo!(
+                        "gandr-wvd.6.2: read the kind's arrow spine into a KindedComponent and                          bind the name abstractly over the components that follow"
+                    )
                 }
                 let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
                 else {
@@ -6431,10 +6495,25 @@ impl Lowerer<'_>
                     }
                     return Err(error);
                 };
-                let definition = self.manifest_component_type(definition_node, &manifest)?;
-                drop(manifest.insert(name.clone(), definition.clone()));
-                types.push(TypeComponent { name, definition });
-                continue;
+                if params.is_empty() {
+                    let definition = self.manifest_component_type(definition_node, &manifest)?;
+                    drop(manifest.insert(name.clone(), ManifestAnswer::Type(definition.clone())));
+                    types.push(TypeComponent {
+                        name,
+                        params,
+                        definition,
+                    });
+                    continue;
+                }
+                // A **manifest family**. Its body is elaborated once, here,
+                // with each parameter standing as a type atom of its own name,
+                // exactly as the nullary form's body is elaborated once where it
+                // is written. Every later occurrence is an application that
+                // substitutes for those atoms.
+                let _ = definition_node;
+                todo!(
+                    "gandr-wvd.6.2: elaborate the body under the parameters as standing atoms,                      record a ManifestAnswer::Family, and push the TypeComponent"
+                )
             }
             let type_node = required_field(component, node_kinds::FIELD_TYPE)?;
             let ty = self.manifest_component_type(type_node, &manifest)?;
@@ -6448,7 +6527,42 @@ impl Lowerer<'_>
             ty: Some(Ty::Value(coercion.record_type())),
             coercion: Some(coercion),
             types,
+            kinded,
         })
+    }
+
+    /// Lowers a type component's binder list `( a : A, … )` under the manifest
+    /// components declared before it.
+    ///
+    /// # Contract
+    /// - requires: `component` is a [`node_kinds::TYPE_COMPONENT`].
+    /// - ensures: returns the parameters in declaration order, each binder's
+    ///   type lowered under `manifest`, and an empty list when the component
+    ///   writes no binder list — which is both nullary forms and is not an
+    ///   error.
+    /// - ensures: each binder scopes over the binders that follow it, so `type
+    ///   Hom(a : Ob, b : Ob)` may state `b`'s type in terms of `a`.
+    /// - fails: ordinary type-lowering errors from a binder's annotation, and
+    ///   [`LowerError::BareTypeParameter`] for the unannotated spelling `(a)`,
+    ///   which the grammar admits so the decline lands here rather than as a
+    ///   parse repair.
+    /// - panics: never.
+    ///
+    /// # Adequacy
+    /// - hypothesis: reusing the `data` head's binder list verbatim means a
+    ///   family's parameters need no new lowering path and no new node kind.
+    /// - mutants: return the binders reversed; lower each binder under the
+    ///   ambient environment instead of the manifest one; accept the bare
+    ///   spelling.
+    /// - witnesses: `a_type_component_binder_list_lowers_in_declaration_order`
+    ///   and `a_bare_type_component_parameter_declines_by_name`.
+    fn type_component_parameters(
+        &self,
+        _component: SynNode<'_>,
+        _manifest: &BTreeMap<String, ManifestAnswer>,
+    ) -> LowerResult<Vec<TypeParameter>>
+    {
+        todo!("gandr-wvd.6.2: read the type component's binder list")
     }
 
     /// Lowers one signature component's type under the manifest components
@@ -6461,7 +6575,7 @@ impl Lowerer<'_>
     fn manifest_component_type(
         &self,
         node: SynNode<'_>,
-        manifest: &BTreeMap<String, ValueType>,
+        manifest: &BTreeMap<String, ManifestAnswer>,
     ) -> LowerResult<ValueType>
     {
         let expand = |name: TypeName<'_>| manifest.get(name.0).cloned();
