@@ -206,6 +206,11 @@ where
             )?;
             Ok(GateOutcome::from_findings(findings))
         },
+        | Command::TestRegistration { workspace_root } => {
+            let findings =
+                gandr_workflow_gates::test_registration::check_test_registration(&workspace_root)?;
+            Ok(GateOutcome::from_findings(findings))
+        },
         | Command::DefaultGraph { workspace_root } => {
             let findings =
                 gandr_workflow_gates::project::check_default_dependency_graph(&workspace_root)?;
@@ -331,6 +336,7 @@ where
         | Some("rumdl") => parse_rumdl(arguments),
         | Some("soundness-oracles") => parse_soundness_oracles(arguments),
         | Some("default-graph") => parse_default_graph(arguments),
+        | Some("test-registration") => parse_test_registration(arguments),
         | Some("coverage") => parse_coverage(arguments),
         | Some("maintenance-range") => parse_maintenance_range(arguments),
         | Some("mutants") => parse_mutants(arguments),
@@ -579,6 +585,16 @@ where
 {
     Ok(Command::SoundnessOracles {
         workspace_root: parse_required_workspace_root(arguments, "soundness-oracles")?,
+    })
+}
+
+/// Parse `test-registration --workspace-root PATH`.
+fn parse_test_registration<Arguments>(arguments: Arguments) -> Result<Command, GateError>
+where
+    Arguments: IntoIterator<Item = OsString>,
+{
+    Ok(Command::TestRegistration {
+        workspace_root: parse_required_workspace_root(arguments, "test-registration")?,
     })
 }
 
@@ -1619,7 +1635,7 @@ fn default_manifest_path() -> PathBuf
 #[must_use]
 pub fn usage_text() -> impl Into<UsageTextText<'static>>
 {
-    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, embedded-syntax, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|check|gates]"
+    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, embedded-syntax, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, test-registration, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|check|gates]"
 }
 
 /// Parsed supported CLI command.
@@ -1698,6 +1714,12 @@ pub enum Command
     SoundnessOracles
     {
         /// Workspace root used to resolve the default conformance source.
+        workspace_root: PathBuf,
+    },
+    /// Integration-test registration gate.
+    TestRegistration
+    {
+        /// Workspace root whose `crates/` tree is walked.
         workspace_root: PathBuf,
     },
     /// Default dependency graph policy gate.

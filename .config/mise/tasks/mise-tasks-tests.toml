@@ -10,6 +10,12 @@ export RUSTUP_TOOLCHAIN
 cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-graphs
 """
 
+["test:registration"]
+description = "Require every tests/*.rs file in an autotests=false crate to be declared by a [[test]] root"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- test-registration --workspace-root "$MISE_PROJECT_ROOT"
+"""
+
 ["test:coverage-ratchet"]
 description = "Verify per-file coverage floors, monotonicity, schema validation, and path boundaries"
 run = """

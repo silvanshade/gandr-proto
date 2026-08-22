@@ -21,4 +21,4 @@
 # so change this list first.
 ["gate:merge"]
 description = "Run the native pre-merge gate"
-run = [{ task = "toolchain:pin-check" }, { task = "docs:conflict-markers" }, { task = "test:dep-graph" }, { task = "cargo:embedded-syntax" }, { task = "cargo:build" }, { task = "cargo:clippy" }, { task = "cargo:dylint:local" }, { task = "cargo:doc-check" }, { task = "cargo:nextest" }, { task = "compile-host:wall" }, { task = "treefmt:check" }]
+run = [{ task = "toolchain:pin-check" }, { task = "docs:conflict-markers" }, { task = "test:dep-graph" }, { task = "test:registration" }, { task = "cargo:embedded-syntax" }, { task = "cargo:build" }, { task = "cargo:clippy" }, { task = "cargo:dylint:local" }, { task = "cargo:doc-check" }, { task = "cargo:nextest" }, { task = "compile-host:wall" }, { task = "treefmt:check" }]

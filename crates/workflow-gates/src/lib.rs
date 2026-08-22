@@ -218,6 +218,7 @@ pub mod project;
 pub mod source_policy;
 /// Shared process and filesystem support used by gate domains.
 pub mod support;
+pub mod test_registration;
 /// Deterministic merge and push workflow orchestration.
 pub mod workflow;
 
