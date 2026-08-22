@@ -35,6 +35,8 @@ crate::semantic_str!(pub struct JsonFieldText);
 crate::semantic_str!(pub struct MetadataJsonText);
 crate::semantic_str!(pub struct HostTripleText);
 crate::semantic_str!(pub struct ReachableDefaultPackageNameText);
+crate::semantic_str!(pub struct ExemptMemberIdText);
+crate::semantic_str!(pub struct DependencyKindText);
 crate::semantic_copy!(pub struct NCount(usize));
 crate::semantic_copy!(pub struct DepKindReachesDefaultGraphFlag(bool));
 crate::semantic_copy!(pub struct DepReachesDefaultGraphFlag(bool));
@@ -418,7 +420,7 @@ fn reachable_default_package_names<'metadata>(
         // edges originating from a dev-only exempt member are skipped exactly
         // while that member still ships nowhere.
         if *package_name == TOOLING_EXEMPT_DEFAULT_GRAPH_MEMBER
-            || shipping_dev_exempt_ids.contains(package_id)
+            || shipping_dev_exempt_ids.contains(&ExemptMemberIdText::from(package_id))
         {
             continue;
         }
@@ -455,9 +457,9 @@ fn reachable_default_package_names<'metadata>(
 /// - witness: `project::tests::dev_only_exemption_falls_when_consumed`
 fn shipping_dev_exempt_member_ids<'metadata>(
     graph: &MetadataGraph<'metadata>
-) -> BTreeSet<&'metadata str>
+) -> BTreeSet<ExemptMemberIdText<'metadata>>
 {
-    let exempt_ids: BTreeSet<&str> = graph
+    let exempt_ids: BTreeSet<ExemptMemberIdText<'metadata>> = graph
         .roots
         .iter()
         .copied()
@@ -467,15 +469,16 @@ fn shipping_dev_exempt_member_ids<'metadata>(
                 .get(id)
                 .is_some_and(|name| DEV_ONLY_EXEMPT_DEFAULT_GRAPH_MEMBERS.contains(name))
         })
+        .map(ExemptMemberIdText::from)
         .collect();
     let mut shipping = exempt_ids.clone();
     for root in &graph.roots {
-        if exempt_ids.contains(*root) {
+        if exempt_ids.contains(&ExemptMemberIdText::from(*root)) {
             continue;
         }
         if let Some(children) = graph.dependencies.get(*root) {
             for child in children {
-                shipping.remove(child);
+                shipping.remove(&ExemptMemberIdText::from(*child));
             }
         }
     }
@@ -805,7 +808,7 @@ mod tests
     fn dev_only_exemption_falls_when_consumed() -> Result<(), GateError>
     {
         for kind in ["normal", "build"] {
-            let metadata = consumed_dev_only_tools_metadata(Some(kind));
+            let metadata = consumed_dev_only_tools_metadata(Some(DependencyKindText::from(kind)));
             let findings = validate_default_dependency_graph_metadata(&metadata)?;
             assert_eq!(findings, vec![Finding::new(
                 DEFAULT_GRAPH_FINDING_KIND,
@@ -1169,9 +1172,9 @@ mod tests
     /// Build a minimal metadata graph where a dev-only exempt member holds
     /// regex behind its public generator API, optionally consumed by another
     /// member through the given dependency kind.
-    fn consumed_dev_only_tools_metadata(consumer_kind: Option<&str>) -> String
+    fn consumed_dev_only_tools_metadata(consumer_kind: Option<DependencyKindText<'_>>) -> String
     {
-        let consumer_deps = match consumer_kind {
+        let consumer_deps = match consumer_kind.map(|kind| kind.0) {
             | Some(kind) => format!(
                 r#"[{{"pkg": "{TOOLS_ID}", "dep_kinds": [{{"kind": "{kind}", "target": null}}]}}]"#
             ),
