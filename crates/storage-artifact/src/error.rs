@@ -181,6 +181,15 @@ pub enum ValueError
         position: u32,
     },
 
+    /// A commit was asked for a child-reference representation the value
+    /// plane's token stream cannot have.
+    ///
+    /// The stream nests children in place rather than numbering them, so there
+    /// is no index to re-base. Refused rather than ignored, because accepting
+    /// it would let a manifest claim a representation that does not exist.
+    #[error("the value plane's token stream has no child indices to re-base")]
+    UnsupportedIndexBase,
+
     /// A count or length did not fit its canonical width.
     #[error("the value {found} does not fit the canonical {width}-bit width")]
     WidthOverflow

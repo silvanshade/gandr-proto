@@ -672,6 +672,29 @@ impl<'stream> TokenReader<'stream>
         return Ok(ByteLen(payload));
     }
 
+    /// Advances the cursor to a token offset within the opening chunk.
+    ///
+    /// # Contract
+    /// - requires: `offset` names a record position in the chunk the reader was
+    ///   opened over.
+    /// - ensures: `Ok` leaves the cursor at that record.
+    /// - provides: the entry step for a pointer that addresses the interior of
+    ///   a chunk rather than its root.
+    /// - fails: [`ValueError::TruncatedChunk`] when the chunk holds fewer
+    ///   records, or [`ValueError::UnexpectedToken`] on an unassigned kind.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// [`ValueError`].
+    #[inline]
+    pub fn seek(
+        &mut self,
+        offset: TokenOffset,
+    ) -> Result<(), ValueError>
+    {
+        return self.skip_records(RecordCount(u32::from(offset)));
+    }
+
     /// Reads the next constructor tag, refusing anything else.
     ///
     /// # Contract

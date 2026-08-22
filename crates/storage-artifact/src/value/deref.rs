@@ -33,8 +33,11 @@
 
 use crate::error::ValueError;
 use crate::value::chunk::ChunkStore;
+use crate::value::chunk::chunk_body;
 use crate::value::ptr::ContentPtr;
+use crate::value::ptr::TokenOffset;
 use crate::value::tokens::CanonicalValue;
+use crate::value::tokens::TokenReader;
 
 /// Fetches, verifies and decodes the value a pointer addresses.
 ///
@@ -56,10 +59,6 @@ use crate::value::tokens::CanonicalValue;
 /// # Errors
 /// [`ValueError`].
 #[inline]
-#[expect(
-    clippy::todo,
-    reason = "gandr-8tou.4 scaffold: the deref traversal is the implementor deliverable"
-)]
 pub fn cam_deref<Value>(
     store: &dyn ChunkStore,
     pointer: ContentPtr,
@@ -67,5 +66,9 @@ pub fn cam_deref<Value>(
 where
     Value: CanonicalValue,
 {
-    todo!("fetch {pointer:?} from {store:p}, verify its frame, then decode through a TokenReader");
+    let chunk = store.load(pointer.digest())?;
+    let body = chunk_body(chunk)?;
+    let mut reader = TokenReader::new(store, body, TokenOffset::from(0_u32));
+    reader.seek(pointer.offset())?;
+    return Value::decode_tokens(&mut reader);
 }
