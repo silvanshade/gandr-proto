@@ -1186,6 +1186,43 @@ impl<'tree> SynNode<'tree>
         self.has_top_level((&sig).into(), spelling)
     }
 
+    /// Whether a tile of this spelling occurs at **bracket depth zero** in this
+    /// node's own significant children.
+    ///
+    /// Stricter than [`Self::has_top_level_tile`], which admits a tile one
+    /// bracket deep. That looser reading is right where a node's own body is
+    /// the bracketed group, and wrong where a member may carry a bracketed
+    /// group of its own: a type component's parameter list writes `a : Ob`
+    /// inside parentheses, and asking the looser question about `:` classifies
+    /// the manifest family `type Hom(a : Ob, b : Ob) = τ` as a kinded
+    /// component — a form declared and never defined, from a source that
+    /// defines it.
+    ///
+    /// The two readings are separate methods rather than a parameter because
+    /// the choice is a property of the question, not of the call site, and a
+    /// boolean at the call site is the shape that gets copied wrongly.
+    #[inline]
+    #[must_use]
+    pub fn has_tile_at_depth_zero(
+        self,
+        spelling: TileSpelling,
+    ) -> TilePresence
+    {
+        let sig = self.sig();
+        let mut depth = 0_usize;
+        for node in sig.iter() {
+            match self.tree.tile_label(*node) {
+                | Some(label::LPAREN | label::LBRACE | label::LBRACKET | label::HASH_BRACE) => {
+                    depth = depth.saturating_add(1);
+                },
+                | Some(label::RPAREN | label::RBRACE) => depth = depth.saturating_sub(1),
+                | Some(text) if depth == 0 && text == spelling => return TilePresence(true),
+                | _ => {},
+            }
+        }
+        TilePresence(false)
+    }
+
     /// Whether this node is an `ERROR`/repair region: a grout leaf (a
     /// convex/ghost repair the melder inserted for a missing tile).
     #[inline]
@@ -2244,10 +2281,30 @@ impl<'tree> SynNode<'tree>
         let mut out = Vec::new();
         let mut start = body.start;
         let mut index = body.start;
+        // A member may carry commas of its own. `type Hom(a : Ob, b : Ob) = τ`
+        // binds two parameters, and a splitter that counts every comma cuts it
+        // into `type Hom(a : Ob` and `b : Ob) = τ` — two members, the first a
+        // type component with an unterminated parameter list and the second a
+        // value field whose label is a binder name. Neither is anything the
+        // author wrote, and the failure surfaces as a hole rather than as a
+        // diagnostic naming the member.
+        //
+        // So the separator is a comma at **bracket depth zero** within the
+        // signature body, which is the same reading `has_top_level` already
+        // takes for every other top-level tile question.
+        let mut depth = 0_usize;
         while index < body.end {
-            let is_comma = sig
-                .get(index)
-                .is_some_and(|&node| self.tree.tile_label(node) == Some(label::COMMA));
+            match sig.get(index).and_then(|&node| self.tree.tile_label(node)) {
+                | Some(label::LPAREN | label::LBRACE | label::LBRACKET | label::HASH_BRACE) => {
+                    depth = depth.saturating_add(1);
+                },
+                | Some(label::RPAREN | label::RBRACE) => depth = depth.saturating_sub(1),
+                | _ => {},
+            }
+            let is_comma = depth == 0
+                && sig
+                    .get(index)
+                    .is_some_and(|&node| self.tree.tile_label(node) == Some(label::COMMA));
             if is_comma {
                 if index > start {
                     out.push(self.signature_member(

@@ -1574,11 +1574,30 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// does not track bracket depth cuts the binder list at its own comma,
         /// and the failure surfaces as a syntax error at the component's
         /// *name*, which points at the wrong thing entirely.
-        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_manifest_family_component_binds_two_parameters()
         {
-            todo!("gandr-wvd.6.2")
+            // The separating case for the member split: a splitter that counts
+            // every comma cuts this into `type Hom(a : Type` and
+            // `b : Type) = …`, so the type component's parameter list is
+            // unterminated and the second half becomes a value field labelled
+            // after a binder.
+            let source = "module M : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), d : \
+                          Integer } { def d = 1; }";
+            let lowered = lower_source(source.into()).expect("the two-parameter spelling lowers");
+            let module = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the module lowers");
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([(
+                    "d".to_owned(),
+                    ValueType::integer(),
+                )]))),
+                module.ascription,
+                "the value component survives beside the parameterized type component"
+            );
         }
 
         /// An occurrence `Hom(x, y)` of a manifest family expands to the body

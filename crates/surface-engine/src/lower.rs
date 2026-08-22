@@ -6467,7 +6467,7 @@ impl Lowerer<'_>
                 // field, so the separating tile is what tells them apart. Ask
                 // before reading the field, never after: reading first and
                 // classifying later is how a kind gets bound as a definition.
-                if bool::from(component.has_top_level_tile(Self::KIND_ASCRIPTION)) {
+                if bool::from(component.has_tile_at_depth_zero(Self::KIND_ASCRIPTION)) {
                     // A **kinded** component declares an abstract family. Its
                     // parameters come from the kind's arrow spine rather than
                     // from a binder list, because `type Hom : Ob -> Ob -> Type`
