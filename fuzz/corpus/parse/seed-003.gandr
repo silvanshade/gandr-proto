@@ -1,3 +1,0 @@
-fn(x, rest) {
-  if true { ret x } else { ret rest }
-}

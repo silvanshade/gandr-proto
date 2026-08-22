@@ -1,12 +1,25 @@
 #:schema https://www.schemastore.org/cargo.json
 #:tombi toml-version = "v1.0.0"
 
+# The AFL++ fuzzing workspace. Independent of the main workspace on purpose:
+# it carries its own lockfile, its own lint posture, and an instrumented build
+# profile, and folding it in would put `afl` in the default dependency graph
+# that `test:dep-graph` guards. The root manifest's `exclude` entry states the
+# same choice from the other side.
+#
+# Every path dependency below names a reboot crate. The directory name and the
+# package name differ throughout — `../crates/surface-engine` is the package
+# `gandr-surface-engine` — so a path is never derivable from a package name.
+
 [package]
 name = "gandr-fuzz"
 version = "0.0.0"
 edition = "2024"
 publish = false
 
+[workspace]
+
+# Total lowering on arbitrary bytes.
 [[bin]]
 bench = false
 doc = false
@@ -15,14 +28,7 @@ path = "fuzz_targets/lower.rs"
 required-features = ["fuzzing"]
 test = false
 
-[[bin]]
-bench = false
-doc = false
-name = "parse"
-path = "fuzz_targets/parse.rs"
-required-features = ["fuzzing"]
-test = false
-
+# The checker-versus-machine conformance property, under a nesting prefilter.
 [[bin]]
 bench = false
 doc = false
@@ -31,17 +37,7 @@ path = "fuzz_targets/check.rs"
 required-features = ["fuzzing"]
 test = false
 
-# The E1/E2 differential-parity target (`wyrd-46lo`): the labeler token stream
-# and the mold highlighter against tree-sitter, on arbitrary input. Behind the
-# `parity` feature so the mold-side path deps are only pulled when it is built.
-[[bin]]
-bench = false
-doc = false
-name = "parity"
-path = "fuzz_targets/parity.rs"
-required-features = ["fuzzing", "parity"]
-test = false
-
+# The gate suite's bounded parser facade.
 [[bin]]
 bench = false
 doc = false
@@ -51,25 +47,13 @@ required-features = ["fuzzing", "gates"]
 test = false
 
 [dependencies]
-afl.workspace = true
-gandr-core = { path = "../crates/gandr-core" }
-# The mold front-end the differential parity target checks against tree-sitter
-# (internal path deps, `parity`-feature-only — no third-party dependency added).
-gandr-grammar = { path = "../crates/gandr-grammar", optional = true }
-gandr-parser = { path = "../crates/gandr-parser", optional = true }
-gandr-pipeline = { path = "../crates/gandr-pipeline" }
-gandr-render-proto = { path = "../crates/gandr-render-proto", default-features = false, optional = true }
-gandr-syntax = { path = "../crates/gandr-syntax", optional = true }
-gandr-tree-sitter = { path = "../crates/gandr-tree-sitter" }
-tree-sitter.workspace = true
-wyrd-rust-gates = { path = "../crates/wyrd-rust-gates", default-features = false, features = ["fuzzing"], optional = true }
+afl = "0.18.2"
+gandr-core-checker = { path = "../crates/core-checker" }
+gandr-core-machine = { path = "../crates/core-machine" }
+gandr-core-term = { path = "../crates/core-term" }
+gandr-surface-engine = { path = "../crates/surface-engine" }
+gandr-workflow-gates = { path = "../crates/workflow-gates", default-features = false, features = ["fuzzing"], optional = true }
 
 [features]
 fuzzing = []
-gates = ["dep:wyrd-rust-gates"]
-parity = [
-  "dep:gandr-grammar",
-  "dep:gandr-parser",
-  "dep:gandr-render-proto",
-  "dep:gandr-syntax",
-]
+gates = ["dep:gandr-workflow-gates"]

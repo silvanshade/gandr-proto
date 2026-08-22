@@ -50,9 +50,12 @@ members = [
   "crates/workflow-dylint",
   "crates/workflow-gates",
 ]
-# `fuzz/` is an independent AFL++ workspace with its own lockfile and lint
-# posture (it also path-deps crates that have not been ported yet); keep it
-# excluded from the main workspace.
+# `fuzz/` stays an independent AFL++ workspace, deliberately, with its own
+# lockfile, its own lint posture, and an instrumented build profile. Folding it
+# in would put `afl` on every workspace member's default dependency graph — the
+# graph `test:dep-graph` exists to keep clean — and would put an instrumented
+# profile in front of ordinary builds. Its manifest states the same choice from
+# the other side.
 exclude = ["fuzz"]
 
 [workspace.package]

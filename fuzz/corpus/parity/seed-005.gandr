@@ -1,2 +1,0 @@
-#!{echo hello world
-grep hello < input.txt > output.txt}

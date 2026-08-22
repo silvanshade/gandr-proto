@@ -1,3 +1,0 @@
-def job = thunk { #!{echo $USER && $(print("done"))} };
-
-sh_run(job)

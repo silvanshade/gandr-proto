@@ -3,32 +3,24 @@
 
 # AFL++ fuzzing over the gandr crates. The `fuzz/` package is an independent
 # workspace; every campaign is single-process and runs sequentially.
+#
+# Three targets, and there were five. The `parse` target drove a tree-sitter
+# parser and the `parity` target was the differential-parity oracle against it;
+# both went with the permanent tree-sitter retirement, and highlighting comes
+# from the LSP's semantic tokens alone. `test:dep-graph` is what keeps that
+# retirement enforceable.
 ["fuzz:lower"]
-description = "Fuzz the CST -> core lowerer (lower_source_total totality) with AFL++"
+description = "Fuzz total lowering (lower_source_total totality) with AFL++"
 run = """
 cargo afl build --manifest-path fuzz/Cargo.toml --bin lower
 AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/lower -o fuzz/artifacts/lower fuzz/target/debug/lower
 """
 
-["fuzz:parse"]
-description = "Fuzz the tree-sitter parser bridge with AFL++"
-run = """
-cargo afl build --manifest-path fuzz/Cargo.toml --bin parse
-AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/parse -o fuzz/artifacts/parse fuzz/target/debug/parse
-"""
-
 ["fuzz:check"]
-description = "Fuzz lower -> checker/machine (no panic + checker == machine) with AFL++"
+description = "Fuzz lower -> checker/machine conformance (no panic + checker == machine) with AFL++"
 run = """
 cargo afl build --manifest-path fuzz/Cargo.toml --bin check
 AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/check -o fuzz/artifacts/check fuzz/target/debug/check
-"""
-
-["fuzz:parity"]
-description = "Fuzz parser and highlighting parity with AFL++"
-run = """
-cargo afl build --manifest-path fuzz/Cargo.toml --features parity --bin parity
-AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/parity -o fuzz/artifacts/parity fuzz/target/debug/parity
 """
 
 ["fuzz:gates"]
@@ -45,16 +37,12 @@ cargo run --quiet -p gandr-workflow-gates -- fuzz-smoke
 """
 
 ["fuzz:weekly"]
-description = "Run bounded 300-second AFL++ campaigns across all five Rust targets sequentially"
+description = "Run bounded 300-second AFL++ campaigns across all three Rust targets sequentially"
 run = """
 cargo afl build --manifest-path fuzz/Cargo.toml --bin lower
 AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/lower -o fuzz/artifacts/lower fuzz/target/debug/lower
-cargo afl build --manifest-path fuzz/Cargo.toml --bin parse
-AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/parse -o fuzz/artifacts/parse fuzz/target/debug/parse
 cargo afl build --manifest-path fuzz/Cargo.toml --bin check
 AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/check -o fuzz/artifacts/check fuzz/target/debug/check
-cargo afl build --manifest-path fuzz/Cargo.toml --features parity --bin parity
-AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/parity -o fuzz/artifacts/parity fuzz/target/debug/parity
 cargo afl build --manifest-path fuzz/Cargo.toml --features gates --bin gates
 AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/gates -o fuzz/artifacts/gates fuzz/target/debug/gates
 """
