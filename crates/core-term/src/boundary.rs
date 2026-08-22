@@ -409,6 +409,11 @@ copy_wrapper!(
     "Whether a name is bound by an enclosing binder on an occurrence walk."
 );
 copy_wrapper!(
+    NameAbsence,
+    bool,
+    "Whether a name occurs nowhere in a type, neither free nor as a binder."
+);
+copy_wrapper!(
     GuardDecision,
     bool,
     "Whether a pair of semantic guard words settles a comparison outright."
