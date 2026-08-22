@@ -795,6 +795,150 @@ pub enum LowerError
     },
 }
 
+/// Which fact a lowering failure records, per the buildout map's
+/// `buildout-standing-02` classifier.
+///
+/// The classifier answers one question — **whose fact does this failure
+/// record** — and the answer decides what totality is allowed to do with it.
+/// Degradation may weaken claims about what the author left open; it may never
+/// weaken a claim about what the author wrote.
+///
+/// The standing entry names three classes. This enum carries a fourth,
+/// [`FailureClass::EngineFault`], because the tree has failures that record
+/// nobody's fact about the source: a version-skewed parser, a failed arena
+/// allocation, an exhausted import index. They are listed separately rather
+/// than folded into [`FailureClass::MalformedSource`] because folding them
+/// there would report an engine fault as an author's mistake, which is the
+/// same substitution the standing entry forbids, pointed the other way.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum FailureClass
+{
+    /// Something the author has not supplied yet: an unresolved name, an
+    /// unfinished definition, a missing annotation, an unanswered observation.
+    ///
+    /// This is the only class totality may absorb. The absence is real and it
+    /// is the author's, so recording it as a hole records a true fact.
+    UserAbsence,
+
+    /// Source the engine cannot represent: an unlanded former, a reserved
+    /// spelling, a capability boundary this rung does not reach.
+    ///
+    /// Nothing is missing from the program — the author wrote a form the
+    /// engine cannot read. Recording it as a hole converts *the engine cannot
+    /// read this* into *the author has not written this*, after which the
+    /// checker validates a program that differs from the source. The posture
+    /// is a decline naming the form.
+    Unrepresentable,
+
+    /// Written source that is wrong: an arity or kind mismatch inside a stated
+    /// type, a duplicate binder, a literal outside its domain.
+    ///
+    /// Nothing is missing and nothing is unreadable; something is incorrect. A
+    /// hole records the wrong fact here too, because it says the author left a
+    /// gap where the author in fact wrote a mistake.
+    MalformedSource,
+
+    /// The engine failed for a reason the source does not name: parser version
+    /// skew, a failed arena bridge, an exhausted persistent index.
+    ///
+    /// No degradation is admissible. A fault absorbed into a hole is an engine
+    /// defect reported as an author's unfinished work, and the resulting
+    /// acceptance is evidence of nothing.
+    EngineFault,
+}
+
+impl LowerError
+{
+    /// Answers which fact this failure records.
+    ///
+    /// # Contract
+    /// - ensures: every [`LowerError`] variant answers exactly one
+    ///   [`FailureClass`]; the match is exhaustive and carries no wildcard, so
+    ///   a variant added later does not compile until it is classified.
+    /// - ensures: the answer is a function of the variant alone and reads no
+    ///   payload, so classification cannot vary with a span or a name.
+    /// - fails: never; the function is total.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: the classification is the whole content, so the witness
+    ///   must pin the class of each variant rather than the shape of the
+    ///   function.
+    /// - mutants: classify `Unsupported` as `UserAbsence` (the degradation
+    ///   `buildout-standing-02` forbids); classify `ParserUnavailable` as
+    ///   `MalformedSource`; replace the match with a wildcard arm.
+    /// - witnesses: `gandr-surface-engine` `tests/failure_class.rs` —
+    ///   `every_lower_error_variant_answers_its_recorded_class`,
+    ///   `an_unlanded_former_is_unrepresentable_never_an_absence`,
+    ///   `an_engine_fault_is_never_an_author_fact`.
+    #[inline]
+    #[must_use]
+    pub const fn failure_class(&self) -> FailureClass
+    {
+        match self {
+            // Class one — the author has not supplied it yet.
+            //
+            // `Syntax`, `MissingCaseArm` and `EmptyBlock` each already
+            // document a hole as their total-mode recovery; `DanglingSignature`
+            // is a signature whose definition was never written;
+            // `MissingModuleComponent` and `MissingObservation` name a
+            // component and an observation the source does not answer.
+            | Self::Syntax { .. }
+            | Self::MissingCaseArm { .. }
+            | Self::EmptyBlock { .. }
+            | Self::DanglingSignature { .. }
+            | Self::MissingModuleComponent { .. }
+            | Self::MissingObservation { .. }
+            | Self::BareTypeParameter { .. } => FailureClass::UserAbsence,
+
+            // Class two — the engine cannot represent what was written.
+            //
+            // Every variant here documents its own boundary: a construct
+            // outside the covered fragment, a reserved recursion resident, a
+            // component form whose elaboration belongs to a later rung, an
+            // ascription whose sealing is not yet elaborated.
+            | Self::Unsupported { .. }
+            | Self::ReservedNamedMeasure { .. }
+            | Self::ReservedExplicitInstantiation { .. }
+            | Self::ReservedExplicitSize { .. }
+            | Self::ReservedCostBound { .. }
+            | Self::ReservedTailAssertion { .. }
+            | Self::BareTypeComponent { .. }
+            | Self::KindedTypeComponent { .. }
+            | Self::NestedManifestFamily { .. }
+            | Self::OpaqueAscriptionUnelaborated { .. } => FailureClass::Unrepresentable,
+
+            // Class three — the source is written and wrong.
+            | Self::LowercaseModuleName { .. }
+            | Self::UnmarkedRecursiveReference { .. }
+            | Self::MarkedReferenceOutsideRecursiveScope { .. }
+            | Self::InvalidIntegerLiteral { .. }
+            | Self::InvalidGrade { .. }
+            | Self::DuplicateModuleMember { .. }
+            | Self::ManifestFamilyArity { .. }
+            | Self::UnknownModuleComponent { .. }
+            | Self::DuplicateModuleComponent { .. }
+            | Self::ShadowedBuiltin { .. }
+            | Self::PackagePayloadNotGradedThunk { .. }
+            | Self::UnpackNeedsPackageSignature { .. }
+            | Self::EliminatorAnswerNotComputation { .. }
+            | Self::RunBindAnnotationNotComputation { .. }
+            | Self::DuplicatePackageComponent { .. }
+            | Self::TypeSortMismatch { .. }
+            | Self::MalformedNode { .. }
+            | Self::UnknownObservation { .. }
+            | Self::DuplicateObservation { .. } => FailureClass::MalformedSource,
+
+            // Class four — the engine failed for its own reasons.
+            | Self::ParserUnavailable { .. }
+            | Self::ParseFailed
+            | Self::ArenaBridge { .. }
+            | Self::Namespace { .. }
+            | Self::ImportIndexOverflow { .. } => FailureClass::EngineFault,
+        }
+    }
+}
+
 impl From<ArenaBridgeError> for LowerError
 {
     #[inline]
@@ -8330,6 +8474,404 @@ fn binary_operator(node: SynNode<'_>) -> LowerResult<(SynNode<'_>, OperatorText<
 mod tests
 {
     use super::*;
+    use crate::namespace::event::EventKind;
+    use crate::namespace::event::EventRejection;
+    use crate::namespace::event::RejectionReason;
+    use crate::namespace::path::NamePath;
+
+    /// Every `LowerError` variant, once, paired with the fact it records.
+    ///
+    /// This list is the enumeration `gandr-x6t6` asks for on the error side.
+    /// It is a **pin on the answer**, not on totality: totality is already
+    /// unrepresentable-by-construction, because `failure_class` matches without
+    /// a wildcard and a new variant fails to compile until it is classified.
+    /// What a wrong classification looks like is a silent behaviour change in
+    /// total mode, which is what this list refuses.
+    fn every_variant_with_its_class() -> Vec<(LowerError, FailureClass)>
+    {
+        let span = || SourceRange(0 .. 1);
+        let kind = SyntaxKind("probe_node");
+        let name = || "Probe".to_owned();
+
+        vec![
+            // Class one — the author has not supplied it yet.
+            (
+                LowerError::Syntax { byte_range: span() },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::MissingCaseArm {
+                    constructor: "Inl",
+                    byte_range: span(),
+                },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::EmptyBlock { byte_range: span() },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::DanglingSignature {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::MissingModuleComponent {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::MissingObservation {
+                    observation: name(),
+                    codata: name(),
+                    byte_range: span(),
+                },
+                FailureClass::UserAbsence,
+            ),
+            (
+                LowerError::BareTypeParameter {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::UserAbsence,
+            ),
+            // Class two — the engine cannot represent what was written.
+            (
+                LowerError::Unsupported {
+                    kind,
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::ReservedNamedMeasure {
+                    resident: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::ReservedExplicitInstantiation {
+                    resident: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::ReservedExplicitSize {
+                    resident: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::ReservedCostBound {
+                    resident: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::ReservedTailAssertion { byte_range: span() },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::BareTypeComponent {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::KindedTypeComponent {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::NestedManifestFamily {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::Unrepresentable,
+            ),
+            (
+                LowerError::OpaqueAscriptionUnelaborated { byte_range: span() },
+                FailureClass::Unrepresentable,
+            ),
+            // Class three — the source is written and wrong.
+            (
+                LowerError::LowercaseModuleName {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::UnmarkedRecursiveReference {
+                    name: name(),
+                    suggestion: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::MarkedReferenceOutsideRecursiveScope {
+                    target: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::InvalidIntegerLiteral {
+                    text: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::InvalidGrade {
+                    text: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::DuplicateModuleMember {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::ManifestFamilyArity {
+                    expected: 2,
+                    found: 0,
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::UnknownModuleComponent {
+                    module: name(),
+                    component: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::DuplicateModuleComponent {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::ShadowedBuiltin {
+                    error: EventRejection::new(
+                        EventKind::Shadow,
+                        NamePath::root(),
+                        RejectionReason::from("probe"),
+                    ),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::PackagePayloadNotGradedThunk { byte_range: span() },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::UnpackNeedsPackageSignature { byte_range: span() },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::EliminatorAnswerNotComputation { byte_range: span() },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::RunBindAnnotationNotComputation { byte_range: span() },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::DuplicatePackageComponent {
+                    name: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::TypeSortMismatch {
+                    expected: "a value type",
+                    kind,
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::MalformedNode {
+                    kind,
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::UnknownObservation {
+                    observation: name(),
+                    codata: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            (
+                LowerError::DuplicateObservation {
+                    observation: name(),
+                    byte_range: span(),
+                },
+                FailureClass::MalformedSource,
+            ),
+            // Class four — the engine failed for its own reasons.
+            (
+                LowerError::ParserUnavailable { detail: name() },
+                FailureClass::EngineFault,
+            ),
+            (LowerError::ParseFailed, FailureClass::EngineFault),
+            (
+                LowerError::ArenaBridge {
+                    error: ArenaBridgeError::IdSpaceExhausted,
+                },
+                FailureClass::EngineFault,
+            ),
+            (
+                LowerError::Namespace {
+                    error: crate::namespace::scope::ScopeError::NoOpenSection,
+                    byte_range: span(),
+                },
+                FailureClass::EngineFault,
+            ),
+            (
+                LowerError::ImportIndexOverflow { byte_range: span() },
+                FailureClass::EngineFault,
+            ),
+        ]
+    }
+
+    /// The enumeration answers the class each variant is recorded with.
+    ///
+    /// The count is asserted first and separately: a list that silently lost a
+    /// row would otherwise pass every remaining assertion, and a shorter list
+    /// reads exactly like a correct one.
+    #[test]
+    fn every_lower_error_variant_answers_its_recorded_class() -> Result<(), String>
+    {
+        let table = every_variant_with_its_class();
+        assert_eq!(
+            table.len(),
+            41,
+            "the enumeration must carry every LowerError variant exactly once;              a row was added or lost without the count being updated"
+        );
+        for (error, expected) in table {
+            let answered = error.failure_class();
+            assert_eq!(
+                answered, expected,
+                "{error:?} records {expected:?} but failure_class answered {answered:?}"
+            );
+        }
+        Ok(())
+    }
+
+    /// A capability boundary is never an absence.
+    ///
+    /// This is the claim `buildout-standing-02` turns on, stated over the
+    /// variants that carry an unlanded former or a reserved spelling: the
+    /// author wrote the form, so nothing about it is missing, and classifying
+    /// any of them as `UserAbsence` is what lets total mode record an engine
+    /// limit as author intent.
+    #[test]
+    fn an_unlanded_former_is_unrepresentable_never_an_absence() -> Result<(), String>
+    {
+        let boundaries = [
+            LowerError::Unsupported {
+                kind: SyntaxKind("probe_node"),
+                byte_range: SourceRange(0 .. 1),
+            },
+            LowerError::KindedTypeComponent {
+                name: "Hom".to_owned(),
+                byte_range: SourceRange(0 .. 1),
+            },
+            LowerError::BareTypeComponent {
+                name: "T".to_owned(),
+                byte_range: SourceRange(0 .. 1),
+            },
+            LowerError::NestedManifestFamily {
+                name: "Hom".to_owned(),
+                byte_range: SourceRange(0 .. 1),
+            },
+            LowerError::OpaqueAscriptionUnelaborated {
+                byte_range: SourceRange(0 .. 1),
+            },
+            LowerError::ReservedTailAssertion {
+                byte_range: SourceRange(0 .. 1),
+            },
+        ];
+        assert_eq!(
+            boundaries.len(),
+            6,
+            "the capability-boundary sample must stay non-empty and sized;              an empty sample would pass the loop below without checking anything"
+        );
+        for error in boundaries {
+            assert_eq!(
+                error.failure_class(),
+                FailureClass::Unrepresentable,
+                "a capability boundary must decline by name, but {error:?} answered {:?}",
+                error.failure_class()
+            );
+        }
+        Ok(())
+    }
+
+    /// An engine fault is nobody's fact about the source.
+    ///
+    /// A version-skewed parser or an exhausted arena absorbed into a hole
+    /// reports an engine defect as the author's unfinished work, and the
+    /// acceptance that follows is evidence of nothing. The fourth class exists
+    /// so these can never be folded into `MalformedSource` and blamed on the
+    /// source instead.
+    #[test]
+    fn an_engine_fault_is_never_an_author_fact() -> Result<(), String>
+    {
+        let faults = [
+            LowerError::ParserUnavailable {
+                detail: "version skew".to_owned(),
+            },
+            LowerError::ParseFailed,
+            LowerError::ArenaBridge {
+                error: ArenaBridgeError::IdSpaceExhausted,
+            },
+            LowerError::ImportIndexOverflow {
+                byte_range: SourceRange(0 .. 1),
+            },
+        ];
+        assert_eq!(
+            faults.len(),
+            4,
+            "the engine-fault sample must stay non-empty and sized"
+        );
+        for error in faults {
+            let answered = error.failure_class();
+            assert_eq!(
+                answered,
+                FailureClass::EngineFault,
+                "{error:?} is an engine fault, but it answered {answered:?},                  which attributes the failure to the source"
+            );
+        }
+        Ok(())
+    }
 
     /// The identity intro's witness at computation type (`gandr-e7d2`).
     ///
