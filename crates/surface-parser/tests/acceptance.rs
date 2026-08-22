@@ -1027,17 +1027,23 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     // therefore has a corpus form at all. The rung's remaining programs — the
     // shape presentation, its surface twin, and the glob instance — stay out
     // while the molder does not reach sign blocks and indexed sorts.
+    // Dependent instantiation capture adds two pathological goldens, and two
+    // rather than one because the fault has halves demanding opposite
+    // outcomes: the separating pair, whose colliding and renamed callers must
+    // both check and agree, and the refutation, written entirely at the types
+    // a capturing instantiation computes so that a correct engine refuses it.
     // The base bucket is the fifty-one top-level `model/` and `pathological/`
     // programs this itemization does not name plus the eight attribute
     // examples under `attributes/`.
     assert_eq!(
-        137, base_count,
-        "137 files: 62 model, 75 pathological; higher-cells CatShape + infinity-graph + the \
-         setoids instance, which joins the corpus now that a member-level claim can be stated"
+        139, base_count,
+        "139 files: 62 model, 77 pathological; higher-cells CatShape + infinity-graph + the \
+         setoids instance, which joins the corpus now that a member-level claim can be stated, \
+         plus the two dependent-instantiation capture goldens"
     );
     assert_eq!(
-        137, base_clean,
-        "all 137 model + pathological files mold clean"
+        139, base_clean,
+        "all 139 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");
