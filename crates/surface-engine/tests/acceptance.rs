@@ -1738,7 +1738,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// hygiene test: a field elaborated at a type mentioning an unknown is
         /// consistent with everything, so a signature carrying one states less
         /// than it appears to.
-        #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
+        #[ignore = "gandr-3jus: the signature cannot be parsed until a dependent function type exists"]
         #[test]
         fn the_cat_shape_model_signature_elaborates_without_an_unknown()
         {

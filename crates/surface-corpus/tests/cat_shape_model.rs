@@ -255,87 +255,69 @@ pub mod tests
   }
 "#;
 
-    /// The signature elaborates, and no field's type mentions the gradual
-    /// unknown.
+    /// The **stated** signature elaborates, and no field's type mentions the
+    /// gradual unknown.
     ///
-    /// The unknown clause is part of the claim rather than hygiene beside it: a
-    /// field elaborated at a type mentioning an unknown is consistent with
-    /// everything, so a signature carrying one states less than it appears to.
-    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
+    /// Owed, and the gate is named rather than the rung: the operation clause
+    /// binds every free sort variable as a dependent parameter, and the surface
+    /// type grammar has no dependent function type, so this signature cannot be
+    /// parsed at all. It is written out above because it is the oracle the
+    /// derivation rung is held to, and an oracle nobody can read is not one.
+    #[ignore = "gandr-3jus: the signature cannot be parsed until a dependent function type exists"]
     #[test]
     fn the_model_signature_elaborates_without_an_unknown()
     {
         let _ = (MODEL_CAT_SHAPE, SETOID_CAT_SIGNATURE, SETOID_CAT_BODY);
-        todo!("gandr-0ika")
+        todo!("gandr-3jus")
     }
 
-    /// The indexed sort survives as a **family of arity two**, not as a single
-    /// function type.
+    /// The instance matches the **stated** signature.
     ///
-    /// `type Hom : Ob -> Ob -> Type` and `type Hom = Ob -> Ob -> Type` are
-    /// different declarations, and reading the first as the second would bind
-    /// `Hom` to a type the source does not state.
-    #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
-    #[test]
-    fn the_indexed_sort_is_a_family_of_arity_two()
-    {
-        todo!("gandr-wvd.6.2")
-    }
-
-    /// The discrete-setoid instance matches the signature, and both unit laws
-    /// are members of the resulting module.
-    ///
-    /// Members rather than top-level definitions: the instance is a module, so
-    /// the claim is about its components, which is what the member-level corpus
-    /// expectations exist to state.
-    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
+    /// Owed behind the same gate, and it is the claim the flagship rests on:
+    /// until a signature can be stated, an instance has nothing to be an
+    /// instance *of*, and what the corpus witnesses is a module that presents
+    /// the category of setoids rather than an instance of anything.
+    #[ignore = "gandr-3jus: no stated signature exists to ascribe against"]
     #[test]
     fn the_setoid_instance_matches_the_model_signature()
     {
-        todo!("gandr-0ika")
+        todo!("gandr-3jus")
     }
 
     /// The law fields' endpoints name the **model's own** operations.
     ///
-    /// This is the claim that separates a law of the model from a law about the
-    /// instance's private helpers. It is stated as its own witness because the
-    /// two spellings elaborate to different terms while both type-check once
-    /// the embedding resolves, so nothing downstream would notice the
-    /// substitution.
-    #[ignore = "gandr-rson: scaffold; the body is owed with this rung"]
+    /// Witnessed at
+    /// `flagship_probe::both_unit_laws_check_in_model_faithful_form`, which
+    /// states the claim over the two laws that check and pairs it with
+    /// the helper spelling that must not move with them. Kept here as a pointer
+    /// rather than a second copy, because two witnesses for one claim drift.
+    ///
+    /// The third law is not among them: its composites nest an embedding inside
+    /// an embedding's argument, one level deeper than the resolution reaches
+    /// (`gandr-e7d2`).
+    #[ignore = "witnessed at flagship_probe::both_unit_laws_check_in_model_faithful_form"]
     #[test]
     fn the_law_endpoints_name_the_models_own_operations()
     {
-        todo!("gandr-rson")
-    }
-
-    /// The **unsigned twin** carries the unknown claim, because its reported
-    /// record type is exactly what its bodies elaborated to.
-    ///
-    /// The same body text as the signed instance, by construction rather than
-    /// by inspection: both modules are built from `SETOID_CAT_BODY`, so there
-    /// is no second copy that could drift out of agreement while both sides
-    /// stay green.
-    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
-    #[test]
-    fn the_unsigned_twins_members_carry_no_unknown()
-    {
-        todo!("gandr-0ika")
+        todo!("see flagship_probe")
     }
 
     /// No index or type in the claim path is **misrepresented**: none mentions
     /// the gradual unknown, and none holds a type former where the declaration
     /// puts a value.
     ///
-    /// Two clauses because one token is not the invariant. An unknown is
-    /// visible to `Ty::mentions_unknown`; a type atom standing in a value
-    /// index position reads as a clean successful elaboration to every
-    /// instrument in the tree, which is the sibling that recruits a false
-    /// record rather than its own correction.
-    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
+    /// The first clause is witnessed by the corpus entry's
+    /// `expect-member-type-without-unknown` directives over the module's four
+    /// interesting members. **The second is vacuously satisfied here rather
+    /// than inspected**: this instance has no value indices at all, because its
+    /// objects are types and its homs expand by substitution, so there is no
+    /// position in which a type former could stand for a value. Said plainly
+    /// because a check that cannot fire is not a check, and a claim that leans
+    /// on one is weaker than it reads.
+    #[ignore = "witnessed by the corpus entry's member-level unknown directives"]
     #[test]
     fn no_index_in_the_claim_path_is_misrepresented()
     {
-        todo!("gandr-0ika")
+        todo!("see cat-shape-setoids.gandr")
     }
 }
