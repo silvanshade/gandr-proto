@@ -188,14 +188,43 @@ mod tests
     /// collide with all three. `gandr-ijdw`. When it lands, the names here
     /// should go back to the design's spelling, and the fact that they *can* is
     /// part of that repair's witness.
-    pub const SETOID_CAT: &str = r#"module SetoidCat : #{
+    pub const SETOID_CAT_SIGNATURE: &str = r#"#{
   type Ob = Type,
   type Hom(a : Ob, b : Ob) = U[ω] (a -> F b),
   id : U[ω] ((a : Ob) -> F Hom(a, a)),
   comp : U[ω] ((a : Ob) -> (b : Ob) -> (c : Ob) -> Hom(a, b) -> Hom(b, c) -> F Hom(a, c)),
   unitL : U[ω] ((a : Ob) -> (b : Ob) -> (f : Hom(a, b)) -> F Path(Hom(a, b), comp(a, a, b, id(a), f), f)),
   unitR : U[ω] ((a : Ob) -> (b : Ob) -> (f : Hom(a, b)) -> F Path(Hom(a, b), comp(a, b, b, f, id(b)), f))
-} {
+}"#;
+
+    /// The instance's body, held apart from its ascription so the two modules
+    /// below share it as a **fact** rather than as a claim.
+    ///
+    /// **Why there are two modules.** A member-level type check over a signed
+    /// module reads the *ascribed* field types, so it witnesses the signature
+    /// and says nothing about what the bodies elaborated to. And that gap
+    /// cannot be argued away by saying the body must have matched: the gradual
+    /// unknown is consistent with everything, so a body that degraded to
+    /// `Unknown` still matches an ascription naming a real type. Left alone,
+    /// the unknown clause of the flagship claim would have passed by
+    /// witnessing that the signature — written by hand, on this branch — has
+    /// no unknown in it.
+    ///
+    /// So the claim splits over two artifacts, and the split is stated rather
+    /// than presented as design: the **signed** module carries the matching
+    /// claim, the **unsigned twin** carries the unknown claim, because an
+    /// unsigned module's reported record type is exactly what its bodies
+    /// elaborated to. `gandr-64oy` carries what would replace the twin.
+    ///
+    /// **The type variables are named `t u v` and `p q` rather than `a b c`,
+    /// and that is a workaround rather than a style.** Type substitution is not
+    /// capture-avoiding, so a caller whose variables collide with an
+    /// operation's own binders is instantiated wrongly; the composition's
+    /// binders are `a b c`, and a category's laws written the obvious way
+    /// collide with all three. `gandr-ijdw`. When it lands, the names here
+    /// should go back to the design's spelling, and the fact that they *can* is
+    /// part of that repair's witness.
+    pub const SETOID_CAT_BODY: &str = r#"
   def ident(t : Type, x : t) -> F t { ret x }
 
   def compose(t : Type, u : Type, v : Type, f : U[ω] (t -> F u), g : U[ω] (u -> F v), x : t) -> F v {
@@ -216,7 +245,7 @@ mod tests
   def unitR(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, q, q, f, id(q)), f) {
     ret here(f)
   }
-}"#;
+"#;
 
     /// The signature elaborates, and no field's type mentions the gradual
     /// unknown.
@@ -227,7 +256,7 @@ mod tests
     #[test]
     fn the_model_signature_elaborates_without_an_unknown()
     {
-        let _ = (MODEL_CAT_SHAPE, SETOID_CAT);
+        let _ = (MODEL_CAT_SHAPE, SETOID_CAT_SIGNATURE, SETOID_CAT_BODY);
         todo!("gandr-0ika")
     }
 
@@ -266,6 +295,17 @@ mod tests
     fn the_law_endpoints_name_the_models_own_operations()
     {
         todo!("gandr-rson")
+    }
+
+    /// The **unsigned twin** carries the unknown claim, because its reported
+    /// record type is exactly what its bodies elaborated to.
+    ///
+    /// The same body text as the signed instance, by construction rather than
+    /// by inspection: both modules are built from `SETOID_CAT_BODY`.
+    #[test]
+    fn the_unsigned_twins_members_carry_no_unknown()
+    {
+        todo!("gandr-0ika")
     }
 
     /// No index or type in the claim path is **misrepresented**: none mentions
