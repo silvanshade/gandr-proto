@@ -1581,8 +1581,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             // computation position, where the value-sorted `Type` coerces to
             // the gradual unknown, and accepting that would read a degradation
             // as the claim it destroyed.
-            let source = "module M : #{ type Ob : Type, type Hom : Ob -> Ob -> Type, probe : \
-                          Integer } { def probe = 1; }";
+            let source = r#"module M : #{ type Ob : Type, type Hom : Ob -> Ob -> Type, probe : Integer } { def probe = 1; }"#;
             let lowered = lower_source(source.into()).expect("the indexed sort elaborates");
             assert!(
                 lowered
@@ -1618,8 +1617,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             // `b : Type) = …`, so the type component's parameter list is
             // unterminated and the second half becomes a value field labelled
             // after a binder.
-            let source = "module M : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), d : \
-                          Integer } { def d = 1; }";
+            let source = r#"module M : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), d : Integer } { def d = 1; }"#;
             let lowered = lower_source(source.into()).expect("the two-parameter spelling lowers");
             let module = lowered
                 .items
@@ -1649,10 +1647,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         {
             // Two occurrences at different arguments, so an expansion that
             // ignored its arguments would be visible as two equal field types.
-            let source = "module N : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), fwd \
-                          : Hom(Integer, String), rev : Hom(String, Integer) } { def fwd(n : \
-                          Integer) -> F String { ret \"x\" } def rev(s : String) -> F Integer { \
-                          ret 0 } }";
+            let source = r#"module N : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), fwd : Hom(Integer, String), rev : Hom(String, Integer) } { def fwd(n : Integer) -> F String { ret "x" } def rev(s : String) -> F Integer { ret 0 } }"#;
             let lowered = lower_source(source.into()).expect("the family expands");
             let module = lowered
                 .items
@@ -1685,8 +1680,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             // The guard the accessor exists for: a nullary component whose body
             // opens with a parenthesized type must not have that group read as
             // a parameter list.
-            let nullary = "module N : #{ type T = U[\u{3c9}] (Integer -> F Integer), v : T } { def \
-                           v(n : Integer) -> F Integer { ret n } }";
+            let nullary = r#"module N : #{ type T = U[ω] (Integer -> F Integer), v : T } { def v(n : Integer) -> F Integer { ret n } }"#;
             let lowered = lower_source(nullary.into()).expect("the nullary component lowers");
             assert!(
                 lowered
@@ -1710,8 +1704,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             // Under-applied: a family named with no arguments. Falling through
             // to the ambient resolver would bind the signature's own component
             // name to an atom, silently and with no gradual unknown to find.
-            let under = "module N : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), bad : \
-                         Hom } { def bad = 1; }";
+            let under = r#"module N : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), bad : Hom } { def bad = 1; }"#;
             let error = lower_source(under.into()).expect_err("an under-applied family is refused");
             assert!(
                 matches!(error, LowerError::ManifestFamilyArity {

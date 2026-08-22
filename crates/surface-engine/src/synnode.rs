@@ -4074,7 +4074,11 @@ mod tests
     #[test]
     fn recognizes_multiple_items_and_recovery() -> Result<(), String>
     {
-        let many = tree("def a = 1;\ndef b = 2;\ndef c = 3;")?;
+        let many = tree(
+            r"def a = 1;
+def b = 2;
+def c = 3;",
+        )?;
         assert_eq!(3, many.root().named_children().len(), "three items");
 
         // A missing operand leaves a grout repair the adapter reports as an
@@ -5430,10 +5434,7 @@ mod tests
         );
 
         let ascribed = tree(
-            "module M : #{ x: Integer, f: F Integer } { \
-             def x = 1; \
-             @[doc({ ret 0 })] def f(a: Integer) -> F Integer { ret a } \
-             }",
+            r"module M : #{ x: Integer, f: F Integer } { def x = 1; @[doc({ ret 0 })] def f(a: Integer) -> F Integer { ret a } }",
         )?;
         assert!(
             ascribed.obligations().is_empty(),
@@ -5558,11 +5559,7 @@ mod tests
     fn recognizes_one_level_nested_module_member() -> Result<(), String>
     {
         let parsed = tree(
-            "module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } { \
-             def before = 0; \
-             module inner : #{ answer: Integer } { def answer = 42; } \
-             def after = inner.answer; \
-             }",
+            r"module Outer : #{ before: Integer, inner: #{ answer: Integer }, after: Integer } { def before = 0; module inner : #{ answer: Integer } { def answer = 42; } def after = inner.answer; }",
         )?;
         assert!(
             parsed.obligations().is_empty(),
@@ -5678,13 +5675,7 @@ mod tests
     fn recognizes_nested_module_members_at_depth() -> Result<(), String>
     {
         let parsed = tree(
-            "module Outer { \
-             module a { \
-             module b { \
-             module c { @[doc(1)] def deep = 1; } \
-             } \
-             } \
-             }",
+            r"module Outer { module a { module b { module c { @[doc(1)] def deep = 1; } } } }",
         )?;
         assert!(
             parsed.obligations().is_empty(),
