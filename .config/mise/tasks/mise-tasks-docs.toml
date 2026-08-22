@@ -61,19 +61,6 @@ nu ./scripts/check-conflict-markers.nu
 # run = """
 # typst compile --root . docs/manual/spike/diagram-cookbook.typ docs/manual/spike/diagram-cookbook.pdf
 # """
-#
-# ["docs:highlight"]
-# description = "Preprocess a .gandr file through tree-sitter highlights.scm -> typst token JSON"
-# run = """
-# nu docs/manual/tools/highlight-gandr.nu {{arg(name='gandr_file')}} --out {{arg(name='out_json')}}
-# """
-#
-# ["docs:highlight:spike"]
-# description = "Regenerate the highlight token stream + compile the highlighting spike -> PDF"
-# run = """
-# nu docs/manual/tools/highlight-gandr.nu packages/tree-sitter-gandr/test/scripts/fixtures/highlights.gandr --out docs/manual/spike/gen/highlights.json
-# typst compile --root . docs/manual/spike/highlighting-spike.typ docs/manual/spike/highlighting-spike.pdf
-# """
 
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual):
 # the docs:chapter:* renderers each map a spec source to a manual chapter and

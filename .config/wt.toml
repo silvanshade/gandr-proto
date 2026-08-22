@@ -150,19 +150,15 @@ beads-pull = "bd dolt pull"
 #     coordination state, and inheriting it costs a branch nothing. Owner
 #     ruling, 2026-08-10.
 #
-# Four patterns were deleted rather than repaired (gandr-vibl), because each
+# Two patterns were deleted rather than repaired (gandr-vibl), because each
 # names something that should be copied or nothing at all:
 #
 #   target/**  never matched: `target` at .gitignore:1 covers the directory
 #     itself, so git hands it over collapsed as the single entry "target".
-#   crates/tree-sitter/target/**  names a path absent from the tree, and its
-#     stated premise was false in both halves — the generic `target` rule
-#     carries no leading slash, so it is not root-anchored and already matches
-#     at every depth, and a nested `/**` pattern would not have matched a
-#     collapsed entry anyway.
+#     The generic `target` rule carries no leading slash, so it is not
+#     root-anchored and already matches at every depth; a nested `/**` pattern
+#     would not have matched a collapsed entry anyway.
 #   fuzz/target/**  also absent, and covered by the same build-cache ruling.
-#   packages/tree-sitter-gandr/node_modules/**  absent, and it never named the
-#     node_modules that is actually copied, which is the one at the repo root.
 [step.copy-ignored]
 exclude = [
   ".beads/",

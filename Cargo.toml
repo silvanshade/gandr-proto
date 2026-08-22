@@ -668,12 +668,6 @@ version = "1.0.150"
 default-features = false
 features = ["std"]
 
-# The lending-iterator trait tree-sitter's `QueryMatches`/`QueryCaptures`
-# implement; needed as a direct dep to drive highlight queries (`gandr-tui`).
-[workspace.dependencies.streaming-iterator]
-version = "0.1.9"
-default-features = false
-
 # Rust token-stream parser for source analysis.
 # consumers:
 # - gandr-workflow-gates

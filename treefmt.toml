@@ -44,16 +44,11 @@ includes = [
   "*.yaml",
   "*.yml",
 ]
-# Generated or layout-sensitive artifacts a formatter must not rewrite — the same
-# fidelity discipline as the top-level .beads exclude:
-#   - tree-sitter-generated grammar.json / node-types.json (`tree-sitter generate`);
-#   - the npm-generated package-lock.json;
+# Layout-sensitive artifacts a formatter must not rewrite — the same fidelity
+# discipline as the top-level .beads exclude:
 #   - the contract-fixtures manifest.json, read by a bespoke layout-sensitive
 #     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it).
 excludes = [
-  "packages/tree-sitter-gandr/src/grammar.json",
-  "packages/tree-sitter-gandr/src/node-types.json",
-  "packages/tree-sitter-gandr/package-lock.json",
   # Parked: the contract-fixtures crate is not in the repo yet, and its reboot
   # dir name is unsettled (the crates/gandr-* prefix is retired) — restore or
   # retarget this exclude with the surface-grammar/fixtures port.
