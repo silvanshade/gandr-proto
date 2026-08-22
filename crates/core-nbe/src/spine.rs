@@ -45,9 +45,10 @@
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::string::String;
-use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
+use gandr_core_term::boundary::BinderInScope;
+use gandr_core_term::boundary::NameRef;
 use gandr_core_term::boundary::TrivialContinuation;
 use gandr_core_term::syntax::CompNode;
 use gandr_core_term::syntax::CompNodeId;
@@ -79,12 +80,12 @@ use crate::sem::ValueUnfold;
 /// `head` still abstracts the original binder; each `tails` entry is a binder
 /// and a body that the occurs check proved independent of it, in the order the
 /// spine takes them.
-pub(crate) struct BindChain
+pub struct BindChain
 {
     /// The computation left under the original binder.
-    pub(crate) head: CompNodeId,
+    pub head: CompNodeId,
     /// The lifted continuations, innermost first.
-    pub(crate) tails: Vec<(String, CompNodeId)>,
+    pub tails: Vec<(String, CompNodeId)>,
 }
 
 /// Peels the trailing binds of a continuation body abstracting `binder`.
@@ -102,10 +103,10 @@ pub(crate) struct BindChain
 /// - measure: the number of `Bind` nodes on the body's leftmost spine.
 /// - boundedness: each iteration replaces the body by its own bound child.
 /// - input recursion: none.
-pub(crate) fn peel_bind_chain(
+pub fn peel_bind_chain(
     store: &FlatArena,
     body: CompNodeId,
-    binder: &str,
+    binder: NameRef<'_>,
 ) -> Option<BindChain>
 {
     let mut head = body;
@@ -114,7 +115,7 @@ pub(crate) fn peel_bind_chain(
         // The side condition, and the whole difficulty: lifting the tail out of
         // the continuation is sound only when the tail cannot see the binder.
         match free_names(store, tail) {
-            | Some(free) if !free.contains(binder) => {},
+            | Some(free) if !free.contains(binder.as_ref()) => {},
             | _ => break,
         }
         tails.push((tail_binder.clone(), tail));
@@ -145,7 +146,7 @@ pub(crate) fn peel_bind_chain(
 /// # Errors
 ///
 /// Returns [`SemError`] on arena exhaustion or an unresolvable id.
-pub(crate) fn stored_reassociation(
+pub fn stored_reassociation(
     nbe: &mut Normalizer,
     cont: ClosureId,
 ) -> Result<Option<Vec<Elim>>, SemError>
@@ -158,11 +159,11 @@ pub(crate) fn stored_reassociation(
         };
         (closure.env(), binder.clone(), closure.body())
     };
-    let Some(chain) = peel_bind_chain(nbe.syntax(), body, &binder)
+    let Some(chain) = peel_bind_chain(nbe.syntax(), body, NameRef::from(binder.as_str()))
     else {
         return Ok(None);
     };
-    let mut parts = Vec::with_capacity(chain.tails.len() + 1);
+    let mut parts = Vec::with_capacity(chain.tails.len().saturating_add(1));
     let head = nbe
         .arena_mut()
         .mint_closure(Closure::new(env, alloc::vec![binder], chain.head))?;
@@ -191,7 +192,7 @@ pub(crate) fn stored_reassociation(
 ///   own readback, dropping at least one `Bind` node, and every other step
 ///   removes an entry without adding one.
 /// - input recursion: none.
-pub(crate) fn canonical_spine(
+pub fn canonical_spine(
     nbe: &mut Normalizer,
     spine: &[Elim],
 ) -> Result<Vec<Elim>, SemError>
@@ -293,9 +294,9 @@ fn reassociated(
     // The cheap precondition, checked before any readback: only a neutral whose
     // spine already ends in a sequence can carry eliminators that belong to the
     // spine beneath it.
-    let stuck = match *nbe.arena().comp(whnf)?.node() {
-        | SemCompNode::Neutral(stuck) => stuck,
-        | _ => return Ok(None),
+    let SemCompNode::Neutral(stuck) = *nbe.arena().comp(whnf)?.node()
+    else {
+        return Ok(None);
     };
     if !matches!(
         nbe.arena().neutral(stuck)?.spine().last(),
@@ -309,11 +310,11 @@ fn reassociated(
     // opens with a strictly later level.
     let body = quote_comp(nbe, whnf, QuoteMode::Canonical)?;
     let binder = level_name(level);
-    let Some(chain) = peel_bind_chain(nbe.syntax(), body, &binder)
+    let Some(chain) = peel_bind_chain(nbe.syntax(), body, NameRef::from(binder.as_str()))
     else {
         return Ok(None);
     };
-    let mut parts = Vec::with_capacity(chain.tails.len() + 1);
+    let mut parts = Vec::with_capacity(chain.tails.len().saturating_add(1));
     let head = seal(nbe, binder, chain.head)?;
     parts.push(Elim::Sequence(head));
     for (tail_binder, tail) in chain.tails {
@@ -364,7 +365,7 @@ enum Scope
     /// No binders in scope.
     Empty,
     /// One binder over an enclosing scope.
-    Bound(String, Rc<Scope>),
+    Bound(String, Rc<Self>),
 }
 
 impl Scope
@@ -372,16 +373,16 @@ impl Scope
     /// Whether `name` is bound in this scope.
     fn binds(
         self: &Rc<Self>,
-        name: &str,
-    ) -> bool
+        name: NameRef<'_>,
+    ) -> BinderInScope
     {
         let mut scope = self;
         loop {
             match **scope {
-                | Self::Empty => return false,
+                | Self::Empty => return BinderInScope::from(false),
                 | Self::Bound(ref bound, ref rest) => {
-                    if bound == name {
-                        return true;
+                    if bound == name.as_ref() {
+                        return BinderInScope::from(true);
                     }
                     scope = rest;
                 },
@@ -392,10 +393,10 @@ impl Scope
     /// This scope extended by one binder.
     fn with(
         self: &Rc<Self>,
-        binder: &str,
+        binder: NameRef<'_>,
     ) -> Rc<Self>
     {
-        Rc::new(Self::Bound(binder.to_string(), Rc::clone(self)))
+        Rc::new(Self::Bound(String::from(binder.as_ref()), Rc::clone(self)))
     }
 }
 
@@ -452,11 +453,18 @@ fn visit_comp(
     let node = store.comps.get(id)?;
     match *node {
         | CompNode::Hole(_) => {},
-        | CompNode::Abs(ref binder, None, body) => {
-            work.push(Occurrence::Comp(body, scope.with(binder)));
-        },
-        | CompNode::Fix(ref binder, body) | CompNode::Shift(ref binder, body) => {
-            work.push(Occurrence::Comp(body, scope.with(binder)));
+        // One binder over one computation body, three times over: a lambda's
+        // parameter, a fixpoint's self-reference, a shift's continuation. They
+        // differ in what the binder MEANS and not at all in what it SCOPES
+        // over, and scope is the only thing an occurrence walk reads, so the
+        // shared arm states a real identity rather than a coincidence.
+        | CompNode::Abs(ref binder, None, body)
+        | CompNode::Fix(ref binder, body)
+        | CompNode::Shift(ref binder, body) => {
+            work.push(Occurrence::Comp(
+                body,
+                scope.with(NameRef::from(binder.as_str())),
+            ));
         },
         | CompNode::App(head, argument) => {
             work.push(Occurrence::Comp(head, Rc::clone(scope)));
@@ -468,12 +476,21 @@ fn visit_comp(
         | CompNode::Force(thunked) => work.push(Occurrence::Value(thunked, Rc::clone(scope))),
         | CompNode::Bind(bound, ref binder, cont) => {
             work.push(Occurrence::Comp(bound, Rc::clone(scope)));
-            work.push(Occurrence::Comp(cont, scope.with(binder)));
+            work.push(Occurrence::Comp(
+                cont,
+                scope.with(NameRef::from(binder.as_str())),
+            ));
         },
         | CompNode::Case(scrutinee, (ref left, on_left), (ref right, on_right)) => {
             work.push(Occurrence::Value(scrutinee, Rc::clone(scope)));
-            work.push(Occurrence::Comp(on_left, scope.with(left)));
-            work.push(Occurrence::Comp(on_right, scope.with(right)));
+            work.push(Occurrence::Comp(
+                on_left,
+                scope.with(NameRef::from(left.as_str())),
+            ));
+            work.push(Occurrence::Comp(
+                on_right,
+                scope.with(NameRef::from(right.as_str())),
+            ));
         },
         | CompNode::ListCase {
             scrut,
@@ -484,12 +501,20 @@ fn visit_comp(
         } => {
             work.push(Occurrence::Value(scrut, Rc::clone(scope)));
             work.push(Occurrence::Comp(nil, Rc::clone(scope)));
-            work.push(Occurrence::Comp(cons, scope.with(head).with(tail)));
+            work.push(Occurrence::Comp(
+                cons,
+                scope
+                    .with(NameRef::from(head.as_str()))
+                    .with(NameRef::from(tail.as_str())),
+            ));
         },
         | CompNode::DataCase { scrut, ref arms } => {
             work.push(Occurrence::Value(scrut, Rc::clone(scope)));
             for &(ref binder, body) in arms {
-                work.push(Occurrence::Comp(body, scope.with(binder)));
+                work.push(Occurrence::Comp(
+                    body,
+                    scope.with(NameRef::from(binder.as_str())),
+                ));
             }
         },
         | CompNode::RecordProj { record, .. } => {
@@ -519,7 +544,12 @@ fn visit_comp(
             body,
         } => {
             work.push(Occurrence::Value(scrut, Rc::clone(scope)));
-            work.push(Occurrence::Comp(body, scope.with(fst_name).with(snd_name)));
+            work.push(Occurrence::Comp(
+                body,
+                scope
+                    .with(NameRef::from(fst_name.as_str()))
+                    .with(NameRef::from(snd_name.as_str())),
+            ));
         },
         // Everything left carries a type child, a signature, or a reified
         // stack — places this walk does not look, so it cannot report where a
@@ -541,7 +571,7 @@ fn visit_value(
     let node = store.values.get(id)?;
     match *node {
         | ValueNode::Var(ref name) => {
-            if !scope.binds(name) {
+            if !bool::from(scope.binds(NameRef::from(name.as_str()))) {
                 found.insert(name.clone());
             }
         },

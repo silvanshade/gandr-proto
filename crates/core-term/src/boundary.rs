@@ -404,6 +404,11 @@ copy_wrapper!(
     "Whether a variable occurs free inside a type."
 );
 copy_wrapper!(
+    BinderInScope,
+    bool,
+    "Whether a name is bound by an enclosing binder on an occurrence walk."
+);
+copy_wrapper!(
     GuardDecision,
     bool,
     "Whether a pair of semantic guard words settles a comparison outright."
