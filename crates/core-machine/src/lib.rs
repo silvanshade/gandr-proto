@@ -97,6 +97,8 @@ use gandr_core_term::effect::resume_stack_type;
 use gandr_core_term::error::TypeError;
 use gandr_core_term::error::text;
 use gandr_core_term::grade::Grade;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::FlatArena;
 use gandr_core_term::syntax::OpClause;
@@ -336,6 +338,15 @@ pub enum Frame
         var: String,
         /// The stored continuation.
         cont: Comp,
+        /// The value the bound computation returns, when it returns one
+        /// outright and carries no unsolved hole.
+        ///
+        /// A bind whose source is a **returner** makes its binder equal to that
+        /// value inside the continuation: `run x <- ret v; body` reduces to
+        /// `body[v/x]`, so `x ≡ v` there. Carrying it lets the continuation's
+        /// conversion compute across a sibling binding rather than treating it
+        /// as opaque.
+        definition: Option<Rc<Value>>,
         /// The direction the bind itself was typed in.
         dir: Dir<CompType>,
     },
@@ -351,6 +362,9 @@ pub enum Frame
         /// The direction the bind itself was typed in — the union is finished
         /// against it, so a checking-mode bind subsumption-checks its row.
         dir: Dir<CompType>,
+        /// Whether the binder also contributed an unfolding rule, so the pop
+        /// removes exactly what the push added.
+        defined: bool,
     },
     /// A case's scrutinee is pending; both arms are stored.
     CaseScrut
@@ -1524,9 +1538,23 @@ fn step_comp(
             })
         },
         | Comp::Bind(bound, name, cont) => {
+            // **A value carrying an unsolved hole is excluded**, on the same
+            // soundness line the session's own definition chain draws: a hole
+            // is consistent with everything, so unfolding into one lets a law
+            // be proved *through* the hole — a stated law wearing proved
+            // clothing, arrived at definitionally.
+            let definition = match *bound {
+                | Comp::Ret(ref value) => {
+                    let (_, residual) =
+                        subst_holes_value(value.as_ref(), &HoleSubstitution::default());
+                    (!bool::from(residual)).then(|| Rc::clone(value))
+                },
+                | _ => None,
+            };
             stack.push(Frame::Bind {
                 var: name,
                 cont: Rc::unwrap_or_clone(cont),
+                definition,
                 dir,
             });
             Ok(Control::DescendComp {
@@ -2380,16 +2408,33 @@ fn step_return(
                 actual: Ty::Value(other),
             }),
         },
-        | Frame::Bind { var, cont, dir } => match expect_comp(ty)? {
+        | Frame::Bind {
+            var,
+            cont,
+            definition,
+            dir,
+        } => match expect_comp(ty)? {
             // The bound computation's row is carried into `BindBody` (alongside
             // the bind's direction) and unioned into the result at the pop
             // (A3.2 `+effects`). The continuation is descended in the bind's
             // direction, so the direction is cloned for the frame.
             | CompType::F(payload, row) => {
+                // **A module's members are exactly this shape.** A module
+                // lowers to bind sequencing over a terminal record, so every
+                // member is a binder whose source returns its value — and
+                // without the unfolding rule a law field naming a sibling
+                // operation can never reduce, while the same law at top level,
+                // where the operation is a definition, checks. That asymmetry
+                // is not a design: the two spellings say the same thing.
+                let defined = definition.is_some();
+                if let Some(value) = definition {
+                    ctx.define(NameRef::from(var.as_str()), value);
+                }
                 ctx.bind(var, Rc::unwrap_or_clone(payload));
                 stack.push(Frame::BindBody {
                     bound_row: row,
                     dir: dir.clone(),
+                    defined,
                 });
                 Ok(Control::DescendComp { comp: cont, dir })
             },
@@ -2401,6 +2446,7 @@ fn step_return(
                 stack.push(Frame::BindBody {
                     bound_row: EffectRow::EMPTY,
                     dir: dir.clone(),
+                    defined: false,
                 });
                 Ok(Control::DescendComp { comp: cont, dir })
             },
@@ -2409,7 +2455,11 @@ fn step_return(
                 actual: Ty::Comp(other),
             }),
         },
-        | Frame::BindBody { bound_row, dir } => {
+        | Frame::BindBody {
+            bound_row,
+            dir,
+            defined,
+        } => {
             // Union the bound row into the continuation's result, then finish
             // against the bind's direction (the row-subsumption the union
             // requires; a checking-mode bind decides `ε_bound ∪ ε ⊆ ε`). Both
@@ -2419,6 +2469,9 @@ fn step_return(
             let combined = combine_bind_row(&bound_row, cont_ty)?;
             let finished = finish_comp(ctx, combined, dir)?;
             ctx.unbind();
+            if defined {
+                ctx.undefine();
+            }
             Ok(return_comp(finished))
         },
         | Frame::CaseArm2 => {

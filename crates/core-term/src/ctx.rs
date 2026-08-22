@@ -215,6 +215,30 @@ impl Ctx
         self.defs.push((name.into().as_ref().to_owned(), body));
     }
 
+    /// Removes the most recently added definition from the chain.
+    ///
+    /// The counterpart of [`Ctx::define`], for a definition whose scope is a
+    /// term rather than a session: a `run x <- ret v; body` makes `x` equal to
+    /// `v` **inside `body`** and nowhere after it, so the unfolding rule leaves
+    /// with the binder it came in with.
+    ///
+    /// # Contract
+    /// - requires: a matching [`Ctx::define`] preceded this call.
+    /// - ensures: the chain is exactly what it was before that `define`.
+    /// - panics: in debug builds, on a define/undefine imbalance, for the same
+    ///   reason [`Ctx::unbind`] does: an imbalance leaks an unfolding rule into
+    ///   a scope that never wrote one, which is a definitional equality the
+    ///   source does not state.
+    #[inline]
+    pub fn undefine(&mut self)
+    {
+        debug_assert!(
+            !self.defs.is_empty(),
+            "Ctx::undefine on an empty definition chain: define/undefine imbalance"
+        );
+        drop(self.defs.pop());
+    }
+
     /// Returns a context carrying `chain` (builder style).
     #[inline]
     #[must_use]

@@ -1243,7 +1243,9 @@ impl<'tree> SynNode<'tree>
                 | Some(label::LPAREN | label::LBRACE | label::LBRACKET | label::HASH_BRACE) => {
                     depth = depth.saturating_add(1);
                 },
-                | Some(label::RPAREN | label::RBRACE) => depth = depth.saturating_sub(1),
+                | Some(label::RPAREN | label::RBRACE | label::RBRACKET_GRADE) => {
+                    depth = depth.saturating_sub(1);
+                },
                 | Some(text) if depth == 0 && text == spelling => return TilePresence(true),
                 | _ => {},
             }
@@ -2322,11 +2324,20 @@ impl<'tree> SynNode<'tree>
         // takes for every other top-level tile question.
         let mut depth = 0_usize;
         while index < body.end {
+            // The closing bracket is counted as well as the opening one. The
+            // older top-level walk this is modelled on opens on `[` and never
+            // closes, so a member carrying a graded thunk `U[ω] …` leaves the
+            // depth raised for the whole rest of the signature and every later
+            // comma stops being a separator — the members after it are
+            // swallowed into one. That reads as the module failing to lower
+            // rather than as anything about the member.
             match sig.get(index).and_then(|&node| self.tree.tile_label(node)) {
                 | Some(label::LPAREN | label::LBRACE | label::LBRACKET | label::HASH_BRACE) => {
                     depth = depth.saturating_add(1);
                 },
-                | Some(label::RPAREN | label::RBRACE) => depth = depth.saturating_sub(1),
+                | Some(label::RPAREN | label::RBRACE | label::RBRACKET_GRADE) => {
+                    depth = depth.saturating_sub(1);
+                },
                 | _ => {},
             }
             let is_comma = depth == 0

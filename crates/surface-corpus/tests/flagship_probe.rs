@@ -222,6 +222,48 @@ def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), 
         );
     }
 
+    /// **A module's members are usable by their siblings.** A law naming a
+    /// sibling operation reduces across it, exactly as the same law at top
+    /// level reduces across a definition.
+    ///
+    /// The three cases are stated together because the asymmetry is the claim.
+    /// At top level the operation is a definition and the law checks. Inside a
+    /// module the operation is a binder over a returner — that is what a module
+    /// lowers to — and without an unfolding rule for it the law could never
+    /// reduce, while a law naming an *outer* definition checked fine. Two
+    /// spellings of one theorem cannot disagree about whether it holds.
+    #[test]
+    fn a_modules_members_are_usable_by_their_siblings()
+    {
+        let top_level = r#"def w(n: Integer) -> F Integer { ret n }
+def law(n: Integer) -> F Path(Integer, w(n), n) { ret here(n) }
+"#;
+        let inside = r#"module M {
+  def w(n: Integer) -> F Integer { ret n }
+  def law(n: Integer) -> F Path(Integer, w(n), n) { ret here(n) }
+}"#;
+        let outer = r#"def w(n: Integer) -> F Integer { ret n }
+module M {
+  def law(n: Integer) -> F Path(Integer, w(n), n) { ret here(n) }
+}"#;
+        for (label, source) in [
+            ("at top level", top_level),
+            ("inside a module", inside),
+            ("naming an outer definition", outer),
+        ] {
+            let mut session = Session::new();
+            let submission = session.submit(source).expect("lowering must be total");
+            assert!(
+                submission
+                    .outcomes
+                    .iter()
+                    .all(|outcome| matches!(*outcome, ItemOutcome::Definition { .. })),
+                r#"the law {label} must check: {:?}"#,
+                submission.outcomes
+            );
+        }
+    }
+
     /// **Both unit laws in MODEL-FAITHFUL form**: their endpoints name the
     /// model's own operations rather than the instance's private helpers.
     ///

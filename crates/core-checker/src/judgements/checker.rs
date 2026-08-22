@@ -37,6 +37,8 @@ use gandr_core_term::error::text;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::identity::occurs_free_comptype;
 use gandr_core_term::identity::subst_comptype;
+use gandr_core_term::subst::HoleSubstitution;
+use gandr_core_term::subst::subst_holes_value;
 use gandr_core_term::syntax::Comp;
 use gandr_core_term::syntax::FlatArena;
 use gandr_core_term::syntax::OpClause;
@@ -1114,6 +1116,7 @@ impl Rec
         dir: Dir<CompType>,
     ) -> Result<CompType, TypeError>
     {
+        let bound_ret = Rc::clone(&bound);
         let bound_ty = self.comp(unrc(bound), Dir::Infer)?;
         // The bound computation's payload binds `x`; its effect row folds into
         // the continuation's result (`F^{ε_bound ∪ ε_cont}`). A matched
@@ -1128,9 +1131,43 @@ impl Rec
                 });
             },
         };
+        // A bind whose source is a **returner** makes its binder equal to the
+        // returned value inside the continuation: `run x <- ret v; body`
+        // reduces to `body[v/x]`, so `x ≡ v` there. Carrying that as an
+        // unfolding rule is what lets a term mention a sibling binding and have
+        // conversion compute across it.
+        //
+        // **A module's members are exactly this shape.** A module lowers to
+        // bind sequencing over a terminal record, so every member is a binder
+        // whose source returns its value — and without the rule a law field
+        // naming a sibling operation can never reduce, while the same law at
+        // top level, where the operation is a definition, checks. That
+        // asymmetry is not a design: the two spellings say the same thing.
+        //
+        // **A value carrying an unsolved hole is excluded**, on the same
+        // soundness line the session's own chain draws: a hole is consistent
+        // with everything, so unfolding into one lets a law be proved *through*
+        // the hole — a stated law wearing proved clothing.
+        let defined = match *bound_ret {
+            | Comp::Ret(ref value) => {
+                let (_, residual) = subst_holes_value(value.as_ref(), &HoleSubstitution::default());
+                if bool::from(residual) {
+                    false
+                }
+                else {
+                    self.ctx
+                        .define(NameRef::from(name.as_str()), Rc::clone(value));
+                    true
+                }
+            },
+            | _ => false,
+        };
         self.ctx.bind(name, payload);
         let cont_ty = self.comp(unrc(cont), dir.clone())?;
         self.ctx.unbind();
+        if defined {
+            self.ctx.undefine();
+        }
         let combined = combine_bind_row(&bound_row, cont_ty)?;
         finish_comp(&self.ctx, combined, dir)
     }
