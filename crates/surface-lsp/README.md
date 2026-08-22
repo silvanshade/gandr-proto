@@ -16,7 +16,9 @@ It calls the public parse, highlight, lower, and report passes and re-encodes th
 ## Planned but absent
 
 - Incremental recheck.
-  Every request is a whole-file recheck today.
+  Every request is a whole-file recheck today, and it cannot be otherwise from this side.
+  `Session::submit` is append-only, while an editor's `didChange` replaces the document, so a fresh session per recheck is the only correct use of the engine's interactive API.
+  The grammar is cached per process; what remains is whole-file typing, which is engine-side work.
 - The render-bus attach advertisement and custom `gandr/` methods.
 - Delegated formatting.
 
