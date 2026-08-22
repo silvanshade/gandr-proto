@@ -51,7 +51,11 @@ That plane lives under `value`.
 - `cam_commit` walks a value once in preorder and cuts at the constructor exits the committed typed profile chooses, framing each cut suffix as a chunk and splicing a chunk wrapper into the parent in its place.
   Cutting at _exit_ is what makes bottom-up order available: a child's digest is fixed before its parent's body can name it.
 - `cam_deref` fetches, verifies and decodes, in that order, splicing child chunks as it crosses seams.
-- `ValueManifest` binds everything a content pointer is only meaningful under — the typed chunker commitment, the digest family, the codec identity, and the child index base — so a deployment that disagrees on any of them refuses rather than silently failing to deduplicate.
+- `ValueProfile` collects every protocol constant two deployments must agree on to share storage, and `ValueManifest` names one committed value under it, so a deployment that disagrees on any of them refuses rather than silently failing to deduplicate.
+
+**The rule the profile is built from**: wherever a choice changes the addresses but no round trip can see it, the manifest is where a disagreeing consumer is made to refuse.
+Two deployments differing on such a choice both commit correctly, both dereference correctly, and share nothing, with nothing anywhere telling either of them why — and no test inside one deployment can catch it, because inside one deployment everything works.
+Applying that rule found three constants beyond the obvious ones: the **boundary classification** (the export tag table carries two verdict columns, and which one decides cut candidacy changes every chunk at fixed kappa), the **chunk frame version** (the framed preimage is what is hashed), and the **sharing policy** (splicing a repeated subtree as a wrapper versus re-emitting it inline changes the parent body, and so every digest above it).
 
 **The value plane does not ride `BlockStore`.** That trait verifies on both insert and load that its bytes decode as canonical prolly-node material, and a value chunk is not node material.
 `value::ChunkStore` is a sibling trait carrying the same verify-on-both-sides rule over a different body; one object may implement both, which is how a single store serves both planes.

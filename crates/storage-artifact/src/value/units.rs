@@ -64,6 +64,11 @@ semantic_integer! {
     pub struct ValueManifestVersion(u16);
 }
 
+semantic_integer! {
+    /// The chunk image frame layout version the digests were taken over.
+    pub struct ChunkFormatVersion(u16);
+}
+
 /// A borrowed view of one chunk's token body — the bytes inside the frame.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
