@@ -189,6 +189,28 @@ mod tests
         );
     }
 
+    /// A deref that should cross a chunk seam actually crosses one.
+    ///
+    /// **Separating witness.** It kills the case where the traversal never cut
+    /// at all — one chunk holding the whole value round-trips perfectly, is
+    /// deterministic, and satisfies every other claim in this file, while
+    /// providing none of the sharing or locality the plane exists for. A
+    /// round-trip test cannot see the difference; the reader's seam depth can.
+    #[test]
+    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
+    #[expect(
+        clippy::todo,
+        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
+    )]
+    fn a_value_larger_than_one_chunk_is_read_across_seams()
+    {
+        todo!(
+            "commit a Fixture deep enough to force cuts at the committed kappa, \
+             assert the store holds more than one chunk and that the reader \
+             reports a nonzero seam depth during the deref"
+        );
+    }
+
     /// A depth-`d` edit touches a chunk count inside the theory's bound.
     ///
     /// The bound is an expectation, so the claim is about the measured

@@ -69,6 +69,15 @@ semantic_integer! {
     pub struct ChunkFormatVersion(u16);
 }
 
+semantic_integer! {
+    /// How many chunk seams a reader is currently inside.
+    ///
+    /// Named rather than counted as a bare depth because it is an assertion
+    /// target: a value that should have crossed a seam and did not read the
+    /// same to a round-trip test and differently to this.
+    pub struct SeamDepth(usize);
+}
+
 /// A borrowed view of one chunk's token body — the bytes inside the frame.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

@@ -115,6 +115,7 @@ pub use crate::value::units::ChunkCount;
 pub use crate::value::units::ChunkFormatVersion;
 pub use crate::value::units::ChunkImage;
 pub use crate::value::units::ChunkImageBuf;
+pub use crate::value::units::SeamDepth;
 pub use crate::value::units::TokenBytes;
 pub use crate::value::value_manifest::BoundaryClassification;
 pub use crate::value::value_manifest::SharingPolicy;

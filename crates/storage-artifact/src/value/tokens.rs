@@ -59,11 +59,15 @@
 //! their meaning; a value emitting tags outside that vocabulary is a caller
 //! error the codec commitment records rather than one the framing detects.
 
+use alloc::vec::Vec;
+
 use crate::error::ValueError;
 use crate::transport::CanonicalU64;
+use crate::value::chunk::ChunkStore;
 use crate::value::ptr::ContentPtr;
 use crate::value::ptr::TokenOffset;
 use crate::value::units::ChunkBody;
+use crate::value::units::SeamDepth;
 use crate::value::units::TokenBytes;
 
 /// Record kind: a constructor opens.
@@ -248,19 +252,66 @@ pub trait CanonicalValue: Sized
     fn decode_tokens(reader: &mut TokenReader<'_>) -> Result<Self, ValueError>;
 }
 
-/// A cursor over one chunk's token stream that splices child chunks in place.
+/// A cursor over a value's token stream that splices child chunks in place.
 ///
 /// The reader is the reason [`CanonicalValue::decode_tokens`] never mentions a
 /// store: crossing a chunk seam is the reader's business, and a decoder that
-/// tried to handle seams itself would be deciding storage policy from inside a
-/// value's own codec.
-#[derive(Debug)]
+/// handled seams itself would be deciding storage policy from inside a value's
+/// own codec.
+///
+/// # Why it carries the store
+///
+/// A [`ContentPtr`] child record is a *hole* in the token stream, and filling
+/// it needs a fetch. Handing the decoder a bare byte slice would have made the
+/// seam visible in the codec's signature — the decoder would have to return
+/// "I reached a pointer" and be re-entered — which is exactly the leak this
+/// type exists to prevent. So the reader holds the store, descends on a child
+/// record, and pops when the child's stream is exhausted; a decoder sees one
+/// continuous stream and cannot tell where the seams were.
+///
+/// The store is `&dyn` rather than a type parameter deliberately.
+/// Monomorphising the reader over the store would push the store type into
+/// [`CanonicalValue::decode_tokens`]'s signature and therefore into every
+/// value's codec, making a value's encoding depend on where it happens to be
+/// stored.
 pub struct TokenReader<'stream>
 {
+    /// Where child chunks are fetched and re-verified.
+    store: &'stream dyn ChunkStore,
     /// The remaining tokens of the chunk currently being read.
     remaining: ChunkBody<'stream>,
     /// The token index of `remaining`'s first token within its chunk.
     position: TokenOffset,
+    /// Suspended positions of the chunks this reader descended out of,
+    /// outermost first.
+    ///
+    /// A descent is not a recursion the call stack can hold: a child record can
+    /// appear at any depth in any chunk, and the decoder driving the reader has
+    /// its own recursion already. Keeping the seam stack here means the depth
+    /// of the chunk DAG is bounded by the heap rather than by the host stack.
+    suspended: Vec<(ChunkBody<'stream>, TokenOffset)>,
+}
+
+impl core::fmt::Debug for TokenReader<'_>
+{
+    /// Prints the reader's position without the store.
+    ///
+    /// A store is not a value and printing one would print a heap; what a
+    /// reader's reader wants is where it is, which is the position and the
+    /// seam depth.
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        return f
+            .debug_struct("TokenReader")
+            .field("position", &self.position)
+            .field("seam_depth", &self.suspended.len())
+            .field("remaining_bytes", &self.remaining.as_ref().len())
+            .finish();
+    }
 }
 
 impl<'stream> TokenReader<'stream>
@@ -268,25 +319,29 @@ impl<'stream> TokenReader<'stream>
     /// Opens a reader over a chunk body at a token offset.
     ///
     /// # Contract
-    /// - requires: `body` is the verified token body of one chunk image.
-    /// - ensures: the reader starts at token index `position`.
+    /// - requires: `body` is the verified token body of a chunk `store` holds.
+    /// - ensures: the reader starts at token index `position` with no suspended
+    ///   chunks.
     /// - provides: the entry point [`super::cam_deref`] builds on.
     /// - fails: never; a malformed body is refused when read, not when opened.
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub const fn new(
+    pub fn new(
+        store: &'stream dyn ChunkStore,
         body: ChunkBody<'stream>,
         position: TokenOffset,
     ) -> Self
     {
         return Self {
+            store,
             remaining: body,
             position,
+            suspended: Vec::new(),
         };
     }
 
-    /// Returns the token index the reader is positioned at.
+    /// Returns the token index the reader is positioned at within its chunk.
     #[inline]
     #[must_use]
     pub const fn position(&self) -> TokenOffset
@@ -302,14 +357,37 @@ impl<'stream> TokenReader<'stream>
         return self.remaining;
     }
 
+    /// Returns how many chunk seams the reader is currently inside.
+    ///
+    /// Exposed so a test can assert that a value which *should* have crossed a
+    /// seam actually did. A deref that silently read everything from one chunk
+    /// passes a round-trip test and proves nothing about chunking.
+    #[inline]
+    #[must_use]
+    pub fn seam_depth(&self) -> SeamDepth
+    {
+        return SeamDepth::from(self.suspended.len());
+    }
+
+    /// Returns the store child chunks are fetched from.
+    #[inline]
+    #[must_use]
+    pub const fn store(&self) -> &'stream dyn ChunkStore
+    {
+        return self.store;
+    }
+
     /// Reads the next constructor tag, refusing anything else.
     ///
     /// # Contract
     /// - requires: nothing; a wrong token kind is the case this refuses.
-    /// - ensures: `Ok` advances past exactly one tag token.
+    /// - ensures: `Ok` advances past exactly one open record, descending
+    ///   through any child records reached on the way and popping any chunks
+    ///   whose streams are exhausted, so the caller never sees a seam.
     /// - provides: the decoder's primitive step.
-    /// - fails: [`ValueError::UnexpectedToken`] or
-    ///   [`ValueError::TruncatedChunk`].
+    /// - fails: [`ValueError::UnexpectedToken`],
+    ///   [`ValueError::TruncatedChunk`], or a store rejection while crossing a
+    ///   seam.
     /// - panics: none.
     ///
     /// # Errors
@@ -321,17 +399,19 @@ impl<'stream> TokenReader<'stream>
     )]
     pub fn read_tag(&mut self) -> Result<ConstructorTag, ValueError>
     {
-        todo!("read one tag token from the chunk body, advancing self.position by one");
+        todo!("read one TOKEN_OPEN record, crossing seams transparently");
     }
 
     /// Reads the next canonical word, refusing anything else.
     ///
     /// # Contract
     /// - requires: nothing; a wrong token kind is the case this refuses.
-    /// - ensures: `Ok` advances past exactly one word token.
+    /// - ensures: `Ok` advances past exactly one word record, crossing seams as
+    ///   [`TokenReader::read_tag`] does.
     /// - provides: the decoder's scalar step.
-    /// - fails: [`ValueError::UnexpectedToken`] or
-    ///   [`ValueError::TruncatedChunk`].
+    /// - fails: [`ValueError::UnexpectedToken`],
+    ///   [`ValueError::TruncatedChunk`], or a store rejection while crossing a
+    ///   seam.
     /// - panics: none.
     ///
     /// # Errors
@@ -343,17 +423,43 @@ impl<'stream> TokenReader<'stream>
     )]
     pub fn read_word(&mut self) -> Result<CanonicalU64, ValueError>
     {
-        todo!("read one big-endian canonical word token from the chunk body");
+        todo!("read one TOKEN_WORD record, crossing seams transparently");
     }
 
-    /// Reads the closing token of the innermost open constructor.
+    /// Reads an inline byte payload, refusing anything else.
     ///
     /// # Contract
     /// - requires: nothing; a wrong token kind is the case this refuses.
-    /// - ensures: `Ok` advances past exactly one close token.
+    /// - ensures: `Ok` advances past exactly one bytes record and borrows its
+    ///   payload out of the chunk body that carries it.
+    /// - provides: the decoder's payload step.
+    /// - fails: [`ValueError::UnexpectedToken`],
+    ///   [`ValueError::TruncatedChunk`], or a store rejection while crossing a
+    ///   seam.
+    /// - panics: none.
+    ///
+    /// # Errors
+    /// [`ValueError`].
+    #[inline]
+    #[expect(
+        clippy::todo,
+        reason = "gandr-8tou.4 scaffold: the token-body decode step is the implementor deliverable"
+    )]
+    pub fn read_bytes(&mut self) -> Result<TokenBytes<'stream>, ValueError>
+    {
+        todo!("read one TOKEN_BYTES record, crossing seams transparently");
+    }
+
+    /// Reads the closing record of the innermost open constructor.
+    ///
+    /// # Contract
+    /// - requires: nothing; a wrong token kind is the case this refuses.
+    /// - ensures: `Ok` advances past exactly one close record, crossing seams
+    ///   as [`TokenReader::read_tag`] does.
     /// - provides: the decoder's nesting step.
-    /// - fails: [`ValueError::UnexpectedToken`] or
-    ///   [`ValueError::TruncatedChunk`].
+    /// - fails: [`ValueError::UnexpectedToken`],
+    ///   [`ValueError::TruncatedChunk`], or a store rejection while crossing a
+    ///   seam.
     /// - panics: none.
     ///
     /// # Errors
@@ -365,6 +471,6 @@ impl<'stream> TokenReader<'stream>
     )]
     pub fn read_close(&mut self) -> Result<(), ValueError>
     {
-        todo!("read one close token from the chunk body");
+        todo!("read one TOKEN_CLOSE record, crossing seams transparently");
     }
 }
