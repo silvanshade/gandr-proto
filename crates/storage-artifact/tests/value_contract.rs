@@ -16,8 +16,15 @@ mod tests
 {
     use gandr_storage_artifact::ValueError;
     use gandr_storage_artifact::value::CanonicalValue;
+    use gandr_storage_artifact::value::ChunkBody;
+    use gandr_storage_artifact::value::ChunkDigest;
+    use gandr_storage_artifact::value::StoredChunkRef;
     use gandr_storage_artifact::value::TokenReader;
     use gandr_storage_artifact::value::TokenSink;
+    use gandr_storage_artifact::value::chunk::VALUE_CHUNK_MAGIC;
+    use gandr_storage_artifact::value::chunk::frame_chunk;
+    use gandr_storage_artifact::value::chunk::verify_chunk_image;
+    use gandr_storage_chunker::TokenCount;
 
     /// A fixture value: a binary tree of canonical words.
     ///
@@ -243,17 +250,56 @@ mod tests
     /// big-endian fixed widths is what makes the golden hold on every target,
     /// and the golden is what proves the framing was actually used.
     #[test]
-    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
-    )]
     fn a_chunk_digest_matches_its_committed_golden()
     {
-        todo!(
-            "frame a fixed token body through frame_chunk and assert the digest equals \
-             a committed 32-byte constant, so a native-endian digest path cannot pass"
+        // One open record carrying tag 0x2a, one word record carrying 7, one
+        // close record. Three token records, twelve body bytes.
+        let body: [u8; 12] = [
+            0x01, 0x2A, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x05,
+        ];
+        let (digest, image) =
+            frame_chunk(ChunkBody::from(body.as_slice()), TokenCount::from(3_u64))
+                .expect("a twelve-byte body frames");
+
+        // The frame, read back field by field rather than trusted. Doing this
+        // beside the golden is what tells a future reader which of the two
+        // moved when they disagree.
+        let bytes: &[u8] = image.as_ref();
+        let magic_len = VALUE_CHUNK_MAGIC.len();
+        assert_eq!(
+            bytes.get(.. magic_len),
+            Some(VALUE_CHUNK_MAGIC),
+            "the image opens with the value-chunk magic"
         );
+        assert_eq!(
+            bytes.len(),
+            magic_len + 0x12_usize + body.len(),
+            "magic, a u16 version, two u64 fields, then the body"
+        );
+
+        // THE GOLDEN. Computed once against this exact body and pasted here as
+        // a literal. It is not derived at runtime and must never become so: a
+        // golden the test recomputes from the implementation is the
+        // implementation agreeing with itself, which is precisely what this
+        // assertion exists to rule out. An implementation that routed the
+        // digest through a native-endian hasher would satisfy every other test
+        // in this file on the machine that ran it, and fail only on a machine
+        // of different endianness or pointer width -- in production and never
+        // in the suite.
+        const GOLDEN: [u8; 32] = [
+            0x1C, 0x28, 0x4F, 0xDF, 0x9C, 0x17, 0x25, 0x3E, 0xE5, 0xFE, 0xA4, 0xA1, 0x55, 0x40,
+            0x75, 0xCB, 0xF9, 0xC1, 0xB1, 0x52, 0x9A, 0xFA, 0xBD, 0xA2, 0x22, 0xCC, 0xEB, 0xEF,
+            0xEA, 0x13, 0x2B, 0x21,
+        ];
+        assert_eq!(
+            digest,
+            ChunkDigest::from(GOLDEN),
+            "the framed image hashes to its committed golden"
+        );
+
+        // The frame the golden pins is the one the verifier accepts.
+        verify_chunk_image(StoredChunkRef::new(digest, image.as_ref().into()))
+            .expect("the framed image verifies against its own digest");
     }
 
     /// Chunk-local child index bases keep downstream chunks unchanged under an

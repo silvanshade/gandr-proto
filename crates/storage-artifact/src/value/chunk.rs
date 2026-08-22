@@ -68,6 +68,12 @@ pub const VALUE_CHUNK_MAGIC: &[u8] = b"gandr:value-chunk:v1";
 /// The chunk image layout version carried inside the frame.
 pub const CHUNK_FORMAT_VERSION_V1: u16 = 1;
 
+/// The framed header after the magic: a `u16` version and two `u64` fields.
+const CHUNK_HEADER_LEN: usize = 0x12_usize;
+
+/// The canonical integer width every framed count is checked against.
+const CANONICAL_WIDTH_BITS: u32 = 0x40_u32;
+
 /// A borrowed chunk image and the digest it is claimed to hash to.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StoredChunkRef<'image>
@@ -302,7 +308,8 @@ fn parse_chunk_frame(image: &[u8]) -> Result<ChunkBody<'_>, ValueError>
         return Err(refused("the image ends inside the body length"));
     };
     let declared_len = u64::from_be_bytes(*len_bytes);
-    let actual_len = u64::try_from(body.len()).map_err(|_| refused("body length exceeds u64"))?;
+    let actual_len = u64::try_from(body.len())
+        .map_err(|_width| refused("the body length does not fit the canonical width"))?;
     if actual_len != declared_len {
         return Err(refused(
             "declared body length does not match the image bytes",
@@ -332,11 +339,17 @@ pub fn frame_chunk(
 ) -> Result<(ChunkDigest, ChunkImageBuf), ValueError>
 {
     let body_bytes: &[u8] = body.as_ref();
-    let body_len = u64::try_from(body_bytes.len()).map_err(|_| ValueError::WidthOverflow {
+    let body_len = u64::try_from(body_bytes.len()).map_err(|_width| ValueError::WidthOverflow {
         found: u64::MAX,
-        width: 64,
+        width: CANONICAL_WIDTH_BITS,
     })?;
-    let mut image = Vec::with_capacity(VALUE_CHUNK_MAGIC.len() + 18 + body_bytes.len());
+    // Exact, so the frame is written into one allocation: magic, the u16
+    // version, the u64 token count, the u64 body length, then the body.
+    let capacity = VALUE_CHUNK_MAGIC
+        .len()
+        .saturating_add(CHUNK_HEADER_LEN)
+        .saturating_add(body_bytes.len());
+    let mut image = Vec::with_capacity(capacity);
     image.extend_from_slice(VALUE_CHUNK_MAGIC);
     image.extend_from_slice(&CHUNK_FORMAT_VERSION_V1.to_be_bytes());
     image.extend_from_slice(&u64::from(token_count).to_be_bytes());
