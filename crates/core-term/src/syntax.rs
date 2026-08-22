@@ -3798,9 +3798,12 @@ impl FlatArena
     ///   exceed its id space; [`ArenaBridgeError::TraversalInvariant`] when the
     ///   result-stack bookkeeping no longer matches the schedule.
     /// - panics: none.
-    /// - ownership: no `TyOwned` deep clone is retained; the worklist borrows
-    ///   the original Rc-backed legacy subtrees for the outer call and copies
-    ///   only scalar attributes and typed ids.
+    /// - ownership: no deep clone of the owned [`crate::types::Ty`] /
+    ///   [`ValueType`] shape is retained; the hot allocation path borrows the
+    ///   original Rc-backed legacy subtrees and copies only scalar attributes
+    ///   and typed ids. Readback reconstructs the caller-owned structural
+    ///   result at the explicit arena boundary rather than cloning the input
+    ///   spine.
     ///
     /// # Termination
     /// - reason: explicit post-order worklist over finite legacy syntax; no
