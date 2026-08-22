@@ -335,11 +335,13 @@ pub(crate) fn initial_state(
 ///
 /// `gandr-7ej3`. The `goals.0.get_mut` miss guards against a hole the machine
 /// descends into that [`collect_static`] never registered. **That is an engine
-/// fact, not a user one**, and it is narrower than it looks: all nine
-/// `fresh_hole` sites in the lowerer pair the minted hole with an
-/// `OriginNode`, so every hole carries an origin entry by construction. The
-/// branch can therefore fire only when an origin path fails to *resolve* to
-/// its hole in the lowered term — origin and term structure having diverged.
+/// fact, not a user one**, and it is narrower than it looks: all **eight**
+/// `fresh_hole` call sites in the lowerer pair the minted hole with an
+/// `OriginNode` — four recovery and user-hole constructors, the dangling-
+/// signature item, the two module-member repairs, and the stuck-pattern mint —
+/// so every hole carries an origin entry by construction. The branch can
+/// therefore fire only when an origin path fails to *resolve* to its hole in
+/// the lowered term — origin and term structure having diverged.
 ///
 /// No caller may rely on the omission, so the branch is noncontractual and
 /// owes no exerciser. But returning silently is the posture
@@ -355,10 +357,9 @@ pub(crate) fn initial_state(
 /// same-identifier observation is the correct behaviour rather than a guard
 /// against an impossible state.
 ///
-/// SCAFFOLD: the debug assertion is not written here. `gandr-7ej3` carries it,
-/// together with the `goals.rs` floor moving to its measured value — the
+/// The `goals.rs` floor moves to its measured value with this change — the
 /// policy target genuinely moved when the declared-data arm made those holes
-/// collectable — and the `lower.rs` floor following the lines that left it for
+/// collectable — and the `lower.rs` floor follows the lines that left it for
 /// `lower/pattern.rs`.
 fn record(
     goals: &mut GoalMap,
@@ -371,6 +372,15 @@ fn record(
 {
     let Some(goal) = goals.0.get_mut(&hole.0)
     else {
+        // Unreachable by construction; see the note above. Refuted in test
+        // builds rather than asserted by staying quiet, because the release
+        // path's silence would record an engine gap as a shorter goals report.
+        debug_assert!(
+            false,
+            "goals: machine descended into hole {:?} in item {} that the static pass did not \
+             collect; origin and term structure have diverged",
+            hole.0, item_index.0
+        );
         return;
     };
     if goal.item != item_index.0 {
