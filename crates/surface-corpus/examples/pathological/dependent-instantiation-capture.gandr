@@ -27,6 +27,18 @@
 // stopped rejecting something correct and says nothing about what it was
 // accepting.
 
+// WHY BOTH-CHECK IS THE WHOLE CLAIM HERE, WHICH IS NOT OBVIOUS AND IS EASY TO
+// UNDERREAD. Checking alone would be too weak: a caller can be accepted at
+// some type other than the one it owes. What closes that gap is that BOTH
+// CALLERS CARRY AN EXPLICIT DECLARED RETURN TYPE. Acceptance is therefore
+// agreement with a type written down here, not merely absence of complaint --
+// collide is accepted if and only if instantiating comp produced exactly
+// U[ω] (a -> F d), and that is precisely the comparison that fails when the
+// engine captures. The two declared results are each other's image under the
+// renaming that defines the pair, a to p and d to s, so both callers checking
+// against them says the two instantiations agree. Strip the ascriptions and
+// this file stops carrying that claim.
+
 //@ expect: clean
 //@ expect-def: collide
 //@ expect-def: clean
