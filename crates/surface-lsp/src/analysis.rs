@@ -109,6 +109,48 @@ impl Analysis
         }
     }
 
+    /// Encode the highlight spans overlapping `range` as semantic tokens.
+    ///
+    /// # Contract
+    /// - requires: `range` is a client range over this analysis's source.
+    /// - ensures: returns the delta-encoded stream for `encoding` restricted to
+    ///   the spans that overlap `range`. A span is included when it overlaps
+    ///   the range at all, so a token straddling either edge is returned whole
+    ///   rather than clipped — the protocol permits a superset and a clipped
+    ///   token would misstate the classified extent. Deltas are chained from
+    ///   the document origin exactly as in the full stream, which is what the
+    ///   protocol requires: the range restricts which tokens are sent, never
+    ///   the coordinate system they are sent in. An empty or inverted range
+    ///   yields an empty stream.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn semantic_tokens_in_range(
+        &self,
+        range: Range,
+        encoding: PositionEncoding,
+    ) -> SemanticTokens
+    {
+        let text = SourceText::from(self.source.as_str());
+        let index = LineIndex::new(text);
+        let start = usize::from(byte_of_position(text, &index, range.start, encoding));
+        let end = usize::from(byte_of_position(text, &index, range.end, encoding));
+        if end <= start {
+            return SemanticTokens::default();
+        }
+        let visible: Vec<HlSpan> = self
+            .highlights
+            .iter()
+            .filter(|span| {
+                usize::from(span.range.start) < end && start < usize::from(span.range.end)
+            })
+            .cloned()
+            .collect();
+        SemanticTokens {
+            data: encode(text, &index, encoding, &visible),
+        }
+    }
+
     /// Project the merged verdict stream into editor diagnostics.
     ///
     /// # Contract

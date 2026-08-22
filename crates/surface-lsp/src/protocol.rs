@@ -254,6 +254,17 @@ pub struct SemanticTokensParams
     pub text_document: TextDocumentIdentifier,
 }
 
+/// `textDocument/semanticTokens/range` params.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticTokensRangeParams
+{
+    /// The document.
+    pub text_document: TextDocumentIdentifier,
+    /// The visible range the client wants tokens for.
+    pub range: Range,
+}
+
 /// Semantic-token payload.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[repr(transparent)]

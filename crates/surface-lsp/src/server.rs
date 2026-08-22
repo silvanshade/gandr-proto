@@ -21,6 +21,7 @@ use crate::protocol::DocumentUri;
 use crate::protocol::InitializeParams;
 use crate::protocol::PublishDiagnosticsParams;
 use crate::protocol::SemanticTokensParams;
+use crate::protocol::SemanticTokensRangeParams;
 use crate::protocol::TextDocumentPositionParams;
 use crate::rpc::INVALID_PARAMS;
 use crate::rpc::INVALID_REQUEST;
@@ -171,6 +172,7 @@ impl Server
                 HandleOutcome::continue_with(Vec::from([response_ok(id, &Value::Null)]))
             },
             | "textDocument/semanticTokens/full" => self.semantic_tokens(id, params),
+            | "textDocument/semanticTokens/range" => self.semantic_tokens_range(id, params),
             | "textDocument/hover" => self.hover(id, params),
             | "textDocument/completion" => self.completion(id, params),
             | _ => HandleOutcome::continue_with(Vec::from([response_error(
@@ -298,6 +300,30 @@ impl Server
             return HandleOutcome::continue_with(Vec::from([response_ok(id, &json!(null))]));
         };
         let tokens = Analysis::check(text.clone()).semantic_tokens(self.encoding);
+        HandleOutcome::continue_with(Vec::from([response_ok(id, &json!(tokens))]))
+    }
+
+    /// Answer `textDocument/semanticTokens/range`.
+    fn semantic_tokens_range(
+        &self,
+        id: &Id,
+        params: Value,
+    ) -> HandleOutcome
+    {
+        let Ok(params) = serde_json::from_value::<SemanticTokensRangeParams>(params)
+        else {
+            return HandleOutcome::continue_with(Vec::from([response_error(
+                Some(id),
+                INVALID_PARAMS,
+                crate::boundary::ErrorText::from("invalid params"),
+            )]));
+        };
+        let Some(text) = self.documents.get(&params.text_document.uri)
+        else {
+            return HandleOutcome::continue_with(Vec::from([response_ok(id, &json!(null))]));
+        };
+        let tokens =
+            Analysis::check(text.clone()).semantic_tokens_in_range(params.range, self.encoding);
         HandleOutcome::continue_with(Vec::from([response_ok(id, &json!(tokens))]))
     }
 
@@ -502,7 +528,7 @@ fn initialize_result(encoding: PositionEncoding) -> Value
                     "tokenModifiers": TOKEN_MODIFIERS
                 },
                 "full": true,
-                "range": false
+                "range": true
             }
         },
         "serverInfo": { "name": "gandr-lsp", "version": "0.0.0" }
@@ -635,6 +661,138 @@ mod tests
                 message.get("result").is_some() && message.get("error").is_none()
             }),
             "advertised completion must be honoured"
+        );
+    }
+
+    /// Opens `def f = 42;` on a fresh server and returns it ready for requests.
+    fn server_over_the_known_document() -> Server
+    {
+        let mut server = Server::new();
+        drop(server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.as_slice(),
+        )));
+        drop(server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/example.gandr","languageId":"gandr","version":1,"text":"def f = 42;\n"}}}"#.as_slice(),
+        )));
+        server
+    }
+
+    /// The `data` array of a semantic-token response, as the client sees it.
+    ///
+    /// Comparing the wire value directly rather than decoding to integers keeps
+    /// the assertion on the thing the protocol specifies.
+    fn token_data(message: &Value) -> &Value
+    {
+        message.pointer("/result/data").expect("token stream")
+    }
+
+    #[test]
+    fn a_range_returns_only_the_tokens_it_covers()
+    {
+        let mut server = server_over_the_known_document();
+        // Characters 8..10 of `def f = 42;` are exactly the literal `42`.
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/range","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"range":{"start":{"line":0,"character":8},"end":{"line":0,"character":10}}}}"#.as_slice(),
+        ));
+        let Some(message) = outcome.messages.first()
+        else {
+            panic!("semanticTokens/range must answer");
+        };
+        assert!(
+            message.get("error").is_none(),
+            "advertised range tokens must be honoured, got {message}"
+        );
+        // One token, and its deltas still chain from the DOCUMENT origin: the
+        // range restricts which tokens are sent, never the coordinate system.
+        // A stream re-based on the range start would read [0, 0, 2, 9, 0] and
+        // paint the number over `def`.
+        assert_eq!(
+            &json!([0_u32, 8_u32, 2_u32, 9_u32, 0_u32]),
+            token_data(message),
+            "the only token in 8..10 is `42` as a number at line 0 column 8"
+        );
+    }
+
+    #[test]
+    fn a_range_over_the_whole_document_agrees_with_the_full_stream()
+    {
+        let mut server = server_over_the_known_document();
+        let full = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/example.gandr"}}}"#.as_slice(),
+        ));
+        let ranged = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":3,"method":"textDocument/semanticTokens/range","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"range":{"start":{"line":0,"character":0},"end":{"line":1,"character":0}}}}"#.as_slice(),
+        ));
+        let full_data = token_data(full.messages.first().expect("full must answer"));
+        let ranged_data = token_data(ranged.messages.first().expect("range must answer"));
+        assert_eq!(full_data, ranged_data);
+        assert_eq!(
+            Some(15_usize),
+            full_data.as_array().map(Vec::len),
+            "the document classifies three tokens, five integers each"
+        );
+    }
+
+    #[test]
+    fn a_token_straddling_the_range_edge_is_returned_whole()
+    {
+        let mut server = server_over_the_known_document();
+        // Characters 1..2 sit strictly INSIDE the keyword `def` (0..3) and
+        // touch nothing else.
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/range","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"range":{"start":{"line":0,"character":1},"end":{"line":0,"character":2}}}}"#.as_slice(),
+        ));
+        let message = outcome.messages.first().expect("range must answer");
+        // The keyword is returned at its own extent, length 3 from column 0 --
+        // not clipped to the one character the client asked about.
+        assert_eq!(
+            &json!([0_u32, 0_u32, 3_u32, 0_u32, 0_u32]),
+            token_data(message),
+            "an overlapping token is reported whole rather than clipped"
+        );
+    }
+
+    #[test]
+    fn an_inverted_range_yields_no_tokens()
+    {
+        let mut server = server_over_the_known_document();
+        // end before start, and the inversion is placed STRICTLY INSIDE the
+        // keyword `def` at 0..3 so that the guard is the only thing stopping a
+        // token from coming back. Without it the overlap predicate reads
+        // `span.start < 1 && 2 < span.end`, which `def` satisfies on both
+        // conjuncts, so the response would carry the keyword. Offsets outside
+        // any single span leave the predicate unsatisfiable and would make
+        // this witness green either way -- it would then separate nothing.
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/range","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":1}}}}"#.as_slice(),
+        ));
+        let message = outcome.messages.first().expect("range must answer");
+        assert_eq!(
+            &json!([]),
+            token_data(message),
+            "an inverted range classifies nothing"
+        );
+    }
+
+    /// This is a REFUTATION GUARD rather than a separator, and the argument it
+    /// guards is stated so a later reader does not mistake it for one: with
+    /// `start == end` the half-open overlap predicate `span.start < end &&
+    /// start < span.end` is unsatisfiable for every span, so emptiness follows
+    /// by construction and not from the `end <= start` early return. Measured
+    /// 2026-08-22: this witness stays green under ablation of that guard. The
+    /// guard's own separator is `an_inverted_range_yields_no_tokens`.
+    #[test]
+    fn an_empty_range_yields_no_tokens()
+    {
+        let mut server = server_over_the_known_document();
+        let outcome = server.handle_payload(FramePayload::from(
+            br#"{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/range","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"range":{"start":{"line":0,"character":4},"end":{"line":0,"character":4}}}}"#.as_slice(),
+        ));
+        let message = outcome.messages.first().expect("range must answer");
+        assert_eq!(
+            &json!([]),
+            token_data(message),
+            "an empty range classifies nothing"
         );
     }
 

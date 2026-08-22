@@ -52,5 +52,18 @@ mod tests
             caps.pointer("/capabilities/completionProvider").is_some(),
             "completion is part of the ordinary set"
         );
+        // Both semantic-token request shapes are served. A client that reads
+        // `range: false` never sends `semanticTokens/range` at all, so this is
+        // the only place the range face is observable before a session starts.
+        assert_eq!(
+            Some(true),
+            caps.pointer("/capabilities/semanticTokensProvider/full")
+                .and_then(serde_json::Value::as_bool)
+        );
+        assert_eq!(
+            Some(true),
+            caps.pointer("/capabilities/semanticTokensProvider/range")
+                .and_then(serde_json::Value::as_bool)
+        );
     }
 }

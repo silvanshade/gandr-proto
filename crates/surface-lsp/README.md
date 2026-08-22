@@ -7,14 +7,16 @@ It calls the public parse, highlight, lower, and report passes and re-encodes th
 
 ## Current provision
 
-- Semantic tokens from `HlRole` / `HlSpan`, using the standard LSP token-type registry agreed with the TUI highlighter.
+- Semantic tokens from `HlRole` / `HlSpan`, using the standard LSP token-type registry agreed with the TUI highlighter, for the whole document and for a requested range.
+  A range restricts which tokens are sent and never the coordinate system they are sent in: deltas still chain from the document origin, and a token overlapping either edge is returned whole rather than clipped.
 - Diagnostics with stable `code` values, hover, and completion over the same whole-file report envelope.
 - Content-Length JSON-RPC on stdio.
 - `gandr lsp --capabilities`, the advertised initialize result.
 
 ## Planned but absent
 
-- Incremental recheck and range tokens.
+- Incremental recheck.
+  Every request is a whole-file recheck today.
 - The render-bus attach advertisement and custom `gandr/` methods.
 - Delegated formatting.
 

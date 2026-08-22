@@ -12,7 +12,8 @@
 //! - [`protocol`] — serde types for the LSP subset served
 //! - [`position`] — UTF-8 byte offset to negotiated LSP position
 //! - [`analysis`] — one whole-file recheck: parse, highlight, lower, report
-//! - [`tokens`] — highlight spans re-encoded as `semanticTokens` data
+//! - [`tokens`] — highlight spans re-encoded as `semanticTokens` data, served
+//!   whole-document and per requested range
 //! - [`server`] — the state machine: one incoming payload to outgoing messages
 //!
 //! The shipped driver is a synchronous stdio loop on `gandr lsp`. The
