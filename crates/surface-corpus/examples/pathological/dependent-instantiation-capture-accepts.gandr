@@ -1,47 +1,58 @@
-// Pathological witness, the SILENT half: an argument written at the CAPTURED
-// type must be refused.
+// Pathological witness, the SILENT half: a call written entirely at the
+// CAPTURED types must be refused.
 //
-// READ THE TYPES HERE AS DELIBERATELY WRONG. This file is a refutation golden.
-// Every type it writes is the type a CAPTURING instantiation produces, not the
-// type the signature owes. A reader who takes these as a model of correct
-// gandr has read the file backwards.
+// READ EVERY TYPE HERE AS DELIBERATELY WRONG. This is a refutation golden.
+// Each type below is the type a CAPTURING instantiation computes, not the type
+// the signature owes. A reader who takes these as a model of correct gandr has
+// read the file backwards.
 //
 // WHY A SECOND FILE AND NOT A SECOND DEFINITION. Capture makes two types that
 // should differ coincide as readily as it makes two that should agree diverge.
-// The loud half of the fault is a refusal, and a repair verified only against
-// the refused program proves capture stopped rejecting something correct while
-// saying nothing about what it was accepting. The two halves are opposite
-// outcomes -- one file must run clean, this one must not -- so they cannot be
-// stated in one file, and this one carries the assertion whose failure mode is
-// ACCEPTANCE.
+// The loud half of the fault is a refusal; a repair verified only against the
+// refused program proves capture stopped rejecting something correct and says
+// nothing about what it was accepting. The two halves demand OPPOSITE
+// outcomes -- the refusing witness must run clean and this one must not -- so
+// they cannot share a file, and this file carries the assertion whose failure
+// mode is ACCEPTANCE.
 //
-// THE ARITHMETIC THIS PINS. Instantiating comp at (a, c, d) replaces its `b`
-// by the caller's `c`, which comp itself binds. A capturing engine substitutes
-// one parameter at a time and lets that binder swallow the replacement, so the
-// expectation for comp's second function degrades from U[ω] (c -> F d) to
-// U[ω] (d -> F d), and the result degrades from U[ω] (a -> F d) to
-// U[ω] (a -> F c). Both degradations are written out below, which is exactly
-// why a capturing engine ACCEPTS this file: every type here agrees with what
-// capture produces. An engine that renames the binder apart refuses it,
-// because `h` is then supplied at U[ω] (d -> F d) where U[ω] (c -> F d) is
-// owed.
+// THE ARITHMETIC, AND IT HAS TWO CAPTURES RATHER THAN ONE. Instantiating comp
+// at (a, c, d) means a := a, b := c, c := d. Performed one parameter at a
+// time, an earlier replacement is re-substituted by a later one:
 //
-// SO THE GREEN AND THE RED SAY OPPOSITE THINGS FROM THE USUAL DIRECTION. This
-// file passing means the engine REFUSED the program. This file failing means
-// the engine ACCEPTED it, which is the silent fault firing.
+//   comp's f expects  U[ω] (a -> F b)  --b:=c-->  a -> F c  --c:=d-->  a -> F d
+//   comp's g expects  U[ω] (b -> F c)  --b:=c-->  c -> F c  --c:=d-->  d -> F d
+//   comp's result     U[ω] (a -> F c)  --b:=c-->  a -> F c  --c:=d-->  a -> F d
+//
+// The owed types are U[ω] (a -> F c) for f and U[ω] (c -> F d) for g. BOTH
+// FUNCTION EXPECTATIONS ARE CAPTURED. The result is the one component capture
+// leaves correct, which is why it is the arguments and not the return type
+// that carry this witness.
+//
+// SO A CAPTURING ENGINE ACCEPTS THIS FILE, because every type written here is
+// what capture computes; and an engine that renames the binder apart REFUSES
+// it, because u is then supplied at U[ω] (a -> F d) where U[ω] (a -> F c) is
+// owed. The green and the red say the opposite of the usual thing: this file
+// PASSING means the engine refused the program, and this file FAILING means
+// the engine accepted it, which is the silent fault firing.
+//
+// THE ASSERTION NAMES BOTH TYPES rather than merely requiring a refusal. A
+// bare refusal is satisfied by any error at all -- a name out of scope, an
+// arity slip, a typo in this file -- and a refusal witness is MORE exposed to
+// that than an acceptance witness, because there are far more ways to fail
+// than to succeed.
 
-//@ expect-diagnostic: type mismatch: expected Value(Thunk(Omega, Arrow(Atom("c"), F(Atom("d"))))), actual Value(Thunk(Omega, Arrow(Atom("d"), F(Atom("d")))))
+//@ expect-diagnostic: type mismatch: expected Value(Thunk(Omega, Arrow(Atom("a"), F(Atom("c"))))), actual Value(Thunk(Omega, Arrow(Atom("a"), F(Atom("d")))))
 
 def comp(a : Type, b : Type, c : Type, f : U[ω] (a -> F b), g : U[ω] (b -> F c), x : a) -> F c {
   run y <- f(x);
   g(y)
 }
 
-// `h` is supplied at the CAPTURED spelling U[ω] (d -> F d), and the result is
-// ascribed at the CAPTURED spelling U[ω] (a -> F c). Both are what capture
-// produces and neither is what the signature owes.
-def captured(a : Type, b : Type, c : Type, d : Type, u : U[ω] (a -> F c), h : U[ω] (d -> F d))
-  -> F (U[ω] (a -> F c))
+// Every type in this signature is the captured one: u at the captured f
+// expectation, h at the captured g expectation, and the result at the value
+// capture happens to leave correct.
+def captured(a : Type, b : Type, c : Type, d : Type, u : U[ω] (a -> F d), h : U[ω] (d -> F d))
+  -> F (U[ω] (a -> F d))
 {
   ret thunk { comp(a, c, d, u, h) }
 }
