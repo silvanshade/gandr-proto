@@ -523,8 +523,11 @@ fn rule_member(
     // unable to tell a member that was read from one that was not.
     let Some(interior) = interior
     else {
-        // gandr-wvd.6.1.3 owes a split here, and until it lands both member
-        // shapes take this one decline. [`written_face_rule`] states the split.
+        // Two member shapes take this one decline and only one belongs here: a
+        // term-free sphere has no terms for a description rule face to hold,
+        // while a written face `lhs ==> rhs` is already the pair of terms one
+        // holds and declines only because this route reads a `sign` block rule
+        // member as a circuit rule. `gandr-qave` owes the split.
         diagnostics.push(ElabDiagnostic::new(
             format!(
                 "rule `{name}` declares a face between sorts and writes no filler, which this \
@@ -1196,58 +1199,4 @@ impl Shape<'_, '_>
             ),
         }
     }
-}
-
-/// Read a `sign` block's **written face** member into a description rule face.
-///
-/// # The two members that reach the fillerless decline, and why only one belongs there
-///
-/// A **term-free sphere** `Φ ▸ x ⇴ y` declares a face between sorts with no
-/// terms at all. A description's rule face holds a pair of terms, so there is
-/// nothing for it to hold, and that member is genuinely unrepresented: it
-/// declines, and the decline is the higher-cells lane's honest boundary.
-///
-/// A **written face** `rule unitL : comp(id(a), f) ==> f` is not that member.
-/// Its signature *is* a pair of terms — exactly what a rule face holds — and it
-/// declines today only because this route reads a `sign` block's rule member as
-/// a circuit rule, and a circuit rule wants a filler. The flagship's three laws
-/// are all of this second kind, so the decline that reads as a capability
-/// boundary is, for them, a route reading the wrong member shape.
-///
-/// **That distinction is the whole rung.** A description that carries no rule
-/// faces has no endpoints for `Model(S)`'s law-field clause to be computed
-/// from, so every law of every shape is unreachable behind this one decline.
-///
-/// # Contract
-/// - requires: `signature` is a `sign` block rule member's post-`:` run, and
-///   the member writes no filler.
-/// - ensures: a run whose top-level arrow is a face glyph with a readable term
-///   on each side answers with the rule face those terms form, its pattern
-///   variables derived from the terms exactly as a `data` block member's are.
-/// - ensures: a run that is **not** a written face — a term-free sphere among
-///   them — answers with [`None`], and the caller's existing decline stands
-///   unchanged. The two outcomes are separated here so the decline keeps naming
-///   a real capability gap rather than covering for a reading.
-/// - fails: never; an unreadable side is not a written face.
-/// - panics: never.
-///
-/// # Adequacy
-/// - hypothesis: a written face needs no filler because its signature already
-///   carries both terms, so the split is decidable from the run alone.
-/// - mutants: accept a run with no arrow; read only the left side; treat the
-///   term-free sphere as a written face with empty terms.
-/// - witnesses: `a_written_face_member_reaches_the_description`,
-///   `a_term_free_sphere_still_declines_by_name`, and
-///   `the_flagship_shape_carries_its_three_laws`.
-#[expect(
-    dead_code,
-    reason = "gandr-wvd.6.1.3 scaffold: called from the fillerless arm of the rule-member route \
-              once this rung lands"
-)]
-fn written_face_rule(
-    _shape: Shape<'_, '_>,
-    _signature: &[NodeId],
-) -> Option<gandr_theory_levitation::RuleFace>
-{
-    todo!("gandr-wvd.6.1.3")
 }

@@ -640,41 +640,6 @@ mod tests
 {
     use super::*;
 
-    /// Substituting a value whose free variable a binder below would rebind
-    /// renames that binder apart rather than capturing.
-    ///
-    /// Shadowing and capture are different obligations, and the engine met only
-    /// the first: shadowing asks whether the binder rebinds the substituted
-    /// name, capture asks whether it rebinds a name the substituted value
-    /// mentions. `gandr-ijdw`.
-    #[ignore = "gandr-ijdw: scaffold; the body is owed with this rung"]
-    #[test]
-    fn substitution_renames_a_binder_that_would_capture_the_replacement()
-    {
-        todo!("gandr-ijdw")
-    }
-
-    /// The **wrong-acceptance** direction: two types that must not agree, which
-    /// capturing substitution makes coincide.
-    ///
-    /// This is the witness that matters. A repair verified only against the
-    /// program capture broke proves the capture stopped rejecting something
-    /// correct; it says nothing about whether capture was also *accepting*
-    /// something wrong, and capture can make two distinct types agree exactly
-    /// as easily as it makes two equal ones diverge.
-    ///
-    /// The separating source, in surface spelling: applying
-    /// `comp(a, b, c, f, g, x)` at indices `(a, c, d)` should demand `g` at
-    /// `U[ω] (c -> F d)`. Capturing substitution rewrites that expectation to
-    /// `U[ω] (d -> F d)`, so an argument written at the captured type is
-    /// accepted. The fixed engine must refuse it.
-    #[ignore = "gandr-ijdw: scaffold; the body is owed with this rung"]
-    #[test]
-    fn a_captured_expectation_does_not_accept_the_wrong_argument()
-    {
-        todo!("gandr-ijdw")
-    }
-
     /// A `Π` binder shadowing the queried name hides every occurrence beneath
     /// it, so the occurrence walk and the substitution engine agree.
     #[test]

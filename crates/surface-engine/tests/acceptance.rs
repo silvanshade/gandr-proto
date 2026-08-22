@@ -1728,23 +1728,6 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
                 "the refusal names both arities: {error:?}"
             );
         }
-
-        /// The flagship shape, end to end at the lowering layer: a signature
-        /// carrying `type Ob : Type` and `type Hom : Ob -> Ob -> Type` beside
-        /// the five `Model(CatShape)` value members elaborates, and no member's
-        /// type carries a gradual unknown.
-        ///
-        /// The unknown check is part of the claim rather than a separate
-        /// hygiene test: a field elaborated at a type mentioning an unknown is
-        /// consistent with everything, so a signature carrying one states less
-        /// than it appears to.
-        #[ignore = "gandr-3jus: the signature cannot be parsed until a dependent function type exists"]
-        #[test]
-        fn the_cat_shape_model_signature_elaborates_without_an_unknown()
-        {
-            todo!("gandr-0ika")
-        }
-
         /// Nesting is a property of the source, not of the lowerer: modules
         /// lower and register at every depth, with each component reachable by
         /// its own path.

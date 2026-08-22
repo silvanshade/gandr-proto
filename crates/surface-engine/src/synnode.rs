@@ -1238,7 +1238,7 @@ impl<'tree> SynNode<'tree>
     {
         let sig = self.sig();
         let mut depth = 0_usize;
-        for node in sig.iter() {
+        for node in &sig {
             match self.tree.tile_label(*node) {
                 | Some(label::LPAREN | label::LBRACE | label::LBRACKET | label::HASH_BRACE) => {
                     depth = depth.saturating_add(1);

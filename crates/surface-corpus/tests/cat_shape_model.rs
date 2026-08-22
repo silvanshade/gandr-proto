@@ -88,7 +88,7 @@
 //! ## `oper comp : (f : Hom(a, b), g : Hom(b, c)) --> Hom(a, c)`
 //!
 //! → `val comp : U_ω (Π(a : Ob) Π(b : Ob) Π(c : Ob) Hom(a, b) -> Hom(b, c) -> F
-//! Hom(a, c))`
+//! Hom(a, c))`.
 //!
 //! **Here the design is silent and the choice is load-bearing.** `comp`'s
 //! declaration mentions `a`, `b`, and `c` and binds none of them: they are the
@@ -105,7 +105,7 @@
 //! ## `rule unitL : comp(id(a), f) ==> f`
 //!
 //! → `val unitL : U_ω (Π(a : Ob) Π(b : Ob) Π(f : Hom(a, b)) F Path(Hom(a, b),
-//! ⟦comp(id(a), f)⟧, f))`
+//! ⟦comp(id(a), f)⟧, f))`.
 //!
 //! The carrier is the sort the rule is stated at — `Hom(a, b)`, the sort of
 //! both endpoints. `Γ_r` is the rule's own variable context: the sort variables
@@ -255,69 +255,45 @@ pub mod tests
   }
 "#;
 
-    /// The **stated** signature elaborates, and no field's type mentions the
-    /// gradual unknown.
+    /// Nothing here is asserted in Rust, and that is deliberate.
     ///
-    /// Owed, and the gate is named rather than the rung: the operation clause
-    /// binds every free sort variable as a dependent parameter, and the surface
-    /// type grammar has no dependent function type, so this signature cannot be
-    /// parsed at all. It is written out above because it is the oracle the
-    /// derivation rung is held to, and an oracle nobody can read is not one.
-    #[ignore = "gandr-3jus: the signature cannot be parsed until a dependent function type exists"]
+    /// **What is witnessed lives where it can be observed**: the corpus entry
+    /// `examples/model/higher-cells/cat-shape-setoids.gandr` states, through
+    /// member-level directives, that the module's operations and both unit laws
+    /// are present and carry no gradual unknown; and
+    /// `flagship_probe::both_unit_laws_check_in_model_faithful_form` states
+    /// that their endpoints name the model's own operations, paired with
+    /// the helper spelling that must not move with them. Two witnesses for
+    /// one claim drift, so this file carries neither a second copy.
+    ///
+    /// **What is owed is owed on something specific.** The signature above
+    /// cannot be parsed at all: its operation clause binds every free sort
+    /// variable as a dependent parameter, and the surface type grammar has no
+    /// dependent function type — `gandr-3jus`. Until then an instance has
+    /// nothing to be an instance *of*, which is why the corpus witnesses a
+    /// module that presents the category of setoids rather than an instance of
+    /// anything.
+    ///
+    /// **And the misrepresentation claim's second clause is vacuous here rather
+    /// than inspected.** No index in the claim path holds a type former where a
+    /// value belongs, because this module has no value indices at all: its
+    /// objects are types and its homs expand by substitution. A check that
+    /// cannot fire is not a check, and a claim leaning on one is weaker than it
+    /// reads.
     #[test]
-    fn the_model_signature_elaborates_without_an_unknown()
+    fn the_signature_is_read_rather_than_asserted()
     {
-        let _ = (MODEL_CAT_SHAPE, SETOID_CAT_SIGNATURE, SETOID_CAT_BODY);
-        todo!("gandr-3jus")
-    }
-
-    /// The instance matches the **stated** signature.
-    ///
-    /// Owed behind the same gate, and it is the claim the flagship rests on:
-    /// until a signature can be stated, an instance has nothing to be an
-    /// instance *of*, and what the corpus witnesses is a module that presents
-    /// the category of setoids rather than an instance of anything.
-    #[ignore = "gandr-3jus: no stated signature exists to ascribe against"]
-    #[test]
-    fn the_setoid_instance_matches_the_model_signature()
-    {
-        todo!("gandr-3jus")
-    }
-
-    /// The law fields' endpoints name the **model's own** operations.
-    ///
-    /// Witnessed at
-    /// `flagship_probe::both_unit_laws_check_in_model_faithful_form`, which
-    /// states the claim over the two laws that check and pairs it with
-    /// the helper spelling that must not move with them. Kept here as a pointer
-    /// rather than a second copy, because two witnesses for one claim drift.
-    ///
-    /// The third law is not among them: its composites nest an embedding inside
-    /// an embedding's argument, one level deeper than the resolution reaches
-    /// (`gandr-e7d2`).
-    #[ignore = "witnessed at flagship_probe::both_unit_laws_check_in_model_faithful_form"]
-    #[test]
-    fn the_law_endpoints_name_the_models_own_operations()
-    {
-        todo!("see flagship_probe")
-    }
-
-    /// No index or type in the claim path is **misrepresented**: none mentions
-    /// the gradual unknown, and none holds a type former where the declaration
-    /// puts a value.
-    ///
-    /// The first clause is witnessed by the corpus entry's
-    /// `expect-member-type-without-unknown` directives over the module's four
-    /// interesting members. **The second is vacuously satisfied here rather
-    /// than inspected**: this instance has no value indices at all, because its
-    /// objects are types and its homs expand by substitution, so there is no
-    /// position in which a type former could stand for a value. Said plainly
-    /// because a check that cannot fire is not a check, and a claim that leans
-    /// on one is weaker than it reads.
-    #[ignore = "witnessed by the corpus entry's member-level unknown directives"]
-    #[test]
-    fn no_index_in_the_claim_path_is_misrepresented()
-    {
-        todo!("see cat-shape-setoids.gandr")
+        assert!(
+            MODEL_CAT_SHAPE.contains("type Hom : Ob -> Ob -> Type"),
+            "the oracle states the indexed sort as a kinded component"
+        );
+        assert!(
+            SETOID_CAT_SIGNATURE.contains("type Hom(a : Ob, b : Ob)"),
+            "the instance supplies it as a manifest family"
+        );
+        assert!(
+            !SETOID_CAT_BODY.contains("assoc"),
+            "the third law is absent, and the corpus entry says on what"
+        );
     }
 }

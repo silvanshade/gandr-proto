@@ -931,30 +931,6 @@ pub struct TypeComponent
     pub definition: ValueType,
 }
 
-/// One **kinded** type component `type T : κ` — an abstract type family
-/// declared by its telescope, with no definition.
-///
-/// This is what makes `Model(CatShape)` a signature at all: the indexed sort
-/// `Hom(dom, cod)` becomes `type Hom : Ob -> Ob -> Type`, and an abstract
-/// declaration is exactly what an instance is then obliged to supply. The
-/// nullary case `type Ob : Type` is the same form with an empty telescope, and
-/// it is *not* the bare `type Ob`: a bare component states no kind at all and
-/// belongs to sealing, while a kinded one states its arity and its result
-/// classifier.
-///
-/// The result classifier is not carried, because at this rung a kind's spine
-/// ends in `Type` and nothing else parses; when the classifier arc's sorts and
-/// levels reach the surface signature grammar, this is where they land.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct KindedComponent
-{
-    /// The component's name, as written in the signature.
-    pub name: String,
-    /// The parameters the kind's arrow spine declares, in order; empty for
-    /// `type T : Type`.
-    pub params: Vec<TypeParameter>,
-}
-
 /// One module-stratum item: what a `module` declaration *is*, beside the term
 /// that realizes it.
 ///
@@ -1791,19 +1767,6 @@ struct ModuleAscription
     /// T;` signature declares none, because it writes a type rather than a
     /// signature.
     types: Vec<TypeComponent>,
-    /// The **kinded** type components, in signature order — the abstract
-    /// families the signature declares and a module must supply.
-    #[allow(
-        dead_code,
-        reason = "gandr-wvd.6.2 scaffold: the kinded components are declared here and read by                   signature matching, which lands with the elaboration bodies"
-    )]
-    /// Held separately from [`ModuleAscription::types`] rather than as an
-    /// optional definition on one shape, because the two answer different
-    /// questions and a consumer entitled to only one must not reach the other
-    /// by construction: a manifest component **expands**, a kinded one is
-    /// **matched against**. Collapsing them would let an expansion site read a
-    /// declaration with no definition and reach for a default.
-    kinded: Vec<KindedComponent>,
 }
 
 /// One value component of an inline structural signature.
@@ -6410,7 +6373,6 @@ impl Lowerer<'_>
                 ty: Some(ty),
                 coercion,
                 types: Vec::new(),
-                kinded: Vec::new(),
             }));
         }
         match node.child_by_field_name(node_kinds::FIELD_ASCRIPTION) {
@@ -6474,7 +6436,6 @@ impl Lowerer<'_>
     {
         let mut manifest: BTreeMap<String, ManifestAnswer<'_>> = BTreeMap::new();
         let mut types: Vec<TypeComponent> = Vec::new();
-        let mut kinded: Vec<KindedComponent> = Vec::new();
         let mut values: Vec<SignatureComponent> = Vec::new();
         for component in node.named_children() {
             let name_node = required_field(component, node_kinds::FIELD_NAME)?;
@@ -6542,10 +6503,11 @@ impl Lowerer<'_>
                         name.clone(),
                         ManifestAnswer::Type(ValueType::atom(name.as_str())),
                     ));
-                    kinded.push(KindedComponent {
-                        name,
-                        params: spine,
-                    });
+                    // Nothing consumes the declaration yet: binding the name
+                    // abstractly is the whole effect a later component needs,
+                    // and a recorded component with no consumer is a landing
+                    // without a caller. The record comes back with matching.
+                    drop(spine);
                     continue;
                 }
                 let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
@@ -6626,7 +6588,6 @@ impl Lowerer<'_>
             ty: Some(Ty::Value(coercion.record_type())),
             coercion: Some(coercion),
             types,
-            kinded,
         })
     }
 
@@ -6659,14 +6620,11 @@ impl Lowerer<'_>
     ) -> LowerResult<Vec<TypeParameter>>
     {
         let expand = |name: TypeName<'_>| manifest.get(name.0).cloned();
-        let refuse = |node: SynNode<'_>| {
-            let _ = node;
-            LowerError::KindedTypeComponent {
-                name: required_field(component, node_kinds::FIELD_NAME)
-                    .and_then(|name_node| self.text(name_node))
-                    .map_or_else(|_ignored| String::new(), |text| text.to_owned()),
-                byte_range: component.byte_range(),
-            }
+        let refuse = || LowerError::KindedTypeComponent {
+            name: required_field(component, node_kinds::FIELD_NAME)
+                .and_then(|name_node| self.text(name_node))
+                .map_or_else(|_ignored| String::new(), |text| text.as_ref().to_owned()),
+            byte_range: component.byte_range(),
         };
         // The spine is walked as **syntax** rather than lowered as a type, and
         // the reason is measurable: lowering `Ob -> Ob -> Type` puts the tail
@@ -6681,7 +6639,7 @@ impl Lowerer<'_>
             let parameter = required_field(current, node_kinds::FIELD_PARAMETER)?;
             let ty = match self.lower_type_node_with_manifest(parameter, &expand)? {
                 | Ty::Value(value_ty) => value_ty,
-                | Ty::Comp(_) => return Err(refuse(parameter)),
+                | Ty::Comp(_) => return Err(refuse()),
             };
             params.push(TypeParameter {
                 name: alloc::format!("_{}", params.len()),
@@ -6697,7 +6655,7 @@ impl Lowerer<'_>
             Ok(params)
         }
         else {
-            Err(refuse(current))
+            Err(refuse())
         }
     }
 
@@ -6728,11 +6686,11 @@ impl Lowerer<'_>
     ///   and `a_bare_type_component_parameter_declines_by_name`.
     fn type_component_parameters(
         &self,
-        _component: SynNode<'_>,
-        _manifest: &BTreeMap<String, ManifestAnswer<'_>>,
+        component: SynNode<'_>,
+        manifest: &BTreeMap<String, ManifestAnswer<'_>>,
     ) -> LowerResult<Vec<TypeParameter>>
     {
-        let Some(group) = _component.child_by_field_name(node_kinds::FIELD_PARAMETERS)
+        let Some(group) = component.child_by_field_name(node_kinds::FIELD_PARAMETERS)
         else {
             return Ok(Vec::new());
         };
@@ -6760,7 +6718,7 @@ impl Lowerer<'_>
             // Each binder scopes over the binders that follow it, and over the
             // manifest components declared before the component itself, so the
             // environment grows as the list is read.
-            let mut scoped = _manifest.clone();
+            let mut scoped = manifest.clone();
             for earlier in &params {
                 drop(scoped.insert(
                     earlier.name.clone(),

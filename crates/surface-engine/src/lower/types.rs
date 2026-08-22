@@ -175,10 +175,6 @@ pub struct ManifestFamily<'tree>
 /// answer the bare-name site and fall through the application site to the
 /// ambient resolver, where the name is not declared, and the component would
 /// read as an unknown atom.
-#[allow(
-    dead_code,
-    reason = "gandr-wvd.6.2 scaffold: the family case is constructed by the manifest-family               elaboration that lands with this rung's bodies"
-)]
 #[derive(Clone)]
 pub enum ManifestAnswer<'tree>
 {
