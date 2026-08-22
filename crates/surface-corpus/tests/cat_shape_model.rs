@@ -179,7 +179,44 @@ mod tests
     /// reduce — under the abstract signature `Hom` has no structure for
     /// conversion to see — so this is transparent ascription, and opacity
     /// is sealing's question rather than this instance's.
-    pub const SETOID_CAT: &str = "";
+    ///
+    /// **The type variables are named `t u v` and `p q` rather than `a b c`,
+    /// and that is a workaround rather than a style.** Type substitution is not
+    /// capture-avoiding, so a caller whose variables collide with an
+    /// operation's own binders is instantiated wrongly; the composition's
+    /// binders are `a b c`, and a category's laws written the obvious way
+    /// collide with all three. `gandr-ijdw`. When it lands, the names here
+    /// should go back to the design's spelling, and the fact that they *can* is
+    /// part of that repair's witness.
+    pub const SETOID_CAT: &str = r#"module SetoidCat : #{
+  type Ob = Type,
+  type Hom(a : Ob, b : Ob) = U[ω] (a -> F b),
+  id : U[ω] ((a : Ob) -> F Hom(a, a)),
+  comp : U[ω] ((a : Ob) -> (b : Ob) -> (c : Ob) -> Hom(a, b) -> Hom(b, c) -> F Hom(a, c)),
+  unitL : U[ω] ((a : Ob) -> (b : Ob) -> (f : Hom(a, b)) -> F Path(Hom(a, b), comp(a, a, b, id(a), f), f)),
+  unitR : U[ω] ((a : Ob) -> (b : Ob) -> (f : Hom(a, b)) -> F Path(Hom(a, b), comp(a, b, b, f, id(b)), f))
+} {
+  def ident(t : Type, x : t) -> F t { ret x }
+
+  def compose(t : Type, u : Type, v : Type, f : U[ω] (t -> F u), g : U[ω] (u -> F v), x : t) -> F v {
+    run y <- f(x);
+    g(y)
+  }
+
+  def id(t : Type) -> F (U[ω] (t -> F t)) { ret thunk { ident(t) } }
+
+  def comp(t : Type, u : Type, v : Type, f : U[ω] (t -> F u), g : U[ω] (u -> F v)) -> F (U[ω] (t -> F v)) {
+    ret thunk { compose(t, u, v, f, g) }
+  }
+
+  def unitL(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, p, q, id(p), f), f) {
+    ret here(f)
+  }
+
+  def unitR(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, q, q, f, id(q)), f) {
+    ret here(f)
+  }
+}"#;
 
     /// The signature elaborates, and no field's type mentions the gradual
     /// unknown.
