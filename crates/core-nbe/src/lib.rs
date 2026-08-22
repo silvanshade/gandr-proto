@@ -97,6 +97,7 @@ pub mod eval;
 pub mod intern;
 pub mod quote;
 pub mod sem;
+mod spine;
 
 use alloc::rc::Rc;
 
@@ -2964,6 +2965,140 @@ mod tests
         assert!(
             bool::from(build().converts(&piped, &bare)),
             "the collapse must hold whatever the ambient mode reached"
+        );
+    }
+
+    /// **Associativity of the bind, as a normal-form rule.** `(M >>= f) >>= g`
+    /// is `M >>= \x. f x >>= g`, the third of the calculus's three monad laws
+    /// and the one the flagship category's associativity field bottoms out at.
+    ///
+    /// A left-associated composite reaches the neutral's spine as two
+    /// sequence entries and a right-associated one as a single entry whose
+    /// continuation is itself a bind. Conversion compares spines elementwise,
+    /// so two entries against one cannot converge unless the normal form
+    /// itself flattens the nested continuation.
+    #[test]
+    fn bind_associativity_holds_over_a_neutral()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let neutral = || Comp::app(Comp::force(var("m")), var("z"));
+        let f = |bound: &str| Comp::app(Comp::force(var("f")), var(bound));
+        let g = |bound: &str| Comp::app(Comp::force(var("g")), var(bound));
+
+        // `run y <- (run x <- m z; f x); g y`
+        let left = thunk(Comp::bind(Comp::bind(neutral(), "x", f("x")), "y", g("y")));
+        // `run x <- m z; (run y <- f x; g y)`
+        let right = thunk(Comp::bind(neutral(), "x", Comp::bind(f("x"), "y", g("y"))));
+        assert!(
+            bool::from(nbe.converts(&left, &right)),
+            "a left-associated bind did not convert with its right-associated form"
+        );
+        assert!(
+            bool::from(nbe.converts(&right, &left)),
+            "bind associativity is not symmetric"
+        );
+    }
+
+    /// **The capture refusal.** Re-association is sound only when the trailing
+    /// computation is independent of the bound variable. Here it is not: the
+    /// tail applies `g` to the *outer* binder `x`, so pulling it out of the
+    /// continuation would leave `x` free — a different term with a free
+    /// variable where a bound one stood.
+    ///
+    /// Without this refusal a flattening that always fires accepts the two,
+    /// which is a wrong acceptance rather than a missing one.
+    #[test]
+    fn a_reassociation_whose_tail_mentions_the_binder_does_not_fire()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        let neutral = || Comp::app(Comp::force(var("m")), var("z"));
+        let f = |bound: &str| Comp::app(Comp::force(var("f")), var(bound));
+        let g = |bound: &str| Comp::app(Comp::force(var("g")), var(bound));
+
+        // `run x <- m z; (run y <- f x; g x)` — the tail mentions `x`.
+        let nested = thunk(Comp::bind(neutral(), "x", Comp::bind(f("x"), "y", g("x"))));
+        // The re-associated shape it must NOT equal: `x` escapes its binder.
+        let escaped = thunk(Comp::bind(Comp::bind(neutral(), "x", f("x")), "y", g("x")));
+        assert!(
+            !bool::from(nbe.converts(&nested, &escaped)),
+            "a re-association captured the bound variable, so a term with a free \
+             variable was accepted as equal to one that binds it"
+        );
+        assert!(
+            !bool::from(nbe.converts(&escaped, &nested)),
+            "the capture acceptance is not even symmetric"
+        );
+
+        // And it must not equal the *clean* right-associated form either: the
+        // tails apply `g` to different things.
+        let clean = thunk(Comp::bind(Comp::bind(neutral(), "x", f("x")), "y", g("y")));
+        assert!(
+            !bool::from(nbe.converts(&nested, &clean)),
+            "a capturing continuation converted with the clean re-association"
+        );
+    }
+
+    /// **Associativity through definitions — the shape the flagship's law
+    /// takes.** Both composites are built from one `comp` definition rather
+    /// than from literal binds, so each continuation's *stored* body is an
+    /// application and only its normal form is a bind.
+    ///
+    /// This is the same phase distinction the returner's eta met: a check that
+    /// reads the stored syntax cannot see a bind that a call reduces to.
+    #[test]
+    fn bind_associativity_holds_when_the_composites_are_definitions()
+    {
+        let mut nbe = Normalizer::new();
+        let var = |name: &str| Value::var(NameRef::from(name));
+        // `comp = thunk(\u. \v. \x. run y <- u x; v y)`
+        nbe.define(
+            NameRef::from("comp"),
+            &Value::thunk(
+                Grade::OMEGA,
+                Comp::lam(
+                    "u",
+                    Comp::lam(
+                        "v",
+                        Comp::lam(
+                            "x",
+                            Comp::bind(
+                                Comp::app(Comp::force(var("u")), var("x")),
+                                "y",
+                                Comp::app(Comp::force(var("v")), var("y")),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        .expect("the composition definition lowers");
+
+        let compose = |first: Value, second: Value| {
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::app(Comp::app(Comp::force(var("comp")), first), second),
+            )
+        };
+        let f = || var("f");
+        let g = || var("g");
+        let h = || var("h");
+
+        // `comp (comp f g) h` applied to a rigid argument.
+        let left = thunk(Comp::app(
+            Comp::force(compose(compose(f(), g()), h())),
+            var("z"),
+        ));
+        // `comp f (comp g h)` applied to the same argument.
+        let right = thunk(Comp::app(
+            Comp::force(compose(f(), compose(g(), h()))),
+            var("z"),
+        ));
+        assert!(
+            bool::from(nbe.converts(&left, &right)),
+            "the two composites did not convert, so the flagship's associativity \
+             field cannot check"
         );
     }
 

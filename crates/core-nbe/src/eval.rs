@@ -1818,7 +1818,26 @@ fn unwind(
         {
             Phase::Unwind(id)
         },
+        // **Associativity of the bind, as a normal-form rule.**
+        // `(M >>= f) >>= g` is `M >>= \x. f x >>= g`, so a continuation that is
+        // itself a bind carries eliminators belonging to the spine beneath it.
+        // Lifting them here means the unequal spine — two entries on one side
+        // against one on the other — never exists to be compared.
+        //
+        // The freshness side condition lives in `crate::spine::peel_bind_chain`,
+        // which the normal-form half of the rule shares, so a repair to either
+        // reaches both. Only a continuation whose **stored** body is a bind is
+        // visible from here; one that a call reduces to a bind is flattened
+        // where continuations are opened.
         | (SemCompNode::Neutral(stuck), elim) => {
+            if let Elim::Sequence(cont) = elim
+                && let Some(parts) = crate::spine::stored_reassociation(nbe, cont)?
+            {
+                for part in parts.into_iter().rev() {
+                    stack.push(Frame::Elim(part));
+                }
+                return Ok(Some(Phase::Unwind(id)));
+            }
             let extended = {
                 let neutral = nbe.arena().neutral(stuck)?;
                 neutral.extended(elim, neutral.unfold().height())
