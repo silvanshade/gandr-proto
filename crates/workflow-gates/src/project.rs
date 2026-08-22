@@ -55,11 +55,21 @@ const FORBIDDEN_DEFAULT_GRAPH_PACKAGES: [&str; 6] = [
     "aho-corasick",
 ];
 
-/// Workspace member whose edges are not followed during default-graph
+/// Workspace member whose edges are never followed during default-graph
 /// traversal: `gandr-workflow-dylint` is a nightly-only `rustc_private` Dylint
 /// driver, so its `dylint_linting→dylint_internal→regex` chain is tooling-only
-/// and outside the production default graph policy.
-const EXEMPT_DEFAULT_GRAPH_MEMBER: &str = "gandr-workflow-dylint";
+/// and outside the production default graph policy. The exemption is
+/// unconditional because the driver is unreachable from anything that ships.
+const TOOLING_EXEMPT_DEFAULT_GRAPH_MEMBER: &str = "gandr-workflow-dylint";
+
+/// Workspace members whose edges are not followed during default-graph
+/// traversal only while they ship nowhere: a listed member keeps the exemption
+/// exactly while no other workspace member names it through a normal or build
+/// dependency, checked against the same Cargo metadata at gate time, so a
+/// member that gains a consumer loses the exemption and its findings return
+/// rather than rotting silently. `gandr-core-checker-tools` carries proptest
+/// in its public generator API and is a normal or build dependency of nothing.
+const DEV_ONLY_EXEMPT_DEFAULT_GRAPH_MEMBERS: [&str; 1] = ["gandr-core-checker-tools"];
 
 /// Stable finding kind for forbidden default graph packages.
 const DEFAULT_GRAPH_FINDING_KIND: &str = "forbidden-default-dependency";
@@ -200,6 +210,8 @@ where
 /// - witness: `project::tests::non_host_only_forbidden_dependency_is_ignored`
 /// - witness: `project::tests::dylint_driver_only_forbidden_dependency_is_ignored`
 /// - witness: `project::tests::forbidden_package_through_non_exempt_member_is_reported`
+/// - witness: `project::tests::dev_only_exemption_holds_while_unconsumed`
+/// - witness: `project::tests::dev_only_exemption_falls_when_consumed`
 fn forbidden_default_graph_packages<'semantic, Metadata>(
     metadata_json: Metadata
 ) -> Result<Vec<String>, GateError>
@@ -351,7 +363,8 @@ fn dep_kind_reaches_default_graph(
 /// - requires: `graph` came from [`metadata_graph`].
 /// - ensures: returns every package name reachable from a workspace member at
 ///   most once, without following edges that originate from the exempt
-///   tooling-only Dylint driver member.
+///   tooling-only Dylint driver member or, while their checked exemption holds,
+///   from a dev-only exempt member that no other member consumes.
 /// - provides: the graph traversal for default dependency validation.
 /// - fails: returns malformed-metadata errors for roots or edges that reference
 ///   missing package records.
@@ -370,6 +383,8 @@ fn dep_kind_reaches_default_graph(
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 /// - witness: `project::tests::dylint_driver_only_forbidden_dependency_is_ignored`
 /// - witness: `project::tests::forbidden_package_through_non_exempt_member_is_reported`
+/// - witness: `project::tests::dev_only_exemption_holds_while_unconsumed`
+/// - witness: `project::tests::dev_only_exemption_falls_when_consumed`
 fn reachable_default_package_names<'metadata>(
     graph: &MetadataGraph<'metadata>
 ) -> Result<BTreeSet<ReachableDefaultPackageNameText<'metadata>>, GateError>
@@ -384,6 +399,7 @@ fn reachable_default_package_names<'metadata>(
         pending.push(*root);
     }
 
+    let shipping_dev_exempt_ids = shipping_dev_exempt_member_ids(graph);
     let mut visited_ids = BTreeSet::new();
     let mut reachable_names = BTreeSet::new();
     while let Some(package_id) = pending.pop() {
@@ -398,8 +414,12 @@ fn reachable_default_package_names<'metadata>(
         };
         reachable_names.insert(ReachableDefaultPackageNameText::from(*package_name));
         // Edges originating from the nightly-only rustc_private Dylint driver
-        // are tooling-only and outside the production default graph policy.
-        if *package_name == EXEMPT_DEFAULT_GRAPH_MEMBER {
+        // are tooling-only and outside the production default graph policy;
+        // edges originating from a dev-only exempt member are skipped exactly
+        // while that member still ships nowhere.
+        if *package_name == TOOLING_EXEMPT_DEFAULT_GRAPH_MEMBER
+            || shipping_dev_exempt_ids.contains(package_id)
+        {
             continue;
         }
         if let Some(children) = graph.dependencies.get(package_id) {
@@ -409,6 +429,57 @@ fn reachable_default_package_names<'metadata>(
         }
     }
     Ok(reachable_names)
+}
+
+/// Return the dev-only exempt member ids whose exemptions currently hold.
+///
+/// # Contract
+/// - requires: `graph` came from [`metadata_graph`].
+/// - ensures: returns each workspace member named in
+///   [`DEV_ONLY_EXEMPT_DEFAULT_GRAPH_MEMBERS`] that no other workspace member
+///   names through an included normal/build edge; a listed member that gains a
+///   consumer is absent, so its subtree is traversed and its findings return.
+/// - provides: the checked half of the default-graph exemption split — the gate
+///   itself evaluates the exemption's condition every run.
+/// - fails: never; a listed name absent from the graph simply holds no
+///   exemption.
+/// - panics: none.
+/// - intension: direct member-to-member edges decide, because only workspace
+///   members can carry path dependencies into the workspace, so every
+///   reachability chain into an exempt member passes through one.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — the unconsumed and consumed fixtures separate
+///   suppression from fallback on one graph difference.
+/// - witness: `project::tests::dev_only_exemption_holds_while_unconsumed`
+/// - witness: `project::tests::dev_only_exemption_falls_when_consumed`
+fn shipping_dev_exempt_member_ids<'metadata>(
+    graph: &MetadataGraph<'metadata>
+) -> BTreeSet<&'metadata str>
+{
+    let exempt_ids: BTreeSet<&str> = graph
+        .roots
+        .iter()
+        .copied()
+        .filter(|id| {
+            graph
+                .package_names
+                .get(id)
+                .is_some_and(|name| DEV_ONLY_EXEMPT_DEFAULT_GRAPH_MEMBERS.contains(name))
+        })
+        .collect();
+    let mut shipping = exempt_ids.clone();
+    for root in &graph.roots {
+        if exempt_ids.contains(*root) {
+            continue;
+        }
+        if let Some(children) = graph.dependencies.get(*root) {
+            for child in children {
+                shipping.remove(child);
+            }
+        }
+    }
+    shipping
 }
 
 /// Convert forbidden package names into stable findings.
@@ -421,7 +492,7 @@ fn default_graph_findings(hits: &[String]) -> Vec<Finding>
             "",
             CARGO_METADATA_SOURCE,
             hit.clone(),
-            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; keep tree-sitter behind the parity-only path",
+            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; the owner retirement bars every tree-sitter package from the shipping graph, so remove the dependency",
         ));
     }
     findings
@@ -607,6 +678,9 @@ mod tests
     /// Minimal exempt Dylint driver package id for metadata fixtures.
     const DYLINT_ID: &str = "path+file:///workspace#workflow-dylint@0.1.0";
 
+    /// Minimal dev-only exempt checker-tools package id for fixtures.
+    const TOOLS_ID: &str = "path+file:///workspace#core-checker-tools@0.1.0";
+
     /// Invalid metadata JSON reports the typed JSON error variant.
     #[test]
     fn malformed_metadata_is_reported_as_json_error()
@@ -681,7 +755,7 @@ mod tests
             "",
             CARGO_METADATA_SOURCE,
             "regex",
-            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; keep tree-sitter behind the parity-only path",
+            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; the owner retirement bars every tree-sitter package from the shipping graph, so remove the dependency",
         )]);
         Ok(())
     }
@@ -709,8 +783,38 @@ mod tests
             "",
             CARGO_METADATA_SOURCE,
             "regex",
-            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; keep tree-sitter behind the parity-only path",
+            "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; the owner retirement bars every tree-sitter package from the shipping graph, so remove the dependency",
         )]);
+        Ok(())
+    }
+
+    /// The dev-only exemption holds while no other member consumes the
+    /// exempt member, so the forbidden package behind it stays silent.
+    #[test]
+    fn dev_only_exemption_holds_while_unconsumed() -> Result<(), GateError>
+    {
+        let metadata = consumed_dev_only_tools_metadata(None);
+        let findings = validate_default_dependency_graph_metadata(&metadata)?;
+        assert!(findings.is_empty());
+        Ok(())
+    }
+
+    /// A normal or build edge from another member consumes the dev-only
+    /// exempt member, ends its checked exemption, and returns the finding.
+    #[test]
+    fn dev_only_exemption_falls_when_consumed() -> Result<(), GateError>
+    {
+        for kind in ["normal", "build"] {
+            let metadata = consumed_dev_only_tools_metadata(Some(kind));
+            let findings = validate_default_dependency_graph_metadata(&metadata)?;
+            assert_eq!(findings, vec![Finding::new(
+                DEFAULT_GRAPH_FINDING_KIND,
+                "",
+                CARGO_METADATA_SOURCE,
+                "regex",
+                "default normal/build workspace graph pulls a forbidden tree-sitter-family crate; the owner retirement bars every tree-sitter package from the shipping graph, so remove the dependency",
+            )]);
+        }
         Ok(())
     }
 
@@ -1053,6 +1157,45 @@ mod tests
                             "deps": [{{
                                 "pkg": "{REGEX_ID}",
                                 "dep_kinds": [{{"kind": "build", "target": null}}]
+                            }}]
+                        }},
+                        {{"id": "{REGEX_ID}", "deps": []}}
+                    ]
+                }}
+            }}"#
+        )
+    }
+
+    /// Build a minimal metadata graph where a dev-only exempt member holds
+    /// regex behind its public generator API, optionally consumed by another
+    /// member through the given dependency kind.
+    fn consumed_dev_only_tools_metadata(consumer_kind: Option<&str>) -> String
+    {
+        let consumer_deps = match consumer_kind {
+            | Some(kind) => format!(
+                r#"[{{"pkg": "{TOOLS_ID}", "dep_kinds": [{{"kind": "{kind}", "target": null}}]}}]"#
+            ),
+            | None => String::from("[]"),
+        };
+        format!(
+            r#"{{
+                "packages": [
+                    {{"id": "{ROOT_ID}", "name": "root"}},
+                    {{"id": "{TOOLS_ID}", "name": "gandr-core-checker-tools"}},
+                    {{"id": "{REGEX_ID}", "name": "regex"}}
+                ],
+                "workspace_members": ["{ROOT_ID}", "{TOOLS_ID}"],
+                "resolve": {{
+                    "nodes": [
+                        {{
+                            "id": "{ROOT_ID}",
+                            "deps": {consumer_deps}
+                        }},
+                        {{
+                            "id": "{TOOLS_ID}",
+                            "deps": [{{
+                                "pkg": "{REGEX_ID}",
+                                "dep_kinds": [{{"kind": null, "target": null}}]
                             }}]
                         }},
                         {{"id": "{REGEX_ID}", "deps": []}}
