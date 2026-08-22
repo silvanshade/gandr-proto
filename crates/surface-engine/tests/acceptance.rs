@@ -1634,47 +1634,64 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
             );
         }
 
-        /// An occurrence `Hom(x, y)` of a manifest family expands to the body
-        /// with the arguments substituted, and the expansion beats an ambient
-        /// datatype of the same name.
+        /// An occurrence of a manifest family **declines by name**, and the
+        /// declaration it names still elaborates.
         ///
-        /// The precedence is the same one the nullary manifest component
-        /// already has and it is load-bearing for the same reason: a signature
-        /// component that an enclosing declaration could capture is not a
-        /// component of that signature.
+        /// The declaration is what makes a kinded component satisfiable at all;
+        /// the occurrence is what would re-enter the elaborator, since
+        /// expanding a family elaborates its body and elaborating a type is
+        /// what reaches an occurrence. The cycle terminates on the source's own
+        /// component list, but that is an argument about the source rather than
+        /// about the walk, and a walk over caller-controlled structure carries
+        /// its own stack here. So the occurrence declines: a thing a later rung
+        /// removes rather than a cycle it discovers.
+        ///
+        /// The guard the binder accessor exists for is stated beside it,
+        /// because it is what stops a nullary component whose body opens with a
+        /// parenthesized type from being read as one that binds a parameter.
         #[test]
-        fn a_manifest_family_occurrence_expands_before_the_ambient_resolver()
+        fn a_manifest_family_occurrence_declines_by_name()
         {
-            // Two occurrences at different arguments, so an expansion that
-            // ignored its arguments would be visible as two equal field types.
-            let source = r#"module N : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), fwd : Hom(Integer, String), rev : Hom(String, Integer) } { def fwd(n : Integer) -> F String { ret "x" } def rev(s : String) -> F Integer { ret 0 } }"#;
-            let lowered = lower_source(source.into()).expect("the family expands");
-            let module = lowered
-                .items
-                .iter()
-                .find(|item| item.name.as_deref() == Some("N"))
-                .expect("the module lowers");
-            let forward = ValueType::thunk(
-                Grade::OMEGA,
-                CompType::arrow(
-                    ValueType::atom("Integer"),
-                    CompType::returner(ValueType::atom("String")),
-                ),
+            let source = r#"module N : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), fwd : Hom(Integer, String) } { def fwd(n : Integer) -> F String { ret "x" } }"#;
+            let error = lower_source(source.into())
+                .expect_err("the occurrence declines rather than expanding");
+            assert!(
+                matches!(error, LowerError::NestedManifestFamily { ref name, .. } if name == "Hom"),
+                "the decline names the component: {error:?}"
             );
-            let backward = ValueType::thunk(
-                Grade::OMEGA,
-                CompType::arrow(
-                    ValueType::atom("String"),
-                    CompType::returner(ValueType::atom("Integer")),
-                ),
-            );
+
+            // The declaration alone elaborates: a family beside a value
+            // component that does not name it lowers, so what declines is the
+            // occurrence rather than the form.
+            let declared = r#"module N : #{ type Hom(a : Type, b : Type) = U[ω] (a -> F b), d : Integer } { def d = 1; }"#;
+            let lowered = lower_source(declared.into()).expect("the declaration elaborates");
             assert_eq!(
-                Some(Ty::Value(ValueType::record([
-                    ("fwd".to_owned(), forward),
-                    ("rev".to_owned(), backward),
-                ]))),
-                module.ascription,
-                "each occurrence expands at its own arguments"
+                Some(Ty::Value(ValueType::record([(
+                    "d".to_owned(),
+                    ValueType::integer(),
+                )]))),
+                lowered
+                    .items
+                    .iter()
+                    .find(|item| item.name.as_deref() == Some("N"))
+                    .expect("the module lowers")
+                    .ascription,
+                "the value component is unaffected by the family beside it"
+            );
+
+            // **In TOTAL mode the decline is silent, and that is measured
+            // rather than accepted.** An engine limit recorded as a silent
+            // unknown is recorded as author intent, which is the violation this
+            // whole arc opened on. This decline is visible in strict mode, and
+            // total-mode type lowering absorbs *every* named type decline into
+            // the gradual unknown by its own documented contract — so the gap
+            // is that contract's rather than this decline's, and it is stated
+            // here rather than asserted around. `gandr-hxsj`.
+            let recovered = lower_source_total(source.into()).expect("total lowering recovers");
+            assert!(
+                goals_report(&recovered, &prelude_ctx()).is_empty(),
+                "the total-mode silence is the measured state; a goal appearing here means the \
+                 contract changed and this claim needs rewriting rather than relaxing"
             );
 
             // The guard the accessor exists for: a nullary component whose body

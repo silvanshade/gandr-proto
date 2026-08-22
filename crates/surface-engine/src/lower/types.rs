@@ -23,6 +23,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
+use core::marker::PhantomData;
 
 use gandr_core_term::boundary::EndpointArity;
 use gandr_core_term::boundary::GradeBound;
@@ -147,21 +148,15 @@ pub struct ManifestFamily<'tree>
 {
     /// The bound parameters, in declaration order.
     pub params: Vec<TypeParameter>,
-    /// The component's body, unelaborated.
+    /// The tree lifetime the component's declaration is read at.
     ///
-    /// Held as the written node rather than as an elaborated type with the
-    /// parameters standing as atoms, so an application instantiates by
-    /// **elaborating the body under an environment that already binds the
-    /// arguments** rather than by substituting into a finished type. Two things
-    /// follow. The binding is simultaneous by construction, so the capture
-    /// question a sequential substitution has to answer does not arise —
-    /// `gandr-ijdw` is that question answered wrongly elsewhere in this tree.
-    /// And the environment carried beside it is the one from the component's
-    /// own declaration site, so the expansion is still independent of where it
-    /// is applied, which is the property the nullary form already has.
-    pub body: SynNode<'tree>,
-    /// The manifest components in scope where the family was declared.
-    pub scope: BTreeMap<String, ManifestAnswer<'tree>>,
+    /// The family's **body** is not carried. Expanding one would elaborate that
+    /// body, and elaborating a type reaches an application, so the expansion
+    /// re-enters itself; the occurrence therefore declines by name and the
+    /// declaration keeps only what a declaration needs — its arity and the
+    /// types its parameters range over. A later rung that carries the body
+    /// carries a walk with its own stack beside it.
+    pub tree: PhantomData<&'tree ()>,
 }
 
 /// What a manifest environment answers a type name with.
@@ -184,75 +179,49 @@ pub enum ManifestAnswer<'tree>
     Family(ManifestFamily<'tree>),
 }
 
-/// Instantiate a manifest family at `arguments`.
+/// Answer a manifest family's application.
+///
+/// # The application declines, and the declaration does not
+///
+/// A signature may **declare** a family — `type Hom(a : Ob, b : Ob) = τ` — and
+/// that is what makes a kinded component satisfiable at all. What this rung
+/// does not do is **expand** one at an occurrence.
+///
+/// **The reason is a cycle rather than a difficulty.** Expanding elaborates the
+/// family's written body, and elaborating a type is what reaches an
+/// application, so the expansion re-enters itself. The cycle does terminate — a
+/// family's declaration-site environment cannot hold the component being
+/// declared, so the chain strictly decreases along the signature's own
+/// component list — but that argument is about the *source's* shape rather than
+/// about the walk, and the discipline here is that a walk over
+/// caller-controlled structure carries its own stack. Re-expressing the
+/// expansion as one is a rung's work, and nothing currently writable needs it.
+///
+/// So the occurrence declines by name: a thing a later rung removes, rather
+/// than a cycle it has to discover.
 ///
 /// # Contract
-/// - requires: `arguments` are the application's argument nodes, in the order
-///   the source wrote them.
-/// - ensures: the result is the family's body elaborated under the manifest
-///   environment of the family's own **declaration** site, extended with each
-///   parameter bound to its argument's elaborated type. The binding is
-///   simultaneous by construction — an environment is a map, not a sequence —
-///   so a parameter whose argument mentions a later parameter's name is not
-///   captured, and the capture question a sequential substitution has to answer
-///   does not arise at all.
-/// - ensures: elaborating under the declaration site's environment rather than
-///   the application's keeps the expansion independent of where it is applied,
-///   which is the property the nullary manifest component already has.
-/// - fails: [`LowerError::ManifestFamilyArity`] when the argument count differs
-///   from the parameter count, and ordinary type-lowering errors from an
-///   argument or from the body.
+/// - requires: `arguments` matched the family's arity at the call site, so the
+///   more specific arity diagnostic has already been given its chance.
+/// - ensures: the decline names the component, because a reader meeting it is
+///   looking at a form the signature declared and the occurrence cannot use.
+/// - fails: always, with [`LowerError::NestedManifestFamily`].
 /// - panics: never.
 ///
-/// # Termination
-/// - reason: a family's declaration-site environment cannot contain the
-///   component being declared, so an expansion only reaches families declared
-///   strictly earlier in one signature.
-/// - measure: the number of manifest families in scope at the family's own
-///   declaration.
-/// - boundedness: a signature declares finitely many components and the chain
-///   strictly decreases.
-/// - input recursion: bounded by the source's own component list rather than by
-///   the applied type's depth.
-///
 /// # Adequacy
-/// - hypothesis: elaborating the written body under an environment realizes
-///   application without any substitution over an elaborated type.
-/// - mutants: elaborate under the application's environment; ignore surplus
-///   arguments; bind the parameters one at a time rather than as one map.
-/// - witnesses:
-///   `a_manifest_family_occurrence_expands_before_the_ambient_resolver` and
-///   `a_type_component_arity_mismatch_is_refused_by_name`.
-fn instantiate_manifest_family<'tree>(
-    source: PipelineSource<'_>,
-    node: SynNode<'tree>,
-    strictness: Strictness,
-    resolve: DataResolver<'_>,
-    family: &ManifestFamily<'tree>,
-    arguments: &[SynNode<'tree>],
+/// - hypothesis: the arity check is independent of the expansion, so declining
+///   the expansion does not swallow the arity diagnostic.
+/// - mutants: decline before checking the arity; expand anyway.
+/// - witness: `a_type_component_arity_mismatch_is_refused_by_name`.
+fn decline_manifest_family(
+    node: SynNode<'_>,
+    name: TypeName<'_>,
 ) -> LowerResult<Ty>
 {
-    if arguments.len() != family.params.len() {
-        return Err(LowerError::ManifestFamilyArity {
-            expected: family.params.len(),
-            found: arguments.len(),
-            byte_range: node.byte_range(),
-        });
-    }
-    let mut scope = family.scope.clone();
-    for (param, argument) in family.params.iter().zip(arguments.iter()) {
-        let lowered = {
-            let expand = |name: TypeName<'_>| family.scope.get(name.0).cloned();
-            value_result(
-                lower_type_tree(source, *argument, strictness, resolve, &expand),
-                *argument,
-                strictness,
-            )?
-        };
-        drop(scope.insert(param.name.clone(), ManifestAnswer::Type(lowered)));
-    }
-    let expand = |name: TypeName<'_>| scope.get(name.0).cloned();
-    lower_type_tree(source, family.body, strictness, resolve, &expand)
+    Err(LowerError::NestedManifestFamily {
+        name: name.0.to_owned(),
+        byte_range: node.byte_range(),
+    })
 }
 
 /// Lowers a primitive type name.
@@ -747,7 +716,6 @@ fn lower_type_tree<'tree>(
                         schedule_type_application(
                             source,
                             node,
-                            strictness,
                             resolve,
                             manifest,
                             &mut pending,
@@ -803,7 +771,6 @@ fn lower_type_tree<'tree>(
 fn schedule_type_application<'tree>(
     source: PipelineSource<'_>,
     node: SynNode<'tree>,
-    strictness: Strictness,
     resolve: DataResolver<'_>,
     manifest: ManifestTypes<'_, 'tree>,
     pending: &mut Vec<TypeTask<'tree>>,
@@ -827,9 +794,18 @@ fn schedule_type_application<'tree>(
     };
     match manifest(TypeName(head.0)) {
         | Some(ManifestAnswer::Family(family)) => {
-            results.push(instantiate_manifest_family(
-                source, node, strictness, resolve, &family, &arguments,
-            ));
+            // The arity is checkable without expanding anything, so a wrong
+            // count still hears about the count rather than about the decline.
+            if arguments.len() == family.params.len() {
+                results.push(decline_manifest_family(node, TypeName(head.0)));
+            }
+            else {
+                results.push(Err(LowerError::ManifestFamilyArity {
+                    expected: family.params.len(),
+                    found: arguments.len(),
+                    byte_range: node.byte_range(),
+                }));
+            }
             return;
         },
         // A nullary manifest component applied to arguments. The signature

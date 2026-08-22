@@ -140,6 +140,20 @@ enum Frame
     Elim(Elim),
     /// A thunk cell waiting to memoize the weak-head normal form beneath it.
     Memoize(ClosureId),
+    /// A **force waiting on the embedding beneath it**.
+    ///
+    /// A pure-computation embedding names the value its computation returns, so
+    /// forcing one means running that computation and forcing what comes back.
+    /// The run is a machine step rather than a nested machine: descending the
+    /// embedded computation under this frame is what keeps the walk a loop over
+    /// an explicit stack, which is the whole reason the machine has one. A
+    /// nested run would put a source-chosen chain of embeddings on the host
+    /// stack and close a cycle four functions in this file declare impossible.
+    ForceEmbedded
+    {
+        /// The unfolding mode the force was performed at.
+        mode: ForceMode,
+    },
 }
 
 /// The machine's phase.
@@ -893,38 +907,6 @@ pub fn force_value(
     let mut fuel = u32::from(nbe.fuel());
     while fuel > 0 {
         fuel = fuel.saturating_sub(1);
-        // A **pure-computation embedding** names the value its computation
-        // returns, so reducing it to a head means running that computation and
-        // continuing on what it returned. Handled here rather than at each
-        // force site because there are three of them and they had drifted into
-        // three near-identical dispatches: the value walk's, the computation
-        // machine's `Force` arm, and conversion's own resolver. Two of the
-        // three answered an embedding with a permanent neutral, which is why a
-        // law endpoint naming a model's own operation could never reduce.
-        //
-        // The loop is the existing fuel loop, so an embedding chain cannot
-        // outlive the budget that bounds every other unfolding, and nothing new
-        // reaches the host stack. `gandr-rson`.
-        let embedded = match *nbe.arena().value(current)?.node() {
-            | SemValueNode::Run(cell) => Some(cell),
-            | _ => None,
-        };
-        if let Some(cell) = embedded {
-            let whnf = enter_nullary(nbe, cell, mode)?;
-            match *nbe.arena().comp(whnf)?.node() {
-                | SemCompNode::Return(produced) => {
-                    if produced == current {
-                        return Ok(current);
-                    }
-                    current = produced;
-                    continue;
-                },
-                // Stuck on a variable, or out of budget. The embedding keeps
-                // its own form, so conversion compares it by congruence, which
-                // can only report unequal what a longer run might have equated.
-                | _ => return Ok(current),
-            }
-        }
         let (name, face) = {
             let node = nbe.arena().value(current)?;
             match *node.node() {
@@ -1198,11 +1180,6 @@ pub fn force_head(
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
 {
-    // Reduce to a head the force can act on **before** dispatching, which is
-    // what puts an unfolded definition and a resolved embedding on the same
-    // footing as a literal thunk. Dispatching first is how this site came to
-    // read an embedding as "not a thunk" and answer with a permanent neutral.
-    let id = force_value(nbe, id, mode)?;
     let cell = match *nbe.arena().value(id)?.node() {
         | SemValueNode::Thunk(_, cell) => Some(cell),
         | _ => None,
@@ -1331,6 +1308,14 @@ fn descend(
         | CompNode::Force(thunked) => {
             let thunked = eval_value(nbe, env, thunked)?;
             let thunked = force_value(nbe, thunked, mode)?;
+            // An embedding is not a thunk, so the arm below would answer it with
+            // a permanent neutral. Run the embedded computation as a machine
+            // step and force what it returns.
+            if let SemValueNode::Run(embedded) = *nbe.arena().value(thunked)?.node() {
+                let (embedded_env, body) = enter(nbe, embedded, &[])?;
+                stack.push(Frame::ForceEmbedded { mode });
+                return Ok(Phase::Descend(embedded_env, body));
+            }
             let cell = match *nbe.arena().value(thunked)?.node() {
                 | SemValueNode::Thunk(_, cell) => Some(cell),
                 | _ => None,
@@ -1712,6 +1697,41 @@ fn unwind(
         | Frame::Memoize(cell) => {
             nbe.arena_mut().set_closure_memo(cell, id)?;
             return Ok(Some(Phase::Unwind(id)));
+        },
+        // The embedded computation came back. If it returned a value, the
+        // embedding names that value and the force continues on it; anything
+        // else is stuck on a variable or out of budget, and an unresolved
+        // embedding keeps its neutral -- a refusal carrying its evidence rather
+        // than an unsound acceptance.
+        | Frame::ForceEmbedded { mode } => {
+            let produced = match *nbe.arena().comp(id)?.node() {
+                | SemCompNode::Return(produced) => Some(produced),
+                | _ => None,
+            };
+            let Some(produced) = produced
+            else {
+                return Ok(Some(Phase::Unwind(id)));
+            };
+            let produced = force_value(nbe, produced, mode)?;
+            let cell = match *nbe.arena().value(produced)?.node() {
+                | SemValueNode::Thunk(_, cell) => Some(cell),
+                | _ => None,
+            };
+            let Some(cell) = cell
+            else {
+                let face = head_face(nbe, produced)?;
+                return Ok(Some(Phase::Unwind(neutral(
+                    nbe,
+                    NeutralHead::Force(produced),
+                    face,
+                )?)));
+            };
+            if let Some(memo) = nbe.arena().closure(cell)?.memo() {
+                return Ok(Some(Phase::Unwind(memo)));
+            }
+            stack.push(Frame::Memoize(cell));
+            let (env, body) = enter(nbe, cell, &[])?;
+            return Ok(Some(Phase::Descend(env, body)));
         },
         | Frame::Elim(elim) => elim,
     };

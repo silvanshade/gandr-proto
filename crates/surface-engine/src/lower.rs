@@ -478,6 +478,27 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// A manifest family's body applies another manifest family.
+    ///
+    /// Declined by name rather than expanded. Expansion elaborates a family's
+    /// written body, so a body that applies a family would elaborate through
+    /// the expansion again — a cycle whose termination argument is the
+    /// signature's own component list rather than the shape of any input.
+    /// **The argument is sound and the refusal is cheaper**: nothing the
+    /// surface can currently write needs a family inside a family, and a named
+    /// decline is a thing a later rung removes rather than an undocumented
+    /// cycle it discovers.
+    #[error(
+        "manifest type component `{name}` at bytes {byte_range:?} applies another type component in its body, which this rung does not expand"
+    )]
+    NestedManifestFamily
+    {
+        /// The applied component's name.
+        name: String,
+        /// The application's byte range.
+        byte_range: SourceRange,
+    },
+
     /// A manifest type component is named at the wrong arity.
     ///
     /// Both directions land here, and neither may fall through to the ambient
@@ -6565,8 +6586,7 @@ impl Lowerer<'_>
                     name.clone(),
                     ManifestAnswer::Family(crate::lower::types::ManifestFamily {
                         params: params.clone(),
-                        body: definition_node,
-                        scope: manifest.clone(),
+                        tree: core::marker::PhantomData,
                     }),
                 ));
                 types.push(TypeComponent {
@@ -7994,6 +8014,7 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::BareTypeComponent { ref byte_range, .. }
         | LowerError::BareTypeParameter { ref byte_range, .. }
         | LowerError::ManifestFamilyArity { ref byte_range, .. }
+        | LowerError::NestedManifestFamily { ref byte_range, .. }
         | LowerError::MissingModuleComponent { ref byte_range, .. }
         | LowerError::UnknownModuleComponent { ref byte_range, .. }
         | LowerError::DuplicateModuleComponent { ref byte_range, .. }
@@ -8089,7 +8110,8 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::KindedTypeComponent { .. }
         | LowerError::BareTypeComponent { .. }
         | LowerError::BareTypeParameter { .. }
-        | LowerError::ManifestFamilyArity { .. } => HoleNote::UnsupportedForm {
+        | LowerError::ManifestFamilyArity { .. }
+        | LowerError::NestedManifestFamily { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::TYPE_COMPONENT,
         },
         // The decline happens at the projection, not at the module, so total
