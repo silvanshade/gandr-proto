@@ -129,32 +129,43 @@ set -eu
 # truncated entry compares as a mismatch, which removes and reconfigures.
 build="${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}"
 checkout=$(pwd -P)
-# Resolve before comparing or removing. A literal path can carry .. or symlink
-# steps that walk around a string comparison, so the value the refusal checks
-# and the value rm -rf removes must both be the resolved directory, and they
-# must be one value rather than two names for one thing.
-if ! build_abs=$(cd "$build" 2>/dev/null && pwd -P); then
-  printf 'compile-host: refusing stale-cache handling: cannot enter build directory %s\n' "$build" >&2
-  exit 1
-fi
 
-# The removal target comes from the environment, and this task runs inside
-# every lane pre-merge hook, so the failure mode is not a hypothetical future
-# typo: it is a typo or a stale export in one of the worktrees running
-# tonight, deleting a lane carrying hours of uncommitted work at the exact
-# moment its owner is trying to land. An unlikely, catastrophic and
-# unrecoverable outcome inside a mutex-held operation is not a risk to price,
-# it is a shape to make unrepresentable: the guard refuses to name a directory
-# it must never remove, and fails loudly saying which forbidden path was
-# named, because a stale cache at a forbidden path is a configuration error
-# somebody needs to see.
-forbidden=
-case "$build_abs" in
-  "/") forbidden="/" ;;
-  "$checkout") forbidden="the checkout itself ($build_abs)" ;;
-  "$checkout/runtime/compile-host") forbidden="the compilation host source tree ($build_abs)" ;;
-esac
+# Everything below is inside the cache branch, and the placement is the whole
+# correctness of it. On a fresh checkout the build directory DOES NOT EXIST --
+# creating it is what this task is for -- so a resolve hoisted above this test
+# refuses before cmake ever runs, and the compile-host wall fails in every
+# fresh lane and every tree a `wt merge` recreates. The cache branch is the
+# only place the directory is known to exist, which is why the resolve lives
+# here and not one line higher.
 if [ -f "$build/CMakeCache.txt" ]; then
+  # Resolve before comparing or removing. A literal path can carry `..` or
+  # symlink steps that walk around a string comparison, so the value the
+  # refusal checks and the value `rm -rf` removes must be the same resolved
+  # directory rather than two names for one thing -- otherwise the check and
+  # the removal are separated by a resolution step, which is a
+  # time-of-check-to-time-of-use gap dressed as tidiness. A build directory
+  # holding a cache that cannot be entered is not a path to hand `rm -rf`.
+  if ! build_abs=$(cd "$build" 2>/dev/null && pwd -P); then
+    printf 'compile-host: refusing stale-cache handling: cannot enter build directory %s\n' "$build" >&2
+    exit 1
+  fi
+
+  # The removal target comes from the environment, and this task runs inside
+  # every lane pre-merge hook, so the failure mode is not a hypothetical
+  # future typo: it is a typo or a stale export in one of the worktrees
+  # running tonight, deleting a lane carrying hours of uncommitted work at the
+  # exact moment its owner is trying to land. An unlikely, catastrophic and
+  # unrecoverable outcome inside a mutex-held operation is not a risk to
+  # price, it is a shape to make unrepresentable: the guard refuses to name a
+  # directory it must never remove, and fails loudly saying which forbidden
+  # path was named, because a stale cache at a forbidden path is a
+  # configuration error somebody needs to see.
+  forbidden=
+  case "$build_abs" in
+    "/") forbidden="/" ;;
+    "$checkout") forbidden="the checkout itself ($build_abs)" ;;
+    "$checkout/runtime/compile-host") forbidden="the compilation host source tree ($build_abs)" ;;
+  esac
   if [ -n "$forbidden" ]; then
     printf 'compile-host: refusing stale-cache removal: GANDR_COMPILE_HOST_BUILD resolves to %s; fix the variable\n' "$forbidden" >&2
     exit 1
