@@ -104,8 +104,19 @@ mod tests
     /// literal-column-declined.gandr` is the failure golden for the shape it
     /// did not take, a literal column, whose decline must stay observable as a
     /// goal rather than regressing into a dropped arm.
+    ///
+    /// Dependent instantiation capture moved the pathological root alone, by
+    /// two, and it takes two files rather than one because the fault has two
+    /// halves demanding opposite outcomes. `dependent-instantiation-capture`
+    /// is the refusing half: a caller whose binder names collide with the
+    /// callee's must check, and its renamed twin must check to the same type.
+    /// `dependent-instantiation-capture-accepts` is the silent half, and it is
+    /// a refutation — every type in it is the one a capturing instantiation
+    /// computes, so a capturing engine accepts it and a correct engine refuses
+    /// it. One file cannot carry both, because the first must run clean and
+    /// the second must not.
     #[test]
-    fn frozen_root_fixture_cardinality_is_31_and_40()
+    fn frozen_root_fixture_cardinality_is_31_and_42()
     {
         assert_eq!(
             31,
@@ -113,7 +124,7 @@ mod tests
             "frozen model root"
         );
         assert_eq!(
-            40,
+            42,
             direct_gandr_files(&crate_root().join(PATHOLOGICAL_DIR)).len(),
             "frozen pathological root"
         );
