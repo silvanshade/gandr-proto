@@ -129,10 +129,14 @@ set -eu
 # truncated entry compares as a mismatch, which removes and reconfigures.
 build="${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}"
 checkout=$(pwd -P)
-case "$build" in
-  /*) build_abs=$build ;;
-  *) build_abs="$checkout/$build" ;;
-esac
+# Resolve before comparing or removing. A literal path can carry .. or symlink
+# steps that walk around a string comparison, so the value the refusal checks
+# and the value rm -rf removes must both be the resolved directory, and they
+# must be one value rather than two names for one thing.
+if ! build_abs=$(cd "$build" 2>/dev/null && pwd -P); then
+  printf 'compile-host: refusing stale-cache handling: cannot enter build directory %s\n' "$build" >&2
+  exit 1
+fi
 
 # The removal target comes from the environment, and this task runs inside
 # every lane pre-merge hook, so the failure mode is not a hypothetical future
@@ -146,14 +150,13 @@ esac
 # somebody needs to see.
 forbidden=
 case "$build_abs" in
-  "") forbidden="the empty path" ;;
   "/") forbidden="/" ;;
-  "$checkout") forbidden="the checkout itself ($checkout)" ;;
+  "$checkout") forbidden="the checkout itself ($build_abs)" ;;
   "$checkout/runtime/compile-host") forbidden="the compilation host source tree ($build_abs)" ;;
 esac
 if [ -f "$build/CMakeCache.txt" ]; then
   if [ -n "$forbidden" ]; then
-    printf 'compile-host: refusing stale-cache removal: GANDR_COMPILE_HOST_BUILD names %s; fix the variable\n' "$forbidden" >&2
+    printf 'compile-host: refusing stale-cache removal: GANDR_COMPILE_HOST_BUILD resolves to %s; fix the variable\n' "$forbidden" >&2
     exit 1
   fi
   cached_home=$(sed -n 's/^CMAKE_HOME_DIRECTORY:[^=]*=//p' "$build/CMakeCache.txt")
@@ -170,7 +173,7 @@ if [ -f "$build/CMakeCache.txt" ]; then
     stale=1
   fi
   if [ -n "$stale" ]; then
-    rm -rf "$build"
+    rm -rf "$build_abs"
   fi
 fi
 
