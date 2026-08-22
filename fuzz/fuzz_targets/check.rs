@@ -40,20 +40,26 @@ use gandr_surface_engine::prelude::prelude_ctx;
 ///   stack any campaign runs under, with margin.
 /// - ensures: no input passed to [`checker::run_value`] can abort the process
 ///   through stack exhaustion.
-/// - provides: a stated, calibrated bound rather than a guessed one.
+/// - provides: a measured bound with its margin stated, not a guess.
 ///
-/// **Calibration is owed, and a guess is not a calibration.** The number is
-/// arrived at by measuring where the abort actually starts under the campaign
-/// build profile, then taking a fraction of it — a fuzz build is not a test
-/// build and the release profile's frame sizes are the ones that matter. The
-/// measurement and the margin are recorded on `gandr-wvd.24.9`, and a seed at
-/// the boundary is committed to `fuzz/corpus/check/` so the bound has a
-/// witness that runs under `fuzz:rust-smoke`.
-/// **The value below is provisional and must be replaced by the measured
-/// one.** It is set low enough to be safe on any plausible stack and is
-/// therefore certainly costing coverage; that is the correct direction to be
-/// wrong in while the measurement is owed.
-const MAX_CHECKER_NESTING: usize = 64;
+/// **Measured, not assumed.** The abort is a process abort and cannot be
+/// caught in-process, so it was measured from a parent: `fuzz:rust-smoke`
+/// replays a seed in a child and reports `termination without exit code` when
+/// that child dies by signal, which makes the smoke runner itself the
+/// out-of-process harness. Bisecting seed depth against it, with this
+/// prefilter ablated: **depth 3203 survives and depth 3281 aborts**, under the
+/// fuzz workspace's build profile on an 8 MiB main-thread stack.
+///
+/// The bound is **one eighth of the measured floor**, and the margin is for
+/// two things the measurement cannot see: another platform's smaller default
+/// stack, and the larger frames an instrumented AFL build produces compared
+/// with the profile the smoke runner uses. The nesting measure is itself an
+/// over-approximation of term depth, so the real margin is wider still.
+///
+/// Two seeds in `fuzz/corpus/check/` hold this number honest, and
+/// `fuzz:rust-smoke` replays both on every run: one at exactly the bound, and
+/// one far past it that only passes because this prefilter skips it.
+const MAX_CHECKER_NESTING: usize = 400;
 
 /// The maximum bracket nesting reached anywhere in `source`.
 ///
