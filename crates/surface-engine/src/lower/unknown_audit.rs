@@ -50,12 +50,11 @@
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 /// What a site does with the gradual unknown.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum SiteKind
+enum SiteKind
 {
     /// The raw-decode boundary: the author wrote `?` and this is where the
     /// spelling becomes the type. The only construction the standing entry
@@ -86,10 +85,10 @@ pub(crate) enum SiteKind
 
 /// One classified construction site.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) struct Site
+struct Site
 {
     /// The source file, as spelled in [`SOURCES`].
-    pub file: &'static str,
+    file: &'static str,
     /// Which occurrence of this exact text within the file, one-based.
     ///
     /// The key is text-plus-ordinal rather than either alone, and both
@@ -105,13 +104,13 @@ pub(crate) struct Site
     /// The ordinal survives an unrelated insertion and moves only when another
     /// occurrence of the same text appears, which is exactly the edit whose
     /// classification nobody can infer.
-    pub ordinal: usize,
+    ordinal: usize,
     /// The exact source line, trimmed, as the scanner reports it.
-    pub line: &'static str,
+    line: &'static str,
     /// What the site does.
-    pub kind: SiteKind,
+    kind: SiteKind,
     /// Why it is classified that way, in one clause.
-    pub because: &'static str,
+    because: &'static str,
 }
 
 /// The lowering sources this audit covers, embedded at compile time.
@@ -307,9 +306,9 @@ fn mentions(text: &str) -> Vec<(usize, String)>
         .filter(|line| !line.starts_with("//"))
         .filter(|line| line.contains("ValueType::Unknown") || line.contains("CompType::Unknown"))
         .map(|line| {
-            let text = line.to_string();
+            let text = String::from(line);
             let ordinal = seen.entry(text.clone()).or_insert(0);
-            *ordinal += 1;
+            *ordinal = ordinal.saturating_add(1);
             (*ordinal, text)
         })
         .collect()
@@ -329,7 +328,7 @@ mod tests
     #[test]
     fn the_audit_can_see_the_sites_it_claims_to_classify() -> Result<(), String>
     {
-        for (file, text) in SOURCES {
+        for &(file, text) in SOURCES {
             assert!(
                 !text.is_empty(),
                 "{file} was included as empty text, so any sweep over it is vacuous"
@@ -344,11 +343,11 @@ mod tests
         }
         let types = SOURCES
             .iter()
-            .find(|(file, _)| *file == "lower/types.rs")
-            .ok_or_else(|| "lower/types.rs must be among the audited sources".to_string())?;
+            .find(|&&(file, _)| file == "lower/types.rs")
+            .ok_or_else(|| String::from("lower/types.rs must be among the audited sources"))?;
         assert!(
-            mentions(types.1).iter().any(|(ordinal, line)| {
-                *ordinal == 1 && line == "return Ok(Ty::Value(ValueType::Unknown));"
+            mentions(types.1).iter().any(|&(ordinal, ref line)| {
+                ordinal == 1 && line == "return Ok(Ty::Value(ValueType::Unknown));"
             }),
             "the scanner must find the blanket total-mode arm of `lower_ty_manifest`, \
              the site this whole audit exists for; not finding it means the scanner \
@@ -365,14 +364,14 @@ mod tests
     /// without answering what fact it records, and a pinned line the scanner
     /// cannot find is an inventory describing a tree that has moved.
     #[test]
-    fn every_gradual_unknown_site_is_enumerated_and_classified() -> Result<(), String>
+    fn every_gradual_unknown_site_is_enumerated_and_classified()
     {
-        for (file, text) in SOURCES {
+        for &(file, text) in SOURCES {
             let found: BTreeSet<(usize, String)> = mentions(text).into_iter().collect();
             let pinned: BTreeSet<(usize, String)> = SITES
                 .iter()
-                .filter(|site| site.file == *file)
-                .map(|site| (site.ordinal, site.line.to_string()))
+                .filter(|site| site.file == file)
+                .map(|site| (site.ordinal, String::from(site.line)))
                 .collect();
 
             let unpinned: Vec<&(usize, String)> = found.difference(&pinned).collect();
@@ -391,7 +390,6 @@ mod tests
                  An inventory that outlives its sites describes a tree that moved."
             );
         }
-        Ok(())
     }
 
     /// The audit's own count of defects, stated so a repair is visible as one.
@@ -400,7 +398,7 @@ mod tests
     /// out of `Degradation`. Pinning the count is what makes that movement
     /// show up as a deliberate edit here rather than as silence.
     #[test]
-    fn ten_sites_degrade_a_written_form_into_the_gradual_top() -> Result<(), String>
+    fn ten_sites_degrade_a_written_form_into_the_gradual_top()
     {
         let degradations: Vec<&Site> = SITES
             .iter()
@@ -417,7 +415,6 @@ mod tests
              it now finds {}: {named:#?}",
             degradations.len()
         );
-        Ok(())
     }
 
     /// The raw-decode boundary is where the author's `?` becomes a type, and
@@ -427,7 +424,7 @@ mod tests
     /// opposite reasons: a new boundary site is a new surface spelling for the
     /// gradual top, while a new degradation is a defect.
     #[test]
-    fn the_raw_decode_boundary_has_four_sites() -> Result<(), String>
+    fn the_raw_decode_boundary_has_four_sites()
     {
         let boundary: Vec<&Site> = SITES
             .iter()
@@ -443,6 +440,5 @@ mod tests
             "four sites decode an author-written unknown; it now finds {}: {named:#?}",
             boundary.len()
         );
-        Ok(())
     }
 }

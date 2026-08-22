@@ -875,7 +875,7 @@ impl LowerError
     #[must_use]
     pub const fn failure_class(&self) -> FailureClass
     {
-        match self {
+        match *self {
             // Class one — the author has not supplied it yet.
             //
             // `Syntax`, `MissingCaseArm` and `EmptyBlock` each already
@@ -8770,7 +8770,7 @@ mod tests
     /// row would otherwise pass every remaining assertion, and a shorter list
     /// reads exactly like a correct one.
     #[test]
-    fn every_lower_error_variant_answers_its_recorded_class() -> Result<(), String>
+    fn every_lower_error_variant_answers_its_recorded_class()
     {
         let table = every_variant_with_its_class();
         assert_eq!(
@@ -8785,7 +8785,6 @@ mod tests
                 "{error:?} records {expected:?} but failure_class answered {answered:?}"
             );
         }
-        Ok(())
     }
 
     /// A capability boundary is never an absence.
@@ -8802,7 +8801,7 @@ mod tests
     /// `every_lower_error_variant_answers_its_recorded_class`**; this witness
     /// exists to fail with the class named rather than with a table row index.
     #[test]
-    fn a_capability_boundary_is_unrepresentable_never_an_absence() -> Result<(), String>
+    fn a_capability_boundary_is_unrepresentable_never_an_absence()
     {
         let boundaries = [
             LowerError::Unsupported {
@@ -8841,7 +8840,6 @@ mod tests
                 error.failure_class()
             );
         }
-        Ok(())
     }
 
     /// An engine fault is nobody's fact about the source.
@@ -8856,7 +8854,7 @@ mod tests
     /// carries a payload built elsewhere and is covered only by
     /// `every_lower_error_variant_answers_its_recorded_class`.
     #[test]
-    fn an_engine_fault_is_never_an_author_fact() -> Result<(), String>
+    fn an_engine_fault_is_never_an_author_fact()
     {
         let faults = [
             LowerError::ParserUnavailable {
@@ -8883,7 +8881,6 @@ mod tests
                 "{error:?} is an engine fault, but it answered {answered:?},                  which attributes the failure to the source"
             );
         }
-        Ok(())
     }
 
     /// The identity intro's witness at computation type (`gandr-e7d2`).
