@@ -21,6 +21,22 @@
 //! [`crate::transport`] states at length: a canonical identity may not inherit
 //! a memory encoding's endianness or a target's pointer width.
 //!
+//! # The digest never routes through `core::hash::Hash`, and that is a fence
+//!
+//! The certificate layer's in-process labels are FNV-1a taken through
+//! [`core::hash::Hash`], whose integer writers encode native-endian and `usize`
+//! at the target's width. Such a digest is stable for **one build of one
+//! target** — a comparable value, never a portable address — and a stored form
+//! keyed by one decodes on another machine as a different key, with no
+//! diagnostic and a false negative at the end of it.
+//!
+//! Every digest on this plane is BLAKE3 over the framed image built here, with
+//! every integer big-endian at a fixed width and no [`core::hash::Hash`] call
+//! anywhere on the path. The committed-golden test in the value contract suite
+//! is what makes that a checked property rather than a stated intention: a
+//! native-endian digest path passes on the machine that minted the golden and
+//! fails on every other one.
+//!
 //! # Verification is on both sides
 //!
 //! [`ChunkStore::insert`] and [`ChunkStore::load`] both recompute the digest

@@ -207,6 +207,33 @@ mod tests
         );
     }
 
+    /// A chunk digest over a fixed body matches its committed golden.
+    ///
+    /// **Separating witness, and the transport fence's evidence.** The
+    /// certificate layer's in-process labels are FNV-1a taken through
+    /// `core::hash::Hash`, whose integer writers encode native-endian and at
+    /// the target's pointer width — so the same input digests differently on
+    /// two targets, and such a digest is a comparable value and never a
+    /// portable address. A golden kills any implementation that routed a chunk
+    /// digest through that path: the golden holds on the machine that minted it
+    /// and fails everywhere else, which is exactly the failure mode a stored
+    /// content pointer must not be able to have. Framing by hand over
+    /// big-endian fixed widths is what makes the golden hold on every target,
+    /// and the golden is what proves the framing was actually used.
+    #[test]
+    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
+    #[expect(
+        clippy::todo,
+        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
+    )]
+    fn a_chunk_digest_matches_its_committed_golden()
+    {
+        todo!(
+            "frame a fixed token body through frame_chunk and assert the digest equals \
+             a committed 32-byte constant, so a native-endian digest path cannot pass"
+        );
+    }
+
     /// Chunk-local child index bases keep downstream chunks unchanged under an
     /// early edit, and absolute indices do not.
     ///
