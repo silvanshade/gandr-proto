@@ -3198,8 +3198,46 @@ impl Lowerer<'_>
     }
 
     /// Lowers the identity intro `here(v)` to [`Value::Here`] (the design
-    /// record; rule `Here`). Exactly one witness argument, lowered in value
-    /// position (a computation witness hoists, as any call argument would).
+    /// record; rule `Here`). Exactly one witness argument.
+    ///
+    /// **A computation witness embeds; it does not hoist.** A `here` witness is
+    /// a *path endpoint*, and an endpoint spelled `f(x̄)` denotes the
+    /// pure-computation embedding [`Value::Run`] — which is exactly what
+    /// [`types::lower_endpoint_value`] builds when the same source syntax is
+    /// read in the endpoint position of a `Path` type.
+    ///
+    /// Hoisting it instead was the defect (`gandr-e7d2`): `here(f(x̄))` became
+    /// `run %tmp <- f(x̄); ret here(%tmp)`, whose type is a `Path` over a
+    /// binder the author never wrote. Conversion cannot relate that binder to
+    /// the endpoint the *type* states, so the law was refused — and the refusal
+    /// named a temporary absent from the source. The asymmetry is the whole
+    /// bug: one spelling, two meanings, decided by which position read it.
+    ///
+    /// A witness that lowers to a value with no hoist is untouched, so this
+    /// changes only the case that could not check before.
+    ///
+    /// **Outside the endpoint fragment the witness hoists as before**, because
+    /// the fragment is the same one the type position reads and the two must
+    /// agree on their own boundary. `here(n + 1)` is the case: an operator
+    /// application is outside the fragment, so the endpoint of the stated
+    /// `Path` type does not lower either and the whole type degrades to
+    /// `Unknown` (`examples/model/higher-cells/cat-shape-probes.gandr` says so
+    /// in its own words — "that is not a check"). A manufactured `Path` under a
+    /// type that is already `Unknown` states nothing about anything.
+    ///
+    /// So the repaired invariant is a **biconditional over one fragment**:
+    /// where a type endpoint can read the spelling, the term reads it the same
+    /// way; where it cannot, neither does, and both degrade rather than one
+    /// silently meaning something the other cannot say. Widening the fragment
+    /// widens both at once.
+    ///
+    /// # Contract
+    /// - ensures: `Here(v)` for a value witness, with the witness's own origin;
+    ///   `Here(Run(f(x̄)))` for a computation witness inside the endpoint
+    ///   fragment; the pre-existing hoist for one outside it.
+    /// - fails: [`LowerError::Unsupported`] for other than exactly one
+    ///   argument.
+    /// - panics: none.
     fn here_call(
         &mut self,
         call_node: SynNode<'_>,
@@ -3217,6 +3255,23 @@ impl Lowerer<'_>
         };
         let mut staged_hoists = Vec::new();
         let witness = self.value_expr(witness_node, &mut staged_hoists)?;
+        // A staged hoist is the signal that the witness was a COMPUTATION: the
+        // value path only hoists what it cannot read as a value. Read it again
+        // as the endpoint it is, and discard the hoist rather than binding it.
+        if !staged_hoists.is_empty()
+            && let Ok(embedded) = types::lower_endpoint_value(self.source, witness_node)
+        {
+            return VOut::from_legacy_value(
+                &Value::Here(Rc::new(embedded)),
+                // The embedded computation is one endpoint, lowered as a unit:
+                // the origin walk does not descend into `Value::Run`, exactly
+                // as it does not for an endpoint read out of a type.
+                OriginNode::new(entry(call_node, None), vec![OriginNode::new(
+                    entry(witness_node, None),
+                    Vec::new(),
+                )]),
+            );
+        }
         let witness_value = witness.readback_value()?;
         hoists.append(&mut staged_hoists);
         VOut::from_legacy_value(
@@ -8275,6 +8330,180 @@ fn binary_operator(node: SynNode<'_>) -> LowerResult<(SynNode<'_>, OperatorText<
 mod tests
 {
     use super::*;
+
+    /// The identity intro's witness at computation type (`gandr-e7d2`).
+    ///
+    /// Each claim below is **its own test with one assertion**, because an
+    /// assertion after the first in a test can never be the one that reports:
+    /// every failure reaching it is also caught above it, so it would be
+    /// decoration wearing the appearance of a check.
+    mod identity_intro_witness
+    {
+        use crate::boundary::PipelineSource;
+        use crate::session::ItemOutcome;
+        use crate::session::Session;
+
+        /// Whether a submission's items all elaborated.
+        ///
+        /// A named outcome rather than a `bool`, so the two readings of "false"
+        /// — refused, and not-yet-checked — cannot be confused at a call site,
+        /// and so the signature states a semantic boundary rather than a Rust
+        /// primitive.
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        enum LawOutcome
+        {
+            /// Every item elaborated: no refusal, no hole, no open goal.
+            Checks,
+            /// Some item was refused or holey, or left a goal open.
+            Refused,
+        }
+
+        /// The category of discrete setoids' operations, shared by the cases
+        /// below. `compose` is the pointwise helper; `comp` is the shape's own
+        /// operation, returning `F Hom`, so a composite written over it is an
+        /// embedding.
+        const OPERATIONS: &str = r#"def ident(t: Type, x: t) -> F t { ret x }
+def compose(t: Type, u: Type, v: Type, f: U[ω] (t -> F u), g: U[ω] (u -> F v), x: t) -> F v {
+  run y <- f(x);
+  g(y)
+}
+def id(t: Type) -> F (U[ω] (t -> F t)) { ret thunk { ident(t) } }
+def comp(t: Type, u: Type, v: Type, f: U[ω] (t -> F u), g: U[ω] (u -> F v)) -> F (U[ω] (t -> F v)) {
+  ret thunk { compose(t, u, v, f, g) }
+}
+"#;
+
+        /// How a whole submission elaborated.
+        fn submission_outcome(source: PipelineSource<'_>) -> LawOutcome
+        {
+            let mut session = Session::new();
+            let submission = session.submit(source).expect("lowering is total");
+            let refused = submission.outcomes.iter().any(|outcome| {
+                matches!(*outcome, ItemOutcome::TypeError { .. } | ItemOutcome::Holey)
+            });
+            if refused || !submission.report.goals.is_empty() {
+                return LawOutcome::Refused;
+            }
+            LawOutcome::Checks
+        }
+
+        /// **The flagship's third law, in the model-faithful spelling.** Its
+        /// endpoints name the shape's own operation `comp`, so each composite
+        /// is an embedding and the outer one carries the inner in its argument.
+        ///
+        /// This is the separating half of `gandr-e7d2`'s measured pair: before
+        /// the identity intro read its computation witness as an endpoint, the
+        /// witness hoisted and the law was refused against a `Path` over a
+        /// binder absent from the source.
+        #[test]
+        fn a_law_whose_endpoints_name_the_shapes_own_operation_checks()
+        {
+            let law = r#"def assoc(p: Type, q: Type, r: Type, s: Type, f: U[ω] (p -> F q), g: U[ω] (q -> F r), h: U[ω] (r -> F s))
+  -> F Path((U[ω] (p -> F s)),
+            comp(p, r, s, comp(p, q, r, f, g), h),
+            comp(p, q, s, f, comp(q, r, s, g, h)))
+{ ret here(comp(p, q, s, f, comp(q, r, s, g, h))) }
+"#;
+            let source = alloc::format!("{OPERATIONS}{law}");
+            assert_eq!(
+                submission_outcome(source.as_str().into()),
+                LawOutcome::Checks,
+                "the associativity law written over the shape's own `comp` must check"
+            );
+        }
+
+        /// **Nesting is not the variable.** One `comp` application, every
+        /// argument a plain variable, both endpoints identical — no embedding
+        /// inside an embedding anywhere — and a computation witness.
+        ///
+        /// This is what refutes the depth reading of the same refusal: with
+        /// nesting held at zero the law still turned on whether the witness was
+        /// a computation or a value.
+        #[test]
+        fn a_computation_witness_checks_with_no_nesting_at_all()
+        {
+            let law = r#"def refl(t: Type, u: Type, v: Type, f: U[ω] (t -> F u), g: U[ω] (u -> F v))
+  -> F Path((U[ω] (t -> F v)), comp(t, u, v, f, g), comp(t, u, v, f, g))
+{ ret here(comp(t, u, v, f, g)) }
+"#;
+            let source = alloc::format!("{OPERATIONS}{law}");
+            assert_eq!(
+                submission_outcome(source.as_str().into()),
+                LawOutcome::Checks,
+                "a computation witness must check at a single unnested endpoint"
+            );
+        }
+
+        /// **The control keeps checking.** The same law over the pointwise
+        /// helper, endpoints and witness alike written as explicit thunks.
+        ///
+        /// It is asserted because a resolution that reached further by
+        /// weakening what conversion demands would leave this green while
+        /// breaking nothing else visible.
+        #[test]
+        fn the_pointwise_law_over_the_private_helper_still_checks()
+        {
+            let law = r#"def assoc2(p: Type, q: Type, r: Type, s: Type, f: U[ω] (p -> F q), g: U[ω] (q -> F r), h: U[ω] (r -> F s))
+  -> F Path((U[ω] (p -> F s)),
+            thunk { compose(p, r, s, thunk { compose(p, q, r, f, g) }, h) },
+            thunk { compose(p, q, s, f, thunk { compose(q, r, s, g, h) }) })
+{ ret here(thunk { compose(p, q, s, f, thunk { compose(q, r, s, g, h) }) }) }
+"#;
+            let source = alloc::format!("{OPERATIONS}{law}");
+            assert_eq!(
+                submission_outcome(source.as_str().into()),
+                LawOutcome::Checks,
+                "the pointwise control over `compose` must keep checking"
+            );
+        }
+
+        /// **Conversion did not get weaker.** Composition does not commute, so
+        /// this law is false; it is stated at the same endpoint shape and with
+        /// the same witness shape as the green cases above.
+        ///
+        /// Without it, every green here is consistent with a conversion that
+        /// simply stopped discriminating.
+        #[test]
+        fn a_false_law_at_the_same_endpoint_shape_is_still_refused()
+        {
+            let law = r#"def swapped(t: Type, f: U[ω] (t -> F t), g: U[ω] (t -> F t), h: U[ω] (t -> F t))
+  -> F Path((U[ω] (t -> F t)),
+            comp(t, t, t, comp(t, t, t, f, g), h),
+            comp(t, t, t, g, comp(t, t, t, f, h)))
+{ ret here(comp(t, t, t, comp(t, t, t, f, g), h)) }
+"#;
+            let source = alloc::format!("{OPERATIONS}{law}");
+            assert_eq!(
+                submission_outcome(source.as_str().into()),
+                LawOutcome::Refused,
+                "a false associativity-and-swap law must still be refused"
+            );
+        }
+
+        /// **The fragment boundary is shared, so it degrades on both sides.**
+        /// An operator application is outside the endpoint fragment, so the
+        /// stated `Path`'s own endpoints do not lower either and the type
+        /// degrades. The witness therefore keeps its pre-existing hoist and the
+        /// definition still binds, rather than the term half declining alone.
+        ///
+        /// `examples/model/higher-cells/cat-shape-probes.gandr` is the corpus
+        /// side of this same case, and says of it: "that is not a check".
+        #[test]
+        fn an_operator_witness_outside_the_endpoint_fragment_still_binds()
+        {
+            let mut session = Session::new();
+            let source =
+                "def path_app(n : Integer) -> F Path(Integer, n + 1, n + 1) { ret here(n + 1) }\n";
+            let submission = session.submit(source).expect("lowering is total");
+            assert!(
+                submission.outcomes.iter().any(|outcome| matches!(
+                    *outcome,
+                    ItemOutcome::Definition { ref name, .. } if name == "path_app"
+                )),
+                "an operator witness must still bind its definition"
+            );
+        }
+    }
     #[test]
     fn thunk_carrier_is_arena_rooted_and_reads_back_to_public_term() -> Result<(), String>
     {

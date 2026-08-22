@@ -1300,7 +1300,12 @@ enum EndpointTask<'tree>
 /// - boundedness: every task pushed names a node strictly inside the node that
 ///   pushed it, and a parse tree is finite.
 /// - input recursion: none.
-fn lower_endpoint_value(
+///
+/// Visible to the parent lowering module because the **identity intro's witness
+/// is a path endpoint**, and an endpoint is what this reads. `here(t)` routes a
+/// computation witness through here so that one source spelling denotes one
+/// value in both the type and the term position (`Self::here_call`).
+pub(super) fn lower_endpoint_value(
     source: PipelineSource<'_>,
     node: SynNode<'_>,
 ) -> LowerResult<Value>
