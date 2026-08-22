@@ -73,48 +73,122 @@ use crate::value::units::SeamDepth;
 use crate::value::units::TokenBytes;
 
 /// The byte length of one open record: the kind byte and the tag.
-const TAG_RECORD_LEN: usize = 0x02_usize;
+const TAG_RECORD_LEN: ByteLen = ByteLen(0x02_usize);
 /// The byte length of one word record: the kind byte and a big-endian `u64`.
-const WORD_RECORD_LEN: usize = 0x09_usize;
+const WORD_RECORD_LEN: ByteLen = ByteLen(0x09_usize);
 /// The byte length of a bytes record's header: the kind byte and the length.
-const BYTES_HEADER_LEN: usize = 0x09_usize;
+const BYTES_HEADER_LEN: ByteLen = ByteLen(0x09_usize);
 /// The byte length of one child record: the kind byte, a digest, an offset.
-const CHILD_RECORD_LEN: usize = 0x25_usize;
+const CHILD_RECORD_LEN: ByteLen = ByteLen(0x25_usize);
 /// The byte offset just past a child record's digest.
 const DIGEST_END: usize = 0x21_usize;
 /// The byte length of one close record: the kind byte alone.
-const CLOSE_RECORD_LEN: usize = 0x01_usize;
+const CLOSE_RECORD_LEN: ByteLen = ByteLen(0x01_usize);
 /// The canonical integer width every framed count is checked against.
 const CANONICAL_WIDTH_BITS: u32 = 0x40_u32;
 
-/// Names a record kind for a refusal message.
-#[inline]
-fn kind_name(kind: u8) -> &'static str
+/// A count of bytes inside one record.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct ByteLen(usize);
+
+/// A borrowed run of record bytes taken off the front of a chunk body.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct RecordSlice<'bytes>(&'bytes [u8]);
+
+/// A number of whole records to advance past.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct RecordCount(u32);
+
+/// The leading byte of a record, before it is known to name a kind.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct KindByte(u8);
+
+/// The name a refusal uses for a record kind.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct KindLabel(&'static str);
+
+/// One record kind, decoded from its leading byte.
+///
+/// An enum rather than a byte so the reader matches on the vocabulary rather
+/// than on a number, and so an unassigned byte is a distinguishable absence
+/// instead of a default arm.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum RecordKind
 {
-    return match kind {
-        | TOKEN_OPEN => "an open",
-        | TOKEN_WORD => "a word",
-        | TOKEN_BYTES => "a bytes",
-        | TOKEN_CHILD => "a child",
-        | TOKEN_CLOSE => "a close",
-        | _ => "an unassigned kind",
-    };
+    /// A constructor opens.
+    Open,
+    /// A canonical big-endian payload word.
+    Word,
+    /// A length-prefixed inline byte payload.
+    Bytes,
+    /// A reference to an already-committed child chunk.
+    Child,
+    /// The innermost open constructor closes.
+    Close,
+}
+
+impl RecordKind
+{
+    /// Decodes a kind byte, refusing anything unassigned.
+    #[inline]
+    const fn decode(byte: KindByte) -> Option<Self>
+    {
+        return match byte.0 {
+            | TOKEN_OPEN => Some(Self::Open),
+            | TOKEN_WORD => Some(Self::Word),
+            | TOKEN_BYTES => Some(Self::Bytes),
+            | TOKEN_CHILD => Some(Self::Child),
+            | TOKEN_CLOSE => Some(Self::Close),
+            | _ => None,
+        };
+    }
+
+    /// The name a refusal uses for this kind.
+    #[inline]
+    const fn label(self) -> KindLabel
+    {
+        return KindLabel(match self {
+            | Self::Open => "an open",
+            | Self::Word => "a word",
+            | Self::Bytes => "a bytes",
+            | Self::Child => "a child",
+            | Self::Close => "a close",
+        });
+    }
+
+    /// The fixed byte length of this kind's record, where it has one.
+    #[inline]
+    const fn fixed_len(self) -> Option<ByteLen>
+    {
+        return match self {
+            | Self::Open => Some(TAG_RECORD_LEN),
+            | Self::Word => Some(WORD_RECORD_LEN),
+            | Self::Child => Some(CHILD_RECORD_LEN),
+            | Self::Close => Some(CLOSE_RECORD_LEN),
+            | Self::Bytes => None,
+        };
+    }
 }
 
 /// Reads a big-endian `u64` from exactly eight bytes.
 #[inline]
-fn read_u64(bytes: &[u8]) -> Option<u64>
+fn read_u64(bytes: RecordSlice<'_>) -> Option<CanonicalU64>
 {
-    let image: [u8; 8] = bytes.try_into().ok()?;
-    return Some(u64::from_be_bytes(image));
+    let image: [u8; 8] = bytes.0.try_into().ok()?;
+    return Some(CanonicalU64::from(u64::from_be_bytes(image)));
 }
 
 /// Reads a big-endian `u32` from exactly four bytes.
 #[inline]
-fn read_u32(bytes: &[u8]) -> Option<u32>
+fn read_u32(bytes: RecordSlice<'_>) -> Option<TokenOffset>
 {
-    let image: [u8; 4] = bytes.try_into().ok()?;
-    return Some(u32::from_be_bytes(image));
+    let image: [u8; 4] = bytes.0.try_into().ok()?;
+    return Some(TokenOffset::from(u32::from_be_bytes(image)));
 }
 
 /// Record kind: a constructor opens.
@@ -442,7 +516,7 @@ impl<'stream> TokenReader<'stream>
                 self.position = position;
                 continue;
             }
-            if self.peek_kind() != Some(TOKEN_CHILD) {
+            if self.peek_kind() != Some(RecordKind::Child) {
                 return Ok(());
             }
             let pointer = self.take_child()?;
@@ -451,39 +525,43 @@ impl<'stream> TokenReader<'stream>
             self.suspended.push((self.remaining, self.position));
             self.remaining = body;
             self.position = TokenOffset::from(0_u32);
-            self.skip_records(u32::from(pointer.offset()))?;
+            self.skip_records(RecordCount(u32::from(pointer.offset())))?;
         }
     }
 
     /// The kind byte of the record under the cursor, if any.
     #[inline]
-    fn peek_kind(&self) -> Option<u8>
+    fn peek_kind(&self) -> Option<RecordKind>
     {
-        return <&[u8]>::from(self.remaining).first().copied();
+        return <&[u8]>::from(self.remaining)
+            .first()
+            .copied()
+            .map(KindByte)
+            .and_then(RecordKind::decode);
     }
 
     /// Consumes `len` bytes from the front of the current body.
     #[inline]
     fn take(
         &mut self,
-        len: usize,
-    ) -> Result<&'stream [u8], ValueError>
+        len: ByteLen,
+    ) -> Result<RecordSlice<'stream>, ValueError>
     {
         let bytes = <&[u8]>::from(self.remaining);
-        let Some(head) = bytes.get(.. len)
+        let Some(head) = bytes.get(.. len.0)
         else {
             return Err(ValueError::TruncatedChunk {
                 position: u32::from(self.position),
             });
         };
-        let Some(tail) = bytes.get(len ..)
+        let Some(tail) = bytes.get(len.0 ..)
         else {
             return Err(ValueError::TruncatedChunk {
                 position: u32::from(self.position),
             });
         };
         self.remaining = ChunkBody::from(tail);
-        return Ok(head);
+        return Ok(RecordSlice(head));
     }
 
     /// Advances the record cursor by one.
@@ -498,24 +576,25 @@ impl<'stream> TokenReader<'stream>
     fn take_child(&mut self) -> Result<ContentPtr, ValueError>
     {
         let record = self.take(CHILD_RECORD_LEN)?;
-        let Some(digest_bytes) = record.get(1 .. DIGEST_END)
+        let Some(digest_bytes) = record.0.get(1 .. DIGEST_END)
         else {
             return Err(ValueError::TruncatedChunk {
                 position: u32::from(self.position),
             });
         };
-        let Some(offset_bytes) = record.get(DIGEST_END .. CHILD_RECORD_LEN)
+        let Some(offset_bytes) = record.0.get(DIGEST_END .. CHILD_RECORD_LEN.0)
         else {
             return Err(ValueError::TruncatedChunk {
                 position: u32::from(self.position),
             });
         };
         let digest = ChunkDigest::try_from(digest_bytes)?;
-        let offset = read_u32(offset_bytes).ok_or_else(|| ValueError::TruncatedChunk {
-            position: u32::from(self.position),
-        })?;
+        let offset =
+            read_u32(RecordSlice(offset_bytes)).ok_or_else(|| ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            })?;
         self.step();
-        return Ok(ContentPtr::new(digest, TokenOffset::from(offset)));
+        return Ok(ContentPtr::new(digest, offset));
     }
 
     /// Skips forward over `count` whole records in the current body.
@@ -525,45 +604,22 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     fn skip_records(
         &mut self,
-        count: u32,
+        count: RecordCount,
     ) -> Result<(), ValueError>
     {
-        for _ in 0_u32 .. count {
+        for _ in 0_u32 .. count.0 {
             let Some(kind) = self.peek_kind()
             else {
                 return Err(ValueError::TruncatedChunk {
                     position: u32::from(self.position),
                 });
             };
-            let len = match kind {
-                | TOKEN_OPEN => TAG_RECORD_LEN,
-                | TOKEN_WORD => WORD_RECORD_LEN,
-                | TOKEN_CHILD => CHILD_RECORD_LEN,
-                | TOKEN_CLOSE => CLOSE_RECORD_LEN,
-                | TOKEN_BYTES => {
-                    let header = self.take(BYTES_HEADER_LEN)?;
-                    let declared = header
-                        .get(1 .. BYTES_HEADER_LEN)
-                        .and_then(read_u64)
-                        .ok_or_else(|| ValueError::TruncatedChunk {
-                            position: u32::from(self.position),
-                        })?;
-                    let payload =
-                        usize::try_from(declared).map_err(|_width| ValueError::WidthOverflow {
-                            found: declared,
-                            width: CANONICAL_WIDTH_BITS,
-                        })?;
-                    let _skipped = self.take(payload)?;
-                    self.step();
-                    continue;
-                },
-                | _ => {
-                    return Err(ValueError::UnexpectedToken {
-                        expected: "a known record kind",
-                        found: "an unassigned kind byte",
-                        position: u32::from(self.position),
-                    });
-                },
+            let Some(len) = kind.fixed_len()
+            else {
+                let payload_len = self.take_payload_len()?;
+                let _skipped = self.take(payload_len)?;
+                self.step();
+                continue;
             };
             let _skipped = self.take(len)?;
             self.step();
@@ -575,8 +631,7 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     fn require(
         &mut self,
-        kind: u8,
-        expected: &'static str,
+        kind: RecordKind,
     ) -> Result<(), ValueError>
     {
         self.settle()?;
@@ -590,10 +645,31 @@ impl<'stream> TokenReader<'stream>
             return Ok(());
         }
         return Err(ValueError::UnexpectedToken {
-            expected,
-            found: kind_name(found),
+            expected: kind.label().0,
+            found: found.label().0,
             position: u32::from(self.position),
         });
+    }
+
+    /// Reads a bytes record's declared payload length off the front.
+    #[inline]
+    fn take_payload_len(&mut self) -> Result<ByteLen, ValueError>
+    {
+        let header = self.take(BYTES_HEADER_LEN)?;
+        let declared = header
+            .0
+            .get(1 .. BYTES_HEADER_LEN.0)
+            .map(RecordSlice)
+            .and_then(read_u64)
+            .ok_or_else(|| ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            })?;
+        let declared = u64::from(declared);
+        let payload = usize::try_from(declared).map_err(|_width| ValueError::WidthOverflow {
+            found: declared,
+            width: CANONICAL_WIDTH_BITS,
+        })?;
+        return Ok(ByteLen(payload));
     }
 
     /// Reads the next constructor tag, refusing anything else.
@@ -614,9 +690,10 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     pub fn read_tag(&mut self) -> Result<ConstructorTag, ValueError>
     {
-        self.require(TOKEN_OPEN, "an open")?;
+        self.require(RecordKind::Open)?;
         let record = self.take(TAG_RECORD_LEN)?;
         let tag = record
+            .0
             .get(1)
             .copied()
             .ok_or_else(|| ValueError::TruncatedChunk {
@@ -643,16 +720,18 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     pub fn read_word(&mut self) -> Result<CanonicalU64, ValueError>
     {
-        self.require(TOKEN_WORD, "a word")?;
+        self.require(RecordKind::Word)?;
         let record = self.take(WORD_RECORD_LEN)?;
         let value = record
-            .get(1 .. WORD_RECORD_LEN)
+            .0
+            .get(1 .. WORD_RECORD_LEN.0)
+            .map(RecordSlice)
             .and_then(read_u64)
             .ok_or_else(|| ValueError::TruncatedChunk {
                 position: u32::from(self.position),
             })?;
         self.step();
-        return Ok(CanonicalU64::from(value));
+        return Ok(value);
     }
 
     /// Reads an inline byte payload, refusing anything else.
@@ -672,22 +751,11 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     pub fn read_bytes(&mut self) -> Result<TokenBytes<'stream>, ValueError>
     {
-        self.require(TOKEN_BYTES, "a bytes")?;
-        let header = self.take(BYTES_HEADER_LEN)?;
-        let declared = header
-            .get(1 .. BYTES_HEADER_LEN)
-            .and_then(read_u64)
-            .ok_or_else(|| ValueError::TruncatedChunk {
-                position: u32::from(self.position),
-            })?;
-        let payload_len =
-            usize::try_from(declared).map_err(|_width| ValueError::WidthOverflow {
-                found: declared,
-                width: CANONICAL_WIDTH_BITS,
-            })?;
+        self.require(RecordKind::Bytes)?;
+        let payload_len = self.take_payload_len()?;
         let payload = self.take(payload_len)?;
         self.step();
-        return Ok(TokenBytes::from(payload));
+        return Ok(TokenBytes::from(payload.0));
     }
 
     /// Reads the closing record of the innermost open constructor.
@@ -707,7 +775,7 @@ impl<'stream> TokenReader<'stream>
     #[inline]
     pub fn read_close(&mut self) -> Result<(), ValueError>
     {
-        self.require(TOKEN_CLOSE, "a close")?;
+        self.require(RecordKind::Close)?;
         let _record = self.take(CLOSE_RECORD_LEN)?;
         self.step();
         return Ok(());
