@@ -147,7 +147,9 @@ The rules the graph enforces:
 4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery, and the kernel never links them.
    Their shipping consumers are `theory-decomposition-spaces` (portable step identities through the canonical BLAKE3 framing) and `surface-engine` (artifact minting and the block-store boundary); `core-sequent` links them from its tests only, for the kernel export gate.
    The direction is what the rule constrains: `storage-*` depends on `kernel-core` and on itself, never upward.
-5. **`fuzz/` is a separate workspace.** It path-deps ports-in-flight and keeps its own lint posture; the main workspace excludes it.
+5. **`fuzz/` is a separate workspace, and the separation is load-bearing rather than incidental.** It path-deps the reboot crates it drives, carries its own lockfile and lint posture, and builds under AFL instrumentation.
+   Folding it into the main workspace would put `afl` on every member's default dependency graph — the graph `test:dep-graph` exists to keep clean — and put an instrumented profile in front of ordinary builds.
+   The path dependencies name landed crates: `gandr-surface-engine` for lowering, `gandr-core-checker` and `gandr-core-machine` for the conformance property, and `gandr-workflow-gates` for the gate-parser target.
 
 ## Load-bearing invariants
 
