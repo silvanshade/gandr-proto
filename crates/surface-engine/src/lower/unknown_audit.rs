@@ -55,7 +55,7 @@ use alloc::vec::Vec;
 /// The text of one audited source, embedded at compile time.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
-struct SourceText<'a>(&'a str);
+struct SourceText<'source>(&'source str);
 
 /// Which occurrence of one exact text within a file, one-based.
 #[repr(transparent)]
