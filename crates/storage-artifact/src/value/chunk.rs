@@ -262,7 +262,7 @@ pub fn verify_chunk_image(chunk: StoredChunkRef<'_>) -> Result<(), ValueError>
             actual: actual.to_string(),
         });
     }
-    parse_chunk_frame(image_bytes).map(|_body| ())
+    return parse_chunk_frame(image).map(|_body| ());
 }
 
 /// Re-reads one framed image's header and returns its token body.
@@ -279,9 +279,10 @@ pub fn verify_chunk_image(chunk: StoredChunkRef<'_>) -> Result<(), ValueError>
 ///
 /// # Errors
 /// [`ValueError::MalformedChunk`].
-fn parse_chunk_frame(image: &[u8]) -> Result<ChunkBody<'_>, ValueError>
+fn parse_chunk_frame(image: ChunkImage<'_>) -> Result<ChunkBody<'_>, ValueError>
 {
     const MAGIC_LEN: usize = VALUE_CHUNK_MAGIC.len();
+    let image: &[u8] = image.into();
     let refused = |context: &'static str| ValueError::MalformedChunk { context };
     let Some((magic, rest)) = image.split_first_chunk::<MAGIC_LEN>()
     else {

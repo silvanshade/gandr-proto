@@ -252,6 +252,21 @@ mod tests
     #[test]
     fn a_chunk_digest_matches_its_committed_golden()
     {
+        // THE GOLDEN. Computed once against this exact body and pasted here as
+        // a literal. It is not derived at runtime and must never become so: a
+        // golden the test recomputes from the implementation is the
+        // implementation agreeing with itself, which is precisely what this
+        // assertion exists to rule out. An implementation that routed the
+        // digest through a native-endian hasher would satisfy every other test
+        // in this file on the machine that ran it, and fail only on a machine
+        // of different endianness or pointer width -- in production and never
+        // in the suite.
+        const GOLDEN: [u8; 32] = [
+            0x1C, 0x28, 0x4F, 0xDF, 0x9C, 0x17, 0x25, 0x3E, 0xE5, 0xFE, 0xA4, 0xA1, 0x55, 0x40,
+            0x75, 0xCB, 0xF9, 0xC1, 0xB1, 0x52, 0x9A, 0xFA, 0xBD, 0xA2, 0x22, 0xCC, 0xEB, 0xEF,
+            0xEA, 0x13, 0x2B, 0x21,
+        ];
+
         // One open record carrying tag 0x2a, one word record carrying 7, one
         // close record. Three token records, twelve body bytes.
         let body: [u8; 12] = [
@@ -277,20 +292,6 @@ mod tests
             "magic, a u16 version, two u64 fields, then the body"
         );
 
-        // THE GOLDEN. Computed once against this exact body and pasted here as
-        // a literal. It is not derived at runtime and must never become so: a
-        // golden the test recomputes from the implementation is the
-        // implementation agreeing with itself, which is precisely what this
-        // assertion exists to rule out. An implementation that routed the
-        // digest through a native-endian hasher would satisfy every other test
-        // in this file on the machine that ran it, and fail only on a machine
-        // of different endianness or pointer width -- in production and never
-        // in the suite.
-        const GOLDEN: [u8; 32] = [
-            0x1C, 0x28, 0x4F, 0xDF, 0x9C, 0x17, 0x25, 0x3E, 0xE5, 0xFE, 0xA4, 0xA1, 0x55, 0x40,
-            0x75, 0xCB, 0xF9, 0xC1, 0xB1, 0x52, 0x9A, 0xFA, 0xBD, 0xA2, 0x22, 0xCC, 0xEB, 0xEF,
-            0xEA, 0x13, 0x2B, 0x21,
-        ];
         assert_eq!(
             digest,
             ChunkDigest::from(GOLDEN),
