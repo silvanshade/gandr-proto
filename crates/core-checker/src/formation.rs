@@ -29,4 +29,106 @@ pub mod rules;
 
 pub use context::FamilySignature;
 pub use context::FormationContext;
+use gandr_core_term::classifier::Classifier;
+use gandr_core_term::ctx::Ctx;
+use gandr_core_term::error::FormationError;
+use gandr_core_term::error::UnsupportedForm;
+use gandr_core_term::types::Ty;
 pub use rules::FormType;
+
+/// What formation delivers to a consumer on the checking path.
+///
+/// # Why four arms rather than a `Result`
+///
+/// A `Result` collapses two questions a consumer must keep apart: *did the
+/// type form*, and *whose fact does the failure record*. The classifier is the
+/// buildout map's capability-boundary rule — a diagnostic states a fact about
+/// the source or a state of the engine, and the two never share a class — and
+/// a consumer that raised every `Err` as a typing error would report the
+/// engine's own admitted fragment as the author's mistake.
+///
+/// The concrete instance, measured rather than imagined: `U[1] (Integer -> F
+/// Integer)` appears as a paired signature in `27-paired-signatures.gandr`, a
+/// model example whose corpus expectation is `clean`. Formation refuses it as
+/// a [`FormationError::GradedBridge`], because the graded bridges are outside
+/// the fragment it admits and its module documentation says so. Raising that
+/// as a typing error would turn a documented non-admission into a red corpus.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FormationVerdict
+{
+    /// The type is formed, at this classifier.
+    Formed(Classifier),
+    /// The type is outside the fragment formation admits.
+    ///
+    /// Formation records **no fact about the source**: the author may have
+    /// written something perfectly good that this rung cannot yet classify.
+    /// A consumer abstains — it neither trusts nor refuses the type on
+    /// formation's word.
+    OutsideFragment(FormationError),
+    /// The type is malformed: a named fact **about the source**.
+    ///
+    /// Something is wrong rather than missing, and the consumer refuses.
+    Malformed(FormationError),
+    /// Formation reached a state that records a fact about **the engine**,
+    /// not about the source.
+    ///
+    /// A result-stack imbalance is a defect in formation itself. It is kept
+    /// out of [`Self::Malformed`] because folding it there would report an
+    /// engine defect as the author's mistake.
+    EngineFault(FormationError),
+}
+
+/// Classify a declared type against the scopes a checking context supplies.
+///
+/// This is the judgement's entry point for a consumer on the checking path:
+/// it builds the formation scopes from `ctx`
+/// ([`FormationContext::from_checking_context`]) and sorts the answer by whose
+/// fact it records.
+///
+/// # The fragment narrowing, stated where the claim is made
+///
+/// Two arms are classified as [`FormationVerdict::OutsideFragment`] because of
+/// what the producer declares rather than because of what the judgement can
+/// decide:
+///
+/// - [`UnsupportedForm::UnboundTypeFamily`] and
+///   [`UnsupportedForm::DependentFamilyArgument`] — the producer declares no
+///   family signatures at this rung, so *every* family application would
+///   otherwise be reported as malformed. That would be a false accusation about
+///   the source on the strength of a scope nothing populates.
+///
+/// When a family-signature producer lands, `UnboundTypeFamily` becomes a
+/// genuine fact about the source and moves to [`FormationVerdict::Malformed`].
+/// Until then this narrowing is stated here, at the claim, rather than left
+/// for a reader to infer from the producer.
+///
+/// # Contract
+/// - ensures: `Formed` carries the classifier the judgement derived.
+/// - ensures: a refusal is sorted by whose fact it records, never by severity.
+/// - panics: none.
+#[must_use]
+#[inline]
+pub fn classify_declared_type(
+    ty: &Ty,
+    ctx: &Ctx,
+) -> FormationVerdict
+{
+    let formation = FormationContext::from_checking_context(ctx);
+    let answer = match *ty {
+        | Ty::Value(ref value) => value.infer_classifier(&formation),
+        | Ty::Comp(ref comp) => comp.infer_classifier(&formation),
+    };
+    match answer {
+        | Ok(classifier) => FormationVerdict::Formed(classifier),
+        | Err(error) => match error {
+            | FormationError::GradedBridge { .. }
+            | FormationError::UnsupportedForm(
+                UnsupportedForm::UnboundTypeFamily | UnsupportedForm::DependentFamilyArgument,
+            ) => FormationVerdict::OutsideFragment(error),
+            | FormationError::UnsupportedForm(
+                UnsupportedForm::ResultStackUnderflow | UnsupportedForm::ResultStackCardinality,
+            ) => FormationVerdict::EngineFault(error),
+            | _ => FormationVerdict::Malformed(error),
+        },
+    }
+}
