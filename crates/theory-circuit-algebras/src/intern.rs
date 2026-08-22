@@ -277,9 +277,7 @@ mod tests
     fn two_presentations_of_one_diagram_intern_alike()
     {
         todo!(
-            "build two Wiring values that are unequal under Eq and canonicalize to one form, \
-             intern both, assert one identifier and that the second reports Arrival::Held, \
-             and assert the two relabellings differ so the case is not two equal inputs"
+            "build two Wiring values that are unequal under Eq and canonicalize to one form,  intern both, assert one identifier and that the second reports Arrival::Held,  and assert the two relabellings differ so the case is not two equal inputs"
         );
     }
 
@@ -293,8 +291,7 @@ mod tests
     fn distinct_diagrams_take_distinct_identifiers()
     {
         todo!(
-            "intern a family the canon distinguishes and assert the identifier count equals \
-             the family size, so the table is not collapsing what the canon separates"
+            "intern a family the canon distinguishes and assert the identifier count equals  the family size, so the table is not collapsing what the canon separates"
         );
     }
 
@@ -312,8 +309,7 @@ mod tests
     fn the_relabelling_carries_the_presentation_to_the_form()
     {
         todo!(
-            "intern a wiring, then verify the returned relabelling against the form the \
-             table holds under the returned identifier"
+            "intern a wiring, then verify the returned relabelling against the form the  table holds under the returned identifier"
         );
     }
 }
