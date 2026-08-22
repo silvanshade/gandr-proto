@@ -253,13 +253,13 @@ where
 ///   second, minimal toy alphabet drives all three engines through the same
 ///   generic entry points (the lift is genuinely polymorphic, not sequent
 ///   special-casing).
-/// - witness: `toy_alphabet::tests::the_enumerator_finds_the_toy_composition_overlap`
-/// - witness: `toy_alphabet::tests::the_normalizer_runs_over_the_toy_alphabet`
-/// - witness: `toy_alphabet::tests::completion_orients_and_certifies_over_the_toy_alphabet`
-/// - witness: `content_faithfulness::tests::production_alphabets_satisfy_content_faithfulness`
-/// - witness: `content_faithfulness::tests::adversarial_alphabets_are_explicitly_exempt`
-/// - witness: `content_faithfulness::tests::same_position_dependence_separates_multiplicity`
-/// - witness: `content_faithfulness::tests::mutations_are_rejected_by_the_fixture`
+/// - witness: `second_inhabitant::tests::the_enumerator_finds_the_toy_composition_overlap`
+/// - witness: `second_inhabitant::tests::the_normalizer_runs_over_the_toy_alphabet`
+/// - witness: `second_inhabitant::tests::completion_orients_and_certifies_over_the_toy_alphabet`
+/// - witness: `content_faithfulness::production_alphabets_satisfy_content_faithfulness`
+/// - witness: `content_faithfulness::adversarial_alphabets_are_explicitly_exempt`
+/// - witness: `content_faithfulness::same_position_dependence_separates_multiplicity`
+/// - witness: `content_faithfulness::mutations_are_rejected_by_the_fixture`
 pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt::Debug
 {
     /// The **command-pattern term type** — the tree a cell's two faces are

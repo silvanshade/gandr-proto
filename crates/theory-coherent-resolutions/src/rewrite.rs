@@ -92,7 +92,7 @@ pub struct Normalization<A: CellAlphabet = SequentAlphabet>
 /// - witness: `rewrite::tests::a_frame_defining_cell_fires_at_the_root`
 /// - witness: `rewrite::tests::an_eta_cell_is_rejected_at_the_wrong_polarity`
 /// - witness: `rewrite::tests::a_budget_of_zero_reports_a_pending_redex`
-/// - witness: `toy_alphabet::tests::the_normalizer_runs_over_the_toy_alphabet`
+/// - witness: `second_inhabitant::tests::the_normalizer_runs_over_the_toy_alphabet`
 #[inline]
 #[must_use]
 pub fn normalize<A>(

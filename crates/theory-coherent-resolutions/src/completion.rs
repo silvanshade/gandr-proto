@@ -300,7 +300,7 @@ impl<A: CellAlphabet> CompletionOutcome<A>
 ///   derived cell plus a replaying certificate.
 /// - witness: `completion::tests::completion_processes_within_budget`
 /// - witness: `completion::tests::a_starved_budget_declines_with_pending`
-/// - witness: `toy_alphabet::tests::completion_orients_and_certifies_over_the_toy_alphabet`
+/// - witness: `second_inhabitant::tests::completion_orients_and_certifies_over_the_toy_alphabet`
 #[inline]
 #[must_use]
 pub fn complete<A>(

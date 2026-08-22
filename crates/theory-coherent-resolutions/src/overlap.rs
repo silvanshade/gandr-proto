@@ -532,7 +532,7 @@ impl<A: CellAlphabet> Overlap<A>
 ///   overlap (polymorphism exercised).
 /// - witness: `overlap::tests::the_frame_and_add_cells_compose_into_the_commutation_cell`
 /// - witness: `overlap::tests::overlaps_are_a_deterministic_family`
-/// - witness: `toy_alphabet::tests::the_enumerator_finds_the_toy_composition_overlap`
+/// - witness: `second_inhabitant::tests::the_enumerator_finds_the_toy_composition_overlap`
 #[inline]
 #[must_use]
 pub fn enumerate_overlaps<A>(store: &CellStore<A>) -> Vec<Overlap<A>>
