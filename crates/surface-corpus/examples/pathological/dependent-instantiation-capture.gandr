@@ -1,0 +1,59 @@
+// Pathological witness: instantiating a dependent signature must not capture a
+// caller's type variable.
+//
+// A dependent signature's parameters are binders. Instantiating one is a
+// substitution INTO a scope that still binds the remaining ones, so a
+// replacement mentioning a name that scope rebinds is captured unless the
+// binder is renamed apart first. Shadowing and capture are different
+// obligations and meeting the first does not meet the second.
+//
+// THE SEPARATING PAIR. The two callers below have the same shape, the same
+// arity, and the same types. The only variable is whether the caller's binder
+// names collide with the callee's. If instantiation captures, they disagree;
+// if it is capture-avoiding, they agree. Nothing else distinguishes them, so a
+// difference in outcome isolates capture and nothing else.
+//
+// WHY THIS SPELLING AND NOT A SMALLER ONE. Three type parameters is the least
+// that exhibits it: the middle parameter's replacement must be a name a LATER
+// parameter binds, so the sequence needs a before, a captured middle, and an
+// after. A category's composition has exactly this shape, which is why every
+// category law written the obvious way meets this and why the flagship's laws
+// are spelled around it.
+//
+// THE SILENT HALF. Capture makes two types that should differ coincide as
+// readily as it makes two that should agree diverge, so a refusal is the loud
+// half of a fault whose other half accepts an argument written at the wrong
+// type. A repair verified only against the refused program proves capture
+// stopped rejecting something correct and says nothing about what it was
+// accepting.
+
+//@ expect: clean
+//@ expect-def: collide
+//@ expect-def: clean
+//@ expect-type-without-unknown: collide
+//@ expect-type-without-unknown: clean
+
+// The callee. Its three type parameters are the binders instantiation must not
+// capture into.
+def comp(a : Type, b : Type, c : Type, f : U[ω] (a -> F b), g : U[ω] (b -> F c), x : a) -> F c {
+  run y <- f(x);
+  g(y)
+}
+
+// The colliding spelling. The caller names its own variables a b c d, so
+// instantiating comp at (a, c, d) replaces comp's b by a name comp itself
+// binds as c, and replaces comp's c by d.
+def collide(a : Type, b : Type, c : Type, d : Type, u : U[ω] (a -> F c), h : U[ω] (c -> F d))
+  -> F (U[ω] (a -> F d))
+{
+  ret thunk { comp(a, c, d, u, h) }
+}
+
+// The same body with the caller's variables renamed. No name the caller
+// supplies is bound by the callee, so no binder can capture and this spelling
+// is unaffected by the defect.
+def clean(p : Type, q : Type, r : Type, s : Type, u : U[ω] (p -> F r), h : U[ω] (r -> F s))
+  -> F (U[ω] (p -> F s))
+{
+  ret thunk { comp(p, r, s, u, h) }
+}
