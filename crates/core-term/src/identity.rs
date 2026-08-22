@@ -117,6 +117,12 @@ where
 ///   replaced by `repl`, leaving occurrences under a `Σ` tail or `Π` codomain
 ///   that rebinds `name` untouched; identical to `ty` when `name` does not
 ///   occur free.
+/// - ensures: **no free variable of `repl` is captured** by a binder the
+///   substitution descends under; a binder that would capture one is renamed
+///   apart first. Shadowing and capture are different obligations and only the
+///   first was met: shadowing asks whether the binder rebinds the substituted
+///   NAME, capture asks whether it rebinds a name the substituted VALUE
+///   mentions. `gandr-ijdw`.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -441,6 +447,23 @@ fn subst_type(
                     ref arg,
                     ref res,
                 } => {
+                    // gandr-ijdw: this handles SHADOWING and not CAPTURE. The
+                    // binder blocks the descent when it rebinds the substituted
+                    // NAME, which is right; nothing here asks whether `repl`'s
+                    // own free variables would be captured by the binder, and
+                    // that is the defect. Applying a dependent spine walks one
+                    // argument at a time, so a caller whose type-variable names
+                    // collide with the callee's binders substitutes a name that
+                    // the next binder then rebinds — and the following argument
+                    // rewrites it again. The witness pair is on the bead.
+                    //
+                    // The repair is capture-avoiding descent: rename the binder
+                    // to a name free in both the body and `repl` before
+                    // descending. A rename is the only correct move here; a
+                    // refusal would reject correct programs, and simultaneous
+                    // substitution at the application site would fix this spine
+                    // and leave every other caller of `subst_comptype` wrong.
+                    //
                     // A `Π` binder of the substituted name shadows it in the
                     // codomain, exactly as `Σ`'s does in its tail; a `None`
                     // binder shadows nothing and always descends.
@@ -616,6 +639,39 @@ fn pop_comp_type(comps: &mut Vec<CompType>) -> CompType
 mod tests
 {
     use super::*;
+
+    /// Substituting a value whose free variable a binder below would rebind
+    /// renames that binder apart rather than capturing.
+    ///
+    /// Shadowing and capture are different obligations, and the engine met only
+    /// the first: shadowing asks whether the binder rebinds the substituted
+    /// name, capture asks whether it rebinds a name the substituted value
+    /// mentions. `gandr-ijdw`.
+    #[test]
+    fn substitution_renames_a_binder_that_would_capture_the_replacement()
+    {
+        todo!("gandr-ijdw")
+    }
+
+    /// The **wrong-acceptance** direction: two types that must not agree, which
+    /// capturing substitution makes coincide.
+    ///
+    /// This is the witness that matters. A repair verified only against the
+    /// program capture broke proves the capture stopped rejecting something
+    /// correct; it says nothing about whether capture was also *accepting*
+    /// something wrong, and capture can make two distinct types agree exactly
+    /// as easily as it makes two equal ones diverge.
+    ///
+    /// The separating source, in surface spelling: applying
+    /// `comp(a, b, c, f, g, x)` at indices `(a, c, d)` should demand `g` at
+    /// `U[ω] (c -> F d)`. Capturing substitution rewrites that expectation to
+    /// `U[ω] (d -> F d)`, so an argument written at the captured type is
+    /// accepted. The fixed engine must refuse it.
+    #[test]
+    fn a_captured_expectation_does_not_accept_the_wrong_argument()
+    {
+        todo!("gandr-ijdw")
+    }
 
     /// A `Π` binder shadowing the queried name hides every occurrence beneath
     /// it, so the occurrence walk and the substitution engine agree.
