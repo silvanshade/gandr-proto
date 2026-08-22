@@ -1216,54 +1216,6 @@ pub fn force_head(
     }
 }
 
-/// Resolve a pure-computation embedding to the value its computation returns.
-///
-/// # Contract
-/// - requires: `id` names an already-evaluated value.
-/// - ensures: an embedding whose computation reaches a returner answers with
-///   the returned value; every other value, including an embedding whose
-///   computation is stuck on a variable or exhausts its budget, answers with
-///   `id` unchanged.
-/// - ensures: budget exhaustion is a **refusal carrying its evidence** rather
-///   than an unsound acceptance — an unresolved embedding is compared by
-///   congruence, which can only report unequal what a longer run might have
-///   equated.
-/// - fails: [`SemError`] on arena exhaustion or an unresolvable id.
-/// - panics: never.
-///
-/// # Termination
-///
-/// **The hazard this must not reintroduce is host recursion over a
-/// caller-controlled term.** The embedding is suspended at evaluation for a
-/// structural reason, not a preference: running the computation inside the
-/// value walk closes a cycle between that walk and the computation machine over
-/// a term the caller chooses, which is what `buildout-standing-06` refuses. So
-/// the resolution belongs where the machine already owns a stack — conversion
-/// resolves embeddings on its own goal stack today — and a fix that simply
-/// calls the machine from inside the walk trades one defect for a depth cliff.
-///
-/// # Adequacy
-/// - hypothesis: resolving at the force is the narrowest site that fixes the
-///   defect, because forcing is the only operation that distinguishes an
-///   embedding from the value it names.
-/// - mutants: resolve unconditionally at evaluation; resolve without checking
-///   that the computation reached a returner; drop the neutral fallback.
-/// - witnesses: `forcing_an_embedding_reaches_the_value_it_returns`,
-///   `forcing_a_stuck_embedding_stays_neutral`, and
-///   `a_thunk_valued_embedding_converts_with_the_thunk_it_names`.
-#[expect(
-    dead_code,
-    reason = "gandr-rson scaffold: called from `force_head` once the resolution site is chosen"
-)]
-fn resolve_embedding_head(
-    _nbe: &mut Normalizer,
-    _id: SemValueId,
-    _mode: ForceMode,
-) -> Result<SemValueId, SemError>
-{
-    todo!("gandr-rson")
-}
-
 /// Re-applies a recorded spine to a fresh head — how the unfolding face is
 /// rebuilt after its head unfolds.
 ///
