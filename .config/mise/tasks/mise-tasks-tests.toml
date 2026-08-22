@@ -22,6 +22,57 @@ cargo nextest run -p gandr-workflow-gates
 # cargo run --quiet -p gandr-workflow-gates -- default-graph --workspace-root .
 # """
 
+# SCAFFOLD, gandr-swqz: the companion to cargo:doc-check, which reads library
+# targets and nothing else.
+#
+# `cargo doc` does not document test targets, so every intra-doc link written in
+# a `tests/` doc comment has been unchecked for as long as the tree has had one.
+# Unchecked is not the same as untidy: a `theory-levitation` test doc comment
+# linked into `gandr_theory_virtual_doctrines`, a crate it depends on in NO
+# section and cannot depend on, since the edge is a cycle Cargo rejects as a
+# library edge and ARCHITECTURE rule 3 refuses as a dev edge. That link could
+# never have resolved and it passed every gate for as long as it existed.
+#
+# WIDEN RATHER THAN EXEMPT, and the decision rests on a measurement rather than
+# a preference. The question was whether the first run would surface an unknown
+# backlog. It does not. Measured at main 485a1c0c3 over all thirty-two workspace
+# test targets, `cargo rustdoc -p <pkg> --test <target> --features=full --
+# --document-private-items` under `RUSTDOCFLAGS=-D warnings`:
+#
+#   24 of 32 targets pass outright.
+#   1  real broken link: `crates/kernel-strata/tests/differential.rs:3`, an
+#      unresolved `[`Level`]` in the crate-level comment.
+#   7  targets fail on `missing_crate_level_docs` alone -- a test root with no
+#      `//!` header -- which is a lint-policy artifact, not a link defect. The
+#      other 24 roots do carry one, so adding the header is the consistent
+#      repair and an `allow` is not.
+#
+# Cost: a fully cached sweep of all thirty-two invocations runs in about five
+# seconds, because cargo short-circuits the unchanged ones.
+#
+# WHERE THE ITERATION BELONGS. `gandr-workflow-gates` already shells `cargo
+# metadata` for `default-graph`, so a `doc-links` subcommand there is the house
+# shape: enumerate the workspace test targets from metadata, run rustdoc on each,
+# and report one finding per failing target. A task body cannot do it without
+# parsing metadata JSON in shell, which is the thing the gate binary exists to
+# avoid.
+#
+# EXIT, and the order matters. Author the subcommand, repair the one link and the
+# seven headers, THEN wire this task into `gate:merge`. Wiring a red gate into
+# the wall stops every other lane, so the repair leads and the wiring follows.
+#
+# ["test:doc-links"]
+# description = "Check intra-doc links in test targets, which cargo:doc-check cannot reach"
+# run = """
+# RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+# export RUSTUP_TOOLCHAIN
+#
+# RUSTDOCFLAGS="-D warnings"
+# export RUSTDOCFLAGS
+#
+# cargo run --quiet -p gandr-workflow-gates -- doc-links --workspace-root .
+# """
+
 ["test:doc-gates"]
 description = "Run the Rust doc-gate regression suite"
 run = """

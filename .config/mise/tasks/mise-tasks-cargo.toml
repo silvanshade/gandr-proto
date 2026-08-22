@@ -208,7 +208,13 @@ RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN
 
 # `RUSTDOCFLAGS="-D warnings"` makes every rustdoc lint (broken/redundant
-# intra-doc links &c.) fatal so doc breakage cannot land silently.
+# intra-doc links &c.) fatal for the targets rustdoc actually reads.
+#
+# It reads library targets. `cargo doc` does not document test targets at all,
+# so an intra-doc link in a `tests/` doc comment is invisible here and always
+# was: the task's previous comment claimed doc breakage "cannot land silently"
+# without qualification, and for `tests/` that was simply false. `test:doc-links`
+# is the companion that closes it (gandr-swqz).
 RUSTDOCFLAGS="-D warnings"
 export RUSTDOCFLAGS
 

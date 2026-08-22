@@ -176,6 +176,10 @@ The rollout established these durable findings and actions:
 Every nontrivial item (public or private — `missing_docs_in_private_items` is denied) carries a one-line summary plus a `# Contract` rustdoc block; fallible functions also carry `# Errors`; nontrivial items in new or substantially-refactored code also carry `# Adequacy` ([mutation-adequacy.md](mutation-adequacy.md)).
 
 `mise run cargo:doc-check` is the merge-wall gate for this section: it runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so an intra-doc link that does not resolve — or a redundant explicit link target — fails the wall rather than accreting as silent rustdoc debt.
+
+**That gate reads library targets and nothing else, and the boundary is worth knowing before you write a doc comment in `tests/`.** `cargo doc` does not document test targets, so until `test:doc-links` runs beside it, every intra-doc link written in an integration test is unchecked — and unchecked here means a link that could never have resolved passes indefinitely, which is what happened to a `theory-levitation` test doc comment linking into a crate that appears in none of its dependency sections.
+**Widening the gate is the standing choice rather than exempting the class**, decided on measurement: running rustdoc over all thirty-two test targets surfaces exactly one broken link and seven test roots missing a crate-level `//!` header, and a fully cached sweep of all thirty-two costs about five seconds.
+The fear that made the question hard — an unknown backlog surfacing at once — priced out at eight findings.
 An in-scope item links by its bare name (`` [`Value`] ``); a cross-module item uses a reference-style link — the short label `` [`TermArena`] `` in the prose with its path collected once as a definition at the end of the doc block (`` [`TermArena`]: crate::TermArena ``) — rather than repeating the full crate-root re-export or module path inline at every occurrence.
 
 ```rust
