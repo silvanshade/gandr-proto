@@ -3199,4 +3199,95 @@ def parser_unit = ();"#;
             | _ => panic!("expected a stuck evaluation"),
         }
     }
+
+    /// The callee whose dependent signature instantiation must not capture.
+    const CAPTURE_COMP: &str = "def comp(a : Type, b : Type, c : Type, f : U[\u{3c9}] (a -> F b), g : U[\u{3c9}] (b -> F c), x : a) -> F c {\n  run y <- f(x);\n  g(y)\n}";
+
+    /// The caller whose own binders collide with the callee's.
+    const CAPTURE_COLLIDE: &str = "def collide(a : Type, b : Type, c : Type, d : Type, u : U[\u{3c9}] (a -> F c), h : U[\u{3c9}] (c -> F d)) -> F (U[\u{3c9}] (a -> F d)) {\n  ret thunk { comp(a, c, d, u, h) }\n}";
+
+    /// The same caller with every binder renamed apart from the callee's.
+    const CAPTURE_CLEAN: &str = "def clean(p : Type, q : Type, r : Type, s : Type, u : U[\u{3c9}] (p -> F r), h : U[\u{3c9}] (r -> F s)) -> F (U[\u{3c9}] (p -> F s)) {\n  ret thunk { comp(p, r, s, u, h) }\n}";
+
+    /// Applies the renaming that DEFINES the separating pair — `a b c d` to
+    /// `p q r s` — to a rendered type.
+    ///
+    /// A dependent parameter contributes its name TWICE to a rendered type:
+    /// once as the binder label an `Arrow` carries, and once at each free
+    /// occurrence inside the body. Renaming only the occurrences leaves the
+    /// labels behind and the comparison fails on binder spelling alone, which
+    /// is a precondition rather than the claim.
+    fn rename_apart(rendered: &str) -> String
+    {
+        let mut out = String::from(rendered);
+        for (from, to) in [("a", "p"), ("b", "q"), ("c", "r"), ("d", "s")] {
+            out = out
+                .replace(&format!("Atom(\"{from}\")"), &format!("Atom(\"{to}\")"))
+                .replace(&format!("Arrow(\"{from}\","), &format!("Arrow(\"{to}\","));
+        }
+        out
+    }
+    /// The elaborated type of the definition `name` bound by `run`, rendered.
+    fn definition_type(
+        run: &SessionRun,
+        name: &str,
+    ) -> String
+    {
+        run.outcomes
+            .iter()
+            .find_map(|outcome| match *outcome {
+                | ItemOutcome::Definition {
+                    name: ref bound,
+                    ref ty,
+                    bound: true,
+                    ..
+                } if bound == name => Some(format!("{ty:?}")),
+                | _ => None,
+            })
+            .unwrap_or_else(|| panic!("`{name}` did not bind, so it has no type to compare"))
+    }
+
+    /// The colliding and renamed callers instantiate to the SAME type, which
+    /// is the acceptance criterion gandr-ijdw states and the corpus walker
+    /// cannot express — no directive relates two definitions' types.
+    ///
+    /// **The comparison is up to the renaming that defines the pair**, and it
+    /// has to be. The collision REQUIRES the caller to bind `a b c d`, so
+    /// those binders necessarily appear in its own type; there is no spelling
+    /// of the pair whose two types are the same object. Asserting raw equality
+    /// would go red for binder spelling — a witness failing at a precondition
+    /// rather than at its claim — so the renaming is applied first and the
+    /// images are compared.
+    ///
+    /// **This carries less than it appears to, and the next reader should know
+    /// exactly which part.** Both callers already declare their return types,
+    /// so the corpus witness's `expect: clean` is itself a type assertion:
+    /// `collide` is accepted only if instantiation produced exactly what it
+    /// declares. Most of the criterion is discharged there. What this adds is
+    /// that the two instantiations agree with EACH OTHER as whole types,
+    /// parameters included, rather than each agreeing with its own ascription.
+    ///
+    /// **And it does not separate a capturing engine from a correct one on its
+    /// own**, which was measured rather than assumed. Disabling the rename
+    /// makes this test fail at `collide` did not bind — a precondition —
+    /// because a capturing engine refuses that caller outright and there is
+    /// no second type to compare. So its red under ablation reports the
+    /// same fact the corpus witness already reports, and the agreement
+    /// claim it exists for is observable only when both callers check.
+    /// Treat it as stating the criterion, not as evidence independent of
+    /// the corpus pair.
+    #[test]
+    fn colliding_and_renamed_callers_instantiate_to_the_same_type()
+    {
+        let run = session_run([CAPTURE_COMP, CAPTURE_COLLIDE, CAPTURE_CLEAN]);
+        let collide = definition_type(&run, "collide");
+        let clean = definition_type(&run, "clean");
+        let renamed = rename_apart(&collide);
+        assert_eq!(
+            renamed, clean,
+            "the colliding and renamed callers must instantiate to the same type.\n\
+             collide, renamed to the clean spelling: {renamed}\n\
+             clean, as elaborated:                   {clean}"
+        );
+    }
 }
