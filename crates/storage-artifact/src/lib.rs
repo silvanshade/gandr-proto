@@ -53,6 +53,7 @@ pub mod error;
 pub mod manifest;
 pub mod record;
 pub mod transport;
+pub mod value;
 
 use gandr_kernel_core::Environment;
 use gandr_storage_prolly_trees::BlockStore;
@@ -64,6 +65,7 @@ use gandr_storage_prolly_trees::TreeRoot;
 pub use crate::error::ArtifactError;
 pub use crate::error::ManifestError;
 pub use crate::error::StepIdError;
+pub use crate::error::ValueError;
 pub use crate::manifest::ARTIFACT_IDENTITY_LEN;
 pub use crate::manifest::ArtifactIdentity;
 pub use crate::manifest::ArtifactManifest;

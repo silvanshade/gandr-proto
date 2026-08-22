@@ -109,3 +109,85 @@ pub enum ManifestError
         expected: usize,
     },
 }
+
+/// Why a value-plane commit or dereference failed.
+///
+/// The vocabulary separates the three ways a content-addressed read can go
+/// wrong, because collapsing them is how a storage bug reads as a decode bug:
+/// the store did not have it ([`ValueError::UnknownChunk`]), the store had
+/// something else under that name ([`ValueError::DigestMismatch`]), or the
+/// bytes were not a chunk at all ([`ValueError::MalformedChunk`]).
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub enum ValueError
+{
+    /// A digest byte image was not exactly the fixed width.
+    #[error("chunk-digest image length {found} is not the expected {expected}")]
+    DigestLength
+    {
+        /// The image length offered.
+        found: usize,
+        /// The fixed length the reader requires.
+        expected: usize,
+    },
+
+    /// The store held no chunk under the requested digest.
+    #[error("no chunk stored under digest {digest}")]
+    UnknownChunk
+    {
+        /// The digest that was asked for.
+        digest: alloc::string::String,
+    },
+
+    /// Stored or offered bytes did not hash to their claimed digest.
+    #[error("chunk bytes hash to {actual}, not the claimed {expected}")]
+    DigestMismatch
+    {
+        /// The digest the bytes were claimed to have.
+        expected: alloc::string::String,
+        /// The digest the bytes actually have.
+        actual: alloc::string::String,
+    },
+
+    /// A chunk image did not parse as the framed layout.
+    #[error("malformed chunk image: {context}")]
+    MalformedChunk
+    {
+        /// Which part of the frame was wrong.
+        context: &'static str,
+    },
+
+    /// A token stream ended inside a value.
+    #[error("chunk token stream truncated at token {position}")]
+    TruncatedChunk
+    {
+        /// The token index the reader stopped at.
+        position: u32,
+    },
+
+    /// A token of the wrong kind stood where the codec required another.
+    ///
+    /// This is the value plane's **wrong-kind** rejection, and it is a named
+    /// variant rather than a generic decode failure for a specific reason: a
+    /// wrong-kind inhabitant that decodes anyway is the defect class that
+    /// passes every test written against the same wrong picture.
+    #[error("expected a {expected} token at token {position}, found a {found} token")]
+    UnexpectedToken
+    {
+        /// The token kind the codec required.
+        expected: &'static str,
+        /// The token kind actually present.
+        found: &'static str,
+        /// The token index.
+        position: u32,
+    },
+
+    /// A count or length did not fit its canonical width.
+    #[error("the value {found} does not fit the canonical {width}-bit width")]
+    WidthOverflow
+    {
+        /// The offending value.
+        found: u64,
+        /// The canonical width it did not fit.
+        width: u32,
+    },
+}

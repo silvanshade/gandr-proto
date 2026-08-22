@@ -1,0 +1,188 @@
+//! Semantic wrappers for the value plane's counts, positions and byte views.
+//!
+//! Every one of these exists so a signature says what it carries rather than
+//! how wide it is. A `u64` in a public signature is a place where a token
+//! count and a byte length can be swapped without the compiler noticing, and
+//! on a content-addressed plane that swap changes digests rather than
+//! crashing.
+
+use alloc::boxed::Box;
+
+/// Declares a transparent semantic wrapper over one primitive.
+macro_rules! semantic_integer
+{
+    (
+        $(#[$attribute:meta])*
+        $visibility:vis struct $name:ident($primitive:ty);
+    ) => {
+        $(#[$attribute])*
+        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        #[repr(transparent)]
+        $visibility struct $name($primitive);
+
+        impl From<$primitive> for $name
+        {
+            #[inline]
+            fn from(value: $primitive) -> Self
+            {
+                return Self(value);
+            }
+        }
+
+        impl From<$name> for $primitive
+        {
+            #[inline]
+            fn from(value: $name) -> Self
+            {
+                return value.0;
+            }
+        }
+    };
+}
+
+semantic_integer! {
+    /// A number of distinct chunks — what a store holds, or what an edit touched.
+    ///
+    /// Backed by `usize` rather than `u64` because every producer of one is a
+    /// collection length or a bound compared against a collection length; a
+    /// width conversion at the accessor would be a conversion with no reader.
+    pub struct ChunkCount(usize);
+}
+
+semantic_integer! {
+    /// The depth of an edited path, in constructors from the root.
+    pub struct EditDepth(u32);
+}
+
+semantic_integer! {
+    /// The cap multiplier `c` relating the hard token cap to kappa.
+    pub struct CapMultiplier(u32);
+}
+
+semantic_integer! {
+    /// The value-manifest layout version.
+    pub struct ValueManifestVersion(u16);
+}
+
+/// A borrowed view of one chunk's token body — the bytes inside the frame.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ChunkBody<'source>(&'source [u8]);
+
+impl<'source> From<&'source [u8]> for ChunkBody<'source>
+{
+    #[inline]
+    fn from(bytes: &'source [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl<'source> From<ChunkBody<'source>> for &'source [u8]
+{
+    #[inline]
+    fn from(body: ChunkBody<'source>) -> Self
+    {
+        return body.0;
+    }
+}
+
+impl AsRef<[u8]> for ChunkBody<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+/// A borrowed view of one framed chunk image — magic, header and body.
+///
+/// Distinct from [`ChunkBody`] on purpose: the digest is taken over the
+/// **image**, and handing a body where an image belongs would produce a digest
+/// that verifies against nothing.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ChunkImage<'image>(&'image [u8]);
+
+impl<'image> From<&'image [u8]> for ChunkImage<'image>
+{
+    #[inline]
+    fn from(bytes: &'image [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl<'image> From<ChunkImage<'image>> for &'image [u8]
+{
+    #[inline]
+    fn from(image: ChunkImage<'image>) -> Self
+    {
+        return image.0;
+    }
+}
+
+impl AsRef<[u8]> for ChunkImage<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+/// An owned framed chunk image.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ChunkImageBuf(Box<[u8]>);
+
+impl From<Box<[u8]>> for ChunkImageBuf
+{
+    #[inline]
+    fn from(bytes: Box<[u8]>) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl From<ChunkImageBuf> for Box<[u8]>
+{
+    #[inline]
+    fn from(image: ChunkImageBuf) -> Self
+    {
+        return image.0;
+    }
+}
+
+impl AsRef<[u8]> for ChunkImageBuf
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_ref();
+    }
+}
+
+/// A canonical inline byte payload contributed by one constructor.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TokenBytes<'source>(&'source [u8]);
+
+impl<'source> From<&'source [u8]> for TokenBytes<'source>
+{
+    #[inline]
+    fn from(bytes: &'source [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl AsRef<[u8]> for TokenBytes<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
