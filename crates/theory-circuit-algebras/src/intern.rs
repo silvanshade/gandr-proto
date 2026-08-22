@@ -44,6 +44,7 @@ use alloc::vec::Vec;
 use crate::interface::Wiring;
 use crate::normal_form::CanonicalDiagram;
 use crate::normal_form::Relabelling;
+use crate::normal_form::canonicalize;
 
 /// The identifier one diagram is interned under.
 ///
@@ -206,16 +207,31 @@ impl DiagramInterner
     /// - witness: `intern::tests::distinct_diagrams_take_distinct_identifiers`
     /// - witness: `intern::tests::the_relabelling_carries_the_presentation_to_the_form`
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-ng9.6 scaffold: the interning body is the implementor deliverable"
-    )]
     pub fn intern(
         &mut self,
         diagram: &Wiring,
     ) -> Interned
     {
-        todo!("canonicalize {diagram:?}, look its form up in self.ids, assign on absence");
+        let canonicalization = canonicalize(diagram);
+        let form = canonicalization.form().clone();
+        let relabelling = canonicalization.relabelling().clone();
+        if let Some(&id) = self.ids.get(&form) {
+            return Interned {
+                id,
+                relabelling,
+                arrival: Arrival::Held,
+            };
+        }
+        // First arrival: the identifier is the table's current length, which
+        // is what makes it an index into `forms` rather than a digest.
+        let id = DiagramId(u32::try_from(self.forms.len()).unwrap_or(u32::MAX));
+        self.forms.push(form.clone());
+        let _absent = self.ids.insert(form, id);
+        return Interned {
+            id,
+            relabelling,
+            arrival: Arrival::Fresh,
+        };
     }
 
     /// Returns the canonical form held under an identifier.
@@ -257,6 +273,72 @@ impl DiagramInterner
 #[cfg(test)]
 mod tests
 {
+    use alloc::vec::Vec;
+
+    use super::Arrival;
+    use super::DiagramInterner;
+    use crate::interface::Generator;
+    use crate::interface::GeneratorLabel;
+    use crate::interface::GeneratorSort;
+    use crate::interface::Interface;
+    use crate::interface::Wire;
+    use crate::interface::WireCount;
+    use crate::interface::Wiring;
+
+    /// The name of a fixture generator.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug)]
+    struct FixtureName<'name>(&'name str);
+
+    /// A value-sorted generator label.
+    fn value(name: FixtureName<'_>) -> GeneratorLabel
+    {
+        return GeneratorLabel::new(name.0, GeneratorSort::Value);
+    }
+
+    /// A two-step diagram: `f` then `g`, boundary in at `f`, out at `g`.
+    fn spine() -> Wiring
+    {
+        return Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value(FixtureName("f")), [Wire(0)], [Wire(1)]),
+                Generator::new(value(FixtureName("g")), [Wire(1)], [Wire(2)]),
+            ],
+            Interface::new([Wire(0)], [Wire(2)]),
+        )
+        .expect("the two-step diagram is well formed");
+    }
+
+    /// The SAME diagram, presented with its hyperedges in the other order and
+    /// its wires renumbered.
+    fn spine_permuted() -> Wiring
+    {
+        return Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value(FixtureName("g")), [Wire(0)], [Wire(1)]),
+                Generator::new(value(FixtureName("f")), [Wire(2)], [Wire(0)]),
+            ],
+            Interface::new([Wire(2)], [Wire(1)]),
+        )
+        .expect("a renumbering of the two-step diagram is still one");
+    }
+
+    /// A different diagram: the same generators wired the other way round.
+    fn reversed() -> Wiring
+    {
+        return Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value(FixtureName("g")), [Wire(0)], [Wire(1)]),
+                Generator::new(value(FixtureName("f")), [Wire(1)], [Wire(2)]),
+            ],
+            Interface::new([Wire(0)], [Wire(2)]),
+        )
+        .expect("the reversed diagram is well formed");
+    }
+
     /// Two unequal `Wiring` values with one canonical form receive one
     /// identifier, and the second arrival is reported as held.
     ///
@@ -265,33 +347,63 @@ mod tests
     /// passes every obvious test — intern one value twice, get one identifier;
     /// intern two different diagrams, get two. It fails only here, on two
     /// spellings of one diagram, which is the case interning exists to
-    /// collapse and the case a careless suite never constructs. Weakening this
-    /// test turns the table back into a table of spellings without changing a
-    /// line of it.
+    /// collapse and the case a careless suite never constructs.
     #[test]
-    #[ignore = "gandr-ng9.6: awaits the interning body"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-ng9.6 scaffold: the test body is the implementor deliverable"
-    )]
     fn two_presentations_of_one_diagram_intern_alike()
     {
-        todo!(
-            "build two Wiring values that are unequal under Eq and canonicalize to one form,  intern both, assert one identifier and that the second reports Arrival::Held,  and assert the two relabellings differ so the case is not two equal inputs"
+        let (left, right) = (spine(), spine_permuted());
+        assert_ne!(
+            left, right,
+            "the two presentations are unequal as wirings, or this separates nothing"
+        );
+
+        let mut table = DiagramInterner::new();
+        let first = table.intern(&left);
+        let second = table.intern(&right);
+
+        assert_eq!(
+            first.id(),
+            second.id(),
+            "one diagram, one identifier, whatever it was spelled like"
+        );
+        assert_eq!(
+            Arrival::Fresh,
+            first.arrival(),
+            "the first arrival is fresh"
+        );
+        assert_eq!(
+            Arrival::Held,
+            second.arrival(),
+            "the second presentation finds the diagram already held"
+        );
+        assert_eq!(
+            1_usize,
+            usize::from(table.diagram_count()),
+            "a table of diagrams holds one, where a table of spellings holds two"
+        );
+        assert_ne!(
+            first.relabelling(),
+            second.relabelling(),
+            "the two witnesses differ, so this is two presentations and not one input twice"
         );
     }
 
     /// Diagrams that the canon separates receive different identifiers.
     #[test]
-    #[ignore = "gandr-ng9.6: awaits the interning body"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-ng9.6 scaffold: the test body is the implementor deliverable"
-    )]
     fn distinct_diagrams_take_distinct_identifiers()
     {
-        todo!(
-            "intern a family the canon distinguishes and assert the identifier count equals  the family size, so the table is not collapsing what the canon separates"
+        let mut table = DiagramInterner::new();
+        let family = alloc::vec![spine(), reversed()];
+        let ids: Vec<_> = family.iter().map(|w| table.intern(w).id()).collect();
+        assert_ne!(
+            ids.first(),
+            ids.get(1_usize),
+            "the table does not collapse what the canon separates"
+        );
+        assert_eq!(
+            family.len(),
+            usize::from(table.diagram_count()),
+            "one identifier per distinct diagram"
         );
     }
 
@@ -301,15 +413,17 @@ mod tests
     /// The witness exists so a caller can check the identity it was handed
     /// rather than trust it, so the witness itself has to be checkable.
     #[test]
-    #[ignore = "gandr-ng9.6: awaits the interning body"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-ng9.6 scaffold: the test body is the implementor deliverable"
-    )]
     fn the_relabelling_carries_the_presentation_to_the_form()
     {
-        todo!(
-            "intern a wiring, then verify the returned relabelling against the form the  table holds under the returned identifier"
-        );
+        let diagram = spine_permuted();
+        let mut table = DiagramInterner::new();
+        let interned = table.intern(&diagram);
+        let form = table
+            .form(interned.id())
+            .expect("the identifier was issued");
+        interned
+            .relabelling()
+            .verify(&diagram, form)
+            .expect("the returned witness carries the presentation onto the held form");
     }
 }
