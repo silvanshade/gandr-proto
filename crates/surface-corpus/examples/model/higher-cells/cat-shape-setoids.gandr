@@ -20,8 +20,12 @@
 // free sort variable as a dependent parameter, and the surface type grammar has
 // no dependent function type (gandr-3jus). So this checks the instance, and not
 // the instance against the stated signature. Associativity is absent for a
-// second reason: its two composites do not converge until bind associativity
-// reaches the normal form (gandr-ew9o).
+// second reason. Bind associativity now reaches the normal form, and the law
+// converges when its composites are written pointwise over `compose` -- but
+// that spelling names a private helper, and a law about a helper is a different
+// theorem under the same name. In the model-faithful spelling the composites
+// nest one operation's application inside another's argument at thunk type, one
+// level deeper than the embedding resolution reaches (gandr-rson).
 //
 // The type variables are named `t u v` and `p q` rather than `a b c` because
 // type substitution is not capture-avoiding (gandr-ijdw), and a category's laws
@@ -48,6 +52,7 @@ module SetoidCat {
   def unitR(p : Type, q : Type, f : U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), comp(p, q, q, f, id(q)), f) {
     ret here(f)
   }
+
 }
 
 // The harness checks. The two law fields are present as MEMBERS, which is the
