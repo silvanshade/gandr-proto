@@ -869,7 +869,7 @@ impl LowerError
     ///   `MalformedSource`; replace the match with a wildcard arm.
     /// - witnesses: `gandr-surface-engine` `tests/failure_class.rs` —
     ///   `every_lower_error_variant_answers_its_recorded_class`,
-    ///   `an_unlanded_former_is_unrepresentable_never_an_absence`,
+    ///   `a_capability_boundary_is_unrepresentable_never_an_absence`,
     ///   `an_engine_fault_is_never_an_author_fact`.
     #[inline]
     #[must_use]
@@ -8787,13 +8787,19 @@ mod tests
 
     /// A capability boundary is never an absence.
     ///
-    /// This is the claim `buildout-standing-02` turns on, stated over the
-    /// variants that carry an unlanded former or a reserved spelling: the
-    /// author wrote the form, so nothing about it is missing, and classifying
-    /// any of them as `UserAbsence` is what lets total mode record an engine
-    /// limit as author intent.
+    /// This is the claim `buildout-standing-02` turns on: the author wrote the
+    /// form, so nothing about it is missing, and classifying any of these as
+    /// `UserAbsence` is what lets total mode record an engine limit as author
+    /// intent.
+    ///
+    /// The sample is six of the ten `Unrepresentable` variants, chosen for the
+    /// distinct shapes of boundary — an out-of-fragment construct, two
+    /// signature component forms, a family body, an unelaborated sealing, a
+    /// reserved recursion resident. **All ten are covered by
+    /// `every_lower_error_variant_answers_its_recorded_class`**; this witness
+    /// exists to fail with the class named rather than with a table row index.
     #[test]
-    fn an_unlanded_former_is_unrepresentable_never_an_absence() -> Result<(), String>
+    fn a_capability_boundary_is_unrepresentable_never_an_absence() -> Result<(), String>
     {
         let boundaries = [
             LowerError::Unsupported {
@@ -8842,6 +8848,10 @@ mod tests
     /// acceptance that follows is evidence of nothing. The fourth class exists
     /// so these can never be folded into `MalformedSource` and blamed on the
     /// source instead.
+    ///
+    /// The sample is four of the five `EngineFault` variants; `Namespace`
+    /// carries a payload built elsewhere and is covered only by
+    /// `every_lower_error_variant_answers_its_recorded_class`.
     #[test]
     fn an_engine_fault_is_never_an_author_fact() -> Result<(), String>
     {
