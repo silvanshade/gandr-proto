@@ -17,6 +17,40 @@
 //! interface: a vector would force the sink to re-derive the nesting it was
 //! just told.
 //!
+//!
+//! # The token body layout, which is a format rather than an implementation detail
+//!
+//! A chunk body is a sequence of **token records**, each opening with a
+//! one-byte kind. The token index a [`crate::value::ptr::ContentPtr`] carries
+//! counts records, one per record, from zero at the start of the body.
+//!
+//! ```text
+//! record := TOKEN_OPEN  0x01 || u8   tag
+//!         | TOKEN_WORD  0x02 || u64be value
+//!         | TOKEN_BYTES 0x03 || u64be length || length bytes
+//!         | TOKEN_CHILD 0x04 || 32-byte digest || u32be token offset
+//!         | TOKEN_CLOSE 0x05
+//! ```
+//!
+//! Every integer is big-endian and every width is fixed. No kind byte outside
+//! `0x01..=0x05` is admitted, and a reader meeting one refuses
+//! [`ValueError::UnexpectedToken`] rather than skipping it — an unknown token
+//! kind in a content-addressed body is a corrupted or foreign body, never a
+//! forward-compatible extension, because the digest already committed to every
+//! byte.
+//!
+//! **Why the kind byte is separate from the tag byte.** Folding them — letting
+//! the export tag byte itself be the record kind — would save one byte per
+//! constructor and make a word payload whose leading byte is a valid tag
+//! indistinguishable from a constructor. That is precisely the wrong-kind
+//! inhabitant this plane is written to refuse, and one byte per constructor is
+//! not worth being unable to state the refusal.
+//!
+//! **`TOKEN_CLOSE` carries no tag.** The nesting is a balanced sequence and
+//! the reader tracks its own depth, so repeating the tag at close would be a
+//! second copy of a fact already in the body — and two copies of one fact are
+//! two facts that can disagree.
+//!
 //! # The tag vocabulary is not this crate's
 //!
 //! `gandr_kernel_core::export::NODE_TAG_TABLE` fixes each export tag's child
@@ -31,6 +65,17 @@ use crate::value::ptr::ContentPtr;
 use crate::value::ptr::TokenOffset;
 use crate::value::units::ChunkBody;
 use crate::value::units::TokenBytes;
+
+/// Record kind: a constructor opens.
+pub const TOKEN_OPEN: u8 = 0x01;
+/// Record kind: a canonical big-endian 64-bit payload word.
+pub const TOKEN_WORD: u8 = 0x02;
+/// Record kind: a length-prefixed inline byte payload.
+pub const TOKEN_BYTES: u8 = 0x03;
+/// Record kind: a reference to an already-committed child chunk.
+pub const TOKEN_CHILD: u8 = 0x04;
+/// Record kind: the innermost open constructor closes.
+pub const TOKEN_CLOSE: u8 = 0x05;
 
 /// One constructor tag in a canonical token stream.
 ///
