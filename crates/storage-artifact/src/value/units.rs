@@ -5,6 +5,20 @@
 //! count and a byte length can be swapped without the compiler noticing, and
 //! on a content-addressed plane that swap changes digests rather than
 //! crashing.
+//!
+//! # Getting the bytes out, and the trap in the obvious way
+//!
+//! Each borrowed wrapper offers both [`AsRef::as_ref`] and a `From` impl into
+//! the raw slice, and they differ in a way that only shows at a lifetime.
+//! `as_ref` borrows **the wrapper**, so on a temporary — a chunk image a store
+//! just handed back by value — it yields a slice that dies at the end of the
+//! statement. The `From` impl consumes the wrapper, which is free because
+//! these are [`Copy`], and hands back a slice living as long as the data.
+//!
+//! So use `as_ref` for a slice consumed in place, and `<&[u8]>::from(wrapper)`
+//! wherever the result must outlive the expression — the reader crossing a
+//! chunk seam is exactly that case, and it is where the difference is a
+//! borrow-checker error rather than a preference.
 
 use alloc::boxed::Box;
 
