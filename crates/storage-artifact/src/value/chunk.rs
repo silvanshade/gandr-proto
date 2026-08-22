@@ -319,6 +319,34 @@ fn parse_chunk_frame(image: ChunkImage<'_>) -> Result<ChunkBody<'_>, ValueError>
     return Ok(ChunkBody::from(body));
 }
 
+/// Verifies a stored chunk and returns the token body inside its frame.
+///
+/// # Contract
+/// - requires: nothing; every rejection is named.
+/// - ensures: `Ok(body)` borrowing out of `chunk`'s image, exactly when
+///   [`verify_chunk_image`] accepts it — so a body can only be obtained from a
+///   chunk that has been verified, rather than by slicing past the header.
+/// - provides: the only way into a chunk's tokens, which is what keeps the
+///   frame from being re-derived by each reader.
+/// - fails: [`ValueError::DigestMismatch`] or [`ValueError::MalformedChunk`].
+/// - panics: none.
+///
+/// # Errors
+/// [`ValueError`].
+#[inline]
+pub fn chunk_body(chunk: StoredChunkRef<'_>) -> Result<ChunkBody<'_>, ValueError>
+{
+    let image = chunk.image();
+    let actual = blake3::hash(image.as_ref());
+    if actual.as_bytes() != chunk.digest().as_ref() {
+        return Err(ValueError::DigestMismatch {
+            expected: chunk.digest().to_string(),
+            actual: actual.to_string(),
+        });
+    }
+    return parse_chunk_frame(image);
+}
+
 /// Frames a token body into a chunk image and returns it with its digest.
 ///
 /// # Contract

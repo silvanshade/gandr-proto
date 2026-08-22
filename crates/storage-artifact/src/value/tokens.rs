@@ -64,11 +64,58 @@ use alloc::vec::Vec;
 use crate::error::ValueError;
 use crate::transport::CanonicalU64;
 use crate::value::chunk::ChunkStore;
+use crate::value::chunk::chunk_body;
+use crate::value::ptr::ChunkDigest;
 use crate::value::ptr::ContentPtr;
 use crate::value::ptr::TokenOffset;
 use crate::value::units::ChunkBody;
 use crate::value::units::SeamDepth;
 use crate::value::units::TokenBytes;
+
+/// The byte length of one open record: the kind byte and the tag.
+const TAG_RECORD_LEN: usize = 0x02_usize;
+/// The byte length of one word record: the kind byte and a big-endian `u64`.
+const WORD_RECORD_LEN: usize = 0x09_usize;
+/// The byte length of a bytes record's header: the kind byte and the length.
+const BYTES_HEADER_LEN: usize = 0x09_usize;
+/// The byte length of one child record: the kind byte, a digest, an offset.
+const CHILD_RECORD_LEN: usize = 0x25_usize;
+/// The byte offset just past a child record's digest.
+const DIGEST_END: usize = 0x21_usize;
+/// The byte length of one close record: the kind byte alone.
+const CLOSE_RECORD_LEN: usize = 0x01_usize;
+/// The canonical integer width every framed count is checked against.
+const CANONICAL_WIDTH_BITS: u32 = 0x40_u32;
+
+/// Names a record kind for a refusal message.
+#[inline]
+fn kind_name(kind: u8) -> &'static str
+{
+    return match kind {
+        | TOKEN_OPEN => "an open",
+        | TOKEN_WORD => "a word",
+        | TOKEN_BYTES => "a bytes",
+        | TOKEN_CHILD => "a child",
+        | TOKEN_CLOSE => "a close",
+        | _ => "an unassigned kind",
+    };
+}
+
+/// Reads a big-endian `u64` from exactly eight bytes.
+#[inline]
+fn read_u64(bytes: &[u8]) -> Option<u64>
+{
+    let image: [u8; 8] = bytes.try_into().ok()?;
+    return Some(u64::from_be_bytes(image));
+}
+
+/// Reads a big-endian `u32` from exactly four bytes.
+#[inline]
+fn read_u32(bytes: &[u8]) -> Option<u32>
+{
+    let image: [u8; 4] = bytes.try_into().ok()?;
+    return Some(u32::from_be_bytes(image));
+}
 
 /// Record kind: a constructor opens.
 pub const TOKEN_OPEN: u8 = 0x01;
@@ -377,6 +424,178 @@ impl<'stream> TokenReader<'stream>
         return self.store;
     }
 
+    /// Positions the reader at the next readable record.
+    ///
+    /// Two things can stand between the cursor and a record: an exhausted
+    /// chunk, which is popped, and a child pointer, which is descended into.
+    /// Both are seams, and both are invisible to a caller by design.
+    #[inline]
+    fn settle(&mut self) -> Result<(), ValueError>
+    {
+        loop {
+            if <&[u8]>::from(self.remaining).is_empty() {
+                let Some((body, position)) = self.suspended.pop()
+                else {
+                    return Ok(());
+                };
+                self.remaining = body;
+                self.position = position;
+                continue;
+            }
+            if self.peek_kind() != Some(TOKEN_CHILD) {
+                return Ok(());
+            }
+            let pointer = self.take_child()?;
+            let chunk = self.store.load(pointer.digest())?;
+            let body = chunk_body(chunk)?;
+            self.suspended.push((self.remaining, self.position));
+            self.remaining = body;
+            self.position = TokenOffset::from(0_u32);
+            self.skip_records(u32::from(pointer.offset()))?;
+        }
+    }
+
+    /// The kind byte of the record under the cursor, if any.
+    #[inline]
+    fn peek_kind(&self) -> Option<u8>
+    {
+        return <&[u8]>::from(self.remaining).first().copied();
+    }
+
+    /// Consumes `len` bytes from the front of the current body.
+    #[inline]
+    fn take(
+        &mut self,
+        len: usize,
+    ) -> Result<&'stream [u8], ValueError>
+    {
+        let bytes = <&[u8]>::from(self.remaining);
+        let Some(head) = bytes.get(.. len)
+        else {
+            return Err(ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            });
+        };
+        let Some(tail) = bytes.get(len ..)
+        else {
+            return Err(ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            });
+        };
+        self.remaining = ChunkBody::from(tail);
+        return Ok(head);
+    }
+
+    /// Advances the record cursor by one.
+    #[inline]
+    fn step(&mut self)
+    {
+        self.position = TokenOffset::from(u32::from(self.position).saturating_add(1_u32));
+    }
+
+    /// Reads one child-pointer record, which the caller has already peeked.
+    #[inline]
+    fn take_child(&mut self) -> Result<ContentPtr, ValueError>
+    {
+        let record = self.take(CHILD_RECORD_LEN)?;
+        let Some(digest_bytes) = record.get(1 .. DIGEST_END)
+        else {
+            return Err(ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            });
+        };
+        let Some(offset_bytes) = record.get(DIGEST_END .. CHILD_RECORD_LEN)
+        else {
+            return Err(ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            });
+        };
+        let digest = ChunkDigest::try_from(digest_bytes)?;
+        let offset = read_u32(offset_bytes).ok_or_else(|| ValueError::TruncatedChunk {
+            position: u32::from(self.position),
+        })?;
+        self.step();
+        return Ok(ContentPtr::new(digest, TokenOffset::from(offset)));
+    }
+
+    /// Skips forward over `count` whole records in the current body.
+    ///
+    /// Used on descent, where a child pointer's offset names a position inside
+    /// the chunk rather than its start.
+    #[inline]
+    fn skip_records(
+        &mut self,
+        count: u32,
+    ) -> Result<(), ValueError>
+    {
+        for _ in 0_u32 .. count {
+            let Some(kind) = self.peek_kind()
+            else {
+                return Err(ValueError::TruncatedChunk {
+                    position: u32::from(self.position),
+                });
+            };
+            let len = match kind {
+                | TOKEN_OPEN => TAG_RECORD_LEN,
+                | TOKEN_WORD => WORD_RECORD_LEN,
+                | TOKEN_CHILD => CHILD_RECORD_LEN,
+                | TOKEN_CLOSE => CLOSE_RECORD_LEN,
+                | TOKEN_BYTES => {
+                    let header = self.take(BYTES_HEADER_LEN)?;
+                    let declared = header
+                        .get(1 .. BYTES_HEADER_LEN)
+                        .and_then(read_u64)
+                        .ok_or_else(|| ValueError::TruncatedChunk {
+                            position: u32::from(self.position),
+                        })?;
+                    let payload =
+                        usize::try_from(declared).map_err(|_width| ValueError::WidthOverflow {
+                            found: declared,
+                            width: CANONICAL_WIDTH_BITS,
+                        })?;
+                    let _skipped = self.take(payload)?;
+                    self.step();
+                    continue;
+                },
+                | _ => {
+                    return Err(ValueError::UnexpectedToken {
+                        expected: "a known record kind",
+                        found: "an unassigned kind byte",
+                        position: u32::from(self.position),
+                    });
+                },
+            };
+            let _skipped = self.take(len)?;
+            self.step();
+        }
+        return Ok(());
+    }
+
+    /// Refuses when the record under the cursor is not of the wanted kind.
+    #[inline]
+    fn require(
+        &mut self,
+        kind: u8,
+        expected: &'static str,
+    ) -> Result<(), ValueError>
+    {
+        self.settle()?;
+        let Some(found) = self.peek_kind()
+        else {
+            return Err(ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            });
+        };
+        if found == kind {
+            return Ok(());
+        }
+        return Err(ValueError::UnexpectedToken {
+            expected,
+            found: kind_name(found),
+            position: u32::from(self.position),
+        });
+    }
+
     /// Reads the next constructor tag, refusing anything else.
     ///
     /// # Contract
@@ -393,13 +612,18 @@ impl<'stream> TokenReader<'stream>
     /// # Errors
     /// [`ValueError`].
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the token-body decode step is the implementor deliverable"
-    )]
     pub fn read_tag(&mut self) -> Result<ConstructorTag, ValueError>
     {
-        todo!("read one TOKEN_OPEN record, crossing seams transparently");
+        self.require(TOKEN_OPEN, "an open")?;
+        let record = self.take(TAG_RECORD_LEN)?;
+        let tag = record
+            .get(1)
+            .copied()
+            .ok_or_else(|| ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            })?;
+        self.step();
+        return Ok(ConstructorTag::from(tag));
     }
 
     /// Reads the next canonical word, refusing anything else.
@@ -417,13 +641,18 @@ impl<'stream> TokenReader<'stream>
     /// # Errors
     /// [`ValueError`].
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the token-body decode step is the implementor deliverable"
-    )]
     pub fn read_word(&mut self) -> Result<CanonicalU64, ValueError>
     {
-        todo!("read one TOKEN_WORD record, crossing seams transparently");
+        self.require(TOKEN_WORD, "a word")?;
+        let record = self.take(WORD_RECORD_LEN)?;
+        let value = record
+            .get(1 .. WORD_RECORD_LEN)
+            .and_then(read_u64)
+            .ok_or_else(|| ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            })?;
+        self.step();
+        return Ok(CanonicalU64::from(value));
     }
 
     /// Reads an inline byte payload, refusing anything else.
@@ -441,13 +670,24 @@ impl<'stream> TokenReader<'stream>
     /// # Errors
     /// [`ValueError`].
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the token-body decode step is the implementor deliverable"
-    )]
     pub fn read_bytes(&mut self) -> Result<TokenBytes<'stream>, ValueError>
     {
-        todo!("read one TOKEN_BYTES record, crossing seams transparently");
+        self.require(TOKEN_BYTES, "a bytes")?;
+        let header = self.take(BYTES_HEADER_LEN)?;
+        let declared = header
+            .get(1 .. BYTES_HEADER_LEN)
+            .and_then(read_u64)
+            .ok_or_else(|| ValueError::TruncatedChunk {
+                position: u32::from(self.position),
+            })?;
+        let payload_len =
+            usize::try_from(declared).map_err(|_width| ValueError::WidthOverflow {
+                found: declared,
+                width: CANONICAL_WIDTH_BITS,
+            })?;
+        let payload = self.take(payload_len)?;
+        self.step();
+        return Ok(TokenBytes::from(payload));
     }
 
     /// Reads the closing record of the innermost open constructor.
@@ -465,12 +705,11 @@ impl<'stream> TokenReader<'stream>
     /// # Errors
     /// [`ValueError`].
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the token-body decode step is the implementor deliverable"
-    )]
     pub fn read_close(&mut self) -> Result<(), ValueError>
     {
-        todo!("read one TOKEN_CLOSE record, crossing seams transparently");
+        self.require(TOKEN_CLOSE, "a close")?;
+        let _record = self.take(CLOSE_RECORD_LEN)?;
+        self.step();
+        return Ok(());
     }
 }
