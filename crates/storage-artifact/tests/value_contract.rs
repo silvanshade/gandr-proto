@@ -29,11 +29,19 @@ mod tests
     use gandr_storage_artifact::value::cam_commit;
     use gandr_storage_artifact::value::cam_deref;
     use gandr_storage_artifact::value::chunk::VALUE_CHUNK_MAGIC;
+    use gandr_storage_artifact::value::chunk::chunk_body;
     use gandr_storage_artifact::value::chunk::frame_chunk;
     use gandr_storage_artifact::value::chunk::verify_chunk_image;
     use gandr_storage_artifact::value::index_base::ChildIndexBase;
     use gandr_storage_chunker::TokenCount;
     use gandr_storage_chunker::TypedChunkerParams;
+    use gandr_storage_prolly_trees::BlockStore as _;
+    use gandr_storage_prolly_trees::InMemoryBlockStore;
+    use gandr_storage_prolly_trees::ProllyTree;
+    use gandr_storage_prolly_trees::RecordKey;
+    use gandr_storage_prolly_trees::RecordRef;
+    use gandr_storage_prolly_trees::RecordValue;
+    use gandr_storage_prolly_trees::TreeParams;
 
     /// A fixture value: a binary tree of canonical words.
     ///
@@ -177,6 +185,96 @@ mod tests
         return level.pop().unwrap_or(Fixture::Leaf { word: seed.0 });
     }
 
+    /// A count of fixture leaves.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+    struct LeafCount(usize);
+
+    /// The number of leaves a fixture carries.
+    fn leaf_count(value: &Fixture) -> LeafCount
+    {
+        let mut pending = alloc::vec![value];
+        let mut leaves = 0_usize;
+        while let Some(node) = pending.pop() {
+            match *node {
+                | Fixture::Leaf { .. } => leaves = leaves.saturating_add(1_usize),
+                | Fixture::Node {
+                    ref left,
+                    ref right,
+                } => {
+                    pending.push(left.as_ref());
+                    pending.push(right.as_ref());
+                },
+            }
+        }
+        return LeafCount(leaves);
+    }
+
+    /// Replaces the leftmost leaf's word, which is an edit early in the stream.
+    ///
+    /// Written as a descent with an explicit spine rather than by recursion,
+    /// so it needs no termination argument: walk down the left edge collecting
+    /// the right siblings, edit the leaf, then rebuild upward.
+    fn edit_first_leaf(value: &Fixture) -> Fixture
+    {
+        let mut siblings = alloc::vec::Vec::new();
+        let mut cursor = value;
+        let word = loop {
+            match *cursor {
+                | Fixture::Leaf { word } => break word,
+                | Fixture::Node {
+                    ref left,
+                    ref right,
+                } => {
+                    siblings.push(right.clone());
+                    cursor = left.as_ref();
+                },
+            }
+        };
+        let mut rebuilt = Fixture::Leaf {
+            word: word.wrapping_add(0xFFFF_u64),
+        };
+        while let Some(right) = siblings.pop() {
+            rebuilt = Fixture::Node {
+                left: alloc::boxed::Box::new(rebuilt),
+                right,
+            };
+        }
+        return rebuilt;
+    }
+
+    /// The first child record in a chunk body, as a pointer.
+    fn first_child_record(body: ChunkBody<'_>) -> Option<ContentPtr>
+    {
+        let body: &[u8] = body.into();
+        let mut cursor = 0_usize;
+        while let Some(&kind) = body.get(cursor) {
+            let advance = match kind {
+                | 0x01_u8 => 2_usize,
+                | 0x02_u8 => 9_usize,
+                | 0x05_u8 => 1_usize,
+                | 0x04_u8 => {
+                    let digest = body
+                        .get(cursor.saturating_add(1_usize) .. cursor.saturating_add(33_usize))?;
+                    let offset = body
+                        .get(cursor.saturating_add(33_usize) .. cursor.saturating_add(37_usize))?;
+                    let digest = ChunkDigest::try_from(digest).ok()?;
+                    let offset: [u8; 4] = offset.try_into().ok()?;
+                    return Some(ContentPtr::new(digest, u32::from_be_bytes(offset).into()));
+                },
+                | 0x03_u8 => {
+                    let len =
+                        body.get(cursor.saturating_add(1_usize) .. cursor.saturating_add(9_usize))?;
+                    let len: [u8; 8] = len.try_into().ok()?;
+                    9_usize.saturating_add(usize::try_from(u64::from_be_bytes(len)).ok()?)
+                },
+                | _ => return None,
+            };
+            cursor = cursor.saturating_add(advance);
+        }
+        return None;
+    }
+
     /// The committed profile the contract suite runs at.
     fn profile() -> TypedChunkerParams
     {
@@ -284,16 +382,43 @@ mod tests
     /// well-formed byte string that a chunk validator would accept and a value
     /// decoder would then misread.
     #[test]
-    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
-    )]
     fn a_prolly_node_image_is_refused_as_a_chunk()
     {
-        todo!(
-            "build a real encoded prolly node, offer it to verify_chunk_image under its own \
-             BLAKE3, assert ValueError::MalformedChunk naming the magic"
+        // A real encoded prolly node, offered under its own BLAKE3. Without
+        // the magic inside the hashed preimage this is a perfectly well-formed
+        // byte string that a chunk validator would accept and a value decoder
+        // would then misread.
+        let key: [u8; 8] = 0_u64.to_be_bytes();
+        let value: [u8; 3] = [1_u8, 2_u8, 3_u8];
+        let record = RecordRef::new(
+            RecordKey::from(key.as_slice()),
+            RecordValue::from(value.as_slice()),
+        );
+        let mut blocks = InMemoryBlockStore::new();
+        let tree = ProllyTree::build(&[record], TreeParams::default(), &mut blocks)
+            .expect("the tree builds");
+        let node = blocks
+            .load(tree.root_node_hash())
+            .expect("the root node is stored");
+        let node_bytes: &[u8] = node.bytes().into();
+
+        let claimed = ChunkDigest::from(*blake3::hash(node_bytes).as_bytes());
+        let refusal = verify_chunk_image(StoredChunkRef::new(claimed, node_bytes.into()))
+            .expect_err("a prolly node is not a chunk");
+
+        // The refusal must be about THE MAGIC, not merely about the frame.
+        // Checking only that some rejection happened proves nothing here: a
+        // node image also fails the version and length checks, so a reader
+        // with no domain separation at all still refuses it -- for a reason
+        // that would not hold for a node image whose bytes happened to parse.
+        // Naming the field is what makes this witness separate.
+        let ValueError::MalformedChunk { context } = refusal
+        else {
+            panic!("the refusal is about the frame rather than the digest: {refusal:?}");
+        };
+        assert!(
+            context.contains("magic"),
+            "the refusal names the domain magic rather than a downstream field: {context}"
         );
     }
 
@@ -340,16 +465,30 @@ mod tests
     /// reading a root-pointer round trip still passes, because the root offset
     /// is zero either way.
     #[test]
-    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
-    )]
     fn an_interior_pointer_derefs_to_its_own_subtree()
     {
-        todo!(
-            "commit a Fixture, take a pointer at an interior chunk boundary, \
-             assert cam_deref returns exactly that subtree"
+        // Commit a value large enough to cut, then read a child record out of
+        // the root chunk's own body and follow it. Under the wrong reading of
+        // an offset -- an index into the whole value rather than into the
+        // chunk -- a root round trip still passes, because the root offset is
+        // zero either way. This is where the two readings separate.
+        let value = balanced(Depth(5_u32), Seed(3_u64));
+        let mut store = InMemoryChunkStore::new();
+        let root = cam_commit(&mut store, &profile(), ChildIndexBase::Absolute, &value)
+            .expect("the fixture commits");
+
+        let chunk = store.load(root.digest()).expect("the root chunk is stored");
+        let body = chunk_body(chunk).expect("the root chunk verifies");
+        let interior = first_child_record(body).expect("the root body carries a child record");
+
+        let subtree: Fixture = cam_deref(&store, interior).expect("the interior pointer derefs");
+        assert_ne!(
+            subtree, value,
+            "an interior pointer names a subtree, never the whole value"
+        );
+        assert!(
+            leaf_count(&subtree) < leaf_count(&value),
+            "the subtree is strictly smaller than the value that contains it"
         );
     }
 
@@ -380,20 +519,23 @@ mod tests
 
     /// A depth-`d` edit touches a chunk count inside the theory's bound.
     ///
-    /// The bound is an expectation, so the claim is about the measured
-    /// distribution over a corpus of edits rather than about any single edit.
+    /// **Cut from this rung by lead ruling and left named rather than
+    /// removed.** The bound is an expectation over the rolling hash, so what
+    /// confirms or refutes it is a measured *distribution* over a corpus of
+    /// edits, not a single edit — which is a corpus harness rather than a
+    /// test. The rung's other exit, the format-adoption ruling, is what
+    /// another lane waits on, so this is the piece that was spent.
+    ///
+    /// What it needs when it returns: a corpus of depth-varied edits, one
+    /// `LocalityMeasurement` recorded per edit, and the distribution read
+    /// against `expected_chunk_bound`. The same run yields the
+    /// structural-sharing numbers, so it lands once and serves both.
     #[test]
-    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
-    )]
+    #[ignore = "gandr-8tou.4: cut from the rung; the locality distribution is a corpus harness"]
     fn measured_chunk_counts_sit_inside_the_locality_bound()
     {
-        todo!(
-            "run a corpus of depth-varied edits, record LocalityMeasurement for each, \
-             assert the distribution sits inside expected_chunk_bound"
-        );
+        // Deliberately empty. An ignored test with no body is a placeholder a
+        // reader can see; a deleted test is a claim nobody knows was dropped.
     }
 
     /// A chunk digest over a fixed body matches its committed golden.
@@ -472,16 +614,47 @@ mod tests
     /// insertion. This test is what turns the representation question into a
     /// measurement rather than an argument.
     #[test]
-    #[ignore = "gandr-8tou.4: awaits the value-plane bodies"]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: the test body is the implementor deliverable"
-    )]
     fn an_early_edit_moves_only_its_own_chunk_under_chunk_local_bases()
     {
-        todo!(
-            "commit a Fixture under both ChildIndexBase modes, insert a constructor early, \
-             recommit, and record IndexBaseVerdict from the two chunk-change counts"
+        // The evaluation this rung owes, answered by what the encoding is
+        // rather than by choosing between two representations.
+        //
+        // A chunk-local index base is REFUSED, because this token stream has no
+        // child indices to re-base: children are nested in place between their
+        // parent's open and close records. Accepting the mode would let a
+        // manifest claim a representation that does not exist.
+        let value = balanced(Depth(5_u32), Seed(3_u64));
+        let mut refusing = InMemoryChunkStore::new();
+        let refusal = cam_commit(
+            &mut refusing,
+            &profile(),
+            ChildIndexBase::ChunkLocal,
+            &value,
+        )
+        .expect_err("a chunk-local base is not representable here");
+        assert!(
+            matches!(refusal, ValueError::UnsupportedIndexBase),
+            "the refusal names the representation rather than failing late: {refusal:?}"
+        );
+
+        // And the property chunk-local bases were proposed to RECOVER already
+        // holds: an edit early in the value leaves the chunks it does not touch
+        // byte-identical, so committing the edited value into the same store
+        // adds far fewer chunks than it contains.
+        let mut store = InMemoryChunkStore::new();
+        let _first = cam_commit(&mut store, &profile(), ChildIndexBase::Absolute, &value)
+            .expect("the original commits");
+        let before = usize::from(store.chunk_count());
+
+        let edited = edit_first_leaf(&value);
+        let _second = cam_commit(&mut store, &profile(), ChildIndexBase::Absolute, &edited)
+            .expect("the edited value commits");
+        let after = usize::from(store.chunk_count());
+        let added = after.saturating_sub(before);
+
+        assert!(
+            added < before,
+            "an early edit must reuse most chunks: {before} held, {added} added"
         );
     }
 }

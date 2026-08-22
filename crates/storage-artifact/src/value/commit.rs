@@ -340,6 +340,15 @@ where
             tokens_since: frame.tokens,
             residue: frame.residue.0,
         });
+        // The OUTERMOST close never cuts. Cutting there would frame the whole
+        // remaining value as a chunk and then leave `finish` framing a second
+        // chunk holding nothing but a wrapper for it -- one extra block, one
+        // extra indirection, and a root whose only child is the entire value.
+        // The root chunk is framed by `finish` in any case, so the outermost
+        // boundary has nothing left to separate.
+        if self.open.is_empty() {
+            return Ok(());
+        }
         if matches!(decision, CutDecision::Cut(_)) {
             self.cut(frame.body_start, frame.token_start)?;
         }
