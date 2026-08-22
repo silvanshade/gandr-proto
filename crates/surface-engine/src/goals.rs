@@ -330,6 +330,36 @@ pub(crate) fn initial_state(
 /// Records one observed hole descend into its goal (if the static pass saw
 /// it; holes belong to exactly one item, so a same-identifier observation
 /// from another item is ignored).
+///
+/// # The first early return is noncontractual, and silence is the wrong shape
+///
+/// `gandr-7ej3`. The `goals.0.get_mut` miss guards against a hole the machine
+/// descends into that [`collect_static`] never registered. **That is an engine
+/// fact, not a user one**, and it is narrower than it looks: all nine
+/// `fresh_hole` sites in the lowerer pair the minted hole with an
+/// `OriginNode`, so every hole carries an origin entry by construction. The
+/// branch can therefore fire only when an origin path fails to *resolve* to
+/// its hole in the lowered term — origin and term structure having diverged.
+///
+/// No caller may rely on the omission, so the branch is noncontractual and
+/// owes no exerciser. But returning silently is the posture
+/// `buildout-standing-02` refuses: it records the engine's own gap as **a
+/// shorter goals report**, telling the reader there are fewer unfinished holes
+/// than there are, which degrades a claim about what the author wrote. The
+/// invariant is one the reader should **refute** rather than one the producer
+/// asserts, so this branch carries a debug assertion naming the hole and the
+/// item while the release path keeps the safe return.
+///
+/// The second early return is a different animal and stays as it is: two items
+/// in one lowering share a hole-id space, and ignoring a foreign item's
+/// same-identifier observation is the correct behaviour rather than a guard
+/// against an impossible state.
+///
+/// SCAFFOLD: the debug assertion is not written here. `gandr-7ej3` carries it,
+/// together with the `goals.rs` floor moving to its measured value — the
+/// policy target genuinely moved when the declared-data arm made those holes
+/// collectable — and the `lower.rs` floor following the lines that left it for
+/// `lower/pattern.rs`.
 fn record(
     goals: &mut GoalMap,
     item_index: ItemIndex,
