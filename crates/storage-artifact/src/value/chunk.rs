@@ -47,6 +47,7 @@
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use gandr_storage_chunker::TokenCount;
 
@@ -200,31 +201,32 @@ impl InMemoryChunkStore
 impl ChunkStore for InMemoryChunkStore
 {
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: frame verification is the implementor deliverable"
-    )]
     fn insert(
         &mut self,
         chunk: StoredChunkRef<'_>,
     ) -> Result<(), ValueError>
     {
-        todo!(
-            "verify_chunk_image(chunk), then insert chunk.image() under chunk.digest(): {chunk:?}"
-        );
+        verify_chunk_image(chunk)?;
+        self.chunks
+            .insert(chunk.digest(), Box::<[u8]>::from(chunk.image().as_ref()));
+        return Ok(());
     }
 
     #[inline]
-    #[expect(
-        clippy::todo,
-        reason = "gandr-8tou.4 scaffold: frame verification is the implementor deliverable"
-    )]
     fn load(
         &self,
         digest: ChunkDigest,
     ) -> Result<StoredChunkRef<'_>, ValueError>
     {
-        todo!("fetch {digest} and re-run verify_chunk_image before returning it");
+        let bytes = self
+            .chunks
+            .get(&digest)
+            .ok_or_else(|| ValueError::UnknownChunk {
+                digest: digest.to_string(),
+            })?;
+        let chunk = StoredChunkRef::new(digest, ChunkImage::from(bytes.as_ref()));
+        verify_chunk_image(chunk)?;
+        return Ok(chunk);
     }
 }
 
@@ -243,13 +245,70 @@ impl ChunkStore for InMemoryChunkStore
 /// # Errors
 /// [`ValueError`].
 #[inline]
-#[expect(
-    clippy::todo,
-    reason = "gandr-8tou.4 scaffold: frame verification is the implementor deliverable"
-)]
 pub fn verify_chunk_image(chunk: StoredChunkRef<'_>) -> Result<(), ValueError>
 {
-    todo!("BLAKE3 the image, compare against the claim, then re-read the frame: {chunk:?}");
+    let image = chunk.image();
+    let image_bytes: &[u8] = image.as_ref();
+    let actual = blake3::hash(image_bytes);
+    if actual.as_bytes() != chunk.digest().as_ref() {
+        return Err(ValueError::DigestMismatch {
+            expected: chunk.digest().to_string(),
+            actual: actual.to_string(),
+        });
+    }
+    parse_chunk_frame(image_bytes).map(|_body| ())
+}
+
+/// Re-reads one framed image's header and returns its token body.
+///
+/// # Contract
+/// - requires: nothing; every rejection is a named error.
+/// - ensures: `Ok(body)` exactly when the image opens with
+///   [`VALUE_CHUNK_MAGIC`], carries [`CHUNK_FORMAT_VERSION_V1`], and declares a
+///   body length matching the bytes that follow the header.
+/// - provides: the single frame reader both store halves and the deref path
+///   share, so a body slice cannot be taken through a different grammar.
+/// - fails: [`ValueError::MalformedChunk`] naming the failed field.
+/// - panics: none.
+///
+/// # Errors
+/// [`ValueError::MalformedChunk`].
+fn parse_chunk_frame(image: &[u8]) -> Result<ChunkBody<'_>, ValueError>
+{
+    const MAGIC_LEN: usize = VALUE_CHUNK_MAGIC.len();
+    let refused = |context: &'static str| ValueError::MalformedChunk { context };
+    let Some((magic, rest)) = image.split_first_chunk::<MAGIC_LEN>()
+    else {
+        return Err(refused("the image ends inside the chunk magic"));
+    };
+    if magic != VALUE_CHUNK_MAGIC {
+        return Err(refused(
+            "the image does not open with the value-chunk magic",
+        ));
+    }
+    let Some((version_bytes, rest)) = rest.split_first_chunk::<2>()
+    else {
+        return Err(refused("the image ends inside the format version"));
+    };
+    if u16::from_be_bytes(*version_bytes) != CHUNK_FORMAT_VERSION_V1 {
+        return Err(refused("unsupported chunk format version"));
+    }
+    let Some((_count_bytes, rest)) = rest.split_first_chunk::<8>()
+    else {
+        return Err(refused("the image ends inside the token count"));
+    };
+    let Some((len_bytes, body)) = rest.split_first_chunk::<8>()
+    else {
+        return Err(refused("the image ends inside the body length"));
+    };
+    let declared_len = u64::from_be_bytes(*len_bytes);
+    let actual_len = u64::try_from(body.len()).map_err(|_| refused("body length exceeds u64"))?;
+    if actual_len != declared_len {
+        return Err(refused(
+            "declared body length does not match the image bytes",
+        ));
+    }
+    return Ok(ChunkBody::from(body));
 }
 
 /// Frames a token body into a chunk image and returns it with its digest.
@@ -267,17 +326,25 @@ pub fn verify_chunk_image(chunk: StoredChunkRef<'_>) -> Result<(), ValueError>
 /// # Errors
 /// [`ValueError`].
 #[inline]
-#[expect(
-    clippy::todo,
-    reason = "gandr-8tou.4 scaffold: chunk framing is the implementor deliverable"
-)]
 pub fn frame_chunk(
     body: ChunkBody<'_>,
     token_count: TokenCount,
 ) -> Result<(ChunkDigest, ChunkImageBuf), ValueError>
 {
-    todo!(
-        "frame {token_count:?} tokens over a {} byte body",
-        body.as_ref().len()
-    );
+    let body_bytes: &[u8] = body.as_ref();
+    let body_len = u64::try_from(body_bytes.len()).map_err(|_| ValueError::WidthOverflow {
+        found: u64::MAX,
+        width: 64,
+    })?;
+    let mut image = Vec::with_capacity(VALUE_CHUNK_MAGIC.len() + 18 + body_bytes.len());
+    image.extend_from_slice(VALUE_CHUNK_MAGIC);
+    image.extend_from_slice(&CHUNK_FORMAT_VERSION_V1.to_be_bytes());
+    image.extend_from_slice(&u64::from(token_count).to_be_bytes());
+    image.extend_from_slice(&body_len.to_be_bytes());
+    image.extend_from_slice(body_bytes);
+    let digest = blake3::hash(image.as_slice());
+    return Ok((
+        ChunkDigest::from(*digest.as_bytes()),
+        ChunkImageBuf::from(image.into_boxed_slice()),
+    ));
 }
