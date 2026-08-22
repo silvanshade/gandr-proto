@@ -24,6 +24,9 @@
 //! [`crate::value::value_manifest::ValueManifest`] so that a disagreement is a
 //! refusal rather than a silent failure to deduplicate.
 
+use alloc::vec::Vec;
+
+use gandr_storage_chunker::TypedChunker;
 use gandr_storage_chunker::TypedChunkerParams;
 
 use crate::error::ValueError;
@@ -31,6 +34,66 @@ use crate::value::chunk::ChunkStore;
 use crate::value::index_base::ChildIndexBase;
 use crate::value::ptr::ContentPtr;
 use crate::value::tokens::CanonicalValue;
+
+/// One open constructor's accounting while the traversal is inside it.
+///
+/// The stack of these is the whole state the walk needs, and each field is
+/// here because the walk cannot recompute it:
+///
+/// - the **rolling residue** is over the subtree rooted at this constructor,
+///   and a boundary event needs it at *exit*, which is the only moment the
+///   subtree is complete;
+/// - the **token count** is what the chunker's cap fires on, and it counts this
+///   subtree's tokens rather than the whole body's, because a cut resets the
+///   pending suffix and not the enclosing constructors;
+/// - the **body start** marks where in the pending body this subtree begins,
+///   which is what a cut needs in order to frame exactly the suffix and splice
+///   a wrapper in its place.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[expect(
+    dead_code,
+    reason = "gandr-8tou.4 scaffold: the traversal that drives this state is the implementor deliverable"
+)]
+struct OpenFrame
+{
+    /// Rolling hash over the tokens of the subtree rooted here.
+    residue: u64,
+    /// Tokens emitted inside this subtree since it opened.
+    tokens: u64,
+    /// Byte offset in the pending body where this subtree's first token sits.
+    body_start: usize,
+    /// Token index in the pending body where this subtree's first token sits.
+    token_start: u32,
+}
+
+/// The committing traversal's sink: a pending body, a frame stack, a chunker.
+///
+/// It is deliberately not public. A caller that could drive the sink directly
+/// could emit a chunk wrapper by hand, and a wrapper the traversal did not
+/// place is a claim about the store that nothing checked — which is the one
+/// way a well-formed chunk DAG can be built over a chunk that is not there.
+#[derive(Debug)]
+#[expect(
+    dead_code,
+    reason = "gandr-8tou.4 scaffold: the traversal that drives this state is the implementor deliverable"
+)]
+struct CommitSink<'store, Store>
+where
+    Store: ChunkStore + ?Sized,
+{
+    /// Where committed chunks are inserted, bottom-up.
+    store: &'store mut Store,
+    /// The cut-decision engine under the committed typed profile.
+    chunker: TypedChunker,
+    /// The committed child-reference representation.
+    index_base: ChildIndexBase,
+    /// Encoded token records not yet framed into a chunk.
+    pending: Vec<u8>,
+    /// One entry per constructor currently open, outermost first.
+    open: Vec<OpenFrame>,
+    /// Token records written into `pending` since the last cut.
+    pending_tokens: u32,
+}
 
 /// Commits a value into a store as a chunk DAG and returns its root pointer.
 ///
