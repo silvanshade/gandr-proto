@@ -7,6 +7,21 @@
 //! the value's own codec over the verified body, splicing child chunks through
 //! the same three steps as it crosses each seam.
 //!
+//! # The store arrives erased, and that is forced rather than chosen
+//!
+//! [`cam_deref`] takes `&dyn ChunkStore` rather than a store type parameter,
+//! because [`crate::value::tokens::TokenReader`] holds one and a generic
+//! `Store: ChunkStore + ?Sized` cannot be coerced to a trait object — the
+//! unsizing coercion needs a sized type, and dropping `?Sized` to get it would
+//! be solving the wrong problem. Erasing here is the honest form of the reason
+//! the reader states: a value's codec must not know where the value is stored,
+//! and it cannot know if the store never reaches its signature.
+//!
+//! [`super::cam_commit`] stays generic over its store, and the asymmetry is
+//! real rather than an oversight. Nothing about the value's encoding escapes
+//! into the commit path — the traversal owns its own sink — so there is nothing
+//! there to keep the store out of.
+//!
 //! # Verification is not validity, restated where it is easiest to forget
 //!
 //! A successful `cam_deref` proves the bytes are the bytes the pointer names.
@@ -45,12 +60,11 @@ use crate::value::tokens::CanonicalValue;
     clippy::todo,
     reason = "gandr-8tou.4 scaffold: the deref traversal is the implementor deliverable"
 )]
-pub fn cam_deref<Store, Value>(
-    store: &Store,
+pub fn cam_deref<Value>(
+    store: &dyn ChunkStore,
     pointer: ContentPtr,
 ) -> Result<Value, ValueError>
 where
-    Store: ChunkStore + ?Sized,
     Value: CanonicalValue,
 {
     todo!("fetch {pointer:?} from {store:p}, verify its frame, then decode through a TokenReader");
