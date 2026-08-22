@@ -222,6 +222,79 @@ def assoc(x: Integer, y: Integer, z: Integer) -> F Path(Integer, mul(mul(x, y), 
         );
     }
 
+    /// **Both unit laws in MODEL-FAITHFUL form**: their endpoints name the
+    /// model's own operations rather than the instance's private helpers.
+    ///
+    /// This is the separating pair `gandr-rson` was filed on, and both members
+    /// belong here because they are the only thing that tells a real repair
+    /// from half of one. The endpoints differ in exactly one way: the identity
+    /// argument is the operation `id(p)`, whose application is a computation
+    /// embedded as a value, rather than the literal `thunk { ident(p) }`, which
+    /// is no embedding at all.
+    ///
+    /// **Why the faithful spelling is the one that matters.** `Model(S)`'s law
+    /// fields quantify over the shape's own operations — the design says the
+    /// model reading of an endpoint is a composite of the rule and operation
+    /// *fields themselves*, definable precisely because they are named fields.
+    /// The helper spelling states a law about the helper, which is a different
+    /// theorem under the same name.
+    ///
+    /// **And polarity forces the embedding rather than permitting it.** Law
+    /// endpoints are values, model operations are functions, and in
+    /// call-by-push-value every application of a function is a computation, so
+    /// a composite endpoint built from named fields must embed a computation
+    /// inside another application's argument. No spelling avoids it.
+    #[test]
+    fn both_unit_laws_check_in_model_faithful_form()
+    {
+        let source = r#"def ident(t: Type, x: t) -> F t { ret x }
+def id(t: Type) -> F (U[ω] (t -> F t)) { ret thunk { ident(t) } }
+def comp(t: Type, u: Type, v: Type, f: U[ω] (t -> F u), g: U[ω] (u -> F v), x: t) -> F v { run y <- f(x); g(y) }
+def unitL(p: Type, q: Type, f: U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), thunk { comp(p, p, q, id(p), f) }, f) { ret here(f) }
+def unitR(p: Type, q: Type, f: U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), thunk { comp(p, q, q, f, id(q)) }, f) { ret here(f) }
+"#;
+        let mut session = Session::new();
+        let submission = session.submit(source).expect("lowering must be total");
+        let bound: Vec<&str> = submission
+            .outcomes
+            .iter()
+            .filter_map(|outcome| match *outcome {
+                | ItemOutcome::Definition { ref name, .. } => Some(name.as_str()),
+                | _ => None,
+            })
+            .collect();
+        for law in ["unitL", "unitR"] {
+            assert!(
+                bound.contains(&law),
+                r#"the model-faithful `{law}` must be a bound definition: {:?}"#,
+                submission.outcomes
+            );
+        }
+    }
+
+    /// The helper spelling of the same law, which checked before the faithful
+    /// one did and must keep checking after.
+    ///
+    /// Its role is to keep the repair honest in the other direction: an
+    /// embedding resolution that made the faithful spelling check by weakening
+    /// what conversion demands would show up here as nothing at all, so this is
+    /// stated as a separate claim rather than folded into the pair above.
+    #[test]
+    fn the_helper_spelling_of_the_unit_law_still_checks()
+    {
+        let source = r#"def ident(t: Type, x: t) -> F t { ret x }
+def comp(t: Type, u: Type, v: Type, f: U[ω] (t -> F u), g: U[ω] (u -> F v), x: t) -> F v { run y <- f(x); g(y) }
+def unitL(p: Type, q: Type, f: U[ω] (p -> F q)) -> F Path((U[ω] (p -> F q)), thunk { comp(p, p, q, thunk { ident(p) }, f) }, f) { ret here(f) }
+"#;
+        let mut session = Session::new();
+        let submission = session.submit(source).expect("lowering must be total");
+        assert!(
+            matches!(submission.outcomes[2], ItemOutcome::Definition { .. }),
+            "the helper spelling must keep checking: {:?}",
+            submission.outcomes
+        );
+    }
+
     #[test]
     fn both_unit_laws_are_checked()
     {

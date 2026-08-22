@@ -893,6 +893,38 @@ pub fn force_value(
     let mut fuel = u32::from(nbe.fuel());
     while fuel > 0 {
         fuel = fuel.saturating_sub(1);
+        // A **pure-computation embedding** names the value its computation
+        // returns, so reducing it to a head means running that computation and
+        // continuing on what it returned. Handled here rather than at each
+        // force site because there are three of them and they had drifted into
+        // three near-identical dispatches: the value walk's, the computation
+        // machine's `Force` arm, and conversion's own resolver. Two of the
+        // three answered an embedding with a permanent neutral, which is why a
+        // law endpoint naming a model's own operation could never reduce.
+        //
+        // The loop is the existing fuel loop, so an embedding chain cannot
+        // outlive the budget that bounds every other unfolding, and nothing new
+        // reaches the host stack. `gandr-rson`.
+        let embedded = match *nbe.arena().value(current)?.node() {
+            | SemValueNode::Run(cell) => Some(cell),
+            | _ => None,
+        };
+        if let Some(cell) = embedded {
+            let whnf = enter_nullary(nbe, cell, mode)?;
+            match *nbe.arena().comp(whnf)?.node() {
+                | SemCompNode::Return(produced) => {
+                    if produced == current {
+                        return Ok(current);
+                    }
+                    current = produced;
+                    continue;
+                },
+                // Stuck on a variable, or out of budget. The embedding keeps
+                // its own form, so conversion compares it by congruence, which
+                // can only report unequal what a longer run might have equated.
+                | _ => return Ok(current),
+            }
+        }
         let (name, face) = {
             let node = nbe.arena().value(current)?;
             match *node.node() {
@@ -1166,48 +1198,13 @@ pub fn force_head(
     mode: ForceMode,
 ) -> Result<SemCompId, SemError>
 {
+    // Reduce to a head the force can act on **before** dispatching, which is
+    // what puts an unfolded definition and a resolved embedding on the same
+    // footing as a literal thunk. Dispatching first is how this site came to
+    // read an embedding as "not a thunk" and answer with a permanent neutral.
+    let id = force_value(nbe, id, mode)?;
     let cell = match *nbe.arena().value(id)?.node() {
         | SemValueNode::Thunk(_, cell) => Some(cell),
-        // A **pure-computation embedding** is not a thunk, so it falls to the
-        // neutral arm below and stays stuck there forever. That is the defect:
-        // the embedding names the value its computation returns, and when that
-        // value is itself a thunk, forcing it is exactly what the surrounding
-        // program does next.
-        //
-        // What was measured, because the shape is narrower than it looks and
-        // two plausible diagnoses are both wrong.
-        //
-        // The elaborator DOES build the embedding: it is visible in the
-        // refused type as `Run(App(Force(Var("id")), Var("p")))`, so this is
-        // not a rule-ordering failure where an intro rule captures the term
-        // before the embedding is considered.
-        //
-        // Conversion's own `resolve_embedding` IS reached, and it fails for a
-        // stated reason: the embedded computation reduces to a neutral headed
-        // by a force of `Rigid(Free("id"), Rigid)`. The operation name in the
-        // endpoint carries a **rigid** unfold face rather than a pending one,
-        // so delta never fires and the computation never reaches a returner.
-        //
-        // And the position decides which site is even reached. An embedding at
-        // the ROOT of an endpoint arrives here; the same embedding in an
-        // ARGUMENT position of another endpoint application never does. So the
-        // repair has two halves that must not be confused: this arm, and the
-        // unfold face the endpoint's names are lowered with.
-        //
-        // The consequence is wide because polarity forces the nesting. Law
-        // endpoints are values, model operations are functions, and in
-        // call-by-push-value every application of a function is a computation
-        // — so a composite endpoint built from a model's own named fields
-        // necessarily embeds a pure computation inside an argument position of
-        // another application. There is no spelling that avoids it.
-        //
-        // `gandr-rson`.
-        //
-        // Owed: resolve the embedding to the value its computation returns and
-        // force that, keeping the neutral when the computation does not reach a
-        // returner. Until then the neutral arm below stands and the embedding
-        // sticks, which is the defect stated rather than a placeholder for it.
-        | SemValueNode::Run(_) => None,
         | _ => None,
     };
     match cell {
