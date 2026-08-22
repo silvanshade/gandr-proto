@@ -515,14 +515,40 @@ impl<A: CellAlphabet> Overlap<A>
     }
 }
 
-/// Enumerate the **complete family** of overlaps among the store's cells
+/// Enumerate the family of overlaps among the store's cells
 /// (`proposal-sequent-kernel.md` §7.3.2).
 ///
+/// # Completeness, and the one thing it excludes
+///
+/// The family is complete **up to the trivial root diagonal**, and that
+/// exception is stated here rather than left to be discovered because the
+/// heading previously read "the complete family" and a reader took it at its
+/// word.
+///
+/// A cell is not overlapped against itself. The confluence branch unifies
+/// **whole** left-hand sides at the **root**, and the root most general unifier
+/// of a pattern with its own apart-rename *is* that renaming — so a diagonal
+/// peak's two reducts are identical by construction, ground or not. The
+/// excluded entry mediates nothing that is not already trivially joined.
+///
+/// **This is not the Knuth–Bendix self-overlap exclusion, and the two are easy
+/// to confuse.** A completion procedure needs a rule's overlaps with itself at
+/// **internal** positions of its left-hand side, and this enumerator never
+/// unifies at an internal position, for any pair. Its family is root-sharable
+/// peaks. Within that design the excluded class is exactly one trivial entry
+/// per cell, and a consumer that needs internal self-overlaps needs a different
+/// enumerator rather than this one with its guard removed.
+///
 /// # Contract
-/// - ensures: every confluence overlap (a unifiable left/left pair, excluding a
-///   cell with itself) and every composition overlap (a unifiable right/left
-///   pair at a command seam) among the store's cells, in a deterministic order.
-///   The list is the multi-sum family — one entry per unifier, never collapsed.
+/// - ensures: every confluence overlap (a unifiable left/left pair at the root,
+///   excluding a cell with itself) and every composition overlap (a unifiable
+///   right/left pair at a command seam) among the store's cells, in a
+///   deterministic order. The list is the multi-sum family — one entry per
+///   unifier, never collapsed.
+/// - ensures: the family depends on the store's *identities*, not only on its
+///   cells: two structurally equal cells are deduplicated onto one id by the
+///   store and take the excluded diagonal path, while two alpha-variants of one
+///   rule take distinct ids and do not.
 /// - panics: none.
 ///
 /// # Adequacy
