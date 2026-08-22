@@ -111,6 +111,39 @@ description = "Configure the C++26 MLIR compilation host against the pinned MLIR
 run = '''
 set -eu
 
+# SCAFFOLD, gandr-nw4e: a stale-cache guard belongs here, before cmake runs.
+#
+# The default build directory is checkout-relative, so each checkout has its
+# own -- but a CMakeCache.txt records ABSOLUTE paths, so a build directory that
+# reached this checkout by being copied from another one names a source tree
+# that is not this one, and cmake refuses. The pre-merge hook then fails a
+# branch whose own wall was green, which is gandr-i33v's observable
+# reproduction: a dedicated fresh-cache wall passed, the first hook failed on
+# the stale primary-checkout path, and the same hook passed against a fresh
+# cache with no code change in between.
+#
+# gandr-j76b closed the entry path by excluding runtime/compile-host/build from
+# worktree copy-ignored. It cannot reach a lane that already holds the stale
+# directory, and this task is the only place that can.
+#
+# What the guard must do, before the cmake invocation below:
+#   read CMAKE_HOME_DIRECTORY from "$build/CMakeCache.txt" when that file
+#   exists, compare it against this checkout's absolute runtime/compile-host,
+#   and on a mismatch REMOVE the build directory and say on stderr which two
+#   paths disagreed. Also compare CMAKE_CACHEFILE_DIR against the build
+#   directory's own absolute path, which catches a cache that was moved rather
+#   than a source tree that was.
+#
+# Removing is right and reconfiguring in place is not: a cache carrying another
+# tree's absolute paths has no correct subset to keep, and cmake's own recovery
+# advice for the condition is to delete the cache.
+#
+# The exit this discharges: the hook cannot use a cross-checkout default cache,
+# and a fresh or legacy lane pre-merge wall works with no per-agent
+# GANDR_COMPILE_HOST_BUILD workaround. The witness is a legacy-shaped lane --
+# a build directory whose cache names a different source tree -- reaching a
+# green configure without one.
+
 prefix=$(mise run compile-host:prefix)
 echo "compile-host: pinned MLIR at $prefix"
 cmake \
