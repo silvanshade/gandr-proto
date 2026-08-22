@@ -124,14 +124,38 @@ set -eu
 # hangs off these two fields, so a partially repaired cache would be
 # internally consistent and externally wrong, which is worse than no cache.
 # copy-ignored stopped carrying this directory into lanes at gandr-j76b; this
-# guard is what meets one that already holds a stale one.
+# guard is what meets one that already holds a stale one. A cache whose keys
+# cannot be read is treated as stale rather than trusted: an absent or
+# truncated entry compares as a mismatch, which removes and reconfigures.
 build="${GANDR_COMPILE_HOST_BUILD:-runtime/compile-host/build}"
 checkout=$(pwd -P)
 case "$build" in
   /*) build_abs=$build ;;
   *) build_abs="$checkout/$build" ;;
 esac
+
+# The removal target comes from the environment, and this task runs inside
+# every lane pre-merge hook, so the failure mode is not a hypothetical future
+# typo: it is a typo or a stale export in one of the worktrees running
+# tonight, deleting a lane carrying hours of uncommitted work at the exact
+# moment its owner is trying to land. An unlikely, catastrophic and
+# unrecoverable outcome inside a mutex-held operation is not a risk to price,
+# it is a shape to make unrepresentable: the guard refuses to name a directory
+# it must never remove, and fails loudly saying which forbidden path was
+# named, because a stale cache at a forbidden path is a configuration error
+# somebody needs to see.
+forbidden=
+case "$build_abs" in
+  "") forbidden="the empty path" ;;
+  "/") forbidden="/" ;;
+  "$checkout") forbidden="the checkout itself ($checkout)" ;;
+  "$checkout/runtime/compile-host") forbidden="the compilation host source tree ($build_abs)" ;;
+esac
 if [ -f "$build/CMakeCache.txt" ]; then
+  if [ -n "$forbidden" ]; then
+    printf 'compile-host: refusing stale-cache removal: GANDR_COMPILE_HOST_BUILD names %s; fix the variable\n' "$forbidden" >&2
+    exit 1
+  fi
   cached_home=$(sed -n 's/^CMAKE_HOME_DIRECTORY:[^=]*=//p' "$build/CMakeCache.txt")
   cached_cache_dir=$(sed -n 's/^CMAKE_CACHEFILE_DIR:[^=]*=//p' "$build/CMakeCache.txt")
   stale=
