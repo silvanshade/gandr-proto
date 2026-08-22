@@ -5,4 +5,7 @@
 mod corpus;
 
 #[cfg(test)]
+mod cat_shape_model;
+
+#[cfg(test)]
 mod flagship_probe;
