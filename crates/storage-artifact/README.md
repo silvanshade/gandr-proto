@@ -61,23 +61,37 @@ Applying that rule found three constants beyond the obvious ones: the **boundary
 `value::ChunkStore` is a sibling trait carrying the same verify-on-both-sides rule over a different body; one object may implement both, which is how a single store serves both planes.
 Confusion between the two bodies is impossible by construction rather than by convention: a chunk image carries `value::VALUE_CHUNK_MAGIC` inside its own hashed preimage, the same domain-separation rule `transport` applies to step identities.
 
-### planned, not yet implemented
+### as built
 
-Every `value` body is currently owed; the interface, its contracts, and its contract suite are in place, and each stub carries an expectation attribute that retires itself when the body lands.
-Two questions are deliberately left as measurements rather than assumptions:
+The plane commits and dereferences.
+`cam_commit` walks a value once, cuts at the constructor exits the committed typed profile chooses, stores each cut chunk and splices a wrapper in its place; `cam_deref` fetches, verifies and decodes, descending through child records and popping exhausted chunks so a value's codec never sees a seam.
 
-- **The child index base.** `value::index_base::ChildIndexBase` is a committed mode with two candidates.
-  Absolute child indices renumber every downstream chunk under an early insertion, collapsing cross-version sharing to the prefix before the edit; chunk-local bases confine the shift to the edited chunk at the cost of a seam wrapper and an addition per dereference.
-  No round trip can tell the two apart, so the choice is settled by `value::index_base::IndexBaseMeasurement` over a real corpus and recorded as an `IndexBaseVerdict` with both measurements beside it.
-- **Locality.** `value::locality` records measured chunk counts per edit and reads them against `expected_chunk_bound`.
-  The bound is an expectation over the rolling hash rather than a worst case, so what confirms or refutes it is a distribution over a corpus of edits, never a single edit.
-  The same run yields the structural-sharing numbers — changed leaves, affected ancestors, hash-equal unchanged subtrees — because they are the same observation counted differently.
+Two decisions in the traversal are worth knowing before reading it.
+
+- **The rolling residue is BLAKE3 over the subtree's own canonical bytes**, truncated to sixty-four bits, rather than a cheaper incremental mix.
+  Cut positions are a protocol constant, and a mixing function would be a second constant needing its own commitment, where the digest family is already bound.
+- **The outermost close never cuts.** The root chunk is framed at the end in any case, so cutting there would produce one chunk holding the whole value and a second holding nothing but a wrapper for it — an extra block, an extra indirection, and a root whose only child is the entire value.
+
+**The child index base does not arise on this plane, and that is the answer rather than an omission.** The question presupposes that a child reference is an index; this token stream has none, because children are emitted nested, in place, between their parent's open and close records.
+There is no table and no numbering, so nothing an early insertion could renumber — which is the property chunk-local bases were proposed to _recover_, obtained by construction.
+`cam_commit` therefore **refuses** `ChildIndexBase::ChunkLocal` rather than ignoring it: accepting it would let a manifest claim a representation that does not exist, and a claim about a representation is what the manifest is for.
+The question survives for the _artifact export format_, whose child references really are absolute table indices; nothing here answers that and nothing here needs it answered.
+
+### still owed
+
+- **The locality distribution**, and with it an evidence-backed proposal for the kappa and cap protocol constants.
+  The bound is an expectation over the rolling hash, so what confirms or refutes it is a measured distribution over a corpus of edits, which is a corpus harness rather than a test.
+  The contract suite carries an ignored test naming what it needs.
+  The values the suite currently runs at were chosen to force cuts in a small fixture and are not a deployment proposal.
 
 ### wrong-kind inhabitants, and why the suite is shaped the way it is
 
 Every position on this plane admits a plausible **wrong inhabitant**: a value of the right Rust type standing where a different thing belongs, which round-trips perfectly and reads as success to anything that only checks for an error.
-The `value` module map names each one with the witness that separates it, and four tests in `tests/value_contract.rs` are written to **fail** against a specific wrong representation rather than to pass against the right one — a shared subtree stored twice, a prolly node image accepted as a chunk, a word read as a tag, and an interior pointer read as a whole value.
+The `value` module map names each one with the witness that separates it, and five tests in `tests/value_contract.rs` are written to **fail** against a specific wrong representation rather than to pass against the right one — a shared subtree stored twice, a prolly node image accepted as a chunk, a word read as a tag, an interior pointer read as a whole value, and a traversal that never cut at all — beside a committed golden digest that a native-endian hash path cannot satisfy.
 A test that only passes when the representation is right is not evidence about the representation.
+
+**And a witness is only worth what its failure mode is worth.** Two of these had to be repaired after being broken deliberately and read: one _passed_ with the mechanism it names disabled, because the case it used also failed a downstream check; one would have _failed_ for a coincidentally correct reason had its fixture been built differently.
+Seeing a witness fire is not enough — it has to fire for its own reason, and only breaking the mechanism and reading the result tells the two apart.
 
 ### theory it relies on
 
