@@ -124,5 +124,6 @@
 extern crate alloc;
 
 pub mod interface;
+pub mod intern;
 pub mod matching;
 pub mod normal_form;
