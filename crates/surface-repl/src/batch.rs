@@ -45,7 +45,11 @@ impl From<BatchStatus> for i32
 ///
 /// # Adequacy
 /// - hypothesis: L3 — a value line prints a value, and a quit line stops.
-/// - witness: `gandr` `cli::tests::piped_value_prints_a_transcript`
+/// - witness: `loop::tests::piped_value_prints_a_transcript`
+/// - hypothesis: L3 — source the validator never called complete is reported at
+///   end of input rather than dropped at a successful exit.
+/// - witness: `loop::tests::an_unparseable_pipe_reports_rather_than_going_quiet`
+/// - witness: `loop::tests::an_incomplete_buffer_is_submitted_at_end_of_input`
 #[inline]
 pub fn run_batch<Input, Output>(
     input: Input,
@@ -77,7 +81,17 @@ where
             },
         }
     }
-    BatchStatus::COMPLETED
+    match session.finish() {
+        | Ok(Some(LoopEvent::Submitted(block))) => {
+            write_block(output, &block);
+            BatchStatus::COMPLETED
+        },
+        | Ok(_) => BatchStatus::COMPLETED,
+        | Err(error) => {
+            write_error(output, &error);
+            BatchStatus::FAILED
+        },
+    }
 }
 
 /// Write one transcript block as plain text.

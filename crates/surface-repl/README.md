@@ -16,6 +16,7 @@ It implements no parser, lowering, typing, or marker of its own; it invokes the 
 - Highlight spans over the echoed source, taken verbatim from the grammar's normative highlighter, so every face over this seam sees one span sequence.
 - A batch face over standard input for non-interactive transcripts.
 - An interactive face on a line editor for a terminal.
+- End-of-input reporting: a buffer the validator never called complete is submitted as it stands when the input ends, so unparseable source leaves diagnostics on the transcript rather than silence.
 
 ## Planned but absent
 

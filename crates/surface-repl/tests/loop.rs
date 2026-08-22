@@ -281,6 +281,70 @@ mod tests
         }
     }
 
+    /// A buffer the validator never called complete is reported at end of
+    /// input rather than dropped.
+    ///
+    /// The batch face used to return its success status with the pending
+    /// buffer still held, so unparseable input produced no output at all and
+    /// exited zero — a failure with no report, wearing the shape of success.
+    #[test]
+    fn an_incomplete_buffer_is_submitted_at_end_of_input()
+    {
+        let mut session = SessionLoop::new();
+        let event = session
+            .offer(SourceSlice::from("("))
+            .expect("completeness must run");
+        assert_eq!(event, LoopEvent::Continue, "an open form is kept");
+        match session.finish().expect("finishing must run") {
+            | Some(LoopEvent::Submitted(block)) => {
+                assert_eq!(block.source, "(", "the pending buffer is what is submitted");
+            },
+            | other => panic!("a pending buffer is submitted at end of input: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn finishing_an_empty_loop_yields_nothing()
+    {
+        let mut session = SessionLoop::new();
+        assert!(
+            session.finish().expect("finishing must run").is_none(),
+            "nothing pending, nothing reported"
+        );
+    }
+
+    #[test]
+    fn finishing_twice_reports_once()
+    {
+        let mut session = SessionLoop::new();
+        drop(session.offer(SourceSlice::from("(")).expect("completeness"));
+        assert!(
+            session.finish().expect("finishing must run").is_some(),
+            "the first close reports the buffer"
+        );
+        assert!(
+            session.finish().expect("finishing must run").is_none(),
+            "the buffer is cleared, so the second close reports nothing"
+        );
+    }
+
+    /// The end-to-end form of the same claim, through the shipping batch
+    /// face: input the validator refuses leaves a report on the transcript
+    /// instead of leaving silence at a successful exit.
+    #[test]
+    fn an_unparseable_pipe_reports_rather_than_going_quiet()
+    {
+        let input = b"@@@ !! nonsense\n";
+        let mut output = Vec::new();
+        let status = run_batch(&input[..], &mut output, RenderStyle::Plain);
+        let text = String::from_utf8(output).expect("transcript is utf-8");
+        assert!(
+            !text.is_empty(),
+            "unparseable input is reported, not swallowed (status {})",
+            i32::from(status)
+        );
+    }
+
     #[test]
     fn unused_completion_status_name_stays_in_scope()
     {

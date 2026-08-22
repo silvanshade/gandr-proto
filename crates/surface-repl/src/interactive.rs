@@ -16,8 +16,9 @@ use crate::session_loop::SessionLoop;
 ///
 /// # Contract
 /// - ensures: each submitted buffer is written to `output` using
-///   `render_style`; `:q` and end-of-file leave with
-///   [`BatchStatus::COMPLETED`].
+///   `render_style`; a buffer still pending at `:q` or end-of-file is submitted
+///   rather than dropped; both leave with [`BatchStatus::COMPLETED`] when
+///   nothing failed.
 /// - provides: the interactive face.
 /// - fails: returns [`BatchStatus::FAILED`] when the editor or the loop fails.
 /// - panics: none.
@@ -43,19 +44,45 @@ where
                     | Ok(LoopEvent::Info(message)) => {
                         drop(writeln!(output, "{message}"));
                     },
-                    | Ok(LoopEvent::Quit) => return BatchStatus::COMPLETED,
+                    | Ok(LoopEvent::Quit) => return finish(output, &mut session),
                     | Err(error) => {
                         drop(writeln!(output, "! {error}"));
                         return BatchStatus::FAILED;
                     },
                 }
             },
-            | Ok(Signal::CtrlD) => return BatchStatus::COMPLETED,
+            | Ok(Signal::CtrlD) => return finish(output, &mut session),
             | Ok(_) => {},
             | Err(error) => {
                 drop(writeln!(output, "! line editor failed: {error}"));
                 return BatchStatus::FAILED;
             },
         }
+    }
+}
+
+/// Close the loop, reporting whatever is still pending.
+///
+/// # Contract
+/// - ensures: a pending buffer is written once; an empty one writes nothing.
+/// - fails: returns [`BatchStatus::FAILED`] after writing the error.
+/// - panics: none.
+fn finish<Output>(
+    output: &mut Output,
+    session: &mut SessionLoop,
+) -> BatchStatus
+where
+    Output: Write,
+{
+    match session.finish() {
+        | Ok(Some(LoopEvent::Submitted(block))) => {
+            crate::batch::write_block(output, &block);
+            BatchStatus::COMPLETED
+        },
+        | Ok(_) => BatchStatus::COMPLETED,
+        | Err(error) => {
+            drop(writeln!(output, "! {error}"));
+            BatchStatus::FAILED
+        },
     }
 }

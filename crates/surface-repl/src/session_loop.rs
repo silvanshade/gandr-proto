@@ -136,6 +136,44 @@ impl SessionLoop
         self.pending.clear();
         Ok(LoopEvent::Submitted(block))
     }
+
+    /// Submit whatever is still pending, at end of input.
+    ///
+    /// A buffer the validator never called complete is still the user's
+    /// submission, and dropping it is how an unparseable line becomes silence
+    /// at a successful exit. Submitting it as-is puts the engine's
+    /// diagnostics on the transcript instead.
+    ///
+    /// # Contract
+    /// - ensures: a non-empty pending buffer is submitted exactly once and then
+    ///   cleared; an empty buffer yields `None` and a second call after the
+    ///   first yields `None`.
+    /// - provides: the end-of-input seam both faces close on.
+    /// - fails: returns [`LoopError`] when the session refuses the source at
+    ///   the infrastructure boundary.
+    /// - panics: none.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LoopError`] when the session submit fails.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — an incomplete buffer at end of input is reported
+    ///   rather than dropped, and an empty one produces nothing.
+    /// - witness: `loop::tests::an_incomplete_buffer_is_submitted_at_end_of_input`
+    /// - witness: `loop::tests::finishing_an_empty_loop_yields_nothing`
+    #[inline]
+    pub fn finish(&mut self) -> Result<Option<LoopEvent>, LoopError>
+    {
+        if self.pending.is_empty() {
+            return Ok(None);
+        }
+        let source = SourceSlice::from(self.pending.as_str());
+        let submission = self.session.submit(self.pending.as_str())?;
+        let block = encode_submission(source, &submission, self.render_style);
+        self.pending.clear();
+        Ok(Some(LoopEvent::Submitted(block)))
+    }
 }
 
 impl Default for SessionLoop
