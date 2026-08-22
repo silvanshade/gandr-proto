@@ -80,7 +80,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xf459_d9c6_2d80_e0bd);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xbe77_9eb7_c677_75d6);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -181,7 +181,7 @@ mod contracts
     /// `@[name : Type]` occurrence contributes its brackets, comma, colon, and
     /// three name-class alternatives, with the type hole carried by the shared
     /// type form.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2303);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2359);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -200,13 +200,13 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 175),
-        (")", 178),
+        ("(", 183),
+        (")", 186),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 92),
+        (",", 100),
         ("-", 2),
         ("-->", 23),
         ("->", 15),
@@ -214,7 +214,7 @@ mod contracts
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 219),
+        (":", 235),
         (":>", 2),
         (";", 224),
         ("<", 4),
@@ -345,7 +345,7 @@ mod contracts
         ("true", 3),
         ("type", 9),
         ("type_identifier", 46),
-        ("type_variable", 37),
+        ("type_variable", 53),
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),

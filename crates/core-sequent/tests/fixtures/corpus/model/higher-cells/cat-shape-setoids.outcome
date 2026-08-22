@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/higher-cells/cat-shape-setoids.gandr
+; source-b3sum: b1ea3cd65c9ed580c35e1d8756dbadbe8de1f6a941014ce2fcaed96abfee7701
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Record([("comp", Thunk(Omega, Abs("t", None, Abs("u", None, Abs("v", None, Abs("f", None, Abs("g", None, Ret(Thunk(Omega, App(App(App(App(App(Force(Thunk(Omega, Abs("t", None, Abs("u", None, Abs("v", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y"))))))))))), Var("t")), Var("u")), Var("v")), Var("f")), Var("g"))))))))))), ("compose", Thunk(Omega, Abs("t", None, Abs("u", None, Abs("v", None, Abs("f", None, Abs("g", None, Abs("x", None, Bind(App(Force(Var("f")), Var("x")), "y", App(Force(Var("g")), Var("y"))))))))))), ("id", Thunk(Omega, Abs("t", None, Ret(Thunk(Omega, App(Force(Thunk(Omega, Abs("t", None, Abs("x", None, Ret(Var("x")))))), Var("t"))))))), ("ident", Thunk(Omega, Abs("t", None, Abs("x", None, Ret(Var("x")))))), ("unitL", Thunk(Omega, Abs("p", None, Abs("q", None, Abs("f", None, Ret(Here(Var("f")))))))), ("unitR", Thunk(Omega, Abs("p", None, Abs("q", None, Abs("f", None, Ret(Here(Var("f"))))))))]))
