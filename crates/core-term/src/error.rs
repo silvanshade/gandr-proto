@@ -309,6 +309,25 @@ pub enum TypeError
         /// The right-hand side of the failed `⊑`.
         upper: Grade,
     },
+
+    /// A **declared type** is not well formed: the type-formation judgement
+    /// refuses it, and the refusal names a fact about the source.
+    ///
+    /// This is the type's own failure, raised before the term is checked
+    /// against it, and it is deliberately not a [`Self::TypeMismatch`]. The
+    /// distinction is one the engine got backwards until this variant existed:
+    /// a signature naming an undeclared type used to be accepted as a rigid
+    /// atom, and the body was then blamed for not inhabiting it — telling the
+    /// author their `1` is not a `NoSuchType`, which sends them to edit the
+    /// half that is correct.
+    ///
+    /// Only a refusal that records a fact **about the source** arrives here.
+    /// A former merely outside the fragment formation admits is a capability
+    /// boundary, not the author's mistake, and never becomes a typing error;
+    /// `gandr_core_checker::formation::FormationVerdict` is where that sorting
+    /// happens.
+    #[error("declared type is not well formed: {0}")]
+    IllFormedType(Box<FormationError>),
 }
 
 /// A formation constructor that this fragment does not admit.

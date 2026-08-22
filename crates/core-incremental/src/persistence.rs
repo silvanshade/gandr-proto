@@ -86,6 +86,17 @@ pub enum UnsupportedPersistence
     /// What is missing is the encoding, so classifying either as process-local
     /// would name the wrong obstacle.
     PackageFormer,
+    /// A type-formation refusal has no byte representation in this codec.
+    ///
+    /// The refusal itself is ordinary structural data; what is missing is the
+    /// encoding, so this is the same class as [`Self::PackageFormer`] rather
+    /// than a process-local form.
+    ///
+    /// Declining here costs nothing a caller wanted. An item whose declared
+    /// type is malformed is a refused item, so there is no validated typing to
+    /// cache and adopt on a later resume -- the checkpoint this would encode
+    /// is one nothing would ever be entitled to reuse.
+    FormationRefusal,
 }
 
 /// A persistence failure that leaves the caller with no partially trusted

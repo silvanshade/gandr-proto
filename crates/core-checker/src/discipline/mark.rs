@@ -6300,5 +6300,19 @@ fn mark_of_error(error: TypeError) -> Mark
             required: lower,
             available: upper,
         },
+        // Total mode has no mark carrying a formation refusal, so this maps to
+        // the stuck floor and the refusal's own name does not survive the
+        // conversion. The narrowing is stated here rather than left for a
+        // reader to discover: a caller that needs the named variant reads it
+        // off the `TypeError` before marking, never off the `Mark`.
+        //
+        // No claim is made that this arm is unreachable. Formation currently
+        // runs on the item boundary rather than inside the marking traversal,
+        // so nothing routes here today, but that is a fact about where the
+        // consumer sits and it will change when marking gains a formation
+        // pass -- at which point this arm becomes the thing to widen.
+        | TypeError::IllFormedType(_) => Mark::Stuck {
+            hint: "the declared type is not well formed",
+        },
     }
 }

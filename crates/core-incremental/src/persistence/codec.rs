@@ -384,7 +384,11 @@ impl<'value> Encoder<'value>
             },
             | TypeError::ShapeMismatch { ref actual, .. } => self.work.push(Work::Ty(actual)),
             | TypeError::StuckExpr { ref expr, .. } => self.work.push(Work::Term(expr)),
-            | TypeError::UnboundVariable { .. } | TypeError::GradeError { .. } => {},
+            // The refusal carries no `Ty` or `Term` payload to schedule; the
+            // emit pass below declines it outright.
+            | TypeError::UnboundVariable { .. }
+            | TypeError::GradeError { .. }
+            | TypeError::IllFormedType(_) => {},
         }
     }
 
@@ -831,6 +835,9 @@ impl<'value> Encoder<'value>
                 self.byte(ERROR_GRADE);
                 self.grade(lower);
                 self.grade(upper);
+            },
+            | TypeError::IllFormedType(_) => {
+                return Err(unsupported(UnsupportedPersistence::FormationRefusal));
             },
         }
         Ok(())

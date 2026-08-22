@@ -1324,6 +1324,19 @@ fn detail_of(error: &TypeError) -> DiagnosticDetail
             lower: format!("{lower:?}"),
             upper: format!("{upper:?}"),
         },
+        // PLACEHOLDER. The formation refusal is threaded through the catch-all
+        // this variant exists for, so nothing is lost and nothing is
+        // misattributed -- but this is NOT the diagnostic the arc owes.
+        //
+        // What it owes is a structured, source-ranged detail naming the
+        // undeclared type AT THE SIGNATURE that mentions it. The defect being
+        // repaired is precisely a diagnostic that is confidently wrong about
+        // which of two things is broken: today `def k : NoSuchType` with
+        // `def k = 1` refuses with a TypeMismatch blaming the BODY, telling the
+        // author their `1` is not a `NoSuchType`. Routing this to `Other`
+        // stops the engine asserting the wrong half; it does not yet point at
+        // the right one. Owned by `gandr-h19l`.
+        | TypeError::IllFormedType(_) => DiagnosticDetail::Other,
     }
 }
 
@@ -1394,6 +1407,13 @@ pub fn message_of(error: &TypeError) -> DiagnosticMessage
         },
         | TypeError::UnboundVariable { ref name } => {
             DiagnosticMessage::UnboundVariable { name: name.clone() }
+        },
+        // PLACEHOLDER, paired with the `DiagnosticDetail::Other` arm above; see
+        // the comment there for what this owes. The refusal's own Display text
+        // survives here, so the message names the offending type even while
+        // the structured detail does not.
+        | TypeError::IllFormedType(ref refusal) => DiagnosticMessage::Other {
+            message: refusal.to_string(),
         },
         | TypeError::GradeError { lower, upper } => DiagnosticMessage::GradeOrder {
             lower: format!("{lower:?}"),
