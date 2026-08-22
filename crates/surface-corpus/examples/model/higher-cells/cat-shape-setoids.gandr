@@ -19,13 +19,45 @@
 // because that signature cannot be written: its operation clause binds every
 // free sort variable as a dependent parameter, and the surface type grammar has
 // no dependent function type (gandr-3jus). So this checks the instance, and not
-// the instance against the stated signature. Associativity is absent for a
-// second reason. Bind associativity now reaches the normal form, and the law
-// converges when its composites are written pointwise over `compose` -- but
-// that spelling names a private helper, and a law about a helper is a different
-// theorem under the same name. In the model-faithful spelling the composites
-// nest one operation's application inside another's argument at thunk type, one
-// level deeper than the embedding resolution reaches (gandr-rson).
+// the instance against the stated signature. That is the only thing missing.
+//
+// **All three laws are present, associativity included**, and the sentence that
+// used to stand here said otherwise for a reason that was never true. It blamed
+// DEPTH -- that the model-faithful composites nest one operation's application
+// inside another's argument, one level deeper than the embedding resolution
+// reaches. Depth is not the obstacle and never was: the unit laws below have
+// elaborated to exactly that nesting, at thunk type, green, since they landed.
+// The claim was written from a separating pair whose two sides differed in more
+// than one respect, and the one it named was not the one doing the separating.
+//
+// The other half of that sentence was right and still is: a law whose ENDPOINTS
+// name a private helper is a different theorem under the same name. What that
+// never ruled out is a helper in the PROOF, which is an ordinary lemma. The
+// theorem is what the type states, and both endpoints below state it over the
+// module's own `comp`.
+//
+// **Associativity states its equation over the module's own `comp`.** The field
+// type is written out by hand rather than inferred from the proof term:
+//
+//   assoc(p, q, r, s, f, g, h)
+//     : Path(U[ω] (p -> F s),
+//            comp(p, r, s, comp(p, q, r, f, g), h),
+//            comp(p, q, s, f, comp(q, r, s, g, h)))
+//
+// Both endpoints are applications of `comp` with one nested inside the other's
+// argument -- an embedding two levels deep. The witness routes through the
+// private helper `compose`, which is an ordinary proof using an ordinary lemma:
+// the theorem is what the type states, and no helper appears in the endpoints.
+//
+// **What the associativity witness is checked against, and what could not be
+// measured.** Replacing the proof term with a reflexive `here(f)` refuses, and
+// the refusal names the `assoc` endpoints and no other member's -- exactly one
+// type-mismatch diagnostic -- so the endpoints are compared rather than
+// accepted. The two-sided form is **not available here and that was measured,
+// not skipped**: a member that fails to check takes the whole module's
+// elaboration with it, so no run can show `unitL` green while `assoc` is red.
+// Ablating the sibling-reduction rule instead turns the module red at every
+// member, which proves the law depends on something and nothing narrower.
 //
 // The type variables are named `t u v` and `p q` rather than `a b c`. Type
 // substitution renames a capturing type binder apart (gandr-ijdw), so the
@@ -58,6 +90,10 @@ module SetoidCat {
     ret here(f)
   }
 
+  def assoc(p : Type, q : Type, r : Type, s : Type, f : U[ω] (p -> F q), g : U[ω] (q -> F r), h : U[ω] (r -> F s)) -> F Path((U[ω] (p -> F s)), comp(p, r, s, comp(p, q, r, f, g), h), comp(p, q, s, f, comp(q, r, s, g, h))) {
+    ret here(thunk { compose(p, q, s, f, thunk { compose(q, r, s, g, h) }) })
+  }
+
 }
 
 // The harness checks. The two law fields are present as MEMBERS, which is the
@@ -67,9 +103,11 @@ module SetoidCat {
 //@ expect: clean
 //@ expect-member: SetoidCat.id
 //@ expect-member: SetoidCat.comp
+//@ expect-member: SetoidCat.assoc
 //@ expect-member: SetoidCat.unitL
 //@ expect-member: SetoidCat.unitR
 //@ expect-member-type-without-unknown: SetoidCat.id
 //@ expect-member-type-without-unknown: SetoidCat.comp
+//@ expect-member-type-without-unknown: SetoidCat.assoc
 //@ expect-member-type-without-unknown: SetoidCat.unitL
 //@ expect-member-type-without-unknown: SetoidCat.unitR
