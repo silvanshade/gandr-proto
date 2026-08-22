@@ -52,6 +52,16 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+/// The text of one audited source, embedded at compile time.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug)]
+struct SourceText<'a>(&'a str);
+
+/// Which occurrence of one exact text within a file, one-based.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct Ordinal(usize);
+
 /// What a site does with the gradual unknown.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum SiteKind
@@ -104,7 +114,7 @@ struct Site
     /// The ordinal survives an unrelated insertion and moves only when another
     /// occurrence of the same text appears, which is exactly the edit whose
     /// classification nobody can infer.
-    ordinal: usize,
+    ordinal: Ordinal,
     /// The exact source line, trimmed, as the scanner reports it.
     line: &'static str,
     /// What the site does.
@@ -137,14 +147,14 @@ const SITES: &[Site] = &[
     // ---- lower.rs ----
     Site {
         file: "lower.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| node_kinds::HOLE => Ok(ValueType::Unknown),",
         kind: SiteKind::AuthorWritten,
         because: "a `?` the author typed is a legitimate axiom, not a recovery",
     },
     Site {
         file: "lower.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| Ty::Value(ValueType::Unknown) if bool::from(self.total()) => Ok(ty),",
         kind: SiteKind::Reads,
         because: "matches an existing unknown and returns the type unchanged",
@@ -152,14 +162,14 @@ const SITES: &[Site] = &[
     // ---- lower/types.rs ----
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| node_kinds::NAME_UNKNOWN_TYPE => Ok(ValueType::Unknown),",
         kind: SiteKind::AuthorWritten,
         because: "the `Unknown` type keyword decoding to the gradual top",
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "return Ok(Ty::Value(ValueType::Unknown));",
         kind: SiteKind::Degradation,
         because: "the blanket total-mode arm of `lower_ty_manifest`: every named \
@@ -167,14 +177,14 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "results.push(Ok(Ty::Value(ValueType::Unknown)));",
         kind: SiteKind::AuthorWritten,
         because: "the `?` atom node lowering to the sort-free value default",
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: ".map(|_| Ty::Value(ValueType::Unknown)),",
         kind: SiteKind::Reads,
         because: "reached only where the field is absent, so the `map` never runs \
@@ -182,21 +192,21 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| ValueType::Unknown if matches!(strictness, Strictness::Total) => {",
         kind: SiteKind::Reads,
         because: "the guard on the package-payload arm below",
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "Ok(Ty::Value(ValueType::Unknown))",
         kind: SiteKind::Propagation,
         because: "a package payload that is already unknown stays unknown",
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 2,
+        ordinal: Ordinal(2),
         line: "Ok(Ty::Value(ValueType::Unknown))",
         kind: SiteKind::Degradation,
         because: "the package-type assembly discards its error under totality; \
@@ -205,7 +215,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 3,
+        ordinal: Ordinal(3),
         line: "Ok(Ty::Value(ValueType::Unknown))",
         kind: SiteKind::Degradation,
         because: "the member-record assembly discards its error under totality, \
@@ -213,7 +223,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| Ok(_) | Err(_) if total => Ok(ValueType::Unknown),",
         kind: SiteKind::Degradation,
         because: "`value_result` swallows every error including the `TypeSortMismatch` \
@@ -221,14 +231,14 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| Ok(_) | Err(_) if total => Ok(CompType::Unknown),",
         kind: SiteKind::Degradation,
         because: "`comp_result`, the computation-sorted sibling of the line above",
     },
     Site {
         file: "lower/types.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| Ok(Ty::Value(ValueType::Unknown)) if is_unknown_atom(node).0 => Ok(CompType::Unknown),",
         kind: SiteKind::Propagation,
         because: "an author-written `?` re-read at the computation sort",
@@ -236,7 +246,7 @@ const SITES: &[Site] = &[
     // ---- lower/data.rs ----
     Site {
         file: "lower/data.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "alloc::vec![ValueType::Unknown; usize::from(arity)]",
         kind: SiteKind::Degradation,
         because: "no expected arguments were available, so every field type of the \
@@ -244,7 +254,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/data.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| _ => ValueType::Unknown,",
         kind: SiteKind::Degradation,
         because: "a wildcard over description codes: any code that is not a field \
@@ -252,7 +262,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/data.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: ".unwrap_or(ValueType::Unknown),",
         kind: SiteKind::Degradation,
         because: "a type parameter that resolves to no argument position degrades \
@@ -260,7 +270,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/data.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| None => ValueType::Unknown,",
         kind: SiteKind::Degradation,
         because: "an applied non-declared former in a field is documented as `out of \
@@ -270,7 +280,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/data.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "| PrimTy::Unknown => ValueType::Unknown,",
         kind: SiteKind::AuthorWritten,
         because: "the decoded `?` primitive mapping to the gradual top",
@@ -278,7 +288,7 @@ const SITES: &[Site] = &[
     // ---- lower/matrix.rs ----
     Site {
         file: "lower/matrix.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: "ty = CompType::arrow(ValueType::Unknown, ty);",
         kind: SiteKind::Degradation,
         because: "each case-arm binder's domain is built as the gradual top rather \
@@ -286,7 +296,7 @@ const SITES: &[Site] = &[
     },
     Site {
         file: "lower/matrix.rs",
-        ordinal: 1,
+        ordinal: Ordinal(1),
         line: ".unwrap_or(CompType::Unknown);",
         kind: SiteKind::Absence,
         because: "the eliminator's `-> T` answer annotation is optional, so its \
@@ -298,10 +308,11 @@ const SITES: &[Site] = &[
 ///
 /// A doc comment and a line comment both begin `//` once trimmed, so one test
 /// excludes prose without excluding code that merely trails a comment.
-fn mentions(text: &str) -> Vec<(usize, String)>
+fn mentions(text: SourceText<'_>) -> Vec<(Ordinal, String)>
 {
     let mut seen: alloc::collections::BTreeMap<String, usize> = alloc::collections::BTreeMap::new();
-    text.lines()
+    text.0
+        .lines()
         .map(str::trim)
         .filter(|line| !line.starts_with("//"))
         .filter(|line| line.contains("ValueType::Unknown") || line.contains("CompType::Unknown"))
@@ -309,7 +320,7 @@ fn mentions(text: &str) -> Vec<(usize, String)>
             let text = String::from(line);
             let ordinal = seen.entry(text.clone()).or_insert(0);
             *ordinal = ordinal.saturating_add(1);
-            (*ordinal, text)
+            (Ordinal(*ordinal), text)
         })
         .collect()
 }
@@ -333,7 +344,7 @@ mod tests
                 !text.is_empty(),
                 "{file} was included as empty text, so any sweep over it is vacuous"
             );
-            let found = mentions(text);
+            let found = mentions(SourceText(text));
             assert!(
                 !found.is_empty(),
                 "the scanner found no gradual-unknown line in {file}, which is \
@@ -346,9 +357,11 @@ mod tests
             .find(|&&(file, _)| file == "lower/types.rs")
             .ok_or_else(|| String::from("lower/types.rs must be among the audited sources"))?;
         assert!(
-            mentions(types.1).iter().any(|&(ordinal, ref line)| {
-                ordinal == 1 && line == "return Ok(Ty::Value(ValueType::Unknown));"
-            }),
+            mentions(SourceText(types.1))
+                .iter()
+                .any(|&(ordinal, ref line)| {
+                    ordinal == Ordinal(1) && line == "return Ok(Ty::Value(ValueType::Unknown));"
+                }),
             "the scanner must find the blanket total-mode arm of `lower_ty_manifest`, \
              the site this whole audit exists for; not finding it means the scanner \
              is blind rather than that the tree is clean"
@@ -367,14 +380,15 @@ mod tests
     fn every_gradual_unknown_site_is_enumerated_and_classified()
     {
         for &(file, text) in SOURCES {
-            let found: BTreeSet<(usize, String)> = mentions(text).into_iter().collect();
-            let pinned: BTreeSet<(usize, String)> = SITES
+            let found: BTreeSet<(Ordinal, String)> =
+                mentions(SourceText(text)).into_iter().collect();
+            let pinned: BTreeSet<(Ordinal, String)> = SITES
                 .iter()
                 .filter(|site| site.file == file)
                 .map(|site| (site.ordinal, String::from(site.line)))
                 .collect();
 
-            let unpinned: Vec<&(usize, String)> = found.difference(&pinned).collect();
+            let unpinned: Vec<&(Ordinal, String)> = found.difference(&pinned).collect();
             assert!(
                 unpinned.is_empty(),
                 "{file} constructs or reads the gradual unknown at a site this audit \
@@ -383,7 +397,7 @@ mod tests
                  boundary only."
             );
 
-            let stale: Vec<&(usize, String)> = pinned.difference(&found).collect();
+            let stale: Vec<&(Ordinal, String)> = pinned.difference(&found).collect();
             assert!(
                 stale.is_empty(),
                 "{file} no longer contains sites this audit pins: {stale:?}. \
@@ -406,7 +420,7 @@ mod tests
             .collect();
         let named: Vec<String> = degradations
             .iter()
-            .map(|site| format!("{} #{} {}", site.file, site.ordinal, site.line))
+            .map(|site| format!("{} #{} {}", site.file, site.ordinal.0, site.line))
             .collect();
         assert_eq!(
             degradations.len(),
@@ -432,7 +446,7 @@ mod tests
             .collect();
         let named: Vec<String> = boundary
             .iter()
-            .map(|site| format!("{} #{} {}", site.file, site.ordinal, site.line))
+            .map(|site| format!("{} #{} {}", site.file, site.ordinal.0, site.line))
             .collect();
         assert_eq!(
             boundary.len(),
