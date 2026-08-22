@@ -24,6 +24,7 @@ mod tests
     use gandr_storage_artifact::value::ContentPtr;
     use gandr_storage_artifact::value::InMemoryChunkStore;
     use gandr_storage_artifact::value::StoredChunkRef;
+    use gandr_storage_artifact::value::TokenOffset;
     use gandr_storage_artifact::value::TokenReader;
     use gandr_storage_artifact::value::TokenSink;
     use gandr_storage_artifact::value::cam_commit;
@@ -241,6 +242,32 @@ mod tests
             };
         }
         return rebuilt;
+    }
+
+    /// The record index of the first constructor after the outermost one.
+    ///
+    /// The offset a hand-built pointer needs in order to exercise the seek
+    /// path at all: the traversal itself only ever writes zero.
+    fn first_inner_open(body: ChunkBody<'_>) -> TokenOffset
+    {
+        let body: &[u8] = body.into();
+        let mut cursor = 0_usize;
+        let mut index = 0_u32;
+        while let Some(&kind) = body.get(cursor) {
+            if kind == 0x01_u8 && index > 0_u32 {
+                return TokenOffset::from(index);
+            }
+            let advance = match kind {
+                | 0x01_u8 => 2_usize,
+                | 0x02_u8 => 9_usize,
+                | 0x05_u8 => 1_usize,
+                | 0x04_u8 => 37_usize,
+                | _ => return TokenOffset::from(index),
+            };
+            cursor = cursor.saturating_add(advance);
+            index = index.saturating_add(1_u32);
+        }
+        return TokenOffset::from(index);
     }
 
     /// The first child record in a chunk body, as a pointer.
@@ -489,6 +516,40 @@ mod tests
         assert!(
             leaf_count(&subtree) < leaf_count(&value),
             "the subtree is strictly smaller than the value that contains it"
+        );
+
+        // A NON-ZERO offset, built by hand, because the traversal never emits
+        // one: every wrapper it writes addresses its chunk's own root. Without
+        // this the witness separates the CASE and not the OFFSET ARITHMETIC --
+        // it stays green with the seek ablated, since every offset it sees is
+        // zero.
+        //
+        // The offset has to point inside a CUT chunk rather than inside the
+        // root: the root body's records after its opening constructor are all
+        // wrappers, so it holds no interior constructor to address.
+        let inner_chunk = store
+            .load(interior.digest())
+            .expect("the cut chunk is stored");
+        let inner_body = chunk_body(inner_chunk).expect("the cut chunk verifies");
+        let offset = first_inner_open(inner_body);
+        assert_ne!(
+            u32::from(offset),
+            0_u32,
+            "the cut chunk holds an interior constructor to address"
+        );
+        let inner = ContentPtr::new(interior.digest(), offset);
+        let addressed: Fixture = cam_deref(&store, inner).expect("the offset pointer derefs");
+
+        // The assertion that makes this separate the OFFSET rather than the
+        // case: reading the same chunk at offset zero and at this offset must
+        // give DIFFERENT values. Comparing either against the whole value
+        // would pass with the seek ablated, because both are proper subtrees.
+        let from_start: Fixture =
+            cam_deref(&store, ContentPtr::new(interior.digest(), 0_u32.into()))
+                .expect("the same chunk derefs from its start");
+        assert_ne!(
+            addressed, from_start,
+            "a non-zero offset addresses into the chunk rather than restarting it"
         );
     }
 
