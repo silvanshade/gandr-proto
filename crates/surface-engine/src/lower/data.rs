@@ -710,10 +710,10 @@ impl Lowerer<'_>
     /// - ensures: a name `manifest` answers expands to that answer at any
     ///   depth; every other name lowers as [`Self::lower_type_node`] lowers it.
     /// - panics: none.
-    pub(super) fn lower_type_node_with_manifest(
+    pub(super) fn lower_type_node_with_manifest<'tree>(
         &self,
-        ty_node: SynNode<'_>,
-        manifest: ty_lower::ManifestTypes<'_>,
+        ty_node: SynNode<'tree>,
+        manifest: ty_lower::ManifestTypes<'_, 'tree>,
     ) -> LowerResult<Ty>
     {
         let resolve = self.data_resolver();

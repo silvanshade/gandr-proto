@@ -145,7 +145,7 @@
 //! decision to revisit casually.
 
 #[cfg(test)]
-mod tests
+pub mod tests
 {
     /// `Model(CatShape)`, as the module signature grammar spells it.
     ///

@@ -1544,11 +1544,24 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// sealing, while a kinded one states its arity and its result
         /// classifier, so the two decline and elaborate for different reasons
         /// and must not be collapsed.
-        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_kinded_type_component_declares_an_abstract_member()
         {
-            todo!("gandr-wvd.6.2")
+            let source = "module M : #{ type Ob : Type, probe : Ob } { def probe = 1; }";
+            let lowered = lower_source(source.into()).expect("the kinded component elaborates");
+            let module = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("M"))
+                .expect("the module lowers");
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([(
+                    "probe".to_owned(),
+                    ValueType::atom("Ob"),
+                )]))),
+                module.ascription,
+                "the value component is typed at the abstract member, not at what its body infers"
+            );
         }
 
         /// A kinded component whose kind is an arrow spine declares a
@@ -1560,11 +1573,34 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// stands on. Reading the spine as a single function type instead would
         /// bind `Hom` to a type its source does not state, which is the one
         /// thing degradation may never do.
-        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_kinded_type_component_spine_declares_its_arity()
         {
-            todo!("gandr-wvd.6.2")
+            // The indexed sort. Its arity comes from the arrow spine, and the
+            // spine is walked as syntax: lowering it would put the tail in
+            // computation position, where the value-sorted `Type` coerces to
+            // the gradual unknown, and accepting that would read a degradation
+            // as the claim it destroyed.
+            let source = "module M : #{ type Ob : Type, type Hom : Ob -> Ob -> Type, probe : \
+                          Integer } { def probe = 1; }";
+            let lowered = lower_source(source.into()).expect("the indexed sort elaborates");
+            assert!(
+                lowered
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("M")),
+                "the module carrying an arity-two kinded component lowers"
+            );
+
+            // A spine that does not end in a universe classifies nothing, so it
+            // is refused rather than truncated to the arity it does have.
+            let refused = "module M : #{ type Bad : Integer, probe : Integer } { def probe = 1; }";
+            let error = lower_source(refused.into())
+                .expect_err("a kind that does not end in a universe is refused");
+            assert!(
+                matches!(error, LowerError::KindedTypeComponent { ref name, .. } if name == "Bad"),
+                "the refusal names the component: {error:?}"
+            );
         }
 
         /// A parameterized manifest component `type Hom(a : Ob, b : Ob) = τ`
@@ -1608,11 +1644,57 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// already has and it is load-bearing for the same reason: a signature
         /// component that an enclosing declaration could capture is not a
         /// component of that signature.
-        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_manifest_family_occurrence_expands_before_the_ambient_resolver()
         {
-            todo!("gandr-wvd.6.2")
+            // Two occurrences at different arguments, so an expansion that
+            // ignored its arguments would be visible as two equal field types.
+            let source = "module N : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), fwd \
+                          : Hom(Integer, String), rev : Hom(String, Integer) } { def fwd(n : \
+                          Integer) -> F String { ret \"x\" } def rev(s : String) -> F Integer { \
+                          ret 0 } }";
+            let lowered = lower_source(source.into()).expect("the family expands");
+            let module = lowered
+                .items
+                .iter()
+                .find(|item| item.name.as_deref() == Some("N"))
+                .expect("the module lowers");
+            let forward = ValueType::thunk(
+                Grade::OMEGA,
+                CompType::arrow(
+                    ValueType::atom("Integer"),
+                    CompType::returner(ValueType::atom("String")),
+                ),
+            );
+            let backward = ValueType::thunk(
+                Grade::OMEGA,
+                CompType::arrow(
+                    ValueType::atom("String"),
+                    CompType::returner(ValueType::atom("Integer")),
+                ),
+            );
+            assert_eq!(
+                Some(Ty::Value(ValueType::record([
+                    ("fwd".to_owned(), forward),
+                    ("rev".to_owned(), backward),
+                ]))),
+                module.ascription,
+                "each occurrence expands at its own arguments"
+            );
+
+            // The guard the accessor exists for: a nullary component whose body
+            // opens with a parenthesized type must not have that group read as
+            // a parameter list.
+            let nullary = "module N : #{ type T = U[\u{3c9}] (Integer -> F Integer), v : T } { def \
+                           v(n : Integer) -> F Integer { ret n } }";
+            let lowered = lower_source(nullary.into()).expect("the nullary component lowers");
+            assert!(
+                lowered
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("N")),
+                "a body opening with a paren is not a binder list"
+            );
         }
 
         /// A manifest family named with no arguments, and a nullary manifest
@@ -1622,11 +1704,36 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// would bind the signature's own component name to an ambient atom, so
         /// the signature would elaborate to a type it does not state —
         /// silently, and with no unknown to find afterwards.
-        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_type_component_arity_mismatch_is_refused_by_name()
         {
-            todo!("gandr-wvd.6.2")
+            // Under-applied: a family named with no arguments. Falling through
+            // to the ambient resolver would bind the signature's own component
+            // name to an atom, silently and with no gradual unknown to find.
+            let under = "module N : #{ type Hom(a : Type, b : Type) = U[\u{3c9}] (a -> F b), bad : \
+                         Hom } { def bad = 1; }";
+            let error = lower_source(under.into()).expect_err("an under-applied family is refused");
+            assert!(
+                matches!(error, LowerError::ManifestFamilyArity {
+                    expected: 2,
+                    found: 0,
+                    ..
+                }),
+                "the refusal names both arities: {error:?}"
+            );
+
+            // Over-applied: a nullary component given arguments.
+            let over = "module N : #{ type T = Integer, bad : T(Integer) } { def bad = 1; }";
+            let error =
+                lower_source(over.into()).expect_err("an over-applied component is refused");
+            assert!(
+                matches!(error, LowerError::ManifestFamilyArity {
+                    expected: 0,
+                    found: 1,
+                    ..
+                }),
+                "the refusal names both arities: {error:?}"
+            );
         }
 
         /// The flagship shape, end to end at the lowering layer: a signature

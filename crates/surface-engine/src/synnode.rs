@@ -916,6 +916,19 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::CALL_EXPRESSION, node_kinds::FIELD_ARGUMENTS) => {
                 self.paren_group(KIND_ARGUMENTS)
             },
+            // A type component's binder list, present only when a `(` follows
+            // the component's name **immediately**. The guard is the whole
+            // accessor: a nullary manifest component's body may open with a
+            // parenthesized type, and taking the first paren group in the run
+            // would read `type Hom = U[ω] (a -> F a)` as a component binding a
+            // parameter called `a`.
+            | (node_kinds::TYPE_COMPONENT, node_kinds::FIELD_PARAMETERS) => {
+                let sig = self.sig();
+                let opens = sig
+                    .get(2)
+                    .is_some_and(|&node| self.tree.tile_label(node) == Some(label::LPAREN));
+                opens.then(|| self.paren_group(KIND_PARAMETERS)).flatten()
+            },
             | (
                 node_kinds::DEF_FUNCTION
                 | node_kinds::DEF_REC
@@ -956,8 +969,23 @@ impl<'tree> SynNode<'tree>
             // statement's value is. Its *absence* is the bare `type T` form,
             // whose sealed meaning is not elaborated yet, so the lowerer
             // declines it by name rather than reading it as some nearby form.
-            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE)
-            | (node_kinds::TYPE_COMPONENT, node_kinds::FIELD_TYPE) => self.after(label::EQUALS),
+            | (node_kinds::UNPACK_STATEMENT, node_kinds::FIELD_SOURCE) => {
+                self.after(label::EQUALS)
+            },
+            // A type component carries its type in the same field whichever
+            // separator it wrote, and the separator is what tells the two
+            // forms apart: `=` for the manifest definition, `:` for the kind.
+            // The question is asked at depth zero, because a binder list writes
+            // its own `:` one bracket in and reading that one would take a
+            // parameter's annotation for the component's kind.
+            | (node_kinds::TYPE_COMPONENT, node_kinds::FIELD_TYPE) => {
+                if bool::from(self.has_tile_at_depth_zero(label::EQUALS)) {
+                    self.after(label::EQUALS)
+                }
+                else {
+                    self.after(label::COLON)
+                }
+            },
             | (node_kinds::BIND_STATEMENT, node_kinds::FIELD_SOURCE) => {
                 self.after(label::LEFT_ARROW)
             },

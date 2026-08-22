@@ -104,14 +104,15 @@ pub fn lower_value_ty(
 /// what makes the expansion **manifest rather than ambient**: an enclosing
 /// datatype also called `T` cannot capture the component, because the name
 /// never reaches the ambient resolver at all.
-pub type ManifestTypes<'manifest> = &'manifest dyn Fn(TypeName<'_>) -> Option<ManifestAnswer>;
+pub type ManifestTypes<'manifest, 'tree> =
+    &'manifest dyn Fn(TypeName<'_>) -> Option<ManifestAnswer<'tree>>;
 
 /// The manifest environment everywhere outside a module signature: no
 /// component is in scope, so every type name resolves ambiently as it always
 /// did.
 #[inline]
 #[must_use]
-pub fn no_manifest_types(_name: TypeName<'_>) -> Option<ManifestAnswer>
+pub fn no_manifest_types<'tree>(_name: TypeName<'_>) -> Option<ManifestAnswer<'tree>>
 {
     None
 }
@@ -141,13 +142,26 @@ pub struct TypeParameter
 /// application — is what makes the expansion independent of where it is
 /// applied, which is the same property the nullary manifest component already
 /// has.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ManifestFamily
+#[derive(Clone)]
+pub struct ManifestFamily<'tree>
 {
     /// The bound parameters, in declaration order.
     pub params: Vec<TypeParameter>,
-    /// The body, elaborated with the parameters standing as atoms.
-    pub body: ValueType,
+    /// The component's body, unelaborated.
+    ///
+    /// Held as the written node rather than as an elaborated type with the
+    /// parameters standing as atoms, so an application instantiates by
+    /// **elaborating the body under an environment that already binds the
+    /// arguments** rather than by substituting into a finished type. Two things
+    /// follow. The binding is simultaneous by construction, so the capture
+    /// question a sequential substitution has to answer does not arise —
+    /// `gandr-ijdw` is that question answered wrongly elsewhere in this tree.
+    /// And the environment carried beside it is the one from the component's
+    /// own declaration site, so the expansion is still independent of where it
+    /// is applied, which is the property the nullary form already has.
+    pub body: SynNode<'tree>,
+    /// The manifest components in scope where the family was declared.
+    pub scope: BTreeMap<String, ManifestAnswer<'tree>>,
 }
 
 /// What a manifest environment answers a type name with.
@@ -165,48 +179,84 @@ pub struct ManifestFamily
     dead_code,
     reason = "gandr-wvd.6.2 scaffold: the family case is constructed by the manifest-family               elaboration that lands with this rung's bodies"
 )]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ManifestAnswer
+#[derive(Clone)]
+pub enum ManifestAnswer<'tree>
 {
     /// A nullary manifest component `type T = τ`.
     Type(ValueType),
     /// A manifest family component `type T(x : A, …) = τ`.
-    Family(ManifestFamily),
+    Family(ManifestFamily<'tree>),
 }
 
 /// Instantiate a manifest family at `arguments`.
 ///
 /// # Contract
-/// - requires: `arguments` are already-elaborated value types, in the order the
-///   application wrote them.
-/// - ensures: the result is `family.body` with each parameter's standing atom
-///   replaced by the matching argument, simultaneously rather than in sequence,
+/// - requires: `arguments` are the application's argument nodes, in the order
+///   the source wrote them.
+/// - ensures: the result is the family's body elaborated under the manifest
+///   environment of the family's own **declaration** site, extended with each
+///   parameter bound to its argument's elaborated type. The binding is
+///   simultaneous by construction — an environment is a map, not a sequence —
 ///   so a parameter whose argument mentions a later parameter's name is not
-///   captured.
+///   captured, and the capture question a sequential substitution has to answer
+///   does not arise at all.
+/// - ensures: elaborating under the declaration site's environment rather than
+///   the application's keeps the expansion independent of where it is applied,
+///   which is the property the nullary manifest component already has.
 /// - fails: [`LowerError::ManifestFamilyArity`] when the argument count differs
-///   from the parameter count; nothing else can fail, because the body was
-///   elaborated when the component was written.
+///   from the parameter count, and ordinary type-lowering errors from an
+///   argument or from the body.
 /// - panics: never.
 ///
+/// # Termination
+/// - reason: a family's declaration-site environment cannot contain the
+///   component being declared, so an expansion only reaches families declared
+///   strictly earlier in one signature.
+/// - measure: the number of manifest families in scope at the family's own
+///   declaration.
+/// - boundedness: a signature declares finitely many components and the chain
+///   strictly decreases.
+/// - input recursion: bounded by the source's own component list rather than by
+///   the applied type's depth.
+///
 /// # Adequacy
-/// - hypothesis: simultaneous atom substitution over an already-elaborated body
-///   realizes application without a type-level binder in the core.
-/// - mutants: substitute sequentially; ignore surplus arguments; substitute the
-///   parameter *types* rather than the standing atoms.
-/// - witnesses: `a_manifest_family_expands_at_its_arguments`,
-///   `a_manifest_family_refuses_a_wrong_argument_count`, and
-///   `a_manifest_family_expansion_does_not_capture_a_later_parameter`.
-#[allow(
-    dead_code,
-    reason = "gandr-wvd.6.2 scaffold: called by the type-application expansion that lands with               this rung's bodies"
-)]
-pub fn instantiate_manifest_family(
-    _family: &ManifestFamily,
-    _arguments: Vec<ValueType>,
-    _byte_range: crate::boundary::SourceRange,
-) -> LowerResult<ValueType>
+/// - hypothesis: elaborating the written body under an environment realizes
+///   application without any substitution over an elaborated type.
+/// - mutants: elaborate under the application's environment; ignore surplus
+///   arguments; bind the parameters one at a time rather than as one map.
+/// - witnesses:
+///   `a_manifest_family_occurrence_expands_before_the_ambient_resolver` and
+///   `a_type_component_arity_mismatch_is_refused_by_name`.
+fn instantiate_manifest_family<'tree>(
+    source: PipelineSource<'_>,
+    node: SynNode<'tree>,
+    strictness: Strictness,
+    resolve: DataResolver<'_>,
+    family: &ManifestFamily<'tree>,
+    arguments: &[SynNode<'tree>],
+) -> LowerResult<Ty>
 {
-    todo!("gandr-wvd.6.2: simultaneous atom substitution over the elaborated body")
+    if arguments.len() != family.params.len() {
+        return Err(LowerError::ManifestFamilyArity {
+            expected: family.params.len(),
+            found: arguments.len(),
+            byte_range: node.byte_range(),
+        });
+    }
+    let mut scope = family.scope.clone();
+    for (param, argument) in family.params.iter().zip(arguments.iter()) {
+        let lowered = {
+            let expand = |name: TypeName<'_>| family.scope.get(name.0).cloned();
+            value_result(
+                lower_type_tree(source, *argument, strictness, resolve, &expand),
+                *argument,
+                strictness,
+            )?
+        };
+        drop(scope.insert(param.name.clone(), ManifestAnswer::Type(lowered)));
+    }
+    let expand = |name: TypeName<'_>| scope.get(name.0).cloned();
+    lower_type_tree(source, family.body, strictness, resolve, &expand)
 }
 
 /// Lowers a primitive type name.
@@ -396,12 +446,12 @@ pub fn lower_ty(
 /// - witnesses: `gandr-surface-engine` `tests/acceptance.rs` —
 ///   `a_manifest_type_component_is_not_captured_by_an_ambient_datatype`.
 #[inline]
-pub fn lower_ty_manifest(
+pub fn lower_ty_manifest<'tree>(
     source: PipelineSource<'_>,
-    node: SynNode<'_>,
+    node: SynNode<'tree>,
     strictness: Strictness,
     resolve: DataResolver<'_>,
-    manifest: ManifestTypes<'_>,
+    manifest: ManifestTypes<'_, 'tree>,
 ) -> LowerResult<Ty>
 {
     let result = lower_type_tree(source, node, strictness, resolve, manifest);
@@ -503,12 +553,12 @@ enum MemberSort
 }
 
 /// Lowers a complete type tree with an explicit post-order worklist.
-fn lower_type_tree(
+fn lower_type_tree<'tree>(
     source: PipelineSource<'_>,
-    root: SynNode<'_>,
+    root: SynNode<'tree>,
     strictness: Strictness,
     resolve: DataResolver<'_>,
-    manifest: ManifestTypes<'_>,
+    manifest: ManifestTypes<'_, 'tree>,
 ) -> LowerResult<Ty>
 {
     let mut pending = vec![TypeTask::Node(root)];
@@ -535,24 +585,28 @@ fn lower_type_tree(
                         results.push(Ok(Ty::Value(ValueType::Unknown)));
                     },
                     | node_kinds::TYPE_IDENTIFIER => {
-                        results.push(node_text(source, node).map(|name| {
+                        results.push(node_text(source, node).and_then(|name| {
                             // The manifest environment answers first, so a
                             // signature's `type T = τ` expands to `τ` even where
                             // an ambient datatype of the same name exists.
                             match manifest(TypeName(name.0)) {
-                                | Some(ManifestAnswer::Type(expanded)) => Ty::Value(expanded),
+                                | Some(ManifestAnswer::Type(expanded)) => Ok(Ty::Value(expanded)),
                                 // A family named with no arguments is
                                 // under-applied. Falling through to the ambient
                                 // resolver here would bind the component's name
                                 // to an atom, which is a type the signature does
                                 // not state.
-                                | Some(ManifestAnswer::Family(_)) => {
-                                    todo!("gandr-wvd.6.2: LowerError::ManifestFamilyUnapplied")
+                                | Some(ManifestAnswer::Family(ref family)) => {
+                                    Err(LowerError::ManifestFamilyArity {
+                                        expected: family.params.len(),
+                                        found: 0,
+                                        byte_range: node.byte_range(),
+                                    })
                                 },
-                                | None => Ty::Value(resolve(name.0).map_or_else(
+                                | None => Ok(Ty::Value(resolve(name.0).map_or_else(
                                     || ValueType::atom(name.0),
                                     |id| ValueType::data(id, Vec::new()),
-                                )),
+                                ))),
                             }
                         }));
                     },
@@ -697,6 +751,7 @@ fn lower_type_tree(
                         schedule_type_application(
                             source,
                             node,
+                            strictness,
                             resolve,
                             manifest,
                             &mut pending,
@@ -752,8 +807,9 @@ fn lower_type_tree(
 fn schedule_type_application<'tree>(
     source: PipelineSource<'_>,
     node: SynNode<'tree>,
+    strictness: Strictness,
     resolve: DataResolver<'_>,
-    manifest: ManifestTypes<'_>,
+    manifest: ManifestTypes<'_, 'tree>,
     pending: &mut Vec<TypeTask<'tree>>,
     results: &mut Vec<LowerResult<Ty>>,
 )
@@ -774,19 +830,29 @@ fn schedule_type_application<'tree>(
         },
     };
     match manifest(TypeName(head.0)) {
-        | Some(ManifestAnswer::Family(_family)) => {
-            let _ = (&_family, &arguments);
-            todo!("gandr-wvd.6.2: schedule the arguments, then TypeFrame::ManifestFamily to expand")
+        | Some(ManifestAnswer::Family(family)) => {
+            results.push(instantiate_manifest_family(
+                source, node, strictness, resolve, &family, &arguments,
+            ));
+            return;
         },
         // A nullary manifest component applied to arguments. The signature
         // wrote `type T = τ` and the occurrence wrote `T(…)`, so the arity is
         // wrong in the source; falling through would reach the ambient resolver
         // and bind a name the signature already owns.
-        // Owed: `LowerError::ManifestTypeApplied`. Until it exists the
-        // occurrence falls through to the ambient resolver exactly as it did
-        // before this environment carried a case, so nothing changes shape
-        // while the diagnostic is missing.
-        | Some(ManifestAnswer::Type(_)) => {},
+        // A nullary manifest component applied to arguments. The signature
+        // wrote `type T = τ` and the occurrence wrote `T(…)`, so the arity is
+        // wrong in the source. Falling through would reach the ambient resolver
+        // and bind a name the signature already owns — silently, and with no
+        // gradual unknown left to find afterwards.
+        | Some(ManifestAnswer::Type(_)) => {
+            results.push(Err(LowerError::ManifestFamilyArity {
+                expected: 0,
+                found: arguments.len(),
+                byte_range: node.byte_range(),
+            }));
+            return;
+        },
         | None => {},
     }
     if let Some(id) = resolve(head.0) {

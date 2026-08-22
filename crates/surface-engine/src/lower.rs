@@ -478,6 +478,42 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// A manifest type component is named at the wrong arity.
+    ///
+    /// Both directions land here, and neither may fall through to the ambient
+    /// resolver: a family named with no arguments is under-applied, a nullary
+    /// component applied to arguments is over-applied, and either fallthrough
+    /// would bind the signature's own component name to an ambient atom —
+    /// silently, and with no gradual unknown left to find afterwards.
+    #[error(
+        "type component named at arity {found} at bytes {byte_range:?}, but the signature declares it at arity {expected}"
+    )]
+    ManifestFamilyArity
+    {
+        /// The arity the component was declared at.
+        expected: usize,
+        /// The arity the occurrence named.
+        found: usize,
+        /// The occurrence's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A type component's binder list writes a parameter with no annotation.
+    ///
+    /// The grammar admits `type Hom(a) = τ` so the decline lands at the
+    /// elaborator, where it can name the parameter, rather than as a parse
+    /// repair naming a tile. A binder ranges over a stated type or it does not
+    /// range over anything: a defaulted annotation would bind the parameter at
+    /// a type the source does not write.
+    #[error("type component parameter `{name}` at bytes {byte_range:?} writes no `: …` annotation")]
+    BareTypeParameter
+    {
+        /// The parameter's name.
+        name: String,
+        /// The parameter's byte range.
+        byte_range: SourceRange,
+    },
+
     /// An inline structural signature names a component the module body does
     /// not define.
     ///
@@ -6436,9 +6472,9 @@ impl Lowerer<'_>
         node: SynNode<'_>,
     ) -> LowerResult<ModuleAscription>
     {
-        let mut manifest: BTreeMap<String, ManifestAnswer> = BTreeMap::new();
+        let mut manifest: BTreeMap<String, ManifestAnswer<'_>> = BTreeMap::new();
         let mut types: Vec<TypeComponent> = Vec::new();
-        let kinded: Vec<KindedComponent> = Vec::new();
+        let mut kinded: Vec<KindedComponent> = Vec::new();
         let mut values: Vec<SignatureComponent> = Vec::new();
         for component in node.named_children() {
             let name_node = required_field(component, node_kinds::FIELD_NAME)?;
@@ -6478,18 +6514,39 @@ impl Lowerer<'_>
                     // does not expand, so a later component naming it must
                     // reach it as a declaration rather than as a substitution.
                     //
-                    // Owed by this rung. Until it lands the decline stands,
-                    // which is the honest boundary rather than a placeholder
-                    // for one.
-                    let _ = (&params, &kinded);
-                    let error = LowerError::KindedTypeComponent {
-                        name,
-                        byte_range: component.byte_range(),
-                    };
-                    if bool::from(self.total()) {
-                        continue;
+                    // The arity comes from the kind's arrow spine, so a kinded
+                    // component writes no binder list: `type Hom : Ob -> Ob ->
+                    // Type` is arity two. Reading the spine as a single
+                    // function type instead would bind `Hom` to a type its
+                    // source does not state.
+                    if !params.is_empty() {
+                        return Err(LowerError::KindedTypeComponent {
+                            name,
+                            byte_range: component.byte_range(),
+                        });
                     }
-                    return Err(error);
+                    let Some(kind_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
+                    else {
+                        return Err(LowerError::KindedTypeComponent {
+                            name,
+                            byte_range: component.byte_range(),
+                        });
+                    };
+                    let spine = self.kind_spine(kind_node, &manifest, component)?;
+                    // An abstract component contributes **no manifest entry**:
+                    // it does not expand, so a later component naming it must
+                    // reach it as a declaration rather than as a substitution.
+                    // Binding it to a standing atom is what makes the later
+                    // components' types mention the component itself.
+                    drop(manifest.insert(
+                        name.clone(),
+                        ManifestAnswer::Type(ValueType::atom(name.as_str())),
+                    ));
+                    kinded.push(KindedComponent {
+                        name,
+                        params: spine,
+                    });
+                    continue;
                 }
                 let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
                 else {
@@ -6519,12 +6576,43 @@ impl Lowerer<'_>
                 // exactly as the nullary form's body is elaborated once where it
                 // is written. Every later occurrence is an application that
                 // substitutes for those atoms.
-                // Owed: elaborate the body under the parameters as standing
-                // atoms, record a `ManifestAnswer::Family`, and push the
-                // component. Unreachable until the binder reader above exists,
-                // because `params` is empty without it.
-                let _ = definition_node;
-                unreachable!("gandr-wvd.6.2: a parameterized component needs the binder reader")
+                // A **manifest family**. Two forms of it are kept, and they
+                // answer different questions.
+                //
+                // The environment gets the written body and the components in
+                // scope where it was declared, because an application
+                // instantiates by elaborating that body under an environment
+                // binding the arguments — simultaneous by construction, so the
+                // capture question a sequential substitution has to answer does
+                // not arise.
+                //
+                // The component record gets the body elaborated **once** with
+                // the parameters standing as atoms of their own names. That is
+                // what a reader of the module's type components should see, and
+                // it is never what an application expands, so it carries no
+                // capture risk of its own.
+                let mut standing = manifest.clone();
+                for param in &params {
+                    drop(standing.insert(
+                        param.name.clone(),
+                        ManifestAnswer::Type(ValueType::atom(param.name.as_str())),
+                    ));
+                }
+                let definition = self.manifest_component_type(definition_node, &standing)?;
+                drop(manifest.insert(
+                    name.clone(),
+                    ManifestAnswer::Family(crate::lower::types::ManifestFamily {
+                        params: params.clone(),
+                        body: definition_node,
+                        scope: manifest.clone(),
+                    }),
+                ));
+                types.push(TypeComponent {
+                    name,
+                    params,
+                    definition,
+                });
+                continue;
             }
             let type_node = required_field(component, node_kinds::FIELD_TYPE)?;
             let ty = self.manifest_component_type(type_node, &manifest)?;
@@ -6540,6 +6628,77 @@ impl Lowerer<'_>
             types,
             kinded,
         })
+    }
+
+    /// Reads a kinded component's arrow spine into its parameter list.
+    ///
+    /// # Contract
+    /// - requires: `kind` is the type node after a type component's `:`.
+    /// - ensures: `Ob -> Ob -> Type` answers with two parameters, in order, and
+    ///   `Type` answers with none; the spine's result must be a universe, and a
+    ///   spine ending anywhere else is refused rather than truncated.
+    /// - ensures: the parameters are unnamed, because a kind's spine names
+    ///   none. A later dependent kind, whose codomain mentions an earlier
+    ///   parameter, cannot be written this way and is not admitted here.
+    /// - fails: [`LowerError::KindedTypeComponent`] naming the component when
+    ///   the spine does not end in a universe.
+    /// - panics: never.
+    ///
+    /// # Adequacy
+    /// - hypothesis: an arrow spine ending in a universe is exactly the kind
+    ///   grammar this rung admits, so the arity is a function of the spine.
+    /// - mutants: accept a spine ending anywhere; count the result as a
+    ///   parameter; reverse the parameter order.
+    /// - witnesses: `a_kinded_type_component_declares_an_abstract_member` and
+    ///   `a_kinded_type_component_spine_declares_its_arity`.
+    fn kind_spine(
+        &self,
+        kind: SynNode<'_>,
+        manifest: &BTreeMap<String, ManifestAnswer<'_>>,
+        component: SynNode<'_>,
+    ) -> LowerResult<Vec<TypeParameter>>
+    {
+        let expand = |name: TypeName<'_>| manifest.get(name.0).cloned();
+        let refuse = |node: SynNode<'_>| {
+            let _ = node;
+            LowerError::KindedTypeComponent {
+                name: required_field(component, node_kinds::FIELD_NAME)
+                    .and_then(|name_node| self.text(name_node))
+                    .map_or_else(|_ignored| String::new(), |text| text.to_owned()),
+                byte_range: component.byte_range(),
+            }
+        };
+        // The spine is walked as **syntax** rather than lowered as a type, and
+        // the reason is measurable: lowering `Ob -> Ob -> Type` puts the tail
+        // in computation position, where a value-sorted name coerces to the
+        // gradual unknown, so the lowered spine reads `Arrow(Ob, Arrow(Ob,
+        // Unknown))`. Accepting that as "ends in a universe" would be reading a
+        // degradation as the claim it destroyed. The written arrow spine says
+        // what the kind is; nothing about it needs a type.
+        let mut current = kind;
+        let mut params: Vec<TypeParameter> = Vec::new();
+        while current.kind() == node_kinds::FUNCTION_TYPE {
+            let parameter = required_field(current, node_kinds::FIELD_PARAMETER)?;
+            let ty = match self.lower_type_node_with_manifest(parameter, &expand)? {
+                | Ty::Value(value_ty) => value_ty,
+                | Ty::Comp(_) => return Err(refuse(parameter)),
+            };
+            params.push(TypeParameter {
+                name: alloc::format!("_{}", params.len()),
+                ty,
+            });
+            current = required_field(current, node_kinds::FIELD_RESULT)?;
+        }
+        // The spine's result is the universe the sort lands in, written as the
+        // `Type` name. A spine ending anywhere else is refused rather than
+        // truncated: a kind that does not end in a universe classifies nothing.
+        let tail = self.text(current)?;
+        if tail.as_ref() == "Type" {
+            Ok(params)
+        }
+        else {
+            Err(refuse(current))
+        }
     }
 
     /// Lowers a type component's binder list `( a : A, … )` under the manifest
@@ -6570,13 +6729,48 @@ impl Lowerer<'_>
     fn type_component_parameters(
         &self,
         _component: SynNode<'_>,
-        _manifest: &BTreeMap<String, ManifestAnswer>,
+        _manifest: &BTreeMap<String, ManifestAnswer<'_>>,
     ) -> LowerResult<Vec<TypeParameter>>
     {
-        // Until this rung lands no binder list is read and every component is
-        // nullary, which is exactly today's behaviour: the parser admitting a
-        // parameter list changes nothing until a reader exists for it.
-        Ok(Vec::new())
+        let Some(group) = _component.child_by_field_name(node_kinds::FIELD_PARAMETERS)
+        else {
+            return Ok(Vec::new());
+        };
+        let mut params: Vec<TypeParameter> = Vec::new();
+        for parameter in named_non_extra_children(group) {
+            if parameter.kind() != node_kinds::PARAMETER {
+                continue;
+            }
+            let name_node = required_field(parameter, node_kinds::FIELD_NAME)?;
+            let name = {
+                let text = self.text(name_node)?;
+                core::convert::identity(text)
+            }
+            .to_owned();
+            // The unannotated spelling `(a)` is admitted by the grammar so its
+            // decline lands here, at the elaborator, rather than as a parse
+            // repair naming the wrong thing.
+            let Some(annotation) = parameter.child_by_field_name(node_kinds::FIELD_TYPE)
+            else {
+                return Err(LowerError::BareTypeParameter {
+                    name,
+                    byte_range: parameter.byte_range(),
+                });
+            };
+            // Each binder scopes over the binders that follow it, and over the
+            // manifest components declared before the component itself, so the
+            // environment grows as the list is read.
+            let mut scoped = _manifest.clone();
+            for earlier in &params {
+                drop(scoped.insert(
+                    earlier.name.clone(),
+                    ManifestAnswer::Type(ValueType::atom(earlier.name.as_str())),
+                ));
+            }
+            let ty = self.manifest_component_type(annotation, &scoped)?;
+            params.push(TypeParameter { name, ty });
+        }
+        Ok(params)
     }
 
     /// Lowers one signature component's type under the manifest components
@@ -6589,7 +6783,7 @@ impl Lowerer<'_>
     fn manifest_component_type(
         &self,
         node: SynNode<'_>,
-        manifest: &BTreeMap<String, ManifestAnswer>,
+        manifest: &BTreeMap<String, ManifestAnswer<'_>>,
     ) -> LowerResult<ValueType>
     {
         let expand = |name: TypeName<'_>| manifest.get(name.0).cloned();
@@ -7840,6 +8034,8 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::DuplicateModuleMember { ref byte_range, .. }
         | LowerError::KindedTypeComponent { ref byte_range, .. }
         | LowerError::BareTypeComponent { ref byte_range, .. }
+        | LowerError::BareTypeParameter { ref byte_range, .. }
+        | LowerError::ManifestFamilyArity { ref byte_range, .. }
         | LowerError::MissingModuleComponent { ref byte_range, .. }
         | LowerError::UnknownModuleComponent { ref byte_range, .. }
         | LowerError::DuplicateModuleComponent { ref byte_range, .. }
@@ -7932,10 +8128,11 @@ fn note_of(error: &LowerError) -> HoleNote
         // the type component in both cases. What separates them — abstract
         // versus kinded — is the error itself, which is what the diagnostic
         // renders.
-        | LowerError::KindedTypeComponent { .. } | LowerError::BareTypeComponent { .. } => {
-            HoleNote::UnsupportedForm {
-                kind: node_kinds::TYPE_COMPONENT,
-            }
+        | LowerError::KindedTypeComponent { .. }
+        | LowerError::BareTypeComponent { .. }
+        | LowerError::BareTypeParameter { .. }
+        | LowerError::ManifestFamilyArity { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::TYPE_COMPONENT,
         },
         // The decline happens at the projection, not at the module, so total
         // mode stands its hole where the selection was and leaves the module
