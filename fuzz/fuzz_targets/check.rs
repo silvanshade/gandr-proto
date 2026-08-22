@@ -73,9 +73,19 @@ const MAX_CHECKER_NESTING: usize = 64;
 /// `fuzz:rust-smoke`.
 fn source_nesting_depth(source: &str) -> usize
 {
-    todo!(
-        "count the running bracket depth over the surface's grouping delimiters and return its maximum"
-    )
+    let mut depth: usize = 0;
+    let mut deepest: usize = 0;
+    for byte in source.bytes() {
+        match byte {
+            | b'(' | b'[' | b'{' => {
+                depth = depth.saturating_add(1);
+                deepest = deepest.max(depth);
+            },
+            | b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+            | _ => {},
+        }
+    }
+    deepest
 }
 
 fn main()
