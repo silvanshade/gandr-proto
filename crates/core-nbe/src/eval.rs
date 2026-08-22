@@ -1168,6 +1168,45 @@ pub fn force_head(
 {
     let cell = match *nbe.arena().value(id)?.node() {
         | SemValueNode::Thunk(_, cell) => Some(cell),
+        // A **pure-computation embedding** is not a thunk, so it falls to the
+        // neutral arm below and stays stuck there forever. That is the defect:
+        // the embedding names the value its computation returns, and when that
+        // value is itself a thunk, forcing it is exactly what the surrounding
+        // program does next.
+        //
+        // What was measured, because the shape is narrower than it looks and
+        // two plausible diagnoses are both wrong.
+        //
+        // The elaborator DOES build the embedding: it is visible in the
+        // refused type as `Run(App(Force(Var("id")), Var("p")))`, so this is
+        // not a rule-ordering failure where an intro rule captures the term
+        // before the embedding is considered.
+        //
+        // Conversion's own `resolve_embedding` IS reached, and it fails for a
+        // stated reason: the embedded computation reduces to a neutral headed
+        // by a force of `Rigid(Free("id"), Rigid)`. The operation name in the
+        // endpoint carries a **rigid** unfold face rather than a pending one,
+        // so delta never fires and the computation never reaches a returner.
+        //
+        // And the position decides which site is even reached. An embedding at
+        // the ROOT of an endpoint arrives here; the same embedding in an
+        // ARGUMENT position of another endpoint application never does. So the
+        // repair has two halves that must not be confused: this arm, and the
+        // unfold face the endpoint's names are lowered with.
+        //
+        // The consequence is wide because polarity forces the nesting. Law
+        // endpoints are values, model operations are functions, and in
+        // call-by-push-value every application of a function is a computation
+        // — so a composite endpoint built from a model's own named fields
+        // necessarily embeds a pure computation inside an argument position of
+        // another application. There is no spelling that avoids it.
+        //
+        // `gandr-rson`.
+        | SemValueNode::Run(_) => {
+            todo!(
+                "gandr-rson: resolve the embedding to the value its computation returns, then                  force that; keep the neutral when the computation does not reach a returner"
+            )
+        },
         | _ => None,
     };
     match cell {
@@ -1177,6 +1216,54 @@ pub fn force_head(
             neutral(nbe, NeutralHead::Force(id), face)
         },
     }
+}
+
+/// Resolve a pure-computation embedding to the value its computation returns.
+///
+/// # Contract
+/// - requires: `id` names an already-evaluated value.
+/// - ensures: an embedding whose computation reaches a returner answers with
+///   the returned value; every other value, including an embedding whose
+///   computation is stuck on a variable or exhausts its budget, answers with
+///   `id` unchanged.
+/// - ensures: budget exhaustion is a **refusal carrying its evidence** rather
+///   than an unsound acceptance — an unresolved embedding is compared by
+///   congruence, which can only report unequal what a longer run might have
+///   equated.
+/// - fails: [`SemError`] on arena exhaustion or an unresolvable id.
+/// - panics: never.
+///
+/// # Termination
+///
+/// **The hazard this must not reintroduce is host recursion over a
+/// caller-controlled term.** The embedding is suspended at evaluation for a
+/// structural reason, not a preference: running the computation inside the
+/// value walk closes a cycle between that walk and the computation machine over
+/// a term the caller chooses, which is what `buildout-standing-06` refuses. So
+/// the resolution belongs where the machine already owns a stack — conversion
+/// resolves embeddings on its own goal stack today — and a fix that simply
+/// calls the machine from inside the walk trades one defect for a depth cliff.
+///
+/// # Adequacy
+/// - hypothesis: resolving at the force is the narrowest site that fixes the
+///   defect, because forcing is the only operation that distinguishes an
+///   embedding from the value it names.
+/// - mutants: resolve unconditionally at evaluation; resolve without checking
+///   that the computation reached a returner; drop the neutral fallback.
+/// - witnesses: `forcing_an_embedding_reaches_the_value_it_returns`,
+///   `forcing_a_stuck_embedding_stays_neutral`, and
+///   `a_thunk_valued_embedding_converts_with_the_thunk_it_names`.
+#[expect(
+    dead_code,
+    reason = "gandr-rson scaffold: called from `force_head` once the resolution site is chosen"
+)]
+fn resolve_embedding_head(
+    _nbe: &mut Normalizer,
+    _id: SemValueId,
+    _mode: ForceMode,
+) -> Result<SemValueId, SemError>
+{
+    todo!("gandr-rson")
 }
 
 /// Re-applies a recorded spine to a fresh head — how the unfolding face is
