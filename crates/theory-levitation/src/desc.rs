@@ -138,11 +138,23 @@ pub struct SortDesc
     /// The fixpoint the sort's declaration names (μ for `data`, ν for
     /// `codata`).
     pub polarity: DeclPolarity,
+    /// The sort's **index telescope**, empty for an unindexed sort.
+    ///
+    /// `sort Hom(dom : Ob, cod : Ob) : Type` declares a sort **family**, and
+    /// the family is what the weak category needs: a description with nowhere
+    /// to put `dom` and `cod` is a description of a different theory, one whose
+    /// homs are not indexed by their endpoints. Nothing downstream can recover
+    /// the indices, because the surface member is the only place they were ever
+    /// written.
+    ///
+    /// The telescope is also the first clause of `Model(S)`: `sort X(Δ)`
+    /// becomes `type X : Δ → Type`, and `Δ` is exactly this. `gandr-wvd.6.1.2`.
+    pub indices: Box<[SortIndex]>,
 }
 
 impl SortDesc
 {
-    /// A sort of the given name and polarity.
+    /// A sort of the given name and polarity, with no indices.
     #[inline]
     #[must_use]
     pub fn new<N>(
@@ -155,6 +167,70 @@ impl SortDesc
         Self {
             name: name.into(),
             polarity,
+            indices: Box::default(),
+        }
+    }
+
+    /// A sort **family** of the given name, polarity, and index telescope.
+    ///
+    /// # Contract
+    /// - requires: each index's sort is declared by the same signature, and the
+    ///   indices are in declaration order.
+    /// - ensures: the telescope is carried verbatim; nothing derives it, and
+    ///   nothing defaults it, because an index the surface wrote and the
+    ///   description dropped is a claim about a theory the author did not
+    ///   present.
+    /// - panics: never.
+    #[inline]
+    #[must_use]
+    pub fn family<N, I>(
+        name: N,
+        polarity: DeclPolarity,
+        indices: I,
+    ) -> Self
+    where
+        N: Into<Name>,
+        I: Into<Box<[SortIndex]>>,
+    {
+        Self {
+            name: name.into(),
+            polarity,
+            indices: indices.into(),
+        }
+    }
+}
+
+/// One binder of a sort's index telescope — `dom : Ob` in
+/// `sort Hom(dom : Ob, cod : Ob)`.
+///
+/// An index ranges over a **sort**, never over a type: the description universe
+/// is indexed by the signature's sort set, and admitting an arbitrary type here
+/// would let a description mention something the signature does not declare.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct SortIndex
+{
+    /// The binder's name, in scope in the indices that follow it.
+    pub name: Name,
+    /// The sort it ranges over, which the same signature declares.
+    pub sort: Name,
+}
+
+impl SortIndex
+{
+    /// An index binder of the given name, ranging over `sort`.
+    #[inline]
+    #[must_use]
+    pub fn new<N, S>(
+        name: N,
+        sort: S,
+    ) -> Self
+    where
+        N: Into<Name>,
+        S: Into<Name>,
+    {
+        Self {
+            name: name.into(),
+            sort: sort.into(),
         }
     }
 }

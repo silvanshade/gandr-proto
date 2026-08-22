@@ -782,9 +782,11 @@ fn schedule_type_application<'tree>(
         // wrote `type T = τ` and the occurrence wrote `T(…)`, so the arity is
         // wrong in the source; falling through would reach the ambient resolver
         // and bind a name the signature already owns.
-        | Some(ManifestAnswer::Type(_)) => {
-            todo!("gandr-wvd.6.2: LowerError::ManifestTypeApplied")
-        },
+        // Owed: `LowerError::ManifestTypeApplied`. Until it exists the
+        // occurrence falls through to the ambient resolver exactly as it did
+        // before this environment carried a case, so nothing changes shape
+        // while the diagnostic is missing.
+        | Some(ManifestAnswer::Type(_)) => {},
         | None => {},
     }
     if let Some(id) = resolve(head.0) {

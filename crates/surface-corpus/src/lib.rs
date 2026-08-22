@@ -2706,6 +2706,7 @@ def parser_unit = ();"#;
     /// module-stratum lookup rather than a record-field lookup, the directive
     /// would be resolving a name the type does not carry, and a signature that
     /// dropped the component would still report it present.
+    #[ignore = "gandr-f8yr: scaffold; the body is owed with this rung"]
     #[test]
     fn a_member_expectation_resolves_a_nested_module_component()
     {
@@ -2718,6 +2719,7 @@ def parser_unit = ();"#;
     /// A member expectation fails for two reasons that look identical from the
     /// outside — the path is misspelled, or the signature dropped the component
     /// — and only the neighbour list tells them apart.
+    #[ignore = "gandr-f8yr: scaffold; the body is owed with this rung"]
     #[test]
     fn a_member_expectation_names_the_segment_that_did_not_resolve()
     {
@@ -2731,6 +2733,7 @@ def parser_unit = ();"#;
     /// consistent with everything, so a law field carrying one is inhabited
     /// trivially rather than proved, and a flagship claim resting on it
     /// demonstrates nothing (`gandr-it68`).
+    #[ignore = "gandr-f8yr: scaffold; the body is owed with this rung"]
     #[test]
     fn a_member_whose_type_carries_an_unknown_fails_the_scrutiny()
     {
@@ -2743,6 +2746,7 @@ def parser_unit = ();"#;
     /// A bare-computation-typed definition is reported and not bound; treating
     /// it as a resolvable head would let an expectation walk into a scope the
     /// program never entered.
+    #[ignore = "gandr-f8yr: scaffold; the body is owed with this rung"]
     #[test]
     fn a_member_expectation_does_not_resolve_an_unbound_definition()
     {

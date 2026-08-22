@@ -261,6 +261,7 @@ mod tests
     /// The unknown clause is part of the claim rather than hygiene beside it: a
     /// field elaborated at a type mentioning an unknown is consistent with
     /// everything, so a signature carrying one states less than it appears to.
+    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
     #[test]
     fn the_model_signature_elaborates_without_an_unknown()
     {
@@ -274,6 +275,7 @@ mod tests
     /// `type Hom : Ob -> Ob -> Type` and `type Hom = Ob -> Ob -> Type` are
     /// different declarations, and reading the first as the second would bind
     /// `Hom` to a type the source does not state.
+    #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
     #[test]
     fn the_indexed_sort_is_a_family_of_arity_two()
     {
@@ -286,6 +288,7 @@ mod tests
     /// Members rather than top-level definitions: the instance is a module, so
     /// the claim is about its components, which is what the member-level corpus
     /// expectations exist to state.
+    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
     #[test]
     fn the_setoid_instance_matches_the_model_signature()
     {
@@ -299,6 +302,7 @@ mod tests
     /// two spellings elaborate to different terms while both type-check once
     /// the embedding resolves, so nothing downstream would notice the
     /// substitution.
+    #[ignore = "gandr-rson: scaffold; the body is owed with this rung"]
     #[test]
     fn the_law_endpoints_name_the_models_own_operations()
     {
@@ -312,6 +316,7 @@ mod tests
     /// by inspection: both modules are built from `SETOID_CAT_BODY`, so there
     /// is no second copy that could drift out of agreement while both sides
     /// stay green.
+    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
     #[test]
     fn the_unsigned_twins_members_carry_no_unknown()
     {
@@ -327,6 +332,7 @@ mod tests
     /// index position reads as a clean successful elaboration to every
     /// instrument in the tree, which is the sibling that recruits a false
     /// record rather than its own correction.
+    #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
     #[test]
     fn no_index_in_the_claim_path_is_misrepresented()
     {

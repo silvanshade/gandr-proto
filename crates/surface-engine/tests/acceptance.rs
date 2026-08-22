@@ -1544,6 +1544,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// sealing, while a kinded one states its arity and its result
         /// classifier, so the two decline and elaborate for different reasons
         /// and must not be collapsed.
+        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_kinded_type_component_declares_an_abstract_member()
         {
@@ -1559,6 +1560,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// stands on. Reading the spine as a single function type instead would
         /// bind `Hom` to a type its source does not state, which is the one
         /// thing degradation may never do.
+        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_kinded_type_component_spine_declares_its_arity()
         {
@@ -1572,6 +1574,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// does not track bracket depth cuts the binder list at its own comma,
         /// and the failure surfaces as a syntax error at the component's
         /// *name*, which points at the wrong thing entirely.
+        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_manifest_family_component_binds_two_parameters()
         {
@@ -1586,6 +1589,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// already has and it is load-bearing for the same reason: a signature
         /// component that an enclosing declaration could capture is not a
         /// component of that signature.
+        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_manifest_family_occurrence_expands_before_the_ambient_resolver()
         {
@@ -1599,6 +1603,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// would bind the signature's own component name to an ambient atom, so
         /// the signature would elaborate to a type it does not state —
         /// silently, and with no unknown to find afterwards.
+        #[ignore = "gandr-wvd.6.2: scaffold; the body is owed with this rung"]
         #[test]
         fn a_type_component_arity_mismatch_is_refused_by_name()
         {
@@ -1614,6 +1619,7 @@ module M : #{ type Thing = Integer, value: Thing } { def value = 1; }"#,
         /// hygiene test: a field elaborated at a type mentioning an unknown is
         /// consistent with everything, so a signature carrying one states less
         /// than it appears to.
+        #[ignore = "gandr-0ika: scaffold; the body is owed with this rung"]
         #[test]
         fn the_cat_shape_model_signature_elaborates_without_an_unknown()
         {

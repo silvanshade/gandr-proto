@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #c71614edbe921f05 [DefFunctionSugar]
-[0, 0] => 0..53 #c71614edbe921f05 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #cd24ec3ff262c3c7 [BindHoist]
-[0, 0, 0, 0] => 45..50 #79580b642405cedc [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #79580b642405cedc [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #8bd60abb7452b3d7 [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #8bd60abb7452b3d7 [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #f85ff4204d1ad187
-[0, 0, 0, 0, 1] => 49..50 #f85ff4204d1ad187
-[0, 0, 0, 1] => 40..51 #cd24ec3ff262c3c7
-[0, 0, 0, 1, 0] => 44..51 #f5e7c50b04b93050 [BindHoist]
-[1] => 55..99 #5f7fc62f6769805e
-[1, 0] => 65..97 #f7feedff76828dd8 [IfSugar]
-[1, 0, 0] => 68..72 #c9e2fecb724d86eb [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #c9e2fecb724d86eb [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #c9e2fecb724d86eb [BoolLiteral]
-[1, 0, 1] => 75..80 #4ac6d48242b67108
-[1, 0, 1, 0] => 79..80 #f85ff4204d1ad187
-[1, 0, 2] => 90..95 #2cb54f3b2699686e
-[1, 0, 2, 0] => 94..95 #2b45f88790aa5293
+[0] => 0..53 #56cb4e988d8ea138 [DefFunctionSugar]
+[0, 0] => 0..53 #56cb4e988d8ea138 [DefFunctionSugar]
+[0, 0, 0] => 40..51 #c85d6139d7b4d347 [BindHoist]
+[0, 0, 0, 0] => 45..50 #a034651433753595 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #a034651433753595 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #c344bd708ba6b25c [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #c344bd708ba6b25c [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #6fc3aee610d9c13e
+[0, 0, 0, 0, 1] => 49..50 #6fc3aee610d9c13e
+[0, 0, 0, 1] => 40..51 #c85d6139d7b4d347
+[0, 0, 0, 1, 0] => 44..51 #6caa2d0d95584894 [BindHoist]
+[1] => 55..99 #9ee63f178ebdbe33
+[1, 0] => 65..97 #7bf18d801e10e49f [IfSugar]
+[1, 0, 0] => 68..72 #26656528431aaa04 [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #26656528431aaa04 [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #26656528431aaa04 [BoolLiteral]
+[1, 0, 1] => 75..80 #29ae38166df94312
+[1, 0, 1, 0] => 79..80 #6fc3aee610d9c13e
+[1, 0, 2] => 90..95 #ca17d20295ad9dd8
+[1, 0, 2, 0] => 94..95 #a2a9d34d546978aa

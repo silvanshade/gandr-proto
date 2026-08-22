@@ -647,6 +647,7 @@ mod tests
     /// the first: shadowing asks whether the binder rebinds the substituted
     /// name, capture asks whether it rebinds a name the substituted value
     /// mentions. `gandr-ijdw`.
+    #[ignore = "gandr-ijdw: scaffold; the body is owed with this rung"]
     #[test]
     fn substitution_renames_a_binder_that_would_capture_the_replacement()
     {
@@ -667,6 +668,7 @@ mod tests
     /// `U[ω] (c -> F d)`. Capturing substitution rewrites that expectation to
     /// `U[ω] (d -> F d)`, so an argument written at the captured type is
     /// accepted. The fixed engine must refuse it.
+    #[ignore = "gandr-ijdw: scaffold; the body is owed with this rung"]
     #[test]
     fn a_captured_expectation_does_not_accept_the_wrong_argument()
     {

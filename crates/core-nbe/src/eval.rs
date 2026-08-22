@@ -1202,11 +1202,12 @@ pub fn force_head(
         // another application. There is no spelling that avoids it.
         //
         // `gandr-rson`.
-        | SemValueNode::Run(_) => {
-            todo!(
-                "gandr-rson: resolve the embedding to the value its computation returns, then                  force that; keep the neutral when the computation does not reach a returner"
-            )
-        },
+        //
+        // Owed: resolve the embedding to the value its computation returns and
+        // force that, keeping the neutral when the computation does not reach a
+        // returner. Until then the neutral arm below stands and the embedding
+        // sticks, which is the defect stated rather than a placeholder for it.
+        | SemValueNode::Run(_) => None,
         | _ => None,
     };
     match cell {

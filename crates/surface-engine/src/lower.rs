@@ -6477,10 +6477,19 @@ impl Lowerer<'_>
                     // It contributes no manifest entry: an abstract component
                     // does not expand, so a later component naming it must
                     // reach it as a declaration rather than as a substitution.
+                    //
+                    // Owed by this rung. Until it lands the decline stands,
+                    // which is the honest boundary rather than a placeholder
+                    // for one.
                     let _ = (&params, &kinded);
-                    todo!(
-                        "gandr-wvd.6.2: read the kind's arrow spine into a KindedComponent and                          bind the name abstractly over the components that follow"
-                    )
+                    let error = LowerError::KindedTypeComponent {
+                        name,
+                        byte_range: component.byte_range(),
+                    };
+                    if bool::from(self.total()) {
+                        continue;
+                    }
+                    return Err(error);
                 }
                 let Some(definition_node) = component.child_by_field_name(node_kinds::FIELD_TYPE)
                 else {
@@ -6510,10 +6519,12 @@ impl Lowerer<'_>
                 // exactly as the nullary form's body is elaborated once where it
                 // is written. Every later occurrence is an application that
                 // substitutes for those atoms.
+                // Owed: elaborate the body under the parameters as standing
+                // atoms, record a `ManifestAnswer::Family`, and push the
+                // component. Unreachable until the binder reader above exists,
+                // because `params` is empty without it.
                 let _ = definition_node;
-                todo!(
-                    "gandr-wvd.6.2: elaborate the body under the parameters as standing atoms,                      record a ManifestAnswer::Family, and push the TypeComponent"
-                )
+                unreachable!("gandr-wvd.6.2: a parameterized component needs the binder reader")
             }
             let type_node = required_field(component, node_kinds::FIELD_TYPE)?;
             let ty = self.manifest_component_type(type_node, &manifest)?;
@@ -6562,7 +6573,10 @@ impl Lowerer<'_>
         _manifest: &BTreeMap<String, ManifestAnswer>,
     ) -> LowerResult<Vec<TypeParameter>>
     {
-        todo!("gandr-wvd.6.2: read the type component's binder list")
+        // Until this rung lands no binder list is read and every component is
+        // nullary, which is exactly today's behaviour: the parser admitting a
+        // parameter list changes nothing until a reader exists for it.
+        Ok(Vec::new())
     }
 
     /// Lowers one signature component's type under the manifest components

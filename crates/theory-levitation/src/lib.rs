@@ -205,6 +205,7 @@ pub use crate::desc::OperDesc;
 pub use crate::desc::ParamDesc;
 pub use crate::desc::SignDesc;
 pub use crate::desc::SortDesc;
+pub use crate::desc::SortIndex;
 pub use crate::desc::SurfaceSpan;
 pub use crate::elaborate::CircuitElaborationError;
 pub use crate::elaborate::InterfacePair;
