@@ -32,6 +32,7 @@ mod tests
     use gandr_theory_cell_complexes::sequent::Orientation;
     use gandr_theory_cell_complexes::sequent::SequentAlphabet;
     use gandr_theory_cell_complexes::sequent::frame_defining_cell;
+    use gandr_theory_cell_complexes::subst::Subst;
     use gandr_theory_coherent_resolutions::completion::CompletionBudget;
     use gandr_theory_coherent_resolutions::completion::CompletionOutcome;
     use gandr_theory_coherent_resolutions::completion::complete;
@@ -70,6 +71,137 @@ mod tests
                 ..
             }),
             "the composite drops the intermediate Succ, leaving add with a pushed-in frame"
+        );
+    }
+
+    /// The peak the enumeration suppresses has legs that provably coincide.
+    ///
+    /// **The witness for the exception in the completeness claim.** The
+    /// enumeration omits the root diagonal, and the claim is entitled to that
+    /// omission only because the omitted peak joins in no steps. Asserting the
+    /// omission would be stipulating it; this computes both contractions of the
+    /// diagonal peak and compares them, so if a diagonal peak ever had distinct
+    /// reducts the exception is refuted loudly rather than silently.
+    #[test]
+    fn the_suppressed_diagonal_peak_has_coinciding_legs()
+    {
+        let cell = add_s();
+        let renamed: Cell<SequentAlphabet> = {
+            let (lhs, rhs) =
+                SequentAlphabet::rename_apart((&cell.lhs, &cell.rhs), (&cell.lhs, &cell.rhs));
+            Cell::new(lhs, rhs, cell.orient, cell.provenance)
+        };
+        let mut unifier = Subst::new();
+        assert!(
+            bool::from(SequentAlphabet::unify_cmd(
+                &cell.lhs,
+                &renamed.lhs,
+                &mut unifier
+            )),
+            "a pattern unifies with its own apart-rename"
+        );
+        assert_eq!(
+            PeakLegs::Coincide,
+            peak_legs::<SequentAlphabet>(&unifier, &cell.rhs, &renamed.rhs),
+            "the diagonal peak's two contractions are the same term"
+        );
+    }
+
+    /// A genuine critical pair's legs differ under the same predicate.
+    ///
+    /// The other side of the same decision surface, and it has to run through
+    /// `peak_legs` rather than around it: without this the coincidence witness
+    /// is satisfied by a predicate that answers `Coincide` for everything.
+    #[test]
+    fn a_real_critical_pair_has_differing_legs()
+    {
+        // The same ground-versus-schematic shape as the seam witness, with
+        // different right-hand sides so the pair is genuinely critical.
+        let (op, label) = (Sym::new("f"), Sym::new("alpha"));
+        let mut store = CellStore::new();
+        store.insert(ground_rule(
+            &Sym::new("Zero"),
+            &op,
+            &label,
+            ConsPat::op("p", [], ConsPat::meta("alpha")),
+        ));
+        store.insert(schematic_rule(
+            &Sym::new("x"),
+            &op,
+            &label,
+            ConsPat::op("q", [], ConsPat::meta("alpha")),
+        ));
+        let confluence = enumerate_overlaps(&store)
+            .into_iter()
+            .find(|o| o.kind == OverlapKind::Confluence)
+            .expect("the two rules overlap at the root");
+        let left = store
+            .get(confluence.left)
+            .expect("the left cell is stored")
+            .rhs
+            .clone();
+        assert_eq!(
+            PeakLegs::Differ,
+            peak_legs::<SequentAlphabet>(
+                &confluence.unifier,
+                &left,
+                &confluence.right_renamed().rhs
+            ),
+            "a real critical pair's two contractions are different terms"
+        );
+    }
+
+    /// Every confluence entry the enumeration emits carries the root seam.
+    ///
+    /// **Structural here, and separating in its toy-alphabet sibling.** The
+    /// sequent alphabet's command grammar has one constructor, so every
+    /// command position it can produce IS the root — this assertion cannot
+    /// fail over it and is worth only what a shape check is worth. The
+    /// separating form is
+    /// `second_inhabitant::tests::every_toy_confluence_entry_carries_the_root_seam`,
+    /// over an alphabet that nests commands and therefore has interior
+    /// positions the branch could have stamped and does not.
+    ///
+    /// The clause matters because the completeness exception rests on it: a
+    /// confluence entry at an interior position would be a Knuth-Bendix
+    /// self-overlap, and the diagonal exclusion would then be dropping real
+    /// work rather than a trivial peak.
+    #[test]
+    fn every_confluence_entry_carries_the_root_seam()
+    {
+        // A ground rule and a schematic rule over one operation, with
+        // DIFFERENT right-hand sides so the pair is a real critical pair and
+        // survives the diagonal exclusion. Their left-hand sides unify at the
+        // root, which is what makes the fixture produce confluence entries at
+        // all.
+        let (op, label) = (Sym::new("f"), Sym::new("alpha"));
+        let mut store = CellStore::new();
+        store.insert(ground_rule(
+            &Sym::new("Zero"),
+            &op,
+            &label,
+            ConsPat::op("p", [], ConsPat::meta("alpha")),
+        ));
+        store.insert(schematic_rule(
+            &Sym::new("x"),
+            &op,
+            &label,
+            ConsPat::op("q", [], ConsPat::meta("alpha")),
+        ));
+        let root = SequentAlphabet::root_position();
+        let mut seen = 0_usize;
+        for overlap in enumerate_overlaps(&store) {
+            if overlap.kind == OverlapKind::Confluence {
+                seen = seen.saturating_add(1_usize);
+                assert_eq!(
+                    root, overlap.seam,
+                    "a confluence overlap is a root overlap by construction"
+                );
+            }
+        }
+        assert!(
+            seen > 0_usize,
+            "the fixture produces confluence entries, so the check is not vacuous"
         );
     }
 

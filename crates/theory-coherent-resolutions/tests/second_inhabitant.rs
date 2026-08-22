@@ -9,6 +9,7 @@
 mod tests
 {
     use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellAlphabet as _;
     use gandr_theory_cell_complexes::CellStore;
     use gandr_theory_cell_complexes_tools::toy::Toy;
     use gandr_theory_cell_complexes_tools::toy::ToyAlphabet;
@@ -44,6 +45,62 @@ mod tests
                 Toy::var(ToyNameRef("n")),
             )),
         )
+    }
+
+    /// Every confluence entry the enumeration emits carries the root seam,
+    /// over an alphabet that HAS non-root positions.
+    ///
+    /// **The check that makes the root-only clause non-vacuous.** The sequent
+    /// alphabet's command grammar has a single constructor, so every command
+    /// position it can produce is the root and the same assertion there is
+    /// structural rather than separating. The toy alphabet nests commands, so
+    /// interior positions genuinely exist — and a confluence entry must still
+    /// carry the root, because the confluence branch unifies whole left-hand
+    /// sides and never descends.
+    ///
+    /// This is what the completeness exception rests on. A confluence entry at
+    /// an interior position would be a Knuth-Bendix self-overlap, and the
+    /// diagonal exclusion would then be dropping real work.
+    #[test]
+    fn every_toy_confluence_entry_carries_the_root_seam()
+    {
+        // Two rules whose left-hand sides unify at the root and whose
+        // right-hand sides differ, so the pair survives the diagonal
+        // exclusion and the check is not vacuous.
+        let mut store: CellStore<ToyAlphabet> = CellStore::new();
+        store.insert(toy_cell(
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("x"))),
+            Toy::var(ToyNameRef("x")),
+        ));
+        store.insert(toy_cell(
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("y"))),
+            Toy::succ(Toy::var(ToyNameRef("y"))),
+        ));
+
+        let interior = ToyAlphabet::command_positions(&Toy::add(
+            Toy::succ(Toy::var(ToyNameRef("m"))),
+            Toy::var(ToyNameRef("n")),
+        ));
+        assert!(
+            interior.len() > 1_usize,
+            "the toy alphabet has interior command positions, so the root is a real choice"
+        );
+
+        let root = ToyAlphabet::root_position();
+        let mut seen = 0_usize;
+        for overlap in enumerate_overlaps(&store) {
+            if overlap.kind == OverlapKind::Confluence {
+                seen = seen.saturating_add(1_usize);
+                assert_eq!(
+                    root, overlap.seam,
+                    "a confluence overlap is a root overlap by construction"
+                );
+            }
+        }
+        assert!(
+            seen > 0_usize,
+            "the fixture produces confluence entries, so the check is not vacuous"
+        );
     }
 
     #[test]

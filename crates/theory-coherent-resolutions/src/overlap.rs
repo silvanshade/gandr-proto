@@ -2,11 +2,13 @@
 //! (the sequent-machines design's §7.3.2; VDC addendum §7.4), generic over
 //! the [`CellAlphabet`] (the executed meta-spike-01).
 //!
-//! For each ordered pair of cells the enumerator returns the *complete family*
-//! of unifications at a cut, never a single chosen one (§7.3.2: "enumerate
-//! every overlap"; the fan-out is the mathematically-forced multi-sum of the
-//! addendum §7.4). Two flavors, both rooted at the seam ("cuts make overlaps
-//! shallow — the seam is the root"):
+//! For each ordered pair of cells the enumerator returns the family of
+//! unifications at a cut, never a single chosen one (§7.3.2: "enumerate every
+//! overlap"; the fan-out is the mathematically-forced multi-sum of the
+//! addendum §7.4). It is complete **up to the trivial root diagonal**, which a
+//! cell is not overlapped with itself over and which
+//! [`enumerate_overlaps`] states with its reason. Two flavors, both rooted at
+//! the seam ("cuts make overlaps shallow — the seam is the root"):
 //!
 //! - [`OverlapKind::Confluence`] — the Knuth–Bendix **critical pair**: the two
 //!   left-hand sides unify, so the peak `σ(lₐ)` reduces two ways (apply left,
@@ -515,6 +517,72 @@ impl<A: CellAlphabet> Overlap<A>
     }
 }
 
+/// Whether a peak's two one-step reducts are the same term.
+///
+/// The single notion two repairs needed: the exception in the enumeration's
+/// completeness claim, and the suppression inside the enumerator itself.
+/// Stating it once is what stops it becoming two spellings of one idea that
+/// later disagree.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum PeakLegs
+{
+    /// Both contractions give the same term, so the peak joins in no steps.
+    Coincide,
+    /// The contractions differ, so the peak is a critical pair worth carrying.
+    Differ,
+}
+
+/// Decide whether a root confluence peak's two legs coincide.
+///
+/// # What this is for, and what it is deliberately not used for
+///
+/// It states the exception in [`enumerate_overlaps`]'s completeness claim:
+/// the enumeration omits the root diagonal, and it is entitled to because a
+/// diagonal peak's legs coincide. The root most general unifier of a pattern
+/// with its own apart-rename **is** that renaming, so both contractions land
+/// on the same term.
+///
+/// **It is not the enumerator's suppression test, and that is measured.** The
+/// obvious next step is to suppress every peak whose legs coincide, which
+/// would also make the family alpha-invariant. It deletes real work: a ground
+/// rule and a schematic rule over one operation are distinct cells whose legs
+/// coincide once unification instantiates the schematic one, and that pair is
+/// a joinable critical pair the completion certifies. Coinciding legs mean
+/// *trivially joinable*, not *not an overlap*.
+///
+/// # Contract
+/// - requires: `unifier` is the most general unifier of the two left-hand
+///   sides, and the two right-hand sides are the ones it was computed against —
+///   the left cell's own, and the **apart-renamed** right cell's.
+/// - ensures: [`PeakLegs::Coincide`] exactly when both contractions of the peak
+///   give the same term. This is a decision about the terms in hand and never
+///   an assumption about how they were produced.
+/// - provides: the one notion the completeness exception and the enumerator's
+///   suppression are both stated over.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the decision surface is "same reducts, coincide;
+///   different reducts, differ", separated by a suppressed diagonal peak whose
+///   legs are computed and compared, and by a genuine critical pair.
+/// - witness: `overlap::tests::the_suppressed_diagonal_peak_has_coinciding_legs`
+/// - witness: `overlap::tests::a_real_critical_pair_has_differing_legs`
+#[inline]
+#[must_use]
+pub fn peak_legs<A>(
+    unifier: &A::Subst,
+    left_rhs: &A::Cmd,
+    right_rhs: &A::Cmd,
+) -> PeakLegs
+where
+    A: CellAlphabet,
+{
+    if A::apply_subst(unifier, left_rhs) == A::apply_subst(unifier, right_rhs) {
+        return PeakLegs::Coincide;
+    }
+    return PeakLegs::Differ;
+}
+
 /// Enumerate the family of overlaps among the store's cells
 /// (`proposal-sequent-kernel.md` §7.3.2).
 ///
@@ -633,6 +701,13 @@ where
     );
     // Confluence: unify the two left-hand sides (skip the trivial
     // self-overlap, whose reducts are identical by construction).
+    //
+    // The guard is on the two ids and NOT on whether the legs coincide, and
+    // the difference is measured rather than assumed: a ground rule and a
+    // schematic rule over one operation are genuinely distinct cells whose
+    // legs DO coincide once unification instantiates the schematic one, and
+    // that pair is a real joinable critical pair which completion certifies.
+    // Suppressing every coinciding peak would delete it. See `peak_legs`.
     if id_left != id_right {
         let mut unifier = A::Subst::default();
         if bool::from(A::unify_cmd(&cell_left.lhs, &renamed.lhs, &mut unifier)) {

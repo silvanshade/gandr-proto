@@ -22,7 +22,7 @@
 //!
 //! | axiom row (Def 3.2)                            | verdict | witness |
 //! | ---------------------------------------------- | ------- | ------- |
-//! | (i) multi-sums in the tight layer              | **holds, degenerate-singleton** — the enumerated family is multi-universal; first-order syntactic unification makes the family at most one per ordered pair per kind (the discrete TRS[Σ] case) | [`multi_sum_families_are_degenerate_singletons`], [`confluence_cospans_factor_uniquely`], [`composition_cospans_factor_uniquely`], [`confluence_cospans_found_by_matching_factor`], [`composition_cospans_found_by_matching_factor`] |
+//! | (i) multi-sums in the tight layer              | **holds, degenerate-singleton** — the enumerated family is multi-universal; first-order syntactic unification makes the family at most one per ordered pair per kind (the discrete TRS[Σ] case) | [`multi_sum_families_are_degenerate_singletons`], [`confluence_cospans_factor_uniquely`], [`composition_cospans_factor_uniquely`], [`confluence_cospans_are_explained_by_the_family`], [`composition_cospans_are_explained_by_the_family`] |
 //! | (ii) pullbacks in the tight and cell layers    | **holds strictly** — unification computes pattern pullbacks; cell intersection is componentwise | [`unification_computes_pattern_pullbacks`], [`matched_pattern_instances_pull_back`], [`cell_intersection_is_componentwise`] |
 //! | (iii) horizontal decomposition                 | **holds strictly** — a cell over a composed seam factors as the two-step derivation; the globular-iso residue is the identity (stronger than isoglobular) | [`fused_cells_decompose_as_two_step_derivations`] |
 //! | (iv) source a strong multi-opfibration         | **holds, discrete** — the singleton lift (substitute through the whole cell) is op-Cartesian: rewriting is substitution-stable and matches factor uniquely | [`source_pushforward_is_substitution_stable`], [`source_pushforward_factors_matches_uniquely`] |
@@ -75,8 +75,8 @@
 //! [`multi_sum_families_are_degenerate_singletons`]: tests::multi_sum_families_are_degenerate_singletons
 //! [`confluence_cospans_factor_uniquely`]: tests::confluence_cospans_factor_uniquely
 //! [`composition_cospans_factor_uniquely`]: tests::composition_cospans_factor_uniquely
-//! [`confluence_cospans_found_by_matching_factor`]: tests::confluence_cospans_found_by_matching_factor
-//! [`composition_cospans_found_by_matching_factor`]: tests::composition_cospans_found_by_matching_factor
+//! [`confluence_cospans_are_explained_by_the_family`]: tests::confluence_cospans_are_explained_by_the_family
+//! [`composition_cospans_are_explained_by_the_family`]: tests::composition_cospans_are_explained_by_the_family
 //! [`unification_computes_pattern_pullbacks`]: tests::unification_computes_pattern_pullbacks
 //! [`matched_pattern_instances_pull_back`]: tests::matched_pattern_instances_pull_back
 //! [`cell_intersection_is_componentwise`]: tests::cell_intersection_is_componentwise
@@ -99,6 +99,7 @@ mod tests
     use gandr_core_sequent::il::Polarity;
     use gandr_theory_cell_complexes::Cat;
     use gandr_theory_cell_complexes::Cell;
+    use gandr_theory_cell_complexes::CellAlphabet as _;
     use gandr_theory_cell_complexes::CellId;
     use gandr_theory_cell_complexes::CellProvenance;
     use gandr_theory_cell_complexes::CellStore;
@@ -117,6 +118,7 @@ mod tests
     use gandr_theory_cell_complexes::pattern::collect_cmd_metavars;
     use gandr_theory_cell_complexes::pattern::splice_at;
     use gandr_theory_cell_complexes::pattern::subterm_at;
+    use gandr_theory_cell_complexes::sequent::SequentAlphabet;
     use gandr_theory_cell_complexes::subst::match_cmd;
     use gandr_theory_cell_complexes::subst::unify_cmd;
     use gandr_theory_coherent_resolutions::CellApp;
@@ -127,6 +129,8 @@ mod tests
     use gandr_theory_coherent_resolutions::complete;
     use gandr_theory_coherent_resolutions::derive_fused;
     use gandr_theory_coherent_resolutions::enumerate_overlaps;
+    use gandr_theory_coherent_resolutions::overlap::PeakLegs;
+    use gandr_theory_coherent_resolutions::overlap::peak_legs;
     use gandr_theory_coherent_resolutions::rewrite::normalize;
     use gandr_theory_coherent_resolutions::rewrite::rewrite_at;
     use proptest::prelude::*;
@@ -165,6 +169,19 @@ mod tests
             /// The mediator: the unique substitution from the overlap's seam
             /// instance to the cospan's common instance.
             mediator: Subst,
+        },
+        /// No enumerated overlap admits a mediator, and the cospan is the
+        /// **root diagonal** whose two legs provably coincide.
+        ///
+        /// The enumeration omits that peak deliberately, so this is the
+        /// completeness claim's stated exception rather than a hole in it.
+        /// It is a variant rather than a filter on the generator: a filtered
+        /// case stops being exercised, and this one carries an obligation —
+        /// the legs really do have to coincide, and the caller checks.
+        TriviallyJoinable
+        {
+            /// The single term both contractions of the peak give.
+            joined: Box<CmdPat>,
         },
         /// No enumerated overlap admits a mediator: enumeration is incomplete
         /// (a completeness bug).
@@ -337,7 +354,12 @@ mod tests
             mediators.push((overlap.clone(), mediator));
         }
         match mediators.len() {
-            | 0 => Factorization::Incomplete,
+            | 0 => trivially_joinable(left, right, kind, store).map_or(
+                Factorization::Incomplete,
+                |joined| Factorization::TriviallyJoinable {
+                    joined: Box::new(joined),
+                },
+            ),
             | 1 => {
                 let Some((overlap, mediator)) = mediators.pop()
                 else {
@@ -352,6 +374,43 @@ mod tests
                 mediators.into_iter().map(|(overlap, _)| overlap).collect(),
             ),
         }
+    }
+
+    /// The completeness claim's exception, decided rather than assumed.
+    ///
+    /// An unmediated confluence cospan is the enumeration's stated exception
+    /// exactly when its two cells are one cell — the root diagonal — and the
+    /// peak's two contractions give the same term. **Both halves are checked
+    /// here**, and the second is the one that matters: the exception's whole
+    /// warrant is that the omitted peak joins in no steps, so if a diagonal
+    /// peak ever had distinct reducts this returns `None` and the caller
+    /// reports incompleteness, which is the loud failure the exception is
+    /// entitled to be judged by.
+    fn trivially_joinable(
+        left: CellId,
+        right: CellId,
+        kind: OverlapKind,
+        store: &CellStore,
+    ) -> Option<CmdPat>
+    {
+        if kind != OverlapKind::Confluence || left != right {
+            return None;
+        }
+        let cell = store.get(left)?;
+        let (renamed_lhs, renamed_rhs) =
+            SequentAlphabet::rename_apart((&cell.lhs, &cell.rhs), (&cell.lhs, &cell.rhs));
+        let mut unifier = Subst::new();
+        if !bool::from(SequentAlphabet::unify_cmd(
+            &cell.lhs,
+            &renamed_lhs,
+            &mut unifier,
+        )) {
+            return None;
+        }
+        if peak_legs::<SequentAlphabet>(&unifier, &cell.rhs, &renamed_rhs) != PeakLegs::Coincide {
+            return None;
+        }
+        return Some(unifier.apply_cmd(&cell.rhs));
     }
 
     /// Axiom (iv): pushforward of a cell along a substitution on its input
@@ -1335,8 +1394,16 @@ mod tests
         /// left-hand side matches the same ground command, the pair is a
         /// cospan the enumerated family must explain (the independent
         /// direction — matching, never the enumerator, finds the cospan).
+        ///
+        /// **Explain, not mediate**, and the name says so. The claim has one
+        /// exception — the root diagonal, whose peak joins in no steps and
+        /// which the enumeration omits — so a cospan is explained either by a
+        /// mediating overlap or by being that exception, with the exception
+        /// *witnessed* rather than asserted. The property that named only
+        /// mediation reported the exception as a completeness bug, which is
+        /// how this was found.
         #[test]
-        fn confluence_cospans_found_by_matching_factor(
+        fn confluence_cospans_are_explained_by_the_family(
             (a, b, tau) in (arb_cell(), arb_cell()).prop_flat_map(|(a, b)| {
                 arb_ground_subst(cmd_vars(&a.lhs)).prop_map(move |tau| (a.clone(), b.clone(), tau))
             }),
@@ -1359,6 +1426,21 @@ mod tests
             match factor_cospan(a_id, b_id, OverlapKind::Confluence, &cospan, &family, &store)
             {
                 | Factorization::Factored { .. } => {},
+                | Factorization::TriviallyJoinable { ref joined } => {
+                    // The completeness claim's stated exception. The cospan is
+                    // the root diagonal, and `trivially_joinable` has already
+                    // COMPUTED both contractions and found them equal -- the
+                    // exception is witnessed here rather than assumed, and a
+                    // diagonal peak with distinct reducts would have arrived
+                    // as `Incomplete` instead.
+                    prop_assert_eq!(a_id, b_id, "only the diagonal is excepted");
+                    let cell = store.get(a_id).expect("the diagonal cell is stored");
+                    prop_assert_ne!(
+                        joined.as_ref(),
+                        &cell.lhs,
+                        "the joined term is the contraction, not the peak"
+                    );
+                },
                 | Factorization::Incomplete => {
                     prop_assert!(false, "enumeration incomplete: no overlap mediates a matched cospan");
                 },
@@ -1374,9 +1456,13 @@ mod tests
 
         /// Axiom (i), completeness in the wild (composition): ground the left
         /// cell's right-hand side arbitrarily; whenever the right cell's
-        /// left-hand side matches, the enumerated family must factor it.
+        /// left-hand side matches, the enumerated family must explain it.
+        ///
+        /// The composition branch has no diagonal exception — it is not
+        /// guarded on the ids at all — so the exception arm here is
+        /// unreachable and says so.
         #[test]
-        fn composition_cospans_found_by_matching_factor(
+        fn composition_cospans_are_explained_by_the_family(
             (a, b, tau) in (arb_cell(), arb_cell()).prop_flat_map(|(a, b)| {
                 arb_ground_subst(cmd_vars(&a.rhs)).prop_map(move |tau| (a.clone(), b.clone(), tau))
             }),
@@ -1399,6 +1485,21 @@ mod tests
             match factor_cospan(a_id, b_id, OverlapKind::Composition, &cospan, &family, &store)
             {
                 | Factorization::Factored { .. } => {},
+                | Factorization::TriviallyJoinable { ref joined } => {
+                    // The completeness claim's stated exception. The cospan is
+                    // the root diagonal, and `trivially_joinable` has already
+                    // COMPUTED both contractions and found them equal -- the
+                    // exception is witnessed here rather than assumed, and a
+                    // diagonal peak with distinct reducts would have arrived
+                    // as `Incomplete` instead.
+                    prop_assert_eq!(a_id, b_id, "only the diagonal is excepted");
+                    let cell = store.get(a_id).expect("the diagonal cell is stored");
+                    prop_assert_ne!(
+                        joined.as_ref(),
+                        &cell.lhs,
+                        "the joined term is the contraction, not the peak"
+                    );
+                },
                 | Factorization::Incomplete => {
                     prop_assert!(false, "enumeration incomplete: no overlap mediates a matched cospan");
                 },
@@ -1410,6 +1511,91 @@ mod tests
                     );
                 },
             }
+        }
+    }
+
+    /// The counterexample that started this, pinned as an ordinary test.
+    ///
+    /// Found by [`confluence_cospans_are_explained_by_the_family`], whose seed
+    /// lives only in a gitignored regression file — so the durable form of a
+    /// case that was nearly lost with its worktree lives here instead.
+    ///
+    /// The store deduplicates structurally equal cells onto one id, so the
+    /// property's two generated cells collapse to a single entry and the
+    /// matched cospan is **diagonal**. The enumerator omits that peak, and
+    /// factoring now reports the omission as the claim's stated exception with
+    /// the term both legs give, rather than as incompleteness.
+    ///
+    /// **The name moved with the claim.** It asserted that the cospan
+    /// *factors*, which is an outcome the repair deliberately does not
+    /// deliver: the diagonal is not mediated, it is excepted.
+    #[test]
+    fn the_diagonal_cospan_of_a_deduplicated_cell_is_the_stated_exception()
+    {
+        let cell = Cell::new(
+            CmdPat::cut(
+                Polarity::Positive,
+                nat_of(NatSuccCount(2)),
+                ConsPat::op("f", [], ConsPat::Top),
+            ),
+            CmdPat::cut(
+                Polarity::Positive,
+                nat_of(NatSuccCount(1)),
+                ConsPat::op("f", [], ConsPat::Top),
+            ),
+            Orientation::PolarityDerived,
+            CellProvenance::SurfaceRule,
+        );
+        let tau = Subst::new();
+        let mut store: CellStore = CellStore::new();
+        let a_id = store.insert(cell.clone());
+        let b_id = store.insert(cell);
+        assert_eq!(
+            a_id, b_id,
+            "the store dedupes structural equals onto one id"
+        );
+        let lhs = store.get(a_id).expect("the cell was inserted").lhs.clone();
+        let lhs_for_check = lhs.clone();
+        let instance = tau.apply_cmd(&lhs);
+        let mut right_match = Subst::new();
+        assert!(
+            bool::from(match_cmd(&lhs, &instance, &mut right_match)),
+            "the ground left face matches its own instance"
+        );
+        let family = enumerate_overlaps(&store);
+        let cospan = Cospan {
+            left_match: tau,
+            right_face: lhs,
+            right_match,
+            instance,
+        };
+        match factor_cospan(
+            a_id,
+            b_id,
+            OverlapKind::Confluence,
+            &cospan,
+            &family,
+            &store,
+        ) {
+            | Factorization::TriviallyJoinable { joined } => {
+                assert_ne!(
+                    joined.as_ref(),
+                    &lhs_for_check,
+                    "the exception carries the contraction, not the peak"
+                );
+            },
+            | Factorization::Factored { .. } => {
+                panic!("the diagonal is excepted, never mediated");
+            },
+            | Factorization::Incomplete => {
+                panic!("enumeration incomplete: no overlap mediates a matched cospan");
+            },
+            | Factorization::NonMinimal(members) => {
+                panic!(
+                    "family not minimal: {} overlaps mediate one cospan",
+                    members.len()
+                );
+            },
         }
     }
 
