@@ -53,10 +53,10 @@ const FUZZ_MANIFEST_PATH: &str = "fuzz/Cargo.toml";
 const FUZZ_CORPUS_ROOT: &str = "fuzz/corpus";
 /// Directory where `cargo afl build` places target debug binaries.
 const FUZZ_TARGET_DEBUG_ROOT: &str = "fuzz/target/debug";
-/// Cargo feature that exposes the parity AFL target.
-const FUZZ_PARITY_FEATURE: &str = "parity";
-/// Cargo feature that exposes the Rust gate-suite AFL target.
-const FUZZ_GATES_FEATURE: &str = "gates";
+/// Cargo feature required by the lower and check AFL targets.
+const FUZZ_FUZZING_FEATURE: &str = "fuzzing";
+/// Cargo feature set required by the Rust gate-suite AFL target.
+const FUZZ_GATES_FEATURES: &str = "fuzzing,gates";
 /// Default mutants cache image before home-directory expansion.
 const MUTANTS_DEFAULT_CACHE_IMAGE: &str = "~/.microsandbox/gandr-mutants-cache.btrfs";
 /// Default upper ref for configured push campaigns without push-event metadata.
@@ -66,11 +66,9 @@ const MUTANTS_TEMPORARY_PATH_PREFIX: &str = "gandr-workflow-gates-mutants";
 /// Bounded attempts for collision-resistant mutation temporary path names.
 const MUTANTS_TEMPORARY_PATH_ATTEMPTS: u16 = 1024;
 /// All allowed fuzz-smoke targets in deterministic execution order.
-const FUZZ_TARGETS: [FuzzSmokeTarget; 5] = [
+const FUZZ_TARGETS: [FuzzSmokeTarget; 3] = [
     FuzzSmokeTarget::Lower,
-    FuzzSmokeTarget::Parse,
     FuzzSmokeTarget::Check,
-    FuzzSmokeTarget::Parity,
     FuzzSmokeTarget::Gates,
 ];
 
@@ -1102,7 +1100,7 @@ where
     })
 }
 
-/// Parse `fuzz-smoke [--target lower|parse|check|parity|gates]`.
+/// Parse `fuzz-smoke [--target lower|check|gates]`.
 fn parse_fuzz_smoke<Arguments>(arguments: Arguments) -> Result<Command, GateError>
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -1204,8 +1202,8 @@ pub fn fuzz_build_command_plan(target: FuzzSmokeTarget) -> FuzzExternalCommandPl
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — lower, parity, and gates target plan tests
-///   distinguish the feature-free, parity-feature, and gates-feature branches.
+/// - hypothesis: L3 only — lower, check, and gates target plan tests
+///   distinguish the fuzzing-feature and fuzzing-plus-gates-feature branches.
 #[must_use]
 #[inline]
 pub fn fuzz_build_args(target: FuzzSmokeTarget) -> Vec<OsString>
@@ -1218,10 +1216,9 @@ pub fn fuzz_build_args(target: FuzzSmokeTarget) -> Vec<OsString>
         OsString::from("--bin"),
         OsString::from(target.as_str().as_ref()),
     ];
-    if let Some(feature) = target.required_feature() {
-        args.push(OsString::from("--features"));
-        args.push(OsString::from(feature.as_ref()));
-    }
+    let feature = target.required_feature();
+    args.push(OsString::from("--features"));
+    args.push(OsString::from(feature.as_ref()));
     args
 }
 
@@ -1546,9 +1543,7 @@ where
     let value = value.into().0;
     match value {
         | "lower" => Ok(FuzzSmokeTarget::Lower),
-        | "parse" => Ok(FuzzSmokeTarget::Parse),
         | "check" => Ok(FuzzSmokeTarget::Check),
-        | "parity" => Ok(FuzzSmokeTarget::Parity),
         | "gates" => Ok(FuzzSmokeTarget::Gates),
         | other => Err(GateError::usage(format!(
             "unsupported fuzz-smoke target `{other}`"
@@ -1624,7 +1619,7 @@ fn default_manifest_path() -> PathBuf
 #[must_use]
 pub fn usage_text() -> impl Into<UsageTextText<'static>>
 {
-    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, embedded-syntax, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|parse|check|parity|gates]"
+    "usage: gandr-workflow-gates <command>; commands: contracts, ci-contracts, graph-boundary, embedded-syntax, docs-manifest, docs-reference, page-balance, rumdl, soundness-oracles, default-graph, coverage, maintenance-range [advance], mutants, workflow, fuzz-smoke [--target lower|check|gates]"
 }
 
 /// Parsed supported CLI command.
@@ -1801,13 +1796,9 @@ pub enum FuzzSmokeTarget
 {
     /// Lowering harness.
     Lower,
-    /// Parser harness.
-    Parse,
     /// Type/check harness.
     Check,
-    /// Parity harness, built with the `parity` Cargo feature.
-    Parity,
-    /// Rust gate-suite harness.
+    /// Rust gate-suite harness, built with the `fuzzing` and `gates` features.
     Gates,
 }
 
@@ -1816,8 +1807,7 @@ impl FuzzSmokeTarget
     /// Return the fixed binary/corpus name for this target.
     ///
     /// # Contract
-    /// - ensures: names are exactly `lower`, `parse`, `check`, `parity`, and
-    ///   `gates`.
+    /// - ensures: names are exactly `lower`, `check`, and `gates`.
     /// - provides: the only string projection used in process argv and paths.
     /// - panics: none.
     ///
@@ -1829,22 +1819,19 @@ impl FuzzSmokeTarget
     {
         match self {
             | Self::Lower => FuzzTargetNameText("lower"),
-            | Self::Parse => FuzzTargetNameText("parse"),
             | Self::Check => FuzzTargetNameText("check"),
-            | Self::Parity => FuzzTargetNameText("parity"),
             | Self::Gates => FuzzTargetNameText("gates"),
         }
     }
 
-    /// Return the Cargo feature required to expose this binary, when any.
+    /// Return the Cargo feature set required to expose this binary.
     #[inline]
     #[must_use]
-    const fn required_feature(self) -> Option<FuzzFeatureNameText<'static>>
+    const fn required_feature(self) -> FuzzFeatureNameText<'static>
     {
         match self {
-            | Self::Parity => Some(FuzzFeatureNameText(FUZZ_PARITY_FEATURE)),
-            | Self::Gates => Some(FuzzFeatureNameText(FUZZ_GATES_FEATURE)),
-            | Self::Lower | Self::Parse | Self::Check => None,
+            | Self::Lower | Self::Check => FuzzFeatureNameText(FUZZ_FUZZING_FEATURE),
+            | Self::Gates => FuzzFeatureNameText(FUZZ_GATES_FEATURES),
         }
     }
 }
@@ -1918,7 +1905,7 @@ pub enum ExternalStream
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — lower/parity build plans and gate replay plans
+/// - hypothesis: L3 only — lower and check build plans, plus gate replay plans,
 ///   assert exact argv, binary path, and stream policy.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FuzzExternalCommandPlan
@@ -2899,7 +2886,7 @@ mod tests
             },
             | (ExpectedCommand::FuzzDefault, Command::FuzzSmoke { plan }) => {
                 assert_eq!(
-                    vec!["lower", "parse", "check", "parity", "gates"],
+                    vec!["lower", "check", "gates"],
                     plan.targets()
                         .iter()
                         .map(|target| target.as_str().0)
@@ -3162,7 +3149,7 @@ mod tests
                     "--target",
                     "lower",
                     "--target",
-                    "parse",
+                    "check",
                 ],
                 detail: "duplicate --target",
             },
@@ -3273,18 +3260,16 @@ mod tests
             return Ok(());
         }
         let cases = [
-            ("lower", FuzzSmokeTarget::Lower, None),
-            ("parse", FuzzSmokeTarget::Parse, None),
-            ("check", FuzzSmokeTarget::Check, None),
-            ("parity", FuzzSmokeTarget::Parity, Some(FUZZ_PARITY_FEATURE)),
-            ("gates", FuzzSmokeTarget::Gates, Some(FUZZ_GATES_FEATURE)),
+            ("lower", FuzzSmokeTarget::Lower, FUZZ_FUZZING_FEATURE),
+            ("check", FuzzSmokeTarget::Check, FUZZ_FUZZING_FEATURE),
+            ("gates", FuzzSmokeTarget::Gates, FUZZ_GATES_FEATURES),
         ];
 
         for (name, target, feature) in cases {
             let parsed_target = parse_fuzz_smoke_target(name)?;
             assert_eq!(parsed_target, target);
             assert_eq!(target.as_str().as_ref(), name);
-            assert_eq!(target.required_feature().map(|value| value.0), feature);
+            assert_eq!(target.required_feature().0, feature);
 
             let parsed = parse_command(os_args([
                 "gandr-workflow-gates",
@@ -3307,19 +3292,21 @@ mod tests
                 FUZZ_MANIFEST_PATH,
                 "--bin",
                 "lower",
+                "--features",
+                FUZZ_FUZZING_FEATURE,
             ])
         );
         assert_eq!(
-            fuzz_build_args(FuzzSmokeTarget::Parity),
+            fuzz_build_args(FuzzSmokeTarget::Check),
             os_strings([
                 "afl",
                 "build",
                 "--manifest-path",
                 FUZZ_MANIFEST_PATH,
                 "--bin",
-                "parity",
+                "check",
                 "--features",
-                FUZZ_PARITY_FEATURE,
+                FUZZ_FUZZING_FEATURE,
             ])
         );
         assert_eq!(
@@ -3332,7 +3319,7 @@ mod tests
                 "--bin",
                 "gates",
                 "--features",
-                FUZZ_GATES_FEATURE,
+                FUZZ_GATES_FEATURES,
             ])
         );
 

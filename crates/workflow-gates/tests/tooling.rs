@@ -781,7 +781,7 @@ fn top_level_command_inventory_is_exact() -> TestResult
         cli::usage_text()
             .into()
             .0
-            .contains("fuzz-smoke [--target lower|parse|check|parity|gates]"),
+            .contains("fuzz-smoke [--target lower|check|gates]"),
         "usage text should advertise the closed fuzz-smoke target set"
     );
     Ok(())
@@ -1775,7 +1775,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
                     .iter()
                     .map(|target| target.as_str().0)
                     .collect::<Vec<_>>(),
-                vec!["lower", "parse", "check", "parity", "gates"]
+                vec!["lower", "check", "gates"]
             );
         },
         | _ => {
@@ -1817,19 +1817,8 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
             "fuzz/Cargo.toml",
             "--bin",
             "lower",
-        ])
-    );
-    assert_eq!(
-        cli::fuzz_build_args(cli::FuzzSmokeTarget::Parity),
-        os_strings([
-            "afl",
-            "build",
-            "--manifest-path",
-            "fuzz/Cargo.toml",
-            "--bin",
-            "parity",
             "--features",
-            "parity",
+            "fuzzing",
         ])
     );
     assert_eq!(
@@ -1842,7 +1831,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
             "--bin",
             "gates",
             "--features",
-            "gates",
+            "fuzzing,gates",
         ])
     );
     let build_plan = cli::fuzz_build_command_plan(cli::FuzzSmokeTarget::Lower);
