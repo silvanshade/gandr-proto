@@ -200,6 +200,14 @@ mod tests
     /// The instance's body, held apart from its ascription so the two modules
     /// below share it as a **fact** rather than as a claim.
     ///
+    /// **The divergence is unrepresentable rather than checked.** A mitigation
+    /// that is two artifacts required to hold identical text is the same defect
+    /// one level out: an edit reaching one and not the other leaves an
+    /// unknown-scrutiny witness reading a body nobody claims anything about,
+    /// beside a matching claim over a body the witness no longer mirrors, and
+    /// both stay green. Deriving both modules from this one string means there
+    /// is no second copy to drift, so nothing has to notice.
+    ///
     /// **Why there are two modules.** A member-level type check over a signed
     /// module reads the *ascribed* field types, so it witnesses the signature
     /// and says nothing about what the bodies elaborated to. And that gap
@@ -301,7 +309,9 @@ mod tests
     /// record type is exactly what its bodies elaborated to.
     ///
     /// The same body text as the signed instance, by construction rather than
-    /// by inspection: both modules are built from `SETOID_CAT_BODY`.
+    /// by inspection: both modules are built from `SETOID_CAT_BODY`, so there
+    /// is no second copy that could drift out of agreement while both sides
+    /// stay green.
     #[test]
     fn the_unsigned_twins_members_carry_no_unknown()
     {
