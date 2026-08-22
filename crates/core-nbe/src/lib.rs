@@ -3013,6 +3013,160 @@ mod tests
             "family indices did not convert up to beta"
         );
     }
+    /// The unit laws must still convert after `Hom` becomes a typed static
+    /// family application: the endpoints are value-level beta/eta equalities,
+    /// while the enclosing path carries the re-represented family directly.
+    ///
+    /// The pieces are witnessed separately above — path endpoints up to beta
+    /// over a scalar carrier, family indices up to beta with no enclosing
+    /// path, delta through a definition, and the bind collapse a right unit
+    /// law reduces by. This is the case where the carrier is a family and the
+    /// endpoints are unit-law reductions at the same time, which is the shape
+    /// the flagship instance states. The separating cases below refuse on a
+    /// wrong endpoint and on a wrong carrier, so the acceptances are not
+    /// compatible with a conversion that agrees with everything.
+    #[test]
+    fn family_unit_laws_convert_through_represented_hom()
+    {
+        let mut nbe = Normalizer::new();
+        nbe.define(
+            NameRef::from("id"),
+            &Value::thunk(
+                Grade::OMEGA,
+                Comp::lam(
+                    "a",
+                    Comp::lam("x", Comp::ret(Value::var(NameRef::from("x")))),
+                ),
+            ),
+        )
+        .expect("the identity definition lowers");
+        nbe.define(
+            NameRef::from("comp"),
+            &Value::thunk(
+                Grade::OMEGA,
+                Comp::lam(
+                    "a",
+                    Comp::lam(
+                        "b",
+                        Comp::lam(
+                            "c",
+                            Comp::lam(
+                                "f",
+                                Comp::lam(
+                                    "g",
+                                    Comp::lam(
+                                        "x",
+                                        Comp::bind(
+                                            Comp::app(
+                                                Comp::force(Value::var(NameRef::from("f"))),
+                                                Value::var(NameRef::from("x")),
+                                            ),
+                                            "y",
+                                            Comp::app(
+                                                Comp::force(Value::var(NameRef::from("g"))),
+                                                Value::var(NameRef::from("y")),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        .expect("the composition definition lowers");
+
+        let apply_comp = |arguments: Vec<Value>| {
+            arguments
+                .into_iter()
+                .fold(Comp::force(Value::var(NameRef::from("comp"))), Comp::app)
+        };
+        let id_at = |name: &str| {
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::app(
+                    Comp::force(Value::var(NameRef::from("id"))),
+                    Value::var(NameRef::from(name)),
+                ),
+            )
+        };
+        let left = Rc::new(Value::thunk(
+            Grade::OMEGA,
+            apply_comp(Vec::from([
+                Value::var(NameRef::from("a")),
+                Value::var(NameRef::from("a")),
+                Value::var(NameRef::from("b")),
+                id_at("a"),
+                Value::var(NameRef::from("f")),
+            ])),
+        ));
+        let right = Rc::new(Value::thunk(
+            Grade::OMEGA,
+            apply_comp(Vec::from([
+                Value::var(NameRef::from("a")),
+                Value::var(NameRef::from("b")),
+                Value::var(NameRef::from("b")),
+                Value::var(NameRef::from("f")),
+                id_at("b"),
+            ])),
+        ));
+        let bare = Rc::new(Value::var(NameRef::from("f")));
+        assert!(
+            bool::from(nbe.converts(&left, &bare)),
+            "comp(id(a), f) did not convert to f"
+        );
+        assert!(
+            bool::from(nbe.converts(&right, &bare)),
+            "comp(f, id(b)) did not convert to f"
+        );
+
+        let hom_type = |lhs: &str, rhs: &str| {
+            Rc::new(hom(
+                Rc::new(Value::var(NameRef::from(lhs))),
+                Rc::new(Value::var(NameRef::from(rhs))),
+            ))
+        };
+        let path =
+            |ty: Rc<ValueType>, lhs: Rc<Value>, rhs: Rc<Value>| ValueType::Path { ty, lhs, rhs };
+        // `Path(Hom(a, b), f, f)` — the reflexivity both unit laws inhabit.
+        let reflexive = || path(hom_type("a", "b"), Rc::clone(&bare), Rc::clone(&bare));
+        assert!(
+            bool::from(nbe.type_converts(
+                &path(hom_type("a", "b"), Rc::clone(&left), Rc::clone(&bare)),
+                &reflexive(),
+            )),
+            "the left unit-law path did not convert under the represented Hom family"
+        );
+        assert!(
+            bool::from(nbe.type_converts(
+                &path(hom_type("a", "b"), Rc::clone(&right), Rc::clone(&bare)),
+                &reflexive(),
+            )),
+            "the right unit-law path did not convert under the represented Hom family"
+        );
+
+        // The separating cases, and they are why the acceptances say anything.
+        // An endpoint that does not reduce to `f` must refuse even though the
+        // carrier matches.
+        let other = Rc::new(Value::var(NameRef::from("g")));
+        assert!(
+            !bool::from(nbe.type_converts(
+                &path(hom_type("a", "b"), Rc::clone(&left), other),
+                &reflexive(),
+            )),
+            "a path whose endpoint is a different variable converted anyway"
+        );
+        // And a carrier whose family indices are swapped must refuse even
+        // though both endpoints reduce to `f`, or the carrier is not compared.
+        assert!(
+            !bool::from(nbe.type_converts(
+                &path(hom_type("b", "a"), Rc::clone(&left), Rc::clone(&bare)),
+                &reflexive(),
+            )),
+            "a path over a Hom with swapped indices converted anyway"
+        );
+    }
 
     /// The separating cases, and they are the point of the test: a congruence
     /// that only ever reports equal things equal is compatible with being a
