@@ -1,7 +1,7 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
-; items: 245
-; corpus-fixtures-b3sum: 3330d05325d24e3a9c16a870ebfd11d5da7f6694714f574275dbe15eeb001a23
+; items: 250
+; corpus-fixtures-b3sum: a4e496edaea379328c29bf78318baa45a9db64755d28b3581a9ea6488cae5039
 ; class declared-data: 23
 ; class effects-control: 11
 ; class eligible: 23
@@ -10,8 +10,8 @@
 ; class kernel-rejected: 2
 ; class machine-numeric: 2
 ; class native: 7
-; class not-typeable: 8
-; class open-free-name: 92
+; class not-typeable: 10
+; class open-free-name: 95
 ; class package: 8
 ; class structural-stock: 39
 ; columns: <source>\t<item-index>\t<class>
@@ -183,6 +183,11 @@ pathological/data/non-exhaustive-match.gandr	0	declared-data
 pathological/data/non-exhaustive-match.gandr	1	open-free-name
 pathological/deep-record-update-cost.gandr	0	structural-stock
 pathological/deep-record-update-cost.gandr	1	structural-stock
+pathological/dependent-instantiation-capture-accepts.gandr	0	not-typeable
+pathological/dependent-instantiation-capture-accepts.gandr	1	open-free-name
+pathological/dependent-instantiation-capture.gandr	0	not-typeable
+pathological/dependent-instantiation-capture.gandr	1	open-free-name
+pathological/dependent-instantiation-capture.gandr	2	open-free-name
 pathological/eliminator-answer-type-mismatch.gandr	0	not-typeable
 pathological/eliminator-answer-type-tail-rung-only.gandr	0	not-typeable
 pathological/eliminator-answer-type-value-typed.gandr	0	hole-unknown
