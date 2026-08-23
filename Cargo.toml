@@ -31,6 +31,7 @@ members = [
   "crates/surface-layout",
   "crates/surface-lsp",
   "crates/surface-parser",
+  "crates/surface-pretty",
   "crates/surface-render-remote",
   "crates/surface-repl",
   "crates/surface-syntax",
@@ -247,6 +248,7 @@ path = "crates/core-sequent"
 # - gandr-runtime-ffi
 # - gandr-surface-corpus
 # - gandr-surface-engine
+# - gandr-surface-pretty
 # - gandr-theory-levitation
 [workspace.dependencies.gandr-core-term]
 path = "crates/core-term"
@@ -369,6 +371,13 @@ path = "crates/surface-engine"
 [workspace.dependencies.gandr-surface-grammar]
 path = "crates/surface-grammar"
 
+# The shared document-layout engine: a sealed document arena, Pareto layout
+# resolution, and a defunctionalized render machine.
+# consumers:
+# - gandr-surface-pretty
+[workspace.dependencies.gandr-surface-layout]
+path = "crates/surface-layout"
+
 # Language-server face: JSON-RPC encoder over the pipeline report and highlight spans.
 # consumers:
 # - gandr
@@ -383,6 +392,14 @@ path = "crates/surface-lsp"
 # - gandr-surface-repl
 [workspace.dependencies.gandr-surface-parser]
 path = "crates/surface-parser"
+
+# Core-state presentation documents: checked types and values laid out through
+# surface-layout at a caller's page width.
+# consumers:
+# (none yet — the REPL, LSP, and diagnostic faces adopt it at their
+# width-aware cutover)
+[workspace.dependencies.gandr-surface-pretty]
+path = "crates/surface-pretty"
 
 # Leaf wire-protocol types for the typing-machine inspection render bus.
 # consumers:
@@ -716,6 +733,7 @@ features = ["full", "parsing", "visit"]
 # - gandr-surface-engine
 # - gandr-surface-layout
 # - gandr-surface-lsp
+# - gandr-surface-pretty
 # - gandr-surface-repl
 # - gandr-surface-tui
 # - gandr-theory-dynamic-graphs

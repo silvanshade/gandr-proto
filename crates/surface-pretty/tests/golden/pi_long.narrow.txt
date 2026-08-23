@@ -1,0 +1,3 @@
+Π(input : Sequence(Digit)).
+  Π(rest : Accumulator).
+  F Sequence(Digit, Carry)

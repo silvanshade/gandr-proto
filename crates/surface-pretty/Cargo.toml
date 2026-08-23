@@ -1,0 +1,29 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-pretty"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Core-state presentation documents: checked types and values laid out through surface-layout at a caller's page width"
+license.workspace = true
+publish.workspace = true
+
+autotests = false
+
+[[test]]
+name = "goldens"
+path = "tests/goldens.rs"
+
+[dependencies]
+gandr-core-term.workspace = true
+gandr-surface-layout.workspace = true
+thiserror.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
