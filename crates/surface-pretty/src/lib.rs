@@ -233,8 +233,7 @@ fn space_or_break(
 {
     let space = leaf(builder, " ")?;
     let brk_line = builder.hard_line();
-    let indented =
-        builder.nest(NestAmount::from(CONTINUATION_INDENT), brk_line)?;
+    let indented = builder.nest(NestAmount::from(CONTINUATION_INDENT), brk_line)?;
     let brk = builder.choice(space, indented)?;
     concat2(builder, head, brk)
 }
@@ -282,7 +281,8 @@ fn assemble_bracketed(
 ) -> Result<DocId, BuildError>
 {
     let opener_node = leaf(builder, opener)?;
-    let Some(first) = items.first().copied() else {
+    let Some(first) = items.first().copied()
+    else {
         let closer_node = leaf(builder, closer)?;
         return concat2(builder, opener_node, closer_node);
     };
@@ -434,6 +434,22 @@ enum TypeAssembleOperation
 }
 
 /// Frames an infix assembly around two operand nodes.
+#[expect(
+    unknown_lints,
+    reason = "primitive_signature is supplied by the local dylint library"
+)]
+#[expect(
+    clippy::allow_attributes,
+    reason = "the stable compiler and local dylint library disagree about primitive_signature"
+)]
+#[allow(
+    unfulfilled_lint_expectations,
+    reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+)]
+#[expect(
+    primitive_signature,
+    reason = "the infix symbol is a fixed notation fragment of the presentation vocabulary, not semantic state"
+)]
 fn infix_frame<'frame>(
     symbol: &str,
     lhs: TypeNode<'frame>,
@@ -452,6 +468,22 @@ fn infix_frame<'frame>(
 }
 
 /// Frames `opener(nodes…)closer`.
+#[expect(
+    unknown_lints,
+    reason = "primitive_signature is supplied by the local dylint library"
+)]
+#[expect(
+    clippy::allow_attributes,
+    reason = "the stable compiler and local dylint library disagree about primitive_signature"
+)]
+#[allow(
+    unfulfilled_lint_expectations,
+    reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+)]
+#[expect(
+    primitive_signature,
+    reason = "bracket spellings are fixed notation fragments of the presentation vocabulary, not semantic state"
+)]
 fn bracketed_frame<'frame>(
     opener: String,
     closer: &str,
@@ -500,6 +532,22 @@ fn arrow_frame<'frame>(
 }
 
 /// Frames `Π(binder : arg). res`.
+#[expect(
+    unknown_lints,
+    reason = "primitive_signature is supplied by the local dylint library"
+)]
+#[expect(
+    clippy::allow_attributes,
+    reason = "the stable compiler and local dylint library disagree about primitive_signature"
+)]
+#[allow(
+    unfulfilled_lint_expectations,
+    reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+)]
+#[expect(
+    primitive_signature,
+    reason = "binder names are plain strings in this core-term revision; the Stage 3 carrier owns the typed binder"
+)]
 fn dependent_frame<'frame>(
     binder: &str,
     arg: &'frame ValueType,
@@ -529,9 +577,9 @@ fn dependent_frame<'frame>(
 /// Builds the document for a type with an explicit task stack.
 ///
 /// # Termination
-/// - reason: the driver drains an explicit task stack; a build step pushes
-///   only steps for its own children plus their assemble frames, never
-///   itself, and the stack empties once the root document is assembled.
+/// - reason: the driver drains an explicit task stack; a build step pushes only
+///   steps for its own children plus their assemble frames, never itself, and
+///   the stack empties once the root document is assembled.
 /// - measure: pending tasks on the stack; every pushed child is a strict
 ///   subterm of the node that spawned it.
 /// - boundedness: source types are finite Rust values.
@@ -568,7 +616,26 @@ fn build_type(
     }
 
     /// Pops the `count` finished documents one assemble frame combines.
-    fn pop_documents(done: &mut Vec<DocId>, count: usize) -> Vec<DocId>
+    #[expect(
+        unknown_lints,
+        reason = "primitive_signature is supplied by the local dylint library"
+    )]
+    #[expect(
+        clippy::allow_attributes,
+        reason = "the stable compiler and local dylint library disagree about primitive_signature"
+    )]
+    #[allow(
+        unfulfilled_lint_expectations,
+        reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+    )]
+    #[expect(
+        primitive_signature,
+        reason = "the frame arity is walk-internal bookkeeping, not semantic state"
+    )]
+    fn pop_documents(
+        done: &mut Vec<DocId>,
+        count: usize,
+    ) -> Vec<DocId>
     {
         let split = done.len().saturating_sub(count);
         done.split_off(split)
@@ -586,22 +653,28 @@ fn build_type(
                 done.push(space_or_break(builder, head)?);
             },
             | TypeTask::Build { node } => match node {
-                | TypeNode::Value(value_type) => match value_type {
-                    | ValueType::Atom(name) => {
+                | TypeNode::Value(value_type) => match *value_type {
+                    | ValueType::Atom(ref name) => {
                         done.push(leaf(builder, name.as_str())?);
                     },
                     | ValueType::Unit => done.push(leaf(builder, "Unit")?),
-                    | ValueType::Prod(fst, snd) => {
-                        let frame =
-                            infix_frame("×", TypeNode::Value(fst.as_ref()), TypeNode::Value(snd.as_ref()));
+                    | ValueType::Prod(ref fst, ref snd) => {
+                        let frame = infix_frame(
+                            "×",
+                            TypeNode::Value(fst.as_ref()),
+                            TypeNode::Value(snd.as_ref()),
+                        );
                         schedule(&mut stack, frame);
                     },
-                    | ValueType::Sum(lhs, rhs) => {
-                        let frame =
-                            infix_frame("+", TypeNode::Value(lhs.as_ref()), TypeNode::Value(rhs.as_ref()));
+                    | ValueType::Sum(ref lhs, ref rhs) => {
+                        let frame = infix_frame(
+                            "+",
+                            TypeNode::Value(lhs.as_ref()),
+                            TypeNode::Value(rhs.as_ref()),
+                        );
                         schedule(&mut stack, frame);
                     },
-                    | ValueType::List(element) => {
+                    | ValueType::List(ref element) => {
                         let frame = vec![
                             TypeTask::Assemble {
                                 operation: TypeAssembleOperation::Join { count: 2 },
@@ -615,7 +688,7 @@ fn build_type(
                         ];
                         schedule(&mut stack, frame);
                     },
-                    | ValueType::Thunk(_, body) => {
+                    | ValueType::Thunk(_, ref body) => {
                         let frame = vec![
                             TypeTask::Assemble {
                                 operation: TypeAssembleOperation::Join { count: 2 },
@@ -629,39 +702,29 @@ fn build_type(
                         ];
                         schedule(&mut stack, frame);
                     },
-                    | ValueType::Stk(consumes, delivers) => {
-                        let frame = bracketed_frame(
-                            String::from("Stk("),
-                            ")",
-                            vec![
-                                TypeNode::Comp(consumes.as_ref()),
-                                TypeNode::Comp(delivers.as_ref()),
-                            ],
-                        );
+                    | ValueType::Stk(ref consumes, ref delivers) => {
+                        let frame = bracketed_frame(String::from("Stk("), ")", vec![
+                            TypeNode::Comp(consumes.as_ref()),
+                            TypeNode::Comp(delivers.as_ref()),
+                        ]);
                         schedule(&mut stack, frame);
                     },
-                    | ValueType::Data { id, args } => {
-                        let nodes =
-                            args.iter()
-                                .map(|arg| TypeNode::Value(arg.as_ref()))
-                                .collect::<Vec<_>>();
-                        let frame = bracketed_frame(
-                            format!("{}(", id.name().as_ref()),
-                            ")",
-                            nodes,
-                        );
+                    | ValueType::Data { ref id, ref args } => {
+                        let nodes = args
+                            .iter()
+                            .map(|arg| TypeNode::Value(arg.as_ref()))
+                            .collect::<Vec<_>>();
+                        let frame = bracketed_frame(format!("{}(", id.name().as_ref()), ")", nodes);
                         schedule(&mut stack, frame);
                     },
                     | _ => done.push(leaf(builder, "?")?),
                 },
-                | TypeNode::Comp(comp_type) => match comp_type {
-                    | CompType::F(payload, row) => {
+                | TypeNode::Comp(comp_type) => match *comp_type {
+                    | CompType::F(ref payload, ref row) => {
                         if bool::from(row.is_empty()) {
                             let frame = vec![
                                 TypeTask::Assemble {
-                                    operation: TypeAssembleOperation::Join {
-                                        count: 2,
-                                    },
+                                    operation: TypeAssembleOperation::Join { count: 2 },
                                 },
                                 TypeTask::Text {
                                     text: String::from("F "),
@@ -675,9 +738,7 @@ fn build_type(
                         else {
                             let frame = vec![
                                 TypeTask::Assemble {
-                                    operation: TypeAssembleOperation::Join {
-                                        count: 3,
-                                    },
+                                    operation: TypeAssembleOperation::Join { count: 3 },
                                 },
                                 TypeTask::Text {
                                     text: String::from(" !ε"),
@@ -693,23 +754,22 @@ fn build_type(
                         }
                     },
                     | CompType::Arrow {
-                        binder: Some(binder),
-                        arg,
-                        res,
+                        binder: Some(ref binder),
+                        ref arg,
+                        ref res,
                     } => {
-                        let frame =
-                            dependent_frame(binder.as_ref(), arg.as_ref(), res.as_ref());
+                        let frame = dependent_frame(binder.as_ref(), arg.as_ref(), res.as_ref());
                         schedule(&mut stack, frame);
                     },
                     | CompType::Arrow {
                         binder: None,
-                        arg,
-                        res,
+                        ref arg,
+                        ref res,
                     } => {
                         let frame = arrow_frame(arg.as_ref(), res.as_ref());
                         schedule(&mut stack, frame);
                     },
-                    | CompType::With(fst, snd) => {
+                    | CompType::With(ref fst, ref snd) => {
                         let frame = infix_frame(
                             "&",
                             TypeNode::Comp(fst.as_ref()),
@@ -772,12 +832,6 @@ impl RenderDepth
     {
         Self(self.0.saturating_add(1))
     }
-
-    /// Whether further descent is refused in favor of `<deep>`.
-    const fn exhausted(self) -> bool
-    {
-        self.0 >= DEPTH_LIMIT
-    }
 }
 
 /// One pending step of the explicit value-task stack behind [`build_value`].
@@ -835,15 +889,15 @@ enum AssembleOperation
 /// transparent annotations, and `here(witness)` witnesses.
 ///
 /// # Termination
-/// - reason: the driver drains an explicit task stack; a build step pushes
-///   only steps for its own children plus their assemble frames, never
-///   itself, and the stack empties once the root document is assembled.
-/// - measure: pending tasks on the stack; every pushed child carries depth
-///   fuel strictly smaller than its parent's.
+/// - reason: the driver drains an explicit task stack; a build step pushes only
+///   steps for its own children plus their assemble frames, never itself, and
+///   the stack empties once the root document is assembled.
+/// - measure: pending tasks on the stack; every pushed child carries depth fuel
+///   strictly smaller than its parent's.
 /// - boundedness: source values are finite Rust values, and fuel starts at
 ///   [`DEPTH_LIMIT`], past which a `<deep>` leaf renders without descent.
-/// - input recursion: none; caller-supplied values are walked by the
-///   explicit task stack.
+/// - input recursion: none; caller-supplied values are walked by the explicit
+///   task stack.
 fn build_value(
     builder: &mut DocBuilder<'_>,
     value: &Value,
@@ -858,7 +912,26 @@ fn build_value(
     }
 
     /// Pops the `count` finished documents one assemble frame combines.
-    fn pop_documents(done: &mut Vec<DocId>, count: usize) -> Vec<DocId>
+    #[expect(
+        unknown_lints,
+        reason = "primitive_signature is supplied by the local dylint library"
+    )]
+    #[expect(
+        clippy::allow_attributes,
+        reason = "the stable compiler and local dylint library disagree about primitive_signature"
+    )]
+    #[allow(
+        unfulfilled_lint_expectations,
+        reason = "the unknown-lint expectation is fulfilled only under the stable compiler"
+    )]
+    #[expect(
+        primitive_signature,
+        reason = "the frame arity is walk-internal bookkeeping, not semantic state"
+    )]
+    fn pop_documents(
+        done: &mut Vec<DocId>,
+        count: usize,
+    ) -> Vec<DocId>
     {
         let split = done.len().saturating_sub(count);
         done.split_off(split)
@@ -869,7 +942,7 @@ fn build_value(
     while let Some(step) = stack.pop() {
         match step {
             | WalkTask::Build { value, depth } => {
-                if depth.exhausted() {
+                if depth.0 >= DEPTH_LIMIT {
                     done.push(leaf(builder, "<deep>")?);
                     continue;
                 }
@@ -997,7 +1070,11 @@ fn build_value(
                     let label_node = leaf(builder, label.as_str())?;
                     done.push(concat2(builder, label_node, field)?);
                 },
-                | AssembleOperation::Bracket { opener, closer, count } => {
+                | AssembleOperation::Bracket {
+                    opener,
+                    closer,
+                    count,
+                } => {
                     let items = pop_documents(&mut done, count);
                     done.push(assemble_bracketed(
                         builder,

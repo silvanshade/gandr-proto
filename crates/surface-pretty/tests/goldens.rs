@@ -9,6 +9,12 @@
 //! Regenerate with `GANDR_SURFACE_PRETTY_BLESS=1 cargo nextest run -p
 //! gandr-surface-pretty`, then review `git diff tests/golden/`.
 
+#![allow(
+    unknown_lints,
+    primitive_signature,
+    reason = "golden fixtures construct representative semantic values from compact primitive witnesses"
+)]
+
 extern crate alloc;
 
 use alloc::rc::Rc;
@@ -231,8 +237,10 @@ mod tests
             data_application("Sequence", vec![atom("Digit")]),
             inner,
         ));
-        let wide_flat = "Π(input : Sequence(Digit)). \
-                         Π(rest : Accumulator). F Sequence(Digit, Carry)";
+        let wide_flat = concat!(
+            "Π(input : Sequence(Digit)). ",
+            "Π(rest : Accumulator). F Sequence(Digit, Carry)"
+        );
         pinned_type("pi_long", &ty, wide_flat)
     }
 
