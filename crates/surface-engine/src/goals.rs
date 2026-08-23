@@ -420,7 +420,7 @@ mod tests
             let footprint_flags: Vec<bool> = lowered
                 .items
                 .iter()
-                .map(|item| footprint_of(&item.term).has_hole)
+                .map(|item| footprint_of(item).has_hole)
                 .collect();
             assert_eq!(
                 &*goal_item_flags(&lowered),
