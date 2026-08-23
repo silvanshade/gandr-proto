@@ -1,0 +1,7 @@
+{
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "rust-analyzer.check.extraEnv": {
+    "RUSTUP_TOOLCHAIN": "nightly-2026-05-28"
+  }
+}
