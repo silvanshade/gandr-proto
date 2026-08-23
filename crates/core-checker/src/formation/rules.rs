@@ -731,8 +731,7 @@ mod tests
             )),
             ValueType::data(DataId::new(0_u64, "Ix"), vec![ValueType::atom("n")])
                 .infer_classifier(&ctx),
-            "a data application whose argument is a term parameter is structurally a data \
-             application whose argument is a type name, and no formation scope tells them apart"
+            "a term parameter and a type name are one shape here, and no data scope separates them"
         );
     }
 

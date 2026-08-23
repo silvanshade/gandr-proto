@@ -457,8 +457,7 @@ mod tests
         assert_eq!(
             Ok(value_zero()),
             subject.infer_classifier(&seeded),
-            "seeding the subject's own name makes the refusal unreachable — which is why the \
-             producer must never derive its scopes from the type it is about to classify"
+            "seeding the subject's own name makes the refusal unreachable"
         );
     }
 
