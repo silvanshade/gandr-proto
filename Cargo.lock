@@ -1187,6 +1187,7 @@ dependencies = [
  "gandr-theory-coherent-resolutions",
  "gandr-theory-computads",
  "gandr-theory-deep-inference",
+ "gandr-theory-dynamic-graphs",
  "gandr-theory-graphs",
  "gandr-theory-levitation",
  "proptest",

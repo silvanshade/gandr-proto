@@ -26,6 +26,7 @@ gandr-theory-graphs.workspace = true
 [dev-dependencies]
 gandr-theory-cell-complexes-tools.workspace = true
 gandr-theory-computads.workspace = true
+gandr-theory-dynamic-graphs.workspace = true
 gandr-theory-levitation.workspace = true
 proptest.workspace = true
 

@@ -474,7 +474,8 @@ path = "crates/theory-deep-inference"
 
 # Dynamic graph maintenance: a topological order kept under edge insertion, and
 # the offset-carrying valuation that refines it.
-# consumers: none (no in-tree consumer yet)
+# consumers:
+# - gandr-theory-decomposition-spaces (dev)
 [workspace.dependencies.gandr-theory-dynamic-graphs]
 path = "crates/theory-dynamic-graphs"
 
