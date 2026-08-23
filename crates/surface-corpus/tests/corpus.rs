@@ -15,6 +15,7 @@ mod tests
     use gandr_surface_corpus::PATHOLOGICAL_DIR;
     use gandr_surface_corpus::SURFACE_DIR;
     use gandr_surface_corpus::check_case;
+    use gandr_surface_corpus::parse_case;
 
     /// Relative path of one executable corpus example tree.
     #[repr(transparent)]
@@ -69,6 +70,63 @@ mod tests
         assert!(
             failures.is_empty(),
             "pathological corpus failures:\n{}",
+            failures.join("\n")
+        );
+    }
+
+    /// Every executable example submits **whole** through
+    /// `Session::submit` without panicking.
+    ///
+    /// The expectation walkers above slice a file into items before running
+    /// it, so a defect that only fires on whole-file submission is invisible
+    /// to them: `module-missing-component.gandr` carried a lowering whose
+    /// origin shadow tree was one level shallower than its term, the goals
+    /// pass never registered the repair hole, and `Session::submit` — the
+    /// REPL / LSP / driver front end — panicked at a `debug_assert!` the
+    /// walker could not reach (`gandr-w0lg`). This sweep is that property,
+    /// asserted for every example: total lowering accepts or recovers, and
+    /// the goals machinery stays consistent with the terms it annotates.
+    #[test]
+    fn whole_file_submissions_never_panic_across_the_corpus()
+    {
+        use gandr_surface_engine::session::Session;
+
+        let mut files = gandr_files(&crate_root().join(MODEL_DIR));
+        files.extend(gandr_files(&crate_root().join(PATHOLOGICAL_DIR)));
+        assert!(
+            files.len() >= 100,
+            "the executable trees are populated ({} files)",
+            files.len()
+        );
+        let mut failures = Vec::new();
+        for file in &files {
+            let source = fs::read_to_string(file)
+                .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", file.display()));
+            // Mirror `check_case`'s gate: an example asking for a feature this
+            // build lacks is skipped by the walkers, so the sweep skips it too.
+            let Ok(case) = parse_case(&source)
+            else {
+                failures.push(format!("{}: directive error", file.display()));
+                continue;
+            };
+            if case.required_features.iter().any(|&feature| match feature {
+                | gandr_surface_corpus::RequiredFeature::Regex => !cfg!(feature = "regex"),
+                | gandr_surface_corpus::RequiredFeature::Ffi => !cfg!(feature = "ffi"),
+            }) {
+                continue;
+            }
+            let path = file.display().to_string();
+            let submitted = std::panic::catch_unwind(move || {
+                let mut session = Session::new();
+                drop(session.submit(&source));
+            });
+            if submitted.is_err() {
+                failures.push(format!("{path}: whole-file submission panicked"));
+            }
+        }
+        assert!(
+            failures.is_empty(),
+            "whole-file submission failures:\n{}",
             failures.join("\n")
         );
     }

@@ -7421,9 +7421,18 @@ impl Lowerer<'_>
         hole_entry.note = Some(note_of(error));
         let hole_origin = OriginNode::leaf(hole_entry);
         let annotated = Value::annot(hole, component.clone());
+        // The shadow tree must mirror the term's two layers — the annotation
+        // node over the hole leaf (`dangling_module_member`'s shape) — or no
+        // origin path resolves onto the hole itself, `collect_static` never
+        // registers the goal, and a whole-file [`crate::session::Session`]
+        // submission panics at the goals pass on a hole the machine descends
+        // into anyway (`gandr-w0lg`).
+        let annotated_origin = OriginNode::new(entry(node, None), vec![hole_origin]);
         let bound = COut::from_legacy_comp(
             &Comp::Ret(Rc::new(annotated)),
-            OriginNode::new(entry(node, Some(ElabKind::LetValueBind)), vec![hole_origin]),
+            OriginNode::new(entry(node, Some(ElabKind::LetValueBind)), vec![
+                annotated_origin,
+            ]),
         )?;
         let field = ModuleField {
             label: label.0.to_owned(),

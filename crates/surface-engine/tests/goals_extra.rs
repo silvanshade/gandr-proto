@@ -63,4 +63,49 @@ mod tests
             "a hole-free body reports no goals: {goals:?}"
         );
     }
+
+    /// A module signature naming a component the body never defines — the
+    /// `module-missing-component.gandr` failure golden — submitted **whole**
+    /// through [`Session::submit`], the shipping front end the corpus walker's
+    /// per-item slicing never exercises (`gandr-w0lg`).
+    ///
+    /// The repair hole for the missing component must appear in the
+    /// submission's goals report with its declared type and local context:
+    /// total mode turns the refusal into a reachable goal, so a report that
+    /// drops it is a truncated report, and an origin shadow tree shallower
+    /// than its term used to panic the goals pass at its unreachable-state
+    /// assertion before this class was fixed.
+    #[test]
+    fn a_whole_file_submission_reports_the_missing_module_component_goal()
+    {
+        use gandr_surface_engine::session::Session;
+
+        let source = "module Bad : #{ present: Integer, absent: Integer } { def present = 1; }\n";
+        let mut session = Session::new();
+        let submission = session.submit(source).expect("total lowering never errs");
+        let goals = &submission.report.goals;
+        assert_eq!(
+            1,
+            goals.len(),
+            "the missing component stays one goal: {goals:?}"
+        );
+        let goal = &goals[0];
+        assert_eq!(0, goal.hole, "the repair hole is the file's first hole");
+        assert_eq!(0, goal.item, "the goal belongs to the sole module item");
+        let note = goal.note.as_deref().unwrap_or_default();
+        assert!(
+            note.contains("UnsupportedForm") && note.contains("module_declaration"),
+            "the note says what was elided: {note:?}"
+        );
+        let expected = goal.expected.as_deref().unwrap_or_default();
+        assert!(
+            expected.contains("Integer"),
+            "the goal carries the component's declared type: {expected:?}"
+        );
+        let ctx_local = goal.ctx_local.as_deref().unwrap_or_default();
+        assert!(
+            ctx_local.iter().any(|binding| binding.name == "present"),
+            "the goal carries the sibling binding in its local context: {ctx_local:?}"
+        );
+    }
 }
