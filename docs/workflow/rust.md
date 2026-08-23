@@ -28,6 +28,11 @@
 - **Design memory behavior deliberately.** Prefer zero-copy data flow and borrowed views where they do not impose disproportionate lifetime or API complexity.
   When allocation is necessary, minimize allocation count and copying through appropriate capacity planning, arenas, interning, buffer or object reuse, and workload-justified caching.
   Account for invalidation, retained memory, and synchronization in the cost of a cache.
+- **Recursive owned data is flat and id-addressed; `Rc` is not used.** A recursive type's children are indices into an arena or interning table, never `Rc`-linked nodes: id-addressed data keeps destruction and duplication totality provable, satisfies `Send + Sync` for future threading and engine-backed memoization, and gives content identity for free.
+  Where shared ownership is genuinely required and an id cannot serve, the type is `Arc`, never `Rc`.
+  The `Rc` carriers still present in the core tier are retirement debt, not precedent: their retirement is tracked as `gandr-b9qv`, and new code does not extend them.
+  **This rule is self-correcting on contact.** An agent whose change reads, produces, or passes an `Rc`-carried value first asks whether the touched seam can move to the flat carrier or to `Arc` within scope — and does so when the move is contained.
+  When the move would grow the change disproportionately, the agent leaves the seam as found, flags the site on the retirement bead, and consults the advisor or owner before widening scope; silently extending an `Rc` surface is a review finding.
 - **Prefer incremental, resumable, streaming-compatible execution.** Where the problem permits, structure work as bounded steps over explicit state rather than as one monolithic call.
   Make progress checkpointable so interrupted work can resume without replaying completed steps, and consume or produce streams without retaining the complete input or result in memory.
 - **Prefer first-order representations.** Represent continuations, callbacks, control states, and work items as explicit data plus an interpreter or state machine; defunctionalize higher-order machinery where practical.
