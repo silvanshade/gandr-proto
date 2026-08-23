@@ -262,9 +262,11 @@ where
 ///
 /// # Termination
 /// - reason: the machine is a loop over an explicit goal stack, not recursion.
-/// - measure: pending goals, with unfoldings bounded by the normalizer's fuel.
-/// - boundedness: every goal decomposes into strictly smaller goals or resolves
-///   without pushing, and each choice point fires at most once.
+/// - measure: pending goals; a goal that does not unfold decomposes into
+///   strictly smaller goals or resolves without pushing.
+/// - boundedness: each choice point fires at most once, and each force spends
+///   the normalizer's fuel. **The fuel bounds that force and not this loop** —
+///   see [`run`], which owns the statement and the open defect.
 /// - input recursion: none.
 #[inline]
 pub fn converts_values(
@@ -345,9 +347,20 @@ where
 ///
 /// # Termination
 /// - reason: the driver is a loop over an explicit goal stack.
-/// - measure: pending goals plus unspent choice points.
-/// - boundedness: unfolding is bounded by the normalizer's fuel, and a choice
-///   point is discarded once fired.
+/// - measure: pending goals plus unspent choice points, for every goal that
+///   does not unfold.
+/// - boundedness: a choice point is discarded once fired, and each force spends
+///   the normalizer's fuel. **That fuel does not bound this loop, and reading
+///   it as if it did is what hid the defect below.** It is taken afresh on
+///   every call, and an unfolding pass evaluates the definition's body into a
+///   *newly minted* node before pushing the goal against it — so the loop never
+///   revisits a node it could have memoized, and the per-force budget never
+///   accumulates. Two definitions that unfold to each other therefore keep this
+///   stack non-empty indefinitely, with allocation growing without limit rather
+///   than a refusal being reached: a mutually cyclic definitional environment
+///   does not terminate here (`gandr-bpci`, open). The environment is a public
+///   surface — a caller threading definitions in source order builds a cycle
+///   merely by shadowing — and nothing rejects one where it is built.
 /// - input recursion: none.
 fn run<S>(
     nbe: &mut Normalizer,
