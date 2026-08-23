@@ -197,16 +197,19 @@ impl FormationContext
                 );
             }
         }
-        for &(ref name, ref ty) in ctx.bindings() {
+        for hypothesis in ctx.bindings() {
             if let ValueType::Universe {
                 sort: SortExpr::Ground(ground),
                 ref level,
-            } = *ty
+            } = hypothesis.1
             {
                 for (variable, _) in level.atoms() {
                     formation.bind_level_variable(variable);
                 }
-                formation.bind_type_variable(name.clone(), Classifier::new(ground, level.clone()));
+                formation.bind_type_variable(
+                    hypothesis.0.clone(),
+                    Classifier::new(ground, level.clone()),
+                );
             }
         }
         formation

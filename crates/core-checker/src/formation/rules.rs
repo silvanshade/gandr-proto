@@ -189,11 +189,6 @@ fn run(
                 | ValueType::Unit | ValueType::Unknown => {
                     results.push(value_classifier(Level::zero()));
                 },
-                // A sigma binds its first component's name over its second,
-                // and formation has no scope to bind it in.
-                | ValueType::Sigma { .. } => {
-                    return Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
-                },
                 | ValueType::Prod(ref fst, ref snd) | ValueType::Sum(ref fst, ref snd) => {
                     pending.push(Task::FinishValue(ValueFinish::Join {
                         count: ResultCount::from(2_usize),
@@ -320,12 +315,13 @@ fn run(
                     let classifier = ctx.sealed_type(seal)?;
                     results.push(require_sort(classifier, GroundSort::Value)?);
                 },
-                // A package binds its abstract type components over its
-                // payload, and formation has no scope to bind them in. Walking
-                // the payload regardless would refuse each component as an
-                // undeclared name -- a fact about the source that is false,
-                // since the package declares them.
-                | ValueType::Package { .. } => {
+                // Both formers bind: a sigma binds its first component's name
+                // over its second, and a package binds its abstract type
+                // components over its payload. Formation has no scope to bind
+                // either in, so walking the body would refuse the bound name as
+                // undeclared -- a fact about the source that is false, since
+                // the former declares it.
+                | ValueType::Sigma { .. } | ValueType::Package { .. } => {
                     return Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
                 },
             },
