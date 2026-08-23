@@ -231,8 +231,8 @@ impl Definitions
     ///   base case and the successor case, separated by defining a body that
     ///   mentions nothing and a body that mentions a definition of known
     ///   height, each observed as an exact height.
-    /// - witness: `crate::tests::definition_height_is_one_above_what_the_body_mentions`
-    /// - witness: `crate::tests::definition_height_sees_through_a_packed_module_and_its_elimination`
+    /// - witness: `defs::tests::definition_height_is_one_above_what_the_body_mentions`
+    /// - witness: `defs::tests::definition_height_sees_through_a_packed_module_and_its_elimination`
     #[inline]
     pub fn define<'source, N>(
         &mut self,
@@ -717,4 +717,207 @@ fn mentioned_names(
         }
     }
     names
+}
+
+/// Height tests for [`Definitions::define`]: the two decision surfaces of the
+/// height rule — the body that mentions nothing, and the body that mentions a
+/// definition of known height — plus the packed-module and package-elimination
+/// paths the name scan is documented to descend through.
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use crate::syntax::ValueTypeNode;
+
+    /// Allocates `node` and returns its id.
+    fn value(
+        arena: &mut FlatArena,
+        node: ValueNode,
+    ) -> ValueNodeId
+    {
+        arena.values.alloc(node).expect("the value arena has room")
+    }
+
+    /// Allocates `node` and returns its id.
+    fn comp(
+        arena: &mut FlatArena,
+        node: CompNode,
+    ) -> CompNodeId
+    {
+        arena
+            .comps
+            .alloc(node)
+            .expect("the computation arena has room")
+    }
+
+    /// The recorded height of `name`.
+    fn height_of<'source, N>(
+        defs: &Definitions,
+        name: N,
+    ) -> DefinitionHeightLevel
+    where
+        N: Into<NameRef<'source>>,
+    {
+        defs.lookup(name.into())
+            .expect("the name was just defined")
+            .height()
+    }
+
+    #[test]
+    fn definition_height_is_one_above_what_the_body_mentions()
+    {
+        // The base case: a body that mentions no name at all sits at one, which
+        // is what makes "one above the tallest mention" total on an empty
+        // environment. A mutant that seeded the fold at anything else is
+        // separated here by an exact height rather than by an ordering.
+        let mut arena = FlatArena::new();
+        let mut defs = Definitions::new();
+        let unit = value(&mut arena, ValueNode::Unit);
+        defs.define(&arena, NameRef::from("ground"), unit);
+        assert_eq!(
+            DefinitionHeightLevel::from(1_u32),
+            height_of(&defs, "ground"),
+            "a body mentioning nothing sits at the base height"
+        );
+
+        // The successor case: a body mentioning a definition of known height
+        // sits exactly one above it. Asserted at two separate rungs so a mutant
+        // that pinned the successor to a constant is separated from one that
+        // dropped the increment.
+        let ground = value(&mut arena, ValueNode::Var(String::from("ground")));
+        defs.define(&arena, NameRef::from("above"), ground);
+        assert_eq!(
+            DefinitionHeightLevel::from(2_u32),
+            height_of(&defs, "above"),
+            "a body mentioning a height-one definition sits at two"
+        );
+        let above = value(&mut arena, ValueNode::Var(String::from("above")));
+        defs.define(&arena, NameRef::from("higher"), above);
+        assert_eq!(
+            DefinitionHeightLevel::from(3_u32),
+            height_of(&defs, "higher"),
+            "and the rule iterates, so the third rung is three"
+        );
+
+        // The fold takes the tallest mention rather than the first or the last:
+        // a pair mentioning both rungs is one above the taller one, and the two
+        // component orders are asserted separately so a mutant that kept the
+        // most recently visited mention survives neither.
+        let ground_again = value(&mut arena, ValueNode::Var(String::from("ground")));
+        let higher_mention = value(&mut arena, ValueNode::Var(String::from("higher")));
+        let tall_first = value(&mut arena, ValueNode::Pair(higher_mention, ground_again));
+        defs.define(&arena, NameRef::from("tall_first"), tall_first);
+        assert_eq!(
+            DefinitionHeightLevel::from(4_u32),
+            height_of(&defs, "tall_first"),
+            "the taller mention decides, whichever component carries it"
+        );
+        let tall_second = value(&mut arena, ValueNode::Pair(ground_again, higher_mention));
+        defs.define(&arena, NameRef::from("tall_second"), tall_second);
+        assert_eq!(
+            DefinitionHeightLevel::from(4_u32),
+            height_of(&defs, "tall_second"),
+            "and the component order does not change the answer"
+        );
+
+        // A name the environment does not bind contributes nothing: it is a
+        // free variable, a primitive, or a sealed atom, and none of those has an
+        // unfolding rule to be ordered against. This is the positive control for
+        // the mention scan — the same shape as the successor case above, with
+        // only the binding removed — so a mutant that counted mentions instead
+        // of looking them up is separated.
+        let unbound = value(&mut arena, ValueNode::Var(String::from("nowhere")));
+        defs.define(&arena, NameRef::from("mentions_unbound"), unbound);
+        assert_eq!(
+            DefinitionHeightLevel::from(1_u32),
+            height_of(&defs, "mentions_unbound"),
+            "an unbound mention orders nothing, so the body is a base case"
+        );
+    }
+
+    #[test]
+    fn definition_height_sees_through_a_packed_module_and_its_elimination()
+    {
+        // Both package formers reach names the height order has to see, and
+        // each is asserted against the same height-one definition, so the two
+        // legs differ only in the former under test.
+        let mut arena = FlatArena::new();
+        let mut defs = Definitions::new();
+        let unit = value(&mut arena, ValueNode::Unit);
+        defs.define(&arena, NameRef::from("ground"), unit);
+
+        // The introduction: a packed module's payload is scanned, so a
+        // definition mentioned only inside the package still raises the height.
+        let ground = value(&mut arena, ValueNode::Var(String::from("ground")));
+        let packed = value(&mut arena, ValueNode::Pack {
+            witnesses: Vec::new(),
+            payload: ground,
+        });
+        defs.define(&arena, NameRef::from("packed"), packed);
+        assert_eq!(
+            DefinitionHeightLevel::from(2_u32),
+            height_of(&defs, "packed"),
+            "a mention inside a packed payload is one the height order sees"
+        );
+
+        // The elimination: `unpack` reaches a name through both its scrutinee
+        // and its body, and the scan descends into each. The scrutinee carries
+        // the mention here and the body is inert, so the leg is separated from
+        // the body leg below.
+        let signature = arena
+            .value_types
+            .alloc(ValueTypeNode::Unit)
+            .expect("the value-type arena has room");
+        let inert = value(&mut arena, ValueNode::Unit);
+        let inert_body = comp(&mut arena, CompNode::Ret(inert));
+        let packed_payload = value(&mut arena, ValueNode::Var(String::from("packed")));
+        let packed_mention = value(&mut arena, ValueNode::Pack {
+            witnesses: Vec::new(),
+            payload: packed_payload,
+        });
+        let unpack_scrutinee = comp(&mut arena, CompNode::Unpack {
+            scrut: packed_mention,
+            signature,
+            atoms: Vec::new(),
+            binder: String::from("m"),
+            body: inert_body,
+        });
+        let unpack_scrutinee = value(&mut arena, ValueNode::Run(unpack_scrutinee));
+        defs.define(
+            &arena,
+            NameRef::from("eliminates_scrutinee"),
+            unpack_scrutinee,
+        );
+        assert_eq!(
+            DefinitionHeightLevel::from(3_u32),
+            height_of(&defs, "eliminates_scrutinee"),
+            "an eliminated package's scrutinee is scanned, so its mention counts"
+        );
+
+        // The body leg: the mention moves out of the scrutinee and into the
+        // body, and the height is unchanged, which is what "reaches a name
+        // through its scrutinee AND its body" asserts. A mutant dropping either
+        // descent leaves exactly one of these two assertions failing.
+        let inert_payload = value(&mut arena, ValueNode::Unit);
+        let inert_scrutinee = value(&mut arena, ValueNode::Pack {
+            witnesses: Vec::new(),
+            payload: inert_payload,
+        });
+        let mention = value(&mut arena, ValueNode::Var(String::from("packed")));
+        let mention_body = comp(&mut arena, CompNode::Ret(mention));
+        let unpack_body = comp(&mut arena, CompNode::Unpack {
+            scrut: inert_scrutinee,
+            signature,
+            atoms: Vec::new(),
+            binder: String::from("m"),
+            body: mention_body,
+        });
+        let unpack_body = value(&mut arena, ValueNode::Run(unpack_body));
+        defs.define(&arena, NameRef::from("eliminates_body"), unpack_body);
+        assert_eq!(
+            DefinitionHeightLevel::from(3_u32),
+            height_of(&defs, "eliminates_body"),
+            "and a mention in the elimination's body counts the same"
+        );
+    }
 }

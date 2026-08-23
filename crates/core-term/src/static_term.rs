@@ -678,7 +678,12 @@ impl StaticInterner
 ///
 /// # Adequacy
 /// - hypothesis: L3 — beta substitution, binder shadowing, and capture cases
-///   are separately witnessed by the static calculus tests.
+///   are separately witnessed by the static calculus tests, each paired with
+///   the positive control that separates it from the neighbouring case: a
+///   non-target variable, a binder on another name, and a replacement with no
+///   free occurrence of the binder.
+/// - witness: `static_term::tests::substitution_replaces_a_free_occurrence`
+/// - witness: `static_term::tests::substitution_stops_at_a_shadowing_binder`
 /// - witness: `static_term::tests::substitution_avoids_capture`
 #[inline]
 #[must_use]
@@ -771,8 +776,11 @@ pub fn free_variables(term: &StaticTerm) -> BTreeSet<StaticVar>
 ///
 /// # Adequacy
 /// - hypothesis: L3 — beta reduction and neutral-spine preservation are
-///   distinguished by one redex and one stuck application.
+///   distinguished by one redex and one stuck application, each asserted as an
+///   exact term, with the redex leg carrying a nested and an under-binder case
+///   for the surviving-children clause.
 /// - witness: `static_term::tests::normalizes_beta_redex`
+/// - witness: `static_term::tests::normalization_preserves_a_stuck_application`
 #[expect(
     clippy::pattern_type_mismatch,
     reason = "The normalization worklist matches borrowed nodes by reference."
@@ -1526,5 +1534,284 @@ fn pop_transform_arg(results: &mut Vec<TransformResult>) -> StaticArg
     match results.pop() {
         | Some(TransformResult::Arg(argument)) => argument,
         | _ => StaticArg::Sort(SortExpr::value()),
+    }
+}
+
+/// Calculus tests for the static core's two rewriting faces: [`substitute`]'s
+/// three cases — replacement, shadowing, and capture — and [`normalize`]'s
+/// separation of a beta redex from a stuck application.
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use crate::boundary::BinderName;
+
+    /// The static variable named `name`.
+    fn var<'source, N>(name: N) -> StaticVar
+    where
+        N: Into<BinderName<'source>>,
+    {
+        StaticVar::new(<&str>::from(name.into()))
+    }
+
+    /// The term that is just the variable named `name`.
+    fn term<'source, N>(name: N) -> StaticTerm
+    where
+        N: Into<BinderName<'source>>,
+    {
+        StaticTerm::Var(var(name))
+    }
+
+    /// A binder on `name`, at the ground value classifier every fixture here
+    /// shares — the classifier is carried through untouched, so it is held
+    /// fixed rather than varied.
+    fn binder<'source, N>(name: N) -> StaticBinder
+    where
+        N: Into<BinderName<'source>>,
+    {
+        StaticBinder::new(var(name), Classifier::new(SortExpr::value(), Level::zero()))
+    }
+
+    /// The static lambda `\name. body`.
+    fn lam<'source, N>(
+        name: N,
+        body: StaticTerm,
+    ) -> StaticTerm
+    where
+        N: Into<BinderName<'source>>,
+    {
+        StaticTerm::Lam {
+            binder: binder(name),
+            body: Rc::new(body),
+        }
+    }
+
+    /// The static product `(name : _) -> codomain`.
+    fn pi<'source, N>(
+        name: N,
+        codomain: StaticTerm,
+    ) -> StaticTerm
+    where
+        N: Into<BinderName<'source>>,
+    {
+        StaticTerm::Pi {
+            binder: binder(name),
+            codomain: Rc::new(codomain),
+        }
+    }
+
+    /// The application `function argument`, at a type argument.
+    fn app(
+        function: StaticTerm,
+        argument: StaticTerm,
+    ) -> StaticTerm
+    {
+        StaticTerm::App {
+            function: Rc::new(function),
+            argument: StaticArg::Type(Rc::new(argument)),
+        }
+    }
+
+    #[test]
+    fn substitution_replaces_a_free_occurrence()
+    {
+        // The plain case, at the leaf: the target variable becomes the
+        // replacement and nothing else does. The non-target leaf is the
+        // positive control, so a mutant that replaced unconditionally is
+        // separated from one that replaced correctly.
+        assert_eq!(
+            term("y"),
+            substitute(&term("x"), &var("x"), &term("y")),
+            "a free occurrence of the target becomes the replacement"
+        );
+        assert_eq!(
+            term("w"),
+            substitute(&term("w"), &var("x"), &term("y")),
+            "and a variable that is not the target is left alone"
+        );
+
+        // And under a spine, so the walk is exercised rather than only the
+        // leaf: both positions are the target, and both are replaced.
+        assert_eq!(
+            app(term("y"), term("y")),
+            substitute(&app(term("x"), term("x")), &var("x"), &term("y")),
+            "every free occurrence along an application spine is replaced"
+        );
+    }
+
+    #[test]
+    fn substitution_stops_at_a_shadowing_binder()
+    {
+        // A binder on the substituted name rebinds it, so nothing beneath it is
+        // free and the term comes back untouched.
+        let shadowed = lam("x", term("x"));
+        assert_eq!(
+            shadowed,
+            substitute(&shadowed, &var("x"), &term("y")),
+            "a binder on the target shadows every occurrence beneath it"
+        );
+
+        // The positive control: the same shape with a binder on some other
+        // name, where the descent does happen. A mutant that stopped at every
+        // binder passes the assertion above and fails this one.
+        assert_eq!(
+            lam("z", term("y")),
+            substitute(&lam("z", term("x")), &var("x"), &term("y")),
+            "a binder on another name does not stop the descent"
+        );
+
+        // The same pair at the product former, which carries its own copy of
+        // the shadowing test.
+        let shadowed_pi = pi("x", term("x"));
+        assert_eq!(
+            shadowed_pi,
+            substitute(&shadowed_pi, &var("x"), &term("y")),
+            "the product former shadows on its own binder too"
+        );
+        assert_eq!(
+            pi("z", term("y")),
+            substitute(&pi("z", term("x")), &var("x"), &term("y")),
+            "and descends under a binder on another name"
+        );
+    }
+
+    #[test]
+    fn substitution_avoids_capture()
+    {
+        // The capture case: the binder is spelled like a free variable of the
+        // replacement, so substituting naively would bind the replacement's own
+        // `y`. The binder is renamed apart first, to the first serial spelling
+        // that no name in the body, the replacement, or the target occupies.
+        assert_eq!(
+            lam("y$1", term("y")),
+            substitute(&lam("y", term("x")), &var("x"), &term("y")),
+            "a binder that would capture the replacement is renamed apart"
+        );
+
+        // The positive control for the rename: with the replacement carrying no
+        // free `y`, the same binder survives verbatim. Its own bound occurrence
+        // is in the body, so a mutant that renamed unconditionally would move
+        // the binder to a fresh serial and is separated here rather than
+        // producing the same term by luck.
+        assert_eq!(
+            lam("y", app(term("y"), term("w"))),
+            substitute(&lam("y", app(term("y"), term("x"))), &var("x"), &term("w")),
+            "a binder that would capture nothing keeps its own name"
+        );
+
+        // The rename walks the body rather than only the binder: the bound
+        // occurrence moves to the fresh name while the substituted occurrence
+        // becomes the replacement, so the two cannot be confused.
+        assert_eq!(
+            lam("y$1", app(term("y$1"), term("y"))),
+            substitute(&lam("y", app(term("y"), term("x"))), &var("x"), &term("y")),
+            "the bound occurrence follows the rename and the free one does not"
+        );
+
+        // And the product former avoids capture on its own binder by the same
+        // rule, which is a separate arm of the same match.
+        assert_eq!(
+            pi("y$1", term("y")),
+            substitute(&pi("y", term("x")), &var("x"), &term("y")),
+            "the product former renames its capturing binder apart too"
+        );
+        assert_eq!(
+            pi("y", app(term("y"), term("w"))),
+            substitute(&pi("y", app(term("y"), term("x"))), &var("x"), &term("w")),
+            "and leaves a binder alone when there is nothing to capture"
+        );
+    }
+
+    #[test]
+    fn normalizes_beta_redex()
+    {
+        // The redex: an application whose function is a lambda reduces by
+        // substituting the argument into the body, and the result is the exact
+        // term rather than something merely equivalent to it.
+        assert_eq!(
+            term("y"),
+            normalize(&app(lam("x", term("x")), term("y"))),
+            "a static lambda applied to an argument reduces"
+        );
+
+        // The argument goes where the binder was, rather than becoming the
+        // whole contractum. Every fixture above is an identity lambda, where
+        // substituting the argument into the body and returning the argument
+        // agree — so the separating case is a body that is not the bound
+        // variable, and it is what refutes a substitution whose term and
+        // replacement are exchanged.
+        assert_eq!(
+            app(term("f"), term("y")),
+            normalize(&app(lam("x", app(term("f"), term("x"))), term("y"))),
+            "the argument lands at the binder's occurrence, under the spine"
+        );
+        assert_eq!(
+            app(term("y"), term("y")),
+            normalize(&app(lam("x", app(term("x"), term("x"))), term("y"))),
+            "and at every occurrence, so a single-occurrence rule is separated"
+        );
+        assert_eq!(
+            term("w"),
+            normalize(&app(lam("x", term("w")), term("y"))),
+            "a body that ignores its binder discards the argument entirely"
+        );
+
+        // Reduction is iterated rather than performed once: the substituted
+        // body is itself a redex here, and the normal form is what survives
+        // both steps.
+        assert_eq!(
+            term("y"),
+            normalize(&app(
+                app(lam("f", term("f")), lam("x", term("x"))),
+                term("y")
+            )),
+            "and the contractum is normalized in turn, so nested redexes go"
+        );
+
+        // A redex under a binder is reduced too, which is the surviving-children
+        // half of the contract: normalization is not restricted to the root.
+        assert_eq!(
+            lam("z", term("z")),
+            normalize(&lam("z", app(lam("x", term("x")), term("z")))),
+            "a redex beneath a binder is reduced where it stands"
+        );
+    }
+
+    #[test]
+    fn normalization_preserves_a_stuck_application()
+    {
+        // The stuck case: a function position that is not a lambda cannot
+        // reduce, so the application is rebuilt exactly as it was. This is the
+        // positive control the redex assertions need — a mutant that reduced
+        // unconditionally would have to invent a body.
+        let stuck = app(term("f"), term("y"));
+        assert_eq!(
+            stuck,
+            normalize(&stuck),
+            "an application with a non-lambda function stays an application"
+        );
+
+        // Stuck at the root does not mean inert underneath: the argument is
+        // still normalized, so a redex inside it goes while the spine survives.
+        assert_eq!(
+            app(term("f"), term("y")),
+            normalize(&app(term("f"), app(lam("x", term("x")), term("y")))),
+            "and its argument is normalized while the spine is preserved"
+        );
+
+        // The same at the neutral former, whose spine is the shape a declared
+        // family's application takes and which no reduction rule may collapse.
+        let neutral = StaticTerm::Neutral(StaticNeutral::app(
+            StaticNeutral::head(var("f")),
+            StaticArg::Type(Rc::new(app(lam("x", term("x")), term("y")))),
+        ));
+        assert_eq!(
+            StaticTerm::Neutral(StaticNeutral::app(
+                StaticNeutral::head(var("f")),
+                StaticArg::Type(Rc::new(term("y"))),
+            )),
+            normalize(&neutral),
+            "a neutral spine survives with its arguments normalized"
+        );
     }
 }
