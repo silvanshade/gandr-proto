@@ -59,7 +59,11 @@ mod contracts
     /// form — the `sign` block with its `sort` / `data` / `oper` / `rule`
     /// judgment members, the four-glyph arrow grid, the two-sided port lists
     /// with parameter-side binders, and the top-level `oper` / `rule`
-    /// declaration with its `node` / `feed` body statements.
+    /// declaration with its `node` / `feed` body statements. The sign block's
+    /// `rule` member also admits the data / codata written face
+    /// `rule lhs ==> rhs`, which elaborates nowhere but must parse whole so a
+    /// stacked face declines by name instead of vanishing into parser repair
+    /// (gandr-wvd.6.1.1).
     /// The description-rule face former is `==>`, beside the retired `~>`,
     /// which stays admissible only so a stale face reaches the elaborator's
     /// decline. The nested generator-block form gives the `data` / `codata`
@@ -80,7 +84,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xbe77_9eb7_c677_75d6);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xd2df_e403_1c85_50dd);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -112,8 +116,12 @@ mod contracts
     /// `codata` gains the data-style `oper` region it must preserve for
     /// block-kind-aware decline, while `sign` factors the `oper` lead before
     /// choosing its colon-led judgment tail or parenthesis-led data spelling.
-    /// Keeping the `rule` branch colon-only duplicates one signature/body copy;
-    /// that cost prevents the decline reservation from widening rule syntax.
+    /// The `rule` branch carries the colon-led judgment and the declined
+    /// data / codata written face beside it; the face adds four arrow-grid
+    /// molds, one per grid glyph at its own context, and its expression sides
+    /// reuse the existing expression holes. That cost keeps a second stacked
+    /// face parsing as its own member instead of letting parser repair's blob
+    /// absorb every member after it (gandr-wvd.6.1.1).
     /// The parameter-side binders remain off the result side. The rule-face
     /// migration adds four: the `data` and `codata` members' face arrow becomes
     /// a two-way alternation (`==>` ruled, `~>` retired-but-admissible), and
@@ -181,7 +189,7 @@ mod contracts
     /// `@[name : Type]` occurrence contributes its brackets, comma, colon, and
     /// three name-class alternatives, with the type hole carried by the shared
     /// type form.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2359);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2363);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -208,7 +216,7 @@ mod contracts
         ("++", 1),
         (",", 100),
         ("-", 2),
-        ("-->", 23),
+        ("-->", 24),
         ("->", 15),
         (".", 7),
         ("..", 3),
@@ -220,13 +228,13 @@ mod contracts
         ("<", 4),
         ("<&", 1),
         ("<-", 20),
-        ("<->", 21),
+        ("<->", 22),
         ("<=", 1),
-        ("<=>", 21),
+        ("<=>", 22),
         ("<>", 1),
         ("=", 82),
         ("==", 1),
-        ("==>", 25),
+        ("==>", 26),
         ("=>", 8),
         (">", 3),
         (">&", 1),

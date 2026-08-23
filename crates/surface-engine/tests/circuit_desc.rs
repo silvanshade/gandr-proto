@@ -776,3 +776,76 @@ fn a_data_spelled_sign_oper_declines_before_no_output_can_be_fabricated()
         colon_cells.diagnostics
     );
 }
+
+/// A declined rule member must not consume the member written after it
+/// (`gandr-wvd.6.1.1`).
+///
+/// The written face `rule lhs ==> rhs` is a data / codata spelling this route
+/// declines by name. Before the grammar admitted the face as a `sign`-block
+/// member tail, parser repair molded everything from the face's arrow onward
+/// into one unlabelled run — so a second rule, or any member at all written
+/// after a first rule, vanished into a whole-block "reading stopped" decline.
+/// Each stacked face now parses as its own member and earns its own decline,
+/// and every sibling around them still presents.
+#[test]
+fn a_declined_rule_member_leaves_the_members_after_it_intact()
+{
+    // Two written faces stack: each is named by its own decline, and neither
+    // absorbs the other.
+    let two = elaborate_data_descs(
+        r#"sign Adder {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule unit ==> add;
+  rule swap ==> mul;
+}
+"#,
+    );
+    assert_eq!(1, two.descs.len(), "the block still elaborates: {two:?}");
+    assert_eq!(1, two.descs[0].opers.len(), "the operation presents");
+    let named: Vec<&str> = two
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.message.contains("carries no `:` signature"))
+        .flat_map(|diagnostic| {
+            ["unit", "swap"]
+                .into_iter()
+                .filter(|n| diagnostic.message.contains(*n))
+        })
+        .collect();
+    assert_eq!(
+        vec!["unit", "swap"],
+        named,
+        "each written face declines by name at its own member: {:?}",
+        two.diagnostics
+    );
+    assert!(
+        !two.diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("reading stopped")),
+        "no whole-block decline may stand in for the per-member ones: {:?}",
+        two.diagnostics
+    );
+
+    // A member written after a declined rule presents: order, not kind, was
+    // what the absorption turned on.
+    let mixed = elaborate_data_descs(
+        r#"sign Adder {
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
+  rule unit ==> add;
+  oper neg : (Nat) --> Nat;
+}
+"#,
+    );
+    assert_eq!(
+        1,
+        mixed.descs.len(),
+        "the block still elaborates: {mixed:?}"
+    );
+    assert_eq!(
+        2,
+        mixed.descs[0].opers.len(),
+        "the operation after the declined rule presents alongside the first"
+    );
+}

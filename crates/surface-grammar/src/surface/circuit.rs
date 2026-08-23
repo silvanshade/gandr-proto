@@ -192,7 +192,14 @@ fn circuit_declarations(
 /// Both genuine judgments use `name : signature { filler }?`. An `oper` also
 /// preserves the parenthesis-led data-block spelling as one member so
 /// description elaboration can issue the block-aware decline without parser
-/// repair consuming a sibling. A `rule` remains colon-only.
+/// repair consuming a sibling. A `rule` carries the colon-led judgment and —
+/// for the same reason, so the decline can name the spelling at the member
+/// that wrote it — the data / codata **written face** `rule lhs ==> rhs`,
+/// whose arrow rides the shared grid and whose sides are ordinary
+/// expressions. The written face elaborates nowhere: description elaboration
+/// declines it by name, which is exactly why it must parse whole rather than
+/// leave its tail to parser repair, whose blob absorbs every member after it
+/// (`gandr-wvd.6.1.1`).
 ///
 /// The judgment block body is optional because a declaration may be a
 /// **boundary without a filler** — `oper add : (Nat, Nat) --> Nat` declares an
@@ -213,9 +220,23 @@ fn circuit_judgment() -> Regex
         seq([
             t(TileLabel("rule")),
             t(TileLabel("identifier")),
-            rule_judgment_tail(),
+            alt([rule_judgment_tail(), written_face_tail()]),
         ]),
     ])
+}
+
+/// Build the data / codata written-face tail `lhs ==> rhs` a `rule` member
+/// may carry in place of its colon-led judgment.
+///
+/// The two arms past `rule <name>` are first-tile disjoint — `:` versus an
+/// expression-start tile — so no shared-prefix window opens between the
+/// judgment and the face. The face is deliberately *not* merged into
+/// [`rule_judgment_tail`]'s expression alternation: that alternation sits
+/// behind a mandatory `:`, and hoisting it would widen the judgment's own
+/// menu rather than admit one declined spelling.
+fn written_face_tail() -> Regex
+{
+    seq([h(Sort::Expression), arrow_grid(), h(Sort::Expression)])
 }
 
 /// Build the colon-led tail shared by ruled circuit judgments.
