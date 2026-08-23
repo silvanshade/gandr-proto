@@ -47,15 +47,6 @@ always_run = true
 stages = ["pre-commit"]
 
 [[repos.hooks]]
-id = "cargo-fmt-check"
-name = "cargo fmt --all -- --check"
-language = "system"
-entry = "mise run cargo:fmt-check"
-files.glob = [".cargo/cargo.toml", "**/Cargo.toml", "**/*.rs", "rustfmt.toml"]
-pass_filenames = false
-stages = ["pre-commit"]
-
-[[repos.hooks]]
 id = "commitlint"
 name = "commitlint"
 entry = "mise x -- commitlint --edit"

@@ -30,5 +30,5 @@ RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt
 ["treefmt:check"]
 description = "Run treefmt in CI mode"
 run = """
-RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --fail-on-change
 """
