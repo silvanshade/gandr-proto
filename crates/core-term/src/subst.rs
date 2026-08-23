@@ -105,8 +105,9 @@ where
 /// - hypothesis: L3 — three decision surfaces separated pointwise: a bound hole
 ///   is replaced, an unbound hole survives and sets the report, and a hole-free
 ///   term reports no survivor.
-/// - witness: `gandr_core_unify::tests::substituting_a_solution_reports_a_hole_free_result`
-/// - witness: `gandr_core_unify::tests::substituting_leaves_an_unsolved_hole_and_reports_it`
+/// - witness: `subst::tests::substituting_a_bound_hole_replaces_it_and_reports_a_hole_free_result`
+/// - witness: `subst::tests::substituting_leaves_an_unbound_hole_and_reports_it`
+/// - witness: `subst::tests::substituting_a_hole_free_term_reports_no_survivor`
 #[inline]
 #[must_use]
 pub fn subst_holes_value(
@@ -136,7 +137,7 @@ pub fn subst_holes_value(
 /// # Adequacy
 /// - hypothesis: L3 — the computation-sorted image of the value entry,
 ///   separated by a solved computation hole under an application spine.
-/// - witness: `gandr_core_unify::tests::substituting_a_computation_solution_beta_reduces_on_replay`
+/// - witness: `subst::tests::substituting_a_computation_hole_replaces_it_under_an_application_spine`
 #[inline]
 #[must_use]
 pub fn subst_holes_comp(
@@ -1045,5 +1046,138 @@ impl<'src> Subst<'src>
             | Stack::Empty => Stack::Empty,
         };
         self.stacks.push(rebuilt);
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::rc::Rc;
+
+    use crate::boundary::HoleId;
+    use crate::subst::HoleRepl;
+    use crate::subst::HoleSubstitution;
+    use crate::subst::subst_holes_comp;
+    use crate::subst::subst_holes_value;
+    use crate::syntax::Comp;
+    use crate::syntax::Value;
+
+    /// An integer literal, as a shared value node.
+    fn int(literal: IntegerLiteral) -> Rc<Value>
+    {
+        Rc::new(Value::Int(i64::from(literal)))
+    }
+
+    /// An integer literal a fixture writes down.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct IntegerLiteral(i64);
+
+    impl From<IntegerLiteral> for i64
+    {
+        #[inline]
+        fn from(value: IntegerLiteral) -> Self
+        {
+            value.0
+        }
+    }
+
+    /// A value-sorted hole, as a shared value node.
+    fn value_hole(hole: HoleId) -> Rc<Value>
+    {
+        Rc::new(Value::Hole(u32::from(hole)))
+    }
+
+    #[test]
+    fn substituting_a_bound_hole_replaces_it_and_reports_a_hole_free_result()
+    {
+        // The first decision surface: a hole the substitution binds is replaced
+        // by its solution, and the result reports no survivor. The pair's other
+        // component is asserted unchanged, so a mutant that rewrites the whole
+        // term rather than the bound occurrence is separated too.
+        let mut solutions = HoleSubstitution::new();
+        solutions.bind(HoleId::from(0), HoleRepl::Value(int(IntegerLiteral(3))));
+        let (term, holes) = subst_holes_value(
+            &Value::Pair(value_hole(HoleId::from(0)), int(IntegerLiteral(1))),
+            &solutions,
+        );
+        assert_eq!(
+            Value::Pair(int(IntegerLiteral(3)), int(IntegerLiteral(1))),
+            term,
+            "the bound hole is replaced and every other node is untouched"
+        );
+        assert!(
+            !bool::from(holes),
+            "and nothing hole-shaped survives, so the report is negative"
+        );
+    }
+
+    #[test]
+    fn substituting_leaves_an_unbound_hole_and_reports_it()
+    {
+        // The second: a hole the substitution does not bind survives verbatim,
+        // and the report goes positive. Same term as above against an empty
+        // substitution, so the report is the only thing that can differ.
+        let solutions = HoleSubstitution::new();
+        let (term, holes) = subst_holes_value(
+            &Value::Pair(value_hole(HoleId::from(0)), int(IntegerLiteral(1))),
+            &solutions,
+        );
+        assert_eq!(
+            Value::Pair(value_hole(HoleId::from(0)), int(IntegerLiteral(1))),
+            term,
+            "an unbound hole is left exactly as it was"
+        );
+        assert!(
+            bool::from(holes),
+            "and the survivor is reported, which is what the caller re-checks on"
+        );
+    }
+
+    #[test]
+    fn substituting_a_hole_free_term_reports_no_survivor()
+    {
+        // The third: a term with no hole at all reports nothing, which
+        // separates a mutant that sets the residual unconditionally from one
+        // that sets it on a surviving occurrence.
+        let mut solutions = HoleSubstitution::new();
+        solutions.bind(HoleId::from(0), HoleRepl::Value(int(IntegerLiteral(3))));
+        let (term, holes) = subst_holes_value(
+            &Value::Pair(int(IntegerLiteral(2)), int(IntegerLiteral(1))),
+            &solutions,
+        );
+        assert_eq!(
+            Value::Pair(int(IntegerLiteral(2)), int(IntegerLiteral(1))),
+            term,
+            "a hole-free term is returned unchanged"
+        );
+        assert!(
+            !bool::from(holes),
+            "and reports no survivor, though the substitution was non-empty"
+        );
+    }
+
+    #[test]
+    fn substituting_a_computation_hole_replaces_it_under_an_application_spine()
+    {
+        // The computation-sorted image of the value entry, at the position the
+        // hypothesis names: a solved hole in head position under an
+        // application. The assertion is structural rather than by conversion,
+        // because what this function does is replace the node — reducing the
+        // redex afterwards is the evaluator's job, and a witness that ran it
+        // would pass on a substitution that landed the solution elsewhere.
+        let solution = Comp::lam("z", Comp::ret(Value::var("z")));
+        let mut solutions = HoleSubstitution::new();
+        solutions.bind(HoleId::from(0), HoleRepl::Comp(Rc::new(solution.clone())));
+        let (term, holes) = subst_holes_comp(&Comp::app(Comp::Hole(0), Value::Int(4)), &solutions);
+        assert_eq!(
+            Comp::app(solution, Value::Int(4)),
+            term,
+            "the solution lands in head position and the argument is untouched"
+        );
+        assert!(
+            !bool::from(holes),
+            "and the spine carries no surviving hole"
+        );
     }
 }

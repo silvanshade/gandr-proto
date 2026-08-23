@@ -257,8 +257,8 @@ where
 /// - hypothesis: L3 — the walk reaches exactly the value positions
 ///   [`subst_comptype`] would rewrite, and stops at exactly the binders it
 ///   would decline to descend under.
-/// - witness: `tests::pi_binder_occurrence_is_shadowed_by_an_inner_binder`
-/// - witness: `tests::pi_binder_occurrence_is_seen_through_a_path_endpoint`
+/// - witness: `identity::tests::pi_binder_occurrence_is_shadowed_by_an_inner_binder`
+/// - witness: `identity::tests::pi_binder_occurrence_is_seen_through_a_path_endpoint`
 #[inline]
 #[must_use]
 /// # Termination
