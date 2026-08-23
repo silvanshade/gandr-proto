@@ -223,26 +223,19 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
 // what makes scopes useful; per-surface growth is the failure mode this list
 // replaced (57 effective scopes, one per crate, pruned 2026-07-21).
 const GANDR_SCOPES: readonly string[] = [
-  // crate categories (crates/<category>-*)
   "accel",
+  "analysis",
+  "contrib",
   "core",
+  "docs",
   "kernel",
+  "repo",
   "runtime",
+  "spec",
   "storage",
   "surface",
   "theory",
-  // also covers docs/workflow process docs — both are how-we-work machinery
   "workflow",
-  // documentation / config areas
-  // research and analysis records; their `docs/research/` home left with the
-  // corpus, so the scope now covers analysis work with no directory of its own
-  "analysis",
-  // guidance + documentation not otherwise homed (AGENTS, README, KNOWLEDGE, …)
-  "docs",
-  // workspace config, hooks, mise, treefmt, commitlint, CI, scripts, wt, fuzz
-  "repo",
-  // the design corpus, cited as `spec:` and held outside this repository
-  "spec",
 ];
 
 // The base's makeConfig unions CORE_SCOPES additively; gandr's vocabulary is
