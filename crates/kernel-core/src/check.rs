@@ -88,6 +88,9 @@
 
 use alloc::vec::Vec;
 
+use gandr_kernel_check_memo::CheckMemo;
+use gandr_kernel_check_memo::MemoActivity;
+use gandr_kernel_check_memo::VerdictMemo;
 use gandr_kernel_strata::Level;
 
 use crate::arena::CompTypeId;
@@ -111,6 +114,11 @@ use crate::error::NonInferableForm;
 use crate::error::RegisterFault;
 use crate::error::ValueTypeSnapshot;
 use crate::levels::LevelContext;
+use crate::support::LooseDepth;
+use crate::support::LooseDepths;
+use crate::support::NodeOutcome;
+use crate::support::NodeSupport;
+use crate::support::SupportGoal;
 use crate::term::Computation;
 use crate::term::DeBruijnIndex;
 use crate::term::Side;
@@ -205,6 +213,10 @@ enum TypeLevelFrame
     /// The inner level is in the register; check the lift's strictness and
     /// replace it with the target level.
     LiftCheck(Level),
+    /// The goal this frame was pushed for is now answered; record it. Pushed
+    /// before the goal's own continuations, so it pops after all of them —
+    /// which is exactly when the register holds that goal's final answer.
+    Memoize(NodeSupport),
 }
 
 /// The universe level of a well-formed value or computation type — the K1
@@ -234,60 +246,85 @@ enum TypeLevelFrame
 /// - witness: `check::tests::universe_forms_one_level_up`
 /// - witness: `check::tests::lift_requires_a_strictly_higher_target`
 /// - witness: `check::tests::arrow_level_is_the_join`
-fn type_level(
+fn type_level<M>(
     arena: &TermArena,
     entries: &[AdmittedDeclaration],
     levels: &LevelContext,
     root: TypeLevelGoal,
+    memo: &mut M,
 ) -> Result<Level, KernelError>
+where
+    M: CheckMemo<NodeSupport, NodeOutcome>,
 {
     let mut frames: Vec<TypeLevelFrame> = Vec::new();
     let mut goal = root;
     'expand: loop {
-        let mut produced: Level = match goal {
-            | TypeLevelGoal::Value(id) => {
-                let value_type = arena.value_type(id).ok_or(KernelError::ArenaFault)?;
-                match *value_type {
-                    | ValueType::Base(_) | ValueType::Unit => Level::zero(),
-                    | ValueType::Universe(ref level) => {
-                        levels.check_level_scope(level)?;
-                        level.succ()?
-                    },
-                    // A sealed atom forms at the level its own declaration's
-                    // kind fixes. The lookup is the whole rule: nothing is
-                    // inferred, nothing unfolds, and an index that does not
-                    // resolve to an abstract-type declaration is rejected here
-                    // rather than trusted.
-                    | ValueType::Abstract(atom) => abstract_atom_level(arena, entries, atom)?,
-                    | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
-                        frames.push(TypeLevelFrame::MaxSecondValue(second));
-                        goal = TypeLevelGoal::Value(first);
-                        continue 'expand;
-                    },
-                    | ValueType::Thunk(body) => {
-                        goal = TypeLevelGoal::Comp(body);
-                        continue 'expand;
-                    },
-                    | ValueType::Lift { inner, ref target } => {
-                        frames.push(TypeLevelFrame::LiftCheck(target.clone()));
-                        goal = TypeLevelGoal::Value(inner);
-                        continue 'expand;
-                    },
-                }
-            },
-            | TypeLevelGoal::Comp(id) => {
-                let comp_type = arena.comp_type(id).ok_or(KernelError::ArenaFault)?;
-                match *comp_type {
-                    | CompType::Returner(result) => {
-                        goal = TypeLevelGoal::Value(result);
-                        continue 'expand;
-                    },
-                    | CompType::Arrow { domain, codomain } => {
-                        frames.push(TypeLevelFrame::MaxSecondComp(codomain));
-                        goal = TypeLevelGoal::Value(domain);
-                        continue 'expand;
-                    },
-                }
+        // A type's level depends on the type node alone (S1 types are closed),
+        // so the support is the node and the recall is unconditional. When the
+        // memo is inactive this whole block is a constant-false branch that
+        // monomorphization removes.
+        let mut recalled: Option<Level> = None;
+        if matches!(M::ACTIVITY, MemoActivity::Active) {
+            let support = NodeSupport::closed(type_level_support(goal));
+            match memo.recall(&support) {
+                | Some(NodeOutcome::Formed(level)) => recalled = Some(level),
+                // A non-level answer for a type-formation support cannot arise
+                // from this walk; treat it as a miss rather than trusting it.
+                | Some(_) | None => frames.push(TypeLevelFrame::Memoize(support)),
+            }
+        }
+        #[cfg(test)]
+        crate::probe::record(match recalled {
+            | Some(_) => crate::probe::ExpansionKind::Recalled,
+            | None => crate::probe::ExpansionKind::Expanded,
+        });
+        let mut produced: Level = match recalled {
+            | Some(level) => level,
+            | None => match goal {
+                | TypeLevelGoal::Value(id) => {
+                    let value_type = arena.value_type(id).ok_or(KernelError::ArenaFault)?;
+                    match *value_type {
+                        | ValueType::Base(_) | ValueType::Unit => Level::zero(),
+                        | ValueType::Universe(ref level) => {
+                            levels.check_level_scope(level)?;
+                            level.succ()?
+                        },
+                        // A sealed atom forms at the level its own declaration's
+                        // kind fixes. The lookup is the whole rule: nothing is
+                        // inferred, nothing unfolds, and an index that does not
+                        // resolve to an abstract-type declaration is rejected here
+                        // rather than trusted.
+                        | ValueType::Abstract(atom) => abstract_atom_level(arena, entries, atom)?,
+                        | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                            frames.push(TypeLevelFrame::MaxSecondValue(second));
+                            goal = TypeLevelGoal::Value(first);
+                            continue 'expand;
+                        },
+                        | ValueType::Thunk(body) => {
+                            goal = TypeLevelGoal::Comp(body);
+                            continue 'expand;
+                        },
+                        | ValueType::Lift { inner, ref target } => {
+                            frames.push(TypeLevelFrame::LiftCheck(target.clone()));
+                            goal = TypeLevelGoal::Value(inner);
+                            continue 'expand;
+                        },
+                    }
+                },
+                | TypeLevelGoal::Comp(id) => {
+                    let comp_type = arena.comp_type(id).ok_or(KernelError::ArenaFault)?;
+                    match *comp_type {
+                        | CompType::Returner(result) => {
+                            goal = TypeLevelGoal::Value(result);
+                            continue 'expand;
+                        },
+                        | CompType::Arrow { domain, codomain } => {
+                            frames.push(TypeLevelFrame::MaxSecondComp(codomain));
+                            goal = TypeLevelGoal::Value(domain);
+                            continue 'expand;
+                        },
+                    }
+                },
             },
         };
         loop {
@@ -296,6 +333,9 @@ fn type_level(
                 return Ok(produced);
             };
             match frame {
+                | TypeLevelFrame::Memoize(support) => {
+                    memo.remember(support, NodeOutcome::Formed(produced.clone()));
+                },
                 | TypeLevelFrame::MaxSecondValue(second) => {
                     frames.push(TypeLevelFrame::MaxWith(produced));
                     goal = TypeLevelGoal::Value(second);
@@ -402,6 +442,49 @@ enum Produced
     Checked,
 }
 
+/// Store one goal's answer in the memo's outcome vocabulary.
+///
+/// # Contract
+/// - requires: `produced` is the final register value for the goal whose
+///   support this outcome will be filed under.
+/// - ensures: the outcome naming the same answer.
+/// - provides: the checker half of the memo's storage conversion.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+const fn outcome_of(produced: Produced) -> NodeOutcome
+{
+    match produced {
+        | Produced::ValueType(id) => NodeOutcome::ValueType(id),
+        | Produced::CompType(id) => NodeOutcome::CompType(id),
+        | Produced::Checked => NodeOutcome::Checked,
+    }
+}
+
+/// Read a memo outcome back as a produced register value.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Some(produced)` for the three checker answers, and `None` for a
+///   type-formation level — which cannot be the answer to a term goal, so it is
+///   treated as a **miss** rather than trusted. The memo is shared between the
+///   two machines, and a shape disagreement means the entry was not this
+///   machine's; declining it costs one recomputation and cannot fabricate a
+///   verdict.
+/// - provides: the checker half of the memo's retrieval conversion.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+fn produced_of(outcome: &NodeOutcome) -> Option<Produced>
+{
+    match *outcome {
+        | NodeOutcome::ValueType(id) => Some(Produced::ValueType(id)),
+        | NodeOutcome::CompType(id) => Some(Produced::CompType(id)),
+        | NodeOutcome::Checked => Some(Produced::Checked),
+        | NodeOutcome::Formed(_) => None,
+    }
+}
+
 /// Project a synthesized value-type id out of the produced register.
 ///
 /// # Contract
@@ -475,6 +558,65 @@ enum Goal
     SynthComp(ComputationId),
     /// Check a computation against an expected computation type.
     CheckComp(ComputationId, CompTypeId),
+}
+
+/// Project a checker goal onto the memo's support vocabulary.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: the support naming the same node, direction, and expected type.
+/// - provides: the identity half of the memo key; the binder slice is added by
+///   [`NodeSupport::new`].
+/// - fails: never.
+/// - panics: none.
+#[inline]
+fn goal_support(goal: Goal) -> SupportGoal
+{
+    match goal {
+        | Goal::SynthValue(id) => SupportGoal::SynthValue(id),
+        | Goal::CheckValue(id, expected) => SupportGoal::CheckValue(id, expected),
+        | Goal::SynthComp(id) => SupportGoal::SynthComp(id),
+        | Goal::CheckComp(id, expected) => SupportGoal::CheckComp(id, expected),
+    }
+}
+
+/// The node a checker goal is about, for the binder-reach lookup.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: the reach of the goal's own term node — the expected type does
+///   not contribute, since S1 types are closed.
+/// - provides: the binder-slice length of the goal's support.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+fn goal_reach(
+    arena: &TermArena,
+    reaches: &mut LooseDepths,
+    goal: Goal,
+) -> LooseDepth
+{
+    match goal {
+        | Goal::SynthValue(id) | Goal::CheckValue(id, _) => reaches.value_reach(arena, id),
+        | Goal::SynthComp(id) | Goal::CheckComp(id, _) => reaches.comp_reach(arena, id),
+    }
+}
+
+/// Project a type-formation goal onto the memo's support vocabulary.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: the support naming the same type node.
+/// - provides: the type-formation walk's memo key, which reads no binder.
+/// - fails: never.
+/// - panics: none.
+#[inline]
+fn type_level_support(goal: TypeLevelGoal) -> SupportGoal
+{
+    match goal {
+        | TypeLevelGoal::Value(id) => SupportGoal::ValueTypeLevel(id),
+        | TypeLevelGoal::Comp(id) => SupportGoal::CompTypeLevel(id),
+    }
 }
 
 /// A continuation of the checker machine (every held type is a `Copy` id).
@@ -556,6 +698,11 @@ enum Frame
     },
     /// A binder scope closes: pop the innermost context slot.
     ScopeExit,
+    /// The goal this frame was pushed for is now answered; record it. Pushed
+    /// before the goal's own continuations, so it pops after all of them —
+    /// which is exactly when the produced register holds that goal's final
+    /// answer, by the machine's own unwinding invariant.
+    Memoize(NodeSupport),
 }
 
 /// The value-type id bound at de Bruijn `index` in the explicit context, if in
@@ -641,196 +788,225 @@ fn resolve_constant(
 /// - witness: `hardening::tests::a_deep_pair_definition_checks_totally`
 /// - witness: `hardening::tests::a_deep_bind_definition_checks_totally`
 /// - witness: `checker::tests` (the integration corpus)
-fn run(
+/// - witness: `memo::tests::memoized_checking_agrees_with_memoless_checking`
+fn run<M>(
     arena: &mut TermArena,
     entries: &[AdmittedDeclaration],
     levels: &LevelContext,
     mut context: Vec<ValueTypeId>,
     initial: Goal,
+    memo: &mut M,
+    reaches: &mut LooseDepths,
 ) -> Result<Produced, KernelError>
+where
+    M: CheckMemo<NodeSupport, NodeOutcome>,
 {
     let mut frames: Vec<Frame> = Vec::new();
     let mut goal = initial;
     'expand: loop {
-        let mut produced: Produced = match goal {
-            | Goal::SynthValue(id) => match read_value(arena, id)? {
-                | Value::Variable(index) => {
-                    let synthesized =
-                        lookup(&context, index).ok_or(KernelError::UnboundVariable { index })?;
-                    Produced::ValueType(synthesized)
-                },
-                | Value::Constant(index) => {
-                    let synthesized = resolve_constant(entries, index)
-                        .ok_or(KernelError::UnboundConstant { index })?;
-                    Produced::ValueType(synthesized)
-                },
-                | Value::Unit => Produced::ValueType(arena.value_type_unit()),
-                | Value::Literal(ref literal) => {
-                    Produced::ValueType(arena.value_type_base(literal.base_type()))
-                },
-                | Value::Pair(first, second) => {
-                    frames.push(Frame::SynthPairFirst(second));
-                    goal = Goal::SynthValue(first);
-                    continue 'expand;
-                },
-                | Value::Thunk(body) => {
-                    frames.push(Frame::SynthThunk);
-                    goal = Goal::SynthComp(body);
-                    continue 'expand;
-                },
-                | Value::Lift { target, body } => {
-                    frames.push(Frame::SynthLift(target));
-                    goal = Goal::SynthValue(body);
-                    continue 'expand;
-                },
-                | Value::Injection(..) => {
-                    return Err(KernelError::NotInferable {
-                        form: NonInferableForm::Injection,
-                    });
-                },
-            },
-            | Goal::CheckValue(id, expected) => match read_value(arena, id)? {
-                | Value::Injection(side, body) => match arena.value_type(expected) {
-                    | Some(&ValueType::Sum(left, right)) => {
-                        let summand = match side {
-                            | Side::Left => left,
-                            | Side::Right => right,
-                        };
-                        goal = Goal::CheckValue(body, summand);
+        // Consult the memo for this goal's support before reading the node.
+        // When the memo is inactive this whole block is a constant-false
+        // branch that monomorphization removes, so the unmemoized path keeps
+        // the code it had before the seam existed.
+        let mut recalled: Option<Produced> = None;
+        if matches!(M::ACTIVITY, MemoActivity::Active) {
+            let reach = goal_reach(arena, reaches, goal);
+            let support = NodeSupport::new(goal_support(goal), &context, reach);
+            match memo.recall(&support) {
+                | Some(ref outcome) => recalled = produced_of(outcome),
+                | None => {},
+            }
+            if recalled.is_none() {
+                frames.push(Frame::Memoize(support));
+            }
+        }
+        #[cfg(test)]
+        crate::probe::record(match recalled {
+            | Some(_) => crate::probe::ExpansionKind::Recalled,
+            | None => crate::probe::ExpansionKind::Expanded,
+        });
+        let mut produced: Produced = match recalled {
+            | Some(outcome) => outcome,
+            | None => match goal {
+                | Goal::SynthValue(id) => match read_value(arena, id)? {
+                    | Value::Variable(index) => {
+                        let synthesized = lookup(&context, index)
+                            .ok_or(KernelError::UnboundVariable { index })?;
+                        Produced::ValueType(synthesized)
+                    },
+                    | Value::Constant(index) => {
+                        let synthesized = resolve_constant(entries, index)
+                            .ok_or(KernelError::UnboundConstant { index })?;
+                        Produced::ValueType(synthesized)
+                    },
+                    | Value::Unit => Produced::ValueType(arena.value_type_unit()),
+                    | Value::Literal(ref literal) => {
+                        Produced::ValueType(arena.value_type_base(literal.base_type()))
+                    },
+                    | Value::Pair(first, second) => {
+                        frames.push(Frame::SynthPairFirst(second));
+                        goal = Goal::SynthValue(first);
                         continue 'expand;
                     },
-                    | _ => {
-                        return Err(value_shape_mismatch(
-                            arena,
-                            ExpectedValueShape::Sum,
-                            expected,
-                        ));
-                    },
-                },
-                | Value::Pair(first, second) => match arena.value_type(expected) {
-                    | Some(&ValueType::Product(first_type, second_type)) => {
-                        frames.push(Frame::CheckPairSecond(second, second_type));
-                        goal = Goal::CheckValue(first, first_type);
+                    | Value::Thunk(body) => {
+                        frames.push(Frame::SynthThunk);
+                        goal = Goal::SynthComp(body);
                         continue 'expand;
                     },
-                    | _ => {
-                        return Err(value_shape_mismatch(
-                            arena,
-                            ExpectedValueShape::Product,
-                            expected,
-                        ));
-                    },
-                },
-                | Value::Thunk(body) => match arena.value_type(expected) {
-                    | Some(&ValueType::Thunk(codomain)) => {
-                        goal = Goal::CheckComp(body, codomain);
+                    | Value::Lift { target, body } => {
+                        frames.push(Frame::SynthLift(target));
+                        goal = Goal::SynthValue(body);
                         continue 'expand;
                     },
-                    | _ => {
-                        return Err(value_shape_mismatch(
-                            arena,
-                            ExpectedValueShape::Thunk,
-                            expected,
-                        ));
+                    | Value::Injection(..) => {
+                        return Err(KernelError::NotInferable {
+                            form: NonInferableForm::Injection,
+                        });
                     },
                 },
-                | Value::Variable(_)
-                | Value::Constant(_)
-                | Value::Unit
-                | Value::Literal(_)
-                | Value::Lift { .. } => {
-                    frames.push(Frame::ConvertValue(expected));
-                    goal = Goal::SynthValue(id);
-                    continue 'expand;
-                },
-            },
-            | Goal::SynthComp(id) => match read_computation(arena, id)? {
-                | Computation::Application(head, argument) => {
-                    frames.push(Frame::SynthApply(argument));
-                    goal = Goal::SynthComp(head);
-                    continue 'expand;
-                },
-                | Computation::Force(value) => {
-                    frames.push(Frame::SynthForce);
-                    goal = Goal::SynthValue(value);
-                    continue 'expand;
-                },
-                | Computation::Return(value) => {
-                    frames.push(Frame::SynthReturn);
-                    goal = Goal::SynthValue(value);
-                    continue 'expand;
-                },
-                | Computation::Bind(bound, body) => {
-                    frames.push(Frame::SynthBind(body));
-                    goal = Goal::SynthComp(bound);
-                    continue 'expand;
-                },
-                | Computation::Case {
-                    scrutinee,
-                    on_left,
-                    on_right,
-                } => {
-                    frames.push(Frame::SynthCaseScrutinee(on_left, on_right));
-                    goal = Goal::SynthValue(scrutinee);
-                    continue 'expand;
-                },
-                | Computation::Lambda(_) => {
-                    return Err(KernelError::NotInferable {
-                        form: NonInferableForm::Lambda,
-                    });
-                },
-            },
-            | Goal::CheckComp(id, expected) => match read_computation(arena, id)? {
-                | Computation::Lambda(body) => match arena.comp_type(expected) {
-                    | Some(&CompType::Arrow { domain, codomain }) => {
-                        context.push(domain);
-                        frames.push(Frame::ScopeExit);
-                        goal = Goal::CheckComp(body, codomain);
+                | Goal::CheckValue(id, expected) => match read_value(arena, id)? {
+                    | Value::Injection(side, body) => match arena.value_type(expected) {
+                        | Some(&ValueType::Sum(left, right)) => {
+                            let summand = match side {
+                                | Side::Left => left,
+                                | Side::Right => right,
+                            };
+                            goal = Goal::CheckValue(body, summand);
+                            continue 'expand;
+                        },
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Sum,
+                                expected,
+                            ));
+                        },
+                    },
+                    | Value::Pair(first, second) => match arena.value_type(expected) {
+                        | Some(&ValueType::Product(first_type, second_type)) => {
+                            frames.push(Frame::CheckPairSecond(second, second_type));
+                            goal = Goal::CheckValue(first, first_type);
+                            continue 'expand;
+                        },
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Product,
+                                expected,
+                            ));
+                        },
+                    },
+                    | Value::Thunk(body) => match arena.value_type(expected) {
+                        | Some(&ValueType::Thunk(codomain)) => {
+                            goal = Goal::CheckComp(body, codomain);
+                            continue 'expand;
+                        },
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Thunk,
+                                expected,
+                            ));
+                        },
+                    },
+                    | Value::Variable(_)
+                    | Value::Constant(_)
+                    | Value::Unit
+                    | Value::Literal(_)
+                    | Value::Lift { .. } => {
+                        frames.push(Frame::ConvertValue(expected));
+                        goal = Goal::SynthValue(id);
                         continue 'expand;
                     },
-                    | _ => {
-                        return Err(comp_shape_mismatch(
-                            arena,
-                            ExpectedComputationShape::Arrow,
-                            expected,
-                        ));
-                    },
                 },
-                | Computation::Return(value) => match arena.comp_type(expected) {
-                    | Some(&CompType::Returner(result)) => {
-                        goal = Goal::CheckValue(value, result);
+                | Goal::SynthComp(id) => match read_computation(arena, id)? {
+                    | Computation::Application(head, argument) => {
+                        frames.push(Frame::SynthApply(argument));
+                        goal = Goal::SynthComp(head);
                         continue 'expand;
                     },
-                    | _ => {
-                        return Err(comp_shape_mismatch(
-                            arena,
-                            ExpectedComputationShape::Returner,
-                            expected,
-                        ));
+                    | Computation::Force(value) => {
+                        frames.push(Frame::SynthForce);
+                        goal = Goal::SynthValue(value);
+                        continue 'expand;
                     },
-                },
-                | Computation::Bind(bound, body) => {
-                    frames.push(Frame::CheckBind(body, expected));
-                    goal = Goal::SynthComp(bound);
-                    continue 'expand;
-                },
-                | Computation::Case {
-                    scrutinee,
-                    on_left,
-                    on_right,
-                } => {
-                    frames.push(Frame::CheckCaseScrutinee {
+                    | Computation::Return(value) => {
+                        frames.push(Frame::SynthReturn);
+                        goal = Goal::SynthValue(value);
+                        continue 'expand;
+                    },
+                    | Computation::Bind(bound, body) => {
+                        frames.push(Frame::SynthBind(body));
+                        goal = Goal::SynthComp(bound);
+                        continue 'expand;
+                    },
+                    | Computation::Case {
+                        scrutinee,
                         on_left,
                         on_right,
-                        expected,
-                    });
-                    goal = Goal::SynthValue(scrutinee);
-                    continue 'expand;
+                    } => {
+                        frames.push(Frame::SynthCaseScrutinee(on_left, on_right));
+                        goal = Goal::SynthValue(scrutinee);
+                        continue 'expand;
+                    },
+                    | Computation::Lambda(_) => {
+                        return Err(KernelError::NotInferable {
+                            form: NonInferableForm::Lambda,
+                        });
+                    },
                 },
-                | Computation::Application(..) | Computation::Force(_) => {
-                    frames.push(Frame::ConvertComp(expected));
-                    goal = Goal::SynthComp(id);
-                    continue 'expand;
+                | Goal::CheckComp(id, expected) => match read_computation(arena, id)? {
+                    | Computation::Lambda(body) => match arena.comp_type(expected) {
+                        | Some(&CompType::Arrow { domain, codomain }) => {
+                            context.push(domain);
+                            frames.push(Frame::ScopeExit);
+                            goal = Goal::CheckComp(body, codomain);
+                            continue 'expand;
+                        },
+                        | _ => {
+                            return Err(comp_shape_mismatch(
+                                arena,
+                                ExpectedComputationShape::Arrow,
+                                expected,
+                            ));
+                        },
+                    },
+                    | Computation::Return(value) => match arena.comp_type(expected) {
+                        | Some(&CompType::Returner(result)) => {
+                            goal = Goal::CheckValue(value, result);
+                            continue 'expand;
+                        },
+                        | _ => {
+                            return Err(comp_shape_mismatch(
+                                arena,
+                                ExpectedComputationShape::Returner,
+                                expected,
+                            ));
+                        },
+                    },
+                    | Computation::Bind(bound, body) => {
+                        frames.push(Frame::CheckBind(body, expected));
+                        goal = Goal::SynthComp(bound);
+                        continue 'expand;
+                    },
+                    | Computation::Case {
+                        scrutinee,
+                        on_left,
+                        on_right,
+                    } => {
+                        frames.push(Frame::CheckCaseScrutinee {
+                            on_left,
+                            on_right,
+                            expected,
+                        });
+                        goal = Goal::SynthValue(scrutinee);
+                        continue 'expand;
+                    },
+                    | Computation::Application(..) | Computation::Force(_) => {
+                        frames.push(Frame::ConvertComp(expected));
+                        goal = Goal::SynthComp(id);
+                        continue 'expand;
+                    },
                 },
             },
         };
@@ -840,6 +1016,9 @@ fn run(
                 return Ok(produced);
             };
             match frame {
+                | Frame::Memoize(support) => {
+                    memo.remember(support, outcome_of(produced));
+                },
                 | Frame::SynthPairFirst(second) => {
                     let first_type = produced_value_type(produced)?;
                     frames.push(Frame::SynthPairSecond(first_type));
@@ -857,8 +1036,13 @@ fn run(
                 },
                 | Frame::SynthLift(target) => {
                     let body_type = produced_value_type(produced)?;
-                    let body_level =
-                        type_level(arena, entries, levels, TypeLevelGoal::Value(body_type))?;
+                    let body_level = type_level(
+                        arena,
+                        entries,
+                        levels,
+                        TypeLevelGoal::Value(body_type),
+                        memo,
+                    )?;
                     levels.check_level_scope(&target)?;
                     levels.check_universe_below(&body_level, &target)?;
                     produced = Produced::ValueType(arena.value_type_lift(body_type, target));
@@ -1054,14 +1238,17 @@ fn run(
 /// [`KernelError::UniverseViolation`], [`KernelError::LevelOracleFault`],
 /// [`KernelError::ArenaFault`].
 #[inline]
-fn check_value_type(
+fn check_value_type<M>(
     arena: &TermArena,
     entries: &[AdmittedDeclaration],
     levels: &LevelContext,
     declared: ValueTypeId,
+    memo: &mut M,
 ) -> Result<(), KernelError>
+where
+    M: CheckMemo<NodeSupport, NodeOutcome>,
 {
-    let _level = type_level(arena, entries, levels, TypeLevelGoal::Value(declared))?;
+    let _level = type_level(arena, entries, levels, TypeLevelGoal::Value(declared), memo)?;
     Ok(())
 }
 
@@ -1204,9 +1391,12 @@ fn projected_atoms(
 /// # Adequacy
 /// - hypothesis: L2 — the golden corpus checks well-typed declarations and
 ///   rejects ill-typed mutations; the L3 residues are each rule's failure arm,
-///   pinned by the negative unit goldens.
+///   pinned by the negative unit goldens. The memo adds no decision surface of
+///   its own, so its adequacy is the differential's: the memoized answer is the
+///   memoless answer.
 /// - witness: `check::tests::identity_thunk_checks`
 /// - witness: `checker::tests` (the integration corpus)
+/// - witness: `memo::tests::memoized_checking_agrees_with_memoless_checking`
 #[inline]
 pub fn check_declaration(
     arena: &mut TermArena,
@@ -1215,7 +1405,57 @@ pub fn check_declaration(
     declaration: &Declaration,
 ) -> Result<(), KernelError>
 {
-    check_value_type(arena, entries, levels, declaration.declared_id())?;
+    let mut memo: VerdictMemo<NodeSupport, NodeOutcome> = VerdictMemo::new();
+    check_declaration_with_memo(arena, entries, levels, declaration, &mut memo)
+}
+
+/// Check a declaration against a caller-supplied memo.
+///
+/// # The memo's lifetime is this call, and that is a soundness condition
+///
+/// A support names arena ids, and the choke point **truncates the arena** to
+/// the declaration's content-end at the verdict, dropping every checker
+/// intermediate. An entry surviving that truncation holds ids that dangle —
+/// or, worse, ids a later declaration re-allocates to different nodes, so a
+/// recall would answer a question about one term with the answer to another.
+/// [`check_declaration`] therefore builds a fresh memo per call and drops it,
+/// and a caller reaching this entry directly owes the same discipline.
+///
+/// # Contract
+/// - requires: as [`check_declaration`]; additionally, `memo` holds only
+///   entries recorded during this same call against this same arena.
+/// - ensures: the verdict is **independent of `memo`** — the same as
+///   [`check_declaration`] and the same as running at
+///   [`NullMemo`](gandr_kernel_check_memo::NullMemo). On success `memo` holds
+///   one entry per distinct support the check covered.
+/// - provides: the memoized checking path, plus the memoless path the
+///   differential compares it against, as one function at two type parameters.
+/// - fails: any [`KernelError`] the checker surfaces.
+/// - panics: none.
+///
+/// # Errors
+/// Any [`KernelError`].
+///
+/// # Adequacy
+/// - hypothesis: L2 — the differential over generated declarations pins
+///   memoized-equals-memoless verdict for verdict; the L3 residue is the
+///   stale-entry hazard, pinned by a poisoned-memo witness that provably
+///   changes an answer.
+/// - witness: `memo::tests::memoized_checking_agrees_with_memoless_checking`
+/// - witness: `memo::tests::a_poisoned_memo_changes_the_verdict`
+#[inline]
+pub fn check_declaration_with_memo<M>(
+    arena: &mut TermArena,
+    entries: &[AdmittedDeclaration],
+    levels: &LevelContext,
+    declaration: &Declaration,
+    memo: &mut M,
+) -> Result<(), KernelError>
+where
+    M: CheckMemo<NodeSupport, NodeOutcome>,
+{
+    let mut reaches = LooseDepths::new();
+    check_value_type(arena, entries, levels, declaration.declared_id(), memo)?;
     check_sealing_provenance(arena, declaration.declared_id(), declaration.provenance())?;
     match *declaration.content() {
         | DeclarationContent::Def { declared, body } => {
@@ -1226,6 +1466,8 @@ pub fn check_declaration(
                 levels,
                 context,
                 Goal::CheckValue(body, declared),
+                memo,
+                &mut reaches,
             )?;
             Ok(())
         },
@@ -1249,6 +1491,7 @@ mod tests
 {
     use alloc::vec::Vec;
 
+    use gandr_kernel_check_memo::NullMemo;
     use gandr_kernel_strata::Level;
     use gandr_kernel_strata::LevelConstant;
 
@@ -1267,6 +1510,7 @@ mod tests
     use crate::error::RegisterFault;
     use crate::levels::LevelContext;
     use crate::levels::LevelParamCount;
+    use crate::support::LooseDepths;
     use crate::term::DeBruijnIndex;
     use crate::term::Side;
     use crate::types::CompType;
@@ -1293,7 +1537,15 @@ mod tests
         value: ValueId,
     ) -> Result<ValueTypeId, KernelError>
     {
-        match run(arena, entries, levels, context, Goal::SynthValue(value))? {
+        match run(
+            arena,
+            entries,
+            levels,
+            context,
+            Goal::SynthValue(value),
+            &mut NullMemo,
+            &mut LooseDepths::new(),
+        )? {
             | Produced::ValueType(id) => Ok(id),
             | _ => panic!("a value goal must produce a value type"),
         }
@@ -1314,6 +1566,8 @@ mod tests
             levels,
             context,
             Goal::SynthComp(computation),
+            &mut NullMemo,
+            &mut LooseDepths::new(),
         )? {
             | Produced::CompType(id) => Ok(id),
             | _ => panic!("a computation goal must produce a computation type"),
@@ -1378,7 +1632,9 @@ mod tests
                 &entries,
                 &levels,
                 Vec::new(),
-                Goal::CheckValue(left, sum)
+                Goal::CheckValue(left, sum),
+                &mut NullMemo,
+                &mut LooseDepths::new(),
             )
             .is_ok(),
             "inl unit checks against Unit + Integer"
@@ -1415,7 +1671,9 @@ mod tests
                 &entries,
                 &levels,
                 Vec::new(),
-                Goal::CheckValue(pair, product)
+                Goal::CheckValue(pair, product),
+                &mut NullMemo,
+                &mut LooseDepths::new(),
             )
             .is_ok(),
             "a pair propagates the expected product into a checking component"
@@ -1548,6 +1806,8 @@ mod tests
                 &levels,
                 alloc::vec![context_type],
                 Goal::CheckComp(case, expected),
+                &mut NullMemo,
+                &mut LooseDepths::new(),
             )
             .is_ok(),
             "check-mode case propagates the expected type into both branches"
@@ -1565,6 +1825,7 @@ mod tests
             &no_entries(),
             &levels,
             TypeLevelGoal::Value(universe),
+            &mut NullMemo,
         )
         .unwrap();
         assert_eq!(
@@ -1583,7 +1844,14 @@ mod tests
         let inner = arena.value_type_unit();
         let lifted = arena.value_type_lift(inner, Level::constant(LevelConstant::from(1_u64)));
         assert_eq!(
-            type_level(&arena, &no_entries(), &levels, TypeLevelGoal::Value(lifted)).unwrap(),
+            type_level(
+                &arena,
+                &no_entries(),
+                &levels,
+                TypeLevelGoal::Value(lifted),
+                &mut NullMemo,
+            )
+            .unwrap(),
             Level::constant(LevelConstant::from(1_u64)),
             "lifting Unit to level 1 forms at level 1"
         );
@@ -1596,7 +1864,8 @@ mod tests
                     &arena,
                     &no_entries(),
                     &levels,
-                    TypeLevelGoal::Value(degenerate)
+                    TypeLevelGoal::Value(degenerate),
+                    &mut NullMemo,
                 ),
                 Err(KernelError::UniverseViolation(_))
             ),
@@ -1615,7 +1884,14 @@ mod tests
         let returner = arena.comp_type_returner(result);
         let arrow = arena.comp_type_arrow(domain, returner);
         assert_eq!(
-            type_level(&arena, &no_entries(), &levels, TypeLevelGoal::Comp(arrow)).unwrap(),
+            type_level(
+                &arena,
+                &no_entries(),
+                &levels,
+                TypeLevelGoal::Comp(arrow),
+                &mut NullMemo,
+            )
+            .unwrap(),
             Level::constant(LevelConstant::from(3_u64)),
             "the arrow forms at the join of its parts' levels"
         );

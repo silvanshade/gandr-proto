@@ -9,11 +9,27 @@
 - `SegmentedArtifact::segment_spans` exposes header and declaration byte ranges as a reader byproduct for untrusted storage layers.
   Spans carry no hashes and declaration segments are not independently replayable because sharing may cross segment boundaries.
 - `convertible_values_with_sink` and `convertible_computations_with_sink` emit the shared decision vocabulary through a statically dispatched sink; `replay_values` and `replay_computations` re-execute the kernel worklist and compare decision kinds plus the claimed verdict.
+- Checking is **sharing-aware**: the term representation is a graph, and the checker answers each distinct node check once instead of once per occurrence.
+  A self-similar declaration whose tree expansion runs to a billion nodes admits in a few dozen node checks.
 
 ## Trace boundary
 
 The kernel consumes the dependency-free `gandr-kernel-conversion-trace` seam with kernel-local arena identities.
 Replay is an in-process session check: it has no persistence format, identity translation layer, strategy policy, or term dependency on the untrusted engine.
+
+## Memo boundary
+
+The kernel consumes the dependency-free `gandr-kernel-check-memo` seam, which owns the table's storage while the kernel owns the key.
+
+A memo key is the whole support of one node check: the node's arena identity, the checking direction with its expected type, and the slice of the binder context the node can actually reach.
+Keying on the arena identity is sound by the same argument the kernel's own identity-equality conversion fast path rests on — the same identity in the same arena names the same node.
+
+The memo's lifetime is **one check call**, and that is a soundness condition rather than a convenience.
+The admission choke point truncates the arena after every verdict, so an entry surviving into a later declaration would name indices that had been re-allocated to different nodes.
+Nothing persists, and a hit claims only that this process already checked this node — never that the node is valid.
+
+The property that licenses this is in the suite permanently: memoized checking agrees with unmemoized checking, verdict for verdict, and the comparison is proven to bite by memos poisoned so they must change an answer.
+The unmemoized path is the same function at a different type parameter, not a second implementation.
 
 ## Using it
 

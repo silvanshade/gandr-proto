@@ -1009,6 +1009,16 @@ mod tests
     /// Build a bypass-admitted environment whose body is a `depth`-deep
     /// repeated pair diamond `pair(x, x)` (each level shares the prior),
     /// the declared type an ordinary unit.
+    ///
+    /// **The bypass is here because the fixture is deliberately ill typed**,
+    /// not because the checker cannot afford the shape. A pair does not
+    /// check against `Unit`, and the mismatch is the point: this fixture
+    /// isolates the **decode** plane, so it must reach the reader's budget
+    /// without the checker having any opinion. Do not convert it to a
+    /// checked admission — a well-typed self-similar definition of this
+    /// depth admits fine (the sharing-aware check memo collapses it to a
+    /// few dozen goal expansions), and converting this one would silently
+    /// move what the test measures from the reader to the checker.
     fn diamond_environment(depth: FixtureDepth) -> Environment
     {
         let mut environment = Environment::new();

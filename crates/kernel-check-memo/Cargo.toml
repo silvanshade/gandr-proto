@@ -1,0 +1,17 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-kernel-check-memo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The dependency-free check-memo vocabulary and statically dispatched null memo the certified kernel's sharing-aware checker consults"
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+
+[lints]
+workspace = true

@@ -63,6 +63,12 @@
 
 extern crate alloc;
 
+// The sharing-collapse probe records into a thread-local, which `core` and
+// `alloc` do not provide. It exists only under `cfg(test)`, so the shipped
+// crate stays `no_std` and gains no dependency from it.
+#[cfg(test)]
+extern crate std;
+
 mod arena;
 mod base;
 mod check;
@@ -72,6 +78,11 @@ mod env;
 mod error;
 mod export;
 mod levels;
+#[cfg(test)]
+mod memo;
+#[cfg(test)]
+mod probe;
+mod support;
 mod term;
 mod types;
 

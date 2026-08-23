@@ -20,6 +20,9 @@ path = "tests/lib.rs"
 # crates and core/alloc. Dev-dependencies are exempt -- test code is not
 # shipped trust.
 [dependencies]
+# The dependency-free memo vocabulary the sharing-aware checker consults; the
+# table's storage and lifetime live there, so the kernel holds only the seam.
+gandr-kernel-check-memo.workspace = true
 # The dependency-free decision vocabulary shared with the untrusted conversion
 # engine; it carries no terms, storage, or replay policy.
 gandr-kernel-conversion-trace.workspace = true

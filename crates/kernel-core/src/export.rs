@@ -182,13 +182,22 @@ pub const FORMAT_VERSION_V1: u16 = 1;
 /// amplification defence (massive-term design §4.4).
 ///
 /// Decode retains sharing, so a small artifact can name a DAG whose *expanded*
-/// (tree) size is astronomical; the recursive S1 checker walks that DAG as a
-/// tree, re-checking each shared subterm once per reference, so a shallow-wide
-/// DAG is exponential checker work the depth-free defunctionalized machine does
-/// not bound. Before replay, the reader computes each entry's memoized
-/// `expanded_size` (a saturating `u64`) in one forward scan and rejects any
-/// declaration whose declared-type or body root exceeds this cap — bounding
-/// checker time without touching the checker.
+/// (tree) size is astronomical. Before replay, the reader computes each entry's
+/// memoized `expanded_size` (a saturating `u64`) in one forward scan and
+/// rejects any declaration whose declared-type or body root exceeds this cap —
+/// bounding checker time without touching the checker.
+///
+/// **This budget is now a defence in depth rather than the sole bound on
+/// checker work.** It was introduced when the checker walked the shared graph
+/// as a tree, re-checking each shared subterm once per reference, so a
+/// shallow-wide DAG was exponential checker work nothing else bounded. The
+/// checker is now sharing-aware: it checks each distinct support once, so the
+/// same DAG
+/// costs work proportional to its *node* count rather than its expanded size.
+/// The cap is retained and unchanged — an import boundary should refuse an
+/// artifact whose declared shape is absurd whatever the checker can afford,
+/// and the reader's refusal stays cheap and independent of the checker's
+/// internals.
 ///
 /// **Tunable; retuned once real corpus telemetry existed** from `1 << 24` to
 /// `1 << 20`. The binding

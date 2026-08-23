@@ -13,6 +13,7 @@ members = [
   "crates/core-sequent",
   "crates/core-term",
   "crates/core-unify",
+  "crates/kernel-check-memo",
   "crates/kernel-conversion-trace",
   "crates/kernel-core",
   "crates/kernel-strata",
@@ -256,6 +257,13 @@ path = "crates/core-term"
 # consumers: none yet — the elaborator seam that will drive it is unbuilt
 [workspace.dependencies.gandr-core-unify]
 path = "crates/core-unify"
+
+# The dependency-free check-memo vocabulary and statically dispatched null memo
+# the certified kernel's sharing-aware checker consults.
+# consumers:
+# - gandr-kernel-core
+[workspace.dependencies.gandr-kernel-check-memo]
+path = "crates/kernel-check-memo"
 
 # The dependency-free decision vocabulary and statically dispatched sink shared
 # by the untrusted conversion engine and the certified kernel replay surface.
