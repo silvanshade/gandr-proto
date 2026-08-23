@@ -106,8 +106,6 @@
     )
 )]
 
-use core::fmt::Write as _;
-
 use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
@@ -117,8 +115,6 @@ use gandr_core_term::outcome::Blame;
 use gandr_core_term::outcome::Eval;
 use gandr_core_term::outcome::StuckReason;
 use gandr_core_term::syntax::Comp;
-use gandr_core_term::syntax::NumLit;
-use gandr_core_term::syntax::Side;
 use gandr_core_term::syntax::Value;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
@@ -170,37 +166,19 @@ pub const PATHOLOGICAL_DIR: &str = "examples/pathological";
 /// the bead its semantics graduate under.
 pub const SURFACE_DIR: &str = "examples/surface";
 
-/// The maximum depth [`render_value`] descends before rendering `<deep>`
-/// (bounded rendering; the ADR-47 posture applied to the harness).
-const RENDER_DEPTH_LIMIT: RenderDepth = RenderDepth(32);
-
-/// Current depth in the corpus harness's bounded value renderer.
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct RenderDepth(usize);
-
-impl RenderDepth
-{
-    /// Root depth for a freshly rendered value.
-    pub const ROOT: Self = Self(0);
-
-    /// Descends one level without overflowing the host representation.
-    #[inline]
-    #[must_use]
-    fn descend(self) -> Self
-    {
-        Self(self.0.saturating_add(1))
-    }
-}
-
-impl From<usize> for RenderDepth
-{
-    #[inline]
-    fn from(value: usize) -> Self
-    {
-        Self(value)
-    }
-}
+/// The maximum depth value rendering descends before rendering `<deep>`, and
+/// the depth type it counts in — the shared face's, re-exported so harness
+/// call sites spell one vocabulary.
+pub use gandr_surface_engine::render::RENDER_DEPTH_LIMIT;
+pub use gandr_surface_engine::render::RenderDepth;
+/// Renders a machine value in the shared structural notation.
+///
+/// Expected values in `//@ expect-*-value:` directives are written in this
+/// grammar (booleans as their `1 + 1` encoding `Inl(())` / `Inr(())`). It is
+/// [`gandr_surface_engine::render::value`] under a harness-shaped name: the
+/// REPL prints it, the language-server face renders types beside it, and the
+/// corpus's expectations are written in exactly what those faces show.
+pub use gandr_surface_engine::render::value as render_value;
 
 /// Stable corpus-harness vocabulary for outcomes, blame, and stuck states.
 #[repr(transparent)]
@@ -1593,159 +1571,6 @@ fn ffi_failure(
             | Err(ref error) => Some(format!("expected ffi error `{expected}`, got {error}")),
         },
         | _ => Some("directive is not valid in ffi mode".to_owned()),
-    }
-}
-
-/// Renders a machine [`Value`] into the harness's structural notation.
-///
-/// This is a **test-side notation**, not a pretty-printer (that surface is
-/// the planned `surface-render` crate's): annotations are transparent, booleans
-/// appear as their `1 + 1` encoding (`Inl(())` / `Inr(())`), thunks render
-/// opaquely, and anything unrecognized renders `<opaque>`. Rendering is
-/// depth-bounded (`<deep>` beyond [`RENDER_DEPTH_LIMIT`]).
-///
-/// # Contract
-/// - ensures: deterministic output for a given value (records iterate their
-///   `BTreeMap` order); total — never panics.
-#[inline]
-#[must_use]
-pub fn render_value<T>(
-    value: &Value,
-    depth: T,
-) -> String
-where
-    T: Into<RenderDepth>,
-{
-    enum RenderStep<'value>
-    {
-        Value
-        {
-            value: &'value Value,
-            depth: RenderDepth,
-        },
-        Text(&'value str),
-    }
-
-    let mut output = String::new();
-    let mut steps = vec![RenderStep::Value {
-        value,
-        depth: depth.into(),
-    }];
-    while let Some(step) = steps.pop() {
-        let RenderStep::Value { value, depth } = step
-        else {
-            let RenderStep::Text(text) = step
-            else {
-                continue;
-            };
-            output.push_str(text);
-            continue;
-        };
-        if depth >= RENDER_DEPTH_LIMIT {
-            output.push_str("<deep>");
-            continue;
-        }
-        let below = depth.descend();
-        match *value {
-            | Value::Unit => output.push_str("()"),
-            | Value::Int(int) => {
-                let _infallible = write!(&mut output, "{int}");
-            },
-            | Value::Str(ref text) => {
-                output.push('"');
-                output.push_str(text);
-                output.push('"');
-            },
-            | Value::Num(num) => output.push_str(&render_num(num)),
-            | Value::Pair(ref fst, ref snd) => {
-                steps.push(RenderStep::Text(")"));
-                steps.push(RenderStep::Value {
-                    value: snd.as_ref(),
-                    depth: below,
-                });
-                steps.push(RenderStep::Text(", "));
-                steps.push(RenderStep::Value {
-                    value: fst.as_ref(),
-                    depth: below,
-                });
-                steps.push(RenderStep::Text("("));
-            },
-            | Value::Inj(side, ref payload) => {
-                let prefix = match side {
-                    | Side::Fst => "Inl(",
-                    | Side::Snd => "Inr(",
-                };
-                steps.push(RenderStep::Text(")"));
-                steps.push(RenderStep::Value {
-                    value: payload.as_ref(),
-                    depth: below,
-                });
-                steps.push(RenderStep::Text(prefix));
-            },
-            | Value::List(ref items) => {
-                steps.push(RenderStep::Text("]"));
-                for (index, item) in items.iter().enumerate().rev() {
-                    if index.saturating_add(1) < items.len() {
-                        steps.push(RenderStep::Text(", "));
-                    }
-                    steps.push(RenderStep::Value {
-                        value: item.as_ref(),
-                        depth: below,
-                    });
-                }
-                steps.push(RenderStep::Text("["));
-            },
-            | Value::Record(ref fields) => {
-                steps.push(RenderStep::Text("}"));
-                for (index, (label, field)) in fields.iter().enumerate().rev() {
-                    if index.saturating_add(1) < fields.len() {
-                        steps.push(RenderStep::Text(", "));
-                    }
-                    steps.push(RenderStep::Value {
-                        value: field.as_ref(),
-                        depth: below,
-                    });
-                    steps.push(RenderStep::Text(" = "));
-                    steps.push(RenderStep::Text(label));
-                }
-                steps.push(RenderStep::Text("#{"));
-            },
-            | Value::Thunk(..) => output.push_str("<thunk>"),
-            | Value::Annot(ref payload, _) => steps.push(RenderStep::Value {
-                value: payload.as_ref(),
-                depth: below,
-            }),
-            | Value::Var(ref name) => {
-                output.push_str("<var ");
-                output.push_str(name.as_ref());
-                output.push('>');
-            },
-            // A reflexivity proof renders through its witness (ADR-76): the
-            // canonical inhabitant of a closed identity type, `here(4)`.
-            | Value::Here(ref witness) => {
-                steps.push(RenderStep::Text(")"));
-                steps.push(RenderStep::Value {
-                    value: witness.as_ref(),
-                    depth: below,
-                });
-                steps.push(RenderStep::Text("here("));
-            },
-            | _ => output.push_str("<opaque>"),
-        }
-    }
-    output
-}
-
-/// Renders a typed numeric literal (`5u32`, `1.5f64`, …).
-fn render_num(num: NumLit) -> String
-{
-    match num {
-        | NumLit::U32(n) => format!("{n}u32"),
-        | NumLit::U64(n) => format!("{n}u64"),
-        | NumLit::I32(n) => format!("{n}i32"),
-        | NumLit::I64(n) => format!("{n}i64"),
-        | NumLit::F32(bits) => format!("{}f32", f32::from_bits(bits)),
-        | NumLit::F64(bits) => format!("{}f64", f64::from_bits(bits)),
     }
 }
 

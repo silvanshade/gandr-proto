@@ -94,7 +94,6 @@ use crate::attributes;
 use crate::boundary::AttributeName;
 use crate::boundary::ContextLength;
 use crate::boundary::ContextRole;
-use crate::boundary::DataMention;
 use crate::boundary::ItemIndex;
 use crate::boundary::RecursiveMarkDepthExceeded;
 use crate::boundary::SourceRange;
@@ -1422,106 +1421,18 @@ pub fn message_of(error: &TypeError) -> DiagnosticMessage
     }
 }
 
-/// Whether a type mentions a declared-data nominal handle
-/// ([`ValueType::Data`]) at any depth — the gate that routes a diagnostic
-/// operand to its surface spelling rather than raw `Debug`.
-fn mentions_data(ty: &Ty) -> DataMention
-{
-    DataMention(match *ty {
-        | Ty::Value(ref value) => value_mentions_data(value).0,
-        | Ty::Comp(ref comp) => comp_mentions_data(comp).0,
-    })
-}
-
-/// Renders a diagnostic type operand: its SURFACE spelling ([`render::ty`])
-/// when the type mentions a declared datatype and that rendering is faithful
-/// (holds no `?` wildcard), else the `Debug` form the non-declared-data
-/// diagnostics (and their golden snapshots) have always used. This keeps the
-/// declared-data nominal spelling out of raw `Debug` while never degrading a
-/// type the shared renderer cannot yet spell.
+/// Renders a diagnostic type operand through the shared presentation
+/// renderer ([`render::ty`]) — the same spelling the REPL transcript and the
+/// language-server hover read — whenever that rendering is faithful (holds no
+/// `?` wildcard for a type node the renderer cannot yet spell). Only then
+/// does the operand fall back to the raw `Debug` form.
 fn render_type_operand(ty: &Ty) -> String
 {
-    if mentions_data(ty).0 {
-        let rendered = render::ty(ty);
-        if !rendered.contains('?') {
-            return rendered;
-        }
+    let rendered = render::ty(ty);
+    if !rendered.contains('?') {
+        return rendered;
     }
     format!("{ty:?}")
-}
-
-/// Whether a value type mentions [`ValueType::Data`] at any depth.
-fn value_mentions_data(ty: &ValueType) -> DataMention
-{
-    type_mentions_data(TypeNode::Value(ty))
-}
-
-/// Whether a computation type mentions [`ValueType::Data`] at any depth.
-fn comp_mentions_data(ty: &CompType) -> DataMention
-{
-    type_mentions_data(TypeNode::Comp(ty))
-}
-
-/// One pending node in an iterative value/computation-type traversal.
-enum TypeNode<'ty>
-{
-    /// A value-type node.
-    Value(&'ty ValueType),
-    /// A computation-type node.
-    Comp(&'ty CompType),
-}
-
-/// Iteratively scans a finite type tree for a declared-data node.
-fn type_mentions_data(root: TypeNode<'_>) -> DataMention
-{
-    let mut pending = vec![root];
-    while let Some(node) = pending.pop() {
-        match node {
-            | TypeNode::Value(node) => match *node {
-                | ValueType::Data { .. } => return DataMention(true),
-                | ValueType::Prod(ref fst, ref snd) | ValueType::Sum(ref fst, ref snd) => {
-                    pending.push(TypeNode::Value(snd));
-                    pending.push(TypeNode::Value(fst));
-                },
-                | ValueType::List(ref element) => {
-                    pending.push(TypeNode::Value(element));
-                },
-                | ValueType::Record(ref fields) => {
-                    pending.extend(fields.values().map(|field| TypeNode::Value(field.as_ref())));
-                },
-                | ValueType::Thunk(_, ref body) => {
-                    pending.push(TypeNode::Comp(body));
-                },
-                | ValueType::Stk(ref consumes, ref delivers) => {
-                    pending.push(TypeNode::Comp(delivers));
-                    pending.push(TypeNode::Comp(consumes));
-                },
-                | ValueType::Path {
-                    ty: ref carrier, ..
-                } => {
-                    pending.push(TypeNode::Value(carrier));
-                },
-                | _ => {},
-            },
-            | TypeNode::Comp(node) => match *node {
-                | CompType::F(ref of, _) => {
-                    pending.push(TypeNode::Value(of));
-                },
-                | CompType::Arrow {
-                    ref arg, ref res, ..
-                } => {
-                    pending.push(TypeNode::Comp(res));
-                    pending.push(TypeNode::Value(arg));
-                },
-                | CompType::With(ref fst, ref snd) => {
-                    pending.push(TypeNode::Comp(snd));
-                    pending.push(TypeNode::Comp(fst));
-                },
-                | _ => {},
-            },
-        }
-    }
-    DataMention(false)
 }
 
 /// Resolves the exact failing occurrence to a primary source annotation.

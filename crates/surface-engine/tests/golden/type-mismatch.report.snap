@@ -4,8 +4,8 @@
     {
       "kind": "TypeMismatch",
       "data": {
-        "expected": "Value(Unit)",
-        "actual": "Value(Atom(\"Integer\"))"
+        "expected": "Unit",
+        "actual": "Integer"
       },
       "item": 0,
       "code": "E0001",
@@ -13,8 +13,8 @@
       "message": {
         "message_template": "TypeMismatch",
         "message_arguments": {
-          "expected": "Value(Unit)",
-          "actual": "Value(Atom(\"Integer\"))"
+          "expected": "Unit",
+          "actual": "Integer"
         }
       },
       "annotations": [
@@ -24,7 +24,7 @@
             "start": 22,
             "end": 23
           },
-          "label": "expected Value(Unit), found Value(Atom(\"Integer\"))"
+          "label": "expected Unit, found Integer"
         }
       ],
       "expr": "Int(1)",

@@ -5,7 +5,7 @@
       "kind": "ShapeMismatch",
       "data": {
         "expected_shape": "a product type",
-        "actual": "Value(Atom(\"Integer\"))"
+        "actual": "Integer"
       },
       "item": 0,
       "code": "E0002",
@@ -14,7 +14,7 @@
         "message_template": "ShapeMismatch",
         "message_arguments": {
           "expected_shape": "a product type",
-          "actual": "Value(Atom(\"Integer\"))"
+          "actual": "Integer"
         }
       },
       "annotations": [
@@ -24,7 +24,7 @@
             "start": 55,
             "end": 56
           },
-          "label": "expected a product type, found Value(Atom(\"Integer\"))"
+          "label": "expected a product type, found Integer"
         }
       ],
       "contexts": [

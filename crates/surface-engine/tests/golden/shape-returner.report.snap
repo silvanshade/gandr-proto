@@ -5,7 +5,7 @@
       "kind": "ShapeMismatch",
       "data": {
         "expected_shape": "a returner type",
-        "actual": "Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
+        "actual": "(Integer → F Integer)"
       },
       "item": 0,
       "code": "E0002",
@@ -14,7 +14,7 @@
         "message_template": "ShapeMismatch",
         "message_arguments": {
           "expected_shape": "a returner type",
-          "actual": "Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
+          "actual": "(Integer → F Integer)"
         }
       },
       "annotations": [
@@ -24,7 +24,7 @@
             "start": 17,
             "end": 41
           },
-          "label": "expected a returner type, found Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
+          "label": "expected a returner type, found (Integer → F Integer)"
         }
       ],
       "contexts": [

@@ -513,10 +513,6 @@ semantic_copy!(
     pub struct MatchDecision(bool);
 );
 semantic_copy!(
-    /// Whether a type mentions the distinguished data universe.
-    pub struct DataMention(bool);
-);
-semantic_copy!(
     /// Whether advisory marking was skipped at excessive recursive depth.
     pub struct RecursiveMarkDepthExceeded(bool);
 );
@@ -612,7 +608,6 @@ semantic_bool!(
     ListCaseFlag,
     ShellWordContinuation,
     MatchDecision,
-    DataMention,
     RecursiveMarkDepthExceeded,
     OriginMapEmpty,
     UnknownAtomFlag,

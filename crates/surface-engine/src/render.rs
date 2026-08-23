@@ -1,16 +1,21 @@
-//! Shared type renderers from semantic values to presentation strings.
+//! Shared renderers from semantic values to presentation strings.
 //!
-//! The type-rendering trio is the machine-state → presentation projection,
-//! kept outside the core (no core `Display`; the `use_debug` lint forbids
-//! `Debug` in user-facing output).
+//! The type-rendering trio and the structural value renderer are the
+//! machine-state → presentation projection, kept outside the core (no core
+//! `Display`; the `use_debug` lint forbids `Debug` in user-facing output).
 //!
-//! It is the tree's single spelling of these types, and there is no second copy
-//! to reconcile with: the REPL and language-server faces it was written to be
-//! shared by are deferred and have no crate here, and its one in-tree caller is
-//! [`crate::diag`], which delegates to [`ty`] rather than re-deriving a
-//! spelling. The shared pretty-printer family the design calls for is not
-//! built; until it is, a face consumes this module.
+//! This is the tree's single spelling of these values, and there is no second
+//! copy to reconcile with: the REPL, the language-server face, and the corpus
+//! harness's expectations all consume it. Until a fuller pretty-printer lands,
+//! a face consumes this module.
 
+use core::fmt::Write as _;
+
+use gandr_core_term::outcome::Eval;
+use gandr_core_term::syntax::Comp;
+use gandr_core_term::syntax::NumLit;
+use gandr_core_term::syntax::Side;
+use gandr_core_term::syntax::Value;
 use gandr_core_term::types::CompType;
 use gandr_core_term::types::Ty;
 use gandr_core_term::types::ValueType;
@@ -213,6 +218,212 @@ fn render_type(root: RenderNode<'_>) -> String
     rendered.pop().unwrap_or_else(|| "?".to_owned())
 }
 
+/// The maximum depth [`value`] descends before rendering `<deep>`
+/// (bounded rendering; the ADR-47 posture).
+pub const RENDER_DEPTH_LIMIT: RenderDepth = RenderDepth(32);
+
+/// Current depth in the bounded value renderer.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct RenderDepth(usize);
+
+impl RenderDepth
+{
+    /// Root depth for a freshly rendered value.
+    pub const ROOT: Self = Self(0);
+
+    /// Descends one level without overflowing the host representation.
+    #[inline]
+    fn descend(self) -> Self
+    {
+        Self(self.0.saturating_add(1))
+    }
+}
+
+impl From<usize> for RenderDepth
+{
+    #[inline]
+    fn from(value: usize) -> Self
+    {
+        Self(value)
+    }
+}
+
+/// Renders a machine [`Value`] in the structural notation every face reads.
+///
+/// Annotations are transparent, booleans appear as their `1 + 1` encoding
+/// (`Inl(())` / `Inr(())`), thunks render opaquely, and anything unrecognized
+/// renders `<opaque>`. Rendering is depth-bounded (`<deep>` beyond
+/// [`RENDER_DEPTH_LIMIT`]). Records iterate their `BTreeMap` order, so output
+/// is deterministic for a given value.
+///
+/// # Contract
+/// - ensures: deterministic output for a given value; total — never panics.
+#[inline]
+#[must_use]
+pub fn value<T>(
+    value: &Value,
+    depth: T,
+) -> String
+where
+    T: Into<RenderDepth>,
+{
+    enum RenderStep<'value>
+    {
+        Value
+        {
+            value: &'value Value,
+            depth: RenderDepth,
+        },
+        Text(&'value str),
+    }
+
+    let mut output = String::new();
+    let mut steps = vec![RenderStep::Value {
+        value,
+        depth: depth.into(),
+    }];
+    while let Some(step) = steps.pop() {
+        let RenderStep::Value { value, depth } = step
+        else {
+            let RenderStep::Text(text) = step
+            else {
+                continue;
+            };
+            output.push_str(text);
+            continue;
+        };
+        if depth >= RENDER_DEPTH_LIMIT {
+            output.push_str("<deep>");
+            continue;
+        }
+        let below = depth.descend();
+        match *value {
+            | Value::Unit => output.push_str("()"),
+            | Value::Int(int) => {
+                let _infallible = write!(&mut output, "{int}");
+            },
+            | Value::Str(ref text) => {
+                output.push('"');
+                output.push_str(text);
+                output.push('"');
+            },
+            | Value::Num(num) => output.push_str(&render_num(num)),
+            | Value::Pair(ref fst, ref snd) => {
+                steps.push(RenderStep::Text(")"));
+                steps.push(RenderStep::Value {
+                    value: snd.as_ref(),
+                    depth: below,
+                });
+                steps.push(RenderStep::Text(", "));
+                steps.push(RenderStep::Value {
+                    value: fst.as_ref(),
+                    depth: below,
+                });
+                steps.push(RenderStep::Text("("));
+            },
+            | Value::Inj(side, ref payload) => {
+                let prefix = match side {
+                    | Side::Fst => "Inl(",
+                    | Side::Snd => "Inr(",
+                };
+                steps.push(RenderStep::Text(")"));
+                steps.push(RenderStep::Value {
+                    value: payload.as_ref(),
+                    depth: below,
+                });
+                steps.push(RenderStep::Text(prefix));
+            },
+            | Value::List(ref items) => {
+                steps.push(RenderStep::Text("]"));
+                for (index, item) in items.iter().enumerate().rev() {
+                    if index.saturating_add(1) < items.len() {
+                        steps.push(RenderStep::Text(", "));
+                    }
+                    steps.push(RenderStep::Value {
+                        value: item.as_ref(),
+                        depth: below,
+                    });
+                }
+                steps.push(RenderStep::Text("["));
+            },
+            | Value::Record(ref fields) => {
+                steps.push(RenderStep::Text("}"));
+                for (index, (label, field)) in fields.iter().enumerate().rev() {
+                    if index.saturating_add(1) < fields.len() {
+                        steps.push(RenderStep::Text(", "));
+                    }
+                    steps.push(RenderStep::Value {
+                        value: field.as_ref(),
+                        depth: below,
+                    });
+                    steps.push(RenderStep::Text(" = "));
+                    steps.push(RenderStep::Text(label));
+                }
+                steps.push(RenderStep::Text("#{"));
+            },
+            | Value::Thunk(..) => output.push_str("<thunk>"),
+            | Value::Annot(ref payload, _) => steps.push(RenderStep::Value {
+                value: payload.as_ref(),
+                depth: below,
+            }),
+            | Value::Var(ref name) => {
+                output.push_str("<var ");
+                output.push_str(name.as_ref());
+                output.push('>');
+            },
+            // A reflexivity proof renders through its witness (ADR-76): the
+            // canonical inhabitant of a closed identity type, `here(4)`.
+            | Value::Here(ref witness) => {
+                steps.push(RenderStep::Text(")"));
+                steps.push(RenderStep::Value {
+                    value: witness.as_ref(),
+                    depth: below,
+                });
+                steps.push(RenderStep::Text("here("));
+            },
+            | _ => output.push_str("<opaque>"),
+        }
+    }
+    output
+}
+
+/// Renders an evaluation outcome in the transcript notation.
+///
+/// A produced value renders in the structural notation ([`value`]); a
+/// function terminal renders `<fun>`, and a defined halt or an undefined
+/// stuck renders its class — the corpus harness's directive grammar carries
+/// the fine-grained blame and stuck labels, which a transcript line does not
+/// need. Total over [`Eval`].
+///
+/// # Contract
+/// - ensures: total over `Eval`; never panics.
+#[inline]
+#[must_use]
+pub fn eval(eval: &Eval) -> String
+{
+    match *eval {
+        | Eval::Value(Comp::Ret(ref produced)) => value(produced.as_ref(), RenderDepth::ROOT),
+        | Eval::Value(Comp::Abs(..)) => String::from("<fun>"),
+        | Eval::Value(_) => String::from("<opaque>"),
+        | Eval::Blame(_) => String::from("<blame>"),
+        | Eval::Stuck(_) => String::from("<stuck>"),
+    }
+}
+
+/// Renders a typed numeric literal (`5u32`, `1.5f64`, …).
+fn render_num(num: NumLit) -> String
+{
+    match num {
+        | NumLit::U32(n) => format!("{n}u32"),
+        | NumLit::U64(n) => format!("{n}u64"),
+        | NumLit::I32(n) => format!("{n}i32"),
+        | NumLit::I64(n) => format!("{n}i64"),
+        | NumLit::F32(bits) => format!("{}f32", f32::from_bits(bits)),
+        | NumLit::F64(bits) => format!("{}f64", f64::from_bits(bits)),
+    }
+}
+
 #[cfg(test)]
 mod tests
 {
@@ -292,6 +503,41 @@ mod tests
         assert_eq!("A", super::ty(&Ty::Value(atom("A"))));
         assert_eq!("?", super::ty(&Ty::Value(ValueType::Unknown)));
         assert_eq!("?", super::ty(&Ty::Comp(CompType::Unknown)));
+    }
+    #[test]
+    fn eval_renders_each_outcome_class()
+    {
+        use gandr_core_term::outcome::Blame;
+        use gandr_core_term::outcome::Eval;
+        use gandr_core_term::outcome::StuckReason;
+        use gandr_core_term::syntax::Comp;
+        use gandr_core_term::syntax::Value;
+
+        assert_eq!(
+            "42",
+            super::eval(&Eval::Value(Comp::ret(Value::int(42)))),
+            "a produced value renders in the structural notation"
+        );
+        let lambda = Comp::Abs(
+            String::from("x"),
+            None,
+            alloc::rc::Rc::new(Comp::ret(Value::var("x"))),
+        );
+        assert_eq!(
+            "<fun>",
+            super::eval(&Eval::Value(lambda)),
+            "a function terminal renders opaquely"
+        );
+        assert_eq!(
+            "<blame>",
+            super::eval(&Eval::Blame(Blame::Hole)),
+            "a defined halt renders its class"
+        );
+        assert_eq!(
+            "<stuck>",
+            super::eval(&Eval::Stuck(StuckReason::StepLimit)),
+            "an undefined stuck renders its class"
+        );
     }
 
     fn atom<'name>(name: impl Into<TypeAtomName<'name>>) -> ValueType

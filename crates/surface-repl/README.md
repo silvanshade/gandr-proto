@@ -13,6 +13,7 @@ It implements no parser, lowering, typing, or marker of its own; it invokes the 
 
 - Parse-completeness via the parser's public `expected` query.
 - Session submit and transcript encoding for definitions, expressions, located `annotate-snippets` diagnostics with stable codes, and goals.
+- Types and evaluated values on the transcript render through the engine's shared presentation renderers — the same spellings the language-server hover and the corpus's value expectations read.
 - Highlight spans over the echoed source, taken verbatim from the grammar's normative highlighter, so every face over this seam sees one span sequence.
 - A batch face over standard input for non-interactive transcripts.
 - An interactive face on a line editor for a terminal.
@@ -21,8 +22,6 @@ It implements no parser, lowering, typing, or marker of its own; it invokes the 
 ## Planned but absent
 
 - Goal-directed completion (a synthetic hole at the cursor).
-- A presentation printer for types and values.
-  Transcript type and value lines carry the debug rendering of the checked term.
 - Persistent content-addressed history.
   The interactive face keeps history in memory.
 

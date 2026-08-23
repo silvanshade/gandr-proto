@@ -382,7 +382,7 @@ impl Analysis
                 }
             }
         }
-        if let Some(word) = word_at(self.source.as_str(), usize::from(byte)) {
+        if let Some(word) = word_at(SourceText::from(self.source.as_str()), byte) {
             // Later definitions shadow earlier ones, so the last match wins.
             let (name, ty, bound) =
                 self.submission
@@ -394,7 +394,7 @@ impl Analysis
                             ref name,
                             ref ty,
                             ref bound,
-                        } if *name == word => Some((name, ty, bound)),
+                        } if *name == word.as_ref() => Some((name, ty, bound)),
                         | _ => None,
                     })?;
             let mut body = String::from("```gandr\n");
@@ -468,10 +468,12 @@ impl Analysis
 ///   `byte`, and [`None`] when the cursor is not on a name.
 /// - panics: none.
 fn word_at(
-    source: &str,
-    byte: usize,
-) -> Option<&str>
+    text: SourceText<'_>,
+    byte: ByteOffset,
+) -> Option<SourceSlice<'_>>
 {
+    let source: &str = text.into();
+    let byte = usize::from(byte);
     let is_word = |ch: char| ch.is_ascii_alphanumeric() || ch == '_';
     // Snap to a char boundary, exactly as the position conversions do, so a
     // cursor handed an interior UTF-8 byte still lands on its character.
@@ -497,7 +499,9 @@ fn word_at(
         .take_while(|&(_, ch)| is_word(ch))
         .last()
         .map_or(0, |(index, ch)| index.saturating_add(ch.len_utf8()));
-    source.get(start .. snapped.saturating_add(end))
+    source
+        .get(start .. snapped.saturating_add(end))
+        .map(SourceSlice::from)
 }
 
 /// Whether `byte` sits in `[start, end)`.
@@ -718,7 +722,14 @@ mod tests
     #[test]
     fn a_redefined_name_hovers_its_latest_type()
     {
-        let analysis = Analysis::check(String::from("def x = 1;\ndef x = true;\n"));
+        // Assembled from pieces because embedded-syntax fixtures must be raw
+        // strings, and a raw string's normalized indentation would shift the
+        // byte positions this hover test reads.
+        let mut source = String::from("def x = 1;");
+        source.push('\n');
+        source.push_str("def x = true;");
+        source.push('\n');
+        let analysis = Analysis::check(source);
         // Line 1's `x` (bytes 13..14) — the second binding.
         let hover = analysis.hover(
             Position::new(LineNumber::from(1_u32), CharacterOffset::from(4_u32)),

@@ -5,7 +5,7 @@
       "kind": "ShapeMismatch",
       "data": {
         "expected_shape": "a with-type",
-        "actual": "Comp(F(Atom(\"Integer\")))"
+        "actual": "F Integer"
       },
       "item": 0,
       "code": "E0002",
@@ -14,7 +14,7 @@
         "message_template": "ShapeMismatch",
         "message_arguments": {
           "expected_shape": "a with-type",
-          "actual": "Comp(F(Atom(\"Integer\")))"
+          "actual": "F Integer"
         }
       },
       "annotations": [
@@ -24,7 +24,7 @@
             "start": 0,
             "end": 7
           },
-          "label": "expected a with-type, found Comp(F(Atom(\"Integer\")))"
+          "label": "expected a with-type, found F Integer"
         }
       ],
       "contexts": [

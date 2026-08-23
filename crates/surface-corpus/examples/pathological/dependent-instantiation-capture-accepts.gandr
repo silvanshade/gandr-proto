@@ -41,7 +41,7 @@
 // that than an acceptance witness, because there are far more ways to fail
 // than to succeed.
 
-//@ expect-diagnostic: type mismatch: expected Value(Thunk(Omega, Arrow(Atom("a"), F(Atom("c"))))), actual Value(Thunk(Omega, Arrow(Atom("a"), F(Atom("d")))))
+//@ expect-diagnostic: type mismatch: expected U (a → F c), actual U (a → F d)
 
 def comp(a : Type, b : Type, c : Type, f : U[ω] (a -> F b), g : U[ω] (b -> F c), x : a) -> F c {
   run y <- f(x);

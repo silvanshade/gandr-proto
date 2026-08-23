@@ -1,5 +1,5 @@
-error[E0001]: type mismatch: expected Value(Unit), actual Value(Atom("Integer"))
+error[E0001]: type mismatch: expected Unit, actual Integer
   ╭▸ mismatch.gandr:2:9
   │
 2 │ def x = 1;
-  ╰╴        ━ expected Value(Unit), found Value(Atom("Integer"))
+  ╰╴        ━ expected Unit, found Integer

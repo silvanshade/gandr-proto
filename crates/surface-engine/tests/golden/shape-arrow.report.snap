@@ -5,7 +5,7 @@
       "kind": "ShapeMismatch",
       "data": {
         "expected_shape": "an arrow type",
-        "actual": "Comp(F(Atom(\"Integer\")))"
+        "actual": "F Integer"
       },
       "item": 0,
       "code": "E0002",
@@ -14,7 +14,7 @@
         "message_template": "ShapeMismatch",
         "message_arguments": {
           "expected_shape": "an arrow type",
-          "actual": "Comp(F(Atom(\"Integer\")))"
+          "actual": "F Integer"
         }
       },
       "annotations": [
@@ -24,7 +24,7 @@
             "start": 0,
             "end": 7
           },
-          "label": "expected an arrow type, found Comp(F(Atom(\"Integer\")))"
+          "label": "expected an arrow type, found F Integer"
         }
       ],
       "contexts": [

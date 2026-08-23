@@ -8,6 +8,7 @@
 
 use gandr_surface_diagnostics::RenderStyle;
 use gandr_surface_diagnostics::render_verdict;
+use gandr_surface_engine::render;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Submission;
 use gandr_surface_engine::session::Verdict;
@@ -113,11 +114,14 @@ fn encode_outcome(
             bound,
         } => {
             let binding = if bound { "" } else { " (not bound)" };
-            lines.push((OutKind::Type, format!("{name} : {ty:?}{binding}")));
+            lines.push((
+                OutKind::Type,
+                format!("{name} : {}{binding}", render::ty(ty)),
+            ));
         },
         | &ItemOutcome::Expression { ref ty, ref value } => {
-            lines.push((OutKind::Type, format!("{ty:?}")));
-            lines.push((OutKind::Value, format!("{value:?}")));
+            lines.push((OutKind::Type, render::ty(ty)));
+            lines.push((OutKind::Value, render::eval(value)));
         },
         | &ItemOutcome::TypeError { .. } => {
             let verdict = Verdict::Outcome(outcome);
