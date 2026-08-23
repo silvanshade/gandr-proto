@@ -35,6 +35,9 @@ use gandr_theory_cell_complexes::cell::CellId;
 use gandr_theory_cell_complexes::cell::CellStore;
 use gandr_theory_cell_complexes::sequent::SequentAlphabet;
 
+use crate::memo::ReplayMemo;
+use crate::memo::StepOutcome;
+use crate::memo::resolve_step;
 use crate::overlap::Overlap;
 use crate::rewrite::CellApp;
 use crate::rewrite::normalize;
@@ -204,6 +207,59 @@ impl<A: CellAlphabet> Tracelet<A>
             &self.path_b,
         )
     }
+
+    /// **Replay the certificate through a memo**, reusing the outcome of any
+    /// step whose support this memo already answered.
+    ///
+    /// This is the opt-in companion to [`Tracelet::replay`], which is unchanged
+    /// and consults nothing. The memo is threaded in by the caller and may be
+    /// shared across replays of different certificates against different
+    /// stores: reuse follows the support, not the certificate.
+    ///
+    /// # Contract
+    /// - ensures: the same verdict as [`Tracelet::replay`] for every
+    ///   `(certificate, store)` pair, whatever the memo already holds — the
+    ///   memo changes what is computed, never what is answered.
+    /// - ensures: each step is answered from `memo` when its full support (the
+    ///   resolved cell's content, the position, the input term) was already
+    ///   memoized, and executed and recorded otherwise; a step naming a cell
+    ///   the store does not hold is stuck without consulting the memo, since an
+    ///   unresolved identifier has no content to key on.
+    /// - provides: reuse across repeated replays, across append-only store
+    ///   growth, and across certificates that share steps, measured by
+    ///   [`ReplayMemo::steps_executed`] against [`ReplayMemo::steps_reused`].
+    /// - panics: none.
+    /// - intension: reuse is keyed by resolved cell content rather than by
+    ///   [`CellId`], so appending to the store preserves every memoized key
+    ///   while permuting it misses wholesale instead of answering for content
+    ///   the engine would not have fired.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 pointwise — repeated replay, replay across a
+    ///   `derive_fused` append, and the whole composition corpus separate the
+    ///   reuse path from the execution path while pinning both verdicts equal,
+    ///   and a poisoned memo entry makes them differ.
+    /// - witness: `replay_memo::tests::replaying_one_tracelet_twice_reuses_every_step`
+    /// - witness: `replay_memo::tests::a_derive_fused_append_reuses_the_unaffected_steps`
+    /// - witness: `replay_memo::tests::the_composition_corpus_agrees_with_and_without_the_memo`
+    /// - witness: `tracelet::tests::a_poisoned_memo_entry_makes_the_memoized_verdict_disagree`
+    #[inline]
+    #[must_use]
+    pub fn replay_memoized(
+        &self,
+        store: &CellStore<A>,
+        memo: &mut ReplayMemo<A>,
+    ) -> TraceletReplay
+    {
+        replay_memoized_from_peak(
+            store,
+            memo,
+            &self.overlap.peak,
+            &self.joins_at,
+            &self.path_a,
+            &self.path_b,
+        )
+    }
 }
 
 /// Replay **two recorded paths from one peak** against one join.
@@ -243,6 +299,114 @@ where
         matches!(ran_a, ReplayPathOutcome::Reached(ref term) if *term == target)
             && matches!(ran_b, ReplayPathOutcome::Reached(ref term) if *term == target),
     )
+}
+
+/// Replay **two recorded paths from one peak** through a memo.
+///
+/// This is [`replay_from_peak`] with the per-step engine call routed through
+/// `memo`. The skolemization, the path order, and the join comparison are the
+/// same; only where each step's outcome comes from differs.
+///
+/// # Contract
+/// - ensures: the same verdict as [`replay_from_peak`] on the same arguments,
+///   for every memo state reachable through [`ReplayMemo::resolve`].
+/// - ensures: both paths start at the same skolemized peak, so a step shared
+///   between them is memoized once and reused on the second.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — every rung of the memo differential compares
+///   this route's verdict against the non-memoized route on the same inputs.
+/// - witness: `replay_memo::tests::replaying_one_tracelet_twice_reuses_every_step`
+/// - witness: `replay_memo::tests::the_composition_corpus_agrees_with_and_without_the_memo`
+#[inline]
+pub fn replay_memoized_from_peak<A>(
+    store: &CellStore<A>,
+    memo: &mut ReplayMemo<A>,
+    peak: &A::Cmd,
+    joins_at: &A::Cmd,
+    path_a: &[CellApp<A>],
+    path_b: &[CellApp<A>],
+) -> TraceletReplay
+where
+    A: CellAlphabet,
+{
+    let peak = A::skolemize(peak);
+    let target = A::skolemize(joins_at);
+    let ran_a = run_path_memoized(store, memo, peak.clone(), path_a);
+    let ran_b = run_path_memoized(store, memo, peak, path_b);
+    TraceletReplay::from(
+        matches!(ran_a, ReplayPathOutcome::Reached(ref term) if *term == target)
+            && matches!(ran_b, ReplayPathOutcome::Reached(ref term) if *term == target),
+    )
+}
+
+/// Whether two tracelets are **replay-equivalent**, with both replays routed
+/// through a memo.
+///
+/// The relation is [`replay_equivalent`]'s; only the replays are memoized. It
+/// exists because the two tracelets of an equivalence question usually share
+/// steps, so the second replay is often answered entirely from the first's
+/// entries.
+///
+/// # Contract
+/// - ensures: the same answer as [`replay_equivalent`] on the same arguments,
+///   for every memo state.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 agreement — the composition corpus compares this against
+///   [`replay_equivalent`] for every ordered pair it generates.
+/// - witness: `replay_memo::tests::the_composition_corpus_agrees_with_and_without_the_memo`
+#[inline]
+#[must_use]
+pub fn replay_equivalent_memoized<A>(
+    a: &Tracelet<A>,
+    b: &Tracelet<A>,
+    store: &CellStore<A>,
+    memo: &mut ReplayMemo<A>,
+) -> TraceletEquivalence
+where
+    A: CellAlphabet,
+{
+    if a.overlap.peak != b.overlap.peak || a.joins_at != b.joins_at {
+        return TraceletEquivalence::from(false);
+    }
+    let ran_a = a.replay_memoized(store, memo);
+    let ran_b = b.replay_memoized(store, memo);
+    TraceletEquivalence::from(bool::from(ran_a) && bool::from(ran_b))
+}
+
+/// Run a recorded path from `start`, answering each step through `memo`.
+///
+/// # Contract
+/// - ensures: the same outcome as [`run_path`] with no step retention, for
+///   every memo state.
+/// - ensures: a step naming a cell absent from `store`, and a step the resolved
+///   cell refuses, both stop the path at that application.
+/// - panics: none.
+#[inline]
+fn run_path_memoized<A>(
+    store: &CellStore<A>,
+    memo: &mut ReplayMemo<A>,
+    start: A::Cmd,
+    path: &[CellApp<A>],
+) -> ReplayPathOutcome<A>
+where
+    A: CellAlphabet,
+{
+    let mut current = start;
+    for step in path {
+        let outcome = resolve_step(store, memo, step.cell, &step.at, &current);
+        let Some(StepOutcome::Fired(result)) = outcome
+        else {
+            return ReplayPathOutcome::Stuck {
+                application: step.clone(),
+            };
+        };
+        current = result;
+    }
+    ReplayPathOutcome::Reached(current)
 }
 
 /// Replay two paths while retaining their successful steps.
@@ -508,6 +672,8 @@ mod tests
     use gandr_theory_cell_complexes::sequent::frame_defining_cell;
 
     use super::*;
+    use crate::memo::MemoPoisonOutcome;
+    use crate::memo::StepSupport;
     use crate::overlap::OverlapKind;
     use crate::overlap::enumerate_overlaps;
 
@@ -612,6 +778,117 @@ mod tests
         assert!(
             !bool::from(replay_equivalent(&broken, &broken, &store)),
             "a non-replaying tracelet is not replay-equivalent, even to itself"
+        );
+    }
+
+    /// The frame ∘ (add-S) composition store, the identifier its (add-S) cell
+    /// took, and the fused≡two-step certificate over it.
+    fn fused_fixture() -> (CellStore, CellId, Tracelet)
+    {
+        let mut store = CellStore::new();
+        let frame = store.insert(frame_defining_cell(&Sym::new("Succ")));
+        let add = store.insert(add_s());
+        let composition = enumerate_overlaps(&store)
+            .into_iter()
+            .find(|o| o.kind == OverlapKind::Composition && o.left == frame && o.right == add)
+            .expect("the composition overlap exists");
+        let (_fused, tracelet) =
+            derive_fused(&composition, &mut store).expect("fused cell derived");
+        (store, add, tracelet)
+    }
+
+    /// The memoized supports whose recorded outcome fired, with their outcomes.
+    fn fired_supports(memo: &ReplayMemo) -> Vec<StepSupport>
+    {
+        memo.entries()
+            .filter(|entry| matches!(*entry.1, StepOutcome::Fired(_)))
+            .map(|entry| entry.0.clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_poisoned_memo_entry_makes_the_memoized_verdict_disagree()
+    {
+        // The differential's teeth. Every rung asserts that the memoized verdict
+        // equals the fresh verdict; that assertion is only evidence if a wrong
+        // memo could have broken it. Corrupting one recorded step to a refusal
+        // must make the memoized route disagree with the engine — for *every*
+        // recorded step, so no rung passes on an entry the verdict cannot see.
+        let (store, _add, tracelet) = fused_fixture();
+        let honest = bool::from(tracelet.replay(&store));
+        assert!(honest, "the fused≡two-step certificate replays honestly");
+
+        let mut recording = ReplayMemo::new();
+        let _warm = tracelet.replay_memoized(&store, &mut recording);
+        let supports = fired_supports(&recording);
+        assert_eq!(
+            3,
+            supports.len(),
+            "the two-step path and the fused step record three distinct supports"
+        );
+
+        for support in &supports {
+            let mut poisoned = recording.clone();
+            assert_eq!(
+                MemoPoisonOutcome::Poisoned,
+                poisoned.poison(support, StepOutcome::Refused),
+                "the recorded support is the one poisoned"
+            );
+            assert!(
+                !bool::from(tracelet.replay_memoized(&store, &mut poisoned)),
+                "a memo that refuses a step the engine fires flips the memoized verdict"
+            );
+        }
+    }
+
+    #[test]
+    fn a_poisoned_refusal_licenses_a_step_the_engine_refuses()
+    {
+        // The dangerous direction: a memo that reports a firing where the engine
+        // refuses. A wrong refusal is conservative — it loses reuse and fails
+        // loudly; a wrong firing admits a derivation that never happened, so the
+        // differential has to catch this one to be worth anything.
+        let (store, add, tracelet) = fused_fixture();
+        let refusing = Tracelet {
+            overlap: tracelet.overlap.clone(),
+            // (add-S) does not fire at the root of the skolemized peak, whose
+            // consumer is still wrapped in the Succ⁻ frame.
+            path_a: alloc::vec![CellApp {
+                cell: add,
+                at: <SequentAlphabet as CellAlphabet>::root_position(),
+            }],
+            path_b: tracelet.path_b.clone(),
+            joins_at: tracelet.joins_at,
+        };
+        assert!(
+            !bool::from(refusing.replay(&store)),
+            "the engine refuses the recorded first step, so the certificate fails replay"
+        );
+
+        let mut memo = ReplayMemo::new();
+        assert!(
+            !bool::from(refusing.replay_memoized(&store, &mut memo)),
+            "an honest memo reproduces the refusal"
+        );
+        let refused = memo
+            .entries()
+            .find(|entry| matches!(*entry.1, StepOutcome::Refused))
+            .map(|entry| entry.0.clone())
+            .expect("the refused step is memoized alongside the ones that fired");
+
+        let reached = <SequentAlphabet as CellAlphabet>::skolemize(&refusing.joins_at);
+        assert_eq!(
+            MemoPoisonOutcome::Poisoned,
+            memo.poison(&refused, StepOutcome::Fired(reached)),
+            "the refusal is the entry poisoned"
+        );
+        assert!(
+            bool::from(refusing.replay_memoized(&store, &mut memo)),
+            "a memo that fires a step the engine refuses forges a positive verdict"
+        );
+        assert!(
+            !bool::from(refusing.replay(&store)),
+            "the engine's own verdict is unchanged, so the differential separates them"
         );
     }
 

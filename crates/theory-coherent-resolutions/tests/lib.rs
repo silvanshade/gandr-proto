@@ -10,4 +10,6 @@ mod differential;
 #[cfg(test)]
 mod overlap;
 #[cfg(test)]
+mod replay_memo;
+#[cfg(test)]
 mod second_inhabitant;

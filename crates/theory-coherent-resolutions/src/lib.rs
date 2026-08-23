@@ -27,12 +27,15 @@
 //! - [`tracelet`] — replayable coherence certificates and the derived fused
 //!   cell, with replay-equivalence as the identity criterion and observable
 //!   step evidence.
+//! - [`memo`] — in-process reuse of replay step outcomes, keyed by each step's
+//!   full support, behind an opt-in replay path.
 //! - [`completion`] — budgeted Knuth–Bendix and Squier completion that declines
 //!   with a report rather than diverging.
 
 extern crate alloc;
 
 pub mod completion;
+pub mod memo;
 pub mod overlap;
 pub mod rewrite;
 pub mod tracelet;
@@ -45,6 +48,9 @@ pub use crate::completion::DeclineReason;
 pub use crate::completion::SuppliedOverlapError;
 pub use crate::completion::complete;
 pub use crate::completion::complete_with_overlap_source;
+pub use crate::memo::ReplayMemo;
+pub use crate::memo::StepOutcome;
+pub use crate::memo::StepSupport;
 pub use crate::overlap::Overlap;
 pub use crate::overlap::OverlapKind;
 pub use crate::overlap::OverlapSupport;
@@ -61,3 +67,4 @@ pub use crate::tracelet::Tracelet;
 pub use crate::tracelet::confluence_tracelet;
 pub use crate::tracelet::derive_fused;
 pub use crate::tracelet::replay_equivalent;
+pub use crate::tracelet::replay_equivalent_memoized;

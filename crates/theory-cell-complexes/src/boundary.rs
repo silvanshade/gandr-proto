@@ -272,6 +272,16 @@ copy_wrapper!(
     "Whether both sequentializations of a shift-equivalence witness replay to its join."
 );
 copy_wrapper!(
+    StepExecutionCount,
+    usize,
+    "Number of replay steps executed against the rewriting engine rather than answered from a memo."
+);
+copy_wrapper!(
+    StepReuseCount,
+    usize,
+    "Number of replay steps answered from a memo rather than executed against the rewriting engine."
+);
+copy_wrapper!(
     StepIndependence,
     bool,
     "Whether two recorded steps, two cells, two certificates, or two overlaps are independent: \
