@@ -1,0 +1,35 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-incremental-assessment"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Assessment-scoped harness pricing a general dependency-tracking engine against the hand-rolled validated resume, at item granularity"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "assessment"
+path = "tests/lib.rs"
+
+[dependencies]
+# The checkpoint engine under assessment: the item seam, dependency footprints,
+# the validated resume, and the checkpoint codec the engine boundary reuses.
+gandr-core-incremental.workspace = true
+# The core CBPV vocabulary an item carries, and the context an item types
+# against.
+gandr-core-term.workspace = true
+# The engine under assessment. This is the only manifest in the workspace that
+# names it, and `manifests::salsa_is_confined_to_this_crate` is what keeps that
+# true.
+salsa.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

@@ -7,6 +7,7 @@ members = [
   "crates/core-checker",
   "crates/core-checker-tools",
   "crates/core-incremental",
+  "crates/core-incremental-assessment",
   "crates/core-machine",
   "crates/core-nbe",
   "crates/core-sequent",
@@ -656,6 +657,15 @@ features = ["std", "unicode-perl"]
 version = "0.20.0"
 default-features = false
 features = ["std"]
+
+# On-demand incremental computation: a memoized query graph with demand-driven
+# invalidation.
+# consumers:
+# - gandr-core-incremental-assessment
+[workspace.dependencies.salsa]
+version = "0.28.2"
+default-features = false
+features = ["inventory", "macros", "salsa_unstable"]
 
 # Serialization framework.
 # consumers:
