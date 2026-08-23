@@ -22,10 +22,11 @@
 //! witness and a property-generated edit are held to one standard:
 //!
 //! - **Zero drift** — the resumed typings equal a from-scratch re-type.
-//! - **Precision** — every adopted item's footprint is non-opaque, agrees with
-//!   a fresh scan of its term, and reads only names bound to the same thing at
-//!   the item's new position as at its old one. Conservatism is permitted;
-//!   silent over-adoption is not.
+//! - **Precision** — every adopted item's recorded footprint agrees with a
+//!   fresh scan of its term, and every name it reads is bound to the same thing
+//!   at the item's new position as at its old one. An opaque footprint reads
+//!   everything, so for one the whole visible binding map must agree.
+//!   Conservatism is permitted; silent over-adoption is not.
 //! - **The persisted round trip** — the resulting checkpoint set survives an
 //!   encode/decode through the persistence codec unchanged, and the *decoded*
 //!   set is what the next step of an edit sequence resumes from, so drift
@@ -38,8 +39,9 @@
 //! reuse rule, the re-typing a dependency change forces, and item-list edits.
 //! `property` generates programs and edits — single edits and sequences of them
 //! with a resume at every step. `teeth` proves the differential can fail by
-//! seeding corruptions it must catch. `divergence` pins two inputs on which the
-//! engine is known to be wrong today (`gandr-t8j6`).
+//! seeding corruptions it must catch. `value_mediated_reads` holds the
+//! regression cases for reads that go through a definition's value rather than
+//! its type (`gandr-t8j6`), each of which this differential found.
 //!
 //! [`ItemSource`]: gandr_core_incremental::region::ItemSource
 //! [`Item`]: gandr_core_incremental::region::Item
@@ -95,28 +97,32 @@ mod tests
         /// is `Integer`, so a change that retypes `name` to a non-integer makes
         /// this item ill-typed downstream.
         CheckInteger(String),
+        /// A reflexivity proof `here(n)`, inferring `Path Integer n n` — the
+        /// only introduction form for an identity type, and so the only way a
+        /// generated program can inhabit one.
+        Here(i64),
     }
 
     /// The ascription a statement carries — the third component of an item's
     /// identity, beside its name and its lowered term.
     ///
-    /// **The vocabulary is deliberately restricted to atom types**, and the
-    /// restriction is load-bearing rather than incidental. A type whose
-    /// comparison consults definitional equality — a `Path`'s endpoints, or any
-    /// type carrying a value position — reaches the over-adoption defect
-    /// recorded as `gandr-t8j6`, so a generated program using one would fail
-    /// nondeterministically and take the merge wall with it. Atom comparison is
-    /// name equality and never consults the normalizer, so nothing reachable
-    /// from here can enter that class. The defect itself is covered by the
-    /// deterministic witnesses in `divergence`. **Widen this vocabulary when
-    /// `gandr-t8j6` closes.**
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    /// **[`Ascription::PathTo`] is what makes the generated space reach the
+    /// value-mediated read class.** An atom is compared by name equality and
+    /// never consults the normalizer, so a program built only from atoms cannot
+    /// exercise the rule that a definition's *value* — not only its type — can
+    /// be read. An identity type's endpoints are compared by definitional
+    /// equality, which unfolds definitions, so a `PathTo` ascription puts a
+    /// name in a position where editing its body changes the answer.
+    #[derive(Clone, Debug, Eq, PartialEq)]
     enum Ascription
     {
         /// The rigid `Integer` atom.
         Integer,
         /// The rigid `String` atom.
         Text,
+        /// `Path Integer <name> 1` — the named endpoint is a value read from
+        /// the context, compared definitionally.
+        PathTo(String),
     }
 
     /// One top-level statement: an optional definition name, an optional
@@ -187,11 +193,16 @@ mod tests
     }
 
     /// The core type one ascription denotes.
-    fn ascription_type(ascription: Ascription) -> Ty
+    fn ascription_type(ascription: &Ascription) -> Ty
     {
-        match ascription {
+        match *ascription {
             | Ascription::Integer => Ty::Value(ValueType::integer()),
             | Ascription::Text => Ty::Value(ValueType::string()),
+            | Ascription::PathTo(ref name) => Ty::Value(ValueType::path(
+                ValueType::integer(),
+                Value::var(name),
+                Value::int(1_i64),
+            )),
         }
     }
 
@@ -207,10 +218,11 @@ mod tests
                 Rc::new(Value::var(name)),
                 Rc::new(ValueType::integer()),
             )),
+            | Body::Here(witness) => Term::Value(Value::here(Value::int(witness))),
         };
         Item::new(
             stmt.name.clone(),
-            stmt.ascription.map(ascription_type),
+            stmt.ascription.as_ref().map(ascription_type),
             term,
         )
     }
@@ -431,15 +443,10 @@ mod tests
                     "the adoption flag at {index} has no checkpoint"
                 )));
             };
-            let footprint = footprint_of(&item.term);
+            let footprint = footprint_of(item);
             if checkpoint.footprint != footprint {
                 return Err(failure(format!(
                     "the footprint recorded for the adopted item at {index} disagrees with a fresh scan of its term"
-                )));
-            }
-            if footprint.opaque {
-                return Err(failure(format!(
-                    "an opaque footprint reads everything and must never be adopted, but the item at {index} was"
                 )));
             }
             let Some(origin) = unique_base_position(base, item.name.as_ref())
@@ -448,6 +455,17 @@ mod tests
             };
             let visible_before = visible_bindings(base, origin);
             let visible_now = visible_bindings(result, ItemPosition(index));
+            // An opaque footprint reads *everything*, so the honest question to
+            // ask of one is whether everything it could read is unchanged.
+            if footprint.opaque {
+                if visible_before != visible_now {
+                    return Err(failure(format!(
+                        "over-adoption: the item at {index} has an opaque footprint, so it reads every binding, and the bindings visible at its new position differ from those at its old one"
+                    )));
+                }
+                probed.0 = probed.0.saturating_add(1);
+                continue;
+            }
             for name in &footprint.names {
                 if visible_before.get(name) != visible_now.get(name) {
                     return Err(failure(format!(
@@ -1049,23 +1067,23 @@ mod tests
         }
     }
 
-    /// Inputs on which the engine is known to be wrong today.
+    /// Reads that go through a definition's **value** rather than its type.
     ///
-    /// Each test here asserts the **divergence itself** — that `resume` and
-    /// `checkpoint_program` disagree on this input — rather than asserting a
-    /// wrong answer is right or being disabled. The reproduction therefore
-    /// keeps running, so we know it still reproduces, and **each of these tests
-    /// fails the moment the defect is fixed**, which is deliberate: it forces
-    /// the rewrite into an ordinary equality assertion instead of relying on
-    /// someone remembering these are here.
+    /// These three inputs are the regression cases for `gandr-t8j6`, the
+    /// over-adoption defect this differential found. They ran as live
+    /// divergence witnesses — asserting that `resume` and `checkpoint_program`
+    /// disagreed — until the adoption rule was extended to cover the class;
+    /// each now asserts the ordinary equality, plus the specific reuse decision
+    /// that has to be made to reach it.
     ///
-    /// The defect is `gandr-t8j6`. Both witnesses share one mechanism.
-    /// `thread_binding` threads a definition's *unfolding rule* into the typing
-    /// context beside its type binding, and the subtype checker mints its
-    /// normalizer from that definition chain — so an item's typing can depend
-    /// on a definition's **value**, which happens at a `Path` type's endpoints,
-    /// compared by definitional equality. The adoption rule tracks only types.
-    mod divergence
+    /// The mechanism they share: `thread_binding` threads a definition's
+    /// *unfolding rule* into the typing context beside its type binding, and
+    /// the subtype checker mints its normalizer from that definition chain. So
+    /// an item's typing can depend on a definition's **value**, which happens
+    /// at a `Path` type's endpoints, compared by definitional equality.
+    /// Each case reaches that dependency by a different route, and each
+    /// defeats a fix that handles only the others.
+    mod value_mediated_reads
     {
         use super::*;
 
@@ -1080,30 +1098,41 @@ mod tests
             )
         }
 
-        /// `def one = literal`.
-        fn one_bound_to(literal: Value) -> Item
+        /// `def <name> = <literal>`.
+        fn definition(
+            name: impl Into<String>,
+            body: Value,
+        ) -> Item
         {
-            Item::new(Some("one".to_owned()), None, Term::Value(literal))
+            Item::new(Some(name.into()), None, Term::Value(body))
         }
 
-        /// The ascription `Path Integer one 1`, whose left endpoint is the
-        /// value `one` reads from the context.
-        fn path_to_one() -> Ty
+        /// The type `Path Integer <endpoint> 1`, whose left endpoint is a value
+        /// read from the context.
+        fn path_value_type(endpoint: impl Into<String>) -> ValueType
         {
-            Ty::Value(ValueType::path(
+            let endpoint: String = endpoint.into();
+            ValueType::path(
                 ValueType::integer(),
-                Value::var("one"),
+                Value::var(endpoint.as_str()),
                 Value::int(1_i64),
-            ))
+            )
         }
 
-        /// Asserts that `resume` and `checkpoint_program` disagree on `edited`
-        /// after `base`, and that the item at `index` is the one wrongly
-        /// adopted.
-        fn assert_diverges(
+        /// [`path_value_type`] as an item ascription.
+        fn path_to(endpoint: impl Into<String>) -> Ty
+        {
+            Ty::Value(path_value_type(endpoint))
+        }
+
+        /// Asserts the differential holds across the edit, that the item at
+        /// `reader` was **not** adopted, and that the item at `bystander` was —
+        /// so the invalidation is targeted rather than a blanket re-type.
+        fn assert_invalidates(
             base: &Program,
             edited: &Program,
-            position: ItemPosition,
+            reader: ItemPosition,
+            bystander: ItemPosition,
         )
         {
             let checkpoints = checkpoint_program(base);
@@ -1111,94 +1140,188 @@ mod tests
             let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
             let actual: Vec<ItemTyping> = resumed.typings().cloned().collect();
 
-            assert!(
-                adopted[position.0],
-                "the item at {position:?} is adopted, which is what produces the wrong answer"
-            );
-            assert_ne!(
+            assert_eq!(
                 actual,
                 from_scratch(edited),
-                "gandr-t8j6 is fixed: this witness now agrees with from-scratch, so rewrite it as an equality assertion"
+                "incremental resume must equal from-scratch re-typing"
+            );
+            assert!(
+                !adopted[reader.0],
+                "the item at {reader:?} reads a definition whose value changed, so it must be re-typed"
+            );
+            assert!(
+                adopted[bystander.0],
+                "the item at {bystander:?} reads nothing that changed, so the invalidation must not reach it"
             );
         }
 
-        /// Gap one: a footprint is computed from the item's **term** alone, so
-        /// a name occurring only in its **ascription** is read during checking
-        /// and never recorded. Here `r`'s footprint is `{p}`; the `one` its
-        /// ascription reads is invisible, so a value-only edit to `one` leaves
-        /// `r` adoptable with a typing the edited program refutes.
+        /// The name is read **only through the ascription**.
         ///
-        /// Fixing this alone does not close `gandr-t8j6` — see the companion
-        /// witness, which reproduces with the name present in the footprint.
+        /// `r`'s term is `p`, so a scan of the term alone sees `{p}` and never
+        /// `one`. Checking `p` against `Path Integer one 1` normalizes the
+        /// endpoint, so `one`'s value is consulted. The footprint scan
+        /// therefore has to descend into the ascription, and a fix that
+        /// only tracks value-changed definitions without doing so still
+        /// adopts `r` here.
         #[test]
-        fn known_divergence_ascription_footprint()
+        fn an_ascription_endpoint_is_a_read()
         {
             let program_for = |literal: Value| {
                 Program::new(vec![
-                    one_bound_to(literal),
+                    definition("one", literal),
                     path_witness(),
                     Item::new(
                         Some("r".to_owned()),
-                        Some(path_to_one()),
+                        Some(path_to("one")),
                         Term::Value(Value::var("p")),
                     ),
+                    definition("bystander", Value::int(9_i64)),
                 ])
             };
-            assert_diverges(
+            assert_invalidates(
                 &program_for(Value::int(1_i64)),
                 &program_for(Value::int(2_i64)),
                 ItemPosition(2),
+                ItemPosition(3),
             );
         }
 
-        /// Gap two: the changed-binding set compares only the bound value
-        /// **type**, so an edit that changes a definition's value while keeping
-        /// its type adds nothing to it. Here `r`'s term is the pair
-        /// `(one, p)`, so its footprint genuinely contains `one` and is not
-        /// opaque — and `r` is adopted anyway, because `one` never enters the
-        /// changed set.
+        /// The name is in the footprint already, and only its **value** moved.
         ///
-        /// Fixing the footprint scan alone therefore does not close
-        /// `gandr-t8j6`; both gaps must close together.
+        /// `r`'s term is the pair `(one, p)`, so `one` is a genuine
+        /// non-opaque read whatever the ascription scan does — and `one`'s
+        /// *type* never changes, only its body. A fix that only widens the
+        /// footprint scan still adopts `r` here, because nothing marks `one`
+        /// changed.
         #[test]
-        fn known_divergence_type_stable_unfolding()
+        fn a_type_stable_body_edit_reaches_a_type_position()
         {
-            let ascription = Some(Ty::Value(ValueType::Prod(
+            let ascription = Ty::Value(ValueType::Prod(
                 Rc::new(ValueType::integer()),
-                Rc::new(ValueType::path(
-                    ValueType::integer(),
-                    Value::var("one"),
-                    Value::int(1_i64),
-                )),
-            )));
+                Rc::new(path_value_type("one")),
+            ));
             let program_for = |literal: Value| {
                 Program::new(vec![
-                    one_bound_to(literal),
+                    definition("one", literal),
                     path_witness(),
                     Item::new(
                         Some("r".to_owned()),
-                        ascription.clone(),
+                        Some(ascription.clone()),
                         Term::Value(Value::Pair(
                             Rc::new(Value::var("one")),
                             Rc::new(Value::var("p")),
                         )),
                     ),
+                    definition("bystander", Value::int(9_i64)),
                 ])
             };
             let base = program_for(Value::int(1_i64));
             let reader = base.items.get(2).cloned();
             if let Some(reader) = reader {
-                let footprint = footprint_of(&reader.term);
+                let footprint = footprint_of(&reader);
                 assert!(
                     footprint.names.contains("one"),
-                    "the witness only means something if `one` is genuinely in the footprint"
+                    "the case only means something if `one` is genuinely in the footprint"
                 );
                 assert!(
                     !footprint.opaque,
-                    "the witness only means something if the footprint is not conservatively opaque"
+                    "the case only means something if the footprint is not conservatively opaque"
                 );
             }
-            assert_diverges(&base, &program_for(Value::int(2_i64)), ItemPosition(2));
+            assert_invalidates(
+                &base,
+                &program_for(Value::int(2_i64)),
+                ItemPosition(2),
+                ItemPosition(3),
+            );
+        }
+
+        /// The changed value reaches the type position **through a definition
+        /// nothing touched**.
+        ///
+        /// `x`'s ascription names `b`, and `b`'s own term is `c` — unedited,
+        /// type-stable, and adoptable on its face. Editing `c` still changes
+        /// what `b` unfolds to, so checking `x` normalizes its endpoint to a
+        /// different value. This is what makes the value-changed set a
+        /// **transitive closure** rather than a seed list: `c` is seeded, `b`
+        /// enters through the closure because its footprint reads `c`, and `x`
+        /// is blocked because its type support reads `b`. Seeding alone leaves
+        /// `b` out and adopts `x`.
+        #[test]
+        fn a_changed_value_reaches_through_an_untouched_definition()
+        {
+            let program_for = |literal: Value| {
+                Program::new(vec![
+                    definition("c", literal),
+                    definition("b", Value::var("c")),
+                    path_witness(),
+                    Item::new(
+                        Some("x".to_owned()),
+                        Some(path_to("b")),
+                        Term::Value(Value::var("p")),
+                    ),
+                    definition("bystander", Value::int(9_i64)),
+                ])
+            };
+            let base = program_for(Value::int(1_i64));
+            let intermediate = base.items.get(1).cloned();
+            if let Some(intermediate) = intermediate {
+                assert!(
+                    !footprint_of(&intermediate).names.contains("b"),
+                    "the intermediate definition's own term is untouched by the edit"
+                );
+            }
+            assert_invalidates(
+                &base,
+                &program_for(Value::int(2_i64)),
+                ItemPosition(3),
+                ItemPosition(4),
+            );
+        }
+
+        /// An opaque footprint reads everything, so the reuse rule never adopts
+        /// it — the conservative floor the new type-support path must not open.
+        ///
+        /// `here(1)` is a form the scan cannot render as a read set. The edit
+        /// here is an insertion at the front rather than an identity edit, and
+        /// that is deliberate: an identity edit takes the append fast path,
+        /// which adopts its whole prefix on structural identity without
+        /// consulting any footprint at all. That is sound — an unchanged prefix
+        /// types identically no matter what follows it — and it is a stronger
+        /// condition than footprint disjointness, so it says nothing about the
+        /// rule this test is about. Forcing the general path is what makes the
+        /// assertion mean something.
+        #[test]
+        fn an_opaque_footprint_is_never_adopted()
+        {
+            assert!(
+                footprint_of(&path_witness()).opaque,
+                "the identity form is opaque to the scan"
+            );
+            let base = Program::new(vec![definition("plain", Value::int(1_i64)), path_witness()]);
+            let edited = Program::new(vec![
+                definition("fresh", Value::int(0_i64)),
+                definition("plain", Value::int(1_i64)),
+                path_witness(),
+            ]);
+
+            let checkpoints = checkpoint_program(&base);
+            let resumed = resume(&checkpoints, &edited);
+            let adopted: Vec<bool> = resumed.adopted().map(bool::from).collect();
+
+            assert_eq!(
+                resumed.typings().cloned().collect::<Vec<ItemTyping>>(),
+                from_scratch(&edited),
+                "incremental resume must equal from-scratch re-typing"
+            );
+            assert!(
+                adopted[1],
+                "the representable item reads nothing that changed, so it is adopted"
+            );
+            assert!(
+                !adopted[2],
+                "the opaque item reads everything, so it is re-typed"
+            );
         }
     }
 
@@ -1254,22 +1377,22 @@ mod tests
 
         /// One generated ascription, or none.
         ///
-        /// **The generated type shapes are restricted to atoms, and the
-        /// restriction is required rather than tidy.** A type whose comparison
-        /// consults definitional equality — a `Path`'s endpoints, or any type
-        /// carrying a value position — reaches the over-adoption defect
-        /// `gandr-t8j6`, and a property run that wandered into it would fail
-        /// nondeterministically and break the merge wall for whoever landed
-        /// next. Atom comparison is name equality and never consults the
-        /// normalizer, so nothing reachable from this generator can enter that
-        /// class. The defect is covered instead by the deterministic witnesses
-        /// in `divergence`. **Widen this generator when `gandr-t8j6` closes.**
+        /// **The identity-type shape is generated deliberately.** It is the one
+        /// ascription whose comparison consults definitional equality rather
+        /// than name equality, so it is the only way a generated program
+        /// reaches the value-mediated read class — where editing a definition's
+        /// body changes an answer while its type stands still, and where a
+        /// chain of such reads can run through definitions the edit never
+        /// touched. That territory is exactly what the adoption rule's
+        /// value-changed closure has to survive, so the generator goes there on
+        /// purpose.
         fn ascription() -> impl Strategy<Value = Option<Ascription>>
         {
             prop_oneof![
                 Just(None),
                 Just(Some(Ascription::Integer)),
                 Just(Some(Ascription::Text)),
+                name().prop_map(|endpoint| Some(Ascription::PathTo(endpoint))),
             ]
         }
 
@@ -1295,6 +1418,7 @@ mod tests
                 (0_usize .. 6_usize).prop_map(|index| Body::Ref(format!("d{index}"))),
                 (0_usize .. 6_usize).prop_map(|index| Body::CheckInteger(format!("d{index}"))),
                 "[a-z]{0,3}".prop_map(Body::Str),
+                (0_i64 .. 3_i64).prop_map(Body::Here),
             ]
         }
 
@@ -1346,6 +1470,51 @@ mod tests
             })
         }
 
+        /// Gives every definition a name unique to its position, when the
+        /// program carries an identity-type ascription.
+        ///
+        /// **This is a carve-out around `gandr-bpci`, not a modelling choice**,
+        /// and it is scoped to the exact combination that reaches that defect.
+        /// A shadowed definition makes the definitional environment *cyclic* —
+        /// `thread_binding` defines names in source order, so `def d0 = 1`,
+        /// `def d1 = d0`, `def d0 = d1` leaves `d0` and `d1` unfolding to each
+        /// other — and an identity type's endpoints are the one shape that
+        /// forces such an environment, because they are compared by
+        /// definitional equality. The checker then runs unboundedly. A
+        /// generated program that hit it would hang the merge wall with no
+        /// timeout to stop it.
+        ///
+        /// Unique names remove the cycle rather than hiding it: definitions are
+        /// threaded in source order, so a body can only unfold names defined
+        /// **before** it, and without shadowing that order is a strict one —
+        /// the environment is acyclic by construction. A forward reference
+        /// stays reachable and is simply unbound, which is coverage this keeps.
+        ///
+        /// What it costs: for these programs a rename is normalized away, so
+        /// the coordinated-rename edit is exercised by the programs without an
+        /// identity ascription — the large majority — and by the fixed
+        /// witnesses in `structure`. **Remove this when `gandr-bpci` closes.**
+        fn uniquify_under_path_ascriptions(statements: &[Stmt]) -> Vec<Stmt>
+        {
+            let ascribes_a_path = statements
+                .iter()
+                .any(|statement| matches!(statement.ascription, Some(Ascription::PathTo(_))));
+            if !ascribes_a_path {
+                return statements.to_vec();
+            }
+            statements
+                .iter()
+                .enumerate()
+                .map(|(position, statement)| {
+                    let mut statement = statement.clone();
+                    if statement.name.is_some() {
+                        statement.name = Some(format!("d{position}"));
+                    }
+                    statement
+                })
+                .collect()
+        }
+
         /// Applies `edit` to a clone of `statements`, returning the edited
         /// list.
         fn apply_edit(
@@ -1381,7 +1550,15 @@ mod tests
                                         read.clone_from(to);
                                     }
                                 },
-                                | Body::Int(_) | Body::Str(_) => {},
+                                | Body::Int(_) | Body::Str(_) | Body::Here(_) => {},
+                            }
+                            // A rename is coordinated only if it reaches every
+                            // reader, and an identity type's endpoint is a
+                            // reader like any other.
+                            if let Some(Ascription::PathTo(ref mut endpoint)) = slot.ascription
+                                && *endpoint == old
+                            {
+                                endpoint.clone_from(to);
                             }
                         }
                     }
@@ -1391,9 +1568,9 @@ mod tests
                         edited.swap(first, second);
                     }
                 },
-                | Edit::Ascribe(at, ascription) => {
+                | Edit::Ascribe(at, ref ascription) => {
                     if let Some(slot) = edited.get_mut(at) {
-                        slot.ascription = ascription;
+                        slot.ascription.clone_from(ascription);
                     }
                 },
             }
@@ -1411,8 +1588,10 @@ mod tests
             /// round trip.
             #[test]
             fn incremental_equals_from_scratch((statements, concrete) in program_and_edit()) {
+                let statements = uniquify_under_path_ascriptions(&statements);
                 let base = items_of(&statements);
-                let edited_statements = apply_edit(&statements, &concrete);
+                let edited_statements =
+                    uniquify_under_path_ascriptions(&apply_edit(&statements, &concrete));
                 let edited = items_of(&edited_statements);
 
                 let checkpoints = checkpoint_program(&base);
@@ -1430,10 +1609,10 @@ mod tests
             fn edit_sequences_preserve_zero_drift(
                 (statements, edits) in program_and_edit_sequence()
             ) {
-                let mut current = statements;
+                let mut current = uniquify_under_path_ascriptions(&statements);
                 let mut checkpoints = checkpoint_program(&items_of(&current));
                 for concrete in &edits {
-                    current = apply_edit(&current, concrete);
+                    current = uniquify_under_path_ascriptions(&apply_edit(&current, concrete));
                     let edited = items_of(&current);
                     let outcome = resume_step(&checkpoints, &edited)?;
                     checkpoints = outcome.checkpoints;

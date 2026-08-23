@@ -80,6 +80,8 @@ use crate::boundary::HolePresence;
 use crate::boundary::MatchDecision;
 use crate::footprint::Footprint;
 use crate::footprint::footprint_of;
+use crate::footprint::type_support_of;
+use crate::footprint::type_support_of_value_type;
 use crate::region::Item;
 use crate::region::Program;
 
@@ -333,7 +335,7 @@ pub fn checkpoint_with(
     let mut ctx = base_ctx.clone();
     let mut items: Vec<ItemCheckpoint> = Vec::with_capacity(program.items.len());
     for item in &program.items {
-        let footprint = footprint_of(&item.term);
+        let footprint = footprint_of(item);
         let typing = type_item(item, &ctx, footprint.has_hole.into());
         thread_binding(&mut ctx, &item.term, &typing);
         items.push(ItemCheckpoint {
@@ -404,11 +406,8 @@ pub fn resume_with(
     if let Some(resume) = resume_appended(base, edited, base_ctx) {
         return resume;
     }
-    let edited_footprints: Vec<Footprint> = edited
-        .items
-        .iter()
-        .map(|item| footprint_of(&item.term))
-        .collect();
+    let edited_footprints: Vec<Footprint> = edited.items.iter().map(footprint_of).collect();
+    let edited_type_supports: Vec<Footprint> = edited.items.iter().map(type_support_of).collect();
 
     let matches = align_by_name(&base.items, &edited.items);
     let edited_to_base = invert_matches(&matches, EditedItemCount(edited.items.len()));
@@ -418,6 +417,11 @@ pub fn resume_with(
     // The names whose binding an edit may have changed, seeded conservatively;
     // grown as the ordered pass re-types definitions whose type moved.
     let mut changed = seed_changed_bindings(base, edited, &matched_base, &edited_to_base);
+    // The names whose *unfolding* changed. Unlike `changed` this is complete
+    // before the pass: it depends only on which terms differ and on the read
+    // relation, neither of which re-typing can move.
+    let value_changed = value_changed_names(base, edited, &edited_to_base, &edited_footprints);
+    let base_types = binding_types(base);
 
     // Splice the edit onto the base order; the processing order is the spliced
     // order (dependencies flow forward, so one pass suffices). On any order
@@ -440,9 +444,18 @@ pub fn resume_with(
         else {
             continue;
         };
+        let Some(type_support) = edited_type_supports.get(edited_index.0)
+        else {
+            continue;
+        };
         let base_index = edited_to_base.get(edited_index.0).copied().flatten();
         let base_checkpoint = base_index.and_then(|index| base.items.get(index.0));
-        let is_adopted = adoptable(item, footprint, base_checkpoint, &changed);
+        let context = AdoptionContext {
+            changed: &changed,
+            value_changed: &value_changed,
+            base_types: &base_types,
+        };
+        let is_adopted = adoptable(item, footprint, type_support, base_checkpoint, &context);
         let checkpoint = if let (true, Some(checkpoint)) = (bool::from(is_adopted), base_checkpoint)
         {
             checkpoint.clone()
@@ -526,7 +539,7 @@ fn resume_appended(
     let mut checkpoints = base.items.clone();
     let mut adopted = alloc::vec![true; base.items.len()];
     for item in appended {
-        let footprint = footprint_of(&item.term);
+        let footprint = footprint_of(item);
         let typing = type_item(item, &ctx, footprint.has_hole.into());
         thread_binding(&mut ctx, &item.term, &typing);
         checkpoints.push(ItemCheckpoint {
@@ -544,24 +557,209 @@ fn resume_appended(
     })
 }
 
+/// Everything the adoption test consults beside the item and its own base
+/// checkpoint.
+struct AdoptionContext<'resume>
+{
+    /// Names whose bound **type** changed.
+    changed: &'resume BTreeSet<String>,
+    /// Names whose definitional **unfolding** changed, transitively closed.
+    value_changed: &'resume BTreeSet<String>,
+    /// What each base name was bound to — the types a reader's typing
+    /// manipulates when it reads that name.
+    base_types: &'resume BTreeMap<String, ValueType>,
+}
+
 /// Whether an edited item may adopt its base checkpoint: it must have a base
 /// match, be structurally identical to it (§"The soundness condition" condition
-/// 1), and read no changed binding (§"The soundness condition" condition 2, via
-/// [`Footprint::intersects`], which also blocks an opaque footprint).
+/// 1), read no changed binding (§"The soundness condition" condition 2, via
+/// [`Footprint::intersects`], which also blocks an opaque footprint), and
+/// consult no changed *unfolding* ([`consults_changed_unfolding`]).
 fn adoptable(
     item: &Item,
     footprint: &Footprint,
+    type_support: &Footprint,
     base_checkpoint: Option<&ItemCheckpoint>,
-    changed: &BTreeSet<String>,
+    context: &AdoptionContext<'_>,
 ) -> MatchDecision
 {
     MatchDecision::from(match base_checkpoint {
         | Some(checkpoint) => {
             bool::from(checkpoint_matches_item(checkpoint, item))
-                && !bool::from(footprint.intersects(changed))
+                && !bool::from(footprint.intersects(context.changed))
+                && !bool::from(consults_changed_unfolding(footprint, type_support, context))
         },
         | None => false,
     })
+}
+
+/// Whether this item's typing could consult a definition whose **value**
+/// changed — the reuse-blocking test a type-preserving body edit still has to
+/// answer.
+///
+/// # Why a type-level footprint is not enough
+///
+/// An item's typing normalizes the types it manipulates, and normalization
+/// unfolds definitions. Those types come from three places, and all three are
+/// checked here:
+///
+/// - the item's own ascription and the types embedded in its term — its
+///   [`type_support_of`] set;
+/// - the types of the names it reads, since its typing compares against them.
+///   Reaching those is what the `base_types` lookup does, and it is required
+///   rather than belt-and-braces: an item may read a name whose *type* mentions
+///   a changed definition while mentioning none itself.
+///
+/// The third place is handled before this function is reached, by the closure
+/// that builds `value_changed`.
+fn consults_changed_unfolding(
+    footprint: &Footprint,
+    type_support: &Footprint,
+    context: &AdoptionContext<'_>,
+) -> MatchDecision
+{
+    if context.value_changed.is_empty() {
+        return MatchDecision::from(false);
+    }
+    if type_support.opaque {
+        return MatchDecision::from(true);
+    }
+    if type_support
+        .names
+        .iter()
+        .any(|name| context.value_changed.contains(name))
+    {
+        return MatchDecision::from(true);
+    }
+    for name in &footprint.names {
+        let Some(bound) = context.base_types.get(name)
+        else {
+            continue;
+        };
+        let support = type_support_of_value_type(bound);
+        if support.opaque
+            || support
+                .names
+                .iter()
+                .any(|read| context.value_changed.contains(read))
+        {
+            return MatchDecision::from(true);
+        }
+    }
+    MatchDecision::from(false)
+}
+
+/// What each definition name is bound to in a checkpoint set.
+fn binding_types(checkpoints: &Checkpoints) -> BTreeMap<String, ValueType>
+{
+    let mut types: BTreeMap<String, ValueType> = BTreeMap::new();
+    for checkpoint in &checkpoints.items {
+        if let Some((name, value_type)) = binding_contribution(&checkpoint.typing) {
+            let _replaced = types.insert(name.clone(), value_type.clone());
+        }
+    }
+    types
+}
+
+/// The names whose definitional **unfolding** an edit changed, transitively
+/// closed under the read relation.
+///
+/// # Why the closure is required, and one level is not enough
+///
+/// A definition's unfolding is its body, and a body is built from the bodies of
+/// the names it reads. So a definition whose own term is untouched still
+/// unfolds to something different when anything it reads does. Consider three
+/// items: `def c = 1`, `def b = c`, and `def x : Path Integer b 1 = …`. Editing
+/// `c` to `2` is type-preserving, so `b` is adoptable and its term never
+/// changes — yet checking `x` normalizes its ascription's endpoint `b` through
+/// `c` to a different value. Seeding only the definitions whose own terms
+/// changed puts `c` in this set and leaves `b` out, and `x` reads `b`, so `x`
+/// would adopt a typing the edited program refutes.
+///
+/// The least set containing the seeds and closed under "a definition whose
+/// footprint meets the set is itself in the set" is exactly right, because an
+/// unfolding chain **is** a name-read chain: nothing can enter a definition's
+/// normal form except through a name its body reads.
+///
+/// # Contract
+/// - ensures: returns the least set containing every definition whose term the
+///   edit changed, added, or removed, and closed under the footprint relation.
+/// - provides: the value-side invalidation signal the adoption test consults.
+/// - panics: none — the fixpoint adds at least one name per round and the name
+///   supply is finite.
+fn value_changed_names(
+    base: &Checkpoints,
+    edited: &Program,
+    edited_to_base: &[Option<BaseItemIndex>],
+    edited_footprints: &[Footprint],
+) -> BTreeSet<String>
+{
+    let mut value_changed: BTreeSet<String> = BTreeSet::new();
+    let matched_base: BTreeSet<BaseItemIndex> = edited_to_base.iter().copied().flatten().collect();
+
+    // A deleted definition's unfolding leaves scope.
+    for (index, checkpoint) in base.items.iter().enumerate() {
+        if !matched_base.contains(&BaseItemIndex(index))
+            && let Some(name) = checkpoint.name.as_ref()
+        {
+            let _inserted = value_changed.insert(name.clone());
+        }
+    }
+    // An inserted definition's unfolding enters scope; a matched one whose term
+    // differs unfolds to something else.
+    for (index, item) in edited.items.iter().enumerate() {
+        let Some(name) = item.name.as_ref()
+        else {
+            continue;
+        };
+        let base_checkpoint = edited_to_base
+            .get(index)
+            .copied()
+            .flatten()
+            .and_then(|base_index| base.items.get(base_index.0));
+        let differs = match base_checkpoint {
+            | Some(checkpoint) => checkpoint.term != item.term,
+            | None => true,
+        };
+        if differs {
+            let _inserted = value_changed.insert(name.clone());
+        }
+    }
+
+    if value_changed.is_empty() {
+        return value_changed;
+    }
+
+    // The closure: a definition reading a changed unfolding has one itself.
+    loop {
+        let mut grew = false;
+        for (index, item) in edited.items.iter().enumerate() {
+            let Some(name) = item.name.as_ref()
+            else {
+                continue;
+            };
+            if value_changed.contains(name) {
+                continue;
+            }
+            let Some(footprint) = edited_footprints.get(index)
+            else {
+                continue;
+            };
+            let reads_changed = footprint.opaque
+                || footprint
+                    .names
+                    .iter()
+                    .any(|read| value_changed.contains(read));
+            if reads_changed {
+                let _inserted = value_changed.insert(name.clone());
+                grew = true;
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    value_changed
 }
 
 /// Whether a base checkpoint's identity (name, ascription, lowered term) equals

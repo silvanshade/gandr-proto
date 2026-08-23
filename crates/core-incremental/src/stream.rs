@@ -352,12 +352,16 @@ mod tests
     {
         let items = (0 .. 2)
             .map(|index| {
-                let term = Term::Value(Value::int(index));
+                let item = crate::region::Item::new(
+                    Some(String::from("item")),
+                    None,
+                    Term::Value(Value::int(index)),
+                );
                 ItemCheckpoint {
-                    name: Some(String::from("item")),
-                    ascription: None,
-                    footprint: footprint_of(&term),
-                    term,
+                    name: item.name.clone(),
+                    ascription: item.ascription.clone(),
+                    footprint: footprint_of(&item),
+                    term: item.term,
                     typing: ItemTyping::Expression {
                         ty: Ty::Value(ValueType::integer()),
                     },
