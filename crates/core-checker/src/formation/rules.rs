@@ -189,11 +189,12 @@ fn run(
                 | ValueType::Unit | ValueType::Unknown => {
                     results.push(value_classifier(Level::zero()));
                 },
-                | ValueType::Prod(ref fst, ref snd)
-                | ValueType::Sum(ref fst, ref snd)
-                | ValueType::Sigma {
-                    ref fst, ref snd, ..
-                } => {
+                // A sigma binds its first component's name over its second,
+                // and formation has no scope to bind it in.
+                | ValueType::Sigma { .. } => {
+                    return Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
+                },
+                | ValueType::Prod(ref fst, ref snd) | ValueType::Sum(ref fst, ref snd) => {
                     pending.push(Task::FinishValue(ValueFinish::Join {
                         count: ResultCount::from(2_usize),
                         expected: GroundSort::Value,
@@ -247,15 +248,14 @@ fn run(
                     }));
                     pending.push(Task::Value(ty));
                 },
-                | ValueType::Data { ref args, .. } => {
-                    pending.push(Task::FinishValue(ValueFinish::Join {
-                        count: ResultCount::from(args.len()),
-                        expected: GroundSort::Value,
-                        result: GroundSort::Value,
-                    }));
-                    for arg in args.iter().rev() {
-                        pending.push(Task::Value(arg));
-                    }
+                // A data application's arguments are stored as value types, so
+                // a value index is an ordinary atom and formation has no data
+                // scope to tell the two apart. Walking the arguments would
+                // report a value index as an undeclared type name.
+                | ValueType::Data { .. } => {
+                    return Err(FormationError::UnsupportedForm(
+                        UnsupportedForm::DataSignature,
+                    ));
                 },
                 | ValueType::Universe {
                     ref sort,
@@ -320,13 +320,13 @@ fn run(
                     let classifier = ctx.sealed_type(seal)?;
                     results.push(require_sort(classifier, GroundSort::Value)?);
                 },
-                | ValueType::Package { ref payload, .. } => {
-                    pending.push(Task::FinishValue(ValueFinish::Join {
-                        count: ResultCount::from(1_usize),
-                        expected: GroundSort::Value,
-                        result: GroundSort::Value,
-                    }));
-                    pending.push(Task::Value(payload));
+                // A package binds its abstract type components over its
+                // payload, and formation has no scope to bind them in. Walking
+                // the payload regardless would refuse each component as an
+                // undeclared name -- a fact about the source that is false,
+                // since the package declares them.
+                | ValueType::Package { .. } => {
+                    return Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
                 },
             },
             | Task::Comp(comp_ty) => match *comp_ty {
@@ -339,6 +339,14 @@ fn run(
                     }
                     pending.push(Task::FinishComp(CompFinish::Returner));
                     pending.push(Task::Value(produced));
+                },
+                // A dependent arrow binds its argument over its result, and
+                // formation has no scope to bind it in; the non-dependent
+                // arrow carries no binder and forms as it always has.
+                | CompType::Arrow {
+                    binder: Some(_), ..
+                } => {
+                    return Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
                 },
                 | CompType::Arrow {
                     ref arg, ref res, ..
@@ -627,6 +635,13 @@ mod tests
 
     /// Every value-type constructor in `ValueTypeTag::ALL` is answered by
     /// a rule, and none reaches the catch-all.
+    ///
+    /// The assertion names the catch-all variant itself rather than
+    /// [`FormationError::UnsupportedForm`] as a whole. The two stopped being
+    /// the same claim when the binder and data-application formers gained
+    /// rules that *refuse by name*: those are answers, not fallthroughs, and
+    /// [`sigma_package_and_dependent_arrow_are_refused_by_name`] and
+    /// [`a_data_application_is_refused_by_name`] are their witnesses.
     #[test]
     fn every_value_type_constructor_has_a_formation_rule()
     {
@@ -637,7 +652,9 @@ mod tests
             assert_eq!(tag, value_ty.tag());
             assert!(!matches!(
                 value_ty.infer_classifier(&ctx),
-                Err(FormationError::UnsupportedForm(_))
+                Err(FormationError::UnsupportedForm(
+                    UnsupportedForm::ValueTypeConstructor
+                ))
             ));
         }
     }
@@ -654,9 +671,69 @@ mod tests
             assert_eq!(tag, comp_ty.tag());
             assert!(!matches!(
                 comp_ty.infer_classifier(&ctx),
-                Err(FormationError::UnsupportedForm(_))
+                Err(FormationError::UnsupportedForm(
+                    UnsupportedForm::ComputationTypeConstructor
+                ))
             ));
         }
+    }
+
+    /// The three binding formers are refused **by name**, at the former,
+    /// rather than walked into.
+    ///
+    /// The refusal is what stops the false accusation one level down. Nothing
+    /// in a formation context opens as the walk descends, so a body's mention
+    /// of the binder resolves against the flat scopes and comes back
+    /// [`FormationError::UnboundName`] — an undeclared-name fact stated about
+    /// a name the author did declare.
+    #[test]
+    fn sigma_package_and_dependent_arrow_are_refused_by_name()
+    {
+        let ctx = context();
+        let binder = Err(FormationError::UnsupportedForm(UnsupportedForm::TypeBinder));
+        assert_eq!(
+            binder,
+            ValueType::sigma(ValueType::Unit, "x", ValueType::atom("x")).infer_classifier(&ctx),
+            "a sigma binds its first component over its second"
+        );
+        assert_eq!(
+            binder,
+            ValueType::package(Grade::OMEGA, ["T"], ValueType::atom("T")).infer_classifier(&ctx),
+            "a package binds its abstract components over its payload"
+        );
+        assert_eq!(
+            binder,
+            CompType::pi(
+                "a",
+                ValueType::atom("A"),
+                CompType::returner(ValueType::atom("a"))
+            )
+            .infer_classifier(&ctx),
+            "a dependent arrow binds its argument over its result"
+        );
+        assert_eq!(
+            Ok(comp_classifier(Level::zero())),
+            CompType::arrow(ValueType::Unit, CompType::returner(ValueType::Unit))
+                .infer_classifier(&ctx),
+            "the non-dependent arrow carries no binder and forms as it always has"
+        );
+    }
+
+    /// A data application is refused by name, because its arguments are stored
+    /// as value types and no data scope says which of them are value indices.
+    #[test]
+    fn a_data_application_is_refused_by_name()
+    {
+        let ctx = context();
+        assert_eq!(
+            Err(FormationError::UnsupportedForm(
+                UnsupportedForm::DataSignature
+            )),
+            ValueType::data(DataId::new(0_u64, "Ix"), vec![ValueType::atom("n")])
+                .infer_classifier(&ctx),
+            "a data application whose argument is a term parameter is structurally a data \
+             application whose argument is a type name, and no formation scope tells them apart"
+        );
     }
 
     /// Unsupported family arguments expose a nominal failure kind rather than

@@ -96,11 +96,22 @@ pub enum FormationVerdict
 ///   family signatures at this rung, so *every* family application would
 ///   otherwise be reported as malformed. That would be a false accusation about
 ///   the source on the strength of a scope nothing populates.
+/// - [`UnsupportedForm::TypeBinder`] — the judgement has no binder rule, so a
+///   dependent arrow, a sigma, or a package is refused at the former rather
+///   than walked into. The alternative is the same false accusation one level
+///   down: the body's mention of a bound name reported as an undeclared name.
+/// - [`UnsupportedForm::DataSignature`] — a data application stores its
+///   arguments as value types, so a value index is an atom the judgement cannot
+///   tell from a type name, and the producer declares no data scope that would
+///   settle it.
 ///
 /// When a family-signature producer lands, `UnboundTypeFamily` becomes a
 /// genuine fact about the source and moves to [`FormationVerdict::Malformed`].
-/// Until then this narrowing is stated here, at the claim, rather than left
-/// for a reader to infer from the producer.
+/// `TypeBinder` lifts when formation gains binder scoping — which is the
+/// dependent-classifier work, since the surface's `Type` annotation lowers to
+/// a rigid atom today and there is no universe to read a binder's classifier
+/// off. Until then these narrowings are stated here, at the claim, rather than
+/// left for a reader to infer from the producer.
 ///
 /// # Contract
 /// - ensures: `Formed` carries the classifier the judgement derived.
@@ -123,7 +134,10 @@ pub fn classify_declared_type(
         | Err(error) => match error {
             | FormationError::GradedBridge { .. }
             | FormationError::UnsupportedForm(
-                UnsupportedForm::UnboundTypeFamily | UnsupportedForm::DependentFamilyArgument,
+                UnsupportedForm::UnboundTypeFamily
+                | UnsupportedForm::DependentFamilyArgument
+                | UnsupportedForm::DataSignature
+                | UnsupportedForm::TypeBinder,
             ) => FormationVerdict::OutsideFragment(error),
             | FormationError::UnsupportedForm(
                 UnsupportedForm::ResultStackUnderflow | UnsupportedForm::ResultStackCardinality,

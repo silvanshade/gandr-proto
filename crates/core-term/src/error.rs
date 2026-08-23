@@ -349,6 +349,33 @@ pub enum UnsupportedForm
     /// A dependent family argument has no value scope at this rung.
     #[error("dependent family argument without a value scope")]
     DependentFamilyArgument,
+    /// A data application has no declared signature at this rung.
+    ///
+    /// A data type stores its arguments as *value types*, so a value index
+    /// arrives as an ordinary type atom: `Ix(n)` with `n : Integer` a term
+    /// parameter is `Data { args: [Atom("n")] }`, structurally identical to a
+    /// data type applied to a type named `n`. Telling the two apart needs the
+    /// data declaration's own telescope, and the formation context carries no
+    /// data scope to hold it — the same shape as
+    /// [`Self::UnboundTypeFamily`], one former along.
+    ///
+    /// Refusing here is what keeps the alternative from happening silently: a
+    /// value index would otherwise be reported as an undeclared type name,
+    /// which is a false fact about the source.
+    #[error("data application without a declared signature")]
+    DataSignature,
+    /// A type-level binder has no formation scope at this rung.
+    ///
+    /// Formation classifies a type against flat scopes: nothing in the
+    /// formation context opens or closes as the walk descends, so a former
+    /// that *binds* — a dependent arrow, a sigma, a package's abstract
+    /// components — has no rule that could put its binder in scope for the
+    /// body underneath it. Refusing by name is what keeps the alternative from
+    /// happening silently: without this, the body's mention of the binder is
+    /// indistinguishable from a name nobody declared, and the judgement
+    /// reports an undeclared name at a name the author did declare.
+    #[error("type-level binder without a formation scope")]
+    TypeBinder,
     /// A formation child answer was requested from an empty result stack.
     #[error("formation result stack underflow")]
     ResultStackUnderflow,
