@@ -61,7 +61,7 @@ Three obligations follow, and the second and third are what stop the drift accum
   Silence here is how a contradiction becomes load-bearing.
 - **Correct what is obviously wrong, and report every correction.** Fixing it silently is only half the job: an unreported correction leaves the owner unable to see the rate, and the rate is the thing that needs to come down.
 
-Route what you find by failure mode, because the two want different fixes: a reference that resolves to nothing goes to `gandr-mf8`; a statement that is wrong, stale, or ambiguous where the reference does resolve goes to `gandr-q5c`.
+Route what you find by failure mode, because the two want different fixes: a reference that resolves to nothing goes to `gandr-mf8`; a statement that is wrong, stale, or ambiguous where the reference does resolve goes to `gandr-4ul3`, the standing intake that stays open by design.
 
 **This project has already paid for it.** `core-checker`'s `grade` module says its `Dup` and `Drop` rules are "Stage 2", meaning _which rules of the calculus they belong to_ — and a 2026-08-02 absorption read that as _not yet built_, wrote it into a landed specification document, and it survived to an independent review before anyone opened `checker.rs`, where both rules are implemented and `Dup` demonstrably enforces its grade sum.
 The prose was accurate about its own subject and wrong about the question being asked of it.
