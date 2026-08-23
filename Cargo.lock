@@ -1204,6 +1204,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-theory-dynamic-graphs"
+version = "0.0.0"
+dependencies = [
+ "gandr-theory-graphs",
+ "gandr-theory-orders",
+ "proptest",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-theory-graphs"
 version = "0.0.0"
 dependencies = [

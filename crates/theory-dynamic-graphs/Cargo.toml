@@ -1,0 +1,31 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-dynamic-graphs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Dynamic graph maintenance: a topological order kept under edge insertion, and the offset-carrying valuation that refines it"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "dynamic_graphs"
+path = "tests/lib.rs"
+
+[dependencies]
+gandr-theory-graphs.workspace = true
+gandr-theory-orders.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
