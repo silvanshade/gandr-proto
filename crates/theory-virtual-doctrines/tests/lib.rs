@@ -8,3 +8,5 @@ mod crdc;
 mod directed;
 #[cfg(test)]
 mod laws;
+#[cfg(test)]
+mod overlap_factoring;
