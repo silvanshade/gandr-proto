@@ -9,6 +9,7 @@ It is also the home the tracelet Hopf-algebra work lands into as that work arriv
 ## Current provision
 
 - Two-mode certificate composition: an unconditional coherence lane, and a directed lane gated by variable-flow acyclicity across the composed seam that declines with the cycle as its diagnostic.
+  Composition is binary, and composing a family means folding it — a fold whose verdict does not factor through the pairwise verdicts of the certificates in it, so a chain whose every adjacent pair is admitted may still be declined.
 - Static pathway queries: which compressed derivations can end in a target cell, grown backwards from the target and compressed to normal form, evaluating nothing.
   The target-occurs-only-last condition is decided as an order property, because the rearrangements of a derivation are exactly the linear extensions of its causal order.
 - The canonical step encoding and the durable step identity it frames — the one boundary at which a process-local content address becomes something that may be persisted or transmitted.
@@ -29,7 +30,7 @@ Compose two certificates, or ask what can reach a target.
 use gandr_theory_decomposition_spaces::compose_directed;
 use gandr_theory_decomposition_spaces::pathway::synthesize_pathways;
 
-let composite = compose_directed(&store, &left, &right)?;
+let composite = compose_directed(&left, &right, &store)?;
 let outcome = synthesize_pathways(&store, &seed, target, &transitions, budget)?;
 ```
 
