@@ -1026,6 +1026,7 @@ fn term_into_comp(term: &Term) -> Comp
 mod tests
 {
     use gandr_core_incremental::stream::SynthesisEvent;
+    use gandr_core_term::error::FormationError;
 
     use super::*;
 
@@ -1171,6 +1172,105 @@ def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) {
                 .iter()
                 .any(|outcome| matches!(*outcome, ItemOutcome::TypeError { .. })),
             "a law asserting the wrong endpoint was accepted"
+        );
+    }
+
+    /// **The separating pair for the formation consumer.** An undeclared type
+    /// name in a signature is refused **by name**, and the same signature over
+    /// a declared name types.
+    ///
+    /// The pair is what makes the refusal evidence rather than noise. The
+    /// elaborator accepts an undeclared type name as a rigid atom, so
+    /// `Atom("NoSuchType")` and `Atom("Integer")` are structurally identical to
+    /// everything downstream, and only a scope that knows which atoms are
+    /// declared can separate them. Before the consumer, the first source typed
+    /// clean.
+    #[test]
+    fn an_undeclared_type_name_in_a_signature_is_refused_by_name()
+    {
+        let mut session = Session::new();
+        let refused = session
+            .submit("def f(x : NoSuchType) -> F Integer { ret 1 }")
+            .expect("the definition lowers");
+        let named = refused.outcomes.iter().any(|outcome| {
+            matches!(
+                *outcome,
+                ItemOutcome::TypeError {
+                    error: TypeError::IllFormedType(ref refusal),
+                } if matches!(**refusal, FormationError::UnboundName(ref name) if name == "NoSuchType")
+            )
+        });
+        assert!(
+            named,
+            "an undeclared type name in a signature is a named formation refusal: {:?}",
+            refused.outcomes
+        );
+
+        let mut control = Session::new();
+        let accepted = control
+            .submit("def f(x : Integer) -> F Integer { ret 1 }")
+            .expect("the control lowers");
+        assert!(
+            !accepted
+                .outcomes
+                .iter()
+                .any(|outcome| matches!(*outcome, ItemOutcome::TypeError { .. })),
+            "the same signature over a declared name types: {:?}",
+            accepted.outcomes
+        );
+    }
+
+    /// A graded bridge in a signature is an **abstention**, never a refusal.
+    ///
+    /// `U[1] (Integer -> F Integer)` is outside the fragment formation admits,
+    /// and the module documenting that fragment says so — so the fact recorded
+    /// is about the engine, not the source. A consumer that refused here would
+    /// turn a documented non-admission into a red corpus:
+    /// `crates/surface-corpus/examples/model/27-paired-signatures.gandr` is a
+    /// model example whose expectation is clean and whose signature is exactly
+    /// this shape.
+    #[test]
+    fn a_graded_bridge_signature_is_an_abstention_not_a_refusal()
+    {
+        let mut session = Session::new();
+        let submission = session
+            .submit("def plus_two : U[1] (Integer -> F Integer);\ndef plus_two(x : Integer) -> F Integer { ret x }")
+            .expect("the definition lowers");
+        assert!(
+            !submission
+                .outcomes
+                .iter()
+                .any(|outcome| matches!(*outcome, ItemOutcome::TypeError {
+                    error: TypeError::IllFormedType(_),
+                })),
+            "a graded bridge is a capability boundary, never a formation refusal: {:?}",
+            submission.outcomes
+        );
+    }
+
+    /// A dependent signature is an **abstention**, for the same reason one
+    /// level along: formation has no binder scope, so the binder's own name is
+    /// not a fact about the source.
+    ///
+    /// Without the narrowing, `a` in `(a : Type) -> …` comes back as an
+    /// undeclared name — an accusation about a name the author did declare,
+    /// and the corpus's whole higher-cells lane is written this way.
+    #[test]
+    fn a_dependent_signature_is_an_abstention_not_a_refusal()
+    {
+        let mut session = Session::new();
+        let submission = session
+            .submit("def id(a : Type, x : a) -> F a { ret x }")
+            .expect("the definition lowers");
+        assert!(
+            !submission
+                .outcomes
+                .iter()
+                .any(|outcome| matches!(*outcome, ItemOutcome::TypeError {
+                    error: TypeError::IllFormedType(_),
+                })),
+            "a dependent signature carries a binder formation cannot scope: {:?}",
+            submission.outcomes
         );
     }
 

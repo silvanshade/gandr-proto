@@ -54,12 +54,15 @@
 //! program from scratch. Adoption skips re-typing; the gate proves the skips
 //! never change the answer.
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_checker::formation::FormationVerdict;
+use gandr_core_checker::formation::classify_declared_type;
 use gandr_core_checker::judgements::control::Dir;
 use gandr_core_term::boundary::NameRef;
 use gandr_core_term::ctx::Ctx;
@@ -777,8 +780,28 @@ fn checkpoint_matches_item(
 }
 
 /// Types one lowered item (type-level, no evaluation): a holey item is
-/// declined; otherwise it types against `ctx` and a value-typed definition
-/// reports its bound value type.
+/// declined; otherwise its declared type is put to the formation judgement,
+/// and the term types against `ctx` with a value-typed definition reporting
+/// its bound value type.
+///
+/// # Why formation runs here and not inside a typing rule
+///
+/// The recursive checker and the typing machine are held to step-for-step
+/// agreement, and a formation premise inside a typing rule would retire that
+/// invariant without saying so. The item boundary already holds the two things
+/// the judgement needs — the author-written `ascription` and the accumulated
+/// [`Ctx`] — so the check sits beside the typing driver rather than inside it.
+///
+/// # Which refusals refuse the item
+///
+/// Only [`FormationVerdict::Malformed`] does, because only it records a fact
+/// about the source. [`FormationVerdict::OutsideFragment`] is an abstention:
+/// the type may be perfectly good and merely beyond what this rung classifies
+/// — `U[1] (Integer -> F Integer)` is a graded bridge the corpus expects to be
+/// clean — so the item proceeds to ordinary typing exactly as it did before.
+/// [`FormationVerdict::EngineFault`] abstains for the opposite reason: it
+/// records a fact about the engine, and reporting it as a typing error would
+/// blame the author for a defect in formation.
 fn type_item(
     item: &Item,
     ctx: &Ctx,
@@ -787,6 +810,13 @@ fn type_item(
 {
     if bool::from(has_hole) {
         return ItemTyping::Holey;
+    }
+    if let Some(ref declared) = item.ascription
+        && let FormationVerdict::Malformed(refusal) = classify_declared_type(declared, ctx)
+    {
+        return ItemTyping::TypeError {
+            error: TypeError::IllFormedType(Box::new(refusal)),
+        };
     }
     match item_type(item, ctx) {
         | Err(error) => ItemTyping::TypeError { error },
