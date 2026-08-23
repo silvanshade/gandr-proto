@@ -15,10 +15,12 @@ Neither can be retrofitted onto a greedy representation without rewriting every 
 - A builder that is the only insertion path, with typed errors and no infallible constructor.
 - Explicit build budgets and a meter that enforces them before any store grows.
 - Memoized, iterative Pareto resolution with squared-overflow cost, physical ending options, exact width taint, generational plan identities, and shared render budgets.
+- The defunctionalized render machine with its entry point, rendered result, and tainted fallback execution.
 
 ## What remains
 
-- The defunctionalized render machine, its entry point, rendered result, and tainted fallback execution.
+- Nothing in the engine itself.
+  What is not yet true of the tree around it: `gandr-surface-pretty` is its only consumer, and no printing face renders through that path yet, so the width-aware route is exercised by goldens rather than by a user.
 
 ## Using it
 
@@ -40,7 +42,7 @@ let doc = builder.concat(head, body)?;
 let arena = builder.finish()?;
 ```
 
-Rendering that arena at a chosen page width arrives with the render machine.
+`render::render` then takes that arena, a root, and a page width, and returns the rendered text.
 
 ## Theoretical ideas relied on
 
