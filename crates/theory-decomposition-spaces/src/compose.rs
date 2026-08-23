@@ -275,11 +275,59 @@ where
 /// right one; against this one the batch pass is, and the choice here is a
 /// consequence of the call shape rather than a limit of either algorithm.
 ///
+/// # The verdict does not factor through pairwise overlap data
+///
+/// **A composite's verdict is not the conjunction of pairwise verdicts over the
+/// certificates that compose it, under either natural reading of "pairwise" —
+/// and the two readings fail in opposite directions.** There is no n-ary
+/// composition here: a family's composite is the left fold of this function,
+/// and [`graft`] concatenates both legs. So at each fold step the verdict is
+/// read from the **union** cell support of everything grafted so far against
+/// the seam holes of the **last** member's recorded join alone, and neither
+/// factor is a datum of any pair. This is the non-monotonicity of the section
+/// above, stated as a fact about composition rather than about maintenance.
+///
+/// - **Neighbour-local factoring is unsound as a substitute.** A chain whose
+///   every consecutive pair is admitted can have its composite declined: two
+///   certificates that never meet as a pair meet through the store once the
+///   composite's support accumulates.
+/// - **All-pairs factoring is over-conservative.** A pair asked at its own
+///   recorded join can decline where the fold admits, because the join the fold
+///   holds may no longer carry the hole those two share.
+///
+/// **What the verdict does factor through is pairwise cell supports plus the
+/// fold's own seam term.** Given the recorded join the composite currently
+/// holds, consulting the members pairwise agrees with the fold on every
+/// generated family — so the obstruction is pairwise in the cells, and it is
+/// the seam term that is not pairwise data.
+///
+/// **The seam holes are the left certificate's recorded join's**, which is what
+/// makes the two orders of one pair separable at all: where the two joins
+/// disagree about a hole with endpoints on both sides, swapping the operands
+/// flips the verdict.
+///
+/// The measurement runs over families generated with controlled overlap
+/// structure, and lives in `gandr-theory-virtual-doctrines`'s
+/// `overlap_factoring` suite because it drives the gate through `directed_cut`,
+/// which this crate does not depend on. Its tests, by name:
+///
+/// - `the_acyclicity_verdict_does_not_factor_through_pairwise_overlap_data` —
+///   the sweep, with every verdict cross-checked against a closed form;
+/// - `a_store_mediated_reconvergence_refuses_a_composite_every_adjacent_pair_admits`
+///   — the neighbour-reading counterexample;
+/// - `a_dropped_seam_hole_admits_a_composite_the_all_pairs_reading_refuses` —
+///   the all-pairs counterexample;
+/// - `the_criterion_reads_the_seam_holes_of_the_left_certificates_recorded_join`
+///   — the seam-hole source.
+///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
 ///   function to `Err` and validates the returned cycle is a closed walk of
 ///   `(CellId, hole)` nodes over the participating cells with the `Mixed` hole
 ///   `r`; the linear ground chain drives it to `Ok` and the composite replays.
+///   The factoring statement is separated by two families whose composite
+///   verdict and pairwise conjunction disagree in opposite directions, and the
+///   seam-hole source by one pair whose two orders reach opposite verdicts.
 /// - witness: `composition::tests::directed_composition_declines_a_mixed_variance_cycle`
 /// - witness: `composition::tests::directed_composition_of_a_ground_chain_replays`
 /// - witness: `composition::tests::the_acyclicity_verdict_reads_the_recorded_cell_support_and_nothing_finer`

@@ -106,6 +106,12 @@ impl CutOutcome
 /// what would change it, is stated at
 /// [`gandr_theory_decomposition_spaces::compose_directed`].
 ///
+/// Composing a family means folding this function, and that fold's verdict does
+/// **not** factor through the pairwise verdicts of the certificates in it — a
+/// chain whose every adjacent pair is admitted may still be declined. The same
+/// statement carries what the verdict does factor through; the measurement and
+/// its witnesses are `overlap_factoring` in this crate's test suite.
+///
 /// # Contract
 /// - requires: `a.joins_at == b.overlap.peak` (the sequential seam) for the
 ///   admitted composite to **replay**; admissibility itself (which lane, and
