@@ -243,6 +243,38 @@ where
 /// the operation is well defined on the cell-support-at-a-fixed-boundary
 /// quotient and not on the replay quotient.
 ///
+/// # The verdict is recomputed, never maintained
+///
+/// **The flow graph is built and discarded inside this call, and nothing about
+/// it accumulates across calls.** That is what decides whether an incremental
+/// cycle-detection structure — a topological order kept under edge insertion,
+/// as `gandr-theory-dynamic-graphs` provides — can stand behind this gate.
+/// Three properties of [`VarFlowGraph::build`] settle it:
+///
+/// - **the node set is per-call.** It is a function of the two certificates'
+///   participating cells and the seam holes of `a.joins_at`, interned fresh
+///   every time;
+/// - **it is not monotone under chained composition.** Composing an admitted
+///   composite with a further certificate seams at `b.joins_at` rather than
+///   `a.joins_at`, so the hole filter changes and nodes both appear and vanish.
+///   One call's edges are neither a subset nor a superset of the next call's;
+/// - **there is no per-edge event.** Every edge is derived at once from static
+///   certificate data, and the verdict is a single [`cycle_witness`] pass.
+///
+/// **So the gate has no edge-insertion stream to offer, and maintaining an
+/// order for it would cost more than the pass it would replace.** An
+/// incremental structure earns its keep by amortizing across many queries
+/// against one standing graph. A graph queried once amortizes over one query,
+/// and before it can answer at all it must admit every edge and place every
+/// node — which is already the whole batch traversal, with any repair on top.
+///
+/// **What would change this** is a composition surface holding a standing graph
+/// across calls: certificates admitted into a persistent composite, or a
+/// constraint system whose edges accumulate, of which a universe-level solver
+/// is the nearest. Against that call shape the incremental structure is the
+/// right one; against this one the batch pass is, and the choice here is a
+/// consequence of the call shape rather than a limit of either algorithm.
+///
 /// # Adequacy
 /// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
 ///   function to `Err` and validates the returned cycle is a closed walk of

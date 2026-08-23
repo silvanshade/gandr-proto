@@ -101,6 +101,11 @@ impl CutOutcome
 /// [`CutOutcome::Directed`] when the seam variable-flow graph is acyclic,
 /// [`CutOutcome::Declined`] when a cycle obstructs it.
 ///
+/// The gate this routes to recomputes its flow graph on every consultation
+/// rather than maintaining one; why that is a property of the call shape, and
+/// what would change it, is stated at
+/// [`gandr_theory_decomposition_spaces::compose_directed`].
+///
 /// # Contract
 /// - requires: `a.joins_at == b.overlap.peak` (the sequential seam) for the
 ///   admitted composite to **replay**; admissibility itself (which lane, and
