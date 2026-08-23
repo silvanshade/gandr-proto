@@ -2,8 +2,6 @@
 #:schema https://www.schemastore.org/prek.json
 
 fail_fast = false
-# commit-msg is required for the commitlint hook (commit-msg-staged) to install at
-# all — without it the gate is dormant (agentic-dev prek.base shape; core/HAZARDS.md H4).
 default_install_hook_types = ["pre-commit", "commit-msg", "pre-push"]
 
 [[repos]]
@@ -18,9 +16,6 @@ files.glob = ["prek.toml", "mise.toml", "mise.lock"]
 pass_filenames = false
 stages = ["pre-commit"]
 
-# Publishable-history backstop (core/PUBLISHABLE-HISTORY.md): machine-local home
-# paths are contributor-concern and must not land in tracked content. Script-based
-# per core ADR-4 — absolute home paths always flagged, tilde paths allowlisted in-script.
 [[repos.hooks]]
 id = "no-machine-local-paths"
 name = "no machine-local paths in committed content"

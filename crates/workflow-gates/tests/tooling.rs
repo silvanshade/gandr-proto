@@ -1692,7 +1692,7 @@ fn treefmt_check_task_policy_is_locked() -> TestResult
     let treefmt_check = toml_table_at(&mise_tasks_maintenance, ["treefmt:check"])?;
     let treefmt_check_script = toml_table_string(treefmt_check, "run")?;
     assert_eq!(
-        r#"RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci"#,
+        r#"RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --fail-on-change"#,
         treefmt_check_script.0.trim()
     );
     Ok(())
