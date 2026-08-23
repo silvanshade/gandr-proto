@@ -84,7 +84,7 @@ mod contracts
     /// and on `case` past the reserved `with` view — and the `run` bind carries
     /// an optional `: B` computation-type annotation between its pattern and
     /// its `<-`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xd2df_e403_1c85_50dd);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x6a74_f2ef_1d8a_5c07);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -105,8 +105,10 @@ mod contracts
     /// Item form contributes its keyword-led opener, inline record-type
     /// ascription, and body-local non-recursive definition/signature family.
     /// The nested-module member costs its own keyword, name, braces, and
-    /// optional inline signature — and nothing per level, because its body is a
-    /// hole of the sort it inhabits.
+    /// optional inline signature — and nothing per level, because its body is
+    /// a hole of the sort it inhabits. Its name carries two case spellings
+    /// (the second `type_identifier` occurrence), so an uppercase nested
+    /// declaration parses as the module it is (gandr-nl7i).
     /// The distinct `run`- and `val`-led bind rules each contribute one keyword
     /// mold in their 20 expanded statement contexts.
     /// The dedicated instantiation-sort forms add seven molds: two `<`
@@ -189,7 +191,7 @@ mod contracts
     /// `@[name : Type]` occurrence contributes its brackets, comma, colon, and
     /// three name-class alternatives, with the type hole carried by the shared
     /// type form.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2363);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(2364);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -352,7 +354,7 @@ mod contracts
         ("thunk", 1),
         ("true", 3),
         ("type", 9),
-        ("type_identifier", 46),
+        ("type_identifier", 47),
         ("type_variable", 53),
         ("typed_number", 3),
         ("u32", 1),

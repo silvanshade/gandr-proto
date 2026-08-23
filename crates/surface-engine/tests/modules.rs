@@ -255,4 +255,46 @@ def after = 1;
             })
             .collect()
     }
+
+    /// A nested module declares under either case spelling (`gandr-nl7i`).
+    ///
+    /// The nested form's name tile admitted only the lowercase spelling, so
+    /// `module Limits` inside `module Config` went to parser repair and
+    /// surfaced as holes and goals — malformed input, not a name the reader
+    /// could be told about. Both spellings now parse as the modules they are;
+    /// the top level keeps its uppercase-only tile and its named decline.
+    #[test]
+    fn a_nested_module_declares_under_either_case_spelling()
+    {
+        let uppercase = r#"module Config {
+  module Limits { def hard = 1; }
+  def soft = 2;
+}
+"#;
+        let observed = outcomes(TestText(uppercase));
+        assert!(
+            !matches!(
+                observed.as_slice(),
+                [ItemOutcome::Holey] | [.., ItemOutcome::Holey]
+            ),
+            "an uppercase nested module is a module, not repair: {observed:?}"
+        );
+        assert!(
+            goal_spans(TestText(uppercase)).is_empty(),
+            "no goal may stand in for the declaration"
+        );
+        // And the lowercase spelling that always parsed still does.
+        let lowercase = r#"module Config {
+  module limits { def hard = 1; }
+}
+"#;
+        let observed = outcomes(TestText(lowercase));
+        assert!(
+            !matches!(
+                observed.as_slice(),
+                [ItemOutcome::Holey] | [.., ItemOutcome::Holey]
+            ),
+            "the lowercase spelling keeps its parse: {observed:?}"
+        );
+    }
 }

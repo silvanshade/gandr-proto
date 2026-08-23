@@ -2091,16 +2091,24 @@ fn regular_def_tail() -> Regex
 // `@[doc("…")] def …` remains the declaration-level attribute spelling, while
 // `def name @[A : Type] …` is the typed implicit-parameter spelling.
 
-/// Build one lowercase nested module component.
+/// Build one nested module component.
 ///
 /// Its body is the same [`Sort::ModuleMember`] repetition the outer declaration
 /// takes, which is what makes nesting recursive rather than unrolled: this form
 /// inhabits the sort its own body is a repetition of.
+///
+/// The name admits both case spellings. A nested declaration is a component of
+/// its enclosing module's record, and nothing downstream keys on its case, so
+/// refusing the uppercase spelling here would only turn `module Limits` into
+/// a repair region the reader experiences as malformed input. The outer
+/// form's uppercase-only tile keeps its named lowercase-name decline at the
+/// top level, and this slot carries no such ruling to preserve
+/// (`gandr-nl7i`).
 fn nested_module_member() -> Regex
 {
     seq([
         t(TileLabel("module")),
-        t(TileLabel("identifier")),
+        alt([t(TileLabel("identifier")), t(TileLabel("type_identifier"))]),
         opt(module_ascription_tail()),
         t(TileLabel("{")),
         repeat(h(Sort::ModuleMember)),
