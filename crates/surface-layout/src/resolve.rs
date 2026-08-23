@@ -488,7 +488,7 @@ impl<'arena, 'meter> Resolver<'arena, 'meter>
                     else {
                         WidthTaint::Untainted
                     };
-                    let mut memo = std::mem::take(&mut self.memo)
+                    let mut memo = core::mem::take(&mut self.memo)
                         .into_iter()
                         .collect::<Vec<_>>();
                     memo.sort_unstable_by_key(|entry| entry.0);
