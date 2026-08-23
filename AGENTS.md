@@ -81,6 +81,9 @@ That is the normal case, not an unlucky one.
 - **Leave touched areas better.** Report undocumented engineering improvements and hazards; noticing and staying silent is the failure mode.
   Descriptions that disagree with what they describe are the highest-frequency instance — see §"Description is a hypothesis, not evidence" for the routing and the reporting obligation.
 - **State uncertainty.** Say when current code or documentation does not prove a claim, and report unexpected harness, tool, or configuration failures immediately.
+- **An adopted ruling executes whole.** When a recorded decision adopts a direction, the executing arc carries the entire adopted scope — pricing obligations, tail sites, follow-through steps — inside its own scope or on beads whose dependency edges are wired at the moment of adoption.
+  Partial adoption out of caution is this project's recurring form of the silent decline: each unexecuted tail is a refutation-shaped claim about the remainder, and it takes the same owner sign-off — never a default.
+  The staging test: sequencing may split _when_ pieces land, never _whether_ they are tracked; a tail with no bead and no dependency edge is dropped scope, not prudence.
 - **A refutation is the most expensive claim available here, and it binds only with the owner's sign-off.** Before recording that something does not apply, is not needed, cannot be done, or is the wrong structure, read [`docs/workflow/review.md`](docs/workflow/review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — **whatever the task**, not only when reviewing.
   A wrong acceptance is loud and self-limiting; a wrong rejection is silent, compounding, and has been this project's recurring failure.
   The one-line test: _is the reason a fact about the machinery, or a fact about us?_ A reason that names one of our own properties is a representation question, not a refutation.
