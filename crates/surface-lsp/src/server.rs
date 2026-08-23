@@ -644,14 +644,29 @@ mod tests
             units.as_slice(),
             "the token stream for `def f = 42;` is keyword, declared variable, number"
         );
+        // Hover over `f` (character 4): the wire result carries the
+        // definition's rendered type, which is what makes hover answer on an
+        // otherwise clean document.
         let hover = server.handle_payload(FramePayload::from(
-            br#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#.as_slice(),
+            br#"{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":4}}}"#.as_slice(),
         ));
         assert!(
             hover.messages.first().is_some_and(|message| {
                 message.get("result").is_some() && message.get("error").is_none()
             }),
             "advertised hover must be honoured"
+        );
+        assert!(
+            hover.messages.first().is_some_and(|message| {
+                message
+                    .get("result")
+                    .and_then(|result| result.get("contents"))
+                    .and_then(|contents| contents.get("value"))
+                    .and_then(|value| value.as_str())
+                    .is_some_and(|body| body.contains('f') && body.contains("Integer"))
+            }),
+            "hovering a defined name must report its type: {:?}",
+            hover.messages.first()
         );
         let completion = server.handle_payload(FramePayload::from(
             br#"{"jsonrpc":"2.0","id":4,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/example.gandr"},"position":{"line":0,"character":0}}}"#.as_slice(),

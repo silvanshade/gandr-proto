@@ -14,6 +14,7 @@ use gandr_surface_engine::diag::DiagnosticMessage;
 use gandr_surface_engine::diag::Report;
 use gandr_surface_engine::diag::Severity;
 use gandr_surface_engine::diag::message_of;
+use gandr_surface_engine::render;
 use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Session;
 use gandr_surface_engine::session::Submission;
@@ -305,12 +306,17 @@ impl Analysis
         }
         out
     }
-
-    /// Hover at `position`, if a goal or diagnostic covers it.
+    /// Hover at `position`.
+    ///
+    /// Preference order: a hole goal whose span contains the cursor, else a
+    /// diagnostic annotation that contains it, else — when the cursor sits on
+    /// a name this submission defined — that definition's rendered type. The
+    /// definition arm is what makes hover answer on an otherwise clean file,
+    /// where no goal or diagnostic exists to cover anything.
     ///
     /// # Contract
-    /// - ensures: prefers a hole goal whose span contains the cursor, else a
-    ///   diagnostic whose span contains it, else `None`.
+    /// - ensures: returns the first preference that applies, and [`None`] only
+    ///   when the cursor sits on nothing this analysis knows.
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -376,6 +382,33 @@ impl Analysis
                 }
             }
         }
+        if let Some(word) = word_at(self.source.as_str(), usize::from(byte)) {
+            // Later definitions shadow earlier ones, so the last match wins.
+            let (name, ty, bound) =
+                self.submission
+                    .outcomes
+                    .iter()
+                    .rev()
+                    .find_map(|outcome| match *outcome {
+                        | ItemOutcome::Definition {
+                            ref name,
+                            ref ty,
+                            ref bound,
+                        } if *name == word => Some((name, ty, bound)),
+                        | _ => None,
+                    })?;
+            let mut body = String::from("```gandr\n");
+            body.push_str(name);
+            body.push_str(" : ");
+            body.push_str(&render::ty(ty));
+            body.push_str("\n```");
+            if !*bound {
+                body.push_str("\n\ncomputation-typed, so not bound in scope: thunk it to name it");
+            }
+            return Some(Hover {
+                contents: MarkupContent::markdown(body),
+            });
+        }
         None
     }
 
@@ -422,6 +455,49 @@ impl Analysis
         }
         Vec::new()
     }
+}
+
+/// The identifier-like run containing `byte`, if any.
+///
+/// A cursor sitting just past a word still hovers it — the character under
+/// the cursor may be the word's trailing delimiter — so both the byte at
+/// `byte` and the one before it are considered.
+///
+/// # Contract
+/// - ensures: returns the longest `[A-Za-z0-9_]` run containing or ending at
+///   `byte`, and [`None`] when the cursor is not on a name.
+/// - panics: none.
+fn word_at(
+    source: &str,
+    byte: usize,
+) -> Option<&str>
+{
+    let is_word = |ch: char| ch.is_ascii_alphanumeric() || ch == '_';
+    // Snap to a char boundary, exactly as the position conversions do, so a
+    // cursor handed an interior UTF-8 byte still lands on its character.
+    let mut snapped = byte.min(source.len());
+    while snapped > 0 && !source.is_char_boundary(snapped) {
+        snapped = snapped.saturating_sub(1);
+    }
+    let before = source.get(.. snapped)?;
+    let after = source.get(snapped ..)?;
+    let on_word = after.chars().next().is_some_and(is_word);
+    let past_word = before.chars().next_back().is_some_and(is_word);
+    if !on_word && !past_word {
+        return None;
+    }
+    let start = before
+        .char_indices()
+        .rev()
+        .take_while(|&(_, ch)| is_word(ch))
+        .last()
+        .map_or(snapped, |(index, _)| index);
+    let end = after
+        .char_indices()
+        .take_while(|&(_, ch)| is_word(ch))
+        .last()
+        .map_or(0, |(index, ch)| index.saturating_add(ch.len_utf8()));
+    source.get(start .. snapped.saturating_add(end))
 }
 
 /// Whether `byte` sits in `[start, end)`.
@@ -532,7 +608,9 @@ mod tests
 
     use super::Analysis;
     use crate::position::PositionEncoding;
+    use crate::protocol::CharacterOffset;
     use crate::protocol::DocumentUri;
+    use crate::protocol::LineNumber;
     use crate::protocol::Position;
 
     #[test]
@@ -580,6 +658,79 @@ mod tests
         assert_eq!(
             "application head; while checking the function of an application",
             diagnostics[0].related_information[0].message
+        );
+    }
+
+    /// Hovering a defined name answers with its rendered type — the arm that
+    /// makes hover useful on a clean file, where no goal or diagnostic covers
+    /// anything.
+    #[test]
+    fn hovering_a_defined_name_reports_its_type()
+    {
+        let analysis = Analysis::check(String::from("def f = 42;\n"));
+        // `f` spans bytes 4..5; hover from inside the name.
+        let hover = analysis.hover(
+            Position::new(LineNumber::from(0_u32), CharacterOffset::from(4_u32)),
+            PositionEncoding::Utf8,
+        );
+        let Some(hover) = hover
+        else {
+            panic!("a defined name must hover");
+        };
+        assert!(
+            hover.contents.value.contains('f'),
+            "the hover names the definition: {hover:?}"
+        );
+        assert!(
+            hover.contents.value.contains("Integer"),
+            "the hover renders the definition's type: {hover:?}"
+        );
+    }
+
+    /// A name this submission never defined hovers nothing.
+    #[test]
+    fn hovering_an_unknown_name_is_none()
+    {
+        let analysis = Analysis::check(String::from("def f = 42;\n"));
+        let hover = analysis.hover(
+            Position::new(LineNumber::from(1_u32), CharacterOffset::from(0_u32)),
+            PositionEncoding::Utf8,
+        );
+        assert!(hover.is_none(), "nothing is defined at end of file");
+    }
+
+    /// The word scan reaches past word boundaries: a cursor at a name's
+    /// trailing edge still hovers it.
+    #[test]
+    fn the_word_scan_accepts_the_cursor_at_either_edge()
+    {
+        for character in [4_u32, 5] {
+            let analysis = Analysis::check(String::from("def f = 42;\n"));
+            let hover = analysis.hover(
+                Position::new(LineNumber::from(0_u32), CharacterOffset::from(character)),
+                PositionEncoding::Utf8,
+            );
+            assert!(hover.is_some(), "character {character} sits on or at `f`");
+        }
+    }
+
+    /// A later definition of one name shadows the earlier one in hover.
+    #[test]
+    fn a_redefined_name_hovers_its_latest_type()
+    {
+        let analysis = Analysis::check(String::from("def x = 1;\ndef x = true;\n"));
+        // Line 1's `x` (bytes 13..14) — the second binding.
+        let hover = analysis.hover(
+            Position::new(LineNumber::from(1_u32), CharacterOffset::from(4_u32)),
+            PositionEncoding::Utf8,
+        );
+        let Some(hover) = hover
+        else {
+            panic!("a defined name must hover");
+        };
+        assert!(
+            !hover.contents.value.contains("Integer"),
+            "the shadowed type must not win: {hover:?}"
         );
     }
 }
