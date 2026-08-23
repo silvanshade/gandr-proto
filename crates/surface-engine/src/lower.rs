@@ -1167,6 +1167,8 @@ pub struct Lowered
     /// the type the `def`-function sugar derives; the signature wins when both
     /// exist, because it is the user's stated contract.
     pub items: Vec<Item>,
+    /// Source range of each lowered item, index-aligned with [`Self::items`].
+    pub item_ranges: Vec<SourceRange>,
     /// The foreign modules declared by `extern` blocks, in source order
     /// (`spec:implementation/foreign-interface.md`). `extern` blocks are
     /// declarations, not runnable items, so they contribute no [`Item`]; a
@@ -5414,6 +5416,7 @@ impl Lowerer<'_>
     {
         let mut sigs: Vec<PendingSig> = Vec::new();
         let mut items: Vec<Item> = Vec::new();
+        let mut item_ranges: Vec<SourceRange> = Vec::new();
         let mut origins: Vec<OriginNode> = Vec::new();
         let mut attributes: Vec<RawAttr> = Vec::new();
         let mut foreign: Vec<ForeignModule> = Vec::new();
@@ -5448,6 +5451,7 @@ impl Lowerer<'_>
                 }),
             });
             origins.push(hole.origin);
+            item_ranges.push(root.byte_range());
         }
         else {
             // Pre-pass: collect every `extern` block into the foreign registry
@@ -5543,6 +5547,7 @@ impl Lowerer<'_>
                                 }),
                             });
                             origins.push(hole.origin);
+                            item_ranges.push(child.byte_range());
                         },
                         | Err(error) => return Err(error),
                     }
@@ -5580,6 +5585,7 @@ impl Lowerer<'_>
                                 }),
                             });
                             origins.push(hole.origin);
+                            item_ranges.push(child.byte_range());
                         },
                         | Err(error) => return Err(error),
                     }
@@ -5658,6 +5664,7 @@ impl Lowerer<'_>
                     },
                     | Err(error) => return Err(error),
                 }
+                item_ranges.push(child.byte_range());
                 // Attributes ride the item at `item_index` (both the success
                 // and the recovery branch push exactly one item there); a
                 // child with no `@[…]` blocks contributes none.
@@ -5670,6 +5677,7 @@ impl Lowerer<'_>
             // signature is its goal (appended after the real items, in
             // signature order).
             for sig in sigs.into_iter().filter(|sig| !sig.used) {
+                let item_range = sig.byte_range.clone();
                 let error = LowerError::DanglingSignature {
                     name: sig.name.clone(),
                     byte_range: sig.byte_range.clone(),
@@ -5687,6 +5695,7 @@ impl Lowerer<'_>
                     elaboration: None,
                     note: Some(note_of(&error)),
                 }));
+                item_ranges.push(item_range);
             }
         }
         else if let Some(dangling) = sigs.iter().find(|sig| !sig.used) {
@@ -5709,6 +5718,7 @@ impl Lowerer<'_>
         let constructors = self.constructor_table();
         Ok(Lowered {
             items,
+            item_ranges,
             foreign,
             imports,
             codata,

@@ -1,0 +1,1 @@
+Stk(F Unit, (A → F Unit))

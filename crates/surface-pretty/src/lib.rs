@@ -510,7 +510,7 @@ fn arrow_frame<'frame>(
 {
     vec![
         TypeTask::Assemble {
-            operation: TypeAssembleOperation::Join { count: 6 },
+            operation: TypeAssembleOperation::Join { count: 5 },
         },
         TypeTask::Text {
             text: String::from("("),
@@ -556,7 +556,7 @@ fn dependent_frame<'frame>(
 {
     vec![
         TypeTask::Assemble {
-            operation: TypeAssembleOperation::Join { count: 5 },
+            operation: TypeAssembleOperation::Join { count: 4 },
         },
         TypeTask::Text {
             text: format!("Π({binder} : "),
@@ -710,12 +710,18 @@ fn build_type(
                         schedule(&mut stack, frame);
                     },
                     | ValueType::Data { ref id, ref args } => {
-                        let nodes = args
-                            .iter()
-                            .map(|arg| TypeNode::Value(arg.as_ref()))
-                            .collect::<Vec<_>>();
-                        let frame = bracketed_frame(format!("{}(", id.name().as_ref()), ")", nodes);
-                        schedule(&mut stack, frame);
+                        if args.is_empty() {
+                            done.push(leaf(builder, id.name().as_ref())?);
+                        }
+                        else {
+                            let nodes = args
+                                .iter()
+                                .map(|arg| TypeNode::Value(arg.as_ref()))
+                                .collect::<Vec<_>>();
+                            let frame =
+                                bracketed_frame(format!("{}(", id.name().as_ref()), ")", nodes);
+                            schedule(&mut stack, frame);
+                        }
                     },
                     | _ => done.push(leaf(builder, "?")?),
                 },
@@ -741,13 +747,13 @@ fn build_type(
                                     operation: TypeAssembleOperation::Join { count: 3 },
                                 },
                                 TypeTask::Text {
-                                    text: String::from(" !ε"),
-                                },
-                                TypeTask::Text {
                                     text: String::from("F "),
                                 },
                                 TypeTask::Build {
                                     node: TypeNode::Value(payload.as_ref()),
+                                },
+                                TypeTask::Text {
+                                    text: String::from(" !ε"),
                                 },
                             ];
                             schedule(&mut stack, frame);
@@ -958,7 +964,12 @@ fn build_value(
                         done.push(leaf(builder, text.as_str())?);
                     },
                     | Value::Str(ref text) => {
-                        let quoted = format!("\"{text}\"");
+                        let mut quoted = String::with_capacity(text.len().saturating_add(2));
+                        quoted.push('"');
+                        for ch in text.chars() {
+                            quoted.extend(ch.escape_debug());
+                        }
+                        quoted.push('"');
                         done.push(leaf(builder, quoted.as_str())?);
                     },
                     | Value::Num(num) => {

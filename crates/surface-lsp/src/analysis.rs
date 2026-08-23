@@ -24,6 +24,7 @@ use gandr_surface_grammar::built_in;
 use gandr_surface_grammar::highlight;
 use gandr_surface_parser::parse;
 use gandr_surface_render_remote::present::ByteOffset;
+use gandr_surface_render_remote::present::HlRole;
 use gandr_surface_render_remote::present::HlSpan;
 use gandr_surface_render_remote::present::SourceText;
 use gandr_surface_syntax::SourceSlice;
@@ -383,20 +384,45 @@ impl Analysis
             }
         }
         if let Some(word) = word_at(SourceText::from(self.source.as_str()), byte) {
-            // Later definitions shadow earlier ones, so the last match wins.
-            let (name, ty, bound) =
-                self.submission
-                    .outcomes
-                    .iter()
-                    .rev()
-                    .find_map(|outcome| match *outcome {
-                        | ItemOutcome::Definition {
-                            ref name,
-                            ref ty,
-                            ref bound,
-                        } if *name == word.as_ref() => Some((name, ty, bound)),
-                        | _ => None,
-                    })?;
+            // Only top-level definition occurrences have enough source and
+            // typing data for an exact answer. Raw words, references, and
+            // local binders must not inherit an unrelated top-level type.
+            let byte = usize::from(byte);
+            let identifier_start = self.highlights.iter().find_map(|span| {
+                let start = usize::from(span.range.start);
+                let end = usize::from(span.range.end);
+                (start <= byte
+                    && byte <= end
+                    && self.source.get(start .. end) == Some(word.as_ref())
+                    && matches!(span.role, HlRole::FunctionDef | HlRole::VariableDef))
+                .then_some(start)
+            })?;
+            let (name, ty, bound) = self
+                .submission
+                .outcomes
+                .iter()
+                .zip(&self.submission.item_ranges)
+                .rev()
+                .find_map(|(outcome, range)| {
+                    let ItemOutcome::Definition {
+                        ref name,
+                        ref ty,
+                        ref bound,
+                    } = *outcome
+                    else {
+                        return None;
+                    };
+                    if name != word.as_ref() || !range.0.contains(&identifier_start) {
+                        return None;
+                    }
+                    let first_definition = self.highlights.iter().find_map(|span| {
+                        let start = usize::from(span.range.start);
+                        (range.0.contains(&start)
+                            && matches!(span.role, HlRole::FunctionDef | HlRole::VariableDef))
+                        .then_some(start)
+                    });
+                    (first_definition == Some(identifier_start)).then_some((name, ty, bound))
+                })?;
             let mut body = String::from("```gandr\n");
             body.push_str(name);
             body.push_str(" : ");
@@ -582,6 +608,7 @@ fn empty_submission() -> Submission
             obligations: Vec::new(),
         },
         outcomes: Vec::new(),
+        item_ranges: Vec::new(),
         kernel: Vec::new(),
         matches: Vec::new(),
     }
@@ -691,6 +718,41 @@ mod tests
         );
     }
 
+    /// Text that merely spells a definition's name is not an identifier
+    /// occurrence and therefore carries no definition hover.
+    #[test]
+    fn words_inside_comments_and_strings_do_not_hover()
+    {
+        let source = concat!("def x = 1;\n", "// x\n", "\"x\";\n");
+        let analysis = Analysis::check(String::from(source));
+        for position in [
+            Position::new(LineNumber::from(1_u32), CharacterOffset::from(3_u32)),
+            Position::new(LineNumber::from(2_u32), CharacterOffset::from(1_u32)),
+        ] {
+            assert!(
+                analysis.hover(position, PositionEncoding::Utf8).is_none(),
+                "non-identifier text at {position:?} must not inherit `x`'s hover"
+            );
+        }
+    }
+
+    /// A local binder that shadows a top-level definition does not inherit the
+    /// top-level definition's hover.
+    #[test]
+    fn a_parameter_does_not_hover_as_an_unrelated_top_level_definition()
+    {
+        let source = concat!("def x = 1;\n", "def f(x: String) -> F String { ret x }\n");
+        let analysis = Analysis::check(String::from(source));
+        let hover = analysis.hover(
+            Position::new(LineNumber::from(1_u32), CharacterOffset::from(6_u32)),
+            PositionEncoding::Utf8,
+        );
+        assert!(
+            hover.is_none(),
+            "the parameter must not inherit top-level `x`"
+        );
+    }
+
     /// A name this submission never defined hovers nothing.
     #[test]
     fn hovering_an_unknown_name_is_none()
@@ -716,6 +778,27 @@ mod tests
             );
             assert!(hover.is_some(), "character {character} sits on or at `f`");
         }
+    }
+
+    /// A declaration hovers with the type established at its own source
+    /// position, even when a later item redefines the same name.
+    #[test]
+    fn an_earlier_redefined_name_hovers_its_own_type()
+    {
+        let source = concat!("def x = 1;\n", "def x = true;\n");
+        let analysis = Analysis::check(String::from(source));
+        let hover = analysis.hover(
+            Position::new(LineNumber::from(0_u32), CharacterOffset::from(4_u32)),
+            PositionEncoding::Utf8,
+        );
+        let Some(hover) = hover
+        else {
+            panic!("the earlier definition must hover");
+        };
+        assert!(
+            hover.contents.value.contains("Integer"),
+            "the later definition must not rewrite the earlier hover: {hover:?}"
+        );
     }
 
     /// A later definition of one name shadows the earlier one in hover.

@@ -1423,16 +1423,11 @@ pub fn message_of(error: &TypeError) -> DiagnosticMessage
 
 /// Renders a diagnostic type operand through the shared presentation
 /// renderer ([`render::ty`]) — the same spelling the REPL transcript and the
-/// language-server hover read — whenever that rendering is faithful (holds no
-/// `?` wildcard for a type node the renderer cannot yet spell). Only then
-/// does the operand fall back to the raw `Debug` form.
+/// language-server hover read — whenever every node has a shared spelling.
+/// Unsupported nodes fall back to the raw `Debug` form.
 fn render_type_operand(ty: &Ty) -> String
 {
-    let rendered = render::ty(ty);
-    if !rendered.contains('?') {
-        return rendered;
-    }
-    format!("{ty:?}")
+    render::faithful_ty(ty).unwrap_or_else(|| format!("{ty:?}"))
 }
 
 /// Resolves the exact failing occurrence to a primary source annotation.

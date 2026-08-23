@@ -47,6 +47,7 @@ mod tests
     use gandr_core_term::types::CompType;
     use gandr_core_term::types::Ty;
     use gandr_core_term::types::ValueType;
+    use gandr_surface_engine::boundary::SourceRange;
     use gandr_surface_engine::goals::Goal;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::lower::LowerError;
@@ -412,6 +413,11 @@ mod tests
             assert!(
                 matches!(lowered.items[0].term, Term::Value(Value::Hole(_))),
                 "the damaged declaration must become a value hole"
+            );
+            assert_eq!(
+                vec![SourceRange::from(0 .. source.len())],
+                lowered.item_ranges,
+                "the recovered item keeps its source range aligned"
             );
 
             let goals = goals_report(&lowered, &prelude_ctx());

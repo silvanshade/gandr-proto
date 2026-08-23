@@ -35,6 +35,21 @@ pub fn ty(ty: &Ty) -> String
         | Ty::Comp(ref comp_type) => comp_ty(comp_type),
     }
 }
+/// Renders a type only when every node has a shared surface spelling.
+///
+/// This keeps unsupported-node detection structural: a `?` byte in an atom or
+/// declared name remains ordinary user data rather than masquerading as the
+/// renderer's wildcard.
+#[inline]
+#[must_use]
+pub(crate) fn faithful_ty(ty: &Ty) -> Option<String>
+{
+    let rendered = match *ty {
+        | Ty::Value(ref value_type) => render_type(RenderNode::Value(value_type)),
+        | Ty::Comp(ref comp_type) => render_type(RenderNode::Comp(comp_type)),
+    };
+    rendered.faithful.then_some(rendered.text)
+}
 
 /// Renders a value type.
 ///
@@ -46,7 +61,7 @@ pub fn ty(ty: &Ty) -> String
 #[must_use]
 pub fn value_ty(value_type: &ValueType) -> String
 {
-    render_type(RenderNode::Value(value_type))
+    render_type(RenderNode::Value(value_type)).text
 }
 
 /// Renders a computation type.
@@ -58,7 +73,7 @@ pub fn value_ty(value_type: &ValueType) -> String
 #[must_use]
 pub fn comp_ty(comp_type: &CompType) -> String
 {
-    render_type(RenderNode::Comp(comp_type))
+    render_type(RenderNode::Comp(comp_type)).text
 }
 
 /// A borrowed type node waiting to be rendered.
@@ -92,12 +107,21 @@ enum RenderTask<'ty>
         argument_count: usize,
     },
 }
+/// One rendered type plus whether every node had a shared spelling.
+struct TypeRendering
+{
+    /// Rendered presentation text.
+    text: String,
+    /// Whether no unsupported-node wildcard was required.
+    faithful: bool,
+}
 
 /// Renders a finite value/computation-type tree with an explicit work stack.
-fn render_type(root: RenderNode<'_>) -> String
+fn render_type(root: RenderNode<'_>) -> TypeRendering
 {
     let mut pending = vec![RenderTask::Node(root)];
     let mut rendered = Vec::new();
+    let mut faithful = true;
     while let Some(task) = pending.pop() {
         match task {
             | RenderTask::Node(RenderNode::Value(value_type)) => match *value_type {
@@ -137,7 +161,10 @@ fn render_type(root: RenderNode<'_>) -> String
                             .map(|arg| RenderTask::Node(RenderNode::Value(arg))),
                     );
                 },
-                | _ => rendered.push("?".to_owned()),
+                | _ => {
+                    faithful = false;
+                    rendered.push("?".to_owned());
+                },
             },
             | RenderTask::Node(RenderNode::Comp(comp_type)) => match *comp_type {
                 | CompType::F(ref payload, ref row) => {
@@ -171,7 +198,10 @@ fn render_type(root: RenderNode<'_>) -> String
                     pending.push(RenderTask::Node(RenderNode::Comp(snd)));
                     pending.push(RenderTask::Node(RenderNode::Comp(fst)));
                 },
-                | _ => rendered.push("?".to_owned()),
+                | _ => {
+                    faithful = false;
+                    rendered.push("?".to_owned());
+                },
             },
             | RenderTask::Infix(symbol) => {
                 let rhs = rendered.pop().unwrap_or_else(|| "?".to_owned());
@@ -215,7 +245,11 @@ fn render_type(root: RenderNode<'_>) -> String
             },
         }
     }
-    rendered.pop().unwrap_or_else(|| "?".to_owned())
+    let text = rendered.pop().unwrap_or_else(|| {
+        faithful = false;
+        "?".to_owned()
+    });
+    TypeRendering { text, faithful }
 }
 
 /// The maximum depth [`value`] descends before rendering `<deep>`
@@ -305,7 +339,9 @@ where
             },
             | Value::Str(ref text) => {
                 output.push('"');
-                output.push_str(text);
+                for ch in text.chars() {
+                    output.extend(ch.escape_debug());
+                }
                 output.push('"');
             },
             | Value::Num(num) => output.push_str(&render_num(num)),
@@ -505,6 +541,16 @@ mod tests
         assert_eq!("?", super::ty(&Ty::Comp(CompType::Unknown)));
     }
     #[test]
+    fn fidelity_tracks_unsupported_nodes_not_user_punctuation()
+    {
+        assert_eq!(
+            Some(String::from("A?")),
+            super::faithful_ty(&Ty::Value(atom("A?")))
+        );
+        assert_eq!(None, super::faithful_ty(&Ty::Value(ValueType::Unknown)));
+    }
+
+    #[test]
     fn eval_renders_each_outcome_class()
     {
         use gandr_core_term::outcome::Blame;
@@ -517,6 +563,11 @@ mod tests
             "42",
             super::eval(&Eval::Value(Comp::ret(Value::int(42)))),
             "a produced value renders in the structural notation"
+        );
+        assert_eq!(
+            "\"line\\n\\t\\\"\\\\tail\"",
+            super::eval(&Eval::Value(Comp::ret(Value::string("line\n\t\"\\tail")))),
+            "string values stay one escaped transcript line"
         );
         let lambda = Comp::Abs(
             String::from("x"),

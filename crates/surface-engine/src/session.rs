@@ -231,6 +231,9 @@ pub struct Submission
     /// One outcome per lowered item, in source order (aligned with
     /// `report` by item index).
     pub outcomes: Vec<ItemOutcome>,
+    /// Source range of each lowered item, index-aligned with
+    /// [`Self::outcomes`].
+    pub item_ranges: Vec<SourceRange>,
     /// What the kernel made of each lowered item, in the same source order and
     /// index-aligned with `outcomes`. Every item has an entry: one the kernel
     /// never saw carries [`KernelVerdict::Withheld`] naming why.
@@ -853,6 +856,7 @@ impl Session
         Ok(Submission {
             report,
             outcomes,
+            item_ranges: lowered.item_ranges,
             kernel: verdicts,
             matches,
         })
@@ -1291,6 +1295,7 @@ def law(a: Type, f: U[ω] (a -> F a)) -> F(Path((U(a -> F a)), pick(a, f), f)) {
                     name: "missing".to_owned(),
                 },
             }],
+            item_ranges: alloc::vec![SourceRange::from(0 .. 0)],
             kernel: alloc::vec![KernelVerdict::Withheld {
                 reason: WithheldReason::Untyped,
             }],

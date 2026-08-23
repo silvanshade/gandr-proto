@@ -23,6 +23,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use gandr_core_term::effect::EffectRow;
+use gandr_core_term::effect::EffectSig;
 use gandr_core_term::grade::Grade;
 use gandr_core_term::syntax::Side;
 use gandr_core_term::syntax::Value;
@@ -213,6 +214,14 @@ mod tests
     use super::*;
 
     #[test]
+    fn effectful_returner_keeps_its_suffix_after_the_payload() -> Fixture
+    {
+        let row = EffectRow::singleton(EffectSig::new("State".into(), Vec::new()));
+        let ty = Ty::Comp(CompType::returner_eff(atom("Accumulator"), row));
+        pinned_type("effectful_returner", &ty, "F Accumulator !ε")
+    }
+
+    #[test]
     fn dependent_function_type_breaks_before_codomain() -> Fixture
     {
         // Π(x : Integer). F Integer — short enough to hold either way; the
@@ -270,6 +279,16 @@ mod tests
     }
 
     #[test]
+    fn stack_with_arrow_keeps_both_bracketed_items() -> Fixture
+    {
+        let ty = Ty::Value(stack(
+            f_of(ValueType::Unit),
+            arrow(atom("A"), f_of(ValueType::Unit)),
+        ));
+        pinned_type("stack_arrow", &ty, "Stk(F Unit, (A → F Unit))")
+    }
+
+    #[test]
     fn declared_data_application_breaks_arguments() -> Fixture
     {
         let ty = Ty::Value(data_application("Map", vec![
@@ -278,6 +297,20 @@ mod tests
             atom("Balance"),
         ]));
         pinned_type("data_application", &ty, "Map(Name, Set(Account), Balance)")
+    }
+
+    #[test]
+    fn nullary_declared_data_uses_its_bare_name() -> Fixture
+    {
+        let ty = Ty::Value(data_application("Celsius", Vec::new()));
+        pinned_type("data_nullary", &ty, "Celsius")
+    }
+
+    #[test]
+    fn string_controls_stay_in_one_escaped_literal() -> Fixture
+    {
+        let value = Value::string("line\n\t\"\\tail");
+        pinned_value("escaped_string", &value, "\"line\\n\\t\\\"\\\\tail\"")
     }
 
     #[test]
