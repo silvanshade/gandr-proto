@@ -108,24 +108,27 @@ use crate::types::ValueType;
 ///   codomain that rebinds `name` untouched; **alpha-equivalent** to `ty` when
 ///   `name` does not occur free — not identical, because a binder spelled like
 ///   a free name of `repl` is renamed apart whether or not the substitution
-///   changes anything beneath it. Both clauses of this contract are therefore
-///   stated up to alpha, and neither is a syntactic guarantee.
-/// - ensures: **no free variable of `repl` is captured by a TYPE binder** the
-///   substitution descends under — a `Σ` tail or `Π` codomain binder that
-///   rebinds a free name of `repl` is renamed apart first, so the result is
-///   alpha-equivalent to the capture-avoiding specification **at the type
-///   sort**. Value binders reached through a `Path` endpoint or a `Family`
-///   argument are substituted by [`crate::subst::subst_value`], which
+///   changes anything beneath it. And **no free variable of `repl` is captured
+///   by a TYPE binder** the substitution descends under — a `Σ` tail or `Π`
+///   codomain binder that rebinds a free name of `repl` is renamed apart first,
+///   so the result is alpha-equivalent to the capture-avoiding specification
+///   **at the type sort**. Value binders reached through a `Path` endpoint or a
+///   `Family` argument are substituted by [`crate::subst::subst_value`], which
 ///   implements **shadowing only and does not rename**; capture at the value
-///   sort is `gandr-j078`.
+///   sort is `gandr-j078`. Both statements are stated up to alpha, and neither
+///   is a syntactic guarantee.
 /// - panics: none.
 ///
 /// # Adequacy
 /// - hypothesis: L3 — each value-type former is rebuilt without changing its
-///   structure, only `Path` endpoints substitute, and a binder of the
+///   structure; a `Path` endpoint substitutes, and an `Atom` spelled like the
+///   substituted name is renamed to a variable replacement's own spelling and
+///   left alone for every other replacement shape; and a binder of the
 ///   substituted name blocks the descent into its body.
-/// - witness: the identity conformance tests for endpoint substitution
-/// - witness: `tests::stack_types_rebuild_both_computation_children`
+/// - witness: `identity::tests::stack_types_rebuild_both_computation_children`
+/// - witness: `identity::tests::atom_substitution_replaces_matching_variable`
+/// - witness: `identity::tests::a_value_binder_inside_an_endpoint_captures_the_replacement`
+/// - witness: `identity::tests::a_binder_that_cannot_capture_is_renamed_apart_anyway`
 #[inline]
 #[must_use]
 /// # Termination
@@ -180,24 +183,23 @@ where
 ///   that rebinds `name` untouched; **alpha-equivalent** to `ty` when `name`
 ///   does not occur free — not identical, because a binder spelled like a free
 ///   name of `repl` is renamed apart whether or not the substitution changes
-///   anything beneath it. Both clauses of this contract are therefore stated up
-///   to alpha, and neither is a syntactic guarantee.
-/// - ensures: **no free variable of `repl` is captured by a TYPE binder** the
-///   substitution descends under — a `Σ` tail or `Π` codomain binder that
-///   rebinds a free name of `repl` is renamed apart first, so the result is
-///   alpha-equivalent to the capture-avoiding specification **at the type
-///   sort**. Value binders reached through a `Path` endpoint or a `Family`
+///   anything beneath it. And **no free variable of `repl` is captured by a
+///   TYPE binder** the substitution descends under — a `Σ` tail or `Π` codomain
+///   binder that rebinds a free name of `repl` is renamed apart first, so the
+///   result is alpha-equivalent to the capture-avoiding specification **at the
+///   type sort**. Value binders reached through a `Path` endpoint or a `Family`
 ///   argument are substituted by [`crate::subst::subst_value`], which
 ///   implements **shadowing only and does not rename**; capture at the value
-///   sort is `gandr-j078`.
+///   sort is `gandr-j078`. Both statements are stated up to alpha, and neither
+///   is a syntactic guarantee.
 /// - panics: none.
 ///
 /// # Adequacy
 /// - hypothesis: L3 — the rename fires on a binder that rebinds a free variable
 ///   of the replacement, and the sequential instantiation of a dependent spine
 ///   is separated from it by a caller whose indices collide with the callee's.
-/// - witness: `tests::substitution_renames_a_binder_that_would_capture_the_replacement`
-/// - witness: `tests::a_captured_expectation_does_not_accept_the_wrong_argument`
+/// - witness: `identity::tests::substitution_renames_a_binder_that_would_capture_the_replacement`
+/// - witness: `identity::tests::a_captured_expectation_does_not_accept_the_wrong_argument`
 #[inline]
 #[must_use]
 /// # Termination
