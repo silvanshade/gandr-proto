@@ -183,6 +183,10 @@ The rollout established these durable findings and actions:
 
 ## Documentation by contract
 
+**Documentation is written with the code, always — a deliverable with the body, never a later pass.** An item's summary and contract are authored in the same edit and present in the same checkpoint as the item itself; a rewrite that re-creates an item re-creates its documentation in the same change, checked against the new code rather than carried verbatim.
+"Docs later" is not a state this workspace has: a checkpoint that adds or rewrites a nontrivial item undocumented is incomplete work, not staged work.
+And the obligation does not lapse with its instrument — on a red crate no lint can run, so there it binds through review instead: the per-file doc-line delta against the pre-change commit is the check, and a rewrite arriving with a collapsed delta is returned before its semantics are read.
+
 Every nontrivial item (public or private — `missing_docs_in_private_items` is denied) carries a one-line summary plus a `# Contract` rustdoc block; fallible functions also carry `# Errors`; nontrivial items in new or substantially-refactored code also carry `# Adequacy` ([mutation-adequacy.md](mutation-adequacy.md)).
 
 `mise run cargo:doc-check` is the merge-wall gate for this section: it runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so an intra-doc link that does not resolve — or a redundant explicit link target — fails the wall rather than accreting as silent rustdoc debt.
