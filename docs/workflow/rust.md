@@ -48,6 +48,8 @@
 
 - **Single-field structs are transparent.** Every named or tuple struct with exactly one field must carry `#[repr(transparent)]`.
   An exception requires a concrete layout, ABI, or soundness reason documented in the item's `# Contract`; convenience or omission is not an exception.
+- **`non_exhaustive` is not used.** The workspace is `publish = false` end to end and exposes no public API, so the attribute protects no external consumer — while inside the workspace it costs exactly the thing the growth discipline depends on: a wildcard arm at every match, defeating exhaustiveness on the enums where a new variant is supposed to break every consumer until considered (the `Tag` census pattern is the sanctioned growth mechanism).
+  Existing attributes strip on contact; the posture reverses only if a published boundary ever exists.
 - **Crate-defined signatures preserve semantic information.** A function or method defined by a workspace crate must not accept or return a bare primitive value (`bool`, `char`, numeric primitives, or `str`; see the [Rust primitive overview](https://doc.rust-lang.org/rust-by-example/primitives.html)), whether directly or beneath references, pointers, tuples, arrays, slices, or configured generic containers before reaching a nominal type boundary.
   This applies regardless of visibility to free, const, async, and extern functions; inherent methods; local-trait declarations and defaults; and local-trait implementations.
   The sole exception is a method implementing a trait defined in an external crate whose required signature contains primitive types.
