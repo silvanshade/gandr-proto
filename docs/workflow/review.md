@@ -216,6 +216,17 @@ The mechanism and what binds however a ruling arrives are [`tracker.md`](tracker
 
 **A refutation is the case that most needs this and is the easiest to skip**, because the point at which one is recorded rarely feels like a decision — which is why §"Refutations bind only with owner sign-off" states the requirement rather than leaving it to the escalation rule to imply.
 
+## An instrument's coverage credit names its mechanism, and the mechanism is tested
+
+**The failure shape: an instrument credited with covering a hazard class it silently belongs to.** A depth computation whose cycle guard returns zero on re-entry produces plausible small integers over a cyclic graph; a census that reads the compiler's artifact stream — chosen deliberately over inference — counts a cached, never-rechecked unit as clean, because a cached unit still emits its artifact.
+In both, the property that earned the trust is the property that made the instrument wrong: it computed rather than estimated, it observed rather than inferred.
+
+**Why this is worse than an acknowledged gap: the credit is what stops anyone looking.** An open gap gets revisited; a gap inside the agreed-careful option does not, because the next reader inherits the credit with the instrument and has no reason to test the cited grounds for trusting it.
+This is §"Description is a hypothesis" with an instrument in the description's place — and instruments get **more** credit than prose, so the silence runs deeper.
+
+**The rule.** When an instrument is credited with covering a hazard class, the credit names the **specific mechanism** of coverage, and that mechanism is **tested rather than asserted** — reading an artifact stream is not coverage of a staleness class; reading the artifact's freshness flag is, and the difference between those two sentences is the whole rule.
+A claim that terminates in someone else acting on it irreversibly — a go signal, a landing verdict, an evidence regeneration — carries the heavier witness: positive per-object evidence, not a reconciled total.
+
 ## A recalled citation that turns out to be on-target is still unverified
 
 The corpus discipline says to verify a source's **identity**, not merely its presence.
