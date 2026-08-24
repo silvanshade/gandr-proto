@@ -225,6 +225,8 @@ In both, the property that earned the trust is the property that made the instru
 This is §"Description is a hypothesis" with an instrument in the description's place — and instruments get **more** credit than prose, so the silence runs deeper.
 
 **The rule.** When an instrument is credited with covering a hazard class, the credit names the **specific mechanism** of coverage, and that mechanism is **tested rather than asserted** — reading an artifact stream is not coverage of a staleness class; reading the artifact's freshness flag is, and the difference between those two sentences is the whole rule.
+**A check that reads presence must require presence explicitly, because a universal over an empty set is a pass.** "Every artifact carries `fresh: false`" is vacuously true over zero artifacts — which is exactly what a failed capture produces, so the natural phrasing passes hardest when the capture fails worst.
+The sound form states both halves separately — presence required at each expected target (with the expected set taken from a source that does not share the stream's failure mode), then the property asserted over what is present — and this clause is stated here as the reason, because the presence half reads as pedantry and the first person who tidies it will simplify back to the universal.
 A claim that terminates in someone else acting on it irreversibly — a go signal, a landing verdict, an evidence regeneration — carries the heavier witness: positive per-object evidence, not a reconciled total.
 
 ## A recalled citation that turns out to be on-target is still unverified
