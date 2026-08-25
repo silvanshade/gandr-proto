@@ -79,6 +79,53 @@ url = "https://github.com/anchore/syft/releases/download/v1.51.0/syft_1.51.0_win
 url_api = "https://api.github.com/repos/anchore/syft/releases/assets/508878657"
 
 [[tools.aube]]
+version = "2.1.0"
+backend = "github:endevco/aube"
+
+[tools.aube."platforms.linux-arm64"]
+checksum = "sha256:43c7845d162c30973e38526c42cac9d87dd2b2bd6365ad5868daf10b026d898f"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526714837"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-arm64-musl"]
+checksum = "sha256:ba7c8af15998ff08cc23a2536accedd2ffd727b7c8a87e019ca89ced5d986c9e"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526690502"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-x64"]
+checksum = "sha256:fa226a827eb36fad7be8bf997c25d5ef10ff1873f875ab6925b137202910a466"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526695884"
+provenance = "github-attestations"
+
+[tools.aube."platforms.linux-x64-musl"]
+checksum = "sha256:f7a62bb220bc3a3782ed2e6f6c9ed943fb1924258b4d0528e63d930650b46797"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526694836"
+provenance = "github-attestations"
+
+[tools.aube."platforms.macos-arm64"]
+checksum = "sha256:4e5d7e7bab65c3c4f5a4db0022d6fe5516e51b1ddbbdf604b537d4a73aa682fd"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526711957"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools.aube."platforms.macos-x64"]
+checksum = "sha256:284772446f98bbe16b480dc405cc765e38f51246237058e8b3d6d81974c1633f"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/libaube-x86_64-apple-darwin.dylib"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526701912"
+provenance = "github-attestations"
+
+[tools.aube."platforms.windows-x64"]
+checksum = "sha256:36ce2e3e2876fc89f619a6b773c5ecc5f9319edb851cec3648a0fd513f8be3c9"
+url = "https://github.com/jdx/aube/releases/download/v2.1.0/aube-v2.1.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/jdx/aube/releases/assets/526709956"
+provenance = "github-attestations"
+
+[[tools.aube]]
 version = "1.41.0"
 backend = "github:endevco/aube"
 
@@ -145,7 +192,7 @@ version = "0.1.6"
 backend = "cargo:cargo-autoinherit"
 
 [[tools."cargo:cargo-binstall"]]
-version = "1.21.1"
+version = "1.22.0"
 backend = "cargo:cargo-binstall"
 
 [[tools."cargo:cargo-careful"]]
@@ -185,7 +232,7 @@ version = "0.4.14"
 backend = "cargo:prek"
 
 [[tools."cargo:rumdl"]]
-version = "0.2.58"
+version = "0.2.60"
 backend = "cargo:rumdl"
 
 [[tools."cargo:sizelint"]]
@@ -239,47 +286,94 @@ url = "https://github.com/numtide/treefmt/releases/download/v2.5.0/treefmt_2.5.0
 url_api = "https://api.github.com/repos/numtide/treefmt/releases/assets/391045231"
 
 [[tools."github:superradcompany/microsandbox"]]
-version = "0.6.12"
+version = "0.6.14"
 backend = "github:superradcompany/microsandbox"
 
 [tools."github:superradcompany/microsandbox".options]
 matching_regex = "^microsandbox-"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-arm64"]
-checksum = "sha256:b99f030181db2e3c8c7b12f355e3577f25114e500c9ca99ed191eb8756a89f45"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464597"
+checksum = "sha256:d799473cfe3657e9888e3b4b92273c534547287fb7c9fa55170d17abb88a1ca8"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178206"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-arm64-musl"]
-checksum = "sha256:b99f030181db2e3c8c7b12f355e3577f25114e500c9ca99ed191eb8756a89f45"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464597"
+checksum = "sha256:d799473cfe3657e9888e3b4b92273c534547287fb7c9fa55170d17abb88a1ca8"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178206"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-x64"]
-checksum = "sha256:0b39d98700feb75063e79e28feedc37e1cd7cae0654c3913829ecf101232ca7f"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464606"
+checksum = "sha256:2db88548266a7a0ac6ec21c9e5fa2f8b241e337fbd22f120ec8dba42ca95f39a"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178217"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.linux-x64-musl"]
-checksum = "sha256:0b39d98700feb75063e79e28feedc37e1cd7cae0654c3913829ecf101232ca7f"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464606"
+checksum = "sha256:2db88548266a7a0ac6ec21c9e5fa2f8b241e337fbd22f120ec8dba42ca95f39a"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178217"
 provenance = "github-attestations"
 
 [tools."github:superradcompany/microsandbox"."platforms.macos-arm64"]
-checksum = "sha256:3a90b6dcc6af17645b88d566bbf93ac672bdbc8d2357c3d8b04c4e210de32f8d"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-darwin-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464595"
+checksum = "sha256:9578ea619e9818f2d65b7092ecf257b3f16aea03be7e01069bb1875dee8b582a"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-darwin-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178203"
 provenance = "github-attestations"
 provenance_verified = true
 
 [tools."github:superradcompany/microsandbox"."platforms.windows-x64"]
-checksum = "sha256:472a6b25ca4d906bb87acd1794f53dcea2fc81612a27a08de3ac6cc7a39aa5e8"
-url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.12/microsandbox-windows-x86_64.zip"
-url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/521464637"
+checksum = "sha256:2bceea646de0383358ec72fd8af85734dd9bb7c3b8ba8a87e51590f531f9bcfe"
+url = "https://github.com/superradcompany/microsandbox/releases/download/v0.6.14/microsandbox-windows-x86_64.zip"
+url_api = "https://api.github.com/repos/superradcompany/microsandbox/releases/assets/525178251"
+provenance = "github-attestations"
+
+[[tools."github:tombi-toml/tombi"]]
+version = "1.4.1"
+backend = "github:tombi-toml/tombi"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-arm64"]
+checksum = "sha256:21f51d092597053266e0ed051082743b5956b6de2f0db1cecce78e0eb29165e5"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196347"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-arm64-musl"]
+checksum = "sha256:21f51d092597053266e0ed051082743b5956b6de2f0db1cecce78e0eb29165e5"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196347"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-x64"]
+checksum = "sha256:9aa69eb3e75a4a22a961b8a1c8cc44e4f81328ce25ad5b10d151be1a09faa88d"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196366"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.linux-x64-musl"]
+checksum = "sha256:9aa69eb3e75a4a22a961b8a1c8cc44e4f81328ce25ad5b10d151be1a09faa88d"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196366"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.macos-arm64"]
+checksum = "sha256:0054ea75a98db2ccdef3b304bf97aeb2b1fed201df13b30b68a19672a275199c"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196343"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools."github:tombi-toml/tombi"."platforms.macos-x64"]
+checksum = "sha256:4a14a0bf18ec0bbbeab3003f6c0dea3ffabb2cb38649ebfd6cafabc4d7eeffe0"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196344"
+provenance = "github-attestations"
+
+[tools."github:tombi-toml/tombi"."platforms.windows-x64"]
+checksum = "sha256:a0b324b673f469f82337df9561951b8dea2cb5fb491e98345929d3f5a55bfe84"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.1/tombi-cli-1.4.1-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/525196364"
 provenance = "github-attestations"
 
 [[tools."github:tombi-toml/tombi"]]

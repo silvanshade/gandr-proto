@@ -31,7 +31,7 @@ includes = [".config/mise/tasks"]
 "cargo:b3sum" = "1.8.7"
 "cargo:cargo-afl" = { version = "0.18.2", default-features = false }
 "cargo:cargo-autoinherit" = "0.1.6"
-"cargo:cargo-binstall" = "1.21.1"
+"cargo:cargo-binstall" = "1.22.0"
 "cargo:cargo-careful" = "0.4.10"
 "cargo:cargo-dylint" = "6.0.4"
 "cargo:cargo-llvm-cov" = "0.9.0"
@@ -41,18 +41,18 @@ includes = [".config/mise/tasks"]
 "cargo:dylint-link" = "6.0.4"
 "cargo:nu" = "0.113.1"  # NOTE: nu stays pinned at =0.113.1
 "cargo:prek" = "0.4.14"
-"cargo:rumdl" = "0.2.58"
+"cargo:rumdl" = "0.2.60"
 "cargo:sizelint" = "0.1.5"
 "cargo:stgit" = "2.6.1"
 "cargo:typos-cli" = "1.49.0"
 "cargo:worktrunk" = "0.74.0"
 "github:numtide/treefmt" = "2.5.0"
-"github:superradcompany/microsandbox" = { version = "0.6.12", matching_regex = "^microsandbox-" }
-"github:tombi-toml/tombi" = "1.4.0"
+"github:superradcompany/microsandbox" = { version = "0.6.14", matching_regex = "^microsandbox-" }
+"github:tombi-toml/tombi" = "1.4.1"
 "npm:@commitlint/cli" = "21.2.2"
 "npm:oxfmt" = "0.64.0"
 "npm:oxlint-tsgolint" = "7.0.2001"
 "npm:oxlint" = "1.79.0"
-aube = "1.41.0"
+aube = "2.1.0"
 node = "26.7.0"
 typst = "0.15.1"
